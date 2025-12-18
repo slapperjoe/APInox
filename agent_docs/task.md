@@ -1,0 +1,27 @@
+# Tasks
+
+- [x] Research VS Code Extension capabilities for Webviews and Custom Editors <!-- id: 0 -->
+- [x] Design Extension Architecture (webview-based UI similar to Bruno) <!-- id: 1 -->
+- [x] Define Technical Stack (React/Vue for Webview, SOAP client lib) <!-- id: 2 -->
+- [x] Create Implementation Plan <!-- id: 3 -->
+- [x] Initialize Project Structure (Yeoman generator or template) <!-- id: 4 -->
+- [x] Set up Extension Host with `soap` library <!-- id: 5 -->
+- [x] Set up React Webview (Vite/Webpack based) <!-- id: 6 -->
+- [x] Implement WSDL Parsing and Collection View <!-- id: 7 -->
+- [x] Implement Request Editor and Response Viewer (Bruno-like UI) <!-- id: 8 -->
+- [x] Implement Request Execution Logic <!-- id: 9 -->
+- [x] Generate VSIX Package <!-- id: 10 -->
+- [ ] Configure VS Code Debugging (launch.json/tasks.json) <!-- id: 11 -->
+- [x] Implement Loading State for Request Execution <!-- id: 12 -->
+- [x] Add Syntax Highlighting to Response Viewer <!-- id: 13 -->
+- [x] Implement Status Overlay and Timer for Request <!-- id: 14 -->
+- [x] Implement Request Cancellation <!-- id: 15 -->
+- [x] Implement Editable Syntax Highlighting for Request <!-- id: 16 -->
+- [x] Enable Raw XML Execution (Bypass node-soap gen) <!-- id: 17 -->
+- [x] Implement Request Editing Logic <!-- id: 18 -->
+    - [x] Ensure edited XML is sent on execution <!-- id: 19 -->
+    - [x] Add "Revert to Default" button <!-- id: 20 -->
+- [x] Implement Output Logging for Debugging <!-- id: 21 -->
+- [x] Create AGENTS.md for codebase context <!-- id: 22 -->
+- [x] Rename project to "Dirty SOAP" (dirty-soap) <!-- id: 23 -->
+- [x] Configure .gitignore for Node/Build artifacts <!-- id: 24 -->
