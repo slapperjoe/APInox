@@ -1,30 +1,18 @@
 import * as soap from 'soap';
-import axios, { AxiosInstance } from 'axios';
-import * as fs from 'fs';
-import * as path from 'path';
-
-export interface SoapOperation {
-    name: string;
-    input: any;
-    output: any;
-    description?: string;
-    targetNamespace?: string;
-}
-
-export interface SoapService {
-    name: string;
-    ports: string[];
-    operations: SoapOperation[];
-}
+import axios from 'axios';
+import { SoapService, SoapSchemaNode } from './models';
+import { WsdlParser } from './WsdlParser';
 
 export class SoapClient {
     private client: soap.Client | null = null;
     private currentRequest: any = null;
     private cancelTokenSource: any = null;
     private outputChannel: any = null;
+    private wsdlParser: WsdlParser;
 
     constructor(outputChannel?: any) {
         this.outputChannel = outputChannel;
+        this.wsdlParser = new WsdlParser(outputChannel);
     }
 
     public log(message: string, data?: any) {
@@ -37,143 +25,13 @@ export class SoapClient {
     }
 
     async parseWsdl(url: string, localWsdlDir?: string): Promise<SoapService[]> {
-        this.log(`Attempting to parse WSDL: ${url}`);
+        const services = await this.wsdlParser.parseWsdl(url, localWsdlDir);
+        this.client = this.wsdlParser.getClient();
+        return services;
+    }
 
-        const options: any = {};
-        if (localWsdlDir) {
-            this.log(`Local WSDL directory enabled: ${localWsdlDir}`);
-            options.request = (requestUrl: string, data: any, callback: any, exheaders: any, exoptions: any) => {
-                this.log(`Intercepted request: ${requestUrl}`);
-
-                // 1. Try Local File
-                try {
-                    // Naive filename extraction: take last part of URL, remove query params
-                    const filename = requestUrl.split('/').pop()?.split('?')[0] || '';
-                    if (filename) {
-                        let localPath = path.join(localWsdlDir, filename);
-
-                        // Check if file exists in root wsdl_files
-                        if (!fs.existsSync(localPath)) {
-                            // Check in 'imports' subdirectory
-                            localPath = path.join(localWsdlDir, 'imports', filename);
-                        }
-
-                        if (fs.existsSync(localPath)) {
-                            this.log(`Serving local file: ${localPath}`);
-                            const fileContent = fs.readFileSync(localPath, 'utf8');
-                            const response = {
-                                statusCode: 200,
-                                headers: {},
-                                body: fileContent // node-soap sometimes checks response.body
-                            };
-                            callback(null, response, fileContent);
-                            return;
-                        } else {
-                            this.log(`Local file not found: ${filename} (checked root and imports)`);
-                        }
-                    }
-                } catch (e) {
-                    this.log('Error checking local file:', e);
-                }
-
-                // 2. Fallback to Network (Axios)
-                this.log('Falling back to network request...');
-                const method = data ? 'POST' : 'GET';
-                const headers = { ...exheaders };
-
-                axios({
-                    method: method,
-                    url: requestUrl,
-                    data: data,
-                    headers: headers,
-                    ...exoptions
-                }).then((response) => {
-                    this.log(`Network request success: ${response.status}`);
-                    // Ensure response structure matches what node-soap expects
-                    // node-soap often expects response object + body
-                    callback(null, response, response.data);
-                }).catch((error) => {
-                    this.log(`Network request failed: ${error.message}`);
-                    callback(error, error.response, error.response ? error.response.data : null);
-                });
-            };
-        }
-
-        try {
-            const client = await soap.createClientAsync(url, options);
-            this.client = client;
-            this.log('WSDL Client created successfully.');
-
-            const description = client.describe();
-            const services: SoapService[] = [];
-
-            // Try to get targetNamespace from definitions
-            const definitions = (client as any).wsdl.definitions;
-            const targetNamespace = definitions.targetNamespace || definitions.$targetNamespace || '';
-
-            this.log(`Target Namespace: ${targetNamespace}`);
-
-            // Detailed Debugging for Imports and Schemas
-            if (definitions.imports) {
-                const importKeys = Object.keys(definitions.imports);
-                this.log(`Found ${importKeys.length} Imports.`);
-                this.log('Import Namespaces:', importKeys);
-            } else {
-                this.log('No imports found in definitions.');
-            }
-
-            if (definitions.schemas) {
-                const schemaKeys = Object.keys(definitions.schemas);
-                this.log(`Found ${schemaKeys.length} Schemas.`);
-                schemaKeys.forEach(ns => {
-                    this.log(`- Schema NS: ${ns}`);
-                });
-            } else {
-                this.log('No schemas found in definitions.');
-            }
-
-            for (const serviceName in description) {
-                this.log(`Processing Service: ${serviceName}`);
-                const service = description[serviceName];
-                const ports: string[] = [];
-                const operations: SoapOperation[] = [];
-
-                for (const portName in service) {
-                    this.log(`  Processing Port: ${portName}`);
-                    ports.push(portName);
-                    const port = service[portName];
-                    for (const opName in port) {
-                        operations.push({
-                            name: opName,
-                            input: port[opName].input,
-                            output: port[opName].output,
-                            targetNamespace: targetNamespace // Pass it down
-                        });
-                    }
-                    this.log(`    Found ${operations.length} operations in port.`);
-                }
-
-                services.push({
-                    name: serviceName,
-                    ports: ports,
-                    operations: operations
-                });
-            }
-
-            this.log(`Successfully parsed ${services.length} services.`);
-            return services;
-        } catch (error: any) {
-            console.error('Error parsing WSDL:', error);
-            this.log('CRITICAL ERROR parsing WSDL:', error.message);
-            if (error.stack) {
-                this.log('Stack Trace:', error.stack);
-            }
-            // Log additional properties if available (e.g. from axios or soap lib)
-            if (error.response) {
-                this.log('Error Response Body:', error.response.data);
-            }
-            throw error;
-        }
+    public getOperationSchema(operationName: string, portName?: string): SoapSchemaNode | null {
+        return this.wsdlParser.getOperationSchema(operationName, portName);
     }
 
     cancelRequest() {
@@ -208,9 +66,6 @@ export class SoapClient {
 
         return new Promise((resolve, reject) => {
             if (!this.client) return reject('Client not initialized');
-
-            const service = Object.keys(this.client.describe())[0]; // Naive assumption: first service
-            const port = Object.keys(this.client.describe()[service])[0]; // Naive assumption: first port
 
             const method = this.client[operation];
             if (typeof method !== 'function') {
@@ -249,11 +104,8 @@ export class SoapClient {
         }
 
         // 1. Find Endpoint
-        // Try to find the service/port definitions to locate the address
         let endpoint = '';
         const definitions = (this.client as any).wsdl.definitions;
-        // Naive iteration to find first matching port location
-        // Improvements: use selected service/port if available
         for (const serviceName in definitions.services) {
             const service = definitions.services[serviceName];
             for (const portName in service.ports) {
@@ -267,7 +119,6 @@ export class SoapClient {
         }
 
         if (!endpoint) {
-            // Fallback to WSDL options endpoint
             endpoint = (this.client as any).wsdl.options.endpoint;
         }
 
@@ -321,6 +172,7 @@ export class SoapClient {
             return {
                 success: true,
                 result: null, // Raw mode doesn't parse to JSON result automatically
+                headers: response.headers,
                 rawResponse: response.data,
                 rawRequest: xml
             };

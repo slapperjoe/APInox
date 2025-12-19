@@ -19,6 +19,20 @@
             "problemMatcher": "$tsc-watch",
             "label": "npm: watch",
             "detail": "watch the extension"
+        },
+        {
+            "type": "shell",
+            "command": "npx vsce package",
+            "group": "build",
+            "label": "package",
+            "detail": "Package the extension into a .vsix file"
+        },
+        {
+            "type": "npm",
+            "script": "compile-webview",
+            "group": "build",
+            "label": "npm: compile-webview",
+            "detail": "compile the webview"
         }
     ]
 }

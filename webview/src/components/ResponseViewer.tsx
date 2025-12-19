@@ -5,36 +5,76 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 interface ResponseViewerProps {
   response: any;
+  loading?: boolean;
+  error?: string | null;
+  showLineNumbers?: boolean;
 }
 
 const ViewerContainer = styled.div`
   display: flex;
   flex-direction: column;
-  height: 50%;
-  border-top: 1px solid var(--vscode-panel-border);
-`;
-
-const Toolbar = styled.div`
-  padding: 5px 10px;
+  height: 100%;
+  overflow: hidden;
   background-color: var(--vscode-editor-background);
-  border-bottom: 1px solid var(--vscode-panel-border);
-  font-weight: bold;
 `;
 
-export const ResponseViewer: React.FC<ResponseViewerProps> = ({ response }) => {
-  if (!response) return null;
+const MessageContainer = styled.div`
+    padding: 20px;
+    color: var(--vscode-descriptionForeground);
+    font-style: italic;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+`;
 
-  const content = response.rawResponse ? response.rawResponse : JSON.stringify(response, null, 2);
-  const isXml = !!response.rawResponse;
+export const ResponseViewer: React.FC<ResponseViewerProps> = ({ response, loading, error, showLineNumbers }) => {
+  if (loading) {
+    return (
+      <ViewerContainer>
+        <MessageContainer>Executing request...</MessageContainer>
+      </ViewerContainer>
+    );
+  }
+
+  if (error) {
+    return (
+      <ViewerContainer>
+        <div style={{ padding: 20, color: 'var(--vscode-errorForeground)', overflow: 'auto' }}>
+          <strong>Error:</strong> {error}
+        </div>
+      </ViewerContainer>
+    );
+  }
+
+  if (!response) {
+    return (
+      <ViewerContainer>
+        <MessageContainer>No response yet.</MessageContainer>
+      </ViewerContainer>
+    );
+  }
+
+  let content = '';
+  if (typeof response === 'string') {
+    content = response;
+  } else if (response.rawResponse) {
+    const resp = response.rawResponse;
+    content = typeof resp === 'string' ? resp : JSON.stringify(resp, null, 2);
+  } else {
+    content = JSON.stringify(response, null, 2);
+  }
+
+  const isXml = content.trim().startsWith('<');
 
   return (
     <ViewerContainer>
-      <Toolbar>Response</Toolbar>
       <div style={{ flex: 1, overflow: 'auto', margin: 0 }}>
         <SyntaxHighlighter
           language={isXml ? "xml" : "json"}
           style={vscDarkPlus}
-          customStyle={{ margin: 0, height: '100%', fontSize: 'var(--vscode-editor-font-size)', fontFamily: 'var(--vscode-editor-font-family)' }}
+          showLineNumbers={showLineNumbers}
+          customStyle={{ margin: 0, height: '100%', fontSize: 'var(--vscode-editor-font-size)', fontFamily: 'var(--vscode-editor-font-family)', background: 'transparent' }}
         >
           {content}
         </SyntaxHighlighter>

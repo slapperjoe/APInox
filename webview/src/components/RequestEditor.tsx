@@ -7,9 +7,12 @@ import 'prismjs/themes/prism-dark.css';
 
 interface RequestEditorProps {
   operation: any;
+  initialXml?: string;
   onExecute: (xml: string) => void;
   onCancel?: () => void;
+  onChange?: (xml: string) => void;
   loading?: boolean;
+  showLineNumbers?: boolean;
 }
 
 const EditorContainer = styled.div`
@@ -19,35 +22,39 @@ const EditorContainer = styled.div`
   position: relative;
 `;
 
-const Toolbar = styled.div`
-  padding: 10px;
+const LineNumberColumn = styled.div`
+  padding: 10px 5px;
+  text-align: right;
   background-color: var(--vscode-editor-background);
-  border-bottom: 1px solid var(--vscode-panel-border);
+  color: var(--vscode-editorLineNumber-foreground);
+  border-right: 1px solid var(--vscode-editorGroup-border);
+  user-select: none;
+  font-family: var(--vscode-editor-font-family);
+  font-size: var(--vscode-editor-font-size);
+  line-height: 20px; /* Explicit line height for alignment */
+  min-width: 40px;
+`;
+
+// Update Wrapper to handle layout
+const EditorWrapper = styled.div`
+  flex: 1;
+  overflow: auto;
+  background-color: var(--vscode-editor-background);
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-`;
 
-const Title = styled.h3`
-  margin: 0;
-  font-size: 14px;
-`;
-
-const ButtonGroup = styled.div`
-  display: flex;
-  gap: 8px;
-`;
-
-const Button = styled.button<{ secondary?: boolean }>`
-  background: ${props => props.secondary ? 'transparent' : 'var(--vscode-button-background)'};
-  color: ${props => props.secondary ? 'var(--vscode-foreground)' : 'var(--vscode-button-foreground)'};
-  border: ${props => props.secondary ? '1px solid var(--vscode-button-border, transparent)' : 'none'};
-  padding: 6px 12px;
-  cursor: pointer;
-  opacity: ${props => props.disabled ? 0.6 : 1};
-  pointer-events: ${props => props.disabled ? 'none' : 'auto'};
-  &:hover {
-    background: ${props => props.secondary ? 'var(--vscode-toolbar-hoverBackground)' : 'var(--vscode-button-hoverBackground)'};
+  /* Apply VS Code fonts to Prism elements */
+  & pre, & code {
+    font-family: var(--vscode-editor-font-family) !important;
+    font-size: var(--vscode-editor-font-size) !important;
+    line-height: 20px !important; /* Explicit line height */
+    background-color: transparent !important; /* Force transparent to blend with VS Code theme */
+    text-shadow: none !important; /* Remove prism text shadows for flat look */
+  }
+  
+  /* Remove default outline from textarea */
+  & textarea {
+    outline: none;
+    line-height: 20px !important; /* Explicit line height */
   }
 `;
 
@@ -88,23 +95,6 @@ const StatusBox = styled.div`
   color: var(--vscode-editor-foreground);
 `;
 
-const EditorWrapper = styled.div`
-  flex: 1;
-  overflow: auto;
-  background-color: var(--vscode-editor-background);
-  
-  /* Apply VS Code fonts to Prism elements */
-  & pre, & code {
-    font-family: var(--vscode-editor-font-family) !important;
-    font-size: var(--vscode-editor-font-size) !important;
-  }
-  
-  /* Remove default outline from textarea */
-  & textarea {
-    outline: none;
-  }
-`;
-
 // Helper to recursively generate XML tags from definitions description
 // node-soap's client.describe() returns object with input { partName: type }
 const generateXmlBody = (input: any, prefix: string = ''): string => {
@@ -126,12 +116,12 @@ const generateXmlBody = (input: any, prefix: string = ''): string => {
   return xml;
 };
 
-export const RequestEditor: React.FC<RequestEditorProps> = ({ operation, onExecute, onCancel, loading }) => {
+export const RequestEditor: React.FC<RequestEditorProps> = ({ operation, initialXml, onCancel, onChange, loading, showLineNumbers }) => {
   const [xml, setXml] = useState('');
   const [elapsed, setElapsed] = useState(0);
 
   // Memoize the default XML generation so it's stable for a given operation
-  const defaultXml = useMemo(() => {
+  const generatedXml = useMemo(() => {
     // Generate body from input definition
     const bodyContent = generateXmlBody(operation.input || {}, 'web:');
 
@@ -144,7 +134,9 @@ ${bodyContent}      </web:${operation.name}>
 </soapenv:Envelope>`;
   }, [operation]);
 
-  // Reset to default when operation changes
+  const defaultXml = initialXml || generatedXml;
+
+  // Reset to default when operation or initialXml changes
   useEffect(() => {
     setXml(defaultXml);
   }, [defaultXml]);
@@ -160,40 +152,39 @@ ${bodyContent}      </web:${operation.name}>
     return () => clearInterval(interval);
   }, [loading]);
 
-  const handleRevert = () => {
-    // Removed window.confirm to avoid blocking/issues in webview
-    setXml(defaultXml);
-  };
+  const lineCount = xml.split('\n').length;
 
   return (
     <EditorContainer>
-      <Toolbar>
-        <Title>{operation.name}</Title>
-        <ButtonGroup>
-          <Button secondary onClick={handleRevert} disabled={loading || xml === defaultXml}>
-            Revert
-          </Button>
-          <Button onClick={() => onExecute(xml)} disabled={loading}>
-            {loading ? 'Running...' : 'Run'}
-          </Button>
-        </ButtonGroup>
-      </Toolbar>
       <EditorWrapper>
-        <Editor
-          value={xml}
-          onValueChange={code => setXml(code)}
-          highlight={code => highlight(code, languages.markup, 'markup')} // Use markup for XML
-          padding={10}
-          disabled={loading}
-          style={{
-            fontFamily: 'var(--vscode-editor-font-family)',
-            fontSize: 'var(--vscode-editor-font-size)',
-            backgroundColor: 'transparent',
-            color: 'var(--vscode-editor-foreground)',
-            minHeight: '100%'
-          }}
-          textareaClassName="focus:outline-none"
-        />
+        {showLineNumbers && (
+          <LineNumberColumn>
+            {Array.from({ length: lineCount }, (_, i) => (
+              <div key={i}>{i + 1}</div>
+            ))}
+          </LineNumberColumn>
+        )}
+        <div style={{ flex: 1, minHeight: '100%' }}>
+          <Editor
+            value={xml}
+            onValueChange={code => {
+              setXml(code);
+              if (onChange) onChange(code);
+            }}
+            highlight={code => highlight(code, languages.markup, 'markup')} // Use markup for XML
+            padding={10}
+            disabled={loading}
+            style={{
+              fontFamily: 'var(--vscode-editor-font-family)',
+              fontSize: 'var(--vscode-editor-font-size)',
+              backgroundColor: 'transparent',
+              color: 'var(--vscode-editor-foreground)',
+              minHeight: '100%',
+              lineHeight: '20px'
+            }}
+            textareaClassName="focus:outline-none"
+          />
+        </div>
       </EditorWrapper>
       {loading && (
         <Overlay>

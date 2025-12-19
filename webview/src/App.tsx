@@ -1,58 +1,93 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import styled from 'styled-components';
 import { vscode } from './vscode';
-import { RequestEditor } from './components/RequestEditor';
-import { ResponseViewer } from './components/ResponseViewer';
-
-// Define types locally
-interface SoapOperation {
-    name: string;
-    input: any;
-    output: any;
-    description?: string;
-    targetNamespace?: string;
-}
-
-interface SoapService {
-    name: string;
-    ports: string[];
-    operations: SoapOperation[];
-}
+import { Sidebar } from './components/Sidebar';
+import { WorkspaceLayout } from './components/WorkspaceLayout';
+import { SchemaViewer } from './components/SchemaViewer';
+import { SoapUIInterface, SoapUIProject, SoapUIOperation, SoapUIRequest, SoapSchemaNode } from './models';
+import { X } from 'lucide-react';
 
 const Container = styled.div`
   display: flex;
   height: 100vh;
+  width: 100vw;
+  overflow: hidden;
   background-color: var(--vscode-editor-background);
   color: var(--vscode-editor-foreground);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
 `;
 
-const Sidebar = styled.div`
-  width: 300px;
-  border-right: 1px solid var(--vscode-sideBar-border);
-  background-color: var(--vscode-sideBar-background);
+const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+`;
+
+const ModalContent = styled.div`
+  background-color: var(--vscode-editor-background);
+  border: 1px solid var(--vscode-panel-border);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  width: 400px;
+  max-width: 90%;
+  max-height: 80vh;
   display: flex;
   flex-direction: column;
 `;
 
-const SidebarHeader = styled.div`
-  padding: 10px;
-  border-bottom: 1px solid var(--vscode-sideBar-border);
+const ModalHeader = styled.div`
+    padding: 10px 15px;
+    border-bottom: 1px solid var(--vscode-panel-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 `;
 
-const Content = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+const ModalTitle = styled.div`
+    font-weight: bold;
 `;
 
-const Input = styled.input`
-  background: var(--vscode-input-background);
-  color: var(--vscode-input-foreground);
-  border: 1px solid var(--vscode-input-border);
-  padding: 4px;
-  width: 100%;
-  margin-bottom: 8px;
+const ModalBody = styled.div`
+    padding: 15px;
+    overflow-y: auto;
+    flex: 1;
+`;
+
+const ModalFooter = styled.div`
+    padding: 10px 15px;
+    border-top: 1px solid var(--vscode-panel-border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+`;
+
+const ContextMenu = styled.div<{ top: number, left: number }>`
+    position: fixed;
+    top: ${props => props.top}px;
+    left: ${props => props.left}px;
+    background-color: var(--vscode-menu-background);
+    color: var(--vscode-menu-foreground);
+    border: 1px solid var(--vscode-menu-border);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    z-index: 2000;
+    min-width: 150px;
+    padding: 4px 0;
+`;
+
+const ContextMenuItem = styled.div`
+    padding: 6px 12px;
+    cursor: pointer;
+    &:hover {
+        background-color: var(--vscode-menu-selectionBackground);
+        color: var(--vscode-menu-selectionForeground);
+    }
 `;
 
 const Button = styled.button`
@@ -61,214 +96,613 @@ const Button = styled.button`
   border: none;
   padding: 6px 12px;
   cursor: pointer;
-  width: 100%;
   &:hover {
     background: var(--vscode-button-hoverBackground);
   }
 `;
 
-const ServiceItem = styled.div`
-  padding: 5px 10px;
-  font-weight: bold;
-`;
-
-const OperationItem = styled.div<{ active: boolean }>`
-  padding: 4px 10px 4px 25px;
-  cursor: pointer;
-  background-color: ${props => props.active ? 'var(--vscode-list-activeSelectionBackground)' : 'transparent'};
-  color: ${props => props.active ? 'var(--vscode-list-activeSelectionForeground)' : 'inherit'};
-  &:hover {
-    background-color: ${props => props.active ? 'var(--vscode-list-activeSelectionBackground)' : 'var(--vscode-list-hoverBackground)'};
-  }
-`;
-
 function App() {
-    const [wsdlUrl, setWsdlUrl] = useState('http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso?WSDL');
-    const [inputType, setInputType] = useState<'url' | 'file'>('url');
-    const [localFiles, setLocalFiles] = useState<string[]>([]);
-    const [selectedFile, setSelectedFile] = useState('');
-    const [services, setServices] = useState<SoapService[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [selectedOperation, setSelectedOperation] = useState<SoapOperation | null>(null);
-    const [response, setResponse] = useState<any>(null);
+    // State
+    const [projects, setProjects] = useState<SoapUIProject[]>([]);
+    const [exploredInterfaces, setExploredInterfaces] = useState<SoapUIInterface[]>([]);
 
+    // Selection
+    const [selectedProjectName, setSelectedProjectName] = useState<string | null>(null);
+    const [selectedInterface, setSelectedInterface] = useState<SoapUIInterface | null>(null);
+    const [selectedOperation, setSelectedOperation] = useState<SoapUIOperation | null>(null);
+    const [selectedRequest, setSelectedRequest] = useState<SoapUIRequest | null>(null);
+
+    // Data
+    const [response, setResponse] = useState<any>(null);
+    const [loading, setLoading] = useState(false);
+
+    // UI State
+    const [explorerExpanded, setExplorerExpanded] = useState(true);
+    const [inputType, setInputType] = useState<'url' | 'file'>('url');
+    const [wsdlUrl, setWsdlUrl] = useState('http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso?WSDL');
+    const [selectedFile, setSelectedFile] = useState<string | null>(null);
+    const [downloadStatus, setDownloadStatus] = useState<string[] | null>(null);
+    const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+
+    // Layout
+    const [layoutMode, setLayoutMode] = useState<'vertical' | 'horizontal'>('vertical');
+    const [showLineNumbers, setShowLineNumbers] = useState(true);
+    const [splitRatio, setSplitRatio] = useState(0.5);
+    const [isResizing, setIsResizing] = useState(false);
+
+    // Modals & Menu
+    const [contextMenu, setContextMenu] = useState<{ x: number, y: number, type: string, data: any, isExplorer: boolean } | null>(null);
+    const [renameState, setRenameState] = useState<{ active: boolean, type: string, data: any, value: string } | null>(null);
+    const [sampleModal, setSampleModal] = useState<{ open: boolean, schema: SoapSchemaNode | null, operationName: string }>({ open: false, schema: null, operationName: '' });
+
+    const startTimeRef = useRef<number>(0);
+
+    // Initial Load
+    useEffect(() => {
+        const state = vscode.getState();
+        if (state) {
+            setProjects(state.projects || []);
+            setExploredInterfaces(state.exploredInterfaces || []);
+            setExplorerExpanded(state.explorerExpanded ?? true);
+            setWsdlUrl(state.wsdlUrl || '');
+            if (state.lastSelectedProject) setSelectedProjectName(state.lastSelectedProject);
+            // We don't restore exact request selection deeply to avoid complications, but could.
+        }
+    }, []);
+
+    // Save State
+    useEffect(() => {
+        vscode.setState({
+            projects,
+            exploredInterfaces,
+            explorerExpanded,
+            wsdlUrl,
+            lastSelectedProject: selectedProjectName
+        });
+    }, [projects, exploredInterfaces, explorerExpanded, wsdlUrl, selectedProjectName]);
+
+    // VS Code Messages
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
             const message = event.data;
             switch (message.command) {
                 case 'wsdlParsed':
-                    setServices(message.services);
-                    setLoading(false);
+                    // Convert raw SoapService to SoapUIInterface
+                    const newInterfaces: SoapUIInterface[] = message.services.map((svc: any) => ({
+                        name: svc.name,
+                        type: 'wsdl',
+                        bindingName: '', // Parser might need to provide this, or we infer
+                        soapVersion: '1.1',
+                        definition: wsdlUrl,
+                        operations: svc.operations.map((op: any) => ({
+                            name: op.name,
+                            action: '', // Parser logic
+                            input: op.input,
+                            requests: [{
+                                name: 'Request 1',
+                                request: `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="${op.targetNamespace || 'http://tempuri.org/'}">\n   <soapenv:Header/>\n   <soapenv:Body>\n      <tem:${op.name}>\n         <!--Optional:-->\n         ${getInitialXml(op.input)}\n      </tem:${op.name}>\n   </soapenv:Body>\n</soapenv:Envelope>`
+                            }]
+                        }))
+                    }));
+                    setExploredInterfaces(newInterfaces);
+                    setExplorerExpanded(true);
                     break;
                 case 'response':
-                    setResponse(message.result);
                     setLoading(false);
+                    const endTime = Date.now();
+                    const duration = (endTime - startTimeRef.current) / 1000;
+
+                    let lineCount = 0;
+                    let displayResponse = '';
+
+                    const res = message.result;
+                    if (res) {
+                        console.log('Response received:', res); // Debug log
+                        if (res.rawResponse) {
+                            displayResponse = typeof res.rawResponse === 'object' ? JSON.stringify(res.rawResponse, null, 2) : res.rawResponse;
+                        } else if (typeof res === 'string') {
+                            displayResponse = res;
+                        } else if (res.body) {
+                            displayResponse = typeof res.body === 'object' ? JSON.stringify(res.body, null, 2) : res.body;
+                        } else if (res.data && typeof res.data === 'string') {
+                            displayResponse = res.data;
+                        } else {
+                            displayResponse = JSON.stringify(res, null, 2);
+                        }
+                    }
+
+                    if (displayResponse) {
+                        lineCount = displayResponse.split(/\r\n|\r|\n/).length;
+                    }
+
+                    // We store the generic result but also the pre-processed display string
+                    setResponse({ ...res, rawResponse: displayResponse, duration, lineCount });
                     break;
                 case 'error':
-                    setError(message.message);
                     setLoading(false);
+                    setResponse({ error: message.message });
+                    break;
+                case 'downloadComplete':
+                    setDownloadStatus(message.files);
+                    if (message.files.length > 0) {
+                        // Auto-select the first one for convenience?
+                        // Or just show status
+                    }
+                    setTimeout(() => setDownloadStatus(null), 5000);
+                    break;
+                case 'wsdlSelected':
+                    setSelectedFile(message.path);
+                    break;
+                case 'sampleSchema':
+                    setSampleModal({ open: true, schema: message.schema, operationName: message.operationName });
+                    break;
+                case 'projectLoaded':
+                    // Check if project exists
+                    const newProj = message.project;
+                    setProjects(prev => {
+                        if (prev.find(p => p.name === newProj.name)) return prev;
+                        return [...prev, { ...newProj, fileName: message.filename, expanded: true }];
+                    });
+                    break;
+                case 'workspaceLoaded':
+                    // Replace projects or merge? Usually replace workspace
+                    setProjects(message.projects.map((p: any) => ({ ...p, expanded: true })));
                     break;
                 case 'localWsdls':
-                    setLocalFiles(message.files);
-                    if (message.files.length > 0 && !selectedFile) {
-                        setSelectedFile(message.files[0]);
-                    }
+                    // handled by quick pick in sidebar logic? NO, Sidebar invokes pickLocalWsdl
+                    // The extension shows a QuickPick?
+                    // Ext code: `vscode.window.showOpenDialog`.
+                    // The `localWsdls` command in extension was: postMessage({ command: 'localWsdls', files }).
+                    // BUT Sidebar logic calls `selectLocalWsdl` which shows dialog.
+                    // The `localWsdls` logic in extension seems unused or fallback.
                     break;
             }
         };
-
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
-    }, [selectedFile]);
+    }, [wsdlUrl]);
+
+    // Resizing Logic
+    const startResizing = useCallback(() => setIsResizing(true), []);
+    const stopResizing = useCallback(() => setIsResizing(false), []);
+    const resize = useCallback((e: MouseEvent) => {
+        if (isResizing) {
+            let newRatio = 0.5;
+            if (layoutMode === 'horizontal') {
+                newRatio = e.clientX / window.innerWidth;
+            } else {
+                newRatio = (e.clientY - 40) / (window.innerHeight - 40 - 30); // Approx headers
+            }
+            if (newRatio < 0.1) newRatio = 0.1;
+            if (newRatio > 0.9) newRatio = 0.9;
+            setSplitRatio(newRatio);
+        }
+    }, [isResizing, layoutMode]);
 
     useEffect(() => {
-        if (inputType === 'file') {
-            vscode.postMessage({ command: 'getLocalWsdls' });
-        }
-    }, [inputType]);
+        window.addEventListener('mousemove', resize);
+        window.addEventListener('mouseup', stopResizing);
+        return () => {
+            window.removeEventListener('mousemove', resize);
+            window.removeEventListener('mouseup', stopResizing);
+        };
+    }, [resize, stopResizing]);
 
+
+    // Handlers
     const loadWsdl = () => {
-        setLoading(true);
-        setError(null);
-        vscode.postMessage({
-            command: 'loadWsdl',
-            url: inputType === 'url' ? wsdlUrl : selectedFile,
-            isLocal: inputType === 'file'
-        });
+        if (inputType === 'url' && wsdlUrl) {
+            vscode.postMessage({ command: 'loadWsdl', url: wsdlUrl, isLocal: false });
+        } else if (inputType === 'file' && selectedFile) {
+            vscode.postMessage({ command: 'loadWsdl', url: selectedFile, isLocal: true });
+        }
+    };
+
+    const pickLocalWsdl = () => {
+        vscode.postMessage({ command: 'selectLocalWsdl' });
     };
 
     const executeRequest = (xml: string) => {
-        setResponse(null);
         setLoading(true);
-        vscode.postMessage({
-            command: 'executeRequest',
-            url: inputType === 'url' ? wsdlUrl : selectedFile, // pass relevant ID/URL
-            operation: selectedOperation?.name,
-            xml: xml
-        });
+        setResponse(null);
+        startTimeRef.current = Date.now();
+        if (selectedOperation) {
+            // Find URL
+            // If interface has definition, use it?
+            // Or rely on WSDL loaded state?
+            // `SoapClient` logic uses parsed client OR downloads.
+            // We pass definition URL.
+            const url = selectedInterface?.definition || wsdlUrl;
+            vscode.postMessage({ command: 'executeRequest', url, operation: selectedOperation.name, xml });
+        }
     };
 
     const cancelRequest = () => {
+        vscode.postMessage({ command: 'cancelRequest' });
         setLoading(false);
-        vscode.postMessage({
-            command: 'cancelRequest'
-        });
     };
 
-    const downloadWsdl = () => {
-        setLoading(true);
-        setError(null);
-        vscode.postMessage({
-            command: 'downloadWsdl',
-            url: wsdlUrl
-        });
+    const handleRequestUpdate = (updated: SoapUIRequest) => {
+        setSelectedRequest(updated);
+
+        // Update in Project/Explorer
+        if (selectedProjectName) {
+            setProjects(prev => prev.map(p => {
+                if (p.name !== selectedProjectName) return p;
+                return {
+                    ...p,
+                    interfaces: p.interfaces.map(i => {
+                        if (i.name !== selectedInterface?.name) return i;
+                        return {
+                            ...i,
+                            operations: i.operations.map(o => {
+                                if (o.name !== selectedOperation?.name) return o;
+                                return {
+                                    ...o,
+                                    requests: o.requests.map(r => r.name === selectedRequest?.name ? updated : r)
+                                };
+                            })
+                        };
+                    })
+                };
+            }));
+        } else {
+            setExploredInterfaces(prev => prev.map(i => {
+                if (i.name !== selectedInterface?.name) return i;
+                return {
+                    ...i,
+                    operations: i.operations.map(o => {
+                        if (o.name !== selectedOperation?.name) return o;
+                        return {
+                            ...o,
+                            requests: o.requests.map(r => r.name === selectedRequest?.name ? updated : r)
+                        };
+                    })
+                };
+            }));
+        }
     };
+
+    const handleResetRequest = () => {
+        if (selectedRequest && selectedOperation) {
+            const xml = getInitialXml(selectedOperation.input);
+            const updated = { ...selectedRequest, request: xml };
+            handleRequestUpdate(updated);
+        }
+    };
+
+    // Sidebar Helpers
+    const addToProject = (iface: SoapUIInterface) => {
+        if (projects.length === 0) {
+            setProjects([{ name: 'Project 1', interfaces: [iface], expanded: true }]);
+        } else {
+            setProjects(prev => prev.map((p, i) =>
+                i === 0 ? { ...p, interfaces: [...p.interfaces, iface] } : p
+            ));
+        }
+        // Clear from explorer
+        setExploredInterfaces(prev => prev.filter(i => i.name !== iface.name));
+        if (exploredInterfaces.length <= 1) { // If it was the last one
+            setExplorerExpanded(false);
+        }
+    };
+
+    const addAllToProject = () => {
+        if (projects.length === 0) {
+            setProjects([{ name: 'Project 1', interfaces: [...exploredInterfaces], expanded: true }]);
+        } else {
+            setProjects(prev => prev.map((p, i) =>
+                i === 0 ? { ...p, interfaces: [...p.interfaces, ...exploredInterfaces] } : p
+            ));
+        }
+        clearExplorer();
+    };
+
+    const clearExplorer = () => {
+        setExploredInterfaces([]);
+        setExplorerExpanded(false);
+    };
+
+    const removeFromExplorer = (iface: SoapUIInterface) => {
+        setExploredInterfaces(prev => prev.filter(i => i !== iface));
+    };
+
+    const saveProject = (proj: SoapUIProject) => {
+        vscode.postMessage({ command: 'saveProject', project: proj });
+    };
+
+    const closeProject = (name: string) => {
+        if (deleteConfirm === name) {
+            setProjects(prev => prev.filter(p => p.name !== name));
+            // Reset selection if inside this project
+            if (selectedProjectName === name) {
+                setSelectedProjectName(null);
+                setSelectedInterface(null);
+                setSelectedOperation(null);
+                setSelectedRequest(null);
+            }
+            setDeleteConfirm(null);
+        } else {
+            setDeleteConfirm(name);
+            setTimeout(() => setDeleteConfirm(c => c === name ? null : c), 3000);
+        }
+    };
+
+    const saveWorkspace = () => vscode.postMessage({ command: 'saveWorkspace', projects });
+    const openWorkspace = () => vscode.postMessage({ command: 'openWorkspace' });
+    const loadProject = () => vscode.postMessage({ command: 'loadProject' });
+    const addProject = () => setProjects(prev => [...prev, { name: `Project ${prev.length + 1}`, interfaces: [], expanded: true }]);
+
+
+    // Expand Toggles
+    const toggleExplorerExpand = () => setExplorerExpanded(!explorerExpanded);
+    const toggleProjectExpand = (name: string) => setProjects(prev => prev.map(p => p.name === name ? { ...p, expanded: !p.expanded } : p));
+    const toggleInterfaceExpand = (pName: string, iName: string) => {
+        setProjects(prev => prev.map(p => {
+            if (p.name !== pName) return p;
+            return { ...p, interfaces: p.interfaces.map(i => i.name === iName ? { ...i, expanded: !i.expanded } : i) };
+        }));
+    };
+    const toggleOperationExpand = (pName: string, iName: string, oName: string) => {
+        setProjects(prev => prev.map(p => {
+            if (p.name !== pName) return p;
+            return {
+                ...p,
+                interfaces: p.interfaces.map(i => {
+                    if (i.name !== iName) return i;
+                    return { ...i, operations: i.operations.map(o => o.name === oName ? { ...o, expanded: !o.expanded } : o) };
+                })
+            };
+        }));
+    };
+
+    const toggleExploredInterface = (iName: string) => {
+        setExploredInterfaces(prev => prev.map(i => i.name === iName ? { ...i, expanded: !i.expanded } : i));
+    };
+
+    const toggleExploredOperation = (iName: string, oName: string) => {
+        setExploredInterfaces(prev => prev.map(i => {
+            if (i.name !== iName) return i;
+            return { ...i, operations: i.operations.map(o => o.name === oName ? { ...o, expanded: !o.expanded } : o) };
+        }));
+    };
+
+    // Context Menu
+    const handleContextMenu = (e: React.MouseEvent, type: string, data: any, isExplorer = false) => {
+        // Prevent empty context menus
+        if (type === 'interface') return;
+        if (isExplorer && type === 'request') return; // Requests in explorer are read-only (no rename/delete/clone)
+
+        e.preventDefault();
+        setContextMenu({ x: e.clientX, y: e.clientY, type, data, isExplorer });
+    };
+
+    const closeContextMenu = () => setContextMenu(null);
+
+    // Context Menu Actions
+    const handleRename = () => {
+        if (contextMenu) {
+            setRenameState({ active: true, type: contextMenu.type, data: contextMenu.data, value: contextMenu.data.name });
+            closeContextMenu();
+        }
+    };
+
+    const handleDeleteRequest = () => {
+        if (contextMenu && contextMenu.type === 'request') {
+            // Logic to delete request from project
+            // We need to find the project, interface, operation
+            // But we only have user selection or we need to traverse projects
+            // Simplest: use selectedProjectName if matches, or ask Sidebar to pass project?
+            // Sidebar passes `data`.
+            // We need parent info.
+            // But for now, rely on `deleteConfirm` or similar?
+            // Actually, `handleDelete` in original App.tsx used `items`.
+            // I'll implement a robust search-and-delete.
+            if (contextMenu.isExplorer) return; // Cannot delete from explorer typically? Or just removes?
+
+            const reqToRemove = contextMenu.data as SoapUIRequest;
+            setProjects(prev => prev.map(p => ({
+                ...p,
+                interfaces: p.interfaces.map(i => ({
+                    ...i,
+                    operations: i.operations.map(o => ({
+                        ...o,
+                        requests: o.requests.filter(r => r !== reqToRemove)
+                    }))
+                }))
+            })));
+            closeContextMenu();
+        }
+    };
+
+    const handleCloneRequest = () => {
+        if (contextMenu && contextMenu.type === 'request' && !contextMenu.isExplorer) {
+            const req = contextMenu.data as SoapUIRequest;
+            setProjects(prev => prev.map(p => ({
+                ...p,
+                interfaces: p.interfaces.map(i => ({
+                    ...i,
+                    operations: i.operations.map(o => {
+                        if (o.requests.includes(req)) {
+                            const newReq = { ...req, name: `${req.name} Copy` };
+                            return { ...o, requests: [...o.requests, newReq] };
+                        }
+                        return o;
+                    })
+                }))
+            })));
+            closeContextMenu();
+        }
+    };
+
+    const handleViewSample = () => {
+        if (contextMenu && (contextMenu.type === 'operation' || contextMenu.type === 'request')) {
+            // How to get schema? Extension logic `sampleSchema`.
+            // We need to send message.
+            // Op Name?
+            // Sidebar context menu 'data' for request is the request object. It doesn't have op name directly?
+            // We might need to find it.
+            // Simplified: only support on Operation or assume we can find it.
+            // For now support on Operation.
+            if (contextMenu.type === 'operation') {
+                vscode.postMessage({ command: 'getSampleSchema', operationName: contextMenu.data.name });
+            }
+            closeContextMenu();
+        }
+    };
+
+    // ... Rename implementation ...
 
     return (
-        <Container>
-            <Sidebar>
-                {/* ... Sidebar content unchanged ... */}
-                <SidebarHeader>
-                    <div style={{ marginBottom: 5, fontWeight: 'bold' }}>Dirty SOAP</div>
+        <Container onClick={closeContextMenu}>
+            <Sidebar
+                explorerExpanded={explorerExpanded}
+                toggleExplorerExpand={toggleExplorerExpand}
+                exploredInterfaces={exploredInterfaces}
+                projects={projects}
+                inputType={inputType}
+                setInputType={setInputType}
+                wsdlUrl={wsdlUrl}
+                setWsdlUrl={setWsdlUrl}
+                selectedFile={selectedFile}
+                loadWsdl={loadWsdl}
+                pickLocalWsdl={pickLocalWsdl}
+                downloadStatus={downloadStatus}
+                addToProject={addToProject}
+                addAllToProject={addAllToProject}
+                clearExplorer={clearExplorer}
+                removeFromExplorer={removeFromExplorer}
+                toggleProjectExpand={toggleProjectExpand}
+                toggleInterfaceExpand={toggleInterfaceExpand}
+                toggleOperationExpand={toggleOperationExpand}
+                toggleExploredInterface={toggleExploredInterface}
+                toggleExploredOperation={toggleExploredOperation}
+                saveWorkspace={saveWorkspace}
+                openWorkspace={openWorkspace}
+                loadProject={loadProject}
+                saveProject={saveProject}
+                closeProject={closeProject}
+                onAddProject={addProject}
+                selectedProjectName={selectedProjectName}
+                setSelectedProjectName={setSelectedProjectName}
+                selectedInterface={selectedInterface}
+                setSelectedInterface={setSelectedInterface}
+                selectedOperation={selectedOperation}
+                setSelectedOperation={setSelectedOperation}
+                selectedRequest={selectedRequest}
+                setSelectedRequest={setSelectedRequest}
+                setResponse={setResponse}
+                handleContextMenu={handleContextMenu}
+                deleteConfirm={deleteConfirm}
+            />
 
-                    <div style={{ display: 'flex', marginBottom: 8, gap: 10 }}>
-                        <label>
-                            <input
-                                type="radio"
-                                checked={inputType === 'url'}
-                                onChange={() => setInputType('url')}
-                            /> URL
-                        </label>
-                        <label>
-                            <input
-                                type="radio"
-                                checked={inputType === 'file'}
-                                onChange={() => setInputType('file')}
-                            /> File
-                        </label>
-                    </div>
+            <WorkspaceLayout
+                selectedRequest={selectedRequest}
+                selectedOperation={selectedOperation}
+                response={response}
+                loading={loading}
+                layoutMode={layoutMode}
+                showLineNumbers={showLineNumbers}
+                splitRatio={splitRatio}
+                isResizing={isResizing}
+                onExecute={executeRequest}
+                onCancel={cancelRequest}
+                onUpdateRequest={handleRequestUpdate}
+                onReset={handleResetRequest}
+                defaultEndpoint={selectedInterface?.definition || wsdlUrl}
+                onToggleLayout={() => setLayoutMode(m => m === 'vertical' ? 'horizontal' : 'vertical')}
+                onToggleLineNumbers={() => setShowLineNumbers(s => !s)}
+                onStartResizing={startResizing}
+            />
 
-                    {inputType === 'url' ? (
-                        <Input
-                            value={wsdlUrl}
-                            onChange={(e) => setWsdlUrl(e.target.value)}
-                            placeholder="WSDL URL"
-                        />
-                    ) : (
-                        <select
-                            style={{ width: '100%', marginBottom: 8, padding: 4, background: 'var(--vscode-input-background)', color: 'var(--vscode-input-foreground)', border: '1px solid var(--vscode-input-border)' }}
-                            value={selectedFile}
-                            onChange={(e) => setSelectedFile(e.target.value)}
-                        >
-                            {localFiles.length === 0 ? <option value="">No files found</option> : null}
-                            {localFiles.map(file => (
-                                <option key={file} value={file}>{file}</option>
-                            ))}
-                        </select>
+            {/* Context Menu */}
+            {contextMenu && (
+                <ContextMenu top={contextMenu.y} left={contextMenu.x}>
+                    {(contextMenu.type === 'request' || contextMenu.type === 'project') && (
+                        <ContextMenuItem onClick={handleRename}>Rename</ContextMenuItem>
                     )}
-
-                    {inputType === 'url' ? (
-                        <div style={{ display: 'flex', gap: 5 }}>
-                            <Button onClick={loadWsdl} disabled={loading} style={{ flex: 2 }}>
-                                {loading ? 'Loading...' : 'Load WSDL'}
-                            </Button>
-                            <Button
-                                onClick={downloadWsdl}
-                                disabled={loading}
-                                title="Download WSDL and imports to local files"
-                                style={{ flex: 1, backgroundColor: 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-secondaryForeground)' }}
-                            >
-                                ⇩
-                            </Button>
-                        </div>
-                    ) : (
-                        <Button onClick={loadWsdl} disabled={loading}>
-                            {loading ? 'Loading...' : 'Load WSDL'}
-                        </Button>
+                    {!contextMenu.isExplorer && contextMenu.type === 'request' && (
+                        <>
+                            <ContextMenuItem onClick={handleCloneRequest}>Clone Request</ContextMenuItem>
+                            <ContextMenuItem onClick={handleDeleteRequest} style={{ color: 'var(--vscode-errorForeground)' }}>Delete</ContextMenuItem>
+                        </>
                     )}
-                </SidebarHeader>
-                <div style={{ flex: 1, overflowY: 'auto' }}>
-                    {services.map((service, i) => (
-                        <div key={i}>
-                            <ServiceItem>{service.name}</ServiceItem>
-                            {service.operations.map((op, j) => (
-                                <OperationItem
-                                    key={j}
-                                    active={selectedOperation === op}
-                                    onClick={() => { setSelectedOperation(op); setResponse(null); }}
-                                >
-                                    {op.name}
-                                </OperationItem>
-                            ))}
-                        </div>
-                    ))}
-                </div>
-            </Sidebar>
-            <Content>
-                {error && <div style={{ padding: 20, color: 'var(--vscode-errorForeground)' }}>Error: {error}</div>}
+                    {(contextMenu.type === 'operation') && (
+                        <ContextMenuItem onClick={handleViewSample}>View Sample Schema</ContextMenuItem>
+                    )}
+                </ContextMenu>
+            )}
 
-                {selectedOperation ? (
-                    <>
-                        <div style={{ flex: 1, overflow: 'hidden' }}>
-                            <RequestEditor
-                                operation={selectedOperation}
-                                onExecute={executeRequest}
-                                onCancel={cancelRequest}
-                                loading={loading}
+            {/* Rename Modal */}
+            {renameState && (
+                <ModalOverlay>
+                    <ModalContent>
+                        <ModalHeader>
+                            <ModalTitle>Rename {renameState.type}</ModalTitle>
+                            <Button onClick={() => setRenameState(null)} style={{ background: 'transparent' }}><X size={16} /></Button>
+                        </ModalHeader>
+                        <ModalBody>
+                            <input
+                                style={{ width: '100%', padding: 5 }}
+                                value={renameState.value}
+                                onChange={(e) => setRenameState({ ...renameState, value: e.target.value })}
                             />
-                        </div>
-                        {response && <ResponseViewer response={response} />}
-                    </>
-                ) : (
-                    <div style={{ padding: 20 }}>
-                        <h1>Welcome to Dirty SOAP</h1>
-                        <p>Load a WSDL to see available operations.</p>
-                    </div>
-                )}
-            </Content>
+                        </ModalBody>
+                        <ModalFooter>
+                            <Button onClick={() => {
+                                // Apply rename logic here (update state)
+                                if (renameState.type === 'project') {
+                                    setProjects(projects.map(p => p === renameState.data ? { ...p, name: renameState.value } : p));
+                                } else if (renameState.type === 'interface') {
+                                    setProjects(prev => prev.map(p => {
+                                        const hasInterface = p.interfaces.some(i => i === renameState.data);
+                                        if (hasInterface) {
+                                            return {
+                                                ...p,
+                                                interfaces: p.interfaces.map(i => i === renameState.data ? { ...i, name: renameState.value } : i)
+                                            };
+                                        }
+                                        return p;
+                                    }));
+                                }
+                                setRenameState(null);
+                            }}>Save</Button>
+                        </ModalFooter>
+                    </ModalContent>
+                </ModalOverlay>
+            )}
+
+            {/* Sample Schema Modal */}
+            {sampleModal.open && (
+                <ModalOverlay>
+                    <ModalContent style={{ width: 600 }}>
+                        <ModalHeader>
+                            <ModalTitle>Schema: {sampleModal.operationName}</ModalTitle>
+                            <Button onClick={() => setSampleModal({ open: false, schema: null, operationName: '' })} style={{ background: 'transparent' }}><X size={16} /></Button>
+                        </ModalHeader>
+                        <ModalBody>
+                            {/* Keep fixed height for tree scroll */}
+                            <div style={{ height: 500, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                                {sampleModal.schema && <SchemaViewer schema={sampleModal.schema} />}
+                            </div>
+                        </ModalBody>
+                    </ModalContent>
+                </ModalOverlay>
+            )}
+
         </Container>
     );
+}
+
+// Utility
+function getInitialXml(input: any): string {
+    // Basic XML generation from WSDL input definition
+    if (!input) return '';
+    let xml = '';
+    for (const key in input) {
+        xml += `<${key}>?</${key}>\n`;
+    }
+    return xml;
 }
 
 export default App;

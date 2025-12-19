@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import { SoapClient } from './soapClient';
+import { SoapUIProject, SoapUIRequest, SoapUIOperation, SoapUIInterface } from './models';
+import { ProjectStorage } from './ProjectStorage';
 import * as fs from 'fs';
 import * as path from 'path';
 import axios from 'axios';
@@ -20,6 +22,7 @@ class SoapPanel {
     private readonly _panel: vscode.WebviewPanel;
     private readonly _extensionUri: vscode.Uri;
     private _soapClient: SoapClient;
+    private _projectStorage: ProjectStorage;
 
     public static createOrShow(extensionUri: vscode.Uri) {
         const column = vscode.window.activeTextEditor
@@ -46,12 +49,13 @@ class SoapPanel {
         SoapPanel.currentPanel = new SoapPanel(panel, extensionUri);
     }
 
-    private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
+    public constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
         this._panel = panel;
         this._extensionUri = extensionUri;
 
         const outputChannel = vscode.window.createOutputChannel('Dirty SOAP');
         this._soapClient = new SoapClient(outputChannel);
+        this._projectStorage = new ProjectStorage(outputChannel);
 
         this._panel.webview.html = this._getWebviewContent(this._panel.webview, extensionUri);
         this._panel.onDidDispose(() => {
@@ -62,32 +66,122 @@ class SoapPanel {
         this._panel.webview.onDidReceiveMessage(
             async message => {
                 switch (message.command) {
+                    case 'saveProject':
+                        try {
+                            const uri = await vscode.window.showSaveDialog({
+                                filters: { 'SoapUI Project': ['xml'] },
+                                saveLabel: 'Save Workspace'
+                            });
+                            if (uri) {
+                                await this._projectStorage.saveProject(message.project, uri.fsPath);
+                                vscode.window.showInformationMessage(`Workspace saved to ${uri.fsPath}`);
+                            }
+                        } catch (e: any) {
+                            vscode.window.showErrorMessage(`Failed to save project: ${e.message}`);
+                        }
+                        return;
+                    case 'loadProject':
+                        try {
+                            const uris = await vscode.window.showOpenDialog({
+                                canSelectFiles: true,
+                                canSelectFolders: false,
+                                filters: { 'SoapUI Project': ['xml'] },
+                                openLabel: 'Open Workspace'
+                            });
+                            if (uris && uris.length > 0) {
+                                const project = await this._projectStorage.loadProject(uris[0].fsPath);
+                                this._panel.webview.postMessage({
+                                    command: 'projectLoaded',
+                                    project,
+                                    filename: path.basename(uris[0].fsPath)
+                                });
+                                vscode.window.showInformationMessage(`Workspace loaded from ${uris[0].fsPath}`);
+                            }
+                        } catch (e: any) {
+                            vscode.window.showErrorMessage(`Failed to load project: ${e.message}`);
+                        }
+                        return;
+                    case 'saveWorkspace':
+                        try {
+                            const uri = await vscode.window.showSaveDialog({
+                                filters: { 'SoapUI Workspace': ['xml'] },
+                                saveLabel: 'Save Workspace'
+                            });
+                            if (uri) {
+                                await this._projectStorage.saveWorkspace(message.projects, uri.fsPath);
+                                vscode.window.showInformationMessage(`Workspace saved to ${uri.fsPath}`);
+                            }
+                        } catch (e: any) {
+                            vscode.window.showErrorMessage(`Failed to save workspace: ${e.message}`);
+                        }
+                        return;
+                    case 'openWorkspace':
+                        try {
+                            const uris = await vscode.window.showOpenDialog({
+                                canSelectFiles: true,
+                                canSelectFolders: false,
+                                filters: { 'SoapUI Workspace': ['xml'] },
+                                openLabel: 'Open Workspace'
+                            });
+                            if (uris && uris.length > 0) {
+                                const projects = await this._projectStorage.loadWorkspace(uris[0].fsPath);
+                                this._panel.webview.postMessage({
+                                    command: 'workspaceLoaded',
+                                    projects: projects
+                                });
+                                vscode.window.showInformationMessage(`Workspace loaded from ${uris[0].fsPath}`);
+                            }
+                        } catch (e: any) {
+                            vscode.window.showErrorMessage(`Failed to load workspace: ${e.message}`);
+                        }
+                        return;
+                    case 'getSampleSchema':
+                        const schema = this._soapClient.getOperationSchema(message.operationName);
+                        this._panel?.webview.postMessage({ command: 'sampleSchema', schema, operationName: message.operationName });
+                        return;
+                    case 'selectLocalWsdl':
+                        try {
+                            const uris = await vscode.window.showOpenDialog({
+                                canSelectFiles: true,
+                                canSelectFolders: false,
+                                filters: { 'WSDL Files': ['wsdl', 'xml'] },
+                                openLabel: 'Select WSDL'
+                            });
+                            if (uris && uris.length > 0) {
+                                this._panel.webview.postMessage({
+                                    command: 'wsdlSelected',
+                                    path: uris[0].fsPath
+                                });
+                            }
+                        } catch (e: any) {
+                            vscode.window.showErrorMessage(`Failed to select WSDL: ${e.message}`);
+                        }
+                        return;
                     case 'getLocalWsdls':
                         try {
                             const workspaceFolders = vscode.workspace.workspaceFolders;
-                            this._soapClient['log']('Getting local WSDLs. Workspace folders:', workspaceFolders);
+                            this._soapClient.log('Getting local WSDLs. Workspace folders:', workspaceFolders);
 
                             let wsdlDir = '';
                             if (workspaceFolders) {
                                 wsdlDir = path.join(workspaceFolders[0].uri.fsPath, 'wsdl_files');
-                                this._soapClient['log']('Using workspace directory:', wsdlDir);
+                                this._soapClient.log('Using workspace directory:', wsdlDir);
                             } else {
-                                // Fallback: Use extension's installed directory (robust for packaged extensions)
                                 wsdlDir = path.join(this._extensionUri.fsPath, 'wsdl_files');
-                                this._soapClient['log']('No workspace folders found. Using extension directory:', wsdlDir);
+                                this._soapClient.log('No workspace folders found. Using extension directory:', wsdlDir);
                             }
 
                             if (fs.existsSync(wsdlDir)) {
                                 const files = fs.readdirSync(wsdlDir).filter(file => file.endsWith('.wsdl') || file.endsWith('.xml'));
-                                this._soapClient['log']('Files found:', files);
+                                this._soapClient.log('Files found:', files);
                                 this._panel.webview.postMessage({ command: 'localWsdls', files });
                             } else {
-                                this._soapClient['log']('Directory does not exist:', wsdlDir);
+                                this._soapClient.log('Directory does not exist:', wsdlDir);
                                 this._panel.webview.postMessage({ command: 'localWsdls', files: [] });
                             }
                         } catch (error: any) {
-                            console.error('Error getting local wsdls:', error); // Keep console error for devtools
-                            this._soapClient['log']('Error getting local wsdls:', error);
+                            console.error('Error getting local wsdls:', error);
+                            this._soapClient.log('Error getting local wsdls:', error);
                             this._panel.webview.postMessage({ command: 'localWsdls', files: [] });
                         }
                         return;
@@ -103,11 +197,10 @@ class SoapPanel {
                                 } else {
                                     urlToLoad = path.join(this._extensionUri.fsPath, 'wsdl_files', message.url);
                                 }
-                                // If local, enable local import resolution from the same directory
                                 localWsdlDir = path.dirname(urlToLoad);
                             }
 
-                            this._soapClient['log']('Loading WSDL from:', urlToLoad);
+                            this._soapClient.log('Loading WSDL from:', urlToLoad);
                             const services = await this._soapClient.parseWsdl(urlToLoad, localWsdlDir);
                             this._panel.webview.postMessage({ command: 'wsdlParsed', services });
                         } catch (error: any) {
@@ -129,64 +222,73 @@ class SoapPanel {
                                 fs.mkdirSync(wsdlDir, { recursive: true });
                             }
 
-                            this._soapClient['log']('Starting download for:', message.url);
-
-                            // Helper to download recursively
+                            this._soapClient.log('Starting download for:', message.url);
                             const visited = new Set<string>();
-                            const downloadRecursive = async (url: string, destDir: string) => {
+                            const downloadedFiles: string[] = [];
+
+                            const downloadRecursive = async (url: string, destDir: string, forcedFilename?: string) => {
                                 if (visited.has(url)) return;
                                 visited.add(url);
 
                                 try {
-                                    this._soapClient['log'](`Downloading: ${url}`);
+                                    this._soapClient.log(`Downloading: ${url}`);
                                     const response = await axios.get(url, { responseType: 'text' });
                                     const content = response.data;
 
-                                    // Extract filename
-                                    let filename = url.split('/').pop()?.split('?')[0];
-                                    if (!filename) filename = 'downloaded.wsdl';
+                                    let filename: string;
+                                    if (forcedFilename) {
+                                        filename = forcedFilename;
+                                    } else {
+                                        filename = url.split('/').pop()?.split('?')[0] || 'downloaded.wsdl';
+                                    }
 
                                     const filePath = path.join(destDir, filename);
                                     fs.writeFileSync(filePath, content);
-                                    this._soapClient['log'](`Saved to: ${filePath}`);
+                                    this._soapClient.log(`Saved to: ${filePath}`);
 
-                                    // Find imports (naive regex for WSDL/XSD imports)
-                                    // Matches schemaLocation="http..." or location="http..."
+                                    const relativePath = path.relative(wsdlDir, filePath);
+                                    downloadedFiles.push(relativePath || filename);
+
                                     const regex = /(?:schemaLocation|location)\s*=\s*["'](http[^"']+)["']/g;
                                     let match;
 
                                     while ((match = regex.exec(content)) !== null) {
                                         const importUrl = match[2];
-                                        // Save imports to 'imports' subdirectory to keep main list clean
-                                        const importsDir = path.join(wsdlDir, 'imports'); // Always relative to root wsdlDir
+                                        const importsDir = path.join(wsdlDir, 'imports');
                                         if (!fs.existsSync(importsDir)) {
                                             fs.mkdirSync(importsDir);
                                         }
                                         await downloadRecursive(importUrl, importsDir);
                                     }
                                 } catch (e: any) {
-                                    this._soapClient['log'](`Error downloading ${url}: ${e.message}`);
-                                    // Don't fail the whole process, just log
+                                    this._soapClient.log(`Error downloading ${url}: ${e.message}`);
                                 }
                             };
 
-                            await downloadRecursive(message.url, wsdlDir);
+                            let rootFilename = message.url.split('/').pop()?.split('?')[0] || 'service.wsdl';
+                            const lastDotIndex = rootFilename.lastIndexOf('.');
+                            if (lastDotIndex > 0) {
+                                rootFilename = rootFilename.substring(0, lastDotIndex) + '.wsdl';
+                            } else {
+                                rootFilename += '.wsdl';
+                            }
 
-                            this._soapClient['log']('Download complete.');
-                            // Refresh local files list
-                            // Wait a bit or reused logic?
-                            // Call logic for 'getLocalWsdls' essentially
+                            await downloadRecursive(message.url, wsdlDir, rootFilename);
+
+                            this._soapClient.log('Download complete.');
+
                             if (fs.existsSync(wsdlDir)) {
                                 const files = fs.readdirSync(wsdlDir).filter(file => file.endsWith('.wsdl') || file.endsWith('.xml'));
                                 this._panel.webview.postMessage({ command: 'localWsdls', files });
                             }
+
+                            this._panel.webview.postMessage({ command: 'downloadComplete', files: downloadedFiles });
 
                         } catch (error: any) {
                             const errorMessage = error instanceof Error ? error.message : String(error);
                             this._panel.webview.postMessage({ command: 'error', message: `Download failed: ${errorMessage}` });
                         }
                         return;
-
                     case 'cancelRequest':
                         this._soapClient.cancelRequest();
                         return;
