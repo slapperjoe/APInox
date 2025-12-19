@@ -2,8 +2,9 @@ import React from 'react';
 import styled from 'styled-components';
 import { RequestEditor } from './RequestEditor';
 import { ResponseViewer } from './ResponseViewer';
-import { Layout, ListOrdered, Play, Loader2, RotateCcw } from 'lucide-react';
+import { Layout, ListOrdered, Play, Loader2, RotateCcw, Code as CodeIcon } from 'lucide-react';
 import { SoapUIRequest, SoapUIOperation } from '../models';
+import { MonacoRequestEditor } from './MonacoRequestEditor';
 
 const Content = styled.div`
   flex: 1;
@@ -114,6 +115,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     selectedRequest, selectedOperation, response, loading, layoutMode, showLineNumbers, splitRatio, isResizing,
     onExecute, onCancel, onUpdateRequest, onReset, onToggleLayout, onToggleLineNumbers, onStartResizing, defaultEndpoint
 }) => {
+    const [useMonaco, setUseMonaco] = React.useState(false);
 
     if (!selectedRequest) {
         return (
@@ -168,9 +170,11 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                             <Loader2 size={14} className="spin" /> Cancel
                         </ToolbarButton>
                     ) : (
-                        <ToolbarButton onClick={() => onExecute(selectedRequest.request)}>
-                            <Play size={14} /> Run
-                        </ToolbarButton>
+                        <div style={{ display: 'flex', gap: 10, marginLeft: 10 }}>
+                            <ToolbarButton onClick={() => onExecute(selectedRequest.request)} title="Run Request" style={{ color: 'var(--vscode-testing-iconPassed)' }}>
+                                <Play size={14} /> Run
+                            </ToolbarButton>
+                        </div>
                     )}
                 </Toolbar>
 
@@ -183,13 +187,22 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                         height: 'auto',
                         width: 'auto'
                     }}>
-                        <RequestEditor
-                            operation={selectedOperation}
-                            initialXml={selectedRequest.request}
-                            onChange={(xml) => onUpdateRequest({ ...selectedRequest, request: xml })}
-                            showLineNumbers={showLineNumbers}
-                            onExecute={onExecute}
-                        />
+                        {useMonaco ? (
+                            <MonacoRequestEditor
+                                value={selectedRequest.request}
+                                onChange={(val) => onUpdateRequest({ ...selectedRequest, request: val })}
+                                readOnly={loading}
+                                language="xml"
+                            />
+                        ) : (
+                            <RequestEditor
+                                operation={selectedOperation}
+                                initialXml={selectedRequest.request}
+                                onChange={(xml) => onUpdateRequest({ ...selectedRequest, request: xml })}
+                                showLineNumbers={showLineNumbers}
+                                onExecute={onExecute}
+                            />
+                        )}
                     </div>
 
                     {/* Resizer */}
@@ -256,6 +269,9 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
             </div>
 
             <MainFooter>
+                <IconButton onClick={() => setUseMonaco(!useMonaco)} active={useMonaco} title="Toggle Editor Mode (Monaco)">
+                    <CodeIcon size={16} />
+                </IconButton>
                 <IconButton onClick={onToggleLineNumbers} active={showLineNumbers} title="Toggle Line Numbers">
                     <ListOrdered size={16} />
                 </IconButton>
