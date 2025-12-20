@@ -1,8 +1,16 @@
 # Changelog
 
 
-## [0.2.1] - 2025-12-20
-## [0.2.0] - 2024-05-23
+## [0.2.3] - 2025-12-20
+### Auto-Generated Changes
+- feat: Add Wildcard System for dynamic values in requests and enhance settings management
+- feat: Refactor codebase by removing unused components, integrating MonacoSingleLineInput, and adding ErrorBoundary for improved error handling
+- feat: Implement sidecar process for handling SOAP requests and responses
+- feat: Add MonacoResponseViewer and enhance WorkspaceLayout with XML formatting options
+- feat: Add MonacoRequestEditor component with syntax highlighting and decoration support
+- feat: Implement WSDL Parser and Schema Viewer
+
+## [0.2.0] - 2025-12-19
 ### Added
 - **Wildcard System**: Support for dynamic values in requests (URL, Headers, Body).
     - `{{env}}`: Current environment identifier.
