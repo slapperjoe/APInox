@@ -219,7 +219,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
 
                 <div style={{ flex: 1, display: 'flex', flexDirection: layoutMode === 'vertical' ? 'column' : 'row', overflow: 'hidden' }}>
                     <div style={{
-                        flex: `0 0 ${splitRatio * 100}%`,
+                        flex: (response || loading) ? `0 0 ${splitRatio * 100}%` : '1 1 auto',
                         overflow: 'hidden',
                         display: 'flex',
                         flexDirection: 'column',

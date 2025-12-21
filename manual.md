@@ -39,6 +39,12 @@ Use the following placeholders in your XML body or URL:
 - `{{country}}`: Random Country.
 - `{{state}}`: Random State/Province.
 
+**User JavaScript:**
+You can write custom JavaScript within wildcards for complex logic.
+- `{{const d = new Date(); return d.toISOString();}}`
+- `{{return Math.random() > 0.5 ? 'ValueA' : 'ValueB';}}`
+*Note: This runs in a sandboxed environment.*
+
 ### 4. Environments
 Manage your environments in the Request Toolbar (top right of request editor) or configure them via Settings.
 Example `config.jsonc`:
@@ -54,7 +60,10 @@ Example `config.jsonc`:
 
 ### 5. Settings
 - **Autosave**: Your workspace state is automatically saved to `~/.dirty-soap/autosave.xml` to prevent data loss.
-- **Layout**: Switch between Vertical and Horizontal layouts.
+- **Layout**: 
+    - Switch between Vertical and Horizontal layouts.
+    - **Auto-Expand**: The Request panel automatically fills the screen if there is no Response visible.
+- **Help Panel**: The Settings Editor includes a panel at the bottom that explains each configuration option as you type.
 - **Proxy**: Configure network proxy settings in `config.jsonc`.
 
 ## Troubleshooting
