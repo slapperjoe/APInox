@@ -190,7 +190,20 @@ export class ProjectStorage {
             const projectRefs = Array.isArray(wsRoot["con:project"]) ? wsRoot["con:project"] : [wsRoot["con:project"]];
 
             for (const ref of projectRefs) {
-                const refPath = ref["@_ref"];
+                // SoapUI 5.8.0+ style: <con:project name="X">path</con:project> -> path is in #text
+                // Older/Other style: <con:project ref="path" /> ? (Unconfirmed, keeps backward compat if possible)
+                let refPath = ref["#text"];
+                if (!refPath) refPath = ref["@_ref"]; // Fallback or alternative format
+
+                if (!refPath && typeof ref === 'string') {
+                    refPath = ref; // Handle case where it might be just a string without attributes
+                }
+
+                if (!refPath) {
+                    this.log(`Skipping project reference: Unable to determine path from ${JSON.stringify(ref)}`);
+                    continue;
+                }
+
                 const projectPath = path.resolve(workspaceDir, refPath);
 
                 if (fs.existsSync(projectPath)) {
