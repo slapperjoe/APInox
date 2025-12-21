@@ -13,11 +13,13 @@ A visual SOAP client for VS Code, inspired by Bruno and SOAP-UI.
     - Auto-generates SOAP Envelopes with correct path handling and namespaces.
     - Editable Request Endpoint URL per request.
     - XML Syntax Highlighting.
+    - **Wildcard Support**: Use `{{...}}` for dynamic values, date math, or custom JavaScript logic.
 - **Response Viewer**:
     - View formatted XML responses.
     - Layout Toggle: Switch between vertical (split up/down) and horizontal (split left/right) views.
 - **Project Structure**: Organize work into Projects -> Interfaces -> Operations -> Requests.
 - **Context Actions**: Clone, Delete, and Rename requests easily via context menus.
+- **Settings**: Persistent configuration with a built-in JSONC editor and contextual **Help Panel**.
 - **VS Code Integration**: seamless theming and sidebar integration.
 
 ## Usage
@@ -45,9 +47,9 @@ A visual SOAP client for VS Code, inspired by Bruno and SOAP-UI.
 
 We are constantly working to improve Dirty SOAP for C# developers. Here is what we are planning next:
 
+- **Git Integration**: Shared workspaces and team synchronization.
+- **Azure DevOps**: Link operations to Work Items and attach artifacts directly.
 - **Generate C# Code**: Copy your SOAP request as a ready-to-use C# `HttpClient` snippet.
-- **Generate DTOs**: Convert XML responses into C# Classes (DTOs) with one click.
-- **WSDL to Proxy**: Integration with `dotnet-svcutil` to generate robust service proxies directly from the extension.
-- **Snippets**: Handy snippets for common SOAP bodies and headers.
+- **WSDL to Proxy**: Integration with `dotnet-svcutil`.
 
 
