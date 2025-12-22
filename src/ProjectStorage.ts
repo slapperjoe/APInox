@@ -93,9 +93,15 @@ export class ProjectStorage {
         }
 
         let name = projectRoot["@_name"];
+        this.log(`Original project name from XML: ${name}`);
+
         // If name looks like a path (contains slashes) or is empty, use filename
         if (!name || name.includes('/') || name.includes('\\')) {
-            name = path.basename(filePath, path.extname(filePath));
+            const newName = path.basename(filePath, path.extname(filePath));
+            this.log(`Project name looks like path. Renaming to: ${newName}`);
+            name = newName;
+        } else {
+            this.log(`Keeping original project name: ${name}`);
         }
 
         const project: SoapUIProject = {

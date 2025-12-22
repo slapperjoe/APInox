@@ -1,6 +1,10 @@
 # Changelog
 
 
+## [0.2.13] - 2025-12-22
+### Auto-Generated Changes
+- feat: Enhance project name logging and error handling in ProjectStorage and WebviewController; enable default context menu in MonacoRequestEditor
+
 ## [0.2.12] - 2025-12-21
 ### Auto-Generated Changes
 - feat: Add namespace for dirty-soap and save raw request content in ProjectStorage
