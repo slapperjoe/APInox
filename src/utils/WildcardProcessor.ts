@@ -47,16 +47,18 @@ export class WildcardProcessor {
             return this.processDateMath(op, parseInt(amount), unit);
         });
 
-        // 2. Shortcut: {{url}}
+        // 2. Shortcut: {{url}} and {{env}}
         // Maps to endpoint_url in env
         if (env['endpoint_url']) {
             processed = processed.replace(/\{\{url\}\}/gi, env['endpoint_url']);
+            processed = processed.replace(/\{\{env\}\}/gi, env['endpoint_url']);
         }
 
         // 3. Environment Variables (Highest priority after specific functions?)
         // Or should env override? Let's do env replacements.
         for (const [key, value] of Object.entries(env)) {
-            // Avoid replacing endpoint_url again if it was handled, but standard simple replace
+            // Avoid replacing if it was handled? No, just replace matching tokens.
+            if (key === 'env') continue; // Skip 'env' key as it is handled above to map to endpoint_url
             const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
             processed = processed.replace(regex, value);
         }

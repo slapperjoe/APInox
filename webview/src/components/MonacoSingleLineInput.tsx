@@ -66,7 +66,25 @@ export const MonacoSingleLineInput: React.FC<MonacoSingleLineInputProps> = ({
             editor.trigger('keyboard', 'editor.action.clipboardCopyAction', null);
         });
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyV, () => {
-            editor.trigger('keyboard', 'editor.action.clipboardPasteAction', null);
+            // Explicitly read from clipboard and insert
+            navigator.clipboard.readText()
+                .then(text => {
+                    // For single line input, we must strip newlines
+                    const clean = text.replace(/[\r\n]+/g, '');
+
+                    const selection = editor.getSelection();
+                    if (selection) {
+                        editor.executeEdits('clipboard', [{
+                            range: selection,
+                            text: clean, // Insert cleaned text
+                            forceMoveMarkers: true
+                        }]);
+                    }
+                })
+                .catch(err => {
+                    console.error('Paste failed: ', err);
+                    editor.trigger('keyboard', 'editor.action.clipboardPasteAction', null);
+                });
         });
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyX, () => {
             editor.trigger('keyboard', 'editor.action.clipboardCutAction', null);

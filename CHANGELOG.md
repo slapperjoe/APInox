@@ -1,6 +1,10 @@
 # Changelog
 
 
+## [0.2.20] - 2025-12-22
+### Auto-Generated Changes
+- feat: Enhance clipboard handling in Monaco editor for robust copy and paste functionality
+
 ## [0.2.19] - 2025-12-22
 ### Auto-Generated Changes
 - feat: Enhance project storage to save and load request endpoints
