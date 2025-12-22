@@ -60,7 +60,7 @@ export const MonacoRequestEditor: React.FC<MonacoRequestEditorProps> = ({
                     automaticLayout: true,
                     lineNumbers: 'on',
                     renderLineHighlight: 'none',
-                    contextmenu: false, // Use custom context menu if needed, or default
+                    contextmenu: true, // Enable default context menu for Copy/Paste
                 }}
             />
         </EditorContainer>

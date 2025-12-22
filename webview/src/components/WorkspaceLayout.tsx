@@ -307,7 +307,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                 )}
                             </div>
                             <MonacoResponseViewer
-                                value={response ? (alignAttributes && response.rawResponse ? formatXml(response.rawResponse, true) : (response.rawResponse || '')) : ''}
+                                value={response ? (alignAttributes && response.rawResponse ? formatXml(response.rawResponse, true) : (response.rawResponse || response.error || '')) : ''}
                                 showLineNumbers={showLineNumbers}
                             />
                         </div>

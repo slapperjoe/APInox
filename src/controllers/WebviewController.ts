@@ -330,6 +330,8 @@ export class WebviewController {
             this._panel.webview.postMessage({ command: 'response', result });
         } catch (error: any) {
             const errorMessage = error instanceof Error ? error.message : String(error);
+            this._soapClient.log(`Request Execution Error: ${errorMessage}`);
+            if (error.stack) this._soapClient.log(error.stack);
             this._panel.webview.postMessage({ command: 'error', message: errorMessage });
         }
     }
