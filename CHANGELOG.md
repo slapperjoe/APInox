@@ -1,6 +1,12 @@
 # Changelog
 
 
+## [0.2.22] - 2025-12-22
+### Auto-Generated Changes
+- fix: Optimize event listener management for resizing in App component
+- feat: Implement autosave retrieval in WebviewController and update App to request autosave on load
+- fix: Correct indentation handling for XML attributes in formatter
+
 ## [0.2.21] - 2025-12-22
 ### Auto-Generated Changes
 - feat: Add inline element values configuration for XML formatting and UI
