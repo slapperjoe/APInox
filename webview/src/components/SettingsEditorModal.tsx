@@ -157,11 +157,21 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
                             minimap: { enabled: false },
                             automaticLayout: true,
                             formatOnPaste: true,
-                            formatOnType: true
-                            // json defaults?
+                            formatOnType: true,
+                            contextmenu: true
                         }}
                         onChange={(value) => setContent(value || '')}
                         onMount={(editor, monaco) => {
+                            // Force bind standard clipboard shortcuts
+                            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyC, () => {
+                                editor.trigger('keyboard', 'editor.action.clipboardCopyAction', null);
+                            });
+                            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyV, () => {
+                                editor.trigger('keyboard', 'editor.action.clipboardPasteAction', null);
+                            });
+                            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyX, () => {
+                                editor.trigger('keyboard', 'editor.action.clipboardCutAction', null);
+                            });
                             // Enable JSONC comments support in Monaco
                             monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
                                 validate: true,

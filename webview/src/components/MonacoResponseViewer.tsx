@@ -41,6 +41,11 @@ export const MonacoResponseViewer: React.FC<MonacoResponseViewerProps> = ({
                     renderLineHighlight: 'none',
                     contextmenu: true,
                 }}
+                onMount={(editor, monaco) => {
+                    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyC, () => {
+                        editor.trigger('keyboard', 'editor.action.clipboardCopyAction', null);
+                    });
+                }}
             />
         </ViewerContainer>
     );
