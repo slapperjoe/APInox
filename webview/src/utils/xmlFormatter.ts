@@ -1,41 +1,94 @@
 
-export function formatXml(xml: string, alignAttributes: boolean = false): string {
+export function formatXml(xml: string, alignAttributes: boolean = false, inlineElementValues: boolean = false): string {
     if (typeof xml !== 'string') return '';
-    // Basic indentation (2 spaces)
-    // If alignAttributes is true: Attributes on new lines vertically aligned.
-    // If alignAttributes is false: Attributes on same line (Compact/Standard).
 
     let formatted = '';
     let pad = 0;
 
-    // Split by tags, preserving content
-    // Regex matches: <[^>]*> OR [^<]+
-    // Normalize newlines in the input to avoid weird artifacts before processing
-    // Also remove existing indentation if possible, but regex split handles tokens well.
+    // Remove existing formatting to clean up
+    // We want to be careful not to merge content that shouldn't be merged, but generally stripping newlines between tags is safe?
+    // Regex based simple tokenizer limits us.
+    // Let's refine the tokens to capture whitespace if it's significant? No, for SOAP/XML usually pretty print ignores whitespace between tags.
+    // But content whitespace matters.
     const tokens = xml.replace(/>\s*</g, '><').match(/(<[^>]+>)|([^<]+)/g) || [];
 
-    tokens.forEach(token => {
+    for (let i = 0; i < tokens.length; i++) {
+        const token = tokens[i];
+
         if (token.startsWith('<')) {
             // It's a tag
             if (token.startsWith('</')) {
                 // Closing tag
+                // If we did an inline content previously, we should be on the SAME line?
+                // We need to track if the previous token was inline content.
+                // Actually, if we decide to print inline, we consume future tokens?
+                // Or we look behind?
+
+                // Let's look behind. 
+                // Unfortunately formatted string is hard to check.
+                // Let's use a flag?
+                // Or: Better approach: When handling Opening Tag, peek ahead.
+
                 pad -= 2;
-                formatted += ' '.repeat(Math.max(0, pad)) + token + '\n';
+                // Check if last char was \n. If not, we are inline, so don't indent or newline.
+                if (formatted.endsWith('\n')) {
+                    formatted += ' '.repeat(Math.max(0, pad)) + token + '\n';
+                } else {
+                    // Inline closing
+                    formatted += token + '\n';
+                }
+
             } else if (token.startsWith('<?') || token.startsWith('<!')) {
-                // Meta tags (process attributes if needed, but usually short)
                 formatted += ' '.repeat(Math.max(0, pad)) + token + '\n';
             } else {
-                // Opening or Self-closing tag
+                // Opening Tag
+                // Peek ahead for Inline Candidate:
+                // Pattern: <Tag> + Content + </Tag>
+                let isInline = false;
+                if (inlineElementValues && i + 2 < tokens.length) {
+                    const nextToken = tokens[i + 1];
+                    const nextNextToken = tokens[i + 2];
+
+                    // Check if next is text content (not a tag)
+                    if (!nextToken.startsWith('<') && nextToken.trim().length > 0) {
+                        // Check if nextNext is closing tag
+                        if (nextNextToken.startsWith('</')) {
+                            // Verify matching tag names?
+                            // token: <Foo attr="..."> or <Foo>
+                            // nextNextToken: </Foo>
+                            const openName = token.match(/^<([^\s>]+)/)?.[1];
+                            const closeName = nextNextToken.match(/^<\/([^>]+)>/)?.[1];
+                            if (openName === closeName) {
+                                isInline = true;
+                            }
+                        }
+                    }
+                    // Handle empty element <A></A> as inline?
+                    if (tokens[i + 1].startsWith('</')) {
+                        const openName = token.match(/^<([^\s>]+)/)?.[1];
+                        const closeName = tokens[i + 1].match(/^<\/([^>]+)>/)?.[1];
+                        if (openName === closeName) {
+                            // Empty element, maybe <A></A>
+                            // Should we inline? Yes.
+                            // But my loop logic handles content.
+                            // Let's handle <A></A> case:
+                            // isInline = true works if we treat "no content" as special?  No my look ahead expects content.
+                        }
+                    }
+                }
+
+                // Parse Attributes
                 const match = token.match(/^<([^\s>]+)([\s\S]*?)(\/?>)$/);
                 if (match) {
                     const tagName = match[1];
                     let attrsString = match[2];
-                    const closing = match[3]; // > or />
+                    const closing = match[3];
 
+                    let tagString = '';
                     if (!attrsString.trim()) {
-                        formatted += ' '.repeat(Math.max(0, pad)) + token + '\n';
+                        tagString = token;
                     } else {
-                        // Extract attributes
+                        // Reconstruct attributes
                         const attrRegex = /([a-zA-Z0-9_:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g;
                         const attrs: string[] = [];
                         let attrMatch;
@@ -46,32 +99,57 @@ export function formatXml(xml: string, alignAttributes: boolean = false): string
                         }
 
                         if (attrs.length === 0) {
-                            formatted += ' '.repeat(Math.max(0, pad)) + `<${tagName}${attrsString}${closing}\n`;
+                            tagString = `<${tagName}${attrsString}${closing}`;
                         } else {
-                            // Construct
-                            let line = ' '.repeat(Math.max(0, pad)) + `<${tagName}`;
-
-                            if (alignAttributes) {
-                                // Vertically Aligned
+                            let line = `<${tagName}`;
+                            if (alignAttributes && attrs.length > 1) {
                                 line += ` ${attrs[0]}`;
-                                const indentSize = pad + 1 + tagName.length + 1;
-                                for (let i = 1; i < attrs.length; i++) {
-                                    line += '\n' + ' '.repeat(indentSize) + attrs[i];
+                                const indentSize = pad + 1 + tagName.length + 1; // Relative to start of tag, but we print indent before
+                                // Actually we want to align to the start of the first attribute?
+                                // If we put indent before tag, then indentSize needs to account for that? 
+                                // No, the newline should just have Spaces.
+                                // My previous logic:
+                                // pad spaces + <Tag + space + attr0
+                                // newline + space(pad + <Tag length + 1?)
+                                // No, previous logic used 'indentSize' relative to line start?
+                                // "pad + 1 + tagName.length + 1"
+                                // ' '.repeat(indentSize) is ABSOLUTE from start of line.
+                                // It seems correct assuming 'pad' is the tag's indentation.
+
+                                for (let k = 1; k < attrs.length; k++) {
+                                    line += '\n' + ' '.repeat(pad + 1 + tagName.length + 1) + attrs[k];
                                 }
                             } else {
-                                // Compact (Standard)
-                                attrs.forEach(attr => {
-                                    line += ` ${attr}`;
-                                });
+                                attrs.forEach(attr => line += ` ${attr}`);
                             }
-
-                            line += closing + '\n';
-                            formatted += line;
+                            line += closing;
+                            tagString = line;
                         }
                     }
 
+                    // Print Opening Tag
+                    if (formatted.endsWith('\n') || formatted === '') {
+                        formatted += ' '.repeat(Math.max(0, pad)) + tagString;
+                    } else {
+                        // This shouldn't happen for opening tags usually unless coming from inline?
+                        // But opening tags start new blocks.
+                        formatted += tagString;
+                    }
+
                     if (!token.endsWith('/>') && !token.startsWith('<?') && !token.startsWith('<!')) {
-                        pad += 2;
+                        if (isInline) {
+                            // Do NOT newline.
+                            // Do NOT increase pad.
+                            // The content token will be consumed next iteration.
+                            // But wait, if I don't newline, my loop will see content next.
+                            // Content logic says: formatted += ' '.repeat(pad) + token + '\n';
+                            // I need to change content logic.
+                        } else {
+                            formatted += '\n';
+                            pad += 2;
+                        }
+                    } else {
+                        formatted += '\n';
                     }
                 } else {
                     formatted += ' '.repeat(Math.max(0, pad)) + token + '\n';
@@ -80,10 +158,18 @@ export function formatXml(xml: string, alignAttributes: boolean = false): string
         } else {
             // Content
             if (token.trim()) {
-                formatted += ' '.repeat(Math.max(0, pad)) + token.trim() + '\n';
+                if (formatted.endsWith('\n')) {
+                    formatted += ' '.repeat(Math.max(0, pad)) + token.trim() + '\n';
+                } else {
+                    // We are inline
+                    formatted += token.trim();
+                    // closing tag comes next.
+                    // The closing tag logic checks 'formatted.endsWith(\n)'.
+                    // If it doesn't, it appends token + '\n'.
+                }
             }
         }
-    });
+    }
 
     return formatted;
 }

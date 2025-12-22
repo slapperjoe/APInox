@@ -150,6 +150,7 @@ function App() {
     // Layout
     const [layoutMode, setLayoutMode] = useState<'vertical' | 'horizontal'>('vertical');
     const [showLineNumbers, setShowLineNumbers] = useState(true);
+    const [inlineElementValues, setInlineElementValues] = useState(false);
     const [splitRatio, setSplitRatio] = useState(0.5);
     const [isResizing, setIsResizing] = useState(false);
 
@@ -311,6 +312,7 @@ function App() {
                     if (message.config.ui) {
                         if (message.config.ui.layoutMode) setLayoutMode(message.config.ui.layoutMode);
                         if (message.config.ui.showLineNumbers !== undefined) setShowLineNumbers(message.config.ui.showLineNumbers);
+                        if (message.config.ui.inlineElementValues !== undefined) setInlineElementValues(message.config.ui.inlineElementValues);
                         if (message.config.ui.splitRatio) setSplitRatio(message.config.ui.splitRatio);
                     }
                     break;
@@ -720,6 +722,12 @@ function App() {
                     const newState = !showLineNumbers;
                     setShowLineNumbers(newState);
                     bridge.sendMessage({ command: 'saveUiState', ui: { ...config?.ui, showLineNumbers: newState } });
+                }}
+                inlineElementValues={inlineElementValues}
+                onToggleInlineElementValues={() => {
+                    const newState = !inlineElementValues;
+                    setInlineElementValues(newState);
+                    bridge.sendMessage({ command: 'saveUiState', ui: { ...config?.ui, inlineElementValues: newState } });
                 }}
                 onStartResizing={startResizing}
                 config={config}

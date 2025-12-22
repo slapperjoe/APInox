@@ -14,6 +14,7 @@ export interface DirtySoapConfig {
         layoutMode?: 'vertical' | 'horizontal';
         showLineNumbers?: boolean;
         alignAttributes?: boolean;
+        inlineElementValues?: boolean;
         splitRatio?: number;
     };
     activeEnvironment?: string;
@@ -37,6 +38,7 @@ const DEFAULT_CONFIG: DirtySoapConfig = {
         layoutMode: 'vertical',
         showLineNumbers: true,
         alignAttributes: false,
+        inlineElementValues: false,
         splitRatio: 0.5
     },
     activeEnvironment: 'Build',
@@ -176,6 +178,7 @@ export class SettingsManager {
     "layoutMode": "vertical",
     "showLineNumbers": true,
     "alignAttributes": false,
+    "inlineElementValues": false,
     "splitRatio": 0.5
   },
   "activeEnvironment": "Build",
