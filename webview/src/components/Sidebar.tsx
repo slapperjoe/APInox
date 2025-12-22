@@ -370,9 +370,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         >
                             <SectionTitle style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
                                 <span style={{ flexShrink: 0 }}>{(proj as any).expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</span>
-                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Project: {proj.name || (proj as any).fileName}</span>
+                                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Project: {proj.name || (proj as any).fileName}</span>
                             </SectionTitle>
-                            <div style={{ flex: 1 }}></div>
                             <HeaderButton onClick={(e) => { e.stopPropagation(); saveProject(proj); }} title="Save Project" style={{ color: savedProjects.has(proj.name) ? 'var(--vscode-testing-iconPassed)' : 'inherit' }}>
                                 <Save size={16} />
                             </HeaderButton>

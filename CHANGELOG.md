@@ -1,6 +1,10 @@
 # Changelog
 
 
+## [0.2.18] - 2025-12-22
+### Auto-Generated Changes
+- feat: Add clipboard command support in Monaco editor for copy, paste, and cut actions
+
 ## [0.2.17] - 2025-12-22
 ### Auto-Generated Changes
 - feat: Implement project saved notification and manage saved projects state in UI
