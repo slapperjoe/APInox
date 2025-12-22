@@ -122,6 +122,10 @@ interface WorkspaceLayoutProps {
     defaultEndpoint?: string;
     changelog?: string;
 
+    // Config options passed from App for formatting
+    inlineElementValues?: boolean;
+    onToggleInlineElementValues?: () => void;
+
     // Config
     config?: any;
     onChangeEnvironment?: (env: string) => void;
@@ -131,7 +135,8 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     selectedRequest, selectedOperation, response, loading, layoutMode, showLineNumbers, splitRatio, isResizing,
     onExecute, onCancel, onUpdateRequest, onReset, onToggleLayout, onToggleLineNumbers, onStartResizing, defaultEndpoint,
     changelog,
-    config, onChangeEnvironment
+    config, onChangeEnvironment,
+    inlineElementValues, onToggleInlineElementValues
 }) => {
     const [alignAttributes, setAlignAttributes] = React.useState(false);
 
@@ -307,7 +312,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                 )}
                             </div>
                             <MonacoResponseViewer
-                                value={response ? (response.rawResponse ? formatXml(response.rawResponse, alignAttributes) : (response.error || '')) : ''}
+                                value={response ? (response.rawResponse ? formatXml(response.rawResponse, alignAttributes, inlineElementValues) : (response.error || '')) : ''}
                                 showLineNumbers={showLineNumbers}
                             />
                         </div>
@@ -323,10 +328,25 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                     const newValue = !alignAttributes;
                     setAlignAttributes(newValue);
                     if (selectedRequest.request) {
-                        onUpdateRequest({ ...selectedRequest, request: formatXml(selectedRequest.request, newValue) });
+                        onUpdateRequest({ ...selectedRequest, request: formatXml(selectedRequest.request, newValue, inlineElementValues) });
                     }
                 }} active={alignAttributes} title="Toggle Attribute Alignment">
                     <AlignLeft size={16} />
+                </IconButton>
+                <IconButton onClick={() => {
+                    // Toggle Inline Values
+                    if (onToggleInlineElementValues) onToggleInlineElementValues();
+                    // Trigger reformat of Request immediately if desired?
+                    // The prop update usually triggers re-render, but does logic re-run?
+                    // The Request Editor manages its own state via 'selectedRequest'. 
+                    // We should force update the request text if we want it to apply immediately to the Request Editor.
+                    // IMPORTANT: Since 'inlineElementValues' is a prop, we don't have the NEW value here immediately unless we calculate it.
+                    const nextVal = !inlineElementValues;
+                    if (selectedRequest.request) {
+                        onUpdateRequest({ ...selectedRequest, request: formatXml(selectedRequest.request, alignAttributes, nextVal) });
+                    }
+                }} active={inlineElementValues} title="Toggle Inline Values (Compact Elements)">
+                    <Layout size={16} style={{ transform: 'rotate(90deg)' }} />
                 </IconButton>
                 <IconButton onClick={onToggleLayout} title="Toggle Layout (Vertical/Horizontal)">
                     <Layout size={16} />

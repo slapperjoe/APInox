@@ -1,6 +1,10 @@
 # Changelog
 
 
+## [0.2.21] - 2025-12-22
+### Auto-Generated Changes
+- feat: Add inline element values configuration for XML formatting and UI
+
 ## [0.2.20] - 2025-12-22
 ### Auto-Generated Changes
 - feat: Enhance clipboard handling in Monaco editor for robust copy and paste functionality
