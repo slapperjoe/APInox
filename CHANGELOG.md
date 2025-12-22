@@ -1,6 +1,10 @@
 # Changelog
 
 
+## [0.2.16] - 2025-12-22
+### Auto-Generated Changes
+- feat: Update default content type to application/soap+xml in project handling and UI components
+
 ## [0.2.15] - 2025-12-22
 ### Auto-Generated Changes
 - fix: Refactor Sidebar and WorkspaceLayout components for improved layout and response handling

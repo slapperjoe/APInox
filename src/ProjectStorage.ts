@@ -123,7 +123,7 @@ export class ProjectStorage {
                     action: op["@_action"],
                     requests: op["con:call"] ? (Array.isArray(op["con:call"]) ? op["con:call"] : [op["con:call"]]).map((req: any) => ({
                         name: req["@_name"],
-                        contentType: req["con:request"] && req["con:request"]["@_mediaType"],
+                        contentType: (req["con:request"] && req["con:request"]["@_mediaType"]) || "application/soap+xml",
                         method: req["con:request"] && req["con:request"]["@_method"],
                         request: (() => {
                             // Check for dirty:requestContent first
