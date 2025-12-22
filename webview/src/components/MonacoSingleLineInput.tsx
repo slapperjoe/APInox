@@ -60,6 +60,17 @@ export const MonacoSingleLineInput: React.FC<MonacoSingleLineInputProps> = ({
                 onChange(clean);
             }
         });
+
+        // Force bind standard clipboard shortcuts
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyC, () => {
+            editor.trigger('keyboard', 'editor.action.clipboardCopyAction', null);
+        });
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyV, () => {
+            editor.trigger('keyboard', 'editor.action.clipboardPasteAction', null);
+        });
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyX, () => {
+            editor.trigger('keyboard', 'editor.action.clipboardCutAction', null);
+        });
     };
 
     // Force single line behavior on change (prevent newlines)
@@ -115,7 +126,7 @@ export const MonacoSingleLineInput: React.FC<MonacoSingleLineInputProps> = ({
                     hideCursorInOverviewRuler: true,
                     scrollBeyondLastLine: false,
                     automaticLayout: true,
-                    contextmenu: false,
+                    contextmenu: true,
                     fontFamily: 'var(--vscode-font-family)',
                     fontSize: 13,
                     readOnly: readOnly,
