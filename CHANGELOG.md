@@ -1,6 +1,10 @@
 # Changelog
 
 
+## [0.2.17] - 2025-12-22
+### Auto-Generated Changes
+- feat: Implement project saved notification and manage saved projects state in UI
+
 ## [0.2.16] - 2025-12-22
 ### Auto-Generated Changes
 - feat: Update default content type to application/soap+xml in project handling and UI components

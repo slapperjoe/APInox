@@ -143,6 +143,7 @@ function App() {
     const [selectedFile, setSelectedFile] = useState<string | null>(null);
     const [downloadStatus, setDownloadStatus] = useState<string[] | null>(null);
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+    const [savedProjects, setSavedProjects] = useState<Set<string>>(new Set());
 
     const startTimeRef = useRef<number>(0);
 
@@ -327,6 +328,20 @@ function App() {
                     break;
                 case 'changelog':
                     setChangelog(message.content);
+                    break;
+                case 'projectSaved':
+                    setSavedProjects(prev => {
+                        const newSet = new Set(prev);
+                        newSet.add(message.projectName);
+                        return newSet;
+                    });
+                    setTimeout(() => {
+                        setSavedProjects(prev => {
+                            const newSet = new Set(prev);
+                            newSet.delete(message.projectName);
+                            return newSet;
+                        });
+                    }, 2000);
                     break;
             }
         };
@@ -678,6 +693,7 @@ function App() {
                 handleContextMenu={handleContextMenu}
                 deleteConfirm={deleteConfirm}
                 backendConnected={backendConnected}
+                savedProjects={savedProjects}
                 onOpenSettings={() => setShowSettings(true)}
             />
 

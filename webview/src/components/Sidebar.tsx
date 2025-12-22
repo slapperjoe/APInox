@@ -98,6 +98,7 @@ const Input = styled.input`
 `;
 
 interface SidebarProps {
+    savedProjects: Set<string>;
     explorerExpanded: boolean;
     toggleExplorerExpand: () => void;
     exploredInterfaces: SoapUIInterface[];
@@ -162,7 +163,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     selectedRequest, setSelectedRequest,
     setResponse,
     handleContextMenu, deleteConfirm, backendConnected,
-    onOpenSettings
+    onOpenSettings, savedProjects
 }) => {
 
     const renderInterfaceList = (interfaces: SoapUIInterface[], isExplorer: boolean) => (
@@ -371,8 +372,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 <span style={{ flexShrink: 0 }}>{(proj as any).expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</span>
                                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Project: {proj.name || (proj as any).fileName}</span>
                             </SectionTitle>
-
-                            <HeaderButton onClick={(e) => { e.stopPropagation(); saveProject(proj); }} title="Save Project">
+                            <div style={{ flex: 1 }}></div>
+                            <HeaderButton onClick={(e) => { e.stopPropagation(); saveProject(proj); }} title="Save Project" style={{ color: savedProjects.has(proj.name) ? 'var(--vscode-testing-iconPassed)' : 'inherit' }}>
                                 <Save size={16} />
                             </HeaderButton>
                             <HeaderButton onClick={(e) => {

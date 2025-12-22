@@ -75,6 +75,7 @@ export class WebviewController {
             if (message.project.fileName && fs.existsSync(message.project.fileName)) {
                 await this._projectStorage.saveProject(message.project, message.project.fileName);
                 vscode.window.showInformationMessage(`Project saved to ${message.project.fileName}`);
+                this._panel.webview.postMessage({ command: 'projectSaved', projectName: message.project.name });
             } else {
                 const uri = await vscode.window.showSaveDialog({
                     filters: { 'SoapUI Project': ['xml'] },
@@ -82,9 +83,8 @@ export class WebviewController {
                 });
                 if (uri) {
                     await this._projectStorage.saveProject(message.project, uri.fsPath);
-                    // Update the project's filename in the webview? Ideally we should return it.
-                    // But for now, user can reload or save workspace.
                     vscode.window.showInformationMessage(`Project saved to ${uri.fsPath}`);
+                    this._panel.webview.postMessage({ command: 'projectSaved', projectName: message.project.name });
                 }
             }
         } catch (e: any) {
