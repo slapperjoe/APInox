@@ -37,12 +37,27 @@ export const MonacoRequestEditor: React.FC<MonacoRequestEditorProps> = ({
         // Hook will trigger update via dependency on refs/value, but initial mount might race.
         // The dependency [value, editor, monaco] in the hook handles it once refs are set and value exists.
 
-        // Force bind standard clipboard shortcuts if they are being intercepted
+        // Force bind standard clipboard shortcuts with robust handling
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyC, () => {
             editor.trigger('keyboard', 'editor.action.clipboardCopyAction', null);
         });
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyV, () => {
-            editor.trigger('keyboard', 'editor.action.clipboardPasteAction', null);
+            // Explicitly read from clipboard and insert
+            navigator.clipboard.readText()
+                .then(text => {
+                    const selection = editor.getSelection();
+                    if (selection) {
+                        editor.executeEdits('clipboard', [{
+                            range: selection,
+                            text: text,
+                            forceMoveMarkers: true
+                        }]);
+                    }
+                })
+                .catch(err => {
+                    console.error('Paste failed: ', err);
+                    editor.trigger('keyboard', 'editor.action.clipboardPasteAction', null);
+                });
         });
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyX, () => {
             editor.trigger('keyboard', 'editor.action.clipboardCutAction', null);
