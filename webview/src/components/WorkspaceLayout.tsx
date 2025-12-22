@@ -176,7 +176,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
 
                     {/* Content Type */}
                     <ToolbarSelect
-                        value={selectedRequest.contentType || 'text/xml'}
+                        value={selectedRequest.contentType || 'application/soap+xml'}
                         onChange={(e) => onUpdateRequest({ ...selectedRequest, contentType: e.target.value })}
                         title="Content Type"
                     >

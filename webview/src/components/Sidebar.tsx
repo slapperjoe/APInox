@@ -367,8 +367,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             onClick={() => toggleProjectExpand(proj.name)}
                             onContextMenu={(e) => handleContextMenu(e, 'project', proj)}
                         >
-                            <SectionTitle style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                                {(proj as any).expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />} Project: {proj.name || (proj as any).fileName}
+                            <SectionTitle style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+                                <span style={{ flexShrink: 0 }}>{(proj as any).expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</span>
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Project: {proj.name || (proj as any).fileName}</span>
                             </SectionTitle>
 
                             <HeaderButton onClick={(e) => { e.stopPropagation(); saveProject(proj); }} title="Save Project">

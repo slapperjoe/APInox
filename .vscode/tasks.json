@@ -6,7 +6,8 @@
             "script": "version-bump",
             "group": "none",
             "label": "Version Bump",
-            "detail": "Bump patch version and update changelog"
+            "detail": "Bump patch version and update changelog",
+            "problemMatcher": []
         },
         {
             "type": "npm",
