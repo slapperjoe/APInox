@@ -31,14 +31,22 @@ export class WsdlParser {
         const options: any = {};
 
         // Always use our custom request handler to ensure Axios is used (better proxy/header support)
-        options.request = (requestUrl: string, data: any, callback: any, exheaders: any, exoptions: any) => {
-            this.log(`Intercepted request: ${requestUrl}`);
+        // Always use our custom request handler to ensure Axios is used (better proxy/header support)
+        options.request = (requestUrl: any, data: any, callback: any, exheaders: any, exoptions: any) => {
+            // Check if requestUrl is an object (some soap versions/calls pass an object)
+            let actualUrl = requestUrl;
+            if (typeof requestUrl !== 'string') {
+                actualUrl = requestUrl.url || requestUrl.href || JSON.stringify(requestUrl);
+                this.log(`Intercepted request object. Resolved URL: ${actualUrl}`);
+            } else {
+                this.log(`Intercepted request: ${requestUrl}`);
+            }
 
             // 1. Try Local File (if enabled)
             if (localWsdlDir) {
                 try {
                     // Naive filename extraction: take last part of URL, remove query params
-                    const filename = requestUrl.split('/').pop()?.split('?')[0] || '';
+                    const filename = actualUrl.split('/').pop()?.split('?')[0] || '';
                     if (filename) {
                         let localPath = path.join(localWsdlDir, filename);
 
@@ -54,10 +62,10 @@ export class WsdlParser {
                             const response = {
                                 statusCode: 200,
                                 headers: {},
-                                body: fileContent // node-soap sometimes checks response.body
+                                body: fileContent
                             };
                             callback(null, response, fileContent);
-                            return;
+                            return Promise.resolve(response);
                         } else {
                             this.log(`Local file not found: ${filename} (checked root and imports)`);
                         }
@@ -75,15 +83,16 @@ export class WsdlParser {
                 'User-Agent': 'DirtySoap/0.3.0 (VSCode Extension)'
             };
 
-            axios({
+            return axios({
                 method: method,
-                url: requestUrl,
+                url: actualUrl,
                 data: data,
                 headers: headers,
                 ...exoptions
             }).then((response) => {
                 this.log(`Network request success: ${response.status}`);
                 callback(null, response, response.data);
+                return response;
             }).catch((error) => {
                 this.log(`Network request failed: ${error.message}`);
                 // Log detailed error for 503/403 etc
@@ -92,6 +101,7 @@ export class WsdlParser {
                     this.log(`Data: ${typeof error.response.data === 'string' ? error.response.data : JSON.stringify(error.response.data)}`);
                 }
                 callback(error, error.response, error.response ? error.response.data : null);
+                throw error;
             });
         };
 
