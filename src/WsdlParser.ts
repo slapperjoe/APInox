@@ -29,12 +29,13 @@ export class WsdlParser {
         this.log(`Attempting to parse WSDL: ${url}`);
 
         const options: any = {};
-        if (localWsdlDir) {
-            this.log(`Local WSDL directory enabled: ${localWsdlDir}`);
-            options.request = (requestUrl: string, data: any, callback: any, exheaders: any, exoptions: any) => {
-                this.log(`Intercepted request: ${requestUrl}`);
 
-                // 1. Try Local File
+        // Always use our custom request handler to ensure Axios is used (better proxy/header support)
+        options.request = (requestUrl: string, data: any, callback: any, exheaders: any, exoptions: any) => {
+            this.log(`Intercepted request: ${requestUrl}`);
+
+            // 1. Try Local File (if enabled)
+            if (localWsdlDir) {
                 try {
                     // Naive filename extraction: take last part of URL, remove query params
                     const filename = requestUrl.split('/').pop()?.split('?')[0] || '';
@@ -64,27 +65,35 @@ export class WsdlParser {
                 } catch (e) {
                     this.log('Error checking local file:', e);
                 }
+            }
 
-                // 2. Fallback to Network (Axios)
-                this.log('Falling back to network request...');
-                const method = data ? 'POST' : 'GET';
-                const headers = { ...exheaders };
-
-                axios({
-                    method: method,
-                    url: requestUrl,
-                    data: data,
-                    headers: headers,
-                    ...exoptions
-                }).then((response) => {
-                    this.log(`Network request success: ${response.status}`);
-                    callback(null, response, response.data);
-                }).catch((error) => {
-                    this.log(`Network request failed: ${error.message}`);
-                    callback(error, error.response, error.response ? error.response.data : null);
-                });
+            // 2. Fallback to Network (Axios)
+            this.log('Performing network request via Axios...');
+            const method = data ? 'POST' : 'GET';
+            const headers = {
+                ...exheaders,
+                'User-Agent': 'DirtySoap/0.3.0 (VSCode Extension)'
             };
-        }
+
+            axios({
+                method: method,
+                url: requestUrl,
+                data: data,
+                headers: headers,
+                ...exoptions
+            }).then((response) => {
+                this.log(`Network request success: ${response.status}`);
+                callback(null, response, response.data);
+            }).catch((error) => {
+                this.log(`Network request failed: ${error.message}`);
+                // Log detailed error for 503/403 etc
+                if (error.response) {
+                    this.log(`Status: ${error.response.status}`);
+                    this.log(`Data: ${typeof error.response.data === 'string' ? error.response.data : JSON.stringify(error.response.data)}`);
+                }
+                callback(error, error.response, error.response ? error.response.data : null);
+            });
+        };
 
         try {
             const client = await soap.createClientAsync(url, options);
