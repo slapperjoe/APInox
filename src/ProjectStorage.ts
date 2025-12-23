@@ -54,6 +54,19 @@ export class ProjectStorage {
                                 "@_method": req.method || "POST",
                                 "#text": req.request
                             },
+                            "con:assertion": req.assertions ? req.assertions.map(a => ({
+                                "@_type": a.type,
+                                "@_name": a.name || a.type,
+                                "@_id": a.id,
+                                "con:configuration": {
+                                    "token": a.configuration?.token,
+                                    "ignoreCase": a.configuration?.ignoreCase,
+                                    "sla": a.configuration?.sla,
+                                    // XPath specific (simplified for now)
+                                    "path": a.configuration?.xpath,
+                                    "content": a.configuration?.expectedContent
+                                }
+                            })) : [],
                             "dirty:requestContent": req.request // Save raw content here too
                         }))
                     }))
@@ -80,7 +93,7 @@ export class ProjectStorage {
             ignoreAttributes: false,
             attributeNamePrefix: "@_",
             isArray: (name, jpath, isLeafNode, isAttribute) => {
-                return ["con:interface", "con:operation", "con:call", "con:request"].indexOf(name) !== -1;
+                return ["con:interface", "con:operation", "con:call", "con:request", "con:assertion"].indexOf(name) !== -1;
             }
         });
         const result = parser.parse(xmlContent);
@@ -144,7 +157,19 @@ export class ProjectStorage {
                             }
                             // Strip \r (and potentially literal '\r' if user sees them as text)
                             return content ? content.replace(/\\r/g, '').replace(/\r/g, '') : "";
-                        })()
+                        })(),
+                        assertions: req["con:assertion"] ? (Array.isArray(req["con:assertion"]) ? req["con:assertion"] : [req["con:assertion"]]).map((a: any) => ({
+                            type: a["@_type"],
+                            name: a["@_name"],
+                            id: a["@_id"],
+                            configuration: a["con:configuration"] ? {
+                                token: a["con:configuration"]["token"],
+                                ignoreCase: a["con:configuration"]["ignoreCase"] === 'true' || a["con:configuration"]["ignoreCase"] === true,
+                                sla: a["con:configuration"]["sla"],
+                                xpath: a["con:configuration"]["path"],
+                                expectedContent: a["con:configuration"]["content"]
+                            } : {}
+                        })) : []
                     })) : []
                 })) : []
             }));

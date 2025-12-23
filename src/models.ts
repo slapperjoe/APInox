@@ -25,12 +25,30 @@ export interface SoapSchemaNode {
     isOptional?: boolean;
 }
 
+// Assertion Types
+export interface SoapUIAssertion {
+    type: 'Simple Contains' | 'Simple Not Contains' | 'Response SLA' | 'XPath Match';
+    name?: string;
+    id?: string;
+    description?: string;
+    // Configuration varies by type
+    configuration?: {
+        token?: string; // For Contains/Not Contains
+        ignoreCase?: boolean; // For Contains
+        sla?: string; // For SLA (ms)
+        xpath?: string; // For XPath
+        expectedContent?: string; // For XPath
+    };
+}
+
 export interface SoapUIRequest {
     name: string;
     request: string; // The XML content
     contentType?: string;
     method?: string;
     endpoint?: string;
+    dirty?: boolean;
+    assertions?: SoapUIAssertion[];
 }
 
 export interface SoapUIOperation {
