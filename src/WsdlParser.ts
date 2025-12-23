@@ -76,22 +76,29 @@ export class WsdlParser {
             }
 
             // 2. Fallback to Network (Axios)
-            this.log('Performing network request via Axios...');
+            this.log('Performing network request via Axios (SSL verification disabled)...');
             const method = data ? 'POST' : 'GET';
             const headers = {
                 ...exheaders,
                 'User-Agent': 'DirtySoap/0.3.0 (VSCode Extension)'
             };
 
+            const httpsAgent = new (require('https').Agent)({
+                rejectUnauthorized: false
+            });
+
             return axios({
                 method: method,
                 url: actualUrl,
                 data: data,
                 headers: headers,
+                httpsAgent: httpsAgent,
                 ...exoptions
             }).then((response) => {
                 this.log(`Network request success: ${response.status}`);
-                callback(null, response, response.data);
+                if (typeof callback === 'function') {
+                    callback(null, response, response.data);
+                }
                 return response;
             }).catch((error) => {
                 this.log(`Network request failed: ${error.message}`);
@@ -100,7 +107,9 @@ export class WsdlParser {
                     this.log(`Status: ${error.response.status}`);
                     this.log(`Data: ${typeof error.response.data === 'string' ? error.response.data : JSON.stringify(error.response.data)}`);
                 }
-                callback(error, error.response, error.response ? error.response.data : null);
+                if (typeof callback === 'function') {
+                    callback(error, error.response, error.response ? error.response.data : null);
+                }
                 throw error;
             });
         };

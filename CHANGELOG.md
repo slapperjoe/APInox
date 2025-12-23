@@ -1,6 +1,10 @@
 # Changelog
 
 
+## [0.3.3] - 2025-12-23
+### Auto-Generated Changes
+- fix: Disable SSL verification in Axios requests and improve callback handling in WsdlParser
+
 ## [0.3.2] - 2025-12-23
 ### Auto-Generated Changes
 - fix: Enhance Axios request handling in WsdlParser for better URL resolution and error logging
