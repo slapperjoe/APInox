@@ -76,6 +76,12 @@ export class WebviewController {
             case 'getSettings':
                 this.sendSettingsToWebview();
                 break;
+            case 'startWatcher':
+                this._fileWatcherService.start();
+                break;
+            case 'stopWatcher':
+                this._fileWatcherService.stop();
+                break;
             case 'getAutosave':
                 this.handleGetAutosave();
                 break;

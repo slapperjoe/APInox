@@ -150,6 +150,7 @@ function App() {
     // Watcher State
     const [showWatcher, setShowWatcher] = useState(false);
     const [watcherHistory, setWatcherHistory] = useState<WatcherEvent[]>([]);
+    const [watcherRunning, setWatcherRunning] = useState(false);
 
     const startTimeRef = useRef<number>(0);
 
@@ -792,6 +793,15 @@ function App() {
                 onToggleWatcher={() => setShowWatcher(!showWatcher)}
                 watcherHistory={watcherHistory}
                 onSelectWatcherEvent={handleSelectWatcherEvent}
+                watcherRunning={watcherRunning}
+                onStartWatcher={() => {
+                    setWatcherRunning(true);
+                    bridge.sendMessage({ command: 'startWatcher' });
+                }}
+                onStopWatcher={() => {
+                    setWatcherRunning(false);
+                    bridge.sendMessage({ command: 'stopWatcher' });
+                }}
             />
 
             <WorkspaceLayout
@@ -824,6 +834,7 @@ function App() {
                     setInlineElementValues(newState);
                     bridge.sendMessage({ command: 'saveUiState', ui: { ...config?.ui, inlineElementValues: newState } });
                 }}
+                isReadOnly={selectedInterface?.name === 'File Watcher'}
                 onStartResizing={startResizing}
                 config={config}
                 onChangeEnvironment={(env) => bridge.sendMessage({ command: 'updateActiveEnvironment', envName: env })}

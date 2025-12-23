@@ -9,6 +9,7 @@ export interface WatcherEvent {
     responseFile: string;
     requestContent?: string;
     responseContent?: string;
+    rootElementName?: string;
 }
 
 export class FileWatcherService {
@@ -40,6 +41,15 @@ export class FileWatcherService {
         this.onUpdateCallback = callback;
     }
 
+    private extractRootElement(xml: string): string | undefined {
+        try {
+            const match = xml.match(/<([a-zA-Z0-9_:-]+)(?:\s|>)/);
+            return match ? match[1] : undefined;
+        } catch (e) {
+            return undefined;
+        }
+    }
+
     public start() {
         this.stop(); // Clear existing
 
@@ -47,13 +57,18 @@ export class FileWatcherService {
 
         if (fs.existsSync(this.requestPath)) {
             this.watchFile(this.requestPath, 'request');
+            // Initial Read
+            this.processRequestChange();
         } else {
             this.log(`Request file not found at ${this.requestPath} - attempting to watch directory or waiting for creation...`);
-            // Optional: Watch directory in future if needed
         }
 
         if (fs.existsSync(this.responsePath)) {
             this.watchFile(this.responsePath, 'response');
+            // Initial Read - only if we have requests, or maybe just check?
+            // Actually, processResponseChange tries to attach to pending. 
+            // If we just started, we might have a request from the line above.
+            setTimeout(() => this.processResponseChange(), 200);
         } else {
             this.log(`Response file not found at ${this.responsePath}`);
         }
@@ -62,6 +77,7 @@ export class FileWatcherService {
     public stop() {
         this.watchers.forEach(w => w.close());
         this.watchers = [];
+        this.log('Stopped File Watcher.');
     }
 
     public getHistory(): WatcherEvent[] {
@@ -97,6 +113,7 @@ export class FileWatcherService {
             const content = fs.readFileSync(this.requestPath, 'utf8');
             const now = new Date();
             const id = now.getTime().toString();
+            const rootName = this.extractRootElement(content);
 
             const event: WatcherEvent = {
                 id: id,
@@ -105,7 +122,8 @@ export class FileWatcherService {
                 requestFile: this.requestPath,
                 responseFile: this.responsePath,
                 requestContent: content,
-                responseContent: undefined // Waiting for response
+                responseContent: undefined, // Waiting for response
+                rootElementName: rootName
             };
 
             this.history.unshift(event); // Add to top
@@ -117,7 +135,7 @@ export class FileWatcherService {
             }
 
             this.emitUpdate();
-            this.log(`Captured Request Change (${id})`);
+            this.log(`Captured Request Change (${id}) - ${rootName || 'Unknown Op'}`);
         } catch (e: any) {
             this.log(`Error reading request file: ${e.message}`);
         }
