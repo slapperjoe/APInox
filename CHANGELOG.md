@@ -1,6 +1,10 @@
 # Changelog
 
 
+## [0.5.1] - 2025-12-23
+### Auto-Generated Changes
+- feat: Implement file watcher service and integrate with WebviewController and Sidebar for real-time updates
+
 ## [0.5.0] - 2025-12-23
 ### Auto-Generated Changes
 - feat: Enhance HTTP headers management with new HeadersPanel component and integrate into WorkspaceLayout
