@@ -4,6 +4,7 @@ import { Layout, ListOrdered, Play, Loader2, RotateCcw, WrapText, FoldVertical }
 import { SoapUIRequest, SoapUIOperation } from '../models';
 import { MonacoRequestEditor } from './MonacoRequestEditor';
 import { MonacoResponseViewer } from './MonacoResponseViewer';
+import { AssertionsPanel } from './AssertionsPanel';
 import ReactMarkdown from 'react-markdown';
 import { MonacoSingleLineInput } from './MonacoSingleLineInput';
 import { formatXml } from '../utils/xmlFormatter';
@@ -139,6 +140,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     inlineElementValues, onToggleInlineElementValues
 }) => {
     const [alignAttributes, setAlignAttributes] = React.useState(false);
+    const [activeTab, setActiveTab] = React.useState<'request' | 'assertions'>('request');
 
     if (!selectedRequest) {
         return (
@@ -232,27 +234,66 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                         width: 'auto'
                     }}>
                         <div style={{
-                            padding: '5px 10px',
+                            padding: '0 10px',
                             backgroundColor: 'var(--vscode-editor-background)',
                             borderBottom: '1px solid var(--vscode-panel-border)',
                             fontWeight: 'bold',
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'space-between',
-                            flexShrink: 0
+                            gap: 15,
+                            flexShrink: 0,
+                            height: 30
                         }}>
-                            <span>Request: {selectedOperation?.name} - {selectedRequest.name}</span>
+                            <div
+                                style={{
+                                    cursor: 'pointer',
+                                    borderBottom: activeTab === 'request' ? '2px solid var(--vscode-textLink-foreground)' : '2px solid transparent',
+                                    padding: '5px 0',
+                                    color: activeTab === 'request' ? 'var(--vscode-foreground)' : 'var(--vscode-descriptionForeground)'
+                                }}
+                                onClick={() => setActiveTab('request')}
+                            >
+                                Request
+                                <span style={{ fontSize: '0.8em', marginLeft: 5, opacity: 0.5 }}>{selectedOperation?.name}</span>
+                            </div>
+                            <div
+                                style={{
+                                    cursor: 'pointer',
+                                    borderBottom: activeTab === 'assertions' ? '2px solid var(--vscode-textLink-foreground)' : '2px solid transparent',
+                                    padding: '5px 0',
+                                    color: activeTab === 'assertions' ? 'var(--vscode-foreground)' : 'var(--vscode-descriptionForeground)'
+                                }}
+                                onClick={() => setActiveTab('assertions')}
+                            >
+                                Assertions
+                                {selectedRequest.assertions && selectedRequest.assertions.length > 0 && ` (${selectedRequest.assertions.length})`}
+                                {response && response.assertionResults && (
+                                    <span style={{ marginLeft: 5, fontSize: '0.8em' }}>
+                                        {response.assertionResults.every((r: any) => r.status === 'PASS') ? '✔' : '❌'}
+                                    </span>
+                                )}
+                            </div>
+
                             <div style={{ marginLeft: 'auto', display: 'flex', gap: '15px', alignItems: 'center' }}>
                                 <span style={{ opacity: 0.8 }}>Lines: {typeof selectedRequest.request === 'string' ? selectedRequest.request.split('\n').length : 0}</span>
                                 <span style={{ opacity: 0.8 }}>Size: {typeof selectedRequest.request === 'string' ? (selectedRequest.request.length / 1024).toFixed(2) : 0} KB</span>
                             </div>
                         </div>
-                        <MonacoRequestEditor
-                            value={selectedRequest.request || ''}
-                            onChange={(val) => onUpdateRequest({ ...selectedRequest, request: val })}
-                            readOnly={loading}
-                            language="xml"
-                        />
+
+                        {activeTab === 'request' ? (
+                            <MonacoRequestEditor
+                                value={selectedRequest.request || ''}
+                                onChange={(val) => onUpdateRequest({ ...selectedRequest, request: val })}
+                                readOnly={loading}
+                                language="xml"
+                            />
+                        ) : (
+                            <AssertionsPanel
+                                assertions={selectedRequest.assertions || []}
+                                onChange={(newAssertions) => onUpdateRequest({ ...selectedRequest, assertions: newAssertions })}
+                                lastResult={response?.assertionResults}
+                            />
+                        )}
                     </div>
 
                     {/* Resizer */}

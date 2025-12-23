@@ -6,6 +6,7 @@ import { SoapClient } from '../soapClient';
 import { ProjectStorage } from '../ProjectStorage';
 import { SettingsManager } from '../utils/SettingsManager';
 import { WildcardProcessor } from '../utils/WildcardProcessor';
+import { AssertionRunner } from '../utils/AssertionRunner';
 
 export class WebviewController {
     constructor(
@@ -344,8 +345,18 @@ export class WebviewController {
 
             // Pass headers if needed
             const headers = message.contentType ? { 'Content-Type': message.contentType } : undefined;
+
+            const startTime = Date.now();
             const result = await this._soapClient.executeRequest(processedUrl, message.operation, processedXml, headers);
-            this._panel.webview.postMessage({ command: 'response', result });
+            const timeTaken = Date.now() - startTime;
+
+            // Run Assertions
+            let assertionResults: any[] = [];
+            if (message.assertions && Array.isArray(message.assertions)) {
+                assertionResults = AssertionRunner.run(typeof result === 'string' ? result : JSON.stringify(result), timeTaken, message.assertions);
+            }
+
+            this._panel.webview.postMessage({ command: 'response', result, assertionResults, timeTaken });
         } catch (error: any) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             this._soapClient.log(`Request Execution Error: ${errorMessage}`);
