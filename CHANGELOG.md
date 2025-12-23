@@ -1,6 +1,10 @@
 # Changelog
 
 
+## [0.5.0] - 2025-12-23
+### Auto-Generated Changes
+- feat: Enhance HTTP headers management with new HeadersPanel component and integrate into WorkspaceLayout
+
 ## [0.4.0] - 2025-12-23
 ### Auto-Generated Changes
 - feat: Implement assertion handling and UI components for SoapUI requests

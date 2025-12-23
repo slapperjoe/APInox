@@ -8,7 +8,7 @@
     "url": "https://github.com/Dev1/dirty-soap"
   },
   "license": "MIT",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -21,7 +21,7 @@
     "commands": [
       {
         "command": "dirty-soap.openInterface",
-        "title": "Dirty Soap: Open Interface",
+        "title": "Open Interface",
         "category": "Dirty Soap"
       }
     ]
