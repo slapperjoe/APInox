@@ -1,6 +1,10 @@
 # Changelog
 
 
+## [0.3.1] - 2025-12-23
+### Auto-Generated Changes
+- fix: Improve WSDL parsing request handling with Axios and enhanced error logging
+
 ## [0.3.0] - 2025-12-22
 ### Overview
 - Major variation release including workspace persistence, inline XML values, and performance optimizations.
