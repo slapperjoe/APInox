@@ -1,3 +1,4 @@
+import * as vscode from 'vscode';
 import * as soap from 'soap';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -77,10 +78,43 @@ export class WsdlParser {
 
             // 2. Fallback to Network (Axios)
             this.log('Performing network request via Axios (SSL verification disabled)...');
+
+            // --- PROXY DETECTION ---
+            let proxyConfig: any = false; // Default: no proxy (let axios decide or direct)
+            const envProxy = process.env.HTTPS_PROXY || process.env.HTTP_PROXY || process.env.https_proxy || process.env.http_proxy;
+            const vscodeProxy = vscode.workspace.getConfiguration('http').get<string>('proxy');
+            const proxyUrl = vscodeProxy || envProxy;
+
+            if (proxyUrl) {
+                this.log(`Detected Proxy Configuration: ${proxyUrl}`);
+                try {
+                    const parsed = new URL(proxyUrl);
+                    proxyConfig = {
+                        protocol: parsed.protocol.replace(':', ''),
+                        host: parsed.hostname,
+                        port: parseInt(parsed.port) || (parsed.protocol === 'https:' ? 443 : 80),
+                    };
+                    if (parsed.username && parsed.password) {
+                        proxyConfig.auth = {
+                            username: parsed.username,
+                            password: parsed.password
+                        };
+                    }
+                } catch (e) {
+                    this.log(`Failed to parse proxy URL: ${e}`);
+                }
+            } else {
+                this.log('No explicit proxy configuration found (checking HTTP/HTTPS_PROXY and VSCode settings).');
+            }
+
             const method = data ? 'POST' : 'GET';
+            // Mimic a standard browser to avoid WAF 503s
             const headers = {
                 ...exheaders,
-                'User-Agent': 'DirtySoap/0.3.0 (VSCode Extension)'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Connection': 'keep-alive'
             };
 
             const httpsAgent = new (require('https').Agent)({
@@ -93,6 +127,7 @@ export class WsdlParser {
                 data: data,
                 headers: headers,
                 httpsAgent: httpsAgent,
+                proxy: proxyConfig, // Explicit proxy config
                 ...exoptions
             }).then((response) => {
                 this.log(`Network request success: ${response.status}`);

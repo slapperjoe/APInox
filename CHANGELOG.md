@@ -1,6 +1,10 @@
 # Changelog
 
 
+## [0.3.4] - 2025-12-23
+### Auto-Generated Changes
+- fix: Implement proxy detection and configuration in Axios requests for improved network handling
+
 ## [0.3.3] - 2025-12-23
 ### Auto-Generated Changes
 - fix: Disable SSL verification in Axios requests and improve callback handling in WsdlParser
