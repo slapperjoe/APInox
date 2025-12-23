@@ -8,14 +8,22 @@ import { SettingsManager } from '../utils/SettingsManager';
 import { WildcardProcessor } from '../utils/WildcardProcessor';
 import { AssertionRunner } from '../utils/AssertionRunner';
 
+import { FileWatcherService } from '../services/FileWatcherService';
+
 export class WebviewController {
     constructor(
         private readonly _panel: vscode.WebviewPanel,
         private readonly _extensionUri: vscode.Uri,
         private readonly _soapClient: SoapClient,
         private readonly _projectStorage: ProjectStorage,
-        private readonly _settingsManager: SettingsManager
-    ) { }
+        private readonly _settingsManager: SettingsManager,
+        private readonly _fileWatcherService: FileWatcherService
+    ) {
+        // Setup Update Callback
+        this._fileWatcherService.setCallback((history) => {
+            this._panel.webview.postMessage({ command: 'watcherUpdate', history });
+        });
+    }
 
     public async handleMessage(message: any) {
         switch (message.command) {
@@ -70,6 +78,12 @@ export class WebviewController {
                 break;
             case 'getAutosave':
                 this.handleGetAutosave();
+                break;
+            case 'getWatcherHistory':
+                this._panel.webview.postMessage({ command: 'watcherUpdate', history: this._fileWatcherService.getHistory() });
+                break;
+            case 'clearWatcherHistory':
+                // Optional: Implement clear method in service if needed
                 break;
         }
     }

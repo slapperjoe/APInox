@@ -50,6 +50,7 @@ export interface SoapUIRequest {
     dirty?: boolean;
     assertions?: SoapUIAssertion[];
     headers?: Record<string, string>;
+    id?: string;
 }
 
 export interface SoapUIOperation {
@@ -78,4 +79,14 @@ export interface SoapUIProject {
     fileName?: string;
     id?: string;
     dirty?: boolean;
+}
+
+export interface WatcherEvent {
+    id: string;
+    timestamp: number;
+    timestampLabel: string;
+    requestFile: string;
+    responseFile: string;
+    requestContent?: string;
+    responseContent?: string;
 }

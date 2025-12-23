@@ -3,6 +3,7 @@ import { SoapClient } from '../soapClient';
 import { ProjectStorage } from '../ProjectStorage';
 import { SettingsManager } from '../utils/SettingsManager';
 import { WebviewController } from '../controllers/WebviewController';
+import { FileWatcherService } from '../services/FileWatcherService';
 
 export class SoapPanel {
     public static currentPanel: SoapPanel | undefined;
@@ -12,6 +13,7 @@ export class SoapPanel {
     private _soapClient: SoapClient;
     private _projectStorage: ProjectStorage;
     private _settingsManager: SettingsManager;
+    private _fileWatcherService: FileWatcherService;
     private _controller: WebviewController;
     private _disposables: vscode.Disposable[] = [];
     private _autosaveTimeout: NodeJS.Timeout | undefined;
@@ -53,13 +55,18 @@ export class SoapPanel {
         this._projectStorage = new ProjectStorage(this._outputChannel);
         this._settingsManager = new SettingsManager();
 
+        this._fileWatcherService = new FileWatcherService(this._outputChannel);
+
         this._controller = new WebviewController(
             this._panel,
             this._extensionUri,
             this._soapClient,
             this._projectStorage,
-            this._settingsManager
+            this._settingsManager,
+            this._fileWatcherService
         );
+
+        this._fileWatcherService.start();
 
         this._panel.webview.html = this._getWebviewContent(this._panel.webview, extensionUri);
 
@@ -112,6 +119,11 @@ export class SoapPanel {
         // Dispose Output Channel
         if (this._outputChannel) {
             this._outputChannel.dispose();
+        }
+
+        // Dispose File Watcher
+        if (this._fileWatcherService) {
+            this._fileWatcherService.stop();
         }
 
         // Dispose panel

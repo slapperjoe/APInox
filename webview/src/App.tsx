@@ -7,7 +7,7 @@ import { HelpModal } from './components/HelpModal';
 
 import { SchemaViewer } from './components/SchemaViewer';
 import { SettingsEditorModal } from './components/SettingsEditorModal';
-import { SoapUIInterface, SoapUIProject, SoapUIOperation, SoapUIRequest, SoapSchemaNode } from './models';
+import { SoapUIInterface, SoapUIProject, SoapUIOperation, SoapUIRequest, SoapSchemaNode, WatcherEvent } from './models';
 
 // TS might complain about importing from outside src if not careful. 
 // Ideally we define types in shared folder. 
@@ -147,6 +147,10 @@ function App() {
     const [savedProjects, setSavedProjects] = useState<Set<string>>(new Set());
     const [workspaceDirty, setWorkspaceDirty] = useState(false);
 
+    // Watcher State
+    const [showWatcher, setShowWatcher] = useState(false);
+    const [watcherHistory, setWatcherHistory] = useState<WatcherEvent[]>([]);
+
     const startTimeRef = useRef<number>(0);
 
     // Layout
@@ -174,6 +178,7 @@ function App() {
         // Request settings on load
         bridge.sendMessage({ command: 'getSettings' });
         bridge.sendMessage({ command: 'getAutosave' });
+        bridge.sendMessage({ command: 'getWatcherHistory' });
 
         const state = bridge.getState();
         if (state) {
@@ -367,6 +372,9 @@ function App() {
                     break;
                 case 'workspaceSaved':
                     setWorkspaceDirty(false);
+                    break;
+                case 'watcherUpdate':
+                    setWatcherHistory(message.history);
                     break;
             }
         };
@@ -691,7 +699,47 @@ function App() {
         }
     };
 
-    // ... Rename implementation ...
+    const handleSelectWatcherEvent = (event: WatcherEvent) => {
+        const tempRequest: SoapUIRequest = {
+            id: event.id,
+            name: `Logged: ${event.timestampLabel}`,
+            request: event.requestContent || '',
+            dirty: false,
+            headers: {},
+            endpoint: '',
+            method: 'POST'
+        };
+
+        const tempOp: SoapUIOperation = {
+            name: 'External Request',
+            input: '',
+            requests: [tempRequest],
+            action: 'WatcherAction'
+        };
+
+        const tempIface: SoapUIInterface = {
+            name: 'File Watcher',
+            type: 'wsdl',
+            soapVersion: '1.1',
+            definition: '',
+            operations: [tempOp],
+            bindingName: 'WatcherBinding'
+        };
+
+        setSelectedInterface(tempIface);
+        setSelectedOperation(tempOp);
+        setSelectedRequest(tempRequest);
+
+        if (event.responseContent) {
+            setResponse({
+                rawResponse: event.responseContent,
+                duration: 0,
+                lineCount: event.responseContent.split(/\r\n|\r|\n/).length
+            });
+        } else {
+            setResponse(null);
+        }
+    };
 
     return (
         <Container onClick={closeContextMenu}>
@@ -740,6 +788,10 @@ function App() {
                 onOpenHelp={() => setShowHelp(true)}
                 workspaceDirty={workspaceDirty}
                 showBackendStatus={!isVsCode()}
+                showWatcher={showWatcher}
+                onToggleWatcher={() => setShowWatcher(!showWatcher)}
+                watcherHistory={watcherHistory}
+                onSelectWatcherEvent={handleSelectWatcherEvent}
             />
 
             <WorkspaceLayout

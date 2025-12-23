@@ -1,7 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
-import { ChevronRight, ChevronDown, Plus, Trash2, Globe, FileCode, Play, Save, FolderOpen, FolderPlus, Settings, HelpCircle } from 'lucide-react';
-import { SoapUIInterface, SoapUIOperation, SoapUIRequest, SoapUIProject } from '../models';
+import { ChevronRight, ChevronDown, Plus, Trash2, Globe, FileCode, Play, Save, FolderOpen, FolderPlus, Settings, HelpCircle, Eye, Clock } from 'lucide-react';
+import { SoapUIInterface, SoapUIOperation, SoapUIRequest, SoapUIProject, WatcherEvent } from '../models';
 
 // Styled Components
 const SidebarContainer = styled.div`
@@ -160,6 +160,12 @@ interface SidebarProps {
     // Computed
     workspaceDirty?: boolean;
     showBackendStatus?: boolean;
+
+    // Watcher
+    showWatcher: boolean;
+    onToggleWatcher: () => void;
+    watcherHistory: WatcherEvent[];
+    onSelectWatcherEvent: (event: WatcherEvent) => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -175,7 +181,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     selectedRequest, setSelectedRequest,
     setResponse,
     handleContextMenu, deleteConfirm, backendConnected,
-    onOpenSettings, onOpenHelp, savedProjects, workspaceDirty, showBackendStatus = true
+    onOpenSettings, onOpenHelp, savedProjects, workspaceDirty, showBackendStatus = true,
+    showWatcher, onToggleWatcher, watcherHistory, onSelectWatcherEvent
 }) => {
 
     const renderInterfaceList = (interfaces: SoapUIInterface[], isExplorer: boolean) => (
@@ -193,15 +200,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     style={{ paddingLeft: 20 }}
                 >
                     <span style={{ marginRight: 5, display: 'flex' }}>
-                        {/* Expanded logic need to be consistent. SoapUIInterface has 'expanded' prop? 
-                            In App.tsx it seemed to be dynamically added or assumed?
-                            Line 301 in App.tsx: SoapUIInterface definition in extension.ts didn't have 'expanded'.
-                            But App.tsx cast it or added it?
-                            Line 422: conversions.
-                            Wait, `App.tsx` defined `SoapUIInterface` locally or imported?
-                            It likely added `expanded?: boolean`.
-                            I need to make sure `models.ts` has `expanded`.
-                         */}
                         {(iface as any).expanded !== false ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                     </span>
                     <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -265,152 +263,197 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ))
     );
 
+    const renderWatcherList = () => (
+        <div style={{ padding: 10 }}>
+            {watcherHistory.length === 0 ? (
+                <div style={{ color: 'var(--vscode-descriptionForeground)', textAlign: 'center', marginTop: 20 }}>
+                    No events captured yet.
+                    <br />
+                    Watching C:\temp\requestXML.xml
+                </div>
+            ) : (
+                watcherHistory.map(event => (
+                    <ServiceItem key={event.id} onClick={() => onSelectWatcherEvent(event)}>
+                        <Clock size={14} style={{ marginRight: 5 }} />
+                        <div style={{ flex: 1 }}>
+                            <div>{event.timestampLabel}</div>
+                            <div style={{ fontSize: '0.8em', color: 'var(--vscode-descriptionForeground)' }}>
+                                {event.responseContent ? 'Request & Response' : 'Request Pending...'}
+                            </div>
+                        </div>
+                    </ServiceItem>
+                ))
+            )}
+        </div>
+    );
+
     return (
         <SidebarContainer>
-            <div style={{ flex: 1, overflowY: 'auto' }}>
-                <SectionHeader onClick={toggleExplorerExpand}>
-                    <SectionTitle style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                        {explorerExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />} WSDL Explorer
-                        {showBackendStatus && (
-                            <div style={{
-                                width: 8, height: 8, borderRadius: '50%',
-                                backgroundColor: backendConnected ? '#4caf50' : '#f44336',
-                                marginLeft: 10
-                            }} title={backendConnected ? "Backend Connected" : "Backend Disconnected"}></div>
-                        )}
-                    </SectionTitle>
-                    {exploredInterfaces.length > 0 && (
-                        <>
-                            <div style={{ flex: 1 }}></div>
-                            <HeaderButton onClick={(e) => { e.stopPropagation(); addAllToProject(); }} title="Add All to Project">
-                                <Plus size={16} />
-                            </HeaderButton>
-                            <HeaderButton onClick={(e) => { e.stopPropagation(); clearExplorer(); }} title="Clear Explorer">
-                                <Trash2 size={16} />
-                            </HeaderButton>
-                        </>
-                    )}
+            <div style={{ display: 'flex', borderBottom: '1px solid var(--vscode-sideBarSectionHeader-border)' }}>
+                <SectionHeader
+                    style={{ flex: 1, justifyContent: 'center', borderBottom: !showWatcher ? '2px solid var(--vscode-progressBar-background)' : 'none', opacity: !showWatcher ? 1 : 0.7 }}
+                    onClick={() => { if (showWatcher) onToggleWatcher(); }}
+                >
+                    Projects
                 </SectionHeader>
+                <SectionHeader
+                    style={{ flex: 1, justifyContent: 'center', borderBottom: showWatcher ? '2px solid var(--vscode-progressBar-background)' : 'none', opacity: showWatcher ? 1 : 0.7 }}
+                    onClick={() => { if (!showWatcher) onToggleWatcher(); }}
+                >
+                    <Eye size={14} style={{ marginRight: 5 }} /> Watcher
+                </SectionHeader>
+            </div>
 
-                {explorerExpanded && (
+            <div style={{ flex: 1, overflowY: 'auto' }}>
+                {showWatcher ? renderWatcherList() : (
                     <>
-                        <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            <div style={{ display: 'flex', gap: 5 }}>
-                                <HeaderButton
-                                    onClick={() => setInputType('url')}
-                                    title="Load from URL"
-                                    style={{ flex: 1, textAlign: 'center', backgroundColor: inputType === 'url' ? 'var(--vscode-button-background)' : 'transparent', color: inputType === 'url' ? 'var(--vscode-button-foreground)' : 'inherit', border: '1px solid var(--vscode-button-border)', marginLeft: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}
-                                >
-                                    <Globe size={14} /> URL
-                                </HeaderButton>
-                                <HeaderButton
-                                    onClick={() => setInputType('file')}
-                                    title="Load from File"
-                                    style={{ flex: 1, textAlign: 'center', backgroundColor: inputType === 'file' ? 'var(--vscode-button-background)' : 'transparent', color: inputType === 'file' ? 'var(--vscode-button-foreground)' : 'inherit', border: '1px solid var(--vscode-button-border)', marginLeft: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}
-                                >
-                                    <FileCode size={14} /> File
-                                </HeaderButton>
-                            </div>
-
-                            {inputType === 'url' ? (
-                                <div style={{ display: 'flex', gap: 5 }}>
-                                    <Input
-                                        value={wsdlUrl}
-                                        onChange={(e) => setWsdlUrl(e.target.value)}
-                                        placeholder="WSDL URL"
-                                    />
-                                    <HeaderButton onClick={loadWsdl} title="Load WSDL" style={{ border: '1px solid var(--vscode-button-border)', margin: 0, display: 'flex', alignItems: 'center' }}>
-                                        <Play size={14} />
-                                    </HeaderButton>
-                                </div>
-                            ) : (
-                                <div style={{ display: 'flex', gap: 5 }}>
-                                    <HeaderButton onClick={pickLocalWsdl} title="Select Local WSDL" style={{ flex: 1, textAlign: 'center', border: '1px solid var(--vscode-button-border)', margin: 0 }}>
-                                        Select File
-                                    </HeaderButton>
-                                    {selectedFile && <HeaderButton onClick={loadWsdl} title="Load WSDL" style={{ border: '1px solid var(--vscode-button-border)', margin: 0, display: 'flex', alignItems: 'center' }}>
-                                        <Play size={14} />
-                                    </HeaderButton>}
-                                </div>
-                            )}
-
-                            {selectedFile && inputType === 'file' && (
-                                <div style={{ fontSize: '0.8em', color: 'var(--vscode-descriptionForeground)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {selectedFile}
-                                </div>
-                            )}
-                        </div>
-
-                        {downloadStatus && (
-                            <div style={{ padding: '5px 10px', fontSize: '0.8em', color: 'var(--vscode-descriptionForeground)' }}>
-                                {downloadStatus.map((f, i) => (
-                                    <div key={i} style={{ wordBreak: 'break-all' }}>• {f}</div>
-                                ))}
-                            </div>
-                        )}
-
-                        {renderInterfaceList(exploredInterfaces, true)}
-
-                        {exploredInterfaces.length > 0 && (
-                            <div style={{ height: 10 }}></div>
-                        )}
-                    </>
-                )}
-
-                <div style={{ borderTop: '1px solid var(--vscode-sideBarSectionHeader-border)', marginTop: 10 }}></div>
-
-                <div style={{ padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
-                    <div style={{ fontWeight: 'bold' }}>
-                        Workspace
-                        {workspaceDirty && <DirtyMarker>●</DirtyMarker>}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                        <HeaderButton onClick={onAddProject} title="New Project">
-                            <Plus size={16} />
-                        </HeaderButton>
-                        <HeaderButton onClick={saveWorkspace} title="Save Workspace">
-                            <Save size={16} />
-                        </HeaderButton>
-                        <HeaderButton onClick={openWorkspace} title="Open Workspace">
-                            <FolderOpen size={16} />
-                        </HeaderButton>
-                        <div style={{ width: 10 }}></div>
-                        <HeaderButton onClick={loadProject} title="Add Project to Workspace">
-                            <FolderPlus size={16} />
-                        </HeaderButton>
-                    </div>
-                </div>
-                {projects.map((proj, pIdx) => (
-                    <div key={proj.id || pIdx}>
-                        <SectionHeader
-                            onClick={() => toggleProjectExpand(proj.name)}
-                            onContextMenu={(e) => handleContextMenu(e, 'project', proj)}
-                        >
-                            <SectionTitle style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
-                                <span style={{ flexShrink: 0 }}>{(proj as any).expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</span>
-                                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    Project: {proj.name || (proj as any).fileName}
-                                    {proj.dirty && <DirtyMarker>●</DirtyMarker>}
-                                </span>
+                        <SectionHeader onClick={toggleExplorerExpand}>
+                            {/* ... Existing Explorer Header content ... */}
+                            <SectionTitle style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                {explorerExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />} WSDL Explorer
+                                {showBackendStatus && (
+                                    <div style={{
+                                        width: 8, height: 8, borderRadius: '50%',
+                                        backgroundColor: backendConnected ? '#4caf50' : '#f44336',
+                                        marginLeft: 10
+                                    }} title={backendConnected ? "Backend Connected" : "Backend Disconnected"}></div>
+                                )}
                             </SectionTitle>
-                            <HeaderButton onClick={(e) => { e.stopPropagation(); saveProject(proj); }} title="Save Project" style={{ color: savedProjects.has(proj.name) ? 'var(--vscode-testing-iconPassed)' : 'inherit' }}>
-                                <Save size={16} />
-                            </HeaderButton>
-                            <HeaderButton onClick={(e) => {
-                                e.stopPropagation();
-                                closeProject(proj.name);
-                            }} title={deleteConfirm === proj.name ? "Click again to confirm delete" : "Close Project"}
-                                style={{ color: deleteConfirm === proj.name ? 'var(--vscode-errorForeground)' : 'inherit', display: 'flex', alignItems: 'center' }}>
-                                {deleteConfirm === proj.name ? 'Confirm?' : <Trash2 size={16} />}
-                            </HeaderButton>
+                            {exploredInterfaces.length > 0 && (
+                                <>
+                                    <div style={{ flex: 1 }}></div>
+                                    <HeaderButton onClick={(e) => { e.stopPropagation(); addAllToProject(); }} title="Add All to Project">
+                                        <Plus size={16} />
+                                    </HeaderButton>
+                                    <HeaderButton onClick={(e) => { e.stopPropagation(); clearExplorer(); }} title="Clear Explorer">
+                                        <Trash2 size={16} />
+                                    </HeaderButton>
+                                </>
+                            )}
                         </SectionHeader>
-                        {(proj as any).expanded && (
+
+                        {explorerExpanded && (
                             <>
-                                {renderInterfaceList(proj.interfaces, false)}
+                                <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                    {/* ... Input Type Buttons ... */}
+                                    <div style={{ display: 'flex', gap: 5 }}>
+                                        <HeaderButton
+                                            onClick={() => setInputType('url')}
+                                            title="Load from URL"
+                                            style={{ flex: 1, textAlign: 'center', backgroundColor: inputType === 'url' ? 'var(--vscode-button-background)' : 'transparent', color: inputType === 'url' ? 'var(--vscode-button-foreground)' : 'inherit', border: '1px solid var(--vscode-button-border)', marginLeft: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}
+                                        >
+                                            <Globe size={14} /> URL
+                                        </HeaderButton>
+                                        <HeaderButton
+                                            onClick={() => setInputType('file')}
+                                            title="Load from File"
+                                            style={{ flex: 1, textAlign: 'center', backgroundColor: inputType === 'file' ? 'var(--vscode-button-background)' : 'transparent', color: inputType === 'file' ? 'var(--vscode-button-foreground)' : 'inherit', border: '1px solid var(--vscode-button-border)', marginLeft: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}
+                                        >
+                                            <FileCode size={14} /> File
+                                        </HeaderButton>
+                                    </div>
+
+                                    {inputType === 'url' ? (
+                                        <div style={{ display: 'flex', gap: 5 }}>
+                                            <Input
+                                                value={wsdlUrl}
+                                                onChange={(e) => setWsdlUrl(e.target.value)}
+                                                placeholder="WSDL URL"
+                                            />
+                                            <HeaderButton onClick={loadWsdl} title="Load WSDL" style={{ border: '1px solid var(--vscode-button-border)', margin: 0, display: 'flex', alignItems: 'center' }}>
+                                                <Play size={14} />
+                                            </HeaderButton>
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'flex', gap: 5 }}>
+                                            <HeaderButton onClick={pickLocalWsdl} title="Select Local WSDL" style={{ flex: 1, textAlign: 'center', border: '1px solid var(--vscode-button-border)', margin: 0 }}>
+                                                Select File
+                                            </HeaderButton>
+                                            {selectedFile && <HeaderButton onClick={loadWsdl} title="Load WSDL" style={{ border: '1px solid var(--vscode-button-border)', margin: 0, display: 'flex', alignItems: 'center' }}>
+                                                <Play size={14} />
+                                            </HeaderButton>}
+                                        </div>
+                                    )}
+
+                                    {selectedFile && inputType === 'file' && (
+                                        <div style={{ fontSize: '0.8em', color: 'var(--vscode-descriptionForeground)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            {selectedFile}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {downloadStatus && (
+                                    <div style={{ padding: '5px 10px', fontSize: '0.8em', color: 'var(--vscode-descriptionForeground)' }}>
+                                        {downloadStatus.map((f, i) => (
+                                            <div key={i} style={{ wordBreak: 'break-all' }}>• {f}</div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {renderInterfaceList(exploredInterfaces, true)}
+
+                                {exploredInterfaces.length > 0 && (
+                                    <div style={{ height: 10 }}></div>
+                                )}
                             </>
                         )}
-                    </div>
-                ))}
+
+                        <div style={{ borderTop: '1px solid var(--vscode-sideBarSectionHeader-border)', marginTop: 10 }}></div>
+
+                        <div style={{ padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
+                            <div style={{ fontWeight: 'bold' }}>
+                                Workspace
+                                {workspaceDirty && <DirtyMarker>●</DirtyMarker>}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                                <HeaderButton onClick={onAddProject} title="New Project">
+                                    <Plus size={16} />
+                                </HeaderButton>
+                                <HeaderButton onClick={saveWorkspace} title="Save Workspace">
+                                    <Save size={16} />
+                                </HeaderButton>
+                                <HeaderButton onClick={openWorkspace} title="Open Workspace">
+                                    <FolderOpen size={16} />
+                                </HeaderButton>
+                                <div style={{ width: 10 }}></div>
+                                <HeaderButton onClick={loadProject} title="Add Project to Workspace">
+                                    <FolderPlus size={16} />
+                                </HeaderButton>
+                            </div>
+                        </div>
+                        {projects.map((proj, pIdx) => (
+                            <div key={proj.id || pIdx}>
+                                <SectionHeader
+                                    onClick={() => toggleProjectExpand(proj.name)}
+                                    onContextMenu={(e) => handleContextMenu(e, 'project', proj)}
+                                >
+                                    <SectionTitle style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+                                        <span style={{ flexShrink: 0 }}>{(proj as any).expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</span>
+                                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            Project: {proj.name || (proj as any).fileName}
+                                            {proj.dirty && <DirtyMarker>●</DirtyMarker>}
+                                        </span>
+                                    </SectionTitle>
+                                    <HeaderButton onClick={(e) => { e.stopPropagation(); saveProject(proj); }} title="Save Project" style={{ color: savedProjects.has(proj.name) ? 'var(--vscode-testing-iconPassed)' : 'inherit' }}>
+                                        <Save size={16} />
+                                    </HeaderButton>
+                                    <HeaderButton onClick={(e) => {
+                                        e.stopPropagation();
+                                        closeProject(proj.name);
+                                    }} title={deleteConfirm === proj.name ? "Click again to confirm delete" : "Close Project"}
+                                        style={{ color: deleteConfirm === proj.name ? 'var(--vscode-errorForeground)' : 'inherit', display: 'flex', alignItems: 'center' }}>
+                                        {deleteConfirm === proj.name ? 'Confirm?' : <Trash2 size={16} />}
+                                    </HeaderButton>
+                                </SectionHeader>
+                                {(proj as any).expanded && (
+                                    <>
+                                        {renderInterfaceList(proj.interfaces, false)}
+                                    </>
+                                )}
+                            </div>
+                        ))}
+                    </>
+                )}
             </div>
 
             {/* Settings & Help Footer */}
