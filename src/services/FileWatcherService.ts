@@ -1,0 +1,163 @@
+import * as fs from 'fs';
+import * as path from 'path';
+
+export interface WatcherEvent {
+    id: string;
+    timestamp: number;
+    timestampLabel: string;
+    requestFile: string;
+    responseFile: string;
+    requestContent?: string;
+    responseContent?: string;
+}
+
+export class FileWatcherService {
+    private outputChannel: any;
+    private requestPath: string = 'C:\\temp\\requestXML.xml';
+    private responsePath: string = 'C:\\temp\\responseXML.xml';
+    private history: WatcherEvent[] = [];
+    private onUpdateCallback: ((history: WatcherEvent[]) => void) | undefined;
+    private watchers: fs.FSWatcher[] = [];
+
+    // Debounce timers
+    private requestTimer: NodeJS.Timeout | undefined;
+    private responseTimer: NodeJS.Timeout | undefined;
+
+    // Correlation tracking
+    private pendingRequestId: string | null = null;
+
+    constructor(outputChannel: any) {
+        this.outputChannel = outputChannel;
+    }
+
+    private log(message: string) {
+        if (this.outputChannel) {
+            this.outputChannel.appendLine(`[Watcher] ${message}`);
+        }
+    }
+
+    public setCallback(callback: (history: WatcherEvent[]) => void) {
+        this.onUpdateCallback = callback;
+    }
+
+    public start() {
+        this.stop(); // Clear existing
+
+        this.log('Starting File Watcher...');
+
+        if (fs.existsSync(this.requestPath)) {
+            this.watchFile(this.requestPath, 'request');
+        } else {
+            this.log(`Request file not found at ${this.requestPath} - attempting to watch directory or waiting for creation...`);
+            // Optional: Watch directory in future if needed
+        }
+
+        if (fs.existsSync(this.responsePath)) {
+            this.watchFile(this.responsePath, 'response');
+        } else {
+            this.log(`Response file not found at ${this.responsePath}`);
+        }
+    }
+
+    public stop() {
+        this.watchers.forEach(w => w.close());
+        this.watchers = [];
+    }
+
+    public getHistory(): WatcherEvent[] {
+        return this.history;
+    }
+
+    private watchFile(filePath: string, type: 'request' | 'response') {
+        try {
+            this.log(`Watching ${filePath}`);
+            const watcher = fs.watch(filePath, (eventType, filename) => {
+                if (eventType === 'change') {
+                    this.handleFileChange(type);
+                }
+            });
+            this.watchers.push(watcher);
+        } catch (e: any) {
+            this.log(`Failed to watch ${filePath}: ${e.message}`);
+        }
+    }
+
+    private handleFileChange(type: 'request' | 'response') {
+        if (type === 'request') {
+            if (this.requestTimer) clearTimeout(this.requestTimer);
+            this.requestTimer = setTimeout(() => this.processRequestChange(), 100);
+        } else {
+            if (this.responseTimer) clearTimeout(this.responseTimer);
+            this.responseTimer = setTimeout(() => this.processResponseChange(), 100);
+        }
+    }
+
+    private processRequestChange() {
+        try {
+            const content = fs.readFileSync(this.requestPath, 'utf8');
+            const now = new Date();
+            const id = now.getTime().toString();
+
+            const event: WatcherEvent = {
+                id: id,
+                timestamp: now.getTime(),
+                timestampLabel: now.toLocaleTimeString(),
+                requestFile: this.requestPath,
+                responseFile: this.responsePath,
+                requestContent: content,
+                responseContent: undefined // Waiting for response
+            };
+
+            this.history.unshift(event); // Add to top
+            this.pendingRequestId = id; // Mark as pending for response
+
+            // Limit history size
+            if (this.history.length > 50) {
+                this.history.pop();
+            }
+
+            this.emitUpdate();
+            this.log(`Captured Request Change (${id})`);
+        } catch (e: any) {
+            this.log(`Error reading request file: ${e.message}`);
+        }
+    }
+
+    private processResponseChange() {
+        try {
+            const content = fs.readFileSync(this.responsePath, 'utf8');
+
+            // Try to find the pending request, or the latest one
+            let targetEvent: WatcherEvent | undefined;
+
+            if (this.pendingRequestId) {
+                targetEvent = this.history.find(h => h.id === this.pendingRequestId);
+            }
+
+            // If no specific pending request, valid assumption is the most recent one 
+            // if it happened recently (e.g. within last few seconds)
+            if (!targetEvent && this.history.length > 0) {
+                targetEvent = this.history[0];
+            }
+
+            if (targetEvent) {
+                targetEvent.responseContent = content;
+                this.pendingRequestId = null; // Clear pending
+                this.emitUpdate();
+                this.log(`Captured Response Change for ${targetEvent.id}`);
+            } else {
+                // Orphan response? Create a new event just for it?
+                // For now, let's ignore or log orphan
+                this.log('Captured Response but no matching Request found in recent history.');
+            }
+        } catch (e: any) {
+            this.log(`Error reading response file: ${e.message}`);
+        }
+    }
+
+    private emitUpdate() {
+        if (this.onUpdateCallback) {
+            this.onUpdateCallback(this.history);
+        }
+    }
+}
