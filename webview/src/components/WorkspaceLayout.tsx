@@ -131,6 +131,7 @@ interface WorkspaceLayoutProps {
     // Config
     config?: any;
     onChangeEnvironment?: (env: string) => void;
+    isReadOnly?: boolean;
 }
 
 export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
@@ -138,7 +139,8 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     onExecute, onCancel, onUpdateRequest, onReset, onToggleLayout, onToggleLineNumbers, onStartResizing, defaultEndpoint,
     changelog,
     config, onChangeEnvironment,
-    inlineElementValues, onToggleInlineElementValues
+    inlineElementValues, onToggleInlineElementValues,
+    isReadOnly
 }) => {
     const [alignAttributes, setAlignAttributes] = React.useState(false);
     const [activeTab, setActiveTab] = React.useState<'request' | 'headers' | 'assertions' | 'auth'>('request');
@@ -161,69 +163,71 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         <Content>
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
                 {/* Toolbar */}
-                <Toolbar>
-                    {/* Method */}
-                    <ToolbarSelect
-                        value={selectedRequest.method || 'POST'}
-                        onChange={(e) => onUpdateRequest({ ...selectedRequest, method: e.target.value })}
-                        title="HTTP Method"
-                    >
-                        <option value="POST">POST</option>
-                        <option value="GET">GET</option>
-                    </ToolbarSelect>
-
-
-                    {/* URL */}
-                    <div style={{ flex: 1, minWidth: '150px' }}>
-                        <MonacoSingleLineInput
-                            value={selectedRequest.endpoint || defaultEndpoint || ''}
-                            onChange={(val) => onUpdateRequest({ ...selectedRequest, endpoint: val })}
-                            placeholder="Endpoint URL"
-                        />
-                    </div>
-
-                    {/* Content Type */}
-                    <ToolbarSelect
-                        value={selectedRequest.contentType || 'application/soap+xml'}
-                        onChange={(e) => onUpdateRequest({ ...selectedRequest, contentType: e.target.value })}
-                        title="Content Type"
-                    >
-                        <option value="text/xml">text/xml</option>
-                        <option value="application/soap+xml">application/soap+xml</option>
-                        <option value="application/xml">application/xml</option>
-                    </ToolbarSelect>
-
-                    {/* Actions */}
-                    <IconButton onClick={onReset} title="Revert to Default XML">
-                        <RotateCcw size={16} />
-                    </IconButton>
-
-                    {loading ? (
-                        <ToolbarButton onClick={onCancel} style={{ backgroundColor: 'var(--vscode-errorForeground)' }}>
-                            <Loader2 size={14} className="spin" /> Cancel
-                        </ToolbarButton>
-                    ) : (
-                        <ToolbarButton onClick={() => onExecute(selectedRequest.request)} title="Run Request" style={{ color: 'var(--vscode-testing-iconPassed)' }}>
-                            <Play size={14} /> Run
-                        </ToolbarButton>
-                    )}
-
-                    <div style={{ width: 1, height: 20, background: 'var(--vscode-panel-border)', margin: '0 5px' }} />
-
-                    {/* Environment Selector */}
-                    {config && config.environments && (
+                {!isReadOnly && (
+                    <Toolbar>
+                        {/* Method */}
                         <ToolbarSelect
-                            value={config.activeEnvironment}
-                            onChange={(e) => onChangeEnvironment && onChangeEnvironment(e.target.value)}
-                            title="Active Environment"
-                            style={{ minWidth: 100 }}
+                            value={selectedRequest.method || 'POST'}
+                            onChange={(e) => onUpdateRequest({ ...selectedRequest, method: e.target.value })}
+                            title="HTTP Method"
                         >
-                            {Object.keys(config.environments).map(env => (
-                                <option key={env} value={env}>{env}</option>
-                            ))}
+                            <option value="POST">POST</option>
+                            <option value="GET">GET</option>
                         </ToolbarSelect>
-                    )}
-                </Toolbar>
+
+
+                        {/* URL */}
+                        <div style={{ flex: 1, minWidth: '150px' }}>
+                            <MonacoSingleLineInput
+                                value={selectedRequest.endpoint || defaultEndpoint || ''}
+                                onChange={(val) => onUpdateRequest({ ...selectedRequest, endpoint: val })}
+                                placeholder="Endpoint URL"
+                            />
+                        </div>
+
+                        {/* Content Type */}
+                        <ToolbarSelect
+                            value={selectedRequest.contentType || 'application/soap+xml'}
+                            onChange={(e) => onUpdateRequest({ ...selectedRequest, contentType: e.target.value })}
+                            title="Content Type"
+                        >
+                            <option value="text/xml">text/xml</option>
+                            <option value="application/soap+xml">application/soap+xml</option>
+                            <option value="application/xml">application/xml</option>
+                        </ToolbarSelect>
+
+                        {/* Actions */}
+                        <IconButton onClick={onReset} title="Revert to Default XML">
+                            <RotateCcw size={16} />
+                        </IconButton>
+
+                        {loading ? (
+                            <ToolbarButton onClick={onCancel} style={{ backgroundColor: 'var(--vscode-errorForeground)' }}>
+                                <Loader2 size={14} className="spin" /> Cancel
+                            </ToolbarButton>
+                        ) : (
+                            <ToolbarButton onClick={() => onExecute(selectedRequest.request)} title="Run Request" style={{ color: 'var(--vscode-testing-iconPassed)' }}>
+                                <Play size={14} /> Run
+                            </ToolbarButton>
+                        )}
+
+                        <div style={{ width: 1, height: 20, background: 'var(--vscode-panel-border)', margin: '0 5px' }} />
+
+                        {/* Environment Selector */}
+                        {config && config.environments && (
+                            <ToolbarSelect
+                                value={config.activeEnvironment}
+                                onChange={(e) => onChangeEnvironment && onChangeEnvironment(e.target.value)}
+                                title="Active Environment"
+                                style={{ minWidth: 100 }}
+                            >
+                                {Object.keys(config.environments).map(env => (
+                                    <option key={env} value={env}>{env}</option>
+                                ))}
+                            </ToolbarSelect>
+                        )}
+                    </Toolbar>
+                )}
 
                 <div style={{ flex: 1, display: 'flex', flexDirection: layoutMode === 'vertical' ? 'column' : 'row', overflow: 'hidden' }}>
                     <div style={{
@@ -322,7 +326,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                             <MonacoRequestEditor
                                 value={selectedRequest.request || ''}
                                 onChange={(val) => onUpdateRequest({ ...selectedRequest, request: val })}
-                                readOnly={loading}
+                                readOnly={loading || isReadOnly}
                                 language="xml"
                             />
                         )}

@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-import { ChevronRight, ChevronDown, Plus, Trash2, Globe, FileCode, Play, Save, FolderOpen, FolderPlus, Settings, HelpCircle, Eye, Clock } from 'lucide-react';
+import { ChevronRight, ChevronDown, Plus, Trash2, Globe, FileCode, Play, Save, FolderOpen, FolderPlus, Settings, HelpCircle, Eye, Clock, Square } from 'lucide-react';
 import { SoapUIInterface, SoapUIOperation, SoapUIRequest, SoapUIProject, WatcherEvent } from '../models';
 
 // Styled Components
@@ -166,6 +166,9 @@ interface SidebarProps {
     onToggleWatcher: () => void;
     watcherHistory: WatcherEvent[];
     onSelectWatcherEvent: (event: WatcherEvent) => void;
+    watcherRunning: boolean;
+    onStartWatcher: () => void;
+    onStopWatcher: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -182,7 +185,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     setResponse,
     handleContextMenu, deleteConfirm, backendConnected,
     onOpenSettings, onOpenHelp, savedProjects, workspaceDirty, showBackendStatus = true,
-    showWatcher, onToggleWatcher, watcherHistory, onSelectWatcherEvent
+    showWatcher, onToggleWatcher, watcherHistory, onSelectWatcherEvent, watcherRunning,
+    onStartWatcher, onStopWatcher
 }) => {
 
     const renderInterfaceList = (interfaces: SoapUIInterface[], isExplorer: boolean) => (
@@ -276,7 +280,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <ServiceItem key={event.id} onClick={() => onSelectWatcherEvent(event)}>
                         <Clock size={14} style={{ marginRight: 5 }} />
                         <div style={{ flex: 1 }}>
-                            <div>{event.timestampLabel}</div>
+                            <div style={{ fontWeight: 'bold' }}>{event.rootElementName || 'Unknown Operation'}</div>
+                            <div style={{ fontSize: '0.8em', color: 'var(--vscode-descriptionForeground)' }}>
+                                {event.timestampLabel}
+                            </div>
                             <div style={{ fontSize: '0.8em', color: 'var(--vscode-descriptionForeground)' }}>
                                 {event.responseContent ? 'Request & Response' : 'Request Pending...'}
                             </div>
@@ -297,10 +304,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     Projects
                 </SectionHeader>
                 <SectionHeader
-                    style={{ flex: 1, justifyContent: 'center', borderBottom: showWatcher ? '2px solid var(--vscode-progressBar-background)' : 'none', opacity: showWatcher ? 1 : 0.7 }}
+                    style={{ flex: 1, justifyContent: 'space-between', borderBottom: showWatcher ? '2px solid var(--vscode-progressBar-background)' : 'none', opacity: showWatcher ? 1 : 0.7 }}
                     onClick={() => { if (!showWatcher) onToggleWatcher(); }}
                 >
-                    <Eye size={14} style={{ marginRight: 5 }} /> Watcher
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <Eye size={16} style={{ marginRight: 5 }} />
+                        <span>Watcher</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', paddingRight: 5 }}>
+                        <HeaderButton onClick={(e) => { e.stopPropagation(); onStartWatcher(); }} title="Start Watcher" style={{ color: watcherRunning ? 'var(--vscode-testing-iconPassed)' : 'inherit' }}>
+                            <Play size={14} />
+                        </HeaderButton>
+                        <HeaderButton onClick={(e) => { e.stopPropagation(); onStopWatcher(); }} title="Stop Watcher" style={{ color: !watcherRunning ? 'var(--vscode-testing-iconFailed)' : 'inherit' }}>
+                            <Square size={14} />
+                        </HeaderButton>
+                    </div>
                 </SectionHeader>
             </div>
 

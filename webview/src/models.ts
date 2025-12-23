@@ -89,4 +89,5 @@ export interface WatcherEvent {
     responseFile: string;
     requestContent?: string;
     responseContent?: string;
+    rootElementName?: string;
 }
