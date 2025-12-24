@@ -50,14 +50,19 @@ export class ProxyService extends EventEmitter {
     }
 
     public updateConfig(newConfig: Partial<ProxyConfig>) {
+        console.log('[ProxyService] updateConfig called with:', newConfig);
         this.config = { ...this.config, ...newConfig };
+        console.log('[ProxyService] New config is:', this.config);
         if (this.isRunning) {
+            console.log('[ProxyService] Restarting proxy with new config...');
             this.stop();
             this.start();
         }
     }
 
     private ensureCert(): Promise<{ key: string, cert: string }> {
+        console.log('[ProxyService] ensureCert called');
+        // ...
         return new Promise((resolve, reject) => {
             const tempDir = os.tmpdir();
             this.certPath = path.join(tempDir, 'dirty-soap-proxy.cer');
@@ -98,9 +103,12 @@ export class ProxyService extends EventEmitter {
 
         try {
             const isHttpsTarget = this.config.targetUrl.trim().toLowerCase().startsWith('https');
+            console.log(`[ProxyService] Starting... Target: ${this.config.targetUrl}, isHttpsTarget: ${isHttpsTarget}`);
 
             if (isHttpsTarget) {
+                console.log('[ProxyService] Waiting for certs...');
                 const pems = await this.ensureCert();
+                console.log('[ProxyService] Certs loaded. Creating HTTPS server.');
                 this.server = https.createServer({ key: pems.key, cert: pems.cert }, this.handleRequest.bind(this));
             } else {
                 this.server = http.createServer(this.handleRequest.bind(this));

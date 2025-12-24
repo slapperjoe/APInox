@@ -110,6 +110,7 @@ export class WebviewController {
                 this._proxyService.stop();
                 break;
             case 'updateProxyConfig':
+                console.log('[WebviewController] Received updateProxyConfig:', message.config);
                 this._proxyService.updateConfig(message.config);
                 break;
             case 'selectConfigFile':
