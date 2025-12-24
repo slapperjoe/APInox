@@ -157,12 +157,26 @@ export class WebviewController {
                 this._panel.webview.postMessage({ command: 'configRestored', success: restoreResult.success });
                 break;
             case 'openCertificate':
-                const certPath = this._proxyService.getCertPath();
+                // Force generation if not running or missing
+                let certPath = this._proxyService.getCertPath();
+                console.log('[WebviewController] Initial cert path:', certPath);
+
+                if (!certPath || !fs.existsSync(certPath)) {
+                    try {
+                        console.log('[WebviewController] Cert missing. Forcing generation...');
+                        await this._proxyService.prepareCert();
+                        certPath = this._proxyService.getCertPath();
+                    } catch (e: any) {
+                        vscode.window.showErrorMessage('Failed to generate certificate: ' + e.message);
+                        return;
+                    }
+                }
+
                 console.log('[WebviewController] Opening certificate at:', certPath);
 
                 if (certPath) {
                     if (!fs.existsSync(certPath)) {
-                        console.error('[WebviewController] Certificate file not found at path:', certPath);
+                        console.error('[WebviewController] Certificate file still not found at path:', certPath);
                         vscode.window.showErrorMessage(`Certificate file missing at: ${certPath}`);
                         return;
                     }

@@ -109,6 +109,10 @@ export class ProxyService extends EventEmitter {
         });
     }
 
+    public async prepareCert() {
+        return this.ensureCert();
+    }
+
     public async start() {
         if (this.isRunning) return;
 
