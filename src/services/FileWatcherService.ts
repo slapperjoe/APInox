@@ -9,7 +9,8 @@ export interface WatcherEvent {
     responseFile: string;
     requestContent?: string;
     responseContent?: string;
-    rootElementName?: string;
+    requestOperation?: string;
+    responseOperation?: string;
 }
 
 export class FileWatcherService {
@@ -41,9 +42,10 @@ export class FileWatcherService {
         this.onUpdateCallback = callback;
     }
 
-    private extractRootElement(xml: string): string | undefined {
+    private extractOperationName(xml: string): string | undefined {
         try {
-            const match = xml.match(/<([a-zA-Z0-9_:-]+)(?:\s|>)/);
+            // matches <soap:Body> or <Body> then finds the next tag's name
+            const match = xml.match(/<(?:\w+:)?Body[^>]*>\s*<(?:\w+:)?(\w+)/i);
             return match ? match[1] : undefined;
         } catch (e) {
             return undefined;
@@ -84,6 +86,12 @@ export class FileWatcherService {
         return this.history;
     }
 
+    public clearHistory() {
+        this.history = [];
+        this.emitUpdate();
+        this.log('History cleared.');
+    }
+
     private watchFile(filePath: string, type: 'request' | 'response') {
         try {
             this.log(`Watching ${filePath}`);
@@ -113,7 +121,7 @@ export class FileWatcherService {
             const content = fs.readFileSync(this.requestPath, 'utf8');
             const now = new Date();
             const id = now.getTime().toString();
-            const rootName = this.extractRootElement(content);
+            const opName = this.extractOperationName(content);
 
             const event: WatcherEvent = {
                 id: id,
@@ -123,7 +131,7 @@ export class FileWatcherService {
                 responseFile: this.responsePath,
                 requestContent: content,
                 responseContent: undefined, // Waiting for response
-                rootElementName: rootName
+                requestOperation: opName
             };
 
             this.history.unshift(event); // Add to top
@@ -135,7 +143,7 @@ export class FileWatcherService {
             }
 
             this.emitUpdate();
-            this.log(`Captured Request Change (${id}) - ${rootName || 'Unknown Op'}`);
+            this.log(`Captured Request Change (${id}) - ${opName || 'Unknown Op'}`);
         } catch (e: any) {
             this.log(`Error reading request file: ${e.message}`);
         }
@@ -160,9 +168,10 @@ export class FileWatcherService {
 
             if (targetEvent) {
                 targetEvent.responseContent = content;
+                targetEvent.responseOperation = this.extractOperationName(content);
                 this.pendingRequestId = null; // Clear pending
                 this.emitUpdate();
-                this.log(`Captured Response Change for ${targetEvent.id}`);
+                this.log(`Captured Response Change for ${targetEvent.id} - ${targetEvent.responseOperation || 'Unknown'}`);
             } else {
                 // Orphan response? Create a new event just for it?
                 // For now, let's ignore or log orphan

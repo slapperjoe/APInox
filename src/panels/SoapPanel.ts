@@ -66,7 +66,8 @@ export class SoapPanel {
             this._fileWatcherService
         );
 
-        this._fileWatcherService.start();
+        // Watcher starts stopped by default.
+
 
         this._panel.webview.html = this._getWebviewContent(this._panel.webview, extensionUri);
 

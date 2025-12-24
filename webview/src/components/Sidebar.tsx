@@ -169,6 +169,7 @@ interface SidebarProps {
     watcherRunning: boolean;
     onStartWatcher: () => void;
     onStopWatcher: () => void;
+    onClearWatcher: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -186,7 +187,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     handleContextMenu, deleteConfirm, backendConnected,
     onOpenSettings, onOpenHelp, savedProjects, workspaceDirty, showBackendStatus = true,
     showWatcher, onToggleWatcher, watcherHistory, onSelectWatcherEvent, watcherRunning,
-    onStartWatcher, onStopWatcher
+    onStartWatcher, onStopWatcher, onClearWatcher
 }) => {
 
     const renderInterfaceList = (interfaces: SoapUIInterface[], isExplorer: boolean) => (
@@ -280,7 +281,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <ServiceItem key={event.id} onClick={() => onSelectWatcherEvent(event)}>
                         <Clock size={14} style={{ marginRight: 5 }} />
                         <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 'bold' }}>{event.rootElementName || 'Unknown Operation'}</div>
+                            <div style={{ fontWeight: 'bold' }}>
+                                {(() => {
+                                    const reqOp = event.requestOperation || 'Unknown';
+                                    const resOp = event.responseOperation;
+
+                                    if (!resOp) return reqOp;
+
+                                    const reqBase = reqOp.replace(/Request$/, '');
+                                    const resBase = resOp.replace(/Response$/, '');
+
+                                    if (reqBase === resBase) {
+                                        return reqBase; // "ListCountries"
+                                    } else {
+                                        return `${reqOp} - ${resOp}`;
+                                    }
+                                })()}
+                            </div>
                             <div style={{ fontSize: '0.8em', color: 'var(--vscode-descriptionForeground)' }}>
                                 {event.timestampLabel}
                             </div>
@@ -317,6 +334,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         </HeaderButton>
                         <HeaderButton onClick={(e) => { e.stopPropagation(); onStopWatcher(); }} title="Stop Watcher" style={{ color: !watcherRunning ? 'var(--vscode-testing-iconFailed)' : 'inherit' }}>
                             <Square size={14} />
+                        </HeaderButton>
+                        <HeaderButton onClick={(e) => { e.stopPropagation(); onClearWatcher(); }} title="Clear History" style={{ marginLeft: 5 }}>
+                            <Trash2 size={14} />
                         </HeaderButton>
                     </div>
                 </SectionHeader>

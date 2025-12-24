@@ -802,6 +802,10 @@ function App() {
                     setWatcherRunning(false);
                     bridge.sendMessage({ command: 'stopWatcher' });
                 }}
+                onClearWatcher={() => {
+                    setWatcherHistory([]);
+                    bridge.sendMessage({ command: 'clearWatcherHistory' });
+                }}
             />
 
             <WorkspaceLayout
