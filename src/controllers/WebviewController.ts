@@ -111,7 +111,12 @@ export class WebviewController {
                 break;
             case 'updateProxyConfig':
                 console.log('[WebviewController] Received updateProxyConfig:', message.config);
-                this._proxyService.updateConfig(message.config);
+                // Map frontend 'target' to backend 'targetUrl'
+                const proxyConfig = {
+                    port: message.config.port,
+                    targetUrl: message.config.target || message.config.targetUrl
+                };
+                this._proxyService.updateConfig(proxyConfig);
                 break;
             case 'selectConfigFile':
                 const uris = await vscode.window.showOpenDialog({

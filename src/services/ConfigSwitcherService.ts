@@ -74,10 +74,18 @@ export class ConfigSwitcherService {
             // 4. Write modified content
             fs.writeFileSync(filePath, newContent2, 'utf8');
 
+            let cleanOrigin = capturedUrl;
+            try {
+                if (capturedUrl) {
+                    const u = new URL(capturedUrl);
+                    cleanOrigin = u.origin;
+                }
+            } catch (e) { /* ignore invalid url, keep original */ }
+
             return {
                 success: true,
                 message: `Successfully injected proxy into ${matchCount} endpoints. Backup created.`,
-                originalUrl: capturedUrl // Return the first captured URL as the likely target
+                originalUrl: cleanOrigin // Return only the origin (https://host.com) without path
             };
 
         } catch (error: any) {
