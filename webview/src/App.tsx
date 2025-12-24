@@ -147,10 +147,16 @@ function App() {
     const [savedProjects, setSavedProjects] = useState<Set<string>>(new Set());
     const [workspaceDirty, setWorkspaceDirty] = useState(false);
 
-    // Watcher State
-    const [showWatcher, setShowWatcher] = useState(false);
+    // Watcher / Proxy State
+    const [activeView, setActiveView] = useState<'projects' | 'watcher' | 'proxy'>('projects');
     const [watcherHistory, setWatcherHistory] = useState<WatcherEvent[]>([]);
     const [watcherRunning, setWatcherRunning] = useState(false);
+
+    // Proxy State (Placeholders)
+    const [proxyHistory, setProxyHistory] = useState<WatcherEvent[]>([]); // Reusing WatcherEvent for now
+    const [proxyRunning, setProxyRunning] = useState(false);
+    const [proxyConfig, setProxyConfig] = useState({ port: 9000, target: 'http://localhost:8080' });
+    const [configPath, setConfigPath] = useState<string | null>(null);
 
     const startTimeRef = useRef<number>(0);
 
@@ -376,6 +382,19 @@ function App() {
                     break;
                 case 'watcherUpdate':
                     setWatcherHistory(message.history);
+                    break;
+                case 'proxyLog':
+                    setProxyHistory(prev => [message.event, ...prev]);
+                    break;
+                case 'proxyStatus':
+                    setProxyRunning(message.running);
+                    break;
+                case 'configFileSelected':
+                    setConfigPath(message.path);
+                    break;
+                case 'configSwitched':
+                case 'configRestored':
+                    // Handled by backend notification for now
                     break;
             }
         };
@@ -789,8 +808,10 @@ function App() {
                 onOpenHelp={() => setShowHelp(true)}
                 workspaceDirty={workspaceDirty}
                 showBackendStatus={!isVsCode()}
-                showWatcher={showWatcher}
-                onToggleWatcher={() => setShowWatcher(!showWatcher)}
+
+                activeView={activeView}
+                onChangeView={setActiveView}
+
                 watcherHistory={watcherHistory}
                 onSelectWatcherEvent={handleSelectWatcherEvent}
                 watcherRunning={watcherRunning}
@@ -805,6 +826,37 @@ function App() {
                 onClearWatcher={() => {
                     setWatcherHistory([]);
                     bridge.sendMessage({ command: 'clearWatcherHistory' });
+                }}
+
+                proxyRunning={proxyRunning}
+                onStartProxy={() => {
+                    bridge.sendMessage({ command: 'startProxy' });
+                    // Optimistic update
+                    setProxyRunning(true);
+                }}
+                onStopProxy={() => {
+                    bridge.sendMessage({ command: 'stopProxy' });
+                    setProxyRunning(false);
+                }}
+                proxyConfig={proxyConfig}
+                onUpdateProxyConfig={(config) => {
+                    setProxyConfig(config);
+                    bridge.sendMessage({ command: 'updateProxyConfig', config });
+                }}
+                proxyHistory={proxyHistory}
+                onClearProxy={() => setProxyHistory([])}
+                configPath={configPath}
+                onSelectConfigFile={() => bridge.sendMessage({ command: 'selectConfigFile' })}
+                onInjectProxy={() => {
+                    if (configPath) {
+                        const proxyUrl = `http://localhost:${proxyConfig.port}`;
+                        bridge.sendMessage({ command: 'injectProxy', path: configPath, proxyUrl });
+                    }
+                }}
+                onRestoreProxy={() => {
+                    if (configPath) {
+                        bridge.sendMessage({ command: 'restoreProxy', path: configPath });
+                    }
                 }}
             />
 

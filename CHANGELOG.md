@@ -1,6 +1,10 @@
 # Changelog
 
 
+## [0.6.0] - 2025-12-24
+### Auto-Generated Changes
+- feat: Implement Proxy and Config Switcher Services - Added ProxyService to handle HTTP requests and responses including logging and error handling. - Introduced ConfigSwitcherService for injecting proxy URLs into configuration files and restoring original configurations. - Updated SoapPanel to integrate ProxyService and ConfigSwitcherService. - Enhanced App component to manage proxy state and history. - Modified Sidebar component to include proxy controls and navigation. - Updated WatcherEvent model to accommodate proxy-related fields.
+
 ## [0.5.4] - 2025-12-24
 ### Auto-Generated Changes
 - feat: Update Sidebar and WorkspaceLayout components for improved watcher controls and response display

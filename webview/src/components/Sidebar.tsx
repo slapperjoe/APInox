@@ -1,107 +1,98 @@
 import React from 'react';
 import styled from 'styled-components';
-import { ChevronRight, ChevronDown, Plus, Trash2, Globe, FileCode, Play, Save, FolderOpen, FolderPlus, Settings, HelpCircle, Eye, Clock, Square } from 'lucide-react';
+import { ChevronRight, ChevronDown, Plus, Trash2, Globe, FileCode, Play, Save, FolderOpen, FolderPlus, Settings, HelpCircle, Eye, Clock, Square, LayoutGrid, Network } from 'lucide-react';
 import { SoapUIInterface, SoapUIOperation, SoapUIRequest, SoapUIProject, WatcherEvent } from '../models';
 
 // Styled Components
-const SidebarContainer = styled.div`
-  width: 300px;
-  background-color: var(--vscode-sideBar-background);
-  border-right: 1px solid var(--vscode-sideBarSectionHeader-border);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-`;
-
 const DirtyMarker = styled.span`
-  color: var(--vscode-charts-yellow);
-  margin-left: 5px;
-  font-size: 1.2em;
-  line-height: 0.5;
+    color: var(--vscode-charts-yellow);
+    margin-left: 5px;
+    font-size: 1.2em;
+    line-height: 0.5;
 `;
 
 const SectionHeader = styled.div`
-  padding: 5px 10px;
-  font-weight: bold;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  user-select: none;
-  &:hover {
-    background-color: var(--vscode-list-hoverBackground);
-  }
+    padding: 5px 10px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    user-select: none;
+    &:hover {
+        background-color: var(--vscode-list-hoverBackground);
+    }
 `;
 
 const SectionTitle = styled.div`
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 `;
 
 const ServiceItem = styled.div`
-  padding: 5px 10px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  &:hover {
-    background-color: var(--vscode-list-hoverBackground);
-  }
+    padding: 5px 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    &:hover {
+        background-color: var(--vscode-list-hoverBackground);
+    }
 `;
 
 const OperationItem = styled.div<{ active?: boolean }>`
-  padding: 5px 10px;
-  padding-left: 20px;
-  cursor: pointer;
-  background-color: ${props => props.active ? 'var(--vscode-list-activeSelectionBackground)' : 'transparent'};
-  color: ${props => props.active ? 'var(--vscode-list-activeSelectionForeground)' : 'inherit'};
-  display: flex;
-  align-items: center;
-  &:hover {
-    background-color: ${props => props.active ? 'var(--vscode-list-activeSelectionBackground)' : 'var(--vscode-list-hoverBackground)'};
-  }
+    padding: 5px 10px;
+    padding-left: 20px;
+    cursor: pointer;
+    background-color: ${props => props.active ? 'var(--vscode-list-activeSelectionBackground)' : 'transparent'};
+    color: ${props => props.active ? 'var(--vscode-list-activeSelectionForeground)' : 'inherit'};
+    display: flex;
+    align-items: center;
+    &:hover {
+        background-color: ${props => props.active ? 'var(--vscode-list-activeSelectionBackground)' : 'var(--vscode-list-hoverBackground)'};
+    }
 `;
 
 const RequestItem = styled.div<{ active?: boolean }>`
-  padding: 5px 10px;
-  padding-left: 45px;
-  cursor: pointer;
-  font-size: 0.9em;
-  background-color: ${props => props.active ? 'var(--vscode-list-activeSelectionBackground)' : 'transparent'};
-  color: ${props => props.active ? 'var(--vscode-list-activeSelectionForeground)' : 'inherit'};
-  display: flex;
-  align-items: center;
-  &:hover {
-    background-color: ${props => props.active ? 'var(--vscode-list-activeSelectionBackground)' : 'var(--vscode-list-hoverBackground)'};
-  }
+    padding: 5px 10px;
+    padding-left: 45px;
+    cursor: pointer;
+    font-size: 0.9em;
+    background-color: ${props => props.active ? 'var(--vscode-list-activeSelectionBackground)' : 'transparent'};
+    color: ${props => props.active ? 'var(--vscode-list-activeSelectionForeground)' : 'inherit'};
+    display: flex;
+    align-items: center;
+    &:hover {
+        background-color: ${props => props.active ? 'var(--vscode-list-activeSelectionBackground)' : 'var(--vscode-list-hoverBackground)'};
+    }
 `;
 
 const HeaderButton = styled.button`
-  background: transparent;
-  border: none;
-  color: var(--vscode-icon-foreground);
-  cursor: pointer;
-  padding: 2px;
-  margin-left: 5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  &:hover {
-    background-color: var(--vscode-toolbar-hoverBackground);
-    border-radius: 3px;
-  }
+    background: transparent;
+    border: none;
+    color: var(--vscode-icon-foreground);
+    cursor: pointer;
+    padding: 2px;
+    margin-left: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    &:hover {
+        background-color: var(--vscode-toolbar-hoverBackground);
+        border-radius: 3px;
+    }
 `;
 
 const Input = styled.input`
-  background-color: var(--vscode-input-background);
-  color: var(--vscode-input-foreground);
-  border: 1px solid var(--vscode-input-border);
-  padding: 4px;
-  flex: 1;
-  outline: none;
-  &:focus {
-    border-color: var(--vscode-focusBorder);
-  }
+    background-color: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    border: 1px solid var(--vscode-input-border);
+    padding: 4px;
+    flex: 1;
+    outline: none;
+    &:focus {
+        border-color: var(--vscode-focusBorder);
+    }
 `;
 
 interface SidebarProps {
@@ -161,15 +152,30 @@ interface SidebarProps {
     workspaceDirty?: boolean;
     showBackendStatus?: boolean;
 
+    // View State
+    activeView: 'projects' | 'watcher' | 'proxy';
+    onChangeView: (view: 'projects' | 'watcher' | 'proxy') => void;
+
     // Watcher
-    showWatcher: boolean;
-    onToggleWatcher: () => void;
     watcherHistory: WatcherEvent[];
     onSelectWatcherEvent: (event: WatcherEvent) => void;
     watcherRunning: boolean;
     onStartWatcher: () => void;
     onStopWatcher: () => void;
     onClearWatcher: () => void;
+
+    // Proxy
+    proxyRunning: boolean;
+    onStartProxy: () => void;
+    onStopProxy: () => void;
+    proxyConfig: { port: number, target: string };
+    onUpdateProxyConfig: (config: { port: number, target: string }) => void;
+    proxyHistory: WatcherEvent[];
+    onClearProxy: () => void;
+    configPath: string | null;
+    onSelectConfigFile: () => void;
+    onInjectProxy: () => void;
+    onRestoreProxy: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -186,8 +192,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
     setResponse,
     handleContextMenu, deleteConfirm, backendConnected,
     onOpenSettings, onOpenHelp, savedProjects, workspaceDirty, showBackendStatus = true,
-    showWatcher, onToggleWatcher, watcherHistory, onSelectWatcherEvent, watcherRunning,
-    onStartWatcher, onStopWatcher, onClearWatcher
+    activeView, onChangeView, watcherHistory, onSelectWatcherEvent, watcherRunning,
+    onStartWatcher, onStopWatcher, onClearWatcher,
+    proxyRunning, onStartProxy, onStopProxy, proxyConfig, onUpdateProxyConfig, proxyHistory, onClearProxy,
+    configPath, onSelectConfigFile, onInjectProxy, onRestoreProxy
 }) => {
 
     const renderInterfaceList = (interfaces: SoapUIInterface[], isExplorer: boolean) => (
@@ -274,15 +282,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div style={{ color: 'var(--vscode-descriptionForeground)', textAlign: 'center', marginTop: 20 }}>
                     {watcherRunning ? (
                         <>
-                            Watching C:\temp\requestXML.xml...
-                            <br />
-                            Waiting for events.
+                            Watching C:\temp\requestXML.xml...<br />Waiting for events.
                         </>
                     ) : (
                         <>
-                            Watcher is stopped.
-                            <br />
-                            Press Play to begin.
+                            Watcher is stopped.<br />Press Play to begin.
                         </>
                     )}
                 </div>
@@ -295,22 +299,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 {(() => {
                                     const reqOp = event.requestOperation || 'Unknown';
                                     const resOp = event.responseOperation;
-
                                     if (!resOp) return reqOp;
-
                                     const reqBase = reqOp.replace(/Request$/, '');
                                     const resBase = resOp.replace(/Response$/, '');
-
-                                    if (reqBase === resBase) {
-                                        return reqBase; // "ListCountries"
-                                    } else {
-                                        return `${reqOp} - ${resOp}`;
-                                    }
+                                    if (reqBase === resBase) return reqBase;
+                                    return `${reqOp} - ${resOp} `;
                                 })()}
                             </div>
-                            <div style={{ fontSize: '0.8em', color: 'var(--vscode-descriptionForeground)' }}>
-                                {event.timestampLabel}
-                            </div>
+                            <div style={{ fontSize: '0.8em', color: 'var(--vscode-descriptionForeground)' }}>{event.timestampLabel}</div>
                             <div style={{ fontSize: '0.8em', color: 'var(--vscode-descriptionForeground)' }}>
                                 {event.responseContent ? 'Request & Response' : 'Request Pending...'}
                             </div>
@@ -321,47 +317,126 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
     );
 
-    return (
-        <SidebarContainer>
-            <div style={{ display: 'flex', borderBottom: '1px solid var(--vscode-sideBarSectionHeader-border)' }}>
-                <SectionHeader
-                    style={{ flex: 1, justifyContent: 'center', borderBottom: !showWatcher ? '2px solid var(--vscode-progressBar-background)' : 'none', opacity: !showWatcher ? 1 : 0.7 }}
-                    onClick={() => { if (showWatcher) onToggleWatcher(); }}
-                >
-                    Projects
-                </SectionHeader>
-                <SectionHeader
-                    style={{ flex: 1, justifyContent: 'space-between', borderBottom: showWatcher ? '2px solid var(--vscode-progressBar-background)' : 'none', opacity: showWatcher ? 1 : 0.7 }}
-                    onClick={() => { if (!showWatcher) onToggleWatcher(); }}
-                >
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                        <Eye size={16} style={{ marginRight: 5 }} />
-                        <span>Watcher</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', paddingRight: 5 }}>
-                        <HeaderButton
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                if (watcherRunning) onStopWatcher();
-                                else onStartWatcher();
-                            }}
-                            title={watcherRunning ? "Stop Watcher" : "Start Watcher"}
-                            style={{ color: watcherRunning ? 'var(--vscode-testing-iconPassed)' : 'inherit' }}
-                        >
-                            {watcherRunning ? <Square size={14} /> : <Play size={14} />}
-                        </HeaderButton>
-                        <HeaderButton onClick={(e) => { e.stopPropagation(); onClearWatcher(); }} title="Clear History" style={{ marginLeft: 5 }}>
-                            <Trash2 size={14} />
-                        </HeaderButton>
-                    </div>
-                </SectionHeader>
+    const renderProxyList = () => (
+        <div style={{ padding: 20, color: 'var(--vscode-descriptionForeground)' }}>
+            <div style={{ textAlign: 'center', marginBottom: 20 }}>
+                <h3>Dirty Proxy</h3>
+                <p>Port: {proxyConfig.port}</p>
+                <p>Target: {proxyConfig.target}</p>
+                <p>Status: {proxyRunning ? 'Running' : 'Stopped'}</p>
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 10 }}>
+                    {!proxyRunning ? (
+                        <HeaderButton onClick={onStartProxy}>Start</HeaderButton>
+                    ) : (
+                        <HeaderButton onClick={onStopProxy}>Stop</HeaderButton>
+                    )}
+                    <HeaderButton onClick={onClearProxy} title="Clear History"><Trash2 size={16} /></HeaderButton>
+                    <HeaderButton onClick={() => onUpdateProxyConfig({ ...proxyConfig, port: proxyConfig.port + 1 })}>Config</HeaderButton>
+                </div>
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto' }}>
-                {showWatcher ? renderWatcherList() : (
-                    <>
+            <div style={{ borderTop: '1px solid var(--vscode-panel-border)', paddingTop: 15, marginTop: 15 }}>
+                <h4 style={{ margin: '0 0 10px 0' }}>Config Switcher</h4>
+                <div style={{
+                    marginBottom: 10,
+                    fontSize: '0.85em',
+                    wordBreak: 'break-all',
+                    padding: '5px',
+                    backgroundColor: 'var(--vscode-editor-inactiveSelectionBackground)',
+                    borderRadius: '3px'
+                }}>
+                    {configPath ? configPath : 'No web.config selected'}
+                </div>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <HeaderButton onClick={onSelectConfigFile} title="Select web.config">
+                        <FolderOpen size={14} style={{ marginRight: 5 }} /> Select
+                    </HeaderButton>
+                    {configPath && (
+                        <>
+                            <HeaderButton onClick={onInjectProxy} title="Inject Proxy Address">
+                                <Network size={14} style={{ marginRight: 5 }} /> Inject
+                            </HeaderButton>
+                            <HeaderButton onClick={onRestoreProxy} title="Restore Original Config">
+                                <FileCode size={14} style={{ marginRight: 5 }} /> Restore
+                            </HeaderButton>
+                        </>
+                    )}
+                </div>
+            </div>
+
+            <div style={{ marginTop: 20 }}>
+                <h4 style={{ margin: '0 0 10px 0' }}>Live Traffic</h4>
+                {proxyHistory.length === 0 ? (
+                    <div style={{ textAlign: 'center', marginTop: 10 }}>
+                        Waiting for requests...
+                    </div>
+                ) : (
+                    proxyHistory.map((event, i) => (
+                        <ServiceItem
+                            key={i}
+                            style={{ paddingLeft: 10 }}
+                            onClick={() => onSelectWatcherEvent(event)}
+                        >
+                            <div style={{ flex: 1, fontSize: '0.9em' }}>
+                                <div style={{ fontWeight: 'bold' }}>{event.method} {event.url}</div>
+                                <div>{event.status ? `Status: ${event.status}` : 'Pending...'}</div>
+                            </div>
+                        </ServiceItem>
+                    ))
+                )}
+            </div>
+        </div>
+    );
+
+    // Sidebar Navigation Rail Item
+    const NavItem = ({ icon: Icon, active, onClick, title }: any) => (
+        <div
+            onClick={onClick}
+            title={title}
+            style={{
+                padding: '10px 0',
+                cursor: 'pointer',
+                display: 'flex',
+                justifyContent: 'center',
+                color: active ? 'var(--vscode-activityBar-foreground)' : 'var(--vscode-activityBar-inactiveForeground)',
+                borderLeft: active ? '2px solid var(--vscode-activityBar-activeBorder)' : '2px solid transparent',
+                backgroundColor: active ? 'var(--vscode-list-activeSelectionBackground)' : 'transparent' // Subtle highlight
+            }}
+        >
+            <Icon size={24} strokeWidth={active ? 2.5 : 2} />
+        </div>
+    );
+
+    return (
+        <div style={{ display: 'flex', height: '100%', flexDirection: 'row' }}>
+            {/* Left Rail */}
+            <div style={{
+                width: 50,
+                backgroundColor: 'var(--vscode-activityBar-background)',
+                borderRight: '1px solid var(--vscode-activityBar-border)',
+                display: 'flex',
+                flexDirection: 'column',
+                paddingTop: 10
+            }}>
+                <NavItem icon={LayoutGrid} active={activeView === 'projects'} onClick={() => onChangeView('projects')} title="Projects" />
+                <NavItem icon={Eye} active={activeView === 'watcher'} onClick={() => onChangeView('watcher')} title="File Watcher" />
+                <NavItem icon={Network} active={activeView === 'proxy'} onClick={() => onChangeView('proxy')} title="Dirty Proxy" />
+
+                <div style={{ flex: 1 }}></div>
+
+                <div style={{ paddingBottom: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+                    <NavItem icon={Settings} onClick={onOpenSettings} title="Settings" />
+                    <NavItem icon={HelpCircle} onClick={onOpenHelp} title="Help" />
+                </div>
+            </div>
+
+            {/* Content Area */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', backgroundColor: 'var(--vscode-sideBar-background)' }}>
+
+                {/* View Headers */}
+                {activeView === 'projects' && (
+                    <div style={{ borderBottom: '1px solid var(--vscode-sideBarSectionHeader-border)' }}>
                         <SectionHeader onClick={toggleExplorerExpand}>
-                            {/* ... Existing Explorer Header content ... */}
                             <SectionTitle style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                                 {explorerExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />} WSDL Explorer
                                 {showBackendStatus && (
@@ -384,140 +459,109 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 </>
                             )}
                         </SectionHeader>
-
-                        {explorerExpanded && (
-                            <>
-                                <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                    {/* ... Input Type Buttons ... */}
-                                    <div style={{ display: 'flex', gap: 5 }}>
-                                        <HeaderButton
-                                            onClick={() => setInputType('url')}
-                                            title="Load from URL"
-                                            style={{ flex: 1, textAlign: 'center', backgroundColor: inputType === 'url' ? 'var(--vscode-button-background)' : 'transparent', color: inputType === 'url' ? 'var(--vscode-button-foreground)' : 'inherit', border: '1px solid var(--vscode-button-border)', marginLeft: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}
-                                        >
-                                            <Globe size={14} /> URL
-                                        </HeaderButton>
-                                        <HeaderButton
-                                            onClick={() => setInputType('file')}
-                                            title="Load from File"
-                                            style={{ flex: 1, textAlign: 'center', backgroundColor: inputType === 'file' ? 'var(--vscode-button-background)' : 'transparent', color: inputType === 'file' ? 'var(--vscode-button-foreground)' : 'inherit', border: '1px solid var(--vscode-button-border)', marginLeft: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}
-                                        >
-                                            <FileCode size={14} /> File
-                                        </HeaderButton>
-                                    </div>
-
-                                    {inputType === 'url' ? (
-                                        <div style={{ display: 'flex', gap: 5 }}>
-                                            <Input
-                                                value={wsdlUrl}
-                                                onChange={(e) => setWsdlUrl(e.target.value)}
-                                                placeholder="WSDL URL"
-                                            />
-                                            <HeaderButton onClick={loadWsdl} title="Load WSDL" style={{ border: '1px solid var(--vscode-button-border)', margin: 0, display: 'flex', alignItems: 'center' }}>
-                                                <Play size={14} />
-                                            </HeaderButton>
-                                        </div>
-                                    ) : (
-                                        <div style={{ display: 'flex', gap: 5 }}>
-                                            <HeaderButton onClick={pickLocalWsdl} title="Select Local WSDL" style={{ flex: 1, textAlign: 'center', border: '1px solid var(--vscode-button-border)', margin: 0 }}>
-                                                Select File
-                                            </HeaderButton>
-                                            {selectedFile && <HeaderButton onClick={loadWsdl} title="Load WSDL" style={{ border: '1px solid var(--vscode-button-border)', margin: 0, display: 'flex', alignItems: 'center' }}>
-                                                <Play size={14} />
-                                            </HeaderButton>}
-                                        </div>
-                                    )}
-
-                                    {selectedFile && inputType === 'file' && (
-                                        <div style={{ fontSize: '0.8em', color: 'var(--vscode-descriptionForeground)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                            {selectedFile}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {downloadStatus && (
-                                    <div style={{ padding: '5px 10px', fontSize: '0.8em', color: 'var(--vscode-descriptionForeground)' }}>
-                                        {downloadStatus.map((f, i) => (
-                                            <div key={i} style={{ wordBreak: 'break-all' }}>• {f}</div>
-                                        ))}
-                                    </div>
-                                )}
-
-                                {renderInterfaceList(exploredInterfaces, true)}
-
-                                {exploredInterfaces.length > 0 && (
-                                    <div style={{ height: 10 }}></div>
-                                )}
-                            </>
-                        )}
-
-                        <div style={{ borderTop: '1px solid var(--vscode-sideBarSectionHeader-border)', marginTop: 10 }}></div>
-
-                        <div style={{ padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
-                            <div style={{ fontWeight: 'bold' }}>
-                                Workspace
-                                {workspaceDirty && <DirtyMarker>●</DirtyMarker>}
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center' }}>
-                                <HeaderButton onClick={onAddProject} title="New Project">
-                                    <Plus size={16} />
-                                </HeaderButton>
-                                <HeaderButton onClick={saveWorkspace} title="Save Workspace">
-                                    <Save size={16} />
-                                </HeaderButton>
-                                <HeaderButton onClick={openWorkspace} title="Open Workspace">
-                                    <FolderOpen size={16} />
-                                </HeaderButton>
-                                <div style={{ width: 10 }}></div>
-                                <HeaderButton onClick={loadProject} title="Add Project to Workspace">
-                                    <FolderPlus size={16} />
-                                </HeaderButton>
-                            </div>
-                        </div>
-                        {projects.map((proj, pIdx) => (
-                            <div key={proj.id || pIdx}>
-                                <SectionHeader
-                                    onClick={() => toggleProjectExpand(proj.name)}
-                                    onContextMenu={(e) => handleContextMenu(e, 'project', proj)}
-                                >
-                                    <SectionTitle style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
-                                        <span style={{ flexShrink: 0 }}>{(proj as any).expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</span>
-                                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                            Project: {proj.name || (proj as any).fileName}
-                                            {proj.dirty && <DirtyMarker>●</DirtyMarker>}
-                                        </span>
-                                    </SectionTitle>
-                                    <HeaderButton onClick={(e) => { e.stopPropagation(); saveProject(proj); }} title="Save Project" style={{ color: savedProjects.has(proj.name) ? 'var(--vscode-testing-iconPassed)' : 'inherit' }}>
-                                        <Save size={16} />
-                                    </HeaderButton>
-                                    <HeaderButton onClick={(e) => {
-                                        e.stopPropagation();
-                                        closeProject(proj.name);
-                                    }} title={deleteConfirm === proj.name ? "Click again to confirm delete" : "Close Project"}
-                                        style={{ color: deleteConfirm === proj.name ? 'var(--vscode-errorForeground)' : 'inherit', display: 'flex', alignItems: 'center' }}>
-                                        {deleteConfirm === proj.name ? 'Confirm?' : <Trash2 size={16} />}
-                                    </HeaderButton>
-                                </SectionHeader>
-                                {(proj as any).expanded && (
-                                    <>
-                                        {renderInterfaceList(proj.interfaces, false)}
-                                    </>
-                                )}
-                            </div>
-                        ))}
-                    </>
+                        {/* Render Explorer Content logic moved below */}
+                    </div>
                 )}
-            </div>
 
-            {/* Settings & Help Footer */}
-            <div style={{ padding: '10px', borderTop: '1px solid var(--vscode-sideBarSectionHeader-border)', display: 'flex', gap: 5 }}>
-                <HeaderButton onClick={onOpenSettings} title="Settings" style={{ flex: 1, justifyContent: 'center', padding: 5, border: '1px solid var(--vscode-button-border)' }}>
-                    <Settings size={14} style={{ marginRight: 5 }} /> Settings
-                </HeaderButton>
-                <HeaderButton onClick={onOpenHelp} title="Help" style={{ flex: 1, justifyContent: 'center', padding: 5, border: '1px solid var(--vscode-button-border)' }}>
-                    <HelpCircle size={14} style={{ marginRight: 5 }} /> Help
-                </HeaderButton>
+                {activeView === 'watcher' && (
+                    <div style={{ display: 'flex', borderBottom: '1px solid var(--vscode-sideBarSectionHeader-border)', padding: '5px 10px', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ fontWeight: 'bold' }}>File Watcher</div>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <HeaderButton
+                                onClick={(e) => { e.stopPropagation(); if (watcherRunning) onStopWatcher(); else onStartWatcher(); }}
+                                title={watcherRunning ? "Stop Watcher" : "Start Watcher"}
+                                style={{ color: watcherRunning ? 'var(--vscode-testing-iconPassed)' : 'inherit' }}
+                            >
+                                {watcherRunning ? <Square size={14} /> : <Play size={14} />}
+                            </HeaderButton>
+                            <HeaderButton onClick={(e) => { e.stopPropagation(); onClearWatcher(); }} title="Clear History" style={{ marginLeft: 5 }}>
+                                <Trash2 size={14} />
+                            </HeaderButton>
+                        </div>
+                    </div>
+                )}
+
+                {activeView === 'proxy' && (
+                    <div style={{ display: 'flex', borderBottom: '1px solid var(--vscode-sideBarSectionHeader-border)', padding: '5px 10px', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ fontWeight: 'bold' }}>Dirty Proxy</div>
+                    </div>
+                )}
+
+                {/* Main Content Body */}
+                <div style={{ flex: 1, overflowY: 'auto' }}>
+                    {activeView === 'proxy' && renderProxyList()}
+
+                    {activeView === 'watcher' && renderWatcherList()}
+
+                    {activeView === 'projects' && (
+                        <>
+                            {explorerExpanded && (
+                                <div style={{ borderBottom: '1px solid var(--vscode-sideBarSectionHeader-border)' }}>
+                                    <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                        {/* Input Buttons */}
+                                        <div style={{ display: 'flex', gap: 5 }}>
+                                            <HeaderButton onClick={() => setInputType('url')} title="Load from URL"
+                                                style={{ flex: 1, textAlign: 'center', backgroundColor: inputType === 'url' ? 'var(--vscode-button-background)' : 'transparent', color: inputType === 'url' ? 'var(--vscode-button-foreground)' : 'inherit', border: '1px solid var(--vscode-button-border)', marginLeft: 0, gap: 5, justifyContent: 'center' }}>
+                                                <Globe size={14} /> URL
+                                            </HeaderButton>
+                                            <HeaderButton onClick={() => setInputType('file')} title="Load from File"
+                                                style={{ flex: 1, textAlign: 'center', backgroundColor: inputType === 'file' ? 'var(--vscode-button-background)' : 'transparent', color: inputType === 'file' ? 'var(--vscode-button-foreground)' : 'inherit', border: '1px solid var(--vscode-button-border)', marginLeft: 0, gap: 5, justifyContent: 'center' }}>
+                                                <FileCode size={14} /> File
+                                            </HeaderButton>
+                                        </div>
+                                        {/* Input Fields */}
+                                        {inputType === 'url' ? (
+                                            <div style={{ display: 'flex', gap: 5 }}>
+                                                <Input value={wsdlUrl} onChange={(e) => setWsdlUrl(e.target.value)} placeholder="WSDL URL" />
+                                                <HeaderButton onClick={loadWsdl} title="Load WSDL" style={{ border: '1px solid var(--vscode-button-border)', margin: 0 }}><Play size={14} /></HeaderButton>
+                                            </div>
+                                        ) : (
+                                            <div style={{ display: 'flex', gap: 5 }}>
+                                                <HeaderButton onClick={pickLocalWsdl} title="Select Local WSDL" style={{ flex: 1, textAlign: 'center', border: '1px solid var(--vscode-button-border)', margin: 0 }}>Select File</HeaderButton>
+                                                {selectedFile && <HeaderButton onClick={loadWsdl} title="Load WSDL" style={{ border: '1px solid var(--vscode-button-border)', margin: 0 }}><Play size={14} /></HeaderButton>}
+                                            </div>
+                                        )}
+                                        {selectedFile && inputType === 'file' && <div style={{ fontSize: '0.8em', color: 'var(--vscode-descriptionForeground)' }}>{selectedFile}</div>}
+                                    </div>
+                                    {downloadStatus && <div style={{ padding: '0 10px 5px', fontSize: '0.8em' }}>{downloadStatus.map((f, i) => <div key={i}>• {f}</div>)}</div>}
+                                    {renderInterfaceList(exploredInterfaces, true)}
+                                    {exploredInterfaces.length > 0 && <div style={{ height: 10 }}></div>}
+                                </div>
+                            )}
+
+                            <div style={{ padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
+                                <div style={{ fontWeight: 'bold' }}>Workspace {workspaceDirty && <DirtyMarker>●</DirtyMarker>}</div>
+                                <div style={{ display: 'flex', alignItems: 'center' }}>
+                                    <HeaderButton onClick={onAddProject} title="New Project"><Plus size={16} /></HeaderButton>
+                                    <HeaderButton onClick={saveWorkspace} title="Save Workspace"><Save size={16} /></HeaderButton>
+                                    <HeaderButton onClick={openWorkspace} title="Open Workspace"><FolderOpen size={16} /></HeaderButton>
+                                    <div style={{ width: 10 }}></div>
+                                    <HeaderButton onClick={loadProject} title="Add Project"><FolderPlus size={16} /></HeaderButton>
+                                </div>
+                            </div>
+                            {projects.map((proj, pIdx) => (
+                                <div key={proj.id || pIdx}>
+                                    <SectionHeader onClick={() => toggleProjectExpand(proj.name)} onContextMenu={(e) => handleContextMenu(e, 'project', proj)}>
+                                        <SectionTitle style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                            {(proj as any).expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                Project: {proj.name || (proj as any).fileName} {proj.dirty && <DirtyMarker>●</DirtyMarker>}
+                                            </span>
+                                        </SectionTitle>
+                                        <HeaderButton onClick={(e) => { e.stopPropagation(); saveProject(proj); }} title="Save Project" style={{ color: savedProjects.has(proj.name) ? 'var(--vscode-testing-iconPassed)' : 'inherit' }}>
+                                            <Save size={16} />
+                                        </HeaderButton>
+                                        <HeaderButton onClick={(e) => { e.stopPropagation(); closeProject(proj.name); }} title="Close">
+                                            {deleteConfirm === proj.name ? 'Confirm?' : <Trash2 size={16} />}
+                                        </HeaderButton>
+                                    </SectionHeader>
+                                    {(proj as any).expanded && renderInterfaceList(proj.interfaces, false)}
+                                </div>
+                            ))}
+                        </>
+                    )}
+                </div>
             </div>
-        </SidebarContainer>
+        </div>
     );
 };

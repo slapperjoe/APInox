@@ -29,7 +29,8 @@ try {
     }
 
     // 3. Git Stage
-    execSync('git add package.json package-lock.json CHANGELOG.md', { stdio: 'inherit' });
+    console.log('Staging all changes...');
+    execSync('git add .', { stdio: 'inherit' });
 
     // 4. Git Commit
     const packageJson = require('../package.json');
