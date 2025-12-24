@@ -148,6 +148,21 @@ export class WebviewController {
                 }
                 this._panel.webview.postMessage({ command: 'configRestored', success: restoreResult.success });
                 break;
+            case 'openCertificate':
+                const certPath = this._proxyService.getCertPath();
+                if (certPath) {
+                    try {
+                        await vscode.env.openExternal(vscode.Uri.file(certPath));
+                        vscode.window.showInformationMessage(
+                            "Certificate opened. To trust this proxy, install it to 'Trusted Root Certification Authorities' in the Windows Certificate Import Wizard."
+                        );
+                    } catch (err: any) {
+                        vscode.window.showErrorMessage('Failed to open certificate: ' + err.message);
+                    }
+                } else {
+                    vscode.window.showWarningMessage('No certificate generated yet. Start the proxy with an HTTPS target first.');
+                }
+                break;
         }
     }
 
