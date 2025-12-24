@@ -7,7 +7,7 @@ export default defineConfig({
     base: './',
     build: {
         outDir: '../webview-build',
-        assetsInlineLimit: 524288, // Inline assets up to 512kb (Forces mascot to base64)
+        assetsInlineLimit: 1048576, // Inline assets up to 1MB (Mascot is ~635KB)
         minify: true,
         sourcemap: true,
         rollupOptions: {
