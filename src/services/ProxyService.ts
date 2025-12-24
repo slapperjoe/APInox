@@ -49,12 +49,23 @@ export class ProxyService extends EventEmitter {
         this.config = initialConfig;
     }
 
+    private logger: (msg: string) => void = console.log;
+
+    public setLogger(logger: (msg: string) => void) {
+        this.logger = logger;
+    }
+
+    private logDebug(msg: string) {
+        this.logger(msg);
+        this.emit('debugLog', msg); // Also emit for other listeners if needed
+    }
+
     public updateConfig(newConfig: Partial<ProxyConfig>) {
-        console.log('[ProxyService] updateConfig called with:', newConfig);
+        this.logDebug(`[ProxyService] updateConfig called with: ${JSON.stringify(newConfig)}`);
         this.config = { ...this.config, ...newConfig };
-        console.log('[ProxyService] New config is:', this.config);
+        this.logDebug(`[ProxyService] New config is: ${JSON.stringify(this.config)}`);
         if (this.isRunning) {
-            console.log('[ProxyService] Restarting proxy with new config...');
+            this.logDebug('[ProxyService] Restarting proxy with new config...');
             this.stop();
             this.start();
         }
@@ -103,19 +114,19 @@ export class ProxyService extends EventEmitter {
 
         try {
             const isHttpsTarget = this.config.targetUrl.trim().toLowerCase().startsWith('https');
-            console.log(`[ProxyService] Starting... Target: ${this.config.targetUrl}, isHttpsTarget: ${isHttpsTarget}`);
+            this.logDebug(`[ProxyService] Starting... Target: ${this.config.targetUrl}, isHttpsTarget: ${isHttpsTarget}`);
 
             if (isHttpsTarget) {
-                console.log('[ProxyService] Waiting for certs...');
+                this.logDebug('[ProxyService] Waiting for certs...');
                 const pems = await this.ensureCert();
-                console.log('[ProxyService] Certs loaded. Creating HTTPS server.');
+                this.logDebug('[ProxyService] Certs loaded. Creating HTTPS server.');
                 this.server = https.createServer({ key: pems.key, cert: pems.cert }, this.handleRequest.bind(this));
             } else {
                 this.server = http.createServer(this.handleRequest.bind(this));
             }
 
             this.server.listen(this.config.port, () => {
-                console.log(`Dirty Proxy listening on port ${this.config.port} (${isHttpsTarget ? 'HTTPS' : 'HTTP'})`);
+                this.logDebug(`Dirty Proxy listening on port ${this.config.port} (${isHttpsTarget ? 'HTTPS' : 'HTTP'})`);
                 this.isRunning = true;
                 this.emit('status', true);
             });
