@@ -89,7 +89,7 @@ export class WebviewController {
                 this._panel.webview.postMessage({ command: 'watcherUpdate', history: this._fileWatcherService.getHistory() });
                 break;
             case 'clearWatcherHistory':
-                // Optional: Implement clear method in service if needed
+                this._fileWatcherService.clearHistory();
                 break;
         }
     }
