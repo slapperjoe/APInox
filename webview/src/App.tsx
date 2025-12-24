@@ -861,6 +861,9 @@ function App() {
                         bridge.sendMessage({ command: 'restoreProxy', path: configPath });
                     }
                 }}
+                onOpenCertificate={() => {
+                    bridge.sendMessage({ command: 'openCertificate' });
+                }}
             />
 
             <WorkspaceLayout

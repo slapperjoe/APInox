@@ -1,6 +1,10 @@
 # Changelog
 
 
+## [0.6.2] - 2025-12-24
+### Auto-Generated Changes
+- feat: Add self-signed certificate generation for HTTPS proxy support - Updated ProxyService to handle HTTPS requests with self-signed certificates. - Introduced ensureCert method to generate and manage certificates. - Enhanced ConfigSwitcherService to replace URLs with proxy base URLs while preserving paths. - Added new ReplacerService for managing replacement rules in request and response bodies. - Updated package.json to include selfsigned and its types. - Modified webview components to support certificate installation and display.
+
 ## [0.6.1] - 2025-12-24
 ### Auto-Generated Changes
 - feat: Enhance proxy configuration handling and UI updates - Updated ConfigSwitcherService to return original URL upon proxy injection. - Modified WebviewController to send updated proxy target to the UI. - Enhanced Sidebar component to allow editing of proxy target URL and improved layout for proxy controls.

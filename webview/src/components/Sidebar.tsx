@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-import { ChevronRight, ChevronDown, Plus, Trash2, Globe, FileCode, Play, Save, FolderOpen, FolderPlus, Settings, HelpCircle, Eye, Clock, Square, LayoutGrid, Network } from 'lucide-react';
+import { ChevronRight, ChevronDown, Plus, Trash2, Globe, FileCode, Play, Save, FolderOpen, FolderPlus, Settings, HelpCircle, Eye, Clock, Square, Network, FolderOpen as FolderIcon, Shield } from 'lucide-react';
 import { SoapUIInterface, SoapUIOperation, SoapUIRequest, SoapUIProject, WatcherEvent } from '../models';
 
 // Styled Components
@@ -176,6 +176,7 @@ interface SidebarProps {
     onSelectConfigFile: () => void;
     onInjectProxy: () => void;
     onRestoreProxy: () => void;
+    onOpenCertificate?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -195,7 +196,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     activeView, onChangeView, watcherHistory, onSelectWatcherEvent, watcherRunning,
     onStartWatcher, onStopWatcher, onClearWatcher,
     proxyRunning, onStartProxy, onStopProxy, proxyConfig, onUpdateProxyConfig, proxyHistory, onClearProxy,
-    configPath, onSelectConfigFile, onInjectProxy, onRestoreProxy
+    configPath, onSelectConfigFile, onInjectProxy, onRestoreProxy, onOpenCertificate
 }) => {
 
     const renderInterfaceList = (interfaces: SoapUIInterface[], isExplorer: boolean) => (
@@ -318,13 +319,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     );
 
     const renderProxyList = () => {
-        // Local state for inputs to allow editing before saving?
-        // Actually, we can just use the props and update on blur/change if we want, or local state.
-        // Let's use local state for the inputs to avoid jitter, committed on Blur or Enter.
-        // But for simplicity/speed let's make them uncontrolled or strictly controlled by parent but with local buffer if needed.
-        // Sidebar re-renders often?
-        // Let's just use the props but with an "Edit" mode? Or just inputs.
-        // Inputs are better.
+        // Check if HTTPS
+        const isHttps = proxyConfig.target.toLowerCase().startsWith('https');
 
         return (
             <div style={{ padding: 10, color: 'var(--vscode-descriptionForeground)' }}>
@@ -342,11 +338,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 style={{ width: '100%', padding: '4px', background: 'var(--vscode-input-background)', color: 'var(--vscode-input-foreground)', border: '1px solid var(--vscode-input-border)' }}
                             />
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%', paddingBottom: 1 }}>
                             {!proxyRunning ? (
-                                <HeaderButton onClick={onStartProxy} style={{ color: 'var(--vscode-testing-iconPassed)', border: '1px solid currentColor', padding: '4px 8px' }} title="Start Proxy"><Play size={14} /></HeaderButton>
+                                <HeaderButton onClick={onStartProxy} style={{ color: 'var(--vscode-testing-iconPassed)', border: '1px solid currentColor', padding: '5px 8px', height: '28px' }} title="Start Proxy"><Play size={14} /></HeaderButton>
                             ) : (
-                                <HeaderButton onClick={onStopProxy} style={{ color: 'var(--vscode-testing-iconFailed)', border: '1px solid currentColor', padding: '4px 8px' }} title="Stop Proxy"><Square size={14} /></HeaderButton>
+                                <HeaderButton onClick={onStopProxy} style={{ color: 'var(--vscode-testing-iconFailed)', border: '1px solid currentColor', padding: '5px 8px', height: '28px' }} title="Stop Proxy"><Square size={14} /></HeaderButton>
                             )}
                         </div>
                     </div>
@@ -364,7 +360,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
                         <div style={{ fontSize: '0.8em' }}>Status: {proxyRunning ? <span style={{ color: 'var(--vscode-testing-iconPassed)' }}>Running</span> : 'Stopped'}</div>
-                        <HeaderButton onClick={onClearProxy} title="Clear Traffic History"><Trash2 size={14} /></HeaderButton>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                            {isHttps && onOpenCertificate && (
+                                <HeaderButton onClick={onOpenCertificate} title="Install Certificate (Required for HTTPS)" style={{ color: 'var(--vscode-charts-yellow)' }}>
+                                    <Shield size={14} />
+                                </HeaderButton>
+                            )}
+                            <HeaderButton onClick={onClearProxy} title="Clear Traffic History"><Trash2 size={14} /></HeaderButton>
+                        </div>
                     </div>
                 </div>
 
@@ -428,7 +431,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     };
 
     // Sidebar Navigation Rail Item
-    const NavItem = ({ icon: Icon, active, onClick }: any) => (
+    const NavItem = ({ icon: Icon, active, onClick, title }: any) => (
         <div
             onClick={onClick}
             style={{
@@ -440,6 +443,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 borderLeft: active ? '2px solid var(--vscode-activityBar-activeBorder)' : '2px solid transparent',
                 backgroundColor: active ? 'var(--vscode-list-activeSelectionBackground)' : 'transparent' // Subtle highlight
             }}
+            title={title}
         >
             <Icon size={24} strokeWidth={active ? 2.5 : 2} />
         </div>
@@ -456,9 +460,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 flexDirection: 'column',
                 paddingTop: 10
             }}>
-                <NavItem icon={LayoutGrid} active={activeView === 'projects'} onClick={() => onChangeView('projects')} title="Projects" />
-                <NavItem icon={Eye} active={activeView === 'watcher'} onClick={() => onChangeView('watcher')} title="File Watcher" />
-                <NavItem icon={Network} active={activeView === 'proxy'} onClick={() => onChangeView('proxy')} title="Dirty Proxy" />
+                <NavItem
+                    icon={FolderIcon}
+                    active={activeView === 'projects'}
+                    onClick={() => onChangeView('projects')}
+                    title="Projects"
+                />
+                <NavItem
+                    icon={Eye}
+                    active={activeView === 'watcher'}
+                    onClick={() => onChangeView('watcher')}
+                    title="File Watcher"
+                />
+                <NavItem
+                    icon={Globe}
+                    active={activeView === 'proxy'}
+                    onClick={() => onChangeView('proxy')}
+                    title="Dirty Proxy"
+                />
 
                 <div style={{ flex: 1 }}></div>
 
