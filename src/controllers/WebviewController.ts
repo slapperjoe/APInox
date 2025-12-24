@@ -9,6 +9,8 @@ import { WildcardProcessor } from '../utils/WildcardProcessor';
 import { AssertionRunner } from '../utils/AssertionRunner';
 
 import { FileWatcherService } from '../services/FileWatcherService';
+import { ProxyService } from '../services/ProxyService';
+import { ConfigSwitcherService } from '../services/ConfigSwitcherService';
 
 export class WebviewController {
     constructor(
@@ -17,11 +19,21 @@ export class WebviewController {
         private readonly _soapClient: SoapClient,
         private readonly _projectStorage: ProjectStorage,
         private readonly _settingsManager: SettingsManager,
-        private readonly _fileWatcherService: FileWatcherService
+        private readonly _fileWatcherService: FileWatcherService,
+        private readonly _proxyService: ProxyService,
+        private readonly _configSwitcherService: ConfigSwitcherService
     ) {
         // Setup Update Callback
         this._fileWatcherService.setCallback((history) => {
             this._panel.webview.postMessage({ command: 'watcherUpdate', history });
+        });
+
+        // Proxy Callbacks
+        this._proxyService.on('log', (event) => {
+            this._panel.webview.postMessage({ command: 'proxyLog', event });
+        });
+        this._proxyService.on('status', (running) => {
+            this._panel.webview.postMessage({ command: 'proxyStatus', running });
         });
     }
 
@@ -90,6 +102,44 @@ export class WebviewController {
                 break;
             case 'clearWatcherHistory':
                 this._fileWatcherService.clearHistory();
+                break;
+            case 'startProxy':
+                this._proxyService.start();
+                break;
+            case 'stopProxy':
+                this._proxyService.stop();
+                break;
+            case 'updateProxyConfig':
+                this._proxyService.updateConfig(message.config);
+                break;
+            case 'selectConfigFile':
+                const uris = await vscode.window.showOpenDialog({
+                    canSelectFiles: true,
+                    canSelectFolders: false,
+                    filters: { 'Config Files': ['config', 'xml'] },
+                    openLabel: 'Select Config File'
+                });
+                if (uris && uris.length > 0) {
+                    this._panel.webview.postMessage({ command: 'configFileSelected', path: uris[0].fsPath });
+                }
+                break;
+            case 'injectProxy':
+                const injectResult = this._configSwitcherService.inject(message.path, message.proxyUrl);
+                if (injectResult.success) {
+                    vscode.window.showInformationMessage(injectResult.message);
+                } else {
+                    vscode.window.showErrorMessage(injectResult.message);
+                }
+                this._panel.webview.postMessage({ command: 'configSwitched', success: injectResult.success });
+                break;
+            case 'restoreProxy':
+                const restoreResult = this._configSwitcherService.restore(message.path);
+                if (restoreResult.success) {
+                    vscode.window.showInformationMessage(restoreResult.message);
+                } else {
+                    vscode.window.showErrorMessage(restoreResult.message);
+                }
+                this._panel.webview.postMessage({ command: 'configRestored', success: restoreResult.success });
                 break;
         }
     }

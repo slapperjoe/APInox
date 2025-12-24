@@ -85,10 +85,20 @@ export interface WatcherEvent {
     id: string;
     timestamp: number;
     timestampLabel: string;
-    requestFile: string;
-    responseFile: string;
+    requestFile?: string;
+    responseFile?: string;
     requestContent?: string;
     responseContent?: string;
     requestOperation?: string;
     responseOperation?: string;
+
+    // Proxy Fields
+    method?: string;
+    url?: string;
+    status?: number;
+    duration?: number;
+    success?: boolean;
+    error?: string;
+    requestHeaders?: Record<string, string>;
+    responseHeaders?: Record<string, string>;
 }

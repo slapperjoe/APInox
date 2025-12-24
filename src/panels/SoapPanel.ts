@@ -4,6 +4,8 @@ import { ProjectStorage } from '../ProjectStorage';
 import { SettingsManager } from '../utils/SettingsManager';
 import { WebviewController } from '../controllers/WebviewController';
 import { FileWatcherService } from '../services/FileWatcherService';
+import { ProxyService } from '../services/ProxyService';
+import { ConfigSwitcherService } from '../services/ConfigSwitcherService';
 
 export class SoapPanel {
     public static currentPanel: SoapPanel | undefined;
@@ -14,6 +16,8 @@ export class SoapPanel {
     private _projectStorage: ProjectStorage;
     private _settingsManager: SettingsManager;
     private _fileWatcherService: FileWatcherService;
+    private _proxyService: ProxyService;
+    private _configSwitcherService: ConfigSwitcherService;
     private _controller: WebviewController;
     private _disposables: vscode.Disposable[] = [];
     private _autosaveTimeout: NodeJS.Timeout | undefined;
@@ -48,14 +52,14 @@ export class SoapPanel {
         this._panel = panel;
         this._extensionUri = extensionUri;
 
-        this._extensionUri = extensionUri;
-
         this._outputChannel = vscode.window.createOutputChannel('Dirty SOAP');
         this._soapClient = new SoapClient(this._outputChannel);
         this._projectStorage = new ProjectStorage(this._outputChannel);
         this._settingsManager = new SettingsManager();
 
         this._fileWatcherService = new FileWatcherService(this._outputChannel);
+        this._proxyService = new ProxyService();
+        this._configSwitcherService = new ConfigSwitcherService();
 
         this._controller = new WebviewController(
             this._panel,
@@ -63,7 +67,9 @@ export class SoapPanel {
             this._soapClient,
             this._projectStorage,
             this._settingsManager,
-            this._fileWatcherService
+            this._fileWatcherService,
+            this._proxyService,
+            this._configSwitcherService
         );
 
         // Watcher starts stopped by default.
@@ -125,6 +131,11 @@ export class SoapPanel {
         // Dispose File Watcher
         if (this._fileWatcherService) {
             this._fileWatcherService.stop();
+        }
+
+        // Dispose Proxy Service
+        if (this._proxyService) {
+            this._proxyService.stop();
         }
 
         // Dispose panel
