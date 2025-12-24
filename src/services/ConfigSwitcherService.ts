@@ -57,29 +57,35 @@ export class ConfigSwitcherService {
             // New Regex to capture the URL inside quotes
             const urlRegex = /address="((http|https):\/\/[^"]+)"/g;
 
-            const newContent2 = content.replace(urlRegex, (match, fullUrl) => {
-                matchCount++;
-                if (!capturedUrl) capturedUrl = fullUrl; // Capture first
+            const proxyPort = 9000; // Deduce from config or pass in? Hardcoded for now based on ProxyService default.
 
-                // We want to replace `fullUrl` with `proxyBaseUrl` (which is http://localhost:9000).
-                // But wait, `proxyBaseUrl` usually doesn't have the path. 
-                // If `fullUrl` is `http://remote.com/service`, and `proxyBaseUrl` is `http://localhost:9000`.
-                // We want `address="http://localhost:9000/service"`.
+            // Capture the original URL to return it
+            // Regex to match address="http(s)://..."
+            // We want to capture the protocol to verify if we should inject https://localhost
+            const match = content.match(/address="(https?):\/\/[^"]+"/);
+            if (!match) {
+                throw new Error("No suitable endpoint address found in web.config to proxy.");
+            }
 
-                try {
-                    const parsedObj = new URL(fullUrl);
-                    // Construct new URL with proxy host
-                    // proxyBaseUrl passed in is `http://localhost:9000`
-                    const proxyObj = new URL(proxyBaseUrl);
-                    parsedObj.protocol = proxyObj.protocol;
-                    parsedObj.host = proxyObj.host;
-                    // keep pathname
-                    return `address="${parsedObj.toString()}"`;
-                } catch (e) {
-                    // Fallback
-                    return `address="${proxyBaseUrl}"`;
-                }
+            const protocol = match[1]; // 'http' or 'https'
+            const originalUrl = match[0].split('"')[1]; // This captures the first full URL found.
+
+            const proxyBase = `${protocol}://localhost:${proxyPort}`;
+
+            // Replace all occurrences of address="http(s)://..." with address="proxyBase/..."
+            // We need to preserve the path!
+            // Regex: address="(https?:\/\/[^"\/]+)(\/[^"]*)?"
+            // Replace with: address="proxyBase$2"
+
+            const newContent2 = content.replace(/address="(https?:\/\/[^"\/]+)(\/[^"]*)?"/g, (match, baseUrl, path) => {
+                matchCount++; // Increment for each replacement
+                if (!capturedUrl) capturedUrl = baseUrl + (path || ''); // Capture the first full URL before modification
+                return `address="${proxyBase}${path || ''}"`;
             });
+
+            if (content === newContent2) {
+                throw new Error("Regex failed to replace address. Check format.");
+            }
 
             if (matchCount === 0) {
                 return { success: false, message: 'No suitable endpoint addresses found to replace.' };

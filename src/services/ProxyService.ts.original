@@ -4,17 +4,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import axios, { AxiosRequestConfig, Method } from 'axios';
-// import * as vscode from 'vscode'; // Removed
+import * as vscode from 'vscode';
 import { EventEmitter } from 'events';
 import * as selfsigned from 'selfsigned';
-
-// Mock VSCode
-const vscode = {
-    window: {
-        showErrorMessage: (msg: string) => console.error(`[VSCode Error] ${msg}`),
-        showInformationMessage: (msg: string) => console.log(`[VSCode Info] ${msg}`)
-    }
-};
 
 export interface ProxyConfig {
     port: number;
@@ -27,11 +19,16 @@ export interface ProxyEvent {
     timestampLabel: string;
     method: string;
     url: string;
+
+    // Request
     requestHeaders: Record<string, any>;
     requestBody: string;
+
+    // Response
     status?: number;
     responseHeaders?: Record<string, any>;
     responseBody?: string;
+
     duration?: number;
     success?: boolean;
     error?: string;
@@ -64,6 +61,7 @@ export class ProxyService extends EventEmitter {
             this.keyPath = path.join(tempDir, 'dirty-soap-proxy.key');
 
             if (fs.existsSync(this.certPath) && fs.existsSync(this.keyPath)) {
+                // Reuse existing
                 try {
                     const key = fs.readFileSync(this.keyPath, 'utf8');
                     const cert = fs.readFileSync(this.certPath, 'utf8');
@@ -74,9 +72,11 @@ export class ProxyService extends EventEmitter {
                 }
             }
 
+            // Generate new
             const attrs = [{ name: 'commonName', value: 'localhost' }];
-            const opts = { days: 365, keySize: 2048, extensions: [{ name: 'basicConstraints', cA: true }] };
+            const opts = { days: 365, keySize: 2048, extensions: [{ name: 'basicConstraints', cA: true }] }; // cA: true is important for trusting it as a root
 
+            // Cast to any because the type definition might differ slightly from the implementation in some versions
             (selfsigned as any).generate(attrs, opts, (err: any, pems: any) => {
                 if (err) {
                     reject(err);
@@ -98,6 +98,13 @@ export class ProxyService extends EventEmitter {
 
         try {
             const isHttpsTarget = this.config.targetUrl.toLowerCase().startsWith('https://');
+
+            // If Target is HTTPS, we should probably run our Proxy as HTTPS too to mimic the environment closely?
+            // Actually, for WCF, if the client expects https://localhost:9000, we MUST be HTTPS.
+            // If the client expects http, we must be http.
+            // Assumption: If the original URL was HTTPS, the ConfigSwitcher injected https://localhost:9000.
+            // So we should decide based on the requested protocol? No, we are a single port listener.
+            // Let's decide based on the Target URL scheme. If target is HTTPS, we assume we are replacing an HTTPS service.
 
             if (isHttpsTarget) {
                 const pems = await this.ensureCert();
@@ -128,6 +135,7 @@ export class ProxyService extends EventEmitter {
         const startTime = Date.now();
         const eventId = `proxy-${startTime}-${Math.random().toString(36).substr(2, 9)}`;
 
+        // Capture Request Body
         let reqBody = '';
         req.on('data', chunk => reqBody += chunk);
 
@@ -142,14 +150,16 @@ export class ProxyService extends EventEmitter {
                 requestBody: reqBody
             };
 
+            // Notify UI of Request
             this.emit('log', { ...event, type: 'request' });
 
             try {
+                // Forward Request to Target
                 const targetBase = this.config.targetUrl.replace(/\/$/, '');
                 const requestPath = (req.url || '/').replace(/^\//, '');
                 const fullTargetUrl = `${targetBase}/${requestPath}`;
 
-                // Handle upstream self-signed certs
+                // Handle upstream self-signed certs (common in dev envs)
                 const agent = this.config.targetUrl.startsWith('https')
                     ? new https.Agent({ rejectUnauthorized: false })
                     : undefined;
@@ -162,23 +172,26 @@ export class ProxyService extends EventEmitter {
                         host: new URL(this.config.targetUrl).host
                     },
                     data: reqBody,
-                    validateStatus: () => true,
+                    validateStatus: () => true, // Accept all status codes
                     httpsAgent: agent
                 };
 
                 const response = await axios(axiosConfig);
                 const endTime = Date.now();
 
+                // Update Event with Response
                 event.status = response.status;
                 event.responseHeaders = response.headers;
                 event.responseBody = typeof response.data === 'object' ? JSON.stringify(response.data) : String(response.data);
                 event.duration = (endTime - startTime) / 1000;
                 event.success = response.status >= 200 && response.status < 300;
 
+                // Send Response back to Client
                 res.writeHead(response.status, response.headers as any);
                 const responseData = typeof response.data === 'object' ? JSON.stringify(response.data) : response.data;
                 res.end(responseData);
 
+                // Notify UI of Completion
                 this.emit('log', event);
 
             } catch (error: any) {
@@ -188,6 +201,7 @@ export class ProxyService extends EventEmitter {
                 event.error = error.message;
                 event.status = error.response?.status || 500;
 
+                // Send Error back to Client
                 if (!res.headersSent) {
                     res.writeHead(502, { 'Content-Type': 'text/plain' });
                     res.end(`Dirty Proxy Error: ${error.message}`);
