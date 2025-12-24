@@ -25,31 +25,8 @@ export class ConfigSwitcherService {
 
             // 3. Replace endpoint addresses
             // Strategy: Look for address="..." attributes in <endpoint> tags.
-            const regex = /address="(http|https):\/\/[^/"]+(\/.*?)?"/g;
-
             let matchCount = 0;
             let capturedUrl = '';
-
-            const newContent = content.replace(regex, (match, protocol, path) => {
-                matchCount++;
-                // Reconstruct the original matched URL base (approximate, since regex matches the whole attribute value logic)
-                // Actually my regex `address="(http...` matches the whole attribute. 
-                // Let's rely on capturing the FULL url inside the quotes if possible.
-                // Adjusted regex for capturing: /address="((http|https):\/\/[^"]+)"/g
-
-                // Wait, the previous regex was: /address="(http|https):\/\/[^/"]+(\/.*?)?"/g
-                // Let's refine it to be safer and capture the original full URL for the first match.
-
-                // We want to replace the HOST:PORT but keep the PATH if we are proxying...
-                // BUT the user request says: "config switcher inject should be able to use the value replaced to update the target."
-                // Usually the target is the BASE URL.
-                // If the config has multiple endpoints with different paths, we can't easily set ONE target.
-                // Assumption: They all point to the same service base.
-
-                // Let's capture the first full match.
-
-                return match;
-            });
 
             // RERUN with better logic:
             // capturing the first match's base URL.

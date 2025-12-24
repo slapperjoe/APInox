@@ -1,6 +1,10 @@
 # Changelog
 
 
+## [0.6.3] - 2025-12-24
+### Auto-Generated Changes
+- feat: Add certificate opening functionality in WebviewController - Implemented handling for openCertificate message to open the generated certificate and provide user instructions for installation. - Enhanced user feedback for certificate management in the proxy service.
+
 ## [0.6.2] - 2025-12-24
 ### Auto-Generated Changes
 - feat: Add self-signed certificate generation for HTTPS proxy support - Updated ProxyService to handle HTTPS requests with self-signed certificates. - Introduced ensureCert method to generate and manage certificates. - Enhanced ConfigSwitcherService to replace URLs with proxy base URLs while preserving paths. - Added new ReplacerService for managing replacement rules in request and response bodies. - Updated package.json to include selfsigned and its types. - Modified webview components to support certificate installation and display.
