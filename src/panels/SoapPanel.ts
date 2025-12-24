@@ -59,6 +59,7 @@ export class SoapPanel {
 
         this._fileWatcherService = new FileWatcherService(this._outputChannel);
         this._proxyService = new ProxyService();
+        this._proxyService.setLogger(msg => this._outputChannel.appendLine(msg));
         this._configSwitcherService = new ConfigSwitcherService();
 
         this._controller = new WebviewController(
