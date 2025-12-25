@@ -3,6 +3,9 @@ import * as https from 'https';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import * as dns from 'dns';
+import * as net from 'net';
+import * as tls from 'tls';
 import axios, { AxiosRequestConfig, Method } from 'axios';
 import * as vscode from 'vscode';
 import { EventEmitter } from 'events';
@@ -230,6 +233,11 @@ export class ProxyService extends EventEmitter {
                 event.responseBody = typeof response.data === 'object' ? JSON.stringify(response.data) : String(response.data);
                 event.duration = (endTime - startTime) / 1000;
                 event.success = response.status >= 200 && response.status < 300;
+                if (response.status === 503) {
+                    this.logDebug('[Proxy] 503 Detected. Running diagnostics...');
+                    // Fire and forget diagnostics
+                    this.runDiagnostics(fullTargetUrl, axiosConfig).catch(err => this.logDebug(`[Diagnostics] Error running probes: ${err}`));
+                }
 
                 res.writeHead(response.status, response.headers as any);
                 const responseData = typeof response.data === 'object' ? JSON.stringify(response.data) : response.data;
@@ -277,5 +285,101 @@ export class ProxyService extends EventEmitter {
 
     public getCertPath() {
         return this.certPath;
+    }
+    private async runDiagnostics(targetUrl: string, originalConfig: AxiosRequestConfig) {
+        const u = new URL(targetUrl);
+        const log = (msg: string) => this.logDebug(`[Diagnostic] ${msg}`);
+
+        log(`---------------------------------------------------`);
+        log(`DEEP DIAGNOSTICS for ${targetUrl}`);
+
+        try {
+            // 1. Environment and Config
+            log(`Proxy Config: System=${this.config.systemProxyEnabled !== false}, URL=${process.env.HTTP_PROXY || process.env.http_proxy || 'None'}`);
+
+            // 2. DNS Resolution
+            log(`Step 1: DNS Resolution for ${u.hostname}...`);
+            try {
+                const addresses = await dns.promises.resolve(u.hostname);
+                log(`DNS Success: ${JSON.stringify(addresses)}`);
+            } catch (err: any) {
+                log(`DNS FAILED: ${err.message}`);
+            }
+
+            // 3. TCP Connectivity
+            const port = u.port || (u.protocol === 'https:' ? 443 : 80);
+            log(`Step 2: TCP Connect to ${u.hostname}:${port}...`);
+            try {
+                await new Promise<void>((resolve, reject) => {
+                    const socket = net.createConnection(Number(port), u.hostname);
+                    socket.setTimeout(3000);
+                    socket.on('connect', () => { log('TCP Connection ESTABLISHED'); socket.end(); resolve(); });
+                    socket.on('error', (err) => { log(`TCP Connection FAILED: ${err.message}`); reject(err); });
+                    socket.on('timeout', () => { log('TCP Connection TIMEOUT'); socket.destroy(); reject(new Error('Timeout')); });
+                });
+            } catch (e) {
+                // Ignore TCP error to continue probes
+            }
+
+            // 4. TLS Inspection (Identify Middleboxes)
+            if (u.protocol === 'https:') {
+                log(`Step 3: TLS Handshake & Cert Inspection...`);
+                try {
+                    await new Promise<void>((resolve) => {
+                        const options = { servername: u.hostname, rejectUnauthorized: false };
+                        const socket = tls.connect(Number(port), u.hostname, options, () => {
+                            const cert = socket.getPeerCertificate();
+                            if (cert && cert.subject) {
+                                log(`Server Cert Subject: ${cert.subject.CN} / ${cert.subject.O}`);
+                                log(`Server Cert Issuer:  ${cert.issuer.CN} / ${cert.issuer.O}`);
+                                if (cert.issuer.O && (cert.issuer.O.toLowerCase().includes('zscaler') || cert.issuer.O.toLowerCase().includes('fortinet'))) {
+                                    log(`(!) ALERT: You are behind a Corporate Proxy/Firewall (${cert.issuer.O})`);
+                                }
+                            } else {
+                                log('TLS Handshake success, but no cert returned or empty subject.');
+                            }
+                            socket.end();
+                            resolve();
+                        });
+                        socket.on('error', (err) => { log(`TLS Handshake FAILED: ${err.message}`); resolve(); });
+                    });
+                } catch (e) {
+                    log(`TLS Probe Error: ${e}`);
+                }
+            }
+
+            // 5. HTTP Probes
+            log(`Step 4: Application Layer Probes...`);
+
+            const probe = async (label: string, config: AxiosRequestConfig) => {
+                try {
+                    const res = await axios({ ...config, validateStatus: () => true, timeout: 5000 });
+                    log(`${label}: ${res.status} ${res.statusText} (Type: ${typeof res.data === 'string' ? 'String' : 'Object'})`);
+                    if (res.status !== 200) {
+                        const body = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
+                        log(`  > Body Preview: ${body.slice(0, 150)}...`);
+                    }
+                } catch (err: any) {
+                    log(`${label}: FAILED - ${err.message}`);
+                }
+            };
+
+            // Clean headers for probes
+            const { data, ...baseConfig } = originalConfig;
+            const headers = { ...baseConfig.headers } as any;
+            delete headers['content-length'];
+            delete headers['Content-Length'];
+
+            await probe('GET Root', { ...baseConfig, method: 'GET', headers, data: undefined });
+            await probe('GET WSDL', { ...baseConfig, method: 'GET', url: `${targetUrl}?wsdl`, headers, data: undefined });
+            await probe('OPTIONS', { ...baseConfig, method: 'OPTIONS', headers, data: undefined });
+
+            // Empty POST probe (Is it the payload?)
+            await probe('POST (Empty)', { ...baseConfig, method: 'POST', headers, data: '' });
+
+        } catch (err: any) {
+            log(`Diagnostics CRASHED: ${err.message}`);
+        }
+        log(`---------------------------------------------------`);
     }
 }
