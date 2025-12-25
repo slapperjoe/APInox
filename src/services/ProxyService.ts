@@ -173,19 +173,29 @@ export class ProxyService extends EventEmitter {
 
                 // Handle upstream self-signed certs
                 const agent = this.config.targetUrl.startsWith('https')
-                    ? new https.Agent({ rejectUnauthorized: false })
+                    ? new https.Agent({ rejectUnauthorized: false, keepAlive: true })
                     : undefined;
+
+                // Strip conflicting headers
+                const { 'transfer-encoding': te, 'connection': conn, 'content-length': cl, host, ...forwardHeaders } = req.headers;
 
                 const axiosConfig: AxiosRequestConfig = {
                     method: req.method as Method,
                     url: fullTargetUrl,
                     headers: {
-                        ...req.headers,
-                        host: new URL(this.config.targetUrl).host
+                        ...forwardHeaders,
+                        host: new URL(this.config.targetUrl).host,
+                        // Force close to avoid NTLM connection reuse issues? 
+                        // Actually, let's let axios/agent handle it.
+                        // But WCF might send 'Expect: 100-continue'. Axios handles that?
+                        // Safe default:
+                        connection: 'keep-alive'
                     },
                     data: reqBody,
                     validateStatus: () => true,
-                    httpsAgent: agent
+                    httpsAgent: agent,
+                    maxBodyLength: Infinity,
+                    maxContentLength: Infinity
                 };
 
                 const response = await axios(axiosConfig);
