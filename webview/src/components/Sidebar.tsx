@@ -2,6 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 import { ChevronRight, ChevronDown, Plus, Trash2, Globe, FileCode, Play, Save, FolderOpen, FolderPlus, Settings, HelpCircle, Eye, Clock, Square, Network, FolderOpen as FolderIcon, Shield } from 'lucide-react';
 import { SoapUIInterface, SoapUIOperation, SoapUIRequest, SoapUIProject, WatcherEvent } from '../models';
+import { formatXml } from '../utils/xmlFormatter';
 
 // Styled Components
 const DirtyMarker = styled.span`
@@ -172,6 +173,9 @@ interface SidebarProps {
     onUpdateProxyConfig: (config: { port: number, target: string, systemProxyEnabled?: boolean }) => void;
     proxyHistory: WatcherEvent[];
     onClearProxy: () => void;
+    // Reporting
+    onSaveProxyHistory: (content: string) => void;
+    // Config Switcher
     configPath: string | null;
     onSelectConfigFile: () => void;
     onInjectProxy: () => void;
@@ -196,6 +200,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     activeView, onChangeView, watcherHistory, onSelectWatcherEvent, watcherRunning,
     onStartWatcher, onStopWatcher, onClearWatcher,
     proxyRunning, onStartProxy, onStopProxy, proxyConfig, onUpdateProxyConfig, proxyHistory, onClearProxy,
+    onSaveProxyHistory,
     configPath, onSelectConfigFile, onInjectProxy, onRestoreProxy, onOpenCertificate
 }) => {
 
@@ -405,6 +410,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 </HeaderButton>
                             )}
                             <HeaderButton onClick={onClearProxy} title="Clear Traffic History"><Trash2 size={14} /></HeaderButton>
+                            <HeaderButton onClick={handleSaveReport} title="Save Report (Markdown)" disabled={proxyHistory.length === 0}><Save size={14} /></HeaderButton>
                         </div>
                     </div>
                 </div>
@@ -486,6 +492,61 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <Icon size={24} strokeWidth={active ? 2.5 : 2} />
         </div>
     );
+
+    const handleSaveReport = () => {
+        if (proxyHistory.length === 0) return;
+
+        let md = '# Dirty SOAP Proxy Report\n\n';
+        md += `Generated: ${new Date().toLocaleString()}\n`;
+        md += `Entries: ${proxyHistory.length}\n\n`;
+        md += '---\n\n';
+
+        [...proxyHistory].reverse().forEach((event, index) => {
+            md += `## ${proxyHistory.length - index}. ${event.method || 'GET'} ${event.url || '/'}\n`;
+            md += `**Time:** ${event.timestampLabel} | **Status:** ${event.status || '???'} | **Duration:** ${event.duration ? event.duration + 's' : '...'}\n\n`;
+
+            md += '### Request\n';
+            if (event.requestHeaders) {
+                md += '**Headers:**\n';
+                Object.entries(event.requestHeaders).forEach(([k, v]) => {
+                    md += `- \`${k}\`: ${v}\n`;
+                });
+                md += '\n';
+            }
+            if (event.requestBody) {
+                md += '```xml\n';
+                md += formatXml(event.requestBody, true) + '\n';
+                md += '```\n\n';
+            } else {
+                md += '*(No Body)*\n\n';
+            }
+
+            md += '### Response\n';
+            if (event.responseHeaders) {
+                md += '**Headers:**\n';
+                Object.entries(event.responseHeaders).forEach(([k, v]) => {
+                    md += `- \`${k}\`: ${v}\n`;
+                });
+                md += '\n';
+            }
+            if (event.responseBody) {
+                const isJson = event.responseHeaders && event.responseHeaders['content-type']?.includes('json');
+                md += isJson ? '```json\n' : '```xml\n';
+                if (isJson) {
+                    try { md += JSON.stringify(JSON.parse(event.responseBody), null, 2) + '\n'; }
+                    catch { md += event.responseBody + '\n'; }
+                } else {
+                    md += formatXml(event.responseBody, true) + '\n';
+                }
+                md += '```\n\n';
+            } else {
+                md += '*(No Body)*\n\n';
+            }
+            md += '---\n\n';
+        });
+
+        onSaveProxyHistory(md);
+    };
 
     return (
         <div style={{ display: 'flex', height: '100%', flexDirection: 'row' }}>
