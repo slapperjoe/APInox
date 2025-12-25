@@ -13,12 +13,21 @@ import mascotImg from '../assets/mascot.png';
 
 const Mascot = styled.img`
     position: absolute;
-    top: 20px;
-    right: 20px;
-    width: 200px;
-    height: auto;
-    opacity: 0.8;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.15;
     pointer-events: none;
+    z-index: 0;
+    mix-blend-mode: multiply;
+
+    body.vscode-dark &, body.vscode-high-contrast & {
+        filter: invert(1);
+        mix-blend-mode: screen;
+        opacity: 0.1;
+    }
 `;
 
 const Content = styled.div`
