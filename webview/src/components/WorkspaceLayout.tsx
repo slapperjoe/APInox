@@ -19,106 +19,100 @@ const Mascot = styled.img`
     height: auto;
     opacity: 0.8;
     pointer-events: none;
-    mix-blend-mode: multiply;
-
-    body.vscode-dark &, body.vscode-high-contrast & {
-        filter: invert(1);
-        mix-blend-mode: screen;
-    }
 `;
 
 const Content = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+flex: 1;
+display: flex;
+flex - direction: column;
+overflow: hidden;
 `;
 
 const MarkdownContainer = styled.div`
-    margin-top: 20px;
-    padding-top: 10px;
-    border-top: 1px solid var(--vscode-panel-border);
-    
-    h1, h2, h3 { border-bottom: 1px solid var(--vscode-panel-border); padding-bottom: 5px; margin-top: 1.5em; }
-    p { margin-bottom: 1px; }
-    ul { padding-left: 20px; }
-    code { background: var(--vscode-textCodeBlock-background); padding: 2px 4px; border-radius: 3px; font-family: monospace; }
-    pre { background: var(--vscode-textCodeBlock-background); padding: 10px; border-radius: 5px; overflow-x: auto; }
+margin - top: 20px;
+padding - top: 10px;
+border - top: 1px solid var(--vscode - panel - border);
+
+h1, h2, h3 { border - bottom: 1px solid var(--vscode - panel - border); padding - bottom: 5px; margin - top: 1.5em; }
+    p { margin - bottom: 1px; }
+    ul { padding - left: 20px; }
+    code { background: var(--vscode - textCodeBlock - background); padding: 2px 4px; border - radius: 3px; font - family: monospace; }
+    pre { background: var(--vscode - textCodeBlock - background); padding: 10px; border - radius: 5px; overflow - x: auto; }
     pre code { background: transparent; padding: 0; }
 `;
 
 const Toolbar = styled.div`
-  display: flex;
-  padding: 5px 10px;
-  background-color: var(--vscode-editor-background);
-  border-bottom: 1px solid var(--vscode-panel-border);
-  align-items: center;
-  gap: 10px;
-  height: 40px;
+display: flex;
+padding: 5px 10px;
+background - color: var(--vscode - editor - background);
+border - bottom: 1px solid var(--vscode - panel - border);
+align - items: center;
+gap: 10px;
+height: 40px;
 `;
 
 const ToolbarButton = styled.button`
-  background: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
-  border: none;
-  padding: 4px 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  border-radius: 2px;
-  white-space: nowrap;
-  height: 26px;
-  box-sizing: border-box;
+background: var(--vscode - button - background);
+color: var(--vscode - button - foreground);
+border: none;
+padding: 4px 8px;
+cursor: pointer;
+display: flex;
+align - items: center;
+gap: 5px;
+border - radius: 2px;
+white - space: nowrap;
+height: 26px;
+box - sizing: border - box;
   &:hover {
-    background: var(--vscode-button-hoverBackground);
-  }
+    background: var(--vscode - button - hoverBackground);
+}
   &:disabled {
     opacity: 0.5;
-    cursor: not-allowed;
-  }
+    cursor: not - allowed;
+}
 `;
 
 
 
 const ToolbarSelect = styled.select`
-    background-color: var(--vscode-dropdown-background);
-    color: var(--vscode-dropdown-foreground);
-    border: 1px solid var(--vscode-dropdown-border);
-    padding: 4px;
-    outline: none;
-    height: 26px;
-    box-sizing: border-box;
+background - color: var(--vscode - dropdown - background);
+color: var(--vscode - dropdown - foreground);
+border: 1px solid var(--vscode - dropdown - border);
+padding: 4px;
+outline: none;
+height: 26px;
+box - sizing: border - box;
     &:focus {
-        border-color: var(--vscode-focusBorder);
-    }
+    border - color: var(--vscode - focusBorder);
+}
 `;
 
 const MainFooter = styled.div`
-  padding: 5px 10px;
-  border-top: 1px solid var(--vscode-panel-border);
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-  background-color: var(--vscode-editor-background);
+padding: 5px 10px;
+border - top: 1px solid var(--vscode - panel - border);
+display: flex;
+gap: 10px;
+justify - content: flex - end;
+background - color: var(--vscode - editor - background);
 `;
 
 const IconButton = styled.button<{ active?: boolean }>`
-    background: ${props => props.active ? 'var(--vscode-button-background)' : 'transparent'};
-    color: ${props => props.active ? 'var(--vscode-button-foreground)' : 'var(--vscode-icon-foreground)'};
-    border: 1px solid transparent;
-    cursor: pointer;
-    padding: 3px;
-    border-radius: 3px;
-    height: 26px;
-    width: 26px;
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+background: ${props => props.active ? 'var(--vscode-button-background)' : 'transparent'};
+color: ${props => props.active ? 'var(--vscode-button-foreground)' : 'var(--vscode-icon-foreground)'};
+border: 1px solid transparent;
+cursor: pointer;
+padding: 3px;
+border - radius: 3px;
+height: 26px;
+width: 26px;
+box - sizing: border - box;
+display: flex;
+align - items: center;
+justify - content: center;
     &:hover {
-        background-color: ${props => props.active ? 'var(--vscode-button-hoverBackground)' : 'var(--vscode-toolbar-hoverBackground)'};
-    }
+    background - color: ${props => props.active ? 'var(--vscode-button-hoverBackground)' : 'var(--vscode-toolbar-hoverBackground)'};
+}
 `;
 
 interface WorkspaceLayoutProps {
@@ -254,7 +248,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
 
                 <div style={{ flex: 1, display: 'flex', flexDirection: layoutMode === 'vertical' ? 'column' : 'row', overflow: 'hidden' }}>
                     <div style={{
-                        flex: (response || loading) ? `0 0 ${splitRatio * 100}%` : '1 1 auto',
+                        flex: (response || loading) ? `0 0 ${splitRatio * 100}% ` : '1 1 auto',
                         overflow: 'hidden',
                         display: 'flex',
                         flexDirection: 'column',
