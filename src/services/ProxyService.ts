@@ -199,6 +199,17 @@ export class ProxyService extends EventEmitter {
                 };
 
                 this.logDebug(`[Proxy] Sending Request to: ${axiosConfig.url}`);
+                // Ensure correct Host header and Content-Length
+                // Add User-Agent in case WAF requires it
+                const headersToSend = {
+                    ...forwardHeaders,
+                    host: new URL(this.config.targetUrl).host,
+                    'content-length': Buffer.byteLength(reqBody),
+                    'user-agent': 'DirtySoap-Proxy/0.6.5',
+                    connection: 'keep-alive'
+                };
+                axiosConfig.headers = headersToSend;
+
                 this.logDebug(`[Proxy] Outgoing Headers: ${JSON.stringify(axiosConfig.headers)}`);
 
                 const response = await axios(axiosConfig);
@@ -223,9 +234,17 @@ export class ProxyService extends EventEmitter {
                 event.error = error.message;
                 event.status = error.response?.status || 500;
 
+                // Capture error response body if available
+                if (error.response?.data) {
+                    event.responseBody = typeof error.response.data === 'object'
+                        ? JSON.stringify(error.response.data)
+                        : String(error.response.data);
+                }
+
                 if (!res.headersSent) {
-                    res.writeHead(502, { 'Content-Type': 'text/plain' });
-                    res.end(`Dirty Proxy Error: ${error.message}`);
+                    res.writeHead(event.status || 500, { 'Content-Type': 'text/plain' });
+                    // Forward backend error if available, else generic
+                    res.end(event.responseBody || `Dirty Proxy Error: ${error.message}`);
                 }
 
                 this.emit('log', event);
