@@ -198,6 +198,9 @@ export class ProxyService extends EventEmitter {
                     maxContentLength: Infinity
                 };
 
+                this.logDebug(`[Proxy] Sending Request to: ${axiosConfig.url}`);
+                this.logDebug(`[Proxy] Outgoing Headers: ${JSON.stringify(axiosConfig.headers)}`);
+
                 const response = await axios(axiosConfig);
                 const endTime = Date.now();
 
