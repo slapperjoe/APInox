@@ -24,6 +24,8 @@ interface DirtySoapConfigWeb {
     activeEnvironment: string;
     environments: Record<string, any>;
     globals: Record<string, string>;
+    lastConfigPath?: string;
+    lastProxyTarget?: string;
 }
 import { X } from 'lucide-react';
 
@@ -337,6 +339,9 @@ function App() {
                     }
                     if (message.config.lastConfigPath) {
                         setConfigPath(message.config.lastConfigPath);
+                    }
+                    if (message.config.lastProxyTarget) {
+                        setProxyConfig(prev => ({ ...prev, target: message.config.lastProxyTarget! }));
                     }
                     break;
                 case 'restoreAutosave':
@@ -757,9 +762,9 @@ function App() {
             name: `Logged: ${event.timestampLabel}`,
             request: requestBody,
             dirty: false,
-            headers: {},
-            endpoint: '',
-            method: 'POST'
+            headers: event.requestHeaders || {},
+            endpoint: event.url || '',
+            method: event.method || 'POST'
         };
 
         const tempOp: SoapUIOperation = {
@@ -786,8 +791,10 @@ function App() {
         if (responseContent) {
             setResponse({
                 rawResponse: responseContent,
-                duration: 0,
-                lineCount: responseContent.split(/\r\n|\r|\n/).length
+                duration: event.duration || 0,
+                lineCount: responseContent.split(/\r\n|\r|\n/).length,
+                success: event.success,
+                headers: event.responseHeaders
             });
         } else {
             setResponse(null);
