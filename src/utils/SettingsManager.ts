@@ -26,6 +26,7 @@ export interface DirtySoapConfig {
     globals?: Record<string, string>;
     recentWorkspaces?: string[];
     lastConfigPath?: string;
+    lastProxyTarget?: string;
 }
 
 const DEFAULT_CONFIG: DirtySoapConfig = {
@@ -150,6 +151,10 @@ export class SettingsManager {
 
     public updateLastConfigPath(path: string) {
         this.updateConfigPath(['lastConfigPath'], path);
+    }
+
+    public updateLastProxyTarget(target: string) {
+        this.updateConfigPath(['lastProxyTarget'], target);
     }
 
     public saveRawConfig(content: string) {

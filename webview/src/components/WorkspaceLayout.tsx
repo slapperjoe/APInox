@@ -358,10 +358,47 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                             />
                         )}
                         {activeTab === 'headers' && (
-                            <HeadersPanel
-                                headers={selectedRequest.headers || {}}
-                                onChange={(newHeaders) => onUpdateRequest({ ...selectedRequest, headers: newHeaders })}
-                            />
+                            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+                                <div style={{ flex: 1, overflow: 'hidden', padding: isReadOnly ? '10px' : '0' }}>
+                                    {!isReadOnly ? (
+                                        <HeadersPanel
+                                            headers={selectedRequest.headers || {}}
+                                            onChange={(newHeaders) => onUpdateRequest({ ...selectedRequest, headers: newHeaders })}
+                                        />
+                                    ) : (
+                                        <div style={{ overflow: 'auto', height: '100%', backgroundColor: 'var(--vscode-editor-background)' }}>
+                                            <h3 style={{ marginTop: 0, marginBottom: 10, fontSize: '1em' }}>Request Headers</h3>
+                                            {selectedRequest.headers && Object.keys(selectedRequest.headers).length > 0 ? (
+                                                Object.entries(selectedRequest.headers).map(([key, value]) => (
+                                                    <div key={key} style={{ display: 'flex', gap: 10, marginBottom: 5, fontSize: '0.9em' }}>
+                                                        <div style={{ fontWeight: 'bold', minWidth: 150, color: 'var(--vscode-textLink-foreground)' }}>{key}:</div>
+                                                        <div style={{ wordBreak: 'break-all', fontFamily: 'monospace' }}>{String(value)}</div>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div style={{ fontStyle: 'italic', opacity: 0.7 }}>No headers captured.</div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                {response && response.headers && (
+                                    <div style={{
+                                        flex: 1,
+                                        borderTop: '1px solid var(--vscode-panel-border)',
+                                        padding: 10,
+                                        overflow: 'auto',
+                                        backgroundColor: 'var(--vscode-editor-background)'
+                                    }}>
+                                        <h3 style={{ marginTop: 0, marginBottom: 10, fontSize: '1em' }}>Response Headers</h3>
+                                        {Object.entries(response.headers).map(([key, value]) => (
+                                            <div key={key} style={{ display: 'flex', gap: 10, marginBottom: 5, fontSize: '0.9em' }}>
+                                                <div style={{ fontWeight: 'bold', minWidth: 150, color: 'var(--vscode-textLink-foreground)' }}>{key}:</div>
+                                                <div style={{ wordBreak: 'break-all', fontFamily: 'monospace' }}>{String(value)}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         )}
                         {activeTab === 'assertions' && (
                             <AssertionsPanel

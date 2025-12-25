@@ -120,7 +120,11 @@ export class WebviewController {
                     targetUrl: message.config.target || message.config.targetUrl,
                     systemProxyEnabled: message.config.systemProxyEnabled
                 };
+
                 this._proxyService.updateConfig(proxyConfig);
+                if (proxyConfig.targetUrl) {
+                    this._settingsManager.updateLastProxyTarget(proxyConfig.targetUrl);
+                }
                 break;
             case 'selectConfigFile':
                 const uris = await vscode.window.showOpenDialog({
