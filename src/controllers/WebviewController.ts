@@ -109,6 +109,9 @@ export class WebviewController {
             case 'stopProxy':
                 this._proxyService.stop();
                 break;
+            case 'saveProxyHistory':
+                await this.handleSaveProxyHistory(message);
+                break;
             case 'updateProxyConfig':
                 console.log('[WebviewController] Received updateProxyConfig:', message.config);
                 // Map frontend 'target' to backend 'targetUrl'
@@ -266,6 +269,23 @@ export class WebviewController {
             }
         } catch (e: any) {
             vscode.window.showErrorMessage(`Failed to save workspace: ${e.message}`);
+        }
+    }
+
+    private async handleSaveProxyHistory(message: any) {
+        try {
+            const defaultName = `proxy-report-${new Date().toISOString().slice(0, 10)}.md`;
+            const uri = await vscode.window.showSaveDialog({
+                filters: { 'Markdown Report': ['md'], 'Text File': ['txt'] },
+                saveLabel: 'Save Proxy Report',
+                defaultUri: vscode.Uri.file(defaultName)
+            });
+            if (uri) {
+                fs.writeFileSync(uri.fsPath, message.content);
+                vscode.window.showInformationMessage(`Report saved to ${uri.fsPath}`);
+            }
+        } catch (e: any) {
+            vscode.window.showErrorMessage(`Failed to save report: ${e.message}`);
         }
     }
 

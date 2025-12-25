@@ -8,6 +8,7 @@ import { HelpModal } from './components/HelpModal';
 import { SchemaViewer } from './components/SchemaViewer';
 import { SettingsEditorModal } from './components/SettingsEditorModal';
 import { SoapUIInterface, SoapUIProject, SoapUIOperation, SoapUIRequest, SoapSchemaNode, WatcherEvent } from './models';
+import { formatXml } from './utils/xmlFormatter';
 
 // TS might complain about importing from outside src if not careful. 
 // Ideally we define types in shared folder. 
@@ -388,7 +389,16 @@ function App() {
                     setWatcherHistory(message.history);
                     break;
                 case 'proxyLog':
-                    setProxyHistory(prev => [message.event, ...prev]);
+                    setProxyHistory(prev => {
+                        const existingIndex = prev.findIndex(e => e.id === message.event.id);
+                        if (existingIndex !== -1) {
+                            // Update existing entry (Response received)
+                            const updated = [...prev];
+                            updated[existingIndex] = { ...updated[existingIndex], ...message.event };
+                            return updated;
+                        }
+                        return [message.event, ...prev];
+                    });
                     break;
                 case 'proxyStatus':
                     setProxyRunning(message.running);
@@ -729,10 +739,23 @@ function App() {
     };
 
     const handleSelectWatcherEvent = (event: WatcherEvent) => {
+        let requestBody = event.formattedBody;
+        if (requestBody === undefined) {
+            const raw = event.requestContent || event.requestBody || '';
+            requestBody = formatXml(raw, true);
+
+            // Cache the formatted body so it doesn't re-format on next click
+            if (activeView === 'proxy') {
+                setProxyHistory(prev => prev.map(e => e.id === event.id ? { ...e, formattedBody: requestBody } : e));
+            } else {
+                setWatcherHistory(prev => prev.map(e => e.id === event.id ? { ...e, formattedBody: requestBody } : e));
+            }
+        }
+
         const tempRequest: SoapUIRequest = {
             id: event.id,
             name: `Logged: ${event.timestampLabel}`,
-            request: event.requestContent || event.requestBody || '',
+            request: requestBody,
             dirty: false,
             headers: {},
             endpoint: '',
@@ -858,6 +881,8 @@ function App() {
                 onClearProxy={() => setProxyHistory([])}
                 configPath={configPath}
                 onSelectConfigFile={() => bridge.sendMessage({ command: 'selectConfigFile' })}
+                onOpenCertificate={() => bridge.sendMessage({ command: 'installCertificate' })}
+                onSaveProxyHistory={(content) => bridge.sendMessage({ command: 'saveProxyHistory', content })}
                 onInjectProxy={() => {
                     if (configPath) {
                         const proxyUrl = `http://localhost:${proxyConfig.port}`;
@@ -869,9 +894,7 @@ function App() {
                         bridge.sendMessage({ command: 'restoreProxy', path: configPath });
                     }
                 }}
-                onOpenCertificate={() => {
-                    bridge.sendMessage({ command: 'openCertificate' });
-                }}
+
             />
 
             <WorkspaceLayout

@@ -105,4 +105,5 @@ export interface WatcherEvent {
     // Compatibility with ProxyEvent
     requestBody?: string;
     responseBody?: string;
+    formattedBody?: string;
 }

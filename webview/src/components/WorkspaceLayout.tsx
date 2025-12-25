@@ -12,12 +12,13 @@ import { formatXml } from '../utils/xmlFormatter';
 import mascotImg from '../assets/mascot.png';
 
 const Mascot = styled.img`
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100vw;
+    height: 100vh;
+    object-fit: contain;
     opacity: 0.15;
     pointer-events: none;
     z-index: 0;
