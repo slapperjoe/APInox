@@ -208,7 +208,8 @@ export class ProxyService extends EventEmitter {
                     validateStatus: () => true,
                     httpsAgent: agent,
                     maxBodyLength: Infinity,
-                    maxContentLength: Infinity
+                    maxContentLength: Infinity,
+                    proxy: false // Critical: Prevent Axios from using process.env.HTTP_PROXY automatically
                 };
 
                 this.logDebug(`[Proxy] Sending Request to: ${axiosConfig.url}`);
