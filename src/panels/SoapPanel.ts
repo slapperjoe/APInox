@@ -66,6 +66,9 @@ export class SoapPanel {
                 this._outputChannel.appendLine(`[Proxy] Request: ${event.method} ${event.url}`);
             } else {
                 this._outputChannel.appendLine(`[Proxy] Response: ${event.method} ${event.url} -> ${event.status} (${event.duration}s)`);
+                if (!event.success && event.responseBody) {
+                    this._outputChannel.appendLine(`[Proxy] Response Body: ${event.responseBody}`);
+                }
                 if (event.error) {
                     this._outputChannel.appendLine(`[Proxy] Error: ${event.error}`);
                 }

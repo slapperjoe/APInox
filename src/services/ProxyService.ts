@@ -173,10 +173,8 @@ export class ProxyService extends EventEmitter {
                 if (proxyUrl) {
                     this.logDebug(`[Proxy] Using System Proxy: ${proxyUrl}`);
                     const { HttpsProxyAgent } = require('https-proxy-agent');
-                    agent = new HttpsProxyAgent(proxyUrl);
-                    // proxy-agent handles the underlying connection, but we might need to verify strictSSL
-                    // HttpsProxyAgent options? It usually takes a URL string or options object.
-                    // Let's create it with options if needed, but the simple string constructor is common.
+                    // Enable support for self-signed certs in corporate proxies
+                    agent = new HttpsProxyAgent(proxyUrl, { rejectUnauthorized: strictSSL });
                 } else {
                     // Handle upstream self-signed certs directly if no proxy
                     agent = this.config.targetUrl.startsWith('https')
