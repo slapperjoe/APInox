@@ -168,8 +168,8 @@ interface SidebarProps {
     proxyRunning: boolean;
     onStartProxy: () => void;
     onStopProxy: () => void;
-    proxyConfig: { port: number, target: string };
-    onUpdateProxyConfig: (config: { port: number, target: string }) => void;
+    proxyConfig: { port: number, target: string, systemProxyEnabled?: boolean };
+    onUpdateProxyConfig: (config: { port: number, target: string, systemProxyEnabled?: boolean }) => void;
     proxyHistory: WatcherEvent[];
     onClearProxy: () => void;
     configPath: string | null;
@@ -356,6 +356,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             onChange={(e) => onUpdateProxyConfig({ ...proxyConfig, target: e.target.value })}
                             style={{ width: '100%', padding: '4px', background: 'var(--vscode-input-background)', color: 'var(--vscode-input-foreground)', border: '1px solid var(--vscode-input-border)' }}
                         />
+                    </div>
+
+                    <div style={{ marginBottom: 5, display: 'flex', alignItems: 'center' }}>
+                        <input
+                            type="checkbox"
+                            id="chkSystemProxy"
+                            checked={proxyConfig.systemProxyEnabled !== false}
+                            onChange={e => onUpdateProxyConfig({ ...proxyConfig, systemProxyEnabled: e.target.checked })}
+                            style={{ marginRight: 6 }}
+                        />
+                        <label htmlFor="chkSystemProxy" style={{ fontSize: '0.8em', cursor: 'pointer', userSelect: 'none' }} title="Uncheck to bypass local corporate proxy (direct connection)">
+                            Use System Proxy
+                        </label>
                     </div>
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>

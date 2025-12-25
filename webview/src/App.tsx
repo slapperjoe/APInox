@@ -155,7 +155,7 @@ function App() {
     // Proxy State (Placeholders)
     const [proxyHistory, setProxyHistory] = useState<WatcherEvent[]>([]); // Reusing WatcherEvent for now
     const [proxyRunning, setProxyRunning] = useState(false);
-    const [proxyConfig, setProxyConfig] = useState({ port: 9000, target: 'http://localhost:8080' });
+    const [proxyConfig, setProxyConfig] = useState({ port: 9000, target: 'http://localhost:8080', systemProxyEnabled: true });
     const [configPath, setConfigPath] = useState<string | null>(null);
 
     const startTimeRef = useRef<number>(0);
@@ -849,8 +849,9 @@ function App() {
                 }}
                 proxyConfig={proxyConfig}
                 onUpdateProxyConfig={(config) => {
-                    setProxyConfig(config);
-                    bridge.sendMessage({ command: 'updateProxyConfig', config });
+                    const newConfig = { ...config, systemProxyEnabled: config.systemProxyEnabled ?? true };
+                    setProxyConfig(newConfig);
+                    bridge.sendMessage({ command: 'updateProxyConfig', config: newConfig });
                 }}
                 proxyHistory={proxyHistory}
                 onClearProxy={() => setProxyHistory([])}

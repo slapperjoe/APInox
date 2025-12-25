@@ -11,6 +11,7 @@ import * as selfsigned from 'selfsigned';
 export interface ProxyConfig {
     port: number;
     targetUrl: string;
+    systemProxyEnabled?: boolean;
 }
 
 export interface ProxyEvent {
@@ -36,7 +37,7 @@ export class ProxyService extends EventEmitter {
     private certPath: string | null = null;
     private keyPath: string | null = null;
 
-    constructor(initialConfig: ProxyConfig = { port: 9000, targetUrl: 'http://localhost:8080' }) {
+    constructor(initialConfig: ProxyConfig = { port: 9000, targetUrl: 'http://localhost:8080', systemProxyEnabled: true }) {
         super();
         this.config = initialConfig;
     }
@@ -170,12 +171,15 @@ export class ProxyService extends EventEmitter {
 
                 let agent: any;
 
-                if (proxyUrl) {
+                if (proxyUrl && this.config.systemProxyEnabled !== false) {
                     this.logDebug(`[Proxy] Using System Proxy: ${proxyUrl}`);
                     const { HttpsProxyAgent } = require('https-proxy-agent');
                     // Enable support for self-signed certs in corporate proxies
                     agent = new HttpsProxyAgent(proxyUrl, { rejectUnauthorized: strictSSL });
                 } else {
+                    if (proxyUrl) {
+                        this.logDebug(`[Proxy] IGNORING System Proxy (${proxyUrl}) - Direct Connection requested.`);
+                    }
                     // Handle upstream self-signed certs directly if no proxy
                     agent = this.config.targetUrl.startsWith('https')
                         ? new https.Agent({ rejectUnauthorized: strictSSL, keepAlive: true })

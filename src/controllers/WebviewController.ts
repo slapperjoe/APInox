@@ -114,7 +114,8 @@ export class WebviewController {
                 // Map frontend 'target' to backend 'targetUrl'
                 const proxyConfig = {
                     port: message.config.port,
-                    targetUrl: message.config.target || message.config.targetUrl
+                    targetUrl: message.config.target || message.config.targetUrl,
+                    systemProxyEnabled: message.config.systemProxyEnabled
                 };
                 this._proxyService.updateConfig(proxyConfig);
                 break;
