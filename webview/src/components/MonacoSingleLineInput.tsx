@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import { useRef, useImperativeHandle, forwardRef } from 'react';
 import Editor, { Monaco, loader } from '@monaco-editor/react';
 import * as monaco from 'monaco-editor';
 import styled from 'styled-components';
@@ -28,16 +28,38 @@ export interface MonacoSingleLineInputProps {
     placeholder?: string; // Monaco doesn't support placeholder natively easily, but we can fake it or ignore
     readOnly?: boolean;
     onEnter?: () => void; // Support for hitting Enter
+    onFocus?: () => void;
 }
 
-export const MonacoSingleLineInput: React.FC<MonacoSingleLineInputProps> = ({
+export interface MonacoSingleLineInputHandle {
+    insertText: (text: string) => void;
+}
+
+export const MonacoSingleLineInput = forwardRef<MonacoSingleLineInputHandle, MonacoSingleLineInputProps>(({
     value,
     onChange,
     readOnly = false,
-    onEnter
-}) => {
+    onEnter,
+    onFocus
+}, ref) => {
     const editorRef = useRef<any>(null);
     const monacoRef = useRef<Monaco | null>(null);
+
+    useImperativeHandle(ref, () => ({
+        insertText: (text: string) => {
+            if (editorRef.current && monacoRef.current) {
+                const editor = editorRef.current;
+                const selection = editor.getSelection();
+                const op = {
+                    range: selection,
+                    text: text,
+                    forceMoveMarkers: true
+                };
+                editor.executeEdits("my-source", [op]);
+                editor.focus();
+            }
+        }
+    }));
 
     // Apply Wildcard Decorations
     useWildcardDecorations(editorRef.current, monacoRef.current, value);
@@ -61,33 +83,8 @@ export const MonacoSingleLineInput: React.FC<MonacoSingleLineInputProps> = ({
             }
         });
 
-        // Force bind standard clipboard shortcuts
-        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyC, () => {
-            editor.trigger('keyboard', 'editor.action.clipboardCopyAction', null);
-        });
-        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyV, () => {
-            // Explicitly read from clipboard and insert
-            navigator.clipboard.readText()
-                .then(text => {
-                    // For single line input, we must strip newlines
-                    const clean = text.replace(/[\r\n]+/g, '');
-
-                    const selection = editor.getSelection();
-                    if (selection) {
-                        editor.executeEdits('clipboard', [{
-                            range: selection,
-                            text: clean, // Insert cleaned text
-                            forceMoveMarkers: true
-                        }]);
-                    }
-                })
-                .catch(err => {
-                    console.error('Paste failed: ', err);
-                    editor.trigger('keyboard', 'editor.action.clipboardPasteAction', null);
-                });
-        });
-        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyX, () => {
-            editor.trigger('keyboard', 'editor.action.clipboardCutAction', null);
+        editor.onDidFocusEditorText(() => {
+            if (onFocus) onFocus();
         });
     };
 
@@ -96,9 +93,6 @@ export const MonacoSingleLineInput: React.FC<MonacoSingleLineInputProps> = ({
         const v = val || '';
         if (v.includes('\n')) {
             const clean = v.replace(/[\r\n]+/g, '');
-            // We can't easily push back to editor loop without causing cursor jumps usually,
-            // but for a URL bar it's mostly fine or we wait for effect.
-            // Actually, simplest is to strip it before calling onChange.
             onChange(clean);
         } else {
             onChange(v);
@@ -157,4 +151,4 @@ export const MonacoSingleLineInput: React.FC<MonacoSingleLineInputProps> = ({
             />
         </InputContainer>
     );
-};
+});

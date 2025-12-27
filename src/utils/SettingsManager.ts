@@ -18,6 +18,9 @@ export interface DirtySoapConfig {
         splitRatio?: number;
     };
     activeEnvironment?: string;
+    lastConfigPath?: string;
+    lastProxyTarget?: string;
+    openProjects?: string[];
     environments?: Record<string, {
         endpoint_url?: string;
         env?: string;
@@ -25,8 +28,6 @@ export interface DirtySoapConfig {
     }>;
     globals?: Record<string, string>;
     recentWorkspaces?: string[];
-    lastConfigPath?: string;
-    lastProxyTarget?: string;
 }
 
 const DEFAULT_CONFIG: DirtySoapConfig = {
@@ -155,6 +156,10 @@ export class SettingsManager {
 
     public updateLastProxyTarget(target: string) {
         this.updateConfigPath(['lastProxyTarget'], target);
+    }
+
+    public updateOpenProjects(paths: string[]) {
+        this.updateConfigPath(['openProjects'], paths);
     }
 
     public saveRawConfig(content: string) {

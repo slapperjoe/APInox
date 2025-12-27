@@ -75,7 +75,53 @@ export class ProjectStorage {
                         }))
                     }))
                 }))
-            }
+            }, // Fixed: Removed extra ')' and added ','
+            "con:testSuite": (project.testSuites || []).map(suite => ({
+                "@_name": suite.name,
+                "@_id": suite.id,
+                "con:testCase": suite.testCases.map(tc => ({
+                    "@_name": tc.name,
+                    "@_id": tc.id,
+                    "con:testStep": tc.steps.map(step => ({
+                        "@_name": step.name,
+                        "@_type": step.type,
+                        "@_id": step.id,
+                        "con:config": {
+                            "request": step.config.request ? {
+                                "@_name": step.config.request.name,
+                                "con:endpoint": step.config.request.endpoint,
+                                "con:request": {
+                                    "@_mediaType": step.config.request.contentType || "text/xml",
+                                    "@_method": step.config.request.method || "POST",
+                                    "#text": step.config.request.request
+                                },
+                                "con:assertion": step.config.request.assertions ? step.config.request.assertions.map(a => ({
+                                    "@_type": a.type,
+                                    "@_name": a.name || a.type,
+                                    "@_id": a.id,
+                                    "con:configuration": {
+                                        "token": a.configuration?.token,
+                                        "ignoreCase": a.configuration?.ignoreCase,
+                                        "sla": a.configuration?.sla,
+                                        "path": a.configuration?.xpath,
+                                        "content": a.configuration?.expectedContent
+                                    }
+                                })) : []
+                            } : undefined,
+                            "delay": step.config.delayMs !== undefined ? { "@_ms": step.config.delayMs } : undefined,
+                            "transfer": step.config.sourceStepId ? {
+                                "@_sourceStepId": step.config.sourceStepId,
+                                "@_sourceProperty": step.config.sourceProperty,
+                                "@_sourcePath": step.config.sourcePath,
+                                "@_targetStepId": step.config.targetStepId,
+                                "@_targetProperty": step.config.targetProperty,
+                                "@_targetPath": step.config.targetPath
+                            } : undefined,
+                            "script": step.config.scriptName ? { "@_name": step.config.scriptName } : undefined
+                        }
+                    }))
+                }))
+            }))
         };
 
         const xmlContent = builder.build(soapUiObj);
@@ -97,7 +143,7 @@ export class ProjectStorage {
             ignoreAttributes: false,
             attributeNamePrefix: "@_",
             isArray: (name, jpath, isLeafNode, isAttribute) => {
-                return ["con:interface", "con:operation", "con:call", "con:request", "con:assertion"].indexOf(name) !== -1;
+                return ["con:interface", "con:operation", "con:call", "con:request", "con:assertion", "con:testSuite", "con:testCase", "con:testStep"].indexOf(name) !== -1;
             }
         });
         const result = parser.parse(xmlContent);
@@ -124,7 +170,8 @@ export class ProjectStorage {
 
         const project: SoapUIProject = {
             name: name,
-            interfaces: []
+            interfaces: [],
+            testSuites: []
         };
 
         if (projectRoot["con:interface"]) {
@@ -179,6 +226,61 @@ export class ProjectStorage {
                             return acc;
                         }, {}) : {}
                     })) : []
+                })) : []
+            }));
+        }
+
+        if (projectRoot["con:testSuite"]) {
+            const suites = Array.isArray(projectRoot["con:testSuite"]) ? projectRoot["con:testSuite"] : [projectRoot["con:testSuite"]];
+            project.testSuites = suites.map((suite: any) => ({
+                id: suite["@_id"] || `suite-${Date.now()}-${Math.random()}`,
+                name: suite["@_name"],
+                testCases: suite["con:testCase"] ? (Array.isArray(suite["con:testCase"]) ? suite["con:testCase"] : [suite["con:testCase"]]).map((tc: any) => ({
+                    id: tc["@_id"] || `tc-${Date.now()}-${Math.random()}`,
+                    name: tc["@_name"],
+                    steps: tc["con:testStep"] ? (Array.isArray(tc["con:testStep"]) ? tc["con:testStep"] : [tc["con:testStep"]]).map((step: any) => {
+                        const cfg = step["con:config"] || {};
+                        const type = step["@_type"]; // 'request', 'delay', etc.
+
+                        // Parse Config based on Type
+                        let parsedConfig: any = {};
+
+                        if (type === 'request' && cfg["request"]) {
+                            const r = cfg["request"];
+                            parsedConfig.request = {
+                                name: r["@_name"],
+                                endpoint: r["con:endpoint"],
+                                contentType: r["con:request"] && r["con:request"]["@_mediaType"],
+                                method: r["con:request"] && r["con:request"]["@_method"],
+                                request: r["con:request"] && (r["con:request"]["#text"] || r["con:request"]),
+                                assertions: r["con:assertion"] ? (Array.isArray(r["con:assertion"]) ? r["con:assertion"] : [r["con:assertion"]]).map((a: any) => ({
+                                    type: a["@_type"],
+                                    name: a["@_name"],
+                                    id: a["@_id"],
+                                    configuration: a["con:configuration"] // Map props individually if strictness needed
+                                })) : []
+                            };
+                        } else if (type === 'delay' && cfg["delay"]) {
+                            parsedConfig.delayMs = parseInt(cfg["delay"]["@_ms"] || "0");
+                        } else if (type === 'transfer' && cfg["transfer"]) {
+                            const t = cfg["transfer"];
+                            parsedConfig.sourceStepId = t["@_sourceStepId"];
+                            parsedConfig.sourceProperty = t["@_sourceProperty"];
+                            parsedConfig.sourcePath = t["@_sourcePath"];
+                            parsedConfig.targetStepId = t["@_targetStepId"];
+                            parsedConfig.targetProperty = t["@_targetProperty"];
+                            parsedConfig.targetPath = t["@_targetPath"];
+                        } else if (type === 'script' && cfg["script"]) {
+                            parsedConfig.scriptName = cfg["script"]["@_name"];
+                        }
+
+                        return {
+                            id: step["@_id"] || `step-${Date.now()}-${Math.random()}`,
+                            name: step["@_name"],
+                            type: type,
+                            config: parsedConfig
+                        };
+                    }) : []
                 })) : []
             }));
         }

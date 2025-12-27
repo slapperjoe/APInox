@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import { useRef, useImperativeHandle, forwardRef } from 'react';
 import Editor, { Monaco, loader } from '@monaco-editor/react';
 import * as monaco from 'monaco-editor';
 import styled from 'styled-components';
@@ -17,16 +17,38 @@ export interface MonacoRequestEditorProps {
     onChange: (value: string) => void;
     language?: string;
     readOnly?: boolean;
+    onFocus?: () => void;
 }
 
-export const MonacoRequestEditor: React.FC<MonacoRequestEditorProps> = ({
+export interface MonacoRequestEditorHandle {
+    insertText: (text: string) => void;
+}
+
+export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoRequestEditorProps>(({
     value,
     onChange,
     language = 'xml',
-    readOnly = false
-}) => {
+    readOnly = false,
+    onFocus
+}, ref) => {
     const editorRef = useRef<any>(null);
     const monacoRef = useRef<Monaco | null>(null);
+
+    useImperativeHandle(ref, () => ({
+        insertText: (text: string) => {
+            if (editorRef.current && monacoRef.current) {
+                const editor = editorRef.current;
+                const selection = editor.getSelection();
+                const op = {
+                    range: selection,
+                    text: text,
+                    forceMoveMarkers: true
+                };
+                editor.executeEdits("my-source", [op]);
+                editor.focus();
+            }
+        }
+    }));
 
     // Use shared hook for decorations
     useWildcardDecorations(editorRef.current, monacoRef.current, value);
@@ -34,33 +56,9 @@ export const MonacoRequestEditor: React.FC<MonacoRequestEditorProps> = ({
     const handleEditorDidMount = (editor: any, monaco: Monaco) => {
         editorRef.current = editor;
         monacoRef.current = monaco;
-        // Hook will trigger update via dependency on refs/value, but initial mount might race.
-        // The dependency [value, editor, monaco] in the hook handles it once refs are set and value exists.
 
-        // Force bind standard clipboard shortcuts with robust handling
-        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyC, () => {
-            editor.trigger('keyboard', 'editor.action.clipboardCopyAction', null);
-        });
-        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyV, () => {
-            // Explicitly read from clipboard and insert
-            navigator.clipboard.readText()
-                .then(text => {
-                    const selection = editor.getSelection();
-                    if (selection) {
-                        editor.executeEdits('clipboard', [{
-                            range: selection,
-                            text: text,
-                            forceMoveMarkers: true
-                        }]);
-                    }
-                })
-                .catch(err => {
-                    console.error('Paste failed: ', err);
-                    editor.trigger('keyboard', 'editor.action.clipboardPasteAction', null);
-                });
-        });
-        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyX, () => {
-            editor.trigger('keyboard', 'editor.action.clipboardCutAction', null);
+        editor.onDidFocusEditorText(() => {
+            if (onFocus) onFocus();
         });
     };
 
@@ -86,9 +84,9 @@ export const MonacoRequestEditor: React.FC<MonacoRequestEditorProps> = ({
                     automaticLayout: true,
                     lineNumbers: 'on',
                     renderLineHighlight: 'none',
-                    contextmenu: true, // Enable default context menu for Copy/Paste
+                    contextmenu: true,
                 }}
             />
         </EditorContainer>
     );
-};
+});

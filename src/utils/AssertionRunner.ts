@@ -9,10 +9,11 @@ export interface AssertionResult {
 
 export class AssertionRunner {
 
-    public static run(responseVal: string, timeTakenMs: number, assertions: SoapUIAssertion[]): AssertionResult[] {
+    public static run(responseVal: string | null | undefined, timeTakenMs: number, assertions: SoapUIAssertion[]): AssertionResult[] {
         if (!assertions || assertions.length === 0) return [];
 
-        return assertions.map(a => this.evaluate(responseVal, timeTakenMs, a));
+        const safeResponse = responseVal || '';
+        return assertions.map(a => this.evaluate(safeResponse, timeTakenMs, a));
     }
 
     private static evaluate(response: string, timeTaken: number, assertion: SoapUIAssertion): AssertionResult {

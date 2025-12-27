@@ -5,12 +5,15 @@ export interface SoapOperation {
     description?: string;
     targetNamespace?: string;
     expanded?: boolean;
+    portName?: string;
+    originalEndpoint?: string;
 }
 
 export interface SoapService {
     name: string;
     ports: string[];
     operations: SoapOperation[];
+    targetNamespace?: string;
 }
 
 export interface SoapSchemaNode {
@@ -40,6 +43,13 @@ export interface SoapUIAssertion {
         expectedContent?: string; // For XPath
     };
 }
+export interface SoapRequestExtractor {
+    type: 'XPath' | 'JSONPath';
+    source: 'body' | 'header';
+    path: string;
+    variable: string;
+    id: string;
+}
 
 export interface SoapUIRequest {
     name: string;
@@ -50,6 +60,8 @@ export interface SoapUIRequest {
     dirty?: boolean;
     assertions?: SoapUIAssertion[];
     headers?: Record<string, string>;
+    extractors?: SoapRequestExtractor[];
+    id?: string;
 }
 
 export interface SoapUIOperation {
@@ -76,4 +88,49 @@ export interface SoapUIProject {
     interfaces: SoapUIInterface[];
     expanded?: boolean;
     fileName?: string;
+    id?: string;
+    testSuites?: SoapTestSuite[];
+}
+
+// Test Runner Types
+export type TestStepType = 'request' | 'delay' | 'transfer' | 'script';
+
+export interface SoapTestStep {
+    id: string;
+    name: string;
+    type: TestStepType;
+    // Common configuration
+    config: {
+        // For 'request'
+        requestId?: string; // Reference to a project request (if linked)
+        request?: SoapUIRequest; // Standalone request copy
+
+        // For 'delay'
+        delayMs?: number;
+
+        // For 'transfer'
+        sourceStepId?: string;
+        sourceProperty?: 'Response' | 'Headers' | 'Status';
+        sourcePath?: string; // XPath or Regex
+        targetStepId?: string;
+        targetProperty?: 'Request' | 'Header' | 'Endpoint';
+        targetPath?: string; // Where to inject (e.g. replace token)
+
+        // For 'script'
+        scriptName?: string;
+    };
+}
+
+export interface SoapTestCase {
+    id: string;
+    name: string;
+    steps: SoapTestStep[];
+    expanded?: boolean;
+}
+
+export interface SoapTestSuite {
+    id: string;
+    name: string;
+    testCases: SoapTestCase[];
+    expanded?: boolean;
 }
