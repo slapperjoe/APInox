@@ -1,23 +1,29 @@
 import * as vscode from 'vscode';
 import { SoapClient } from '../soapClient';
 import { ProjectStorage } from '../ProjectStorage';
+import { FolderProjectStorage } from '../FolderProjectStorage';
 import { SettingsManager } from '../utils/SettingsManager';
+import { WildcardProcessor } from '../utils/WildcardProcessor';
 import { WebviewController } from '../controllers/WebviewController';
 import { FileWatcherService } from '../services/FileWatcherService';
 import { ProxyService } from '../services/ProxyService';
 import { ConfigSwitcherService } from '../services/ConfigSwitcherService';
+import { TestRunnerService } from '../services/TestRunnerService';
 
 export class SoapPanel {
     public static currentPanel: SoapPanel | undefined;
     public static readonly viewType = 'dirtySoap';
     private readonly _panel: vscode.WebviewPanel;
     private readonly _extensionUri: vscode.Uri;
-    private _soapClient: SoapClient;
-    private _projectStorage: ProjectStorage;
-    private _settingsManager: SettingsManager;
-    private _fileWatcherService: FileWatcherService;
+    private readonly _soapClient: SoapClient;
+    private readonly _projectStorage: ProjectStorage;
+    private readonly _folderStorage: FolderProjectStorage;
+    private readonly _settingsManager: SettingsManager;
+    private readonly _wildcardProcessor: WildcardProcessor;
+    private readonly _fileWatcherService: FileWatcherService;
     private _proxyService: ProxyService;
     private _configSwitcherService: ConfigSwitcherService;
+    private _testRunnerService: TestRunnerService;
     private _controller: WebviewController;
     private _disposables: vscode.Disposable[] = [];
     private _autosaveTimeout: NodeJS.Timeout | undefined;
@@ -55,7 +61,9 @@ export class SoapPanel {
         this._outputChannel = vscode.window.createOutputChannel('Dirty SOAP');
         this._soapClient = new SoapClient(this._outputChannel);
         this._projectStorage = new ProjectStorage(this._outputChannel);
+        this._folderStorage = new FolderProjectStorage(this._outputChannel);
         this._settingsManager = new SettingsManager();
+        this._wildcardProcessor = new WildcardProcessor();
 
         this._fileWatcherService = new FileWatcherService(this._outputChannel);
         this._proxyService = new ProxyService();
@@ -63,28 +71,33 @@ export class SoapPanel {
         this._proxyService.on('log', (event: any) => {
             const statusFn = (s: number) => s >= 200 && s < 300 ? 'SUCCESS' : 'FAIL';
             if (event.type === 'request') {
-                this._outputChannel.appendLine(`[Proxy] Request: ${event.method} ${event.url}`);
+                this._outputChannel.appendLine(`[Proxy] Request: ${event.method} ${event.url} `);
             } else {
                 this._outputChannel.appendLine(`[Proxy] Response: ${event.method} ${event.url} -> ${event.status} (${event.duration}s)`);
                 if (!event.success && event.responseBody) {
-                    this._outputChannel.appendLine(`[Proxy] Response Body: ${event.responseBody}`);
+                    this._outputChannel.appendLine(`[Proxy] Response Body: ${event.responseBody} `);
                 }
                 if (event.error) {
-                    this._outputChannel.appendLine(`[Proxy] Error: ${event.error}`);
+                    this._outputChannel.appendLine(`[Proxy] Error: ${event.error} `);
                 }
             }
         });
+
         this._configSwitcherService = new ConfigSwitcherService();
+        this._testRunnerService = new TestRunnerService(this._soapClient, this._outputChannel);
 
         this._controller = new WebviewController(
             this._panel,
             this._extensionUri,
             this._soapClient,
+            this._folderStorage,
             this._projectStorage,
             this._settingsManager,
+            this._wildcardProcessor,
             this._fileWatcherService,
             this._proxyService,
-            this._configSwitcherService
+            this._configSwitcherService,
+            this._testRunnerService
         );
 
         // Watcher starts stopped by default.
@@ -173,18 +186,18 @@ export class SoapPanel {
         const styleUri = webview.asWebviewUri(stylePathOnDisk);
 
         return `<!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-randomNonce' ${webview.cspSource} 'unsafe-eval'; worker-src blob:; font-src ${webview.cspSource} data:; img-src ${webview.cspSource} data:;">
-            <title>Dirty SOAP</title>
-            <link rel="stylesheet" type="text/css" href="${styleUri}">
-        </head>
-        <body>
-            <div id="root"></div>
-            <script type="module" nonce="randomNonce" src="${scriptUri}"></script>
-        </body>
-        </html>`;
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-randomNonce' ${webview.cspSource} 'unsafe-eval'; worker-src blob:; font-src ${webview.cspSource} data:; img-src ${webview.cspSource} data:;">
+    <title>Dirty SOAP</title>
+    <link rel="stylesheet" type="text/css" href="${styleUri}">
+</head>
+<body>
+    <div id="root"></div>
+    <script type="module" nonce="randomNonce" src="${scriptUri}"></script>
+</body>
+</html>`;
     }
 }

@@ -5,10 +5,21 @@ import * as vm from 'vm';
 
 export class WildcardProcessor {
 
-    public static process(text: string, env: Record<string, string>, globals: Record<string, string>, scriptsDir?: string): string {
+    public static process(text: string, env: Record<string, string>, globals: Record<string, string>, scriptsDir?: string, contextVariables?: Record<string, string>): string {
         if (!text) return text;
 
         let processed = text;
+
+        // 0. Context Variables (SoapUI Style: ${#TestCase#VarName})
+        if (contextVariables) {
+            for (const [key, value] of Object.entries(contextVariables)) {
+                // Determine scope if needed, but for now map key directly (assuming key is just the name)
+                const regex = new RegExp(`\\$\\{#TestCase#${key}\\}`, 'g');
+                processed = processed.replace(regex, value);
+
+                // Also support generic ${key} if desired? For now stick to strict SoapUI style requested.
+            }
+        }
 
         // 1. Contextual Functions
 

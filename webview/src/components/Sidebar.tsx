@@ -1,9 +1,11 @@
-import React from 'react';
-import styled from 'styled-components';
-import { ChevronRight, ChevronDown, Plus, Trash2, Globe, FileCode, Play, Save, FolderOpen, FolderPlus, Settings, HelpCircle, Eye, Clock, Square, Network, FolderOpen as FolderIcon, Shield, FileDown } from 'lucide-react';
-import { SoapUIInterface, SoapUIOperation, SoapUIRequest, SoapUIProject, WatcherEvent } from '../models';
+import React, { useState } from 'react';
+import styled, { keyframes, css } from 'styled-components';
+import { ChevronRight, ChevronDown, Plus, Trash2, Globe, FileCode, Play, Save, FolderOpen, FolderPlus, Settings, HelpCircle, Eye, Clock, Square, Network, FolderOpen as FolderIcon, Shield, FileDown, Compass } from 'lucide-react';
+import { SoapUIInterface, SoapUIOperation, SoapUIRequest, SoapUIProject, WatcherEvent, SidebarView } from '../models';
 import { formatXml } from '../utils/xmlFormatter';
+import { ProjectTestTree } from './ProjectTestTree';
 
+// Styled Components
 // Styled Components
 const DirtyMarker = styled.span`
     color: var(--vscode-charts-yellow);
@@ -68,7 +70,15 @@ const RequestItem = styled.div<{ active?: boolean }>`
     }
 `;
 
-const HeaderButton = styled.button`
+const shake = keyframes`
+    0% { transform: translateX(0); }
+    25% { transform: translateX(2px) rotate(5deg); }
+    50% { transform: translateX(-2px) rotate(-5deg); }
+    75% { transform: translateX(2px) rotate(5deg); }
+    100% { transform: translateX(0); }
+`;
+
+const HeaderButton = styled.button<{ shake?: boolean }>`
     background: transparent;
     border: none;
     color: var(--vscode-icon-foreground);
@@ -78,6 +88,7 @@ const HeaderButton = styled.button`
     display: flex;
     align-items: center;
     justify-content: center;
+    ${props => props.shake && css`animation: ${shake} 0.5s ease-in-out;`}
     &:hover {
         background-color: var(--vscode-toolbar-hoverBackground);
         border-radius: 3px;
@@ -123,8 +134,6 @@ interface SidebarProps {
     toggleExploredInterface: (iName: string) => void;
     toggleExploredOperation: (iName: string, oName: string) => void;
 
-    saveWorkspace: () => void;
-    openWorkspace: () => void;
     loadProject: () => void;
     saveProject: (proj: SoapUIProject) => void;
     closeProject: (name: string) => void;
@@ -142,6 +151,8 @@ interface SidebarProps {
     setResponse: (res: any) => void;
 
     handleContextMenu: (e: React.MouseEvent, type: string, data: any, isExplorer?: boolean) => void;
+    onAddRequest?: (op: SoapUIOperation) => void;
+    onDeleteRequest?: (req: SoapUIRequest) => void;
     deleteConfirm: string | null;
     backendConnected: boolean;
 
@@ -155,8 +166,19 @@ interface SidebarProps {
     onSaveUiState?: () => void;
 
     // View State
-    activeView: 'projects' | 'watcher' | 'proxy';
-    onChangeView: (view: 'projects' | 'watcher' | 'proxy') => void;
+    // Navigation
+    activeView: SidebarView;
+    onChangeView: (view: SidebarView) => void;
+
+    // Test Runner
+    onAddSuite: (projectName: string) => void;
+    onDeleteSuite: (suiteId: string) => void;
+    onRunSuite: (suiteId: string) => void;
+    onAddTestCase: (suiteId: string) => void;
+    onRunCase: (caseId: string) => void;
+    onDeleteTestCase: (caseId: string) => void;
+    onSelectSuite?: (suiteId: string) => void;
+    onSelectTestCase?: (caseId: string) => void;
 
     // Watcher
     watcherHistory: WatcherEvent[];
@@ -182,17 +204,25 @@ interface SidebarProps {
     onInjectProxy: () => void;
     onRestoreProxy: () => void;
     onOpenCertificate?: () => void;
+    onDeleteInterface?: (iface: SoapUIInterface) => void;
+    onDeleteOperation?: (op: SoapUIOperation, iface: SoapUIInterface) => void;
+    onToggleSuiteExpand?: (suiteId: string) => void;
+    onToggleCaseExpand?: (caseId: string) => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
-    explorerExpanded, toggleExplorerExpand, exploredInterfaces, projects,
+    exploredInterfaces, projects,
     inputType, setInputType, wsdlUrl, setWsdlUrl, selectedFile, loadWsdl, pickLocalWsdl, downloadStatus,
     addToProject, addAllToProject, clearExplorer, removeFromExplorer,
     toggleProjectExpand, toggleInterfaceExpand, toggleOperationExpand,
     toggleExploredInterface, toggleExploredOperation,
-    saveWorkspace, openWorkspace, loadProject, saveProject, closeProject, onAddProject,
+    loadProject, saveProject, closeProject, onAddProject,
+    onAddSuite, onDeleteSuite,
+    onRunSuite,
+    onAddTestCase, onRunCase, onDeleteTestCase,
+    onSelectSuite, onSelectTestCase,
     setSelectedProjectName,
-    setSelectedInterface,
+    selectedInterface, setSelectedInterface,
     selectedOperation, setSelectedOperation,
     selectedRequest, setSelectedRequest,
     setResponse,
@@ -202,8 +232,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
     onStartWatcher, onStopWatcher, onClearWatcher,
     proxyRunning, onStartProxy, onStopProxy, proxyConfig, onUpdateProxyConfig, proxyHistory, onClearProxy,
     onSaveProxyHistory,
-    configPath, onSelectConfigFile, onInjectProxy, onRestoreProxy, onOpenCertificate
+    configPath, onSelectConfigFile, onInjectProxy, onRestoreProxy, onOpenCertificate, onAddRequest, onDeleteRequest, onDeleteInterface, onDeleteOperation,
+    onToggleSuiteExpand, onToggleCaseExpand
 }) => {
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
     const renderInterfaceList = (interfaces: SoapUIInterface[], isExplorer: boolean) => (
         interfaces.map((iface, i) => (
@@ -225,7 +257,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {iface.name} {isExplorer ? '(Preview)' : ''}
                     </span>
-                    {isExplorer && (
+                    {isExplorer && selectedInterface === iface && (
                         <div style={{ display: 'flex', alignItems: 'center' }}>
                             <HeaderButton onClick={(e) => { e.stopPropagation(); addToProject(iface); }} title="Add to Project">
                                 <Plus size={14} />
@@ -235,50 +267,141 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             </HeaderButton>
                         </div>
                     )}
-                </ServiceItem>
-                {(iface as any).expanded !== false && iface.operations.map((op: any, j: number) => (
-                    <div key={j} style={{ marginLeft: 15 }}>
-                        <OperationItem
-                            active={selectedOperation === op}
-                            onClick={() => {
-                                if (isExplorer) {
-                                    toggleExploredOperation(iface.name, op.name);
-                                } else {
-                                    const projName = projects.find(p => p.interfaces.includes(iface))?.name || '';
-                                    toggleOperationExpand(projName, iface.name, op.name);
-                                    setSelectedProjectName(projName);
-                                }
-                                setSelectedInterface(iface);
-                                setSelectedOperation(op);
-                                setSelectedRequest(null);
-                            }}
-                            onContextMenu={(e) => handleContextMenu(e, 'operation', op, isExplorer)}
-                        >
-                            <span style={{ marginRight: 5, display: 'flex', alignItems: 'center' }}>
-                                {op.expanded !== false ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                            </span>
-                            {op.name}
-                        </OperationItem>
-                        {op.expanded !== false && op.requests.map((req: any, k: number) => (
-                            <RequestItem
-                                key={k}
-                                active={selectedRequest === req}
+                    {!isExplorer && onDeleteInterface && (
+                        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>
+                            <HeaderButton
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    if (!isExplorer) setSelectedProjectName(projects.find(p => p.interfaces.includes(iface))?.name || null);
+                                    if (confirmDeleteId === iface.name) {
+                                        onDeleteInterface(iface);
+                                        setConfirmDeleteId(null);
+                                    } else {
+                                        setConfirmDeleteId(iface.name);
+                                        setTimeout(() => setConfirmDeleteId(curr => curr === iface.name ? null : curr), 3000);
+                                    }
+                                }}
+                                title={confirmDeleteId === iface.name ? "Click again to Confirm Delete" : "Delete Interface"}
+                                style={{ color: confirmDeleteId === iface.name ? 'var(--vscode-errorForeground)' : undefined }}
+                                shake={confirmDeleteId === iface.name}
+                            >
+                                <Trash2 size={12} />
+                            </HeaderButton>
+                        </div>
+                    )}
+                </ServiceItem>
+                {(iface as any).expanded !== false && iface.operations.map((op: any, j: number) => {
+                    const hasSingleRequest = op.requests.length === 1;
+                    const singleRequest = hasSingleRequest ? op.requests[0] : null;
+
+                    return (
+                        <div key={j} style={{ marginLeft: 15 }}>
+                            <OperationItem
+                                active={selectedOperation === op && (!hasSingleRequest || selectedRequest === singleRequest)}
+                                onClick={() => {
+                                    if (isExplorer) {
+                                        if (!hasSingleRequest) toggleExploredOperation(iface.name, op.name);
+                                    } else {
+                                        const projName = projects.find(p => p.interfaces.includes(iface))?.name || '';
+                                        if (!hasSingleRequest) toggleOperationExpand(projName, iface.name, op.name);
+                                        setSelectedProjectName(projName);
+                                    }
                                     setSelectedInterface(iface);
                                     setSelectedOperation(op);
-                                    setSelectedRequest(req);
-                                    setResponse(null);
+
+                                    if (hasSingleRequest && singleRequest) {
+                                        setSelectedRequest(singleRequest);
+                                        setResponse(null);
+                                    } else {
+                                        setSelectedRequest(null);
+                                    }
                                 }}
-                                onContextMenu={(e) => handleContextMenu(e, 'request', req, isExplorer)}
+                                onContextMenu={(e) => handleContextMenu(e, 'operation', op, isExplorer)}
                             >
-                                {req.name}
-                                {req.dirty && <DirtyMarker>●</DirtyMarker>}
-                            </RequestItem>
-                        ))}
-                    </div>
-                ))}
+                                <span style={{ marginRight: 5, display: 'flex', alignItems: 'center', width: 14 }}>
+                                    {!hasSingleRequest && (op.expanded !== false ? <ChevronDown size={14} /> : <ChevronRight size={14} />)}
+                                </span>
+                                {op.name}
+                                {hasSingleRequest && singleRequest?.dirty && <DirtyMarker>●</DirtyMarker>}
+                                {!isExplorer && selectedOperation === op && (
+                                    <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>
+                                        {onAddRequest && (
+                                            <HeaderButton
+                                                onClick={(e) => { e.stopPropagation(); onAddRequest(op); }}
+                                                title="Add New Request"
+                                            >
+                                                <Plus size={12} />
+                                            </HeaderButton>
+                                        )}
+                                        {onDeleteOperation && (
+                                            <HeaderButton
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    const id = `op-${iface.name}-${op.name}`;
+                                                    if (confirmDeleteId === id) {
+                                                        onDeleteOperation(op, iface);
+                                                        setConfirmDeleteId(null);
+                                                    } else {
+                                                        setConfirmDeleteId(id);
+                                                        setTimeout(() => setConfirmDeleteId(curr => curr === id ? null : curr), 3000);
+                                                    }
+                                                }}
+                                                title={confirmDeleteId === `op-${iface.name}-${op.name}` ? "Click to Confirm Delete" : "Delete Operation"}
+                                                style={{ color: confirmDeleteId === `op-${iface.name}-${op.name}` ? 'var(--vscode-errorForeground)' : undefined }}
+                                                shake={confirmDeleteId === `op-${iface.name}-${op.name}`}
+                                            >
+                                                <Trash2 size={12} />
+                                            </HeaderButton>
+                                        )}
+                                    </div>
+                                )}
+                            </OperationItem>
+
+                            {/* Render Children only if NOT single request */}
+                            {!hasSingleRequest && op.expanded !== false && op.requests.map((req: any, k: number) => (
+                                <RequestItem
+                                    key={k}
+                                    active={selectedRequest === req}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (!isExplorer) setSelectedProjectName(projects.find(p => p.interfaces.includes(iface))?.name || null);
+                                        setSelectedInterface(iface);
+                                        setSelectedOperation(op);
+                                        setSelectedRequest(req);
+                                        setResponse(null);
+                                    }}
+                                    onContextMenu={(e) => handleContextMenu(e, 'request', req, isExplorer)}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', width: '100%', overflow: 'hidden' }}>
+                                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{req.name}</span>
+                                        {req.dirty && <DirtyMarker>●</DirtyMarker>}
+                                        {!isExplorer && onDeleteRequest && (
+                                            <div style={{ marginLeft: 5 }}>
+                                                <HeaderButton
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (confirmDeleteId === req.id) {
+                                                            onDeleteRequest(req);
+                                                            setConfirmDeleteId(null);
+                                                        } else {
+                                                            setConfirmDeleteId(req.id);
+                                                            // Auto-reset after 3s
+                                                            setTimeout(() => setConfirmDeleteId(curr => curr === req.id ? null : curr), 3000);
+                                                        }
+                                                    }}
+                                                    title={confirmDeleteId === req.id ? "Click again to Confirm Delete" : "Delete Request"}
+                                                    style={{ color: confirmDeleteId === req.id ? 'var(--vscode-errorForeground)' : undefined }}
+                                                    shake={confirmDeleteId === req.id}
+                                                >
+                                                    <Trash2 size={12} />
+                                                </HeaderButton>
+                                            </div>
+                                        )}
+                                    </div>
+                                </RequestItem>
+                            ))}
+                        </div>
+                    );
+                })}
             </div>
         ))
     );
@@ -499,7 +622,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const handleSaveReport = () => {
         if (proxyHistory.length === 0) return;
 
-        let fullMd = '# Dirty SOAP Proxy Report\n\n' + `Generated: ${new Date().toLocaleString()}\n` + `Entries: ${proxyHistory.length}\n\n` + '---\n\n';
+        let fullMd = '# Dirty SOAP Proxy Report\n\n' + `Generated: ${ new Date().toLocaleString() } \n` + `Entries: ${ proxyHistory.length } \n\n` + '---\n\n';
         [...proxyHistory].reverse().forEach(event => {
             fullMd += generateEventMarkdown(event) + '---\n\n';
         });
@@ -517,11 +640,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
     };
 
     const generateEventMarkdown = (event: WatcherEvent) => {
-        let md = `## Request: ${event.url}\n\n`;
-        md += `Timestamp: ${event.timestampLabel}\n`;
-        md += `Method: ${event.method}\n`;
-        md += `Status: ${event.status}\n`;
-        md += `Duration: ${(event.duration || 0).toFixed(2)}s\n\n`;
+        let md = `## Request: ${event.url} \n\n`;
+        md += `Timestamp: ${event.timestampLabel} \n`;
+        md += `Method: ${event.method} \n`;
+        md += `Status: ${event.status} \n`;
+        md += `Duration: ${(event.duration || 0).toFixed(2)} s\n\n`;
 
         md += '### Request\n\n';
         if (event.requestHeaders) {
@@ -567,7 +690,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
 
     return (
-        <div style={{ display: 'flex', height: '100%', flexDirection: 'row' }}>
+        <div style={{ display: 'flex', height: '100%', flexDirection: 'row', minWidth: 300, flexShrink: 0 }}>
             {/* Left Rail */}
             <div style={{
                 width: 50,
@@ -579,20 +702,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
             }}>
                 <NavItem
                     icon={FolderIcon}
-                    active={activeView === 'projects'}
-                    onClick={() => onChangeView('projects')}
-                    title="Projects"
+                    active={activeView === SidebarView.PROJECTS}
+                    onClick={() => onChangeView(SidebarView.PROJECTS)}
+                    title="Project"
+                />
+                <NavItem
+                    icon={Compass} // Need to import Compass or similar for Explorer
+                    active={activeView === SidebarView.EXPLORER}
+                    onClick={() => onChangeView(SidebarView.EXPLORER)}
+                    title="WSDL Explorer"
                 />
                 <NavItem
                     icon={Eye}
-                    active={activeView === 'watcher'}
-                    onClick={() => onChangeView('watcher')}
+                    active={activeView === SidebarView.WATCHER}
+                    onClick={() => onChangeView(SidebarView.WATCHER)}
                     title="File Watcher"
                 />
                 <NavItem
                     icon={Globe}
-                    active={activeView === 'proxy'}
-                    onClick={() => onChangeView('proxy')}
+                    active={activeView === SidebarView.PROXY}
+                    onClick={() => onChangeView(SidebarView.PROXY)}
                     title="Dirty Proxy"
                 />
 
@@ -607,12 +736,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {/* Content Area */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', backgroundColor: 'var(--vscode-sideBar-background)' }}>
 
+
                 {/* View Headers */}
-                {activeView === 'projects' && (
+                {activeView === SidebarView.EXPLORER && (
                     <div style={{ borderBottom: '1px solid var(--vscode-sideBarSectionHeader-border)' }}>
-                        <SectionHeader onClick={toggleExplorerExpand}>
+                        <SectionHeader>
                             <SectionTitle style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                                {explorerExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />} WSDL Explorer
+                                WSDL Explorer
                                 {showBackendStatus && (
                                     <div style={{
                                         width: 8, height: 8, borderRadius: '50%',
@@ -637,7 +767,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </div>
                 )}
 
-                {activeView === 'watcher' && (
+                {activeView === SidebarView.WATCHER && (
                     <div style={{ display: 'flex', borderBottom: '1px solid var(--vscode-sideBarSectionHeader-border)', padding: '5px 10px', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div style={{ fontWeight: 'bold' }}>File Watcher</div>
                         <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -655,7 +785,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </div>
                 )}
 
-                {activeView === 'proxy' && (
+                {activeView === SidebarView.PROXY && (
                     <div style={{ display: 'flex', borderBottom: '1px solid var(--vscode-sideBarSectionHeader-border)', padding: '5px 10px', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div style={{ fontWeight: 'bold' }}>Dirty Proxy</div>
                     </div>
@@ -663,52 +793,51 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
                 {/* Main Content Body */}
                 <div style={{ flex: 1, overflowY: 'auto' }}>
-                    {activeView === 'proxy' && renderProxyList()}
+                    {activeView === SidebarView.PROXY && renderProxyList()}
 
-                    {activeView === 'watcher' && renderWatcherList()}
+                    {activeView === SidebarView.WATCHER && renderWatcherList()}
 
-                    {activeView === 'projects' && (
-                        <>
-                            {explorerExpanded && (
-                                <div style={{ borderBottom: '1px solid var(--vscode-sideBarSectionHeader-border)' }}>
-                                    <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                        {/* Input Buttons */}
-                                        <div style={{ display: 'flex', gap: 5 }}>
-                                            <HeaderButton onClick={() => setInputType('url')} title="Load from URL"
-                                                style={{ flex: 1, textAlign: 'center', backgroundColor: inputType === 'url' ? 'var(--vscode-button-background)' : 'transparent', color: inputType === 'url' ? 'var(--vscode-button-foreground)' : 'inherit', border: '1px solid var(--vscode-button-border)', marginLeft: 0, gap: 5, justifyContent: 'center' }}>
-                                                <Globe size={14} /> URL
-                                            </HeaderButton>
-                                            <HeaderButton onClick={() => setInputType('file')} title="Load from File"
-                                                style={{ flex: 1, textAlign: 'center', backgroundColor: inputType === 'file' ? 'var(--vscode-button-background)' : 'transparent', color: inputType === 'file' ? 'var(--vscode-button-foreground)' : 'inherit', border: '1px solid var(--vscode-button-border)', marginLeft: 0, gap: 5, justifyContent: 'center' }}>
-                                                <FileCode size={14} /> File
-                                            </HeaderButton>
-                                        </div>
-                                        {/* Input Fields */}
-                                        {inputType === 'url' ? (
-                                            <div style={{ display: 'flex', gap: 5 }}>
-                                                <Input value={wsdlUrl} onChange={(e) => setWsdlUrl(e.target.value)} placeholder="WSDL URL" />
-                                                <HeaderButton onClick={loadWsdl} title="Load WSDL" style={{ border: '1px solid var(--vscode-button-border)', margin: 0 }}><Play size={14} /></HeaderButton>
-                                            </div>
-                                        ) : (
-                                            <div style={{ display: 'flex', gap: 5 }}>
-                                                <HeaderButton onClick={pickLocalWsdl} title="Select Local WSDL" style={{ flex: 1, textAlign: 'center', border: '1px solid var(--vscode-button-border)', margin: 0 }}>Select File</HeaderButton>
-                                                {selectedFile && <HeaderButton onClick={loadWsdl} title="Load WSDL" style={{ border: '1px solid var(--vscode-button-border)', margin: 0 }}><Play size={14} /></HeaderButton>}
-                                            </div>
-                                        )}
-                                        {selectedFile && inputType === 'file' && <div style={{ fontSize: '0.8em', color: 'var(--vscode-descriptionForeground)' }}>{selectedFile}</div>}
-                                    </div>
-                                    {downloadStatus && <div style={{ padding: '0 10px 5px', fontSize: '0.8em' }}>{downloadStatus.map((f, i) => <div key={i}>• {f}</div>)}</div>}
-                                    {renderInterfaceList(exploredInterfaces, true)}
-                                    {exploredInterfaces.length > 0 && <div style={{ height: 10 }}></div>}
+                    {activeView === SidebarView.EXPLORER && (
+                        <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            {/* Input Buttons */}
+                            <div style={{ display: 'flex', gap: 5 }}>
+                                <HeaderButton onClick={() => setInputType('url')} title="Load from URL"
+                                    style={{ flex: 1, textAlign: 'center', backgroundColor: inputType === 'url' ? 'var(--vscode-button-background)' : 'transparent', color: inputType === 'url' ? 'var(--vscode-button-foreground)' : 'inherit', border: '1px solid var(--vscode-button-border)', marginLeft: 0, gap: 5, justifyContent: 'center' }}>
+                                    <Globe size={14} /> URL
+                                </HeaderButton>
+                                <HeaderButton onClick={() => setInputType('file')} title="Load from File"
+                                    style={{ flex: 1, textAlign: 'center', backgroundColor: inputType === 'file' ? 'var(--vscode-button-background)' : 'transparent', color: inputType === 'file' ? 'var(--vscode-button-foreground)' : 'inherit', border: '1px solid var(--vscode-button-border)', marginLeft: 0, gap: 5, justifyContent: 'center' }}>
+                                    <FileCode size={14} /> File
+                                </HeaderButton>
+                            </div>
+                            {/* Input Fields */}
+                            {inputType === 'url' ? (
+                                <div style={{ display: 'flex', gap: 5 }}>
+                                    <Input value={wsdlUrl} onChange={(e) => setWsdlUrl(e.target.value)} placeholder="WSDL URL" />
+                                    <HeaderButton onClick={loadWsdl} title="Load WSDL" style={{ border: '1px solid var(--vscode-button-border)', margin: 0 }}><Play size={14} /></HeaderButton>
+                                </div>
+                            ) : (
+                                <div style={{ display: 'flex', gap: 5 }}>
+                                    <HeaderButton onClick={pickLocalWsdl} title="Select Local WSDL" style={{ flex: 1, textAlign: 'center', border: '1px solid var(--vscode-button-border)', margin: 0 }}>Select File</HeaderButton>
+                                    {selectedFile && <HeaderButton onClick={loadWsdl} title="Load WSDL" style={{ border: '1px solid var(--vscode-button-border)', margin: 0 }}><Play size={14} /></HeaderButton>}
                                 </div>
                             )}
+                            {selectedFile && inputType === 'file' && <div style={{ fontSize: '0.8em', color: 'var(--vscode-descriptionForeground)' }}>{selectedFile}</div>}
+                            {downloadStatus && <div style={{ padding: '0 10px 5px', fontSize: '0.8em' }}>{downloadStatus.map((f, i) => <div key={i}>• {f}</div>)}</div>}
+
+
+
+                            {renderInterfaceList(exploredInterfaces, true)}
+                        </div>
+                    )}
+
+                    {activeView === SidebarView.PROJECTS && (
+                        <>
 
                             <div style={{ padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
                                 <div style={{ fontWeight: 'bold' }}>Workspace {workspaceDirty && <DirtyMarker>●</DirtyMarker>}</div>
                                 <div style={{ display: 'flex', alignItems: 'center' }}>
                                     <HeaderButton onClick={onAddProject} title="New Project"><Plus size={16} /></HeaderButton>
-                                    <HeaderButton onClick={saveWorkspace} title="Save Workspace"><Save size={16} /></HeaderButton>
-                                    <HeaderButton onClick={openWorkspace} title="Open Workspace"><FolderOpen size={16} /></HeaderButton>
                                     <div style={{ width: 10 }}></div>
                                     <HeaderButton onClick={loadProject} title="Add Project"><FolderPlus size={16} /></HeaderButton>
                                 </div>
@@ -725,17 +854,46 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                         <HeaderButton onClick={(e) => { e.stopPropagation(); saveProject(proj); }} title="Save Project" style={{ color: savedProjects.has(proj.name) ? 'var(--vscode-testing-iconPassed)' : 'inherit' }}>
                                             <Save size={16} />
                                         </HeaderButton>
-                                        <HeaderButton onClick={(e) => { e.stopPropagation(); closeProject(proj.name); }} title="Close">
-                                            {deleteConfirm === proj.name ? 'Confirm?' : <Trash2 size={16} />}
+                                        <HeaderButton
+                                            onClick={(e) => { e.stopPropagation(); closeProject(proj.name); }}
+                                            title={deleteConfirm === proj.name ? "Click again to Confirm Delete" : "Close Project"}
+                                            style={{ color: deleteConfirm === proj.name ? 'var(--vscode-errorForeground)' : undefined }}
+                                            shake={deleteConfirm === proj.name}
+                                        >
+                                            <Trash2 size={16} />
                                         </HeaderButton>
                                     </SectionHeader>
-                                    {(proj as any).expanded && renderInterfaceList(proj.interfaces, false)}
+                                    {(proj as any).expanded && (
+                                        <>
+                                            {/* Interfaces */}
+                                            {renderInterfaceList(proj.interfaces, false)}
+
+                                            {/* Tests */}
+                                            <ProjectTestTree
+                                                project={proj}
+                                                onAddSuite={onAddSuite}
+                                                onDeleteSuite={onDeleteSuite}
+                                                onRunSuite={onRunSuite}
+                                                onAddTestCase={onAddTestCase}
+                                                onRunCase={onRunCase}
+                                                onDeleteTestCase={onDeleteTestCase}
+                                                onSelectSuite={onSelectSuite}
+                                                onSelectTestCase={onSelectTestCase}
+                                                onToggleSuiteExpand={onToggleSuiteExpand}
+                                                onToggleCaseExpand={onToggleCaseExpand}
+                                                deleteConfirm={deleteConfirm}
+                                            />
+                                        </>
+                                    )}
                                 </div>
                             ))}
                         </>
                     )}
                 </div>
             </div>
+
+
         </div>
+
     );
 };

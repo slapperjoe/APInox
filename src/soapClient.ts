@@ -55,7 +55,10 @@ export class SoapClient {
     }
 
     async executeRequest(url: string, operation: string, args: any, headers?: any): Promise<any> {
-        if (!this.client) {
+        // Check if we are in "Raw XML" mode (args is string)
+        const isRawMode = typeof args === 'string' && args.trim().startsWith('<');
+
+        if (!this.client && !isRawMode) {
             this.client = await soap.createClientAsync(url);
         }
 
@@ -77,26 +80,26 @@ export class SoapClient {
                 this.client.addSoapHeader(headers);
             }
 
-            // node-soap doesn't easily support overriding endpoint per-request in this mode without changing client options
-            // But we mostly use Raw XML mode. 
-            // If we need to support it here, we'd need to set client.setEndpoint(url) but that persists.
-            // For now, only applying to Raw logic.
-
+            const startTime = Date.now();
             const req = method(args, (err: any, result: any, rawResponse: any, soapHeader: any, rawRequest: any) => {
+                const endTime = Date.now();
+                const timeTaken = endTime - startTime;
                 this.currentRequest = null;
                 if (err) {
                     return resolve({
                         success: false,
                         error: err,
                         rawResponse: rawResponse,
-                        rawRequest: rawRequest
+                        rawRequest: rawRequest,
+                        timeTaken: timeTaken
                     });
                 }
                 resolve({
                     success: true,
                     result: result,
                     rawResponse: rawResponse,
-                    rawRequest: rawRequest
+                    rawRequest: rawRequest,
+                    timeTaken: timeTaken
                 });
             });
 
@@ -105,49 +108,47 @@ export class SoapClient {
     }
 
     private async executeRawRequest(operation: string, xml: string, headers: any, endpointOverride?: string): Promise<any> {
-        if (!this.client) {
-            throw new Error("Client not initialized");
-        }
-
-        // 1. Find Endpoint
         let endpoint = endpointOverride || '';
-        const definitions = (this.client as any).wsdl.definitions;
+        let soapAction = '';
 
-        if (!endpoint) {
-            for (const serviceName in definitions.services) {
-                const service = definitions.services[serviceName];
-                for (const portName in service.ports) {
-                    const port = service.ports[portName];
-                    if (port.location) {
-                        endpoint = port.location;
-                        break;
+        if (this.client) {
+            // 1. Find Endpoint from WSDL if missing
+            const definitions = (this.client as any).wsdl.definitions;
+            if (!endpoint) {
+                for (const serviceName in definitions.services) {
+                    const service = definitions.services[serviceName];
+                    for (const portName in service.ports) {
+                        const port = service.ports[portName];
+                        if (port.location) {
+                            endpoint = port.location;
+                            break;
+                        }
                     }
+                    if (endpoint) break;
                 }
-                if (endpoint) break;
             }
-        }
+            if (!endpoint) {
+                endpoint = (this.client as any).wsdl.options.endpoint;
+            }
 
-        if (!endpoint) {
-            endpoint = (this.client as any).wsdl.options.endpoint;
+            // 2. Find SOAPAction from WSDL
+            for (const bindingName in definitions.bindings) {
+                const binding = definitions.bindings[bindingName];
+                if (binding.operations && binding.operations[operation]) {
+                    soapAction = binding.operations[operation].soapAction;
+                    break;
+                }
+            }
         }
 
         if (!endpoint) {
             return {
                 success: false,
-                error: "Could not determine service endpoint URL.",
+                error: "Invalid URL: Endpoint is missing. Please set the Endpoint in the request configuration.",
                 rawResponse: null,
-                rawRequest: xml
+                rawRequest: xml,
+                timeTaken: 0
             };
-        }
-
-        // 2. Find SOAPAction
-        let soapAction = '';
-        for (const bindingName in definitions.bindings) {
-            const binding = definitions.bindings[bindingName];
-            if (binding.operations && binding.operations[operation]) {
-                soapAction = binding.operations[operation].soapAction;
-                break;
-            }
         }
 
         // 3. Prepare Headers
@@ -171,6 +172,7 @@ export class SoapClient {
         this.log('Headers:', requestHeaders);
         this.log('Body:', xml);
 
+        const startTime = Date.now();
         try {
             const response = await axios.post(endpoint, xml, {
                 headers: requestHeaders,
@@ -179,6 +181,8 @@ export class SoapClient {
                 cancelToken: this.cancelTokenSource.token,
                 transformResponse: [(data) => data] // Do not parse JSON automatically, define raw
             });
+            const endTime = Date.now();
+            const timeTaken = endTime - startTime;
 
             this.log('Response Status:', response.status);
             this.log('Response Body:', response.data);
@@ -189,10 +193,13 @@ export class SoapClient {
                 result: null, // Raw mode doesn't parse to JSON result automatically
                 headers: response.headers,
                 rawResponse: response.data,
-                rawRequest: xml
+                rawRequest: xml,
+                timeTaken: timeTaken
             };
 
         } catch (error: any) {
+            const endTime = Date.now();
+            const timeTaken = endTime - startTime;
             this.cancelTokenSource = null;
             if (axios.isCancel(error)) {
                 this.log('Request canceled by user');
@@ -200,7 +207,8 @@ export class SoapClient {
                     success: false,
                     error: "Request Canceled",
                     rawResponse: null,
-                    rawRequest: xml
+                    rawRequest: xml,
+                    timeTaken: timeTaken
                 };
             }
             this.log('Request failed:', error.message);
@@ -211,7 +219,8 @@ export class SoapClient {
                 success: false,
                 error: error.message,
                 rawResponse: error.response ? error.response.data : null,
-                rawRequest: xml
+                rawRequest: xml,
+                timeTaken: timeTaken
             };
         }
     }

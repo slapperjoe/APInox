@@ -1,14 +1,17 @@
 import React from 'react';
 import styled from 'styled-components';
-import { Layout as LayoutIcon, ListOrdered, Play, Loader2, RotateCcw, WrapText, FoldVertical, Bug, AlignLeft, Braces } from 'lucide-react';
-import { SoapUIRequest, SoapUIOperation } from '../models';
-import { MonacoRequestEditor } from './MonacoRequestEditor';
+import { Layout as LayoutIcon, ListOrdered, Play, Loader2, RotateCcw, WrapText, Bug, AlignLeft, Braces, ChevronLeft, Plus, FileCode, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
+import { SoapUIRequest, SoapUIOperation, SoapTestCase, TestStepType, SoapTestStep } from '../models';
+// ... imports
+import { MonacoRequestEditor, MonacoRequestEditorHandle } from './MonacoRequestEditor';
 import { MonacoResponseViewer } from './MonacoResponseViewer';
 import { AssertionsPanel } from './AssertionsPanel';
 import { HeadersPanel } from './HeadersPanel';
+import { ExtractorsPanel } from './ExtractorsPanel';
 import ReactMarkdown from 'react-markdown';
-import { MonacoSingleLineInput } from './MonacoSingleLineInput';
+import { MonacoSingleLineInput, MonacoSingleLineInputHandle } from './MonacoSingleLineInput';
 import { formatXml, stripCausalityData } from '../utils/xmlFormatter';
+import { XPathGenerator } from '../utils/xpathGenerator';
 import mascotImg from '../assets/mascot.png';
 
 const Mascot = styled.img`
@@ -32,102 +35,108 @@ const Mascot = styled.img`
 `;
 
 const Content = styled.div`
-flex: 1;
-display: flex;
-flex - direction: column;
-overflow: hidden;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 `;
 
 const MarkdownContainer = styled.div`
-margin - top: 20px;
-padding - top: 10px;
-border - top: 1px solid var(--vscode - panel - border);
+    margin-top: 20px;
+    padding-top: 10px;
+    border-top: 1px solid var(--vscode-panel-border);
 
-h1, h2, h3 { border - bottom: 1px solid var(--vscode - panel - border); padding - bottom: 5px; margin - top: 1.5em; }
-    p { margin - bottom: 1px; }
-    ul { padding - left: 20px; }
-    code { background: var(--vscode - textCodeBlock - background); padding: 2px 4px; border - radius: 3px; font - family: monospace; }
-    pre { background: var(--vscode - textCodeBlock - background); padding: 10px; border - radius: 5px; overflow - x: auto; }
+    h1, h2, h3 { border-bottom: 1px solid var(--vscode-panel-border); padding-bottom: 5px; margin-top: 1.5em; }
+    p { margin-bottom: 1em; }
+    ul { padding-left: 20px; }
+    code { background: var(--vscode-textCodeBlock-background); padding: 2px 4px; border-radius: 3px; font-family: monospace; }
+    pre { background: var(--vscode-textCodeBlock-background); padding: 10px; border-radius: 5px; overflow-x: auto; }
     pre code { background: transparent; padding: 0; }
 `;
 
 const Toolbar = styled.div`
-display: flex;
-padding: 5px 10px;
-background - color: var(--vscode - editor - background);
-border - bottom: 1px solid var(--vscode - panel - border);
-align - items: center;
-gap: 10px;
-height: 40px;
+    display: flex;
+    padding: 5px 10px;
+    background-color: var(--vscode-editor-background);
+    border-bottom: 1px solid var(--vscode-panel-border);
+    align-items: center;
+    gap: 10px;
+    height: 40px;
 `;
 
 const ToolbarButton = styled.button`
-background: var(--vscode - button - background);
-color: var(--vscode - button - foreground);
-border: none;
-padding: 4px 8px;
-cursor: pointer;
-display: flex;
-align - items: center;
-gap: 5px;
-border - radius: 2px;
-white - space: nowrap;
-height: 26px;
-box - sizing: border - box;
-  &:hover {
-    background: var(--vscode - button - hoverBackground);
-}
-  &:disabled {
-    opacity: 0.5;
-    cursor: not - allowed;
-}
+    background: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    border: none;
+    padding: 4px 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 2px;
+    white-space: nowrap;
+    height: 26px;
+    box-sizing: border-box;
+
+    &:hover {
+        background: var(--vscode-button-hoverBackground);
+    }
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
 `;
 
-
-
 const ToolbarSelect = styled.select`
-background - color: var(--vscode - dropdown - background);
-color: var(--vscode - dropdown - foreground);
-border: 1px solid var(--vscode - dropdown - border);
-padding: 4px;
-outline: none;
-height: 26px;
-box - sizing: border - box;
+    background-color: var(--vscode-dropdown-background);
+    color: var(--vscode-dropdown-foreground);
+    border: 1px solid var(--vscode-dropdown-border);
+    padding: 4px;
+    outline: none;
+    height: 26px;
+    box-sizing: border-box;
+
     &:focus {
-    border - color: var(--vscode - focusBorder);
-}
+        border-color: var(--vscode-focusBorder);
+    }
 `;
 
 const MainFooter = styled.div`
-padding: 5px 10px;
-border - top: 1px solid var(--vscode - panel - border);
-display: flex;
-gap: 10px;
-justify - content: flex - end;
-background - color: var(--vscode - editor - background);
+    padding: 5px 10px;
+    border-top: 1px solid var(--vscode-panel-border);
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    background-color: var(--vscode-editor-background);
 `;
 
 const IconButton = styled.button<{ active?: boolean }>`
-background: ${props => props.active ? 'var(--vscode-button-background)' : 'transparent'};
-color: ${props => props.active ? 'var(--vscode-button-foreground)' : 'var(--vscode-icon-foreground)'};
-border: 1px solid transparent;
-cursor: pointer;
-padding: 3px;
-border - radius: 3px;
-height: 26px;
-width: 26px;
-box - sizing: border - box;
-display: flex;
-align - items: center;
-justify - content: center;
+    background: ${props => props.active ? 'var(--vscode-button-background)' : 'transparent'};
+    color: ${props => props.active ? 'var(--vscode-button-foreground)' : 'var(--vscode-icon-foreground)'};
+    border: 1px solid transparent;
+    cursor: pointer;
+    padding: 3px;
+    border-radius: 3px;
+    height: 26px;
+    width: 26px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
     &:hover {
-    background - color: ${props => props.active ? 'var(--vscode-button-hoverBackground)' : 'var(--vscode-toolbar-hoverBackground)'};
-}
+        background-color: ${props => props.active ? 'var(--vscode-button-hoverBackground)' : 'var(--vscode-toolbar-hoverBackground)'};
+    }
+    &:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+    }
 `;
 
 interface WorkspaceLayoutProps {
     selectedRequest: SoapUIRequest | null;
     selectedOperation: SoapUIOperation | null;
+    selectedTestCase?: SoapTestCase | null;
     response: any;
     loading: boolean;
     layoutMode: 'vertical' | 'horizontal';
@@ -155,33 +164,233 @@ interface WorkspaceLayoutProps {
     config?: any;
     onChangeEnvironment?: (env: string) => void;
     isReadOnly?: boolean;
+    onRunTestCase?: (caseId: string) => void;
+    onOpenStepRequest?: (req: SoapUIRequest) => void;
+    onBackToCase?: () => void;
+    onAddStep?: (caseId: string, type: TestStepType) => void;
+    testExecution?: Record<string, Record<string, { status: 'running' | 'pass' | 'fail', error?: string, response?: any }>>;
+    selectedStep?: SoapTestStep | null;
+    onUpdateStep?: (step: SoapTestStep) => void;
+    onSelectStep?: (step: SoapTestStep | null) => void;
+    onDeleteStep?: (stepId: string) => void;
+    onMoveStep?: (stepId: string, direction: 'up' | 'down') => void;
+    onAddExtractor?: (data: { xpath: string, value: string, source: 'body' | 'header' }) => void;
 }
 
 export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
-    selectedRequest, selectedOperation, response, loading, layoutMode, showLineNumbers, splitRatio, isResizing,
+    selectedRequest, selectedOperation, selectedTestCase, response, loading, layoutMode, showLineNumbers, splitRatio, isResizing,
     onExecute, onCancel, onUpdateRequest, onReset, onToggleLayout, onToggleLineNumbers, onStartResizing, defaultEndpoint,
     changelog,
     config, onChangeEnvironment,
     inlineElementValues, onToggleInlineElementValues,
     hideCausalityData, onToggleHideCausalityData,
-    isReadOnly
+    isReadOnly,
+    onRunTestCase, onOpenStepRequest, onBackToCase, onAddStep, testExecution,
+    selectedStep, onUpdateStep, onSelectStep, onDeleteStep, onMoveStep, onAddExtractor
 }) => {
     const [alignAttributes, setAlignAttributes] = React.useState(false);
-    const [activeTab, setActiveTab] = React.useState<'request' | 'headers' | 'assertions' | 'auth'>('request');
+    const [activeTab, setActiveTab] = React.useState<'request' | 'headers' | 'assertions' | 'auth' | 'extractors'>('request');
+    const [deleteConfirm, setDeleteConfirm] = React.useState<string | null>(null);
+    const [showVariables, setShowVariables] = React.useState(false);
+
+    // Editor Refs for insertion
+    const urlEditorRef = React.useRef<MonacoSingleLineInputHandle>(null);
+    const bodyEditorRef = React.useRef<MonacoRequestEditorHandle>(null);
+    const lastFocusedRef = React.useRef<MonacoSingleLineInputHandle | MonacoRequestEditorHandle | null>(null);
+    const [selection, setSelection] = React.useState<{ text: string, offset: number } | null>(null);
+
+    const handleCreateExtractor = () => {
+        if (!selection || !response || !onAddExtractor) return;
+
+        let path: string | null = null;
+        const source = 'body';
+
+        if (response.rawResponse) {
+            path = XPathGenerator.getPath(response.rawResponse, selection.offset);
+        }
+
+        if (path) {
+            onAddExtractor({ xpath: path, value: selection.text, source });
+        } else {
+            console.warn("Could not determine XPath for selection");
+        }
+    };
 
 
 
 
 
 
-    // Reset active tab if it's assertions and we are in read-only mode (e.g. Watcher/Proxy)
+    // Reset active tab if it's assertions or extractors and we are in read-only mode (e.g. Watcher/Proxy)
     React.useEffect(() => {
-        if (isReadOnly && (activeTab === 'assertions')) {
+        if (isReadOnly && (activeTab === 'assertions' || activeTab === 'extractors')) {
             setActiveTab('request');
         }
     }, [isReadOnly, activeTab]);
 
     if (!selectedRequest) {
+        if (selectedStep && selectedStep.type === 'delay' && !isReadOnly && onUpdateStep) {
+            return (
+                <Content>
+                    <Toolbar>
+                        {onBackToCase && (
+                            <ToolbarButton onClick={onBackToCase} title="Back to Test Case">
+                                <ChevronLeft size={14} /> Back
+                            </ToolbarButton>
+                        )}
+                        <span style={{ fontWeight: 'bold', marginLeft: 10 }}>Delay Configuration</span>
+                    </Toolbar>
+                    <div style={{ padding: 20, color: 'var(--vscode-editor-foreground)', fontFamily: 'var(--vscode-font-family)' }}>
+                        <h2>Step: {selectedStep.name}</h2>
+                        <div style={{ marginTop: 20 }}>
+                            <label style={{ display: 'block', marginBottom: 5 }}>Delay Duration (milliseconds):</label>
+                            <input
+                                type="number"
+                                style={{
+                                    background: 'var(--vscode-input-background)',
+                                    color: 'var(--vscode-input-foreground)',
+                                    border: '1px solid var(--vscode-input-border)',
+                                    padding: '5px',
+                                    fontSize: '1em',
+                                    width: '100px'
+                                }}
+                                value={selectedStep.config.delayMs || 0}
+                                onChange={(e) => {
+                                    const val = parseInt(e.target.value) || 0;
+                                    onUpdateStep({ ...selectedStep, config: { ...selectedStep.config, delayMs: val } });
+                                }}
+                            />
+                        </div>
+                    </div>
+                </Content>
+            );
+        }
+
+        if (selectedTestCase) {
+            return (
+                <div style={{ padding: 20, flex: 1, overflow: 'auto', color: 'var(--vscode-editor-foreground)', fontFamily: 'var(--vscode-font-family)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h1>Test Case: {selectedTestCase.name}</h1>
+                        <ToolbarButton onClick={() => onRunTestCase && onRunTestCase(selectedTestCase.id)} style={{ color: 'var(--vscode-testing-iconPassed)' }}>
+                            <Play size={14} /> Run Test Case
+                        </ToolbarButton>
+                    </div>
+
+                    {onAddStep && (
+                        <div style={{ padding: '10px 0', borderBottom: '1px solid var(--vscode-panel-border)', display: 'flex', gap: 10 }}>
+                            <ToolbarButton onClick={() => onAddStep(selectedTestCase.id, 'delay')}>
+                                <Plus size={14} /> Add Delay
+                            </ToolbarButton>
+                            <ToolbarButton onClick={() => onAddStep(selectedTestCase.id, 'request')}>
+                                <FileCode size={14} /> Add Request
+                            </ToolbarButton>
+                        </div>
+                    )}
+
+                    <div style={{ marginTop: 20 }}>
+                        <h2 style={{ borderBottom: '1px solid var(--vscode-panel-border)', paddingBottom: 5 }}>Steps</h2>
+                        <ul style={{ listStyle: 'none', padding: 0 }}>
+                            {selectedTestCase.steps.map((step, index) => {
+                                const status = testExecution && testExecution[selectedTestCase.id] && testExecution[selectedTestCase.id][step.id];
+                                const isConfirming = deleteConfirm === step.id;
+                                return (
+                                    <li key={step.id} style={{
+                                        padding: '10px',
+                                        borderBottom: '1px solid var(--vscode-panel-border)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 10,
+                                        cursor: step.type === 'request' || step.type === 'delay' ? 'pointer' : 'default',
+                                        backgroundColor: 'var(--vscode-list-hoverBackground)'
+                                    }}
+                                        onClick={() => {
+                                            if (onSelectStep) {
+                                                onSelectStep(step);
+                                            } else if (step.type === 'request' && step.config.request && onOpenStepRequest) {
+                                                // Fallback for legacy prop
+                                                onOpenStepRequest(step.config.request);
+                                            }
+                                        }}
+                                    >
+                                        <div style={{ opacity: 0.7, width: 24, display: 'flex', justifyContent: 'center' }}>
+                                            {status?.status === 'running' && <Loader2 size={14} className="spin" />}
+                                            {status?.status === 'pass' && <div style={{ color: 'var(--vscode-testing-iconPassed)' }}>✔</div>}
+                                            {status?.status === 'fail' && <div style={{ color: 'var(--vscode-testing-iconFailed)' }}>✘</div>}
+                                            {!status && <span>{index + 1}.</span>}
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <strong>{step.name}</strong> <span style={{ opacity: 0.7 }}>({step.type})</span>
+                                            {step.type === 'request' && step.config.request && (
+                                                <div style={{ fontSize: '0.8em', opacity: 0.6 }}>
+                                                    {step.config.request.method || 'POST'} {step.config.request.endpoint || 'No Endpoint'}
+                                                </div>
+                                            )}
+                                            {step.type === 'delay' && (
+                                                <div style={{ fontSize: '0.8em', opacity: 0.6, color: 'var(--vscode-textLink-foreground)' }}>
+                                                    Delay: {step.config.delayMs || 0} ms
+                                                </div>
+                                            )}
+                                            {status?.error && (
+                                                <div style={{ color: 'var(--vscode-errorForeground)', fontSize: '0.8em' }}>Error: {status.error}</div>
+                                            )}
+                                        </div>
+                                        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.8em', opacity: 0.9 }}>
+                                            {status?.response?.duration !== undefined && <span title="Duration" style={{ marginRight: 5 }}>{status.response.duration.toFixed(3)}s</span>}
+                                            {status?.response?.rawResponse !== undefined && <span title="Response Size" style={{ marginRight: 10 }}>{(status.response.rawResponse.length / 1024).toFixed(2)} KB</span>}
+
+                                            {onMoveStep && (
+                                                <>
+                                                    <IconButton
+                                                        onClick={(e) => { e.stopPropagation(); onMoveStep(step.id, 'up'); }}
+                                                        title="Move Up"
+                                                        disabled={index === 0}
+                                                        style={{ opacity: index === 0 ? 0.3 : 1 }}
+                                                    >
+                                                        <ArrowUp size={14} />
+                                                    </IconButton>
+                                                    <IconButton
+                                                        onClick={(e) => { e.stopPropagation(); onMoveStep(step.id, 'down'); }}
+                                                        title="Move Down"
+                                                        disabled={index === selectedTestCase.steps.length - 1}
+                                                        style={{ opacity: index === selectedTestCase.steps.length - 1 ? 0.3 : 1 }}
+                                                    >
+                                                        <ArrowDown size={14} />
+                                                    </IconButton>
+                                                </>
+                                            )}
+
+                                            {onDeleteStep && (
+                                                <IconButton
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (isConfirming) {
+                                                            onDeleteStep(step.id);
+                                                            setDeleteConfirm(null);
+                                                        } else {
+                                                            setDeleteConfirm(step.id);
+                                                            setTimeout(() => setDeleteConfirm(null), 2000);
+                                                        }
+                                                    }}
+                                                    style={{
+                                                        color: isConfirming ? 'var(--vscode-errorForeground)' : 'inherit',
+                                                        animation: isConfirming ? 'shake 0.5s' : 'none',
+                                                        marginLeft: 5
+                                                    }}
+                                                    title={isConfirming ? "Click to Confirm Delete" : "Delete Step"}
+                                                >
+                                                    <Trash2 size={14} />
+                                                </IconButton>
+                                            )}
+                                        </div>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    </div>
+                </div>
+            );
+        }
+
         return (
             <div style={{ padding: 20, flex: 1, overflow: 'auto', color: 'var(--vscode-editor-foreground)', fontFamily: 'var(--vscode-font-family)', position: 'relative' }}>
                 <Mascot src={mascotImg} alt="Dirty Soap Mascot" />
@@ -202,6 +411,15 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                 {/* Toolbar */}
                 {!isReadOnly && (
                     <Toolbar>
+                        {selectedTestCase && onBackToCase && (
+                            <>
+                                <ToolbarButton onClick={onBackToCase} title="Back to Test Case">
+                                    <ChevronLeft size={14} /> Back
+                                </ToolbarButton>
+                                <div style={{ width: 1, height: 20, background: 'var(--vscode-panel-border)', margin: '0 5px' }} />
+                            </>
+                        )}
+
                         {/* Method */}
                         <ToolbarSelect
                             value={selectedRequest.method || 'POST'}
@@ -216,9 +434,11 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                         {/* URL */}
                         <div style={{ flex: 1, minWidth: '150px' }}>
                             <MonacoSingleLineInput
+                                ref={urlEditorRef}
                                 value={selectedRequest.endpoint || defaultEndpoint || ''}
                                 onChange={(val) => onUpdateRequest({ ...selectedRequest, endpoint: val })}
                                 placeholder="Endpoint URL"
+                                onFocus={() => lastFocusedRef.current = urlEditorRef.current}
                             />
                         </div>
 
@@ -234,9 +454,11 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                         </ToolbarSelect>
 
                         {/* Actions */}
-                        <IconButton onClick={onReset} title="Revert to Default XML">
-                            <RotateCcw size={16} />
-                        </IconButton>
+                        {!selectedTestCase && (
+                            <IconButton onClick={onReset} title="Revert to Default XML">
+                                <RotateCcw size={16} />
+                            </IconButton>
+                        )}
 
                         {loading ? (
                             <ToolbarButton onClick={onCancel} style={{ backgroundColor: 'var(--vscode-errorForeground)' }}>
@@ -262,6 +484,80 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                     <option key={env} value={env}>{env}</option>
                                 ))}
                             </ToolbarSelect>
+                        )}
+
+                        {/* Variables Inserter */}
+                        {selectedTestCase && selectedStep && (
+                            <div style={{ position: 'relative' }}>
+                                <ToolbarButton onClick={() => setShowVariables(!showVariables)} title="Insert/View Variables from Previous Steps">
+                                    <Braces size={14} />
+                                    <span style={{ marginLeft: 5 }}>Variables</span>
+                                </ToolbarButton>
+                                {showVariables && (
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: '100%',
+                                        right: 0,
+                                        marginTop: 5,
+                                        background: 'var(--vscode-editor-background)',
+                                        border: '1px solid var(--vscode-dropdown-border)',
+                                        borderRadius: 3,
+                                        zIndex: 100,
+                                        boxShadow: '0 4px 10px rgba(0,0,0,0.5)',
+                                        minWidth: 250,
+                                        maxHeight: 300,
+                                        overflow: 'auto'
+                                    }}>
+                                        <div style={{ padding: '8px', borderBottom: '1px solid var(--vscode-dropdown-border)', fontWeight: 'bold', fontSize: '0.9em' }}>
+                                            Available Context Variables
+                                        </div>
+                                        {(() => {
+                                            const idx = selectedTestCase.steps.findIndex(s => s.id === selectedStep.id);
+                                            const vars: { name: string, step: string }[] = [];
+                                            if (idx > 0) {
+                                                selectedTestCase.steps.slice(0, idx).forEach(s => {
+                                                    if (s.type === 'request' && s.config.request?.extractors) {
+                                                        s.config.request.extractors.forEach(e => {
+                                                            vars.push({ name: e.variable, step: s.name });
+                                                        });
+                                                    }
+                                                });
+                                            }
+
+                                            if (vars.length === 0) {
+                                                return <div style={{ padding: 10, opacity: 0.7, fontSize: '0.9em' }}>No variables defined in previous steps.</div>
+                                            }
+
+                                            return vars.map((v, i) => (
+                                                <div
+                                                    key={i}
+                                                    style={{
+                                                        padding: '6px 10px',
+                                                        cursor: 'pointer',
+                                                        borderBottom: '1px solid var(--vscode-panel-border)',
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        gap: 2
+                                                    }}
+                                                    onClick={() => {
+                                                        const target = lastFocusedRef.current || bodyEditorRef.current; // Default to body
+                                                        if (target) {
+                                                            target.insertText('${#TestCase#' + v.name + '}');
+                                                        }
+                                                        setShowVariables(false);
+                                                    }}
+                                                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'}
+                                                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                    title="Click to Insert"
+                                                >
+                                                    <div style={{ fontWeight: 'bold', color: 'var(--vscode-textLink-foreground)' }}>{v.name}</div>
+                                                    <div style={{ fontSize: '0.8em', opacity: 0.7 }}>from {v.step}</div>
+                                                </div>
+                                            ));
+                                        })()}
+                                    </div>
+                                )}
+                            </div>
                         )}
                     </Toolbar>
                 )}
@@ -324,23 +620,37 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                             </div>
 
                             {!isReadOnly && (
-                                <div
-                                    style={{
-                                        cursor: 'pointer',
-                                        borderBottom: activeTab === 'assertions' ? '2px solid var(--vscode-textLink-foreground)' : '2px solid transparent',
-                                        padding: '5px 0',
-                                        color: activeTab === 'assertions' ? 'var(--vscode-foreground)' : 'var(--vscode-descriptionForeground)'
-                                    }}
-                                    onClick={() => setActiveTab('assertions')}
-                                >
-                                    Assertions
-                                    {selectedRequest.assertions && selectedRequest.assertions.length > 0 && ` (${selectedRequest.assertions.length})`}
-                                    {response && response.assertionResults && (
-                                        <span style={{ marginLeft: 5, fontSize: '0.8em' }}>
-                                            {response.assertionResults.every((r: any) => r.status === 'PASS') ? '✔' : '❌'}
-                                        </span>
-                                    )}
-                                </div>
+                                <>
+                                    <div
+                                        style={{
+                                            cursor: 'pointer',
+                                            borderBottom: activeTab === 'assertions' ? '2px solid var(--vscode-textLink-foreground)' : '2px solid transparent',
+                                            padding: '5px 0',
+                                            color: activeTab === 'assertions' ? 'var(--vscode-foreground)' : 'var(--vscode-descriptionForeground)'
+                                        }}
+                                        onClick={() => setActiveTab('assertions')}
+                                    >
+                                        Assertions
+                                        {selectedRequest.assertions && selectedRequest.assertions.length > 0 && ` (${selectedRequest.assertions.length})`}
+                                        {response && response.assertionResults && (
+                                            <span style={{ marginLeft: 5, fontSize: '0.8em' }}>
+                                                {response.assertionResults.every((r: any) => r.status === 'PASS') ? '✔' : '❌'}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div
+                                        style={{
+                                            cursor: 'pointer',
+                                            borderBottom: activeTab === 'extractors' ? '2px solid var(--vscode-textLink-foreground)' : '2px solid transparent',
+                                            padding: '5px 0',
+                                            color: activeTab === 'extractors' ? 'var(--vscode-foreground)' : 'var(--vscode-descriptionForeground)'
+                                        }}
+                                        onClick={() => setActiveTab('extractors')}
+                                    >
+                                        Extractors
+                                        {selectedRequest.extractors && selectedRequest.extractors.length > 0 && ` (${selectedRequest.extractors.length})`}
+                                    </div>
+                                </>
                             )}
                             <div
                                 style={{
@@ -356,7 +666,57 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                 Auth
                             </div>
 
-                            <div style={{ marginLeft: 'auto', display: 'flex', gap: '15px', alignItems: 'center', fontSize: '0.9em' }}>
+                            <div style={{ marginLeft: 'auto', display: 'flex', gap: '5px', alignItems: 'center', fontSize: '0.9em' }}>
+                                {/* Formatting Toggles */}
+                                <IconButton onClick={() => {
+                                    const newValue = !alignAttributes;
+                                    setAlignAttributes(newValue);
+                                    if (selectedRequest.request) {
+                                        onUpdateRequest({ ...selectedRequest, request: formatXml(selectedRequest.request, newValue, inlineElementValues) });
+                                    }
+                                }} active={alignAttributes} title="Toggle Attribute Alignment" style={{ width: 24, height: 24, padding: 2 }}>
+                                    <WrapText size={14} />
+                                </IconButton>
+
+                                {onToggleInlineElementValues && (
+                                    <IconButton
+                                        title={inlineElementValues ? "Format: Inline Values (Compact)" : "Format: Block Values (Expanded)"}
+                                        onClick={() => {
+                                            if (onToggleInlineElementValues) onToggleInlineElementValues();
+                                            const nextVal = !inlineElementValues;
+                                            if (selectedRequest.request) {
+                                                onUpdateRequest({ ...selectedRequest, request: formatXml(selectedRequest.request, alignAttributes, nextVal) });
+                                            }
+                                        }}
+                                        active={inlineElementValues}
+                                        style={{ width: 24, height: 24, padding: 2 }}
+                                    >
+                                        <AlignLeft size={14} />
+                                    </IconButton>
+                                )}
+                                {onToggleHideCausalityData && (
+                                    <IconButton
+                                        title={hideCausalityData ? "Show Debugger Causality Data" : "Hide Debugger Causality Data"}
+                                        onClick={onToggleHideCausalityData}
+                                        active={hideCausalityData}
+                                        style={{ width: 24, height: 24, padding: 2 }}
+                                    >
+                                        <Bug size={14} />
+                                    </IconButton>
+                                )}
+                                <IconButton
+                                    title="Format XML Now"
+                                    onClick={() => {
+                                        const formatted = formatXml(selectedRequest.request, alignAttributes, inlineElementValues);
+                                        onUpdateRequest({ ...selectedRequest, request: formatted });
+                                    }}
+                                    style={{ width: 24, height: 24, padding: 2 }}
+                                >
+                                    <Braces size={14} />
+                                </IconButton>
+
+                                <div style={{ width: 1, height: 16, background: 'var(--vscode-panel-border)', margin: '0 5px' }} />
+
                                 <span style={{ opacity: 0.8 }}>Lines: {typeof selectedRequest.request === 'string' ? selectedRequest.request.split('\n').length : 0}</span>
                                 <span style={{ opacity: 0.8 }}>Size: {typeof selectedRequest.request === 'string' ? (selectedRequest.request.length / 1024).toFixed(2) : 0} KB</span>
                             </div>
@@ -371,63 +731,15 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                 overflow: 'hidden'
                             }}>
                                 <MonacoRequestEditor
+                                    ref={bodyEditorRef}
                                     value={hideCausalityData ? stripCausalityData(selectedRequest.request) : selectedRequest.request}
                                     language="xml"
                                     readOnly={isReadOnly}
                                     onChange={(val) => onUpdateRequest({ ...selectedRequest, request: val })}
+                                    onFocus={() => lastFocusedRef.current = bodyEditorRef.current}
                                 />
                                 {/* Format Button Overlay */}
-                                <div style={{
-                                    position: 'absolute',
-                                    bottom: 20,
-                                    right: 20,
-                                    display: 'flex',
-                                    gap: 10,
-                                    zIndex: 10
-                                }}>
-                                    {/* Auto Format Toggle */}
-                                    {onToggleInlineElementValues && (
-                                        <IconButton
-                                            title={inlineElementValues ? "Format: Inline Values" : "Format: Block Values"}
-                                            onClick={onToggleInlineElementValues}
-                                            style={{
-                                                backgroundColor: 'var(--vscode-editor-background)',
-                                                border: '1px solid var(--vscode-widget-border)',
-                                                opacity: 0.8
-                                            }}
-                                        >
-                                            <AlignLeft size={16} color={inlineElementValues ? 'var(--vscode-textLink-foreground)' : 'var(--vscode-foreground)'} />
-                                        </IconButton>
-                                    )}
-                                    {/* Hide Causality Data Toggle */}
-                                    {onToggleHideCausalityData && (
-                                        <IconButton
-                                            title={hideCausalityData ? "Show Debugger Causality Data" : "Hide Debugger Causality Data"}
-                                            onClick={onToggleHideCausalityData}
-                                            style={{
-                                                backgroundColor: 'var(--vscode-editor-background)',
-                                                border: '1px solid var(--vscode-widget-border)',
-                                                opacity: 0.8
-                                            }}
-                                        >
-                                            <Bug size={16} color={hideCausalityData ? 'var(--vscode-textLink-foreground)' : 'var(--vscode-foreground)'} />
-                                        </IconButton>
-                                    )}
-                                    <IconButton
-                                        title="Format XML"
-                                        onClick={() => {
-                                            const formatted = formatXml(selectedRequest.request, alignAttributes, inlineElementValues);
-                                            onUpdateRequest({ ...selectedRequest, request: formatted });
-                                        }}
-                                        style={{
-                                            backgroundColor: 'var(--vscode-editor-background)',
-                                            border: '1px solid var(--vscode-widget-border)',
-                                            opacity: 0.8
-                                        }}
-                                    >
-                                        <Braces size={16} />
-                                    </IconButton>
-                                </div>
+
                             </div>
                         )}
                         {activeTab === 'headers' && (
@@ -480,6 +792,13 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                 lastResult={response?.assertionResults}
                             />
                         )}
+                        {activeTab === 'extractors' && (
+                            <ExtractorsPanel
+                                extractors={selectedRequest.extractors || []}
+                                onChange={(newExtractors) => onUpdateRequest({ ...selectedRequest, extractors: newExtractors })}
+                                rawResponse={response?.rawResponse}
+                            />
+                        )}
                     </div>
 
                     {/* Resizer */}
@@ -518,9 +837,17 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                 justifyContent: 'space-between',
                                 flexShrink: 0
                             }}>
-                                <span>Response</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <span>Response</span>
+                                    {selection && onAddExtractor && !isReadOnly && (
+                                        <ToolbarButton onClick={handleCreateExtractor} style={{ fontSize: '0.8em', padding: '2px 8px', height: 22 }}>
+                                            <Bug size={12} style={{ marginRight: 4 }} /> Extract "{selection.text.length > 15 ? selection.text.substring(0, 12) + '...' : selection.text}"
+                                        </ToolbarButton>
+                                    )}
+                                </div>
                                 {response && !isReadOnly && (
                                     <div style={{ marginLeft: 'auto', display: 'flex', gap: '15px', alignItems: 'center' }}>
+                                        {/* ... stats ... */}
                                         <span style={{ opacity: 0.8 }}>Lines: {response.lineCount || 0}</span>
                                         <span style={{ opacity: 0.8 }}>Time: {(response.duration || 0).toFixed(1)}s</span>
                                         <span style={{ opacity: 0.8 }}>Size: {typeof response.rawResponse === 'string' ? (response.rawResponse.length / 1024).toFixed(2) : 0} KB</span>
@@ -541,6 +868,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                             <MonacoResponseViewer
                                 value={response ? (response.rawResponse ? formatXml(response.rawResponse, alignAttributes, inlineElementValues) : (response.error || '')) : ''}
                                 showLineNumbers={showLineNumbers}
+                                onSelectionChange={setSelection}
                             />
                         </div>
                     )}
@@ -551,30 +879,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                 <IconButton onClick={onToggleLineNumbers} active={showLineNumbers} title="Toggle Line Numbers">
                     <ListOrdered size={16} />
                 </IconButton>
-                <IconButton onClick={() => {
-                    const newValue = !alignAttributes;
-                    setAlignAttributes(newValue);
-                    if (selectedRequest.request) {
-                        onUpdateRequest({ ...selectedRequest, request: formatXml(selectedRequest.request, newValue, inlineElementValues) });
-                    }
-                }} active={alignAttributes} title="Toggle Attribute Alignment">
-                    <WrapText size={16} />
-                </IconButton>
-                <IconButton onClick={() => {
-                    // Toggle Inline Values
-                    if (onToggleInlineElementValues) onToggleInlineElementValues();
-                    // Trigger reformat of Request immediately if desired?
-                    // The prop update usually triggers re-render, but does logic re-run?
-                    // The Request Editor manages its own state via 'selectedRequest'. 
-                    // We should force update the request text if we want it to apply immediately to the Request Editor.
-                    // IMPORTANT: Since 'inlineElementValues' is a prop, we don't have the NEW value here immediately unless we calculate it.
-                    const nextVal = !inlineElementValues;
-                    if (selectedRequest.request) {
-                        onUpdateRequest({ ...selectedRequest, request: formatXml(selectedRequest.request, alignAttributes, nextVal) });
-                    }
-                }} active={inlineElementValues} title="Toggle Inline Values (Compact Elements)">
-                    <FoldVertical size={16} />
-                </IconButton>
+
                 <IconButton onClick={onToggleLayout} title="Toggle Layout (Vertical/Horizontal)">
                     <LayoutIcon size={16} />
                 </IconButton>

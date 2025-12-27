@@ -11,17 +11,25 @@ import { AssertionRunner } from '../utils/AssertionRunner';
 import { FileWatcherService } from '../services/FileWatcherService';
 import { ProxyService } from '../services/ProxyService';
 import { ConfigSwitcherService } from '../services/ConfigSwitcherService';
+import { TestRunnerService } from '../services/TestRunnerService';
+import { SoapUIProject, SoapTestSuite, SoapTestCase } from '../models';
+import { FolderProjectStorage } from '../FolderProjectStorage';
 
 export class WebviewController {
+    private _loadedProjects: Map<string, SoapUIProject> = new Map();
+
     constructor(
         private readonly _panel: vscode.WebviewPanel,
         private readonly _extensionUri: vscode.Uri,
         private readonly _soapClient: SoapClient,
-        private readonly _projectStorage: ProjectStorage,
-        private readonly _settingsManager: SettingsManager,
+        private readonly _folderStorage: FolderProjectStorage,
+        private _projectStorage: ProjectStorage,
+        private _settingsManager: SettingsManager,
+        private readonly _wildcardProcessor: WildcardProcessor,
         private readonly _fileWatcherService: FileWatcherService,
         private readonly _proxyService: ProxyService,
-        private readonly _configSwitcherService: ConfigSwitcherService
+        private readonly _configSwitcherService: ConfigSwitcherService,
+        private readonly _testRunnerService: TestRunnerService
     ) {
         // Setup Update Callback
         this._fileWatcherService.setCallback((history) => {
@@ -35,15 +43,30 @@ export class WebviewController {
         this._proxyService.on('status', (running) => {
             this._panel.webview.postMessage({ command: 'proxyStatus', running });
         });
+
+        // Test Runner Callback
+        this._testRunnerService.setCallback((data) => {
+            this._panel.webview.postMessage({ command: 'testRunnerUpdate', data });
+        });
     }
 
     public async handleMessage(message: any) {
+        if (message.command === 'executeRequest') {
+            console.log('[WebviewController] Received executeRequest message', message.url, message.operation);
+        }
+
         switch (message.command) {
             case 'saveProject':
                 await this.handleSaveProject(message);
                 break;
+            case 'log':
+                this._soapClient.log('[Webview] ' + message.message);
+                break;
             case 'loadProject':
-                await this.handleLoadProject();
+                await this.handleLoadProject(message.path);
+                break;
+            case 'saveOpenProjects':
+                this._settingsManager.updateOpenProjects(message.paths);
                 break;
             case 'saveWorkspace':
                 await this.handleSaveWorkspace(message);
@@ -165,6 +188,15 @@ export class WebviewController {
                 this._panel.webview.postMessage({ command: 'configRestored', success: restoreResult.success });
                 break;
             case 'openCertificate':
+                this.handleOpenCertificate();
+                break;
+            case 'runTestSuite':
+                await this.handleRunTestSuite(message.suiteId);
+                break;
+            case 'runTestCase':
+                await this.handleRunTestCase(message.caseId, message.fallbackEndpoint, message.testCase);
+                break;
+            case 'injectProxy':
                 // Force generation if not running or missing
                 let certPath = this._proxyService.getCertPath();
                 this._soapClient.log('[WebviewController] Initial cert path: ' + certPath);
@@ -205,6 +237,9 @@ export class WebviewController {
                     this._soapClient.log('No cert path available even after generation attempt.');
                 }
                 break;
+            case 'pickOperationForTestCase':
+                await this.handlePickOperationForTestCase(message.caseId);
+                break;
         }
     }
 
@@ -217,19 +252,91 @@ export class WebviewController {
 
     private async handleSaveProject(message: any) {
         try {
-            if (message.project.fileName && fs.existsSync(message.project.fileName)) {
-                await this._projectStorage.saveProject(message.project, message.project.fileName);
-                vscode.window.showInformationMessage(`Project saved to ${message.project.fileName}`);
-                this._panel.webview.postMessage({ command: 'projectSaved', projectName: message.project.name });
+            let fileName = message.project.fileName;
+
+            // 1. Existing file/folder?
+            if (fileName && fs.existsSync(fileName)) {
+                const stats = fs.statSync(fileName);
+                if (stats.isDirectory()) {
+                    await this._folderStorage.saveProject(message.project, fileName);
+                } else {
+                    await this._projectStorage.saveProject(message.project, fileName);
+                }
+
+                // Update cache & Notify
+                // Deduplicate: Remove any existing entries with same path (case-insensitive) to prevent stale duplicates
+                for (const key of this._loadedProjects.keys()) {
+                    if (key.toLowerCase() === fileName.toLowerCase()) {
+                        this._loadedProjects.delete(key);
+                    }
+                }
+                this._loadedProjects.set(fileName, message.project);
+                vscode.window.setStatusBarMessage(`Project saved to ${fileName}`, 2000);
+                this._panel.webview.postMessage({ command: 'projectSaved', projectName: message.project.name, fileName: fileName });
+                return;
+            }
+
+            // 2. New Save - Ask for Format
+            const saveType = await vscode.window.showQuickPick(
+                [
+                    { label: 'Save as Folder Project (Recommended)', detail: 'New folder-based format. Git-friendly.', picked: true, id: 'folder' },
+                    { label: 'Save as Legacy SoapUI XML', detail: 'Single .xml file compatible with SoapUI 5.x', id: 'xml' }
+                ],
+                { placeHolder: 'Select Project Format' }
+            );
+
+            if (!saveType) return; // User cancelled
+
+            if (saveType.id === 'folder') {
+                const uris = await vscode.window.showOpenDialog({
+                    canSelectFiles: false,
+                    canSelectFolders: true,
+                    canSelectMany: false,
+                    openLabel: 'Save Project Here'
+                });
+
+                if (uris && uris.length > 0) {
+                    // Create a subfolder for the project?
+                    // Or use the selected folder?
+                    // Usually "Save Project Here" implies "Create folder inside this".
+                    // OR "Select Empty Folder".
+                    // Let's assume we create a folder named after the project inside the selection.
+
+                    // Asking user for folder name is hard with just showOpenDialog.
+                    // We can use InputBox to ask for "Project Folder Name" first?
+                    // Or just assume project name.
+                    const parentDir = uris[0].fsPath;
+                    const safeName = message.project.name.replace(/[^a-z0-9\-_]/gi, '_');
+                    const projectDir = path.join(parentDir, safeName);
+
+                    if (fs.existsSync(projectDir)) {
+                        const overwrite = await vscode.window.showWarningMessage(
+                            `Folder '${safeName}' already exists. Overwrite?`, 'Yes', 'No'
+                        );
+                        if (overwrite !== 'Yes') return;
+                    }
+
+                    const savedProject = { ...message.project, fileName: projectDir };
+                    await this._folderStorage.saveProject(savedProject, projectDir);
+
+                    this._loadedProjects.set(projectDir, savedProject);
+                    vscode.window.showInformationMessage(`Project saved to ${projectDir}`);
+                    this._panel.webview.postMessage({ command: 'projectSaved', projectName: savedProject.name, fileName: projectDir });
+                }
+
             } else {
+                // Legacy XML
                 const uri = await vscode.window.showSaveDialog({
                     filters: { 'SoapUI Project': ['xml'] },
-                    saveLabel: 'Save Project'
+                    saveLabel: 'Save Project XML'
                 });
                 if (uri) {
-                    await this._projectStorage.saveProject(message.project, uri.fsPath);
+                    const savedProject = { ...message.project, fileName: uri.fsPath };
+                    await this._projectStorage.saveProject(savedProject, uri.fsPath);
+                    // Update cache
+                    this._loadedProjects.set(uri.fsPath, savedProject);
                     vscode.window.showInformationMessage(`Project saved to ${uri.fsPath}`);
-                    this._panel.webview.postMessage({ command: 'projectSaved', projectName: message.project.name });
+                    this._panel.webview.postMessage({ command: 'projectSaved', projectName: savedProject.name, fileName: uri.fsPath });
                 }
             }
         } catch (e: any) {
@@ -237,22 +344,47 @@ export class WebviewController {
         }
     }
 
-    private async handleLoadProject() {
+    private async handleLoadProject(filePath?: string) {
         try {
-            const uris = await vscode.window.showOpenDialog({
-                canSelectFiles: true,
-                canSelectFolders: false,
-                filters: { 'SoapUI Project': ['xml'] },
-                openLabel: 'Open Workspace'
-            });
-            if (uris && uris.length > 0) {
-                const project = await this._projectStorage.loadProject(uris[0].fsPath);
+            let targetPath = filePath;
+
+            if (!targetPath) {
+                const uris = await vscode.window.showOpenDialog({
+                    canSelectFiles: true,
+                    canSelectFolders: true, // Allow both!
+                    filters: { 'SoapUI Project': ['xml', 'json'] },
+                    openLabel: 'Open Project'
+                });
+                if (uris && uris.length > 0) {
+                    targetPath = uris[0].fsPath;
+                }
+            }
+
+            if (targetPath) {
+                let project: SoapUIProject;
+                let filename: string = targetPath;
+
+                // Check if directory or file
+                const stats = fs.statSync(targetPath);
+
+                if (stats.isDirectory()) {
+                    // Check if valid Dirty Project
+                    if (!fs.existsSync(path.join(targetPath, 'properties.json'))) {
+                        throw new Error("Selected folder is not a valid DirtySoap project (missing properties.json).");
+                    }
+                    project = await this._folderStorage.loadProject(targetPath);
+                } else {
+                    // Assume XML
+                    project = await this._projectStorage.loadProject(targetPath);
+                }
+
+                this._loadedProjects.set(targetPath, project);
                 this._panel.webview.postMessage({
                     command: 'projectLoaded',
                     project,
-                    filename: path.basename(uris[0].fsPath)
+                    filename: targetPath // Send full path (dir or file)
                 });
-                vscode.window.showInformationMessage(`Workspace loaded from ${uris[0].fsPath}`);
+                vscode.window.showInformationMessage(`Project loaded from ${targetPath}`);
             }
         } catch (e: any) {
             this._soapClient.log(`Error loading project: ${e.message}`);
@@ -303,6 +435,13 @@ export class WebviewController {
             });
             if (uris && uris.length > 0) {
                 const projects = await this._projectStorage.loadWorkspace(uris[0].fsPath);
+                // We need to associate projects with their paths? 
+                // loadWorkspace returns array of projects, but doesn't necessarily set fileName on them if not saved?
+                // ProjectStorage.loadWorkspace likely sets fileName if loaded from disk.
+                projects.forEach(p => {
+                    if (p.fileName) this._loadedProjects.set(p.fileName, p);
+                });
+
                 this._panel.webview.postMessage({
                     command: 'workspaceLoaded',
                     projects: projects
@@ -485,8 +624,9 @@ export class WebviewController {
             const globals = config.globals as Record<string, string> || {};
             const scriptsDir = this._settingsManager.scriptsDir;
 
-            const processedUrl = WildcardProcessor.process(message.url, envVars, globals, scriptsDir);
-            const processedXml = WildcardProcessor.process(message.xml, envVars, globals, scriptsDir);
+            const contextVars = message.contextVariables || {};
+            const processedUrl = WildcardProcessor.process(message.url, envVars, globals, scriptsDir, contextVars);
+            const processedXml = WildcardProcessor.process(message.xml, envVars, globals, scriptsDir, contextVars);
 
             this._soapClient.log('--- Executing Request ---');
             this._soapClient.log('Original URL:', message.url);
@@ -501,7 +641,7 @@ export class WebviewController {
                 const processedHeaders: Record<string, string> = {};
                 for (const key in headers) {
                     if (headers.hasOwnProperty(key)) {
-                        processedHeaders[key] = WildcardProcessor.process(headers[key], envVars, globals, scriptsDir);
+                        processedHeaders[key] = WildcardProcessor.process(headers[key], envVars, globals, scriptsDir, contextVars);
                     }
                 }
                 headers = processedHeaders;
@@ -551,6 +691,105 @@ export class WebviewController {
         }
     }
 
+    private findTestSuite(suiteId: string): { suite: SoapTestSuite, project: SoapUIProject } | undefined {
+        for (const project of this._loadedProjects.values()) {
+            if (project.testSuites) {
+                const suite = project.testSuites.find(s => s.id === suiteId);
+                if (suite) return { suite, project };
+            }
+        }
+        return undefined;
+    }
+
+    private findTestCase(caseId: string): { testCase: SoapTestCase, project: SoapUIProject } | undefined {
+        for (const project of this._loadedProjects.values()) {
+            if (project.testSuites) {
+                for (const suite of project.testSuites) {
+                    const testCase = suite.testCases?.find(c => c.id === caseId);
+                    if (testCase) return { testCase, project };
+                }
+            }
+        }
+        return undefined;
+    }
+
+    private async handleRunTestSuite(suiteId: string) {
+        const found = this.findTestSuite(suiteId);
+        if (!found) {
+            vscode.window.showErrorMessage(`Test Suite not found: ${suiteId}`);
+            return;
+        }
+
+        console.log(`[WebviewController] Run Suite: ${found.suite.name}`);
+        // TODO: Implement runTestSuite in TestRunnerService
+        // await this._testRunnerService.runTestSuite(found.suite); 
+        // For now iterate cases manually?
+        if (found.suite.testCases && found.suite.testCases.length > 0) {
+            for (const testCase of found.suite.testCases) {
+                await this._testRunnerService.runTestCase(testCase);
+            }
+        } else {
+            vscode.window.showInformationMessage(`Test Suite ${found.suite.name} has no test cases.`);
+        }
+    }
+
+    private async handleRunTestCase(caseId: string, fallbackEndpoint?: string, testCase?: SoapTestCase) {
+        let tcToRun = testCase;
+        if (!tcToRun) {
+            const found = this.findTestCase(caseId);
+            if (!found) {
+                vscode.window.showErrorMessage(`Test Case not found: ${caseId}`);
+                return;
+            }
+            tcToRun = found.testCase;
+        }
+
+        console.log(`[WebviewController] Run Case: ${tcToRun.name} (fallback: ${fallbackEndpoint})`);
+        await this._testRunnerService.runTestCase(tcToRun, fallbackEndpoint);
+    }
+
+    private async handleOpenCertificate() {
+        // I need to MOVE the logic from the switch to here.
+
+        // Force generation if not running or missing
+        let certPath = this._proxyService.getCertPath();
+        this._soapClient.log('[WebviewController] Initial cert path: ' + certPath);
+
+        if (!certPath || !fs.existsSync(certPath)) {
+            try {
+                this._soapClient.log('[WebviewController] Cert missing. Forcing generation...');
+                await this._proxyService.prepareCert();
+                certPath = this._proxyService.getCertPath();
+            } catch (e: any) {
+                this._soapClient.log('Failed to generate certificate: ' + e.message);
+                vscode.window.showErrorMessage('Failed to generate certificate: ' + e.message);
+                return;
+            }
+        }
+
+        this._soapClient.log('[WebviewController] Opening certificate at: ' + certPath);
+
+        if (certPath) {
+            if (!fs.existsSync(certPath)) {
+                this._soapClient.log('[WebviewController] Certificate file still not found at path: ' + certPath);
+                vscode.window.showErrorMessage(`Certificate file missing at: ${certPath}`);
+                return;
+            }
+
+            try {
+                const uri = vscode.Uri.file(certPath);
+                this._soapClient.log('[WebviewController] Opening URI: ' + uri.toString());
+                await vscode.env.openExternal(uri);
+                vscode.window.showInformationMessage(
+                    "Certificate opened. To trust this proxy, install it to 'Trusted Root Certification Authorities' in the Windows Certificate Import Wizard."
+                );
+            } catch (err: any) {
+                vscode.window.showErrorMessage('Failed to open certificate: ' + err.message);
+            }
+        }
+    }
+
+
     private sendChangelogToWebview() {
         try {
             const changelogPath = path.join(this._extensionUri.fsPath, 'CHANGELOG.md');
@@ -560,6 +799,41 @@ export class WebviewController {
             }
         } catch (e) {
             console.error('Failed to read changelog', e);
+        }
+    }
+
+    private async handlePickOperationForTestCase(caseId: string) {
+        const items: vscode.QuickPickItem[] = [];
+        const operations: any[] = [];
+
+        for (const project of this._loadedProjects.values()) {
+            if (project.interfaces) {
+                for (const iface of project.interfaces) {
+                    if (iface.operations) {
+                        for (const op of iface.operations) {
+                            items.push({
+                                label: op.name,
+                                description: `${project.name} > ${iface.name}`,
+                                detail: (op as any).originalEndpoint || ''
+                            });
+                            operations.push(op);
+                        }
+                    }
+                }
+            }
+        }
+
+        const selected = await vscode.window.showQuickPick(items, { placeHolder: 'Select Operation to Add' });
+        if (selected) {
+            const index = items.indexOf(selected);
+            const op = operations[index];
+            if (op) {
+                this._panel.webview.postMessage({
+                    command: 'addStepToCase',
+                    caseId,
+                    operation: op
+                });
+            }
         }
     }
 }
