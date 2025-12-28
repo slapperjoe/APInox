@@ -664,6 +664,12 @@ export class WebviewController {
             let assertionResults: any[] = [];
             if (message.assertions && Array.isArray(message.assertions)) {
                 assertionResults = AssertionRunner.run(typeof result === 'string' ? result : JSON.stringify(result), timeTaken, message.assertions);
+                if (assertionResults.length > 0) {
+                    this._soapClient.log(`Assertion Results:`);
+                    assertionResults.forEach(r => {
+                        this._soapClient.log(`  [${r.status}] ${r.name}: ${r.message || ''}`);
+                    });
+                }
             }
 
             this._panel.webview.postMessage({ command: 'response', result, assertionResults, timeTaken });

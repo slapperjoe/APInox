@@ -130,6 +130,9 @@ export class TestRunnerService {
             this.log(`Running ${req.assertions.length} assertions...`);
             req.assertions.forEach(a => this.log(`- Assertion: ${a.name} (${a.type})`));
             assertionResults = AssertionRunner.run(result.body, result.timeTaken, req.assertions);
+            assertionResults.forEach(r => {
+                this.log(`  [${r.status}] ${r.name}: ${r.message || ''}`);
+            });
         }
 
         const hasFailures = assertionResults.some(r => r.status === 'FAIL');

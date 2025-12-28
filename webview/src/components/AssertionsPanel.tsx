@@ -116,6 +116,7 @@ export const AssertionsPanel: React.FC<AssertionsPanelProps> = ({ assertions, on
         if (type === 'Response SLA') newAssertion.configuration = { sla: '200' };
         if (type === 'Simple Contains') newAssertion.configuration = { token: '', ignoreCase: true };
         if (type === 'Simple Not Contains') newAssertion.configuration = { token: '', ignoreCase: true };
+        if (type === 'XPath Match') newAssertion.configuration = { xpath: '', expectedContent: '' };
 
         onChange([...assertions, newAssertion]);
     };
@@ -148,7 +149,7 @@ export const AssertionsPanel: React.FC<AssertionsPanelProps> = ({ assertions, on
                     <option value="Simple Contains">Contains</option>
                     <option value="Simple Not Contains">Not Contains</option>
                     <option value="Response SLA">Response SLA</option>
-                    {/* <option value="XPath Match">XPath Match</option> */}
+                    <option value="XPath Match">XPath Match</option>
                 </Select>
             </Toolbar>
 
@@ -194,6 +195,28 @@ export const AssertionsPanel: React.FC<AssertionsPanelProps> = ({ assertions, on
                                                 style={{ width: 60 }}
                                             />
                                         </>
+                                    )}
+                                    {a.type === 'XPath Match' && (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                <span style={{ minWidth: 60 }}>XPath:</span>
+                                                <Input
+                                                    style={{ flex: 1 }}
+                                                    value={a.configuration?.xpath || ''}
+                                                    onChange={(e) => updateConfig(a.id!, 'xpath', e.target.value)}
+                                                    placeholder="//ns:Node"
+                                                />
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                <span style={{ minWidth: 60 }}>Expected:</span>
+                                                <Input
+                                                    style={{ flex: 1 }}
+                                                    value={a.configuration?.expectedContent || ''}
+                                                    onChange={(e) => updateConfig(a.id!, 'expectedContent', e.target.value)}
+                                                    placeholder="Value"
+                                                />
+                                            </div>
+                                        </div>
                                     )}
                                 </ConfigText>
                             </Details>
