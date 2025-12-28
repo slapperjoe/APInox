@@ -1,4 +1,5 @@
 import { SoapUIAssertion } from "../models";
+import { BackendXPathEvaluator } from "./BackendXPathEvaluator";
 
 export interface AssertionResult {
     id?: string;
@@ -68,8 +69,28 @@ export class AssertionRunner {
             }
 
             case 'XPath Match': {
-                // Placeholder for now
-                return { id: assertion.id, name: assertion.name || 'XPath Match', status: 'FAIL', message: 'XPath Match not yet implemented.' };
+                const xpath = config.xpath;
+                const expected = config.expectedContent;
+
+                if (!xpath) {
+                    return { id: assertion.id, name: assertion.name || 'XPath Match', status: 'FAIL', message: 'No XPath expression configured.' };
+                }
+
+                try {
+                    const actual = BackendXPathEvaluator.evaluate(response, xpath);
+                    if (actual === expected) {
+                        return { id: assertion.id, name: assertion.name || 'XPath Match', status: 'PASS', message: `Value matched: ${actual}` };
+                    } else {
+                        return {
+                            id: assertion.id,
+                            name: assertion.name || 'XPath Match',
+                            status: 'FAIL',
+                            message: `Expected [${expected}] but got [${actual}]`
+                        };
+                    }
+                } catch (error) {
+                    return { id: assertion.id, name: assertion.name || 'XPath Match', status: 'FAIL', message: `XPath evaluation failed: ${error}` };
+                }
             }
 
             default:

@@ -4,10 +4,7 @@ export class BackendXPathEvaluator {
     private static parser = new XMLParser({
         ignoreAttributes: false,
         attributeNamePrefix: "@_",
-        removeNSPrefix: false, // Keep prefixes to match if needed, or we can strip them?
-        // If we strip, we lose namespace info but gain simplicity.
-        // User XPaths might have prefixes.
-        // Let's keep them and do "fuzzy matching" (match ending with localName).
+        removeNSPrefix: true, // Simplified matching
     });
 
     public static evaluate(xml: string, xpath: string): string | null {
@@ -16,76 +13,79 @@ export class BackendXPathEvaluator {
         try {
             const jsonObj = this.parser.parse(xml);
 
-            // Remove leading slash
-            const path = xpath.startsWith('/') ? xpath.substring(1) : xpath;
-            const segments = path.split('/');
+            // Normalize XPath: Remove namespaces from segments for matching
+            // //m:CountryNameResult -> [ "", "m:CountryNameResult" ]
+            const segments = xpath.split('/');
 
             let current: any = jsonObj;
 
-            for (const segment of segments) {
-                if (!current) return null;
+            for (let i = 0; i < segments.length; i++) {
+                const segment = segments[i];
 
-                // Parse Segment: TagName[Index]
-                const match = segment.match(/^([^\[]+)(?:\[(\d+)\])?$/);
-                if (!match) return null;
+                // Case 1: Empty segment (caused by // or leading /)
+                if (segment === '') {
+                    // If it's the first one (leading /), just continue.
+                    // If it's in middle (//), it implies recursive search for NEXT segment.
+                    if (i > 0 && i + 1 < segments.length) {
+                        // RECURSIVE SEARCH for segments[i+1]
+                        const nextSegment = segments[i + 1];
+                        const { key, index } = this.parseSegment(nextSegment);
 
-                const tagName = match[1];
-                const index = match[2] ? parseInt(match[2], 10) - 1 : 0; // XPath is 1-based
+                        const found = this.findRecursive(current, key);
+                        if (found !== undefined) {
+                            current = found; // The parent of the value? No, findRecursive returns the VALUE.
+                            // But wait, if found is array, we might need index.
+                            // findRecursive returns the Object/Value found under that key.
 
-                // Extract Local Name (strip prefix if present)
-                const localName = tagName.includes(':') ? tagName.split(':')[1] : tagName;
+                            // Handle Index on the found item
+                            if (Array.isArray(current)) {
+                                if (index >= 0 && index < current.length) {
+                                    current = current[index];
+                                } else {
+                                    return null;
+                                }
+                            } else {
+                                if (index > 0) return null;
+                            }
 
-                // Find key in current object that matches tagName
-                let foundKey: string | undefined;
-
-                // 1. Direct Match (Full Tag provided in XPath matches Key in JSON)
-                if (current[tagName]) {
-                    foundKey = tagName;
-                } else {
-                    const keys = Object.keys(current);
-                    foundKey = keys.find(k => {
-                        // 2. Local Name Match (JSON key is just localName)
-                        if (k === localName) return true;
-                        // 3. Namespace Match (JSON key ends with :localName)
-                        if (k.endsWith(':' + localName)) return true;
-
-                        return false;
-                    });
+                            i++; // Skip the next segment loop as we processed it
+                            continue;
+                        } else {
+                            return null; // Deep search failed
+                        }
+                    }
+                    continue;
                 }
 
-                if (!foundKey) return null;
+                if (!current) return null;
 
-                const val = current[foundKey];
+                const { key, index } = this.parseSegment(segment);
 
-                // If val is array, assume multiple children with same tag. Select by index.
-                if (Array.isArray(val)) {
-                    if (index >= 0 && index < val.length) {
-                        current = val[index];
+                // Direct Child Search
+                if (current[key] !== undefined) {
+                    current = current[key];
+                } else {
+                    return null;
+                }
+
+                // Handle Array/Index
+                if (Array.isArray(current)) {
+                    if (index >= 0 && index < current.length) {
+                        current = current[index];
                     } else {
                         return null;
                     }
                 } else {
-                    // Single item. Index must be 0?
-                    // Actually fast-xml-parser might merge same tags into array.
-                    // If it's single, index 0 is valid.
-                    if (index === 0) {
-                        current = val;
-                    } else {
-                        return null; // Index > 0 but only one element
-                    }
+                    if (index > 0) return null;
                 }
             }
 
-            // After traversing, 'current' should be the value.
-            // If it is an object/text/cdata?
             if (typeof current === 'object' && current !== null) {
-                // If it has #text?
                 if ('#text' in current) return String(current['#text']);
-                // If strictly object, implies we selected an element, not text?
-                // But usually we want the text content.
-                // fast-xml-parser usually puts text in #text if attributes exist.
-                // If no attributes, it might be the value itself.
-                return null; // Needed specific text node?
+                // If pure object and user asked for it, return JSON?
+                // Usually Extractor expects string.
+                // Return first value?
+                return JSON.stringify(current);
             }
 
             return String(current);
@@ -94,5 +94,37 @@ export class BackendXPathEvaluator {
             console.error('BackendXPathEvaluator error:', e);
             return null;
         }
+    }
+
+    private static parseSegment(segment: string): { key: string, index: number } {
+        const match = segment.match(/^([^\[]+)(?:\[(\d+)\])?$/);
+        const rawName = match ? match[1] : segment;
+        const index = match && match[2] ? parseInt(match[2], 10) - 1 : 0;
+
+        // Strip namespace from key if present
+        const key = rawName.includes(':') ? rawName.split(':')[1] : rawName;
+
+        return { key, index };
+    }
+
+    private static findRecursive(obj: any, targetKey: string): any | undefined {
+        if (typeof obj !== 'object' || obj === null) return undefined;
+
+        // Check direct children
+        if (obj[targetKey] !== undefined) {
+            return obj[targetKey];
+        }
+
+        // Iterate children
+        for (const k in obj) {
+            if (Object.prototype.hasOwnProperty.call(obj, k)) {
+                const child = obj[k];
+                if (typeof child === 'object') {
+                    const found = this.findRecursive(child, targetKey);
+                    if (found !== undefined) return found;
+                }
+            }
+        }
+        return undefined;
     }
 }
