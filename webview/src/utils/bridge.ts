@@ -1,8 +1,7 @@
-
-// Note: We keep some Tauri imports if the codebase has strict checks, but ideally we remove them.
-// Since we removed @tauri-apps/cli/api from package.json? Wait, webview package.json might have it.
-// We should check webview/package.json too.
-// For now, I will rewrite the file to just use VSCode API.
+/**
+ * VS Code Webview Bridge
+ * Provides communication between the webview and the VS Code extension host.
+ */
 
 declare global {
     interface Window {

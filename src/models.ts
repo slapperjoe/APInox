@@ -70,6 +70,8 @@ export interface SoapUIOperation {
     requests: SoapUIRequest[];
     expanded?: boolean;
     input?: any;
+    targetNamespace?: string;
+    originalEndpoint?: string;
 }
 
 export interface SoapUIInterface {
@@ -89,6 +91,7 @@ export interface SoapUIProject {
     expanded?: boolean;
     fileName?: string;
     id?: string;
+    dirty?: boolean;
     testSuites?: SoapTestSuite[];
 }
 

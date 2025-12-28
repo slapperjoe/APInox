@@ -44,11 +44,12 @@ export interface SoapUIAssertion {
     };
 }
 
-export interface SoapTestExtractor {
-    variable: string;
-    path: string;
+export interface SoapRequestExtractor {
+    type: 'XPath' | 'JSONPath';
     source: 'body' | 'header';
-    id?: string;
+    path: string;
+    variable: string;
+    id: string;
 }
 
 export interface SoapUIRequest {
@@ -59,7 +60,7 @@ export interface SoapUIRequest {
     endpoint?: string;
     dirty?: boolean;
     assertions?: SoapUIAssertion[];
-    extractors?: SoapTestExtractor[];
+    extractors?: SoapRequestExtractor[];
     headers?: Record<string, string>;
     id?: string;
 }

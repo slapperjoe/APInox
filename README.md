@@ -57,4 +57,7 @@ We are constantly working to improve Dirty SOAP for C# developers. Here is what 
 - **Generate C# Code**: Copy your SOAP request as a ready-to-use C# `HttpClient` snippet.
 - **WSDL to Proxy**: Integration with `dotnet-svcutil`.
 
+## Developer Notes
 
+- **Agent Context**: See [AGENTS.md](./AGENTS.md) for architecture overview and setup instructions.
+- **Code Analysis**: See [CODE_ANALYSIS.md](./CODE_ANALYSIS.md) for technical debt and simplification recommendations.
