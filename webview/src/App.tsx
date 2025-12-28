@@ -11,7 +11,7 @@ import { RenameModal } from './components/modals/RenameModal';
 import { SampleModal } from './components/modals/SampleModal';
 import { ExtractorModal } from './components/modals/ExtractorModal';
 import { SettingsEditorModal } from './components/modals/SettingsEditorModal';
-import { SoapUIInterface, SoapUIProject, SoapUIOperation, SoapUIRequest, SoapTestCase, SoapTestStep, SoapTestSuite, WatcherEvent, SidebarView, SoapTestExtractor, SoapUIAssertion } from './models';
+import { SoapUIInterface, SoapUIProject, SoapUIOperation, SoapUIRequest, SoapTestCase, SoapTestStep, SoapTestSuite, WatcherEvent, SidebarView, SoapRequestExtractor, SoapUIAssertion } from './models';
 import { formatXml } from './utils/xmlFormatter';
 import { CustomXPathEvaluator } from './utils/xpathEvaluator';
 
@@ -1513,8 +1513,9 @@ function App() {
     const handleSaveExtractor = (data: { xpath: string, value: string, source: 'body' | 'header', variableName: string }) => {
         if (!selectedTestCase || !selectedStep?.config?.request) return;
 
-        const newExtractor: SoapTestExtractor = {
+        const newExtractor: SoapRequestExtractor = {
             id: `ext-${Date.now()}`,
+            type: 'XPath',
             variable: data.variableName,
             source: data.source,
             path: data.xpath

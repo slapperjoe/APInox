@@ -76,3 +76,33 @@ If you are an agent or developer setting this up from scratch:
     -   In the Extension Host window, run command `Dirty SOAP: Open Interface`.
     -   Load a WSDL (e.g. `http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso?WSDL`).
     -   Select an operation and click **Run**.
+
+## Storage Classes
+
+The extension has two storage mechanisms for projects:
+
+| Class | Format | Use Case |
+|-------|--------|----------|
+| `ProjectStorage` | Single XML file (SOAP-UI compatible) | Import/export for compatibility with SOAP-UI |
+| `FolderProjectStorage` | Folder structure with JSON/XML files | Native format, git-friendly, human-readable |
+
+**FolderProjectStorage** is the primary format. Projects saved with this format have the structure:
+```
+MyProject/
+├── properties.json        # Project metadata
+├── interfaces/
+│   └── MyService/
+│       ├── interface.json # Binding info
+│       └── MyOperation/
+│           ├── operation.json
+│           ├── Request1.xml   # Request body
+│           └── Request1.json  # Request metadata
+└── tests/
+    └── MySuite/
+        └── MyTestCase/
+            └── 01_step.json
+```
+
+## Known Technical Debt
+
+See [CODE_ANALYSIS.md](./CODE_ANALYSIS.md) for a detailed analysis of simplification opportunities.
