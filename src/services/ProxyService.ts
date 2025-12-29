@@ -219,13 +219,26 @@ export class ProxyService extends EventEmitter {
                     proxy: false // Critical: Prevent Axios from using process.env.HTTP_PROXY automatically
                 };
 
+                // Apply replace rules to request before forwarding
+                let requestData = reqBody;
+                if (this.replaceRules.length > 0) {
+                    const originalReq = requestData;
+                    requestData = ReplaceRuleApplier.apply(requestData, this.replaceRules, 'request');
+                    if (requestData !== originalReq) {
+                        const applicableRules = this.replaceRules.filter(r => r.enabled && (r.target === 'request' || r.target === 'both'));
+                        const ruleNames = applicableRules.map(r => r.name || r.id).join(', ');
+                        this.logDebug(`[Proxy] ✓ Applied replace rules to request: ${ruleNames}`);
+                        axiosConfig.data = requestData;
+                    }
+                }
+
                 this.logDebug(`[Proxy] Sending Request to: ${axiosConfig.url}`);
                 // Ensure correct Host header and Content-Length
                 // Add User-Agent in case WAF requires it
                 const headersToSend = {
                     ...forwardHeaders,
                     host: new URL(this.config.targetUrl).host,
-                    'content-length': Buffer.byteLength(reqBody),
+                    'content-length': Buffer.byteLength(requestData),
                     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                     connection: 'keep-alive'
                 };

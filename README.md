@@ -22,6 +22,13 @@ A visual SOAP client for VS Code, inspired by Bruno and SOAP-UI.
 - **Response Viewer**:
     - View formatted XML responses.
     - Layout Toggle: Switch between vertical (split up/down) and horizontal (split left/right) views.
+- **Dirty Proxy** (Intercepting Proxy):
+    - Intercepts HTTP/HTTPS traffic for debugging and testing.
+    - **Replace Rules**: Define rules to modify request/response content in-flight.
+        - XPath-scoped replacement (targets specific elements).
+        - Apply to request, response, or both.
+        - Manage rules in Settings → Replace Rules tab.
+        - Use case: Test with modified responses, inject test data into requests.
 - **Project Structure**: Organize work into Projects -> Interfaces -> Operations -> Requests.
 - **Context Actions**: Clone, Delete, and Rename requests easily via context menus.
 - **Settings**: Persistent configuration with a built-in JSONC editor and contextual **Help Panel**.

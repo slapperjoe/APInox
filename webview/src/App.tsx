@@ -12,6 +12,7 @@ import { SampleModal } from './components/modals/SampleModal';
 import { ExtractorModal } from './components/modals/ExtractorModal';
 import { SettingsEditorModal } from './components/modals/SettingsEditorModal';
 import { CreateReplaceRuleModal } from './components/modals/CreateReplaceRuleModal';
+import { AddToDevOpsModal } from './components/modals/AddToDevOpsModal';
 import { SoapUIInterface, SoapUIProject, SoapUIOperation, SoapUIRequest, SoapTestCase, SoapTestStep, SoapTestSuite, WatcherEvent, SidebarView, SoapRequestExtractor, SoapUIAssertion, ReplaceRule } from './models';
 import { formatXml } from './utils/xmlFormatter';
 import { CustomXPathEvaluator } from './utils/xpathEvaluator';
@@ -159,6 +160,8 @@ function App() {
         setShowSettings,
         showHelp,
         setShowHelp,
+        showDevOpsModal,
+        setShowDevOpsModal,
         config,
         setConfig,
         rawConfig,
@@ -1682,7 +1685,19 @@ function App() {
                 config={config}
                 onChangeEnvironment={(env) => bridge.sendMessage({ command: 'updateActiveEnvironment', envName: env })}
                 changelog={changelog}
+                onOpenDevOps={() => setShowDevOpsModal(true)}
             />
+
+            {showDevOpsModal && config?.azureDevOps?.orgUrl && config?.azureDevOps?.project && selectedRequest && (
+                <AddToDevOpsModal
+                    orgUrl={config.azureDevOps.orgUrl}
+                    project={config.azureDevOps.project}
+                    requestContent={selectedRequest.request || ''}
+                    responseContent={response?.body}
+                    requestName={selectedRequest.name}
+                    onClose={() => setShowDevOpsModal(false)}
+                />
+            )}
 
             {showSettings && (
                 <SettingsEditorModal

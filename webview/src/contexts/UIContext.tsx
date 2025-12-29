@@ -81,6 +81,10 @@ export interface UIContextValue {
     showHelp: boolean;
     setShowHelp: React.Dispatch<React.SetStateAction<boolean>>;
 
+    /** Azure DevOps modal visibility */
+    showDevOpsModal: boolean;
+    setShowDevOpsModal: React.Dispatch<React.SetStateAction<boolean>>;
+
     // -------------------------------------------------------------------------
     // CONFIGURATION STATE
     // -------------------------------------------------------------------------
@@ -140,6 +144,7 @@ export function UIProvider({ children }: UIProviderProps) {
 
     const [showSettings, setShowSettings] = useState(false);
     const [showHelp, setShowHelp] = useState(false);
+    const [showDevOpsModal, setShowDevOpsModal] = useState(false);
 
     // -------------------------------------------------------------------------
     // CONFIGURATION STATE
@@ -206,6 +211,8 @@ export function UIProvider({ children }: UIProviderProps) {
         setShowSettings,
         showHelp,
         setShowHelp,
+        showDevOpsModal,
+        setShowDevOpsModal,
 
         // Configuration State
         config,

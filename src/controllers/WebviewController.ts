@@ -12,6 +12,7 @@ import { FileWatcherService } from '../services/FileWatcherService';
 import { ProxyService } from '../services/ProxyService';
 import { ConfigSwitcherService } from '../services/ConfigSwitcherService';
 import { TestRunnerService } from '../services/TestRunnerService';
+import { AzureDevOpsService } from '../services/AzureDevOpsService';
 import { SoapUIProject, SoapTestSuite, SoapTestCase } from '../models';
 import { FolderProjectStorage } from '../FolderProjectStorage';
 
@@ -54,7 +55,8 @@ export class WebviewController {
         private readonly _fileWatcherService: FileWatcherService,
         private readonly _proxyService: ProxyService,
         private readonly _configSwitcherService: ConfigSwitcherService,
-        private readonly _testRunnerService: TestRunnerService
+        private readonly _testRunnerService: TestRunnerService,
+        private readonly _azureDevOpsService: AzureDevOpsService
     ) {
         // Initialize Commands
         this._commands.set('executeRequest', new ExecuteRequestCommand(this._panel, this._soapClient, this._settingsManager));
@@ -199,7 +201,40 @@ export class WebviewController {
                 this._fileWatcherService.clearHistory();
                 break;
 
-
+            // Azure DevOps Integration
+            case 'adoStorePat':
+                await this._azureDevOpsService.storePat(message.pat);
+                this._panel.webview.postMessage({ command: 'adoPatStored', success: true });
+                break;
+            case 'adoHasPat':
+                const hasPat = await this._azureDevOpsService.hasPat();
+                this._panel.webview.postMessage({ command: 'adoHasPatResult', hasPat });
+                break;
+            case 'adoDeletePat':
+                await this._azureDevOpsService.deletePat();
+                this._panel.webview.postMessage({ command: 'adoPatDeleted', success: true });
+                break;
+            case 'adoListProjects':
+                try {
+                    const projects = await this._azureDevOpsService.listProjects(message.orgUrl);
+                    this._panel.webview.postMessage({ command: 'adoProjectsResult', projects, success: true });
+                } catch (error: any) {
+                    this._panel.webview.postMessage({ command: 'adoProjectsResult', projects: [], success: false, error: error.message });
+                }
+                break;
+            case 'adoTestConnection':
+                const result = await this._azureDevOpsService.testConnection(message.orgUrl);
+                this._panel.webview.postMessage({ command: 'adoTestConnectionResult', ...result });
+                break;
+            case 'adoAddComment':
+                const commentResult = await this._azureDevOpsService.addWorkItemComment(
+                    message.orgUrl,
+                    message.project,
+                    message.workItemId,
+                    message.text
+                );
+                this._panel.webview.postMessage({ command: 'adoAddCommentResult', ...commentResult });
+                break;
 
         }
     }

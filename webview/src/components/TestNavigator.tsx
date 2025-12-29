@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import styled from 'styled-components';
+import styled, { keyframes, css } from 'styled-components';
 import { SoapUIProject } from '../models';
 import { Play, Plus, ChevronRight, ChevronDown, FlaskConical, Folder, Trash2 } from 'lucide-react';
 
@@ -22,7 +22,16 @@ const Toolbar = styled.div`
     color: var(--vscode-sideBarTitle-foreground);
 `;
 
-const IconButton = styled.button`
+// Shake animation for delete confirmation
+const shakeAnimation = keyframes`
+    0% { transform: translateX(0); }
+    25% { transform: translateX(2px) rotate(5deg); }
+    50% { transform: translateX(-2px) rotate(-5deg); }
+    75% { transform: translateX(2px) rotate(5deg); }
+    100% { transform: translateX(0); }
+`;
+
+const IconButton = styled.button<{ shake?: boolean }>`
     background: none;
     border: none;
     cursor: pointer;
@@ -36,6 +45,11 @@ const IconButton = styled.button`
     &:hover {
         background-color: var(--vscode-toolbar-hoverBackground);
     }
+    
+    ${props => props.shake && css`
+        animation: ${shakeAnimation} 0.5s ease-in-out infinite;
+        color: var(--vscode-errorForeground);
+    `}
 `;
 
 const TreeItem = styled.div<{ depth: number, active?: boolean }>`
@@ -73,6 +87,7 @@ export const TestNavigator: React.FC<TestNavigatorProps> = ({
     onDeleteTestCase
 }) => {
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
     const toggleExpand = (id: string, e?: React.MouseEvent) => {
         if (e) e.stopPropagation();
@@ -80,6 +95,26 @@ export const TestNavigator: React.FC<TestNavigatorProps> = ({
         if (newSet.has(id)) newSet.delete(id);
         else newSet.add(id);
         setExpandedIds(newSet);
+    };
+
+    const handleDeleteSuite = (suiteId: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (deleteConfirmId === suiteId) {
+            onDeleteSuite(suiteId);
+            setDeleteConfirmId(null);
+        } else {
+            setDeleteConfirmId(suiteId);
+        }
+    };
+
+    const handleDeleteTestCase = (caseId: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (deleteConfirmId === caseId) {
+            onDeleteTestCase(caseId);
+            setDeleteConfirmId(null);
+        } else {
+            setDeleteConfirmId(caseId);
+        }
     };
 
     console.log(`[TestNavigator] Rendering with ${projects.length} projects`);
@@ -132,10 +167,11 @@ export const TestNavigator: React.FC<TestNavigatorProps> = ({
                                                 }} title="Run Suite">
                                                     <Play size={14} />
                                                 </IconButton>
-                                                <IconButton onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    onDeleteSuite(suite.id);
-                                                }} title="Delete Suite" style={{ color: 'var(--vscode-errorForeground)' }}>
+                                                <IconButton
+                                                    onClick={(e) => handleDeleteSuite(suite.id, e)}
+                                                    title={deleteConfirmId === suite.id ? "Click again to confirm" : "Delete Suite"}
+                                                    shake={deleteConfirmId === suite.id}
+                                                >
                                                     <Trash2 size={14} />
                                                 </IconButton>
                                             </div>
@@ -157,10 +193,11 @@ export const TestNavigator: React.FC<TestNavigatorProps> = ({
                                                             }} title="Run Case">
                                                                 <Play size={12} />
                                                             </IconButton>
-                                                            <IconButton onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                onDeleteTestCase(tc.id);
-                                                            }} title="Delete Case" style={{ color: 'var(--vscode-errorForeground)' }}>
+                                                            <IconButton
+                                                                onClick={(e) => handleDeleteTestCase(tc.id, e)}
+                                                                title={deleteConfirmId === tc.id ? "Click again to confirm" : "Delete Case"}
+                                                                shake={deleteConfirmId === tc.id}
+                                                            >
                                                                 <Trash2 size={12} />
                                                             </IconButton>
                                                         </div>
