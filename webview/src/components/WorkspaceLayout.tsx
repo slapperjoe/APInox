@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-import { Layout as LayoutIcon, ListOrdered, Play, Loader2, RotateCcw, WrapText, Bug, AlignLeft, Braces, ChevronLeft, Plus, FileCode, Trash2, ArrowUp, ArrowDown, ListChecks } from 'lucide-react';
+import { Layout as LayoutIcon, ListOrdered, Play, Loader2, RotateCcw, WrapText, Bug, AlignLeft, Braces, ChevronLeft, Plus, FileCode, Trash2, ArrowUp, ArrowDown, ListChecks, Replace } from 'lucide-react';
 import { SoapUIRequest, SoapUIOperation, SoapTestCase, TestStepType, SoapTestStep } from '../models';
 // ... imports
 import { MonacoRequestEditor, MonacoRequestEditorHandle } from './MonacoRequestEditor';
@@ -62,6 +62,34 @@ const Toolbar = styled.div`
     align-items: center;
     gap: 10px;
     height: 40px;
+`;
+
+/** Read-only info bar for displaying endpoint URL in proxy/watcher view */
+const InfoBar = styled.div`
+    display: flex;
+    padding: 8px 12px;
+    background-color: var(--vscode-editor-inactiveSelectionBackground);
+    border-bottom: 1px solid var(--vscode-panel-border);
+    align-items: center;
+    gap: 12px;
+    font-family: var(--vscode-editor-font-family);
+    font-size: 12px;
+    color: var(--vscode-descriptionForeground);
+`;
+
+const InfoBarMethod = styled.span`
+    font-weight: 600;
+    color: var(--vscode-textLink-foreground);
+    background: var(--vscode-badge-background);
+    padding: 2px 6px;
+    border-radius: 3px;
+`;
+
+const InfoBarUrl = styled.span`
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 `;
 
 const ToolbarButton = styled.button`
@@ -177,6 +205,8 @@ interface WorkspaceLayoutProps {
     onAddExtractor?: (data: { xpath: string, value: string, source: 'body' | 'header' }) => void;
     onAddAssertion?: (data: { xpath: string, expectedContent: string }) => void;
     onAddExistenceAssertion?: (data: { xpath: string }) => void;
+    /** Handler for adding replace rules (proxy view) */
+    onAddReplaceRule?: (data: { xpath: string, matchText: string, target: 'request' | 'response' }) => void;
 }
 
 export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
@@ -188,7 +218,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     hideCausalityData, onToggleHideCausalityData,
     isReadOnly,
     onRunTestCase, onOpenStepRequest, onBackToCase, onAddStep, testExecution,
-    selectedStep, onUpdateStep, onSelectStep, onDeleteStep, onMoveStep, onAddExtractor, onAddAssertion, onAddExistenceAssertion
+    selectedStep, onUpdateStep, onSelectStep, onDeleteStep, onMoveStep, onAddExtractor, onAddAssertion, onAddExistenceAssertion, onAddReplaceRule
 }) => {
     const [alignAttributes, setAlignAttributes] = React.useState(false);
     const [activeTab, setActiveTab] = React.useState<'request' | 'headers' | 'assertions' | 'auth' | 'extractors'>('request');
@@ -256,11 +286,11 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         setActiveTab('assertions');
     };
 
+    const handleCreateReplaceRule = (target: 'request' | 'response') => {
+        if (!selection || !currentXPath || !onAddReplaceRule) return;
 
-
-
-
-
+        onAddReplaceRule({ xpath: currentXPath, matchText: selection.text, target });
+    };
     // Reset active tab if it's assertions or extractors and we are in read-only mode (e.g. Watcher/Proxy)
     React.useEffect(() => {
         if (isReadOnly && (activeTab === 'assertions' || activeTab === 'extractors')) {
@@ -449,6 +479,12 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         <Content>
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
                 {/* Toolbar */}
+                {isReadOnly && selectedRequest.endpoint && (
+                    <InfoBar>
+                        <InfoBarMethod>{selectedRequest.method || 'POST'}</InfoBarMethod>
+                        <InfoBarUrl title={selectedRequest.endpoint}>{selectedRequest.endpoint}</InfoBarUrl>
+                    </InfoBar>
+                )}
                 {!isReadOnly && (
                     <Toolbar>
                         {selectedTestCase && onBackToCase && (
@@ -899,6 +935,16 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                                 </ToolbarButton>
                                             )}
                                         </div>
+                                    )}
+                                    {/* Replace Rule button for Proxy view */}
+                                    {selection && selection.text && isReadOnly && onAddReplaceRule && currentXPath && (
+                                        <ToolbarButton
+                                            onClick={() => handleCreateReplaceRule('response')}
+                                            style={{ fontSize: '0.8em', padding: '0 8px', height: 20 }}
+                                            title="Create a replace rule for this selection"
+                                        >
+                                            <Replace size={12} style={{ marginRight: 4 }} /> Add Replace Rule
+                                        </ToolbarButton>
                                     )}
                                 </div>
                                 {response && !isReadOnly && (
