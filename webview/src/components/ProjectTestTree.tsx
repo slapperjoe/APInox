@@ -70,14 +70,12 @@ export const ProjectTestTree: React.FC<ProjectTestTreeProps> = ({
     onDeleteSuite,
     onRunSuite,
     onAddTestCase,
-    onRunCase,
     onDeleteTestCase,
     onSelectSuite,
     onSelectTestCase,
     onToggleSuiteExpand,
     onToggleCaseExpand,
-    deleteConfirm,
-    setDeleteConfirm
+    deleteConfirm
 
 }) => {
     const [rootExpanded, setRootExpanded] = useState(true);
@@ -123,6 +121,7 @@ export const ProjectTestTree: React.FC<ProjectTestTreeProps> = ({
                                     </IconButton>
                                     <IconButton onClick={(e) => {
                                         e.stopPropagation();
+                                        console.log('[ProjectTestTree] Run Suite clicked, suiteId:', suite.id);
                                         onRunSuite(suite.id);
                                     }} title="Run Suite">
                                         <Play size={14} />
@@ -130,13 +129,8 @@ export const ProjectTestTree: React.FC<ProjectTestTreeProps> = ({
 
                                     <IconButton onClick={(e) => {
                                         e.stopPropagation();
-                                        if (deleteConfirm === suite.id) {
-                                            onDeleteSuite(suite.id);
-                                            setDeleteConfirm?.(null);
-                                        } else {
-                                            setDeleteConfirm?.(suite.id);
-                                            setTimeout(() => setDeleteConfirm?.(null), 2000);
-                                        }
+                                        console.log('[ProjectTestTree] Delete Suite clicked, suiteId:', suite.id);
+                                        onDeleteSuite(suite.id);
                                     }}
                                         title={deleteConfirm === suite.id ? "Click again to Confirm" : "Delete Suite"}
                                         style={{ color: deleteConfirm === suite.id ? 'var(--vscode-errorForeground)' : undefined }}
@@ -161,22 +155,11 @@ export const ProjectTestTree: React.FC<ProjectTestTreeProps> = ({
                                             {tc.expanded !== false ? <ChevronDown size={12} style={{ marginRight: 4 }} /> : <ChevronRight size={12} style={{ marginRight: 4 }} />}
                                             {tc.name}
                                             <div style={{ marginLeft: 'auto', display: 'flex' }}>
-                                                <IconButton onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    onRunCase(tc.id);
-                                                }} title="Run Case">
-                                                    <Play size={12} />
-                                                </IconButton>
 
                                                 <IconButton onClick={(e) => {
                                                     e.stopPropagation();
-                                                    if (deleteConfirm === tc.id) {
-                                                        onDeleteTestCase(tc.id);
-                                                        setDeleteConfirm?.(null);
-                                                    } else {
-                                                        setDeleteConfirm?.(tc.id);
-                                                        setTimeout(() => setDeleteConfirm?.(null), 2000);
-                                                    }
+                                                    console.log('[ProjectTestTree] Delete Test Case clicked, caseId:', tc.id);
+                                                    onDeleteTestCase(tc.id);
                                                 }}
                                                     title={deleteConfirm === tc.id ? "Click again to Confirm" : "Delete Case"}
                                                     style={{ color: deleteConfirm === tc.id ? 'var(--vscode-errorForeground)' : undefined }}

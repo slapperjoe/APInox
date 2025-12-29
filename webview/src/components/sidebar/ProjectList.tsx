@@ -187,7 +187,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                                     onSelectTestCase={onSelectTestCase}
                                     onToggleSuiteExpand={onToggleSuiteExpand}
                                     onToggleCaseExpand={onToggleCaseExpand}
-                                // deleteConfirm removed (using Modals)
+                                    deleteConfirm={deleteConfirm}
                                 />
                             </>
                         )}

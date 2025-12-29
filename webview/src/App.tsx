@@ -13,13 +13,17 @@ import { ExtractorModal } from './components/modals/ExtractorModal';
 import { SettingsEditorModal } from './components/modals/SettingsEditorModal';
 import { CreateReplaceRuleModal } from './components/modals/CreateReplaceRuleModal';
 import { AddToDevOpsModal } from './components/modals/AddToDevOpsModal';
-import { SoapUIInterface, SoapUIProject, SoapUIOperation, SoapUIRequest, SoapTestCase, SoapTestStep, SoapTestSuite, WatcherEvent, SidebarView, SoapRequestExtractor, SoapUIAssertion, ReplaceRule } from './models';
+import { SoapUIInterface, SoapUIOperation, SoapUIRequest, SoapTestCase, SoapTestStep, WatcherEvent, SidebarView, ReplaceRule } from './models';
 import { formatXml } from './utils/xmlFormatter';
 import { CustomXPathEvaluator } from './utils/xpathEvaluator';
 import { useMessageHandler } from './hooks/useMessageHandler';
 import { useProject } from './contexts/ProjectContext';
 import { useSelection } from './contexts/SelectionContext';
 import { useUI } from './contexts/UIContext';
+import { useExplorer } from './hooks/useExplorer';
+import { useContextMenu } from './hooks/useContextMenu';
+import { useTestCaseHandlers } from './hooks/useTestCaseHandlers';
+import { getInitialXml } from './utils/xmlUtils';
 
 // NOTE: DirtySoapConfigWeb interface removed - config type comes from models.ts
 
@@ -75,12 +79,25 @@ function App() {
     } = useSelection();
 
     // ==========================================================================
+    // EXPLORER - from useExplorer hook
+    // ==========================================================================
+    const {
+        exploredInterfaces,
+        setExploredInterfaces,
+        explorerExpanded,
+        setExplorerExpanded,
+        addToProject,
+        addAllToProject,
+        clearExplorer,
+        removeFromExplorer,
+        toggleExplorerExpand,
+        toggleExploredInterface,
+        toggleExploredOperation
+    } = useExplorer({ projects, setProjects, setWorkspaceDirty });
+
+    // ==========================================================================
     // LOCAL STATE - Remaining state that stays in App
     // ==========================================================================
-
-    // Explorer State
-    const [exploredInterfaces, setExploredInterfaces] = useState<SoapUIInterface[]>([]);
-    const [explorerExpanded, setExplorerExpanded] = useState(false);
     const [testExecution, setTestExecution] = useState<Record<string, Record<string, {
         status: 'running' | 'pass' | 'fail',
         error?: string,
@@ -88,52 +105,7 @@ function App() {
         response?: any
     }>>>({});
 
-
-
-    const handleSelectTestSuite = (suiteId: string) => {
-        const suite = projects.find(p => p.testSuites?.some(s => s.id === suiteId))?.testSuites?.find(s => s.id === suiteId);
-        if (suite) {
-            setSelectedTestCase(null);
-            setSelectedStep(null);
-            setSelectedRequest(null);
-            setSelectedOperation(null);
-            setSelectedInterface(null);
-            setResponse(null);
-            setActiveView(SidebarView.PROJECTS);
-        }
-    };
-
-    const handleSelectTestCase = (caseId: string) => {
-        // Find Case
-        let foundCase: SoapTestCase | null = null;
-        for (const p of projects) {
-            if (p.testSuites) {
-                for (const s of p.testSuites) {
-                    const c = s.testCases?.find(tc => tc.id === caseId);
-                    if (c) {
-                        foundCase = c;
-                        break;
-                    }
-                }
-            }
-            if (foundCase) break;
-        }
-
-        if (foundCase) {
-            setSelectedTestCase(foundCase);
-            setSelectedStep(null);
-            setSelectedRequest(null);
-            setSelectedOperation(null);
-            setSelectedInterface(null);
-            setResponse(null);
-            setActiveView(SidebarView.PROJECTS);
-
-            // Auto-select first step if it's a request?
-            // For now, let WorkspaceLayout handle the Case View.
-        } else {
-            bridge.sendMessage({ command: 'error', message: `Could not find Test Case: ${caseId}` });
-        }
-    };
+    // NOTE: handleSelectTestSuite, handleSelectTestCase now come from useTestCaseHandlers hook
 
     // Backend Connection
     const [backendConnected, setBackendConnected] = useState(false);
@@ -185,9 +157,63 @@ function App() {
 
     const startTimeRef = useRef<number>(0);
 
-    // Modals & Menu
-    const [contextMenu, setContextMenu] = useState<{ x: number, y: number, type: string, data: any, isExplorer: boolean } | null>(null);
-    const [renameState, setRenameState] = useState<{ active: boolean, type: string, data: any, value: string } | null>(null);
+    // ==========================================================================
+    // CONTEXT MENU - from useContextMenu hook
+    // ==========================================================================
+    const {
+        contextMenu,
+        renameState,
+        setRenameState,
+        handleContextMenu,
+        closeContextMenu,
+        handleRename,
+        handleDeleteRequest,
+        handleCloneRequest,
+        handleAddRequest,
+        handleDeleteInterface,
+        handleDeleteOperation,
+        handleViewSample
+    } = useContextMenu({
+        setProjects,
+        saveProject,
+        setWorkspaceDirty,
+        selectedInterface,
+        selectedOperation,
+        setSelectedInterface,
+        setSelectedOperation,
+        setSelectedRequest,
+        setResponse
+    });
+
+    // ==========================================================================
+    // TEST CASE HANDLERS - from useTestCaseHandlers hook
+    // ==========================================================================
+    const {
+        handleSelectTestSuite,
+        handleSelectTestCase,
+        handleAddAssertion,
+        handleAddExistenceAssertion,
+        handleGenerateTestSuite,
+        handleRunTestCaseWrapper,
+        handleRunTestSuiteWrapper,
+        handleSaveExtractor
+    } = useTestCaseHandlers({
+        projects,
+        setProjects,
+        saveProject,
+        selectedTestCase,
+        selectedStep,
+        setSelectedTestCase,
+        setSelectedStep,
+        setSelectedRequest,
+        setSelectedOperation,
+        setSelectedInterface,
+        setResponse,
+        setActiveView,
+        closeContextMenu
+    });
+
+    // Modals (remaining)
     const [confirmationModal, setConfirmationModal] = useState<ConfirmationState | null>(null);
     const [addToTestCaseModal, setAddToTestCaseModal] = React.useState<{ open: boolean, request: SoapUIRequest | null }>({ open: false, request: null });
     const [sampleModal, setSampleModal] = React.useState<{ open: boolean, schema: any | null, operationName: string }>({ open: false, schema: null, operationName: '' });
@@ -544,196 +570,13 @@ function App() {
         }
     };
 
-    const handleAddAssertion = (data: { xpath: string, expectedContent: string }) => {
-        console.log("App.tsx: handleAddAssertion Called.", data, "TC:", selectedTestCase?.id, "Step:", selectedStep?.id);
+    // NOTE: handleAddAssertion, handleAddExistenceAssertion, handleGenerateTestSuite,
+    // handleRunTestCaseWrapper, handleRunTestSuiteWrapper, handleSaveExtractor
+    // now come from useTestCaseHandlers hook
 
-        if (!selectedTestCase || !selectedStep) {
-            console.error("App.tsx: Missing selection state", { tc: !!selectedTestCase, step: !!selectedStep });
-            return;
-        }
-
-        let updatedStep: SoapTestStep | null = null;
-        let updatedProjectOrNull: SoapUIProject | null = null;
-
-        // Calculate new state
-        const nextProjects = projects.map(p => {
-            const suite = p.testSuites?.find(s => s.testCases?.some(tc => tc.id === selectedTestCase.id));
-            if (!suite) return p;
-
-            const updatedSuite = {
-                ...suite,
-                testCases: suite.testCases?.map(tc => {
-                    if (tc.id !== selectedTestCase.id) return tc;
-                    return {
-                        ...tc,
-                        steps: tc.steps.map(s => {
-                            if (s.id !== selectedStep.id) return s;
-                            if (s.type !== 'request' || !s.config.request) return s;
-
-                            const newAssertion: SoapUIAssertion = {
-                                id: crypto.randomUUID(),
-                                type: 'XPath Match',
-                                name: 'XPath Match - ' + data.xpath.split('/').pop(),
-                                configuration: {
-                                    xpath: data.xpath,
-                                    expectedContent: data.expectedContent
-                                }
-                            };
-
-                            const newStep = {
-                                ...s,
-                                config: {
-                                    ...s.config,
-                                    request: {
-                                        ...s.config.request,
-                                        assertions: [...(s.config.request.assertions || []), newAssertion],
-                                        dirty: true
-                                    }
-                                }
-                            };
-                            updatedStep = newStep;
-                            return newStep;
-                        })
-                    };
-                })
-            };
-
-            const updatedProject = { ...p, testSuites: p.testSuites!.map(s => s.id === suite.id ? updatedSuite : s), dirty: true };
-            updatedProjectOrNull = updatedProject;
-            return updatedProject;
-        });
-
-        if (updatedProjectOrNull) {
-            setProjects(nextProjects);
-            setTimeout(() => saveProject(updatedProjectOrNull!), 0);
-            if (updatedStep) {
-                console.log("Updating Selected Step State:", (updatedStep as any).config.request.assertions.length, "assertions");
-                setSelectedStep(updatedStep);
-                if ((updatedStep as any).type === 'request' && (updatedStep as any).config.request) {
-                    setSelectedRequest((updatedStep as any).config.request);
-                }
-            }
-        }
-    };
-
-    const handleAddExistenceAssertion = (data: { xpath: string }) => {
-        console.log("Adding Existence Assertion:", data);
-        if (!selectedTestCase || !selectedStep) return;
-
-        let updatedStep: SoapTestStep | null = null;
-        let updatedProjectOrNull: SoapUIProject | null = null;
-
-        const nextProjects = projects.map(p => {
-            const suite = p.testSuites?.find(s => s.testCases?.some(tc => tc.id === selectedTestCase.id));
-            if (!suite) return p;
-
-            const updatedSuite = {
-                ...suite,
-                testCases: suite.testCases?.map(tc => {
-                    if (tc.id !== selectedTestCase.id) return tc;
-                    return {
-                        ...tc,
-                        steps: tc.steps.map(s => {
-                            if (s.id !== selectedStep.id) return s;
-                            if (s.type !== 'request' || !s.config.request) return s;
-
-                            const newAssertion: SoapUIAssertion = {
-                                id: crypto.randomUUID(),
-                                type: 'XPath Match',
-                                name: 'Node Exists - ' + data.xpath.split('/').pop(),
-                                configuration: {
-                                    xpath: `count(${data.xpath}) > 0`,
-                                    expectedContent: 'true'
-                                }
-                            };
-
-                            const newStep = {
-                                ...s,
-                                config: {
-                                    ...s.config,
-                                    request: {
-                                        ...s.config.request,
-                                        assertions: [...(s.config.request.assertions || []), newAssertion],
-                                        dirty: true
-                                    }
-                                }
-                            };
-                            updatedStep = newStep;
-                            return newStep;
-                        })
-                    };
-                })
-            };
-
-            const updatedProject = { ...p, testSuites: p.testSuites!.map(s => s.id === suite.id ? updatedSuite : s), dirty: true };
-            updatedProjectOrNull = updatedProject;
-            return updatedProject;
-        });
-
-        if (updatedProjectOrNull) {
-            setProjects(nextProjects);
-            setTimeout(() => saveProject(updatedProjectOrNull!), 0);
-            if (updatedStep) {
-                console.log("Updating Selected Step State:", (updatedStep as any).config.request.assertions.length, "assertions");
-                setSelectedStep(updatedStep);
-                if ((updatedStep as any).type === 'request' && (updatedStep as any).config.request) {
-                    setSelectedRequest((updatedStep as any).config.request);
-                }
-            }
-        }
-    };
-    // Sidebar Helpers
-    const addToProject = (iface: SoapUIInterface) => {
-        // Prevent duplicates
-        if (projects.length > 0 && projects[0].interfaces.some(i => i.name === iface.name)) {
-            console.warn(`Interface ${iface.name} already exists in project`);
-            return;
-        }
-
-        if (projects.length === 0) {
-            setProjects([{ name: 'Project 1', interfaces: [iface], expanded: true, dirty: true, id: Date.now().toString() }]);
-        } else {
-            setProjects(prev => prev.map((p, i) =>
-                i === 0 ? { ...p, interfaces: [...p.interfaces, iface], dirty: true } : p
-            ));
-        }
-        setWorkspaceDirty(true);
-        // Clear from explorer
-        setExploredInterfaces(prev => prev.filter(i => i.name !== iface.name));
-        if (exploredInterfaces.length <= 1) { // If it was the last one
-            setExplorerExpanded(false);
-        }
-    };
-
-    const addAllToProject = () => {
-        if (projects.length === 0) {
-            setProjects([{ name: 'Project 1', interfaces: [...exploredInterfaces], expanded: true, dirty: true, id: Date.now().toString() }]);
-        } else {
-            setProjects(prev => prev.map((p, i) =>
-                i === 0 ? {
-                    ...p,
-                    interfaces: [
-                        ...p.interfaces,
-                        ...exploredInterfaces.filter(ex => !p.interfaces.some(existing => existing.name === ex.name))
-                    ],
-                    dirty: true
-                } : p
-            ));
-        }
-        setWorkspaceDirty(true);
-        clearExplorer();
-    };
-
-    const clearExplorer = () => {
-        setExploredInterfaces([]);
-        setExplorerExpanded(false);
-    };
-
-    const removeFromExplorer = (iface: SoapUIInterface) => {
-        setExploredInterfaces(prev => prev.filter(i => i !== iface));
-    };
-
-    // runSuite and runCase are defined above
+    // NOTE: addToProject, addAllToProject, clearExplorer, removeFromExplorer,
+    // toggleExplorerExpand, toggleExploredInterface, toggleExploredOperation
+    // are now in useExplorer hook
 
     // NOTE: closeProject, loadProject, addProject now come from ProjectContext
     // Handle selection reset when closing a project (context handles the deletion)
@@ -748,8 +591,7 @@ function App() {
         closeProject(name);
     };
 
-    // Expand Toggles
-    const toggleExplorerExpand = () => setExplorerExpanded(!explorerExpanded);
+    // Expand Toggles (project-level - not in useExplorer)
     // NOTE: toggleProjectExpand now comes from ProjectContext
     const toggleInterfaceExpand = (pName: string, iName: string) => {
         setProjects(prev => prev.map(p => {
@@ -770,313 +612,11 @@ function App() {
         }));
     };
 
-    const toggleExploredInterface = (iName: string) => {
-        setExploredInterfaces(prev => prev.map(i => i.name === iName ? { ...i, expanded: !i.expanded } : i));
-    };
+    // NOTE: handleContextMenu, closeContextMenu, handleRename, handleDeleteRequest,
+    // handleCloneRequest, handleAddRequest, handleDeleteInterface, handleDeleteOperation,
+    // handleViewSample are now in useContextMenu hook
 
-    const toggleExploredOperation = (iName: string, oName: string) => {
-        setExploredInterfaces(prev => prev.map(i => {
-            if (i.name !== iName) return i;
-            return { ...i, operations: i.operations.map(o => o.name === oName ? { ...o, expanded: !o.expanded } : o) };
-        }));
-    };
-
-    // Context Menu
-    const handleContextMenu = (e: React.MouseEvent, type: string, data: any, isExplorer = false) => {
-        // Prevent empty context menus
-        if (type === 'interface') return;
-        if (isExplorer && type === 'request') return; // Requests in explorer are read-only (no rename/delete/clone)
-
-        e.preventDefault();
-        setContextMenu({ x: e.clientX, y: e.clientY, type, data, isExplorer });
-    };
-
-    const closeContextMenu = () => setContextMenu(null);
-
-    // Context Menu Actions
-    const handleRename = () => {
-        if (contextMenu) {
-            setRenameState({ active: true, type: contextMenu.type, data: contextMenu.data, value: contextMenu.data.name });
-            closeContextMenu();
-        }
-    };
-
-    const handleDeleteRequest = (targetReq?: SoapUIRequest) => {
-        const reqToRemove = targetReq || (contextMenu?.type === 'request' ? contextMenu.data as SoapUIRequest : null);
-        if (reqToRemove) {
-            // Check context menu if relying on it
-            if (!targetReq && contextMenu?.isExplorer) return;
-
-            setProjects(prev => {
-                let projectChanged: SoapUIProject | null = null;
-                const newProjects = prev.map(p => {
-                    let changed = false;
-                    const newInterfaces = p.interfaces.map(i => ({
-                        ...i,
-                        operations: i.operations.map(o => {
-                            if (o.requests.includes(reqToRemove)) {
-                                changed = true;
-                                return { ...o, requests: o.requests.filter(r => r !== reqToRemove) };
-                            }
-                            return o;
-                        })
-                    }));
-
-                    if (changed) {
-                        const newP = { ...p, interfaces: newInterfaces, dirty: true };
-                        projectChanged = newP;
-                        return newP;
-                    }
-                    return p;
-                });
-
-                if (projectChanged) saveProject(projectChanged);
-                return newProjects;
-            });
-
-            if (contextMenu) closeContextMenu();
-        }
-    };
-    // Helper to store context if needed, or just rely on Sidebar calling it correctly.
-    // Actually ContextMenu has isExplorer. Direct call? Sidebar should prevent calling if explorer.
-
-    const handleCloneRequest = () => {
-        if (contextMenu && contextMenu.type === 'request' && !contextMenu.isExplorer) {
-            const req = contextMenu.data as SoapUIRequest;
-            setProjects(prev => prev.map(p => ({
-                ...p,
-                interfaces: p.interfaces.map(i => ({
-                    ...i,
-                    operations: i.operations.map(o => {
-                        if (o.requests.includes(req)) {
-                            const newReq = { ...req, name: `${req.name} Copy` };
-                            return { ...o, requests: [...o.requests, newReq] };
-                        }
-                        return o;
-                    })
-                }))
-            })));
-            closeContextMenu();
-        }
-    };
-
-    const handleAddRequest = (targetOp?: SoapUIOperation) => {
-        const op = targetOp || (contextMenu?.type === 'operation' ? contextMenu.data as SoapUIOperation : null);
-        if (op) {
-            const newReqName = `Request ${op.requests.length + 1}`;
-
-            // Try to clone first request or create blank
-            let newReqContent = '';
-            if (op.requests.length > 0) {
-                newReqContent = op.requests[0].request;
-            } else {
-                newReqContent = `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:web="${op.input || 'http://example.com/'}">\n   <soapenv:Header/>\n   <soapenv:Body>\n      <web:${op.name}>\n         <!--Optional:-->\n      </web:${op.name}>\n   </soapenv:Body>\n</soapenv:Envelope>`;
-            }
-
-            const newRequest: SoapUIRequest = {
-                name: newReqName,
-                request: newReqContent,
-                id: crypto.randomUUID(),
-                dirty: true,
-                endpoint: op.requests[0]?.endpoint || '' // Copy endpoint from sibling or empty
-            };
-
-            setProjects(prev => prev.map(p => {
-                // Find project containing this operation
-                let found = false;
-                const newInterfaces = p.interfaces.map(i => {
-                    const newOps = i.operations.map(o => {
-                        if (o.name === op.name && i.operations.includes(op)) {
-                            found = true;
-                            return { ...o, requests: [...o.requests, newRequest], expanded: true };
-                        }
-                        return o;
-                    });
-                    return { ...i, operations: newOps };
-                });
-
-                if (found) {
-                    const updatedProject = { ...p, interfaces: newInterfaces, dirty: true };
-                    saveProject(updatedProject);
-                    return updatedProject;
-                }
-                return p;
-            }));
-
-            if (contextMenu) closeContextMenu();
-        }
-    };
-
-    const handleDeleteInterface = (iface: SoapUIInterface) => {
-        setProjects(prev => {
-            let projectChanged: SoapUIProject | null = null;
-            const newProjects = prev.map(p => {
-                const hasInterface = p.interfaces.some(i => i.name === iface.name);
-                if (hasInterface) {
-                    const newInterfaces = p.interfaces.filter(i => i.name !== iface.name);
-                    const newP = { ...p, interfaces: newInterfaces, dirty: true };
-                    projectChanged = newP;
-                    return newP;
-                }
-                return p;
-            });
-
-            if (projectChanged) saveProject(projectChanged as SoapUIProject);
-            return newProjects;
-        });
-        setWorkspaceDirty(true);
-
-        if (selectedInterface?.name === iface.name) {
-            setSelectedInterface(null);
-            setSelectedOperation(null);
-            setSelectedRequest(null);
-            setResponse(null);
-        }
-    };
-
-    const handleDeleteOperation = (op: SoapUIOperation, iface: SoapUIInterface) => {
-        setProjects(prev => {
-            let projectChanged: SoapUIProject | null = null;
-            const newProjects = prev.map(p => {
-                const targetInterface = p.interfaces.find(i => i.name === iface.name);
-                if (targetInterface) {
-                    const newInterfaces = p.interfaces.map(i => {
-                        if (i.name === iface.name) {
-                            // Filter operation by name
-                            const newOps = i.operations.filter(o => o.name !== op.name);
-                            return { ...i, operations: newOps };
-                        }
-                        return i;
-                    });
-                    const newP = { ...p, interfaces: newInterfaces, dirty: true };
-                    projectChanged = newP;
-                    return newP;
-                }
-                return p;
-            });
-
-            if (projectChanged) saveProject(projectChanged as SoapUIProject);
-            return newProjects;
-        });
-        setWorkspaceDirty(true);
-
-        // Clear selection if needed
-        if (selectedOperation?.name === op.name && selectedInterface?.name === iface.name) {
-            setSelectedOperation(null);
-            setSelectedRequest(null);
-            setResponse(null);
-        }
-    };
-
-    const handleViewSample = () => {
-        if (contextMenu && (contextMenu.type === 'operation' || contextMenu.type === 'request')) {
-            // How to get schema? Extension logic `sampleSchema`.
-            // We need to send message.
-            // Op Name?
-            // Sidebar context menu 'data' for request is the request object. It doesn't have op name directly?
-            // We might need to find it.
-            // Simplified: only support on Operation.
-            if (contextMenu.type === 'operation') {
-                bridge.sendMessage({ command: 'getSampleSchema', operationName: contextMenu.data.name });
-            }
-            closeContextMenu();
-        }
-    };
-
-    const handleGenerateTestSuite = (target: SoapUIInterface | SoapUIOperation) => {
-        console.log('[handleGenerateTestSuite] ENTRY. Target:', target);
-        if ((target as any).operations) console.log('Target is Interface with operations:', (target as any).operations.length);
-        if ((target as any).originalEndpoint) console.log('Target is Operation with Endpoint:', (target as any).originalEndpoint);
-
-        // 1. Find the project containing this target
-        let targetProject: SoapUIProject | null = null;
-        for (const p of projects) {
-            if (p.interfaces.some(i => i === target || i.operations.some(o => o === target))) {
-                targetProject = p;
-                break;
-            }
-        }
-        if (!targetProject) return;
-
-        // 2. Identify Operations
-        let operationsToProcess: SoapUIOperation[] = [];
-        let baseName = '';
-        if ((target as any).operations) {
-            operationsToProcess = (target as SoapUIInterface).operations;
-            baseName = target.name;
-        } else {
-            operationsToProcess = [target as SoapUIOperation];
-            baseName = target.name;
-        }
-
-        // 3. Create Suite
-        const newSuite: SoapTestSuite = {
-            id: `ts-${Date.now()}`,
-            name: `Test Suite - ${baseName}`,
-            testCases: [],
-            expanded: true
-        };
-
-        // 4. Generate Cases
-        operationsToProcess.forEach(op => {
-            console.log('[handleGenerateTestSuite] Processing op:', op.name, op);
-
-            const newCase: SoapTestCase = {
-                id: `tc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                name: op.name,
-                steps: [],
-                expanded: true
-            };
-            console.log(`[DEBUG] Generating Test Case for ${op.name}`);
-            console.log(`[DEBUG] TargetNamespace: ${(op as any).targetNamespace}`);
-            console.log(`[DEBUG] OriginalEndpoint: ${(op as any).originalEndpoint}`);
-
-            const newStep: SoapTestStep = {
-                id: `step-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                name: 'Request 1',
-                type: 'request',
-                config: {
-                    request: {
-                        id: `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                        name: 'Request 1',
-                        endpoint: (op as any).originalEndpoint || undefined, // Set Endpoint!
-                        request: `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="${op.targetNamespace || 'http://tempuri.org/'}">\n   <soapenv:Header/>\n   <soapenv:Body>\n      <tem:${op.name}>\n         <!--Optional:-->\n         ${getInitialXml(op.input)}\n      </tem:${op.name}>\n   </soapenv:Body>\n</soapenv:Envelope>`,
-                        assertions: [
-                            {
-                                id: `assert-${Date.now()}-1`,
-                                type: 'Simple Not Contains',
-                                name: 'Not SOAP Fault',
-                                description: 'Response should not contain Fault',
-                                configuration: { token: 'Fault' }
-                            },
-                            {
-                                id: `assert-${Date.now()}-2`,
-                                type: 'Response SLA',
-                                name: 'Response SLA',
-                                description: 'Response time check',
-                                configuration: { sla: '200' }
-                            }
-                        ]
-                    }
-                }
-            };
-            newCase.steps.push(newStep);
-            newSuite.testCases.push(newCase);
-        });
-
-        // 5. Save Logic
-        setProjects(prev => prev.map(p => {
-            if (p.id === targetProject!.id || p.fileName === targetProject!.fileName) {
-                const updated = { ...p, testSuites: [...(p.testSuites || []), newSuite], dirty: true };
-                setTimeout(() => saveProject(updated), 0);
-                return updated;
-            }
-            return p;
-        }));
-
-        setActiveView(SidebarView.PROJECTS);
-        closeContextMenu();
-    };
+    // NOTE: handleGenerateTestSuite now comes from useTestCaseHandlers hook
 
     const handleSelectWatcherEvent = (event: WatcherEvent) => {
         let requestBody = event.formattedBody;
@@ -1139,104 +679,8 @@ function App() {
         }
     };
 
-    const handleRunTestCaseWrapper = (caseId: string) => {
-        // Find Project and Context to determine proper endpoint fallback
-        let fallbackEndpoint = wsdlUrl || '';
-        let targetProject: SoapUIProject | undefined;
-        let foundCase: SoapTestCase | undefined;
-
-        for (const p of projects) {
-            if (p.testSuites) {
-                for (const s of p.testSuites) {
-                    const c = s.testCases?.find(tc => tc.id === caseId);
-                    if (c) {
-                        targetProject = p;
-                        foundCase = c;
-                        break;
-                    }
-                }
-            }
-            if (foundCase) break;
-        }
-
-        if (targetProject && targetProject.interfaces && targetProject.interfaces.length > 0) {
-            if (foundCase) {
-                const matchingIface = targetProject.interfaces.find(i => i.operations.some(o => o.name === foundCase?.name));
-                if (matchingIface && matchingIface.definition) {
-                    fallbackEndpoint = matchingIface.definition;
-                } else if (targetProject.interfaces[0].definition) {
-                    fallbackEndpoint = targetProject.interfaces[0].definition;
-                }
-            } else if (targetProject.interfaces[0].definition) {
-                fallbackEndpoint = targetProject.interfaces[0].definition;
-            }
-        }
-
-        console.log('[App] Running Case with Fallback:', fallbackEndpoint);
-        bridge.sendMessage({ command: 'runTestCase', caseId, testCase: foundCase, fallbackEndpoint });
-    };
-
-    const handleRunTestSuiteWrapper = (suiteId: string) => {
-        let fallbackEndpoint = wsdlUrl || '';
-        const targetProject = projects.find(p => p.testSuites?.some(s => s.id === suiteId));
-
-        if (targetProject && targetProject.interfaces && targetProject.interfaces.length > 0) {
-            if (targetProject.interfaces[0].definition) {
-                fallbackEndpoint = targetProject.interfaces[0].definition;
-            }
-        }
-        console.log('[App] Running Suite with Fallback:', fallbackEndpoint);
-        bridge.sendMessage({ command: 'runTestSuite', suiteId, fallbackEndpoint });
-    };
-
-    const handleSaveExtractor = (data: { xpath: string, value: string, source: 'body' | 'header', variableName: string }) => {
-        if (!selectedTestCase || !selectedStep?.config?.request) return;
-
-        const newExtractor: SoapRequestExtractor = {
-            id: `ext-${Date.now()}`,
-            type: 'XPath',
-            variable: data.variableName,
-            source: data.source,
-            path: data.xpath
-        };
-
-        const updatedStep = {
-            ...selectedStep,
-            config: {
-                ...selectedStep.config,
-                request: {
-                    ...selectedStep.config.request,
-                    extractors: [...(selectedStep.config.request.extractors || []), newExtractor]
-                }
-            }
-        };
-
-        // Update Project State
-        setProjects(prev => prev.map(p => {
-            const suite = p.testSuites?.find(s => s.testCases?.some(tc => tc.id === selectedTestCase.id));
-            if (!suite) return p;
-
-            const updatedSuite = {
-                ...suite,
-                testCases: suite.testCases?.map(tc => {
-                    if (tc.id !== selectedTestCase.id) return tc;
-                    return {
-                        ...tc,
-                        steps: tc.steps.map(s => s.id === selectedStep.id ? updatedStep : s)
-                    };
-                })
-            };
-            const newP = { ...p, testSuites: p.testSuites!.map(s => s.id === suite.id ? updatedSuite : s), dirty: true };
-            setTimeout(() => saveProject(newP), 0);
-            return newP;
-        }));
-
-        // Update Local State for UI
-        setSelectedStep(updatedStep);
-        if (selectedRequest && selectedRequest.id === updatedStep.config.request.id) {
-            setSelectedRequest(updatedStep.config.request);
-        }
-    };
+    // NOTE: handleRunTestCaseWrapper, handleRunTestSuiteWrapper, handleSaveExtractor
+    // now come from useTestCaseHandlers hook
 
     return (
         <Container onClick={closeContextMenu}>
@@ -1262,8 +706,6 @@ function App() {
                 toggleOperationExpand={toggleOperationExpand}
                 toggleExploredInterface={toggleExploredInterface}
                 toggleExploredOperation={toggleExploredOperation}
-                // saveWorkspace={saveWorkspace} // Removed
-                // openWorkspace={openWorkspace} // Removed
                 loadProject={() => loadProject()}
                 saveProject={saveProject}
                 closeProject={handleCloseProject}
@@ -1277,7 +719,7 @@ function App() {
                 selectedRequest={selectedRequest}
                 setSelectedRequest={(req) => {
                     setSelectedRequest(req);
-                    setSelectedTestCase(null); // Clear test case when main request is selected
+                    setSelectedTestCase(null);
                 }}
                 setResponse={setResponse}
                 handleContextMenu={handleContextMenu}
@@ -1291,7 +733,6 @@ function App() {
                 onOpenHelp={() => setShowHelp(true)}
                 workspaceDirty={workspaceDirty}
                 showBackendStatus={!isVsCode()}
-
                 activeView={activeView}
                 onChangeView={setActiveView}
                 onAddSuite={(projName) => {
@@ -1688,61 +1129,69 @@ function App() {
                 onOpenDevOps={() => setShowDevOpsModal(true)}
             />
 
-            {showDevOpsModal && config?.azureDevOps?.orgUrl && config?.azureDevOps?.project && selectedRequest && (
-                <AddToDevOpsModal
-                    orgUrl={config.azureDevOps.orgUrl}
-                    project={config.azureDevOps.project}
-                    requestContent={selectedRequest.request || ''}
-                    responseContent={response?.body}
-                    requestName={selectedRequest.name}
-                    onClose={() => setShowDevOpsModal(false)}
-                />
-            )}
+            {
+                showDevOpsModal && config?.azureDevOps?.orgUrl && config?.azureDevOps?.project && selectedRequest && (
+                    <AddToDevOpsModal
+                        orgUrl={config.azureDevOps.orgUrl}
+                        project={config.azureDevOps.project}
+                        requestContent={selectedRequest.request || ''}
+                        responseContent={response?.body}
+                        requestName={selectedRequest.name}
+                        onClose={() => setShowDevOpsModal(false)}
+                    />
+                )
+            }
 
-            {showSettings && (
-                <SettingsEditorModal
-                    rawConfig={rawConfig}
-                    onClose={() => setShowSettings(false)}
-                    onSave={(content, config) => {
-                        bridge.sendMessage({ command: 'saveSettings', raw: !config, content, config });
-                        setShowSettings(false);
-                    }}
-                />
-            )}
-            {showHelp && (
-                <HelpModal
-                    onClose={() => setShowHelp(false)}
-                />
-            )}
-            {contextMenu && (
-                <ContextMenu top={contextMenu.y} left={contextMenu.x}>
-                    {(contextMenu.type === 'request' || contextMenu.type === 'project') && (
-                        <ContextMenuItem onClick={handleRename}>Rename</ContextMenuItem>
-                    )}
-                    {!contextMenu.isExplorer && contextMenu.type === 'request' && (
-                        <>
-                            <ContextMenuItem onClick={handleCloneRequest}>Clone Request</ContextMenuItem>
-                            <ContextMenuItem onClick={() => {
-                                if (contextMenu) {
-                                    setAddToTestCaseModal({ open: true, request: contextMenu.data as SoapUIRequest });
-                                    closeContextMenu();
-                                }
-                            }}>Add to Test Case</ContextMenuItem>
-                            <ContextMenuItem onClick={() => handleDeleteRequest()} style={{ color: 'var(--vscode-errorForeground)' }}>Delete</ContextMenuItem>
-                        </>
-                    )}
-                    {(contextMenu.type === 'operation') && (
-                        <>
+            {
+                showSettings && (
+                    <SettingsEditorModal
+                        rawConfig={rawConfig}
+                        onClose={() => setShowSettings(false)}
+                        onSave={(content, config) => {
+                            bridge.sendMessage({ command: 'saveSettings', raw: !config, content, config });
+                            setShowSettings(false);
+                        }}
+                    />
+                )
+            }
+            {
+                showHelp && (
+                    <HelpModal
+                        onClose={() => setShowHelp(false)}
+                    />
+                )
+            }
+            {
+                contextMenu && (
+                    <ContextMenu top={contextMenu.y} left={contextMenu.x}>
+                        {(contextMenu.type === 'request' || contextMenu.type === 'project') && (
+                            <ContextMenuItem onClick={handleRename}>Rename</ContextMenuItem>
+                        )}
+                        {!contextMenu.isExplorer && contextMenu.type === 'request' && (
+                            <>
+                                <ContextMenuItem onClick={handleCloneRequest}>Clone Request</ContextMenuItem>
+                                <ContextMenuItem onClick={() => {
+                                    if (contextMenu) {
+                                        setAddToTestCaseModal({ open: true, request: contextMenu.data as SoapUIRequest });
+                                        closeContextMenu();
+                                    }
+                                }}>Add to Test Case</ContextMenuItem>
+                                <ContextMenuItem onClick={() => handleDeleteRequest()} style={{ color: 'var(--vscode-errorForeground)' }}>Delete</ContextMenuItem>
+                            </>
+                        )}
+                        {(contextMenu.type === 'operation') && (
+                            <>
+                                <ContextMenuItem onClick={() => handleGenerateTestSuite(contextMenu.data)}>Generate Test Suite</ContextMenuItem>
+                                <ContextMenuItem onClick={() => handleAddRequest()}>Add Request</ContextMenuItem>
+                                <ContextMenuItem onClick={handleViewSample}>View Sample Schema</ContextMenuItem>
+                            </>
+                        )}
+                        {(contextMenu.type === 'interface') && (
                             <ContextMenuItem onClick={() => handleGenerateTestSuite(contextMenu.data)}>Generate Test Suite</ContextMenuItem>
-                            <ContextMenuItem onClick={() => handleAddRequest()}>Add Request</ContextMenuItem>
-                            <ContextMenuItem onClick={handleViewSample}>View Sample Schema</ContextMenuItem>
-                        </>
-                    )}
-                    {(contextMenu.type === 'interface') && (
-                        <ContextMenuItem onClick={() => handleGenerateTestSuite(contextMenu.data)}>Generate Test Suite</ContextMenuItem>
-                    )}
-                </ContextMenu>
-            )}
+                        )}
+                    </ContextMenu>
+                )
+            }
 
 
 
@@ -1895,15 +1344,6 @@ function App() {
     );
 }
 
-// Utility
-function getInitialXml(input: any): string {
-    // Basic XML generation from WSDL input definition
-    if (!input) return '';
-    let xml = '';
-    for (const key in input) {
-        xml += `<${key}>?</${key}>\n`;
-    }
-    return xml;
-}
+// NOTE: getInitialXml moved to utils/xmlUtils.ts
 
 export default App;
