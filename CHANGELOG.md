@@ -1,6 +1,10 @@
 # Changelog
 
 
+## [0.7.2] - 2025-12-29
+### Auto-Generated Changes
+- feat: Add replace rule functionality in proxy view - Implemented CreateReplaceRuleModal for defining text replacement rules in requests/responses. - Updated WorkspaceLayout to handle replace rule creation and display endpoint info in read-only mode. - Introduced ReplaceRule interface in models for managing replace rules.
+
 ## [0.7.1] - 2025-12-29
 ### Auto-Generated Changes
 - feat: Implement context providers for project,selection,and UI state management - Added ProjectContext for managing project-related state and actions. - Introduced SelectionContext to handle UI selection state across various components. - Created UIContext for managing UI configuration,layout preferences,and modal visibility. - Refactored main.tsx to wrap the App component with the new context providers. - Extracted message handling logic into a custom hook for better organization and maintainability. - Created styled components for the main application layout and context menu.

@@ -173,6 +173,29 @@ export enum SidebarView {
     PROXY = 'proxy'
 }
 
+/**
+ * Rule for automatically replacing text in proxy request/response XML.
+ * Used for masking sensitive data or normalizing responses.
+ */
+export interface ReplaceRule {
+    /** Unique identifier */
+    id: string;
+    /** Optional friendly name */
+    name?: string;
+    /** XPath expression to target element */
+    xpath: string;
+    /** Text to find within the element */
+    matchText: string;
+    /** Replacement text */
+    replaceWith: string;
+    /** Apply to request, response, or both */
+    target: 'request' | 'response' | 'both';
+    /** Treat matchText as regex */
+    isRegex?: boolean;
+    /** Rule is active */
+    enabled: boolean;
+}
+
 export interface DirtySoapConfig {
     version: number;
     network?: {
@@ -198,4 +221,7 @@ export interface DirtySoapConfig {
     }>;
     globals?: Record<string, string>;
     recentWorkspaces?: string[];
+    /** Auto-replace rules for proxy view */
+    replaceRules?: ReplaceRule[];
 }
+

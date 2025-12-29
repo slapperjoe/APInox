@@ -11,7 +11,8 @@ import { RenameModal } from './components/modals/RenameModal';
 import { SampleModal } from './components/modals/SampleModal';
 import { ExtractorModal } from './components/modals/ExtractorModal';
 import { SettingsEditorModal } from './components/modals/SettingsEditorModal';
-import { SoapUIInterface, SoapUIProject, SoapUIOperation, SoapUIRequest, SoapTestCase, SoapTestStep, SoapTestSuite, WatcherEvent, SidebarView, SoapRequestExtractor, SoapUIAssertion } from './models';
+import { CreateReplaceRuleModal } from './components/modals/CreateReplaceRuleModal';
+import { SoapUIInterface, SoapUIProject, SoapUIOperation, SoapUIRequest, SoapTestCase, SoapTestStep, SoapTestSuite, WatcherEvent, SidebarView, SoapRequestExtractor, SoapUIAssertion, ReplaceRule } from './models';
 import { formatXml } from './utils/xmlFormatter';
 import { CustomXPathEvaluator } from './utils/xpathEvaluator';
 import { useMessageHandler } from './hooks/useMessageHandler';
@@ -188,6 +189,7 @@ function App() {
     const [addToTestCaseModal, setAddToTestCaseModal] = React.useState<{ open: boolean, request: SoapUIRequest | null }>({ open: false, request: null });
     const [sampleModal, setSampleModal] = React.useState<{ open: boolean, schema: any | null, operationName: string }>({ open: false, schema: null, operationName: '' });
     const [extractorModal, setExtractorModal] = React.useState<{ xpath: string, value: string, source: 'body' | 'header', variableName: string } | null>(null);
+    const [replaceRuleModal, setReplaceRuleModal] = React.useState<{ open: boolean, xpath: string, matchText: string, target: 'request' | 'response' }>({ open: false, xpath: '', matchText: '', target: 'response' });
 
     // Workspace State
     const [changelog, setChangelog] = useState<string>('');
@@ -1574,6 +1576,7 @@ function App() {
                 }}
                 onAddAssertion={handleAddAssertion}
                 onAddExistenceAssertion={handleAddExistenceAssertion}
+                onAddReplaceRule={(data) => setReplaceRuleModal({ open: true, ...data })}
                 onUpdateStep={(updatedStep) => {
                     if (!selectedTestCase) return;
                     setProjects(prev => prev.map(p => {
@@ -1843,6 +1846,33 @@ function App() {
                 onSave={(data) => {
                     handleSaveExtractor(data);
                     setExtractorModal(null);
+                }}
+            />
+
+            <CreateReplaceRuleModal
+                isOpen={replaceRuleModal.open}
+                xpath={replaceRuleModal.xpath}
+                matchText={replaceRuleModal.matchText}
+                initialTarget={replaceRuleModal.target}
+                onCancel={() => setReplaceRuleModal({ open: false, xpath: '', matchText: '', target: 'response' })}
+                onSave={(rule) => {
+                    // Create rule with unique ID and save to config
+                    const newRule: ReplaceRule = {
+                        id: crypto.randomUUID(),
+                        name: rule.name,
+                        xpath: rule.xpath,
+                        matchText: rule.matchText,
+                        replaceWith: rule.replaceWith,
+                        target: rule.target,
+                        enabled: true
+                    };
+                    const currentRules = config?.replaceRules || [];
+                    bridge.sendMessage({
+                        command: 'saveSettings',
+                        raw: false,
+                        config: { ...config, replaceRules: [...currentRules, newRule] }
+                    });
+                    setReplaceRuleModal({ open: false, xpath: '', matchText: '', target: 'response' });
                 }}
             />
 
