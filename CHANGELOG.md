@@ -1,6 +1,10 @@
 # Changelog
 
 
+## [0.7.1] - 2025-12-29
+### Auto-Generated Changes
+- feat: Implement context providers for project,selection,and UI state management - Added ProjectContext for managing project-related state and actions. - Introduced SelectionContext to handle UI selection state across various components. - Created UIContext for managing UI configuration,layout preferences,and modal visibility. - Refactored main.tsx to wrap the App component with the new context providers. - Extracted message handling logic into a custom hook for better organization and maintainability. - Created styled components for the main application layout and context menu.
+
 ## [0.7.0] - 2025-12-28
 ### Auto-Generated Changes
 - feat: Implement new webview UI for SOAP interaction and project management,deprecating old verification scripts.

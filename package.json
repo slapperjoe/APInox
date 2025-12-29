@@ -8,7 +8,7 @@
     "url": "https://github.com/slapperjoe/dirty-soap.git"
   },
   "license": "MIT",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "engines": {
     "vscode": "^1.80.0"
   },

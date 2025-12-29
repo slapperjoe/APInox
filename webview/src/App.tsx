@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import styled from 'styled-components';
+import { Container, ContextMenu, ContextMenuItem } from './styles/App.styles';
 import { bridge, isVsCode } from './utils/bridge';
 import { Sidebar } from './components/Sidebar';
 import { WorkspaceLayout } from './components/WorkspaceLayout';
@@ -14,22 +14,12 @@ import { SettingsEditorModal } from './components/modals/SettingsEditorModal';
 import { SoapUIInterface, SoapUIProject, SoapUIOperation, SoapUIRequest, SoapTestCase, SoapTestStep, SoapTestSuite, WatcherEvent, SidebarView, SoapRequestExtractor, SoapUIAssertion } from './models';
 import { formatXml } from './utils/xmlFormatter';
 import { CustomXPathEvaluator } from './utils/xpathEvaluator';
+import { useMessageHandler } from './hooks/useMessageHandler';
+import { useProject } from './contexts/ProjectContext';
+import { useSelection } from './contexts/SelectionContext';
+import { useUI } from './contexts/UIContext';
 
-interface DirtySoapConfigWeb {
-    version: number;
-    ui: {
-        layoutMode: 'vertical' | 'horizontal';
-        showLineNumbers: boolean;
-        alignAttributes: boolean;
-        splitRatio: number;
-    };
-    activeEnvironment: string;
-    environments: Record<string, any>;
-    globals: Record<string, string>;
-    lastConfigPath?: string;
-    lastProxyTarget?: string;
-    openProjects?: string[];
-}
+// NOTE: DirtySoapConfigWeb interface removed - config type comes from models.ts
 
 interface ConfirmationState {
     title: string;
@@ -37,65 +27,64 @@ interface ConfirmationState {
     onConfirm: () => void;
 }
 
-const Container = styled.div`
-  display: flex;
-  height: 100vh;
-  width: 100vw;
-  overflow: hidden;
-  background-color: var(--vscode-editor-background);
-  color: var(--vscode-editor-foreground);
-  font-family: var(--vscode-font-family);
-  font-size: var(--vscode-font-size);
-`;
-
-
-
-const ContextMenu = styled.div<{ top: number, left: number }>`
-    position: fixed;
-    top: ${props => props.top}px;
-    left: ${props => props.left}px;
-    background-color: var(--vscode-menu-background);
-    color: var(--vscode-menu-foreground);
-    border: 1px solid var(--vscode-menu-border);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    z-index: 2000;
-    min-width: 150px;
-    padding: 4px 0;
-`;
-
-const ContextMenuItem = styled.div`
-    padding: 6px 12px;
-    cursor: pointer;
-    &:hover {
-        background-color: var(--vscode-menu-selectionBackground);
-        color: var(--vscode-menu-selectionForeground);
-    }
-`;
-
+// NOTE: Container, ContextMenu, ContextMenuItem moved to styles/App.styles.ts
 
 
 function App() {
-    // State
-    const [projects, setProjects] = useState<SoapUIProject[]>([]);
+    // ==========================================================================
+    // CONTEXT - Project state from ProjectContext
+    // ==========================================================================
+    const {
+        projects,
+        setProjects,
+        selectedProjectName,
+        setSelectedProjectName,
+        workspaceDirty,
+        setWorkspaceDirty,
+        savedProjects,
+        setSavedProjects,
+        deleteConfirm,
+        setDeleteConfirm,
+        addProject,
+        closeProject,
+        loadProject,
+        saveProject,
+        toggleProjectExpand
+    } = useProject();
+
+    // ==========================================================================
+    // CONTEXT - Selection state from SelectionContext
+    // ==========================================================================
+    const {
+        selectedInterface,
+        setSelectedInterface,
+        selectedOperation,
+        setSelectedOperation,
+        selectedRequest,
+        setSelectedRequest,
+        selectedStep,
+        setSelectedStep,
+        selectedTestCase,
+        setSelectedTestCase,
+        response,
+        setResponse,
+        loading,
+        setLoading
+    } = useSelection();
+
+    // ==========================================================================
+    // LOCAL STATE - Remaining state that stays in App
+    // ==========================================================================
+
+    // Explorer State
     const [exploredInterfaces, setExploredInterfaces] = useState<SoapUIInterface[]>([]);
+    const [explorerExpanded, setExplorerExpanded] = useState(false);
     const [testExecution, setTestExecution] = useState<Record<string, Record<string, {
         status: 'running' | 'pass' | 'fail',
         error?: string,
         assertionResults?: any[],
         response?: any
     }>>>({});
-
-    // Selection
-    const [selectedProjectName, setSelectedProjectName] = useState<string | null>(null);
-    const [selectedInterface, setSelectedInterface] = useState<SoapUIInterface | null>(null);
-    const [selectedOperation, setSelectedOperation] = useState<SoapUIOperation | null>(null);
-    const [selectedRequest, setSelectedRequest] = useState<SoapUIRequest | null>(null);
-    const [selectedStep, setSelectedStep] = useState<SoapTestStep | null>(null); // Track Generic Step selection
-    const [selectedTestCase, setSelectedTestCase] = useState<SoapTestCase | null>(null);
-    const [response, setResponse] = useState<any>(null);
-    const [loading, setLoading] = useState(false);
-    const [explorerExpanded, setExplorerExpanded] = useState(false);
-    // exploredInterfaces already defined above
 
 
 
@@ -143,38 +132,54 @@ function App() {
             bridge.sendMessage({ command: 'error', message: `Could not find Test Case: ${caseId}` });
         }
     };
-    // Data
+
+    // Backend Connection
     const [backendConnected, setBackendConnected] = useState(false);
 
-    // UI State
+    // ==========================================================================
+    // CONTEXT - UI state from UIContext
+    // ==========================================================================
+    const {
+        activeView,
+        setActiveView,
+        layoutMode,
+        setLayoutMode,
+        showLineNumbers,
+        setShowLineNumbers,
+        inlineElementValues,
+        setInlineElementValues,
+        hideCausalityData,
+        setHideCausalityData,
+        splitRatio,
+        setSplitRatio,
+        isResizing,
+        setIsResizing,
+        showSettings,
+        setShowSettings,
+        showHelp,
+        setShowHelp,
+        config,
+        setConfig,
+        rawConfig,
+        setRawConfig,
+        configPath,
+        setConfigPath
+    } = useUI();
+
+    // UI State (remaining)
     const [inputType, setInputType] = useState<'url' | 'file'>('url');
     const [wsdlUrl, setWsdlUrl] = useState('http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso?WSDL');
     const [selectedFile, setSelectedFile] = useState<string | null>(null);
     const [downloadStatus, setDownloadStatus] = useState<string[] | null>(null);
-    const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-    const [savedProjects, setSavedProjects] = useState<Set<string>>(new Set());
-    const [workspaceDirty, setWorkspaceDirty] = useState(false);
 
     // Watcher / Proxy State
-    const [activeView, setActiveView] = useState<SidebarView>(SidebarView.PROJECTS);
     const [watcherHistory, setWatcherHistory] = useState<WatcherEvent[]>([]);
     const [watcherRunning, setWatcherRunning] = useState(false);
-
-    // Proxy State (Placeholders)
-    const [proxyHistory, setProxyHistory] = useState<WatcherEvent[]>([]); // Reusing WatcherEvent for now
+    const [proxyHistory, setProxyHistory] = useState<WatcherEvent[]>([]);
     const [proxyRunning, setProxyRunning] = useState(false);
     const [proxyConfig, setProxyConfig] = useState({ port: 9000, target: 'http://localhost:8080', systemProxyEnabled: true });
-    const [configPath, setConfigPath] = useState<string | null>(null);
 
     const startTimeRef = useRef<number>(0);
-
-    // Layout
-    const [layoutMode, setLayoutMode] = useState<'vertical' | 'horizontal'>('vertical');
-    const [showLineNumbers, setShowLineNumbers] = useState(true);
-    const [inlineElementValues, setInlineElementValues] = useState(false);
-    const [hideCausalityData, setHideCausalityData] = useState(false);
-    const [splitRatio, setSplitRatio] = useState(0.5);
-    const [isResizing, setIsResizing] = useState(false);
 
     // Modals & Menu
     const [contextMenu, setContextMenu] = useState<{ x: number, y: number, type: string, data: any, isExplorer: boolean } | null>(null);
@@ -184,18 +189,48 @@ function App() {
     const [sampleModal, setSampleModal] = React.useState<{ open: boolean, schema: any | null, operationName: string }>({ open: false, schema: null, operationName: '' });
     const [extractorModal, setExtractorModal] = React.useState<{ xpath: string, value: string, source: 'body' | 'header', variableName: string } | null>(null);
 
-
-
-
-
-    // Settings
-    const [config, setConfig] = useState<DirtySoapConfigWeb | null>(null);
-    const [rawConfig, setRawConfig] = useState<string>('');
-    const [showSettings, setShowSettings] = useState(false);
-    const [showHelp, setShowHelp] = useState(false); // Help Modal State
-
     // Workspace State
     const [changelog, setChangelog] = useState<string>('');
+
+    // NOTE: saveProject now comes from ProjectContext
+
+    // Message Handler Hook
+    useMessageHandler({
+        setProjects,
+        setExploredInterfaces,
+        setExplorerExpanded,
+        setLoading,
+        setResponse,
+        setDownloadStatus,
+        setSelectedFile,
+        setSampleModal,
+        setBackendConnected,
+        setConfig,
+        setRawConfig,
+        setLayoutMode,
+        setShowLineNumbers,
+        setSplitRatio,
+        setInlineElementValues,
+        setConfigPath,
+        setProxyConfig,
+        setSelectedProjectName,
+        setWsdlUrl,
+        setWorkspaceDirty,
+        setSavedProjects,
+        setChangelog,
+        setWatcherHistory,
+        setProxyHistory,
+        setProxyRunning,
+        setTestExecution,
+        setActiveView,
+        wsdlUrl,
+        projects,
+        proxyConfig,
+        selectedTestCase,
+        selectedRequest,
+        startTimeRef,
+        saveProject
+    });
 
     // Initial Load
     useEffect(() => {
@@ -272,346 +307,7 @@ function App() {
         }
     }, [projects, selectedTestCase]);
 
-    // VS Code Messages
-    useEffect(() => {
-        const handleMessage = (message: any) => {
-            switch (message.command) {
-                case 'wsdlParsed':
-                    // Convert raw SoapService to SoapUIInterface, Splitting by Port
-                    const splitInterfaces: SoapUIInterface[] = [];
-
-                    message.services.forEach((svc: any) => {
-                        // Group operations by Port
-                        const operationsByPort = new Map<string, any[]>();
-                        svc.operations.forEach((op: any) => {
-                            const port = op.portName || 'Default';
-                            if (!operationsByPort.has(port)) {
-                                operationsByPort.set(port, []);
-                            }
-                            operationsByPort.get(port)!.push(op);
-                        });
-
-                        // Create an Interface for each Port
-                        operationsByPort.forEach((ops, portName) => {
-                            // Use Port Name as the Interface Name if it's distinct from Service (or just use Port Name as it's usually unique/descriptive in WSDL)
-                            // If Port is 'Default', use Service Name.
-                            const interfaceName = portName === 'Default' ? svc.name : portName;
-
-                            splitInterfaces.push({
-                                name: interfaceName,
-                                type: 'wsdl',
-                                bindingName: portName, // Store port as binding name
-                                soapVersion: portName.includes('12') ? '1.2' : '1.1', // Heuristic
-                                definition: wsdlUrl,
-                                operations: ops.map((op: any) => ({
-                                    name: op.name,
-                                    action: '',
-                                    input: op.input,
-                                    targetNamespace: op.targetNamespace || svc.targetNamespace, // Use Operation TNS, fallback to Service TNS
-                                    originalEndpoint: op.originalEndpoint,
-                                    requests: [{
-                                        name: 'Request 1',
-                                        headers: {
-                                            'Content-Type': portName.includes('12') ? 'application/soap+xml' : 'text/xml'
-                                        },
-                                        request: portName.includes('12')
-                                            ? `<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:tem="${op.targetNamespace || svc.targetNamespace || 'http://tempuri.org/'}">\n   <soap:Header/>\n   <soap:Body>\n      <tem:${op.name}>\n         <!--Optional:-->\n         ${getInitialXml(op.input)}\n      </tem:${op.name}>\n   </soap:Body>\n</soap:Envelope>`
-                                            : `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="${op.targetNamespace || svc.targetNamespace || 'http://tempuri.org/'}">\n   <soapenv:Header/>\n   <soapenv:Body>\n      <tem:${op.name}>\n         <!--Optional:-->\n         ${getInitialXml(op.input)}\n      </tem:${op.name}>\n   </soapenv:Body>\n</soapenv:Envelope>`
-                                    }]
-                                }))
-                            });
-                        });
-                    });
-
-                    // Deduplicate interfaces by name just in case
-                    const uniqueInterfaces = splitInterfaces.filter((v, i, a) => a.findIndex(t => t.name === v.name) === i);
-
-                    setExploredInterfaces(uniqueInterfaces);
-                    setExplorerExpanded(true);
-                    break;
-                case 'response':
-                    setLoading(false);
-                    const endTime = Date.now();
-                    const duration = (endTime - startTimeRef.current) / 1000;
-
-                    let lineCount = 0;
-                    let displayResponse = '';
-
-                    const res = message.result;
-                    if (res) {
-                        console.log('Response received:', res); // Debug log
-                        if (res.rawResponse) {
-                            displayResponse = typeof res.rawResponse === 'object' ? JSON.stringify(res.rawResponse, null, 2) : res.rawResponse;
-                        } else if (typeof res === 'string') {
-                            displayResponse = res;
-                        } else if (res.body) {
-                            displayResponse = typeof res.body === 'object' ? JSON.stringify(res.body, null, 2) : res.body;
-                        } else if (res.data && typeof res.data === 'string') {
-                            displayResponse = res.data;
-                        } else {
-                            displayResponse = JSON.stringify(res, null, 2);
-                        }
-                    }
-
-                    if (displayResponse) {
-                        lineCount = displayResponse.split(/\r\n|\r|\n/).length;
-                    }
-
-                    // We store the generic result but also the pre-processed display string
-                    setResponse({ ...res, rawResponse: displayResponse, duration, lineCount, assertionResults: message.assertionResults });
-                    break;
-                case 'error':
-                    setLoading(false);
-                    setResponse({ error: message.message });
-                    break;
-                case 'downloadComplete':
-                    setDownloadStatus(message.files);
-                    if (message.files.length > 0) {
-                        // Auto-select the first one for convenience?
-                        // Or just show status
-                    }
-                    setTimeout(() => setDownloadStatus(null), 5000);
-                    break;
-                case 'wsdlSelected':
-                    setSelectedFile(message.path);
-                    break;
-                case 'sampleSchema':
-                    setSampleModal({ open: true, schema: message.schema, operationName: message.operationName });
-                    break;
-                case 'addStepToCase':
-                    const op = message.operation;
-                    setProjects(prev => prev.map(p => {
-                        if (!p.testSuites) return p;
-                        const suite = p.testSuites.find(s => s.testCases?.some(tc => tc.id === message.caseId));
-                        if (!suite) return p;
-
-                        const updatedSuite = {
-                            ...suite,
-                            testCases: suite.testCases?.map(tc => {
-                                if (tc.id !== message.caseId) return tc;
-
-                                const newStep: SoapTestStep = {
-                                    id: `step-${Date.now()}`,
-                                    name: op.name,
-                                    type: 'request',
-                                    config: {
-                                        request: {
-                                            id: `req-${Date.now()}`,
-                                            name: op.name,
-                                            endpoint: (op as any).originalEndpoint,
-                                            request: `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="${op.targetNamespace || 'http://tempuri.org/'}">\n   <soapenv:Header/>\n   <soapenv:Body>\n      <tem:${op.name}>\n         <!--Optional:-->\n         ${getInitialXml(op.input)}\n      </tem:${op.name}>\n   </soapenv:Body>\n</soapenv:Envelope>`,
-                                            assertions: []
-                                        }
-                                    }
-                                };
-                                return { ...tc, steps: [...tc.steps, newStep] };
-                            })
-                        };
-
-                        const updatedProject = { ...p, testSuites: p.testSuites.map(s => s.id === suite.id ? updatedSuite : s), dirty: true };
-                        setTimeout(() => saveProject(updatedProject), 0);
-                        return updatedProject;
-                    }));
-                    setActiveView(SidebarView.PROJECTS);
-                    break;
-                case 'projectLoaded':
-                    // Check if project exists
-                    const newProj = message.project;
-                    setProjects(prev => {
-                        // Match by ID first (most reliable) if available, then Name
-                        const existingIndex = prev.findIndex(p => (p.id && p.id === newProj.id) || p.name === newProj.name);
-
-                        if (existingIndex !== -1) {
-                            const existing = prev[existingIndex];
-                            // Update filename and merge properties, but preserve local state if needed
-                            const updated = { ...existing, fileName: message.filename };
-                            // Ensure ID is consistent if missing locally
-                            if (!updated.id && newProj.id) updated.id = newProj.id;
-
-                            const newArr = [...prev];
-                            newArr[existingIndex] = updated;
-                            return newArr;
-                        }
-                        return [...prev, { ...newProj, fileName: message.filename, expanded: true }];
-                    });
-                    setWorkspaceDirty(true);
-                    break;
-                case 'workspaceLoaded':
-                    // Replace projects or merge? Usually replace workspace
-                    setProjects(message.projects.map((p: any) => ({ ...p, expanded: false })));
-                    setWorkspaceDirty(false);
-                    break;
-                case 'echoResponse':
-                    console.log("Backend Connected:", message.message);
-                    setBackendConnected(true);
-                    break;
-                case 'localWsdls':
-                    // handled by quick pick in sidebar logic? NO, Sidebar invokes pickLocalWsdl
-                    // The extension shows a QuickPick?
-                    // Ext code: `vscode.window.showOpenDialog`.
-                    // The `localWsdls` command in extension was: postMessage({ command: 'localWsdls', files }).
-                    // BUT Sidebar logic calls `selectLocalWsdl` which shows dialog.
-                    // BUT Sidebar logic calls `selectLocalWsdl` which shows dialog.
-                    // The `localWsdls` logic in extension seems unused or fallback.
-                    break;
-                case 'settingsUpdate':
-                    console.log("App.tsx: Received settingsUpdate.", { rawLength: message.raw?.length, configKeys: Object.keys(message.config || {}) });
-                    setConfig(message.config);
-                    setRawConfig(message.raw || JSON.stringify(message.config, null, 2));
-                    // Consume UI preferences
-                    if (message.config.ui) {
-                        if (message.config.ui.layoutMode) setLayoutMode(message.config.ui.layoutMode);
-                        if (message.config.ui.showLineNumbers !== undefined) setShowLineNumbers(message.config.ui.showLineNumbers);
-                        if (message.config.ui.splitRatio !== undefined) setSplitRatio(message.config.ui.splitRatio);
-                        if (message.config.ui.inlineElementValues !== undefined) setInlineElementValues(message.config.ui.inlineElementValues);
-                    }
-
-                    // Auto-load projects if we have none and config has some
-                    if (projects.length === 0 && message.config.openProjects && message.config.openProjects.length > 0) {
-                        message.config.openProjects.forEach((path: string) => {
-                            // invoke loadProject via bridge directly or helper
-                            // helper loadProject needs to accept path.
-                            bridge.sendMessage({ command: 'loadProject', path });
-                        });
-                    }
-                    if (message.config.lastConfigPath) {
-                        setConfigPath(message.config.lastConfigPath);
-                    }
-                    if (message.config.lastProxyTarget) {
-                        setProxyConfig(prev => ({ ...prev, target: message.config.lastProxyTarget! }));
-                    }
-                    break;
-                case 'restoreAutosave':
-                    if (message.content) {
-                        try {
-                            const savedState = JSON.parse(message.content);
-                            setProjects(savedState.projects || []);
-                            setExploredInterfaces(savedState.exploredInterfaces || []);
-                            setExplorerExpanded(savedState.explorerExpanded ?? true);
-                            setWsdlUrl(savedState.wsdlUrl || '');
-                            if (savedState.lastSelectedProject) setSelectedProjectName(savedState.lastSelectedProject);
-                        } catch (e) { console.error("Failed to restore autosave", e); }
-                    }
-                    break;
-                case 'changelog':
-                    setChangelog(message.content);
-                    break;
-                case 'projectSaved':
-                    setSavedProjects(prev => {
-                        const newSet = new Set(prev);
-                        newSet.add(message.projectName);
-                        return newSet;
-                    });
-                    setProjects(prev => prev.map(p => {
-                        if (p.name !== message.projectName) return p;
-                        return {
-                            ...p,
-                            fileName: message.fileName || p.fileName, // Update filename if provided
-                            dirty: false,
-                            interfaces: p.interfaces.map(i => ({
-                                ...i,
-                                operations: i.operations.map(o => ({
-                                    ...o,
-                                    requests: o.requests.map(r => ({ ...r, dirty: false }))
-                                }))
-                            }))
-                        };
-                    }));
-                    setTimeout(() => {
-                        setSavedProjects(prev => {
-                            const newSet = new Set(prev);
-                            newSet.delete(message.projectName);
-                            return newSet;
-                        });
-                    }, 2000);
-                    break;
-                case 'workspaceSaved':
-                    setWorkspaceDirty(false);
-                    break;
-                case 'watcherUpdate':
-                    setWatcherHistory(message.history);
-                    break;
-                case 'proxyLog':
-                    setProxyHistory(prev => {
-                        const existingIndex = prev.findIndex(e => e.id === message.event.id);
-                        if (existingIndex !== -1) {
-                            // Update existing entry (Response received)
-                            const updated = [...prev];
-                            updated[existingIndex] = { ...updated[existingIndex], ...message.event };
-                            return updated;
-                        }
-                        return [message.event, ...prev];
-                    });
-                    break;
-                case 'proxyStatus':
-                    setProxyRunning(message.running);
-                    break;
-                case 'configFileSelected':
-                    setConfigPath(message.path);
-                    break;
-                case 'configSwitched':
-                case 'configRestored':
-                    // Handled by backend notification for now
-                    break;
-                case 'updateProxyTarget':
-                    const newConfig = { ...proxyConfig, target: message.target };
-                    setProxyConfig(newConfig);
-                    bridge.sendMessage({ command: 'updateProxyConfig', config: newConfig });
-                    break;
-                case 'testRunnerUpdate':
-                    setTestExecution(prev => {
-                        const { type, caseId, stepId, error } = message.data;
-                        const newState = { ...prev };
-                        if (!newState[caseId]) newState[caseId] = {};
-
-                        if (type === 'testCaseStart') {
-                            newState[caseId] = {}; // Reset
-                        } else if (type === 'stepStart') {
-                            newState[caseId][stepId] = { status: 'running' };
-                        } else if (type === 'stepPass' || type === 'stepFail') {
-                            const rawRes = message.data.response;
-                            const enhancedResponse = rawRes ? {
-                                ...rawRes,
-                                lineCount: rawRes.rawResponse ? rawRes.rawResponse.split(/\r\n|\r|\n/).length : 0,
-                                duration: (rawRes.timeTaken || 0) / 1000
-                            } : null;
-
-                            newState[caseId][stepId] = {
-                                status: type === 'stepPass' ? 'pass' : 'fail',
-                                error,
-                                assertionResults: message.data.assertionResults,
-                                response: enhancedResponse
-                            };
-
-                            // Auto-update Response Panel if currently selected
-                            if (selectedTestCase && selectedTestCase.id === caseId) {
-                                // Find if this step corresponds to the currently selected request
-                                // Note: We don't have direct access to 'step' object here easily, but we can check if selectedRequest is linked?
-                                // Actually, simpler: If the user is looking at a request that matches this step?
-                                // Let's just update if we have a selectedRequest and it matches.
-                                if (selectedRequest) {
-                                    // This is tricky without iteration. Let's just check if we are viewing the test case.
-                                    // Actually, we can just defer this to the 'onOpenStepRequest' which reads from state.
-                                    // But to live update, we need to setResponse.
-                                    // Iterate selectedTestCase steps to find match
-                                    const step = selectedTestCase.steps.find(s => s.id === stepId);
-                                    if (step && step.config.request && (step.config.request.id === selectedRequest.id)) {
-                                        setResponse({
-                                            ...enhancedResponse,
-                                            assertionResults: message.data.assertionResults
-                                        });
-                                    }
-                                }
-                            }
-                        }
-                        return newState;
-                    });
-                    break;
-            }
-        };
-
-        return bridge.onMessage(handleMessage);
-    }, [wsdlUrl]);
+    // (Message handling moved to useMessageHandler hook)
 
     // Resizing Logic
     const startResizing = useCallback(() => setIsResizing(true), []);
@@ -1032,46 +728,24 @@ function App() {
         setExploredInterfaces(prev => prev.filter(i => i !== iface));
     };
 
-    const saveProject = (proj: SoapUIProject) => {
-        bridge.sendMessage({ command: 'saveProject', project: proj });
-    };
-
     // runSuite and runCase are defined above
 
-
-    const closeProject = (name: string) => {
-        if (deleteConfirm === name) {
-            setProjects(prev => prev.filter(p => p.name !== name));
-            setWorkspaceDirty(true);
-            // Reset selection if inside this project
-            if (selectedProjectName === name) {
-                setSelectedProjectName(null);
-                setSelectedInterface(null);
-                setSelectedOperation(null);
-                setSelectedRequest(null);
-            }
-            setDeleteConfirm(null);
-        } else {
-            setDeleteConfirm(name);
-            setTimeout(() => setDeleteConfirm(c => c === name ? null : c), 3000);
+    // NOTE: closeProject, loadProject, addProject now come from ProjectContext
+    // Handle selection reset when closing a project (context handles the deletion)
+    const handleCloseProject = (name: string) => {
+        // If we're closing the selected project, clear selection
+        if (deleteConfirm === name && selectedProjectName === name) {
+            setSelectedInterface(null);
+            setSelectedOperation(null);
+            setSelectedRequest(null);
         }
+        // Delegate to context
+        closeProject(name);
     };
-
-    // const saveWorkspace = () => bridge.sendMessage({ command: 'saveWorkspace', projects }); // Removed
-    // const openWorkspace = () => bridge.sendMessage({ command: 'openWorkspace' }); // Removed in favor of autosave
-    const loadProject = (path?: string) => bridge.sendMessage({ command: 'loadProject', path });
-    const addProject = () => {
-        console.log("Adding Project, prev count:", projects.length);
-        const name = `Project ${projects.length + 1}`;
-        console.log("New Name:", name);
-        setProjects(prev => [...prev, { name: name, interfaces: [], expanded: true, id: Date.now().toString(), dirty: true }]);
-        setWorkspaceDirty(true);
-    };
-
 
     // Expand Toggles
     const toggleExplorerExpand = () => setExplorerExpanded(!explorerExpanded);
-    const toggleProjectExpand = (name: string) => setProjects(prev => prev.map(p => p.name === name ? { ...p, expanded: !p.expanded } : p));
+    // NOTE: toggleProjectExpand now comes from ProjectContext
     const toggleInterfaceExpand = (pName: string, iName: string) => {
         setProjects(prev => prev.map(p => {
             if (p.name !== pName) return p;
@@ -1406,7 +1080,7 @@ function App() {
             requestBody = formatXml(raw, true, inlineElementValues, hideCausalityData);
 
             // Cache the formatted body so it doesn't re-format on next click
-            if (activeView === 'proxy') {
+            if (activeView === SidebarView.PROXY) {
                 setProxyHistory(prev => prev.map(e => e.id === event.id ? { ...e, formattedBody: requestBody } : e));
             } else {
                 setWatcherHistory(prev => prev.map(e => e.id === event.id ? { ...e, formattedBody: requestBody } : e));
@@ -1587,7 +1261,7 @@ function App() {
                 // openWorkspace={openWorkspace} // Removed
                 loadProject={() => loadProject()}
                 saveProject={saveProject}
-                closeProject={closeProject}
+                closeProject={handleCloseProject}
                 onAddProject={addProject}
                 selectedProjectName={selectedProjectName}
                 setSelectedProjectName={setSelectedProjectName}
@@ -2000,7 +1674,7 @@ function App() {
                     setWatcherHistory(prev => prev.map(e => ({ ...e, formattedBody: undefined })));
                     bridge.sendMessage({ command: 'saveUiState', ui: { ...config?.ui, hideCausalityData: newState } });
                 }}
-                isReadOnly={activeView !== 'projects'}
+                isReadOnly={activeView === SidebarView.WATCHER || activeView === SidebarView.PROXY}
                 onStartResizing={startResizing}
                 config={config}
                 onChangeEnvironment={(env) => bridge.sendMessage({ command: 'updateActiveEnvironment', envName: env })}
