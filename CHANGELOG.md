@@ -1,6 +1,10 @@
 # Changelog
 
 
+## [0.7.4] - 2025-12-29
+### Auto-Generated Changes
+- feat: Enhance replace rule functionality in ProxyService and SettingsEditorModal - Updated ProxyService to log applied replace rules by name. - Added replace rules management in SettingsEditorModal with options to add,edit,and delete rules.
+
 ## [0.7.3] - 2025-12-29
 ### Auto-Generated Changes
 - feat: Implement replace rule functionality in proxy service - Added ReplaceRuleApplier for applying text replacement rules to XML content. - Updated ProxyService to manage and apply replace rules during request/response handling. - Enhanced SettingsManager to include replace rules in configuration.

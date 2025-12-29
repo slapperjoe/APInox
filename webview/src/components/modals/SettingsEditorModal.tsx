@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import Editor from '@monaco-editor/react';
-import { X, Save, AlertTriangle, Settings, FileJson, Server, Plus, Trash2, Check, Globe } from 'lucide-react';
+import { X, Save, AlertTriangle, Settings, FileJson, Server, Plus, Trash2, Check, Globe, Replace } from 'lucide-react';
 
 const ModalOverlay = styled.div`
     position: fixed;
@@ -248,6 +248,17 @@ interface DirtySoapConfig {
         [key: string]: string | undefined;
     }>;
     globals?: Record<string, string>;
+    replaceRules?: ReplaceRuleSettings[];
+}
+
+interface ReplaceRuleSettings {
+    id: string;
+    name?: string;
+    xpath: string;
+    matchText: string;
+    replaceWith: string;
+    target: 'request' | 'response' | 'both';
+    enabled: boolean;
 }
 
 interface SettingsEditorModalProps {
@@ -257,7 +268,7 @@ interface SettingsEditorModalProps {
 }
 
 export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawConfig, onClose, onSave }) => {
-    const [activeTab, setActiveTab] = useState<'gui' | 'environments' | 'globals' | 'json'>('gui');
+    const [activeTab, setActiveTab] = useState<'gui' | 'environments' | 'globals' | 'replaceRules' | 'json'>('gui');
     const [jsonContent, setJsonContent] = useState(rawConfig || '{}');
     const [guiConfig, setGuiConfig] = useState<DirtySoapConfig>({});
     const [parseError, setParseError] = useState<string | null>(null);
@@ -266,6 +277,8 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
     const [selectedEnvKey, setSelectedEnvKey] = useState<string | null>(null);
     // Globals State
     const [selectedGlobalKey, setSelectedGlobalKey] = useState<string | null>(null);
+    // Replace Rules State
+    const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
 
     // Initial Parse
     useEffect(() => {
@@ -287,7 +300,7 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
         }
     }, [rawConfig]);
 
-    const handleTabSwitch = (tab: 'gui' | 'environments' | 'globals' | 'json') => {
+    const handleTabSwitch = (tab: 'gui' | 'environments' | 'globals' | 'replaceRules' | 'json') => {
         if (tab === 'json') {
             setActiveTab('json');
             return;
@@ -429,6 +442,42 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
     const globals = guiConfig.globals || {};
     const globalKeys = Object.keys(globals);
 
+    const replaceRules = guiConfig.replaceRules || [];
+
+    const handleAddRule = () => {
+        const newRule: ReplaceRuleSettings = {
+            id: crypto.randomUUID(),
+            name: 'New Rule',
+            xpath: '//element',
+            matchText: '',
+            replaceWith: '',
+            target: 'response',
+            enabled: true
+        };
+        setGuiConfig(prev => ({
+            ...prev,
+            replaceRules: [...(prev.replaceRules || []), newRule]
+        }));
+        setSelectedRuleId(newRule.id);
+    };
+
+    const handleDeleteRule = (id: string) => {
+        setGuiConfig(prev => ({
+            ...prev,
+            replaceRules: (prev.replaceRules || []).filter(r => r.id !== id)
+        }));
+        if (selectedRuleId === id) setSelectedRuleId(null);
+    };
+
+    const handleRuleChange = (id: string, field: keyof ReplaceRuleSettings, value: any) => {
+        setGuiConfig(prev => ({
+            ...prev,
+            replaceRules: (prev.replaceRules || []).map(r =>
+                r.id === id ? { ...r, [field]: value } : r
+            )
+        }));
+    };
+
     return (
         <ModalOverlay onClick={(e) => {
             if (e.target === e.currentTarget) onClose();
@@ -448,6 +497,9 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
                     </Tab>
                     <Tab active={activeTab === 'globals'} onClick={() => handleTabSwitch('globals')}>
                         <Globe size={14} /> Globals
+                    </Tab>
+                    <Tab active={activeTab === 'replaceRules'} onClick={() => handleTabSwitch('replaceRules')}>
+                        <Replace size={14} /> Replace Rules
                     </Tab>
                     <Tab active={activeTab === 'json'} onClick={() => handleTabSwitch('json')} style={{ marginLeft: 'auto', borderRight: 'none', borderLeft: '1px solid var(--vscode-panel-border)' }}>
                         <FileJson size={14} /> JSON (Advanced)
@@ -659,6 +711,120 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
                                 ) : (
                                     <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', color: 'var(--vscode-disabledForeground)' }}>
                                         Select a global variable to edit
+                                    </div>
+                                )}
+                            </EnvDetail>
+                        </div>
+                    )}
+
+                    {activeTab === 'replaceRules' && (
+                        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+                            <EnvList>
+                                <div style={{ padding: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--vscode-panel-border)' }}>
+                                    <span style={{ fontSize: '12px', fontWeight: 600 }}>Rules</span>
+                                    <IconButton onClick={handleAddRule} title="Add Rule">
+                                        <Plus size={14} />
+                                    </IconButton>
+                                </div>
+                                {replaceRules.map(rule => (
+                                    <EnvItem
+                                        key={rule.id}
+                                        active={rule.id === selectedRuleId}
+                                        selected={rule.id === selectedRuleId}
+                                        onClick={() => setSelectedRuleId(rule.id)}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', overflow: 'hidden', gap: 6 }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={rule.enabled}
+                                                onChange={(e) => { e.stopPropagation(); handleRuleChange(rule.id, 'enabled', e.target.checked); }}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                            <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', opacity: rule.enabled ? 1 : 0.5 }}>
+                                                {rule.name || rule.id.slice(0, 8)}
+                                            </span>
+                                        </div>
+                                    </EnvItem>
+                                ))}
+                                {replaceRules.length === 0 && (
+                                    <div style={{ padding: '15px', textAlign: 'center', color: 'var(--vscode-disabledForeground)', fontSize: 12 }}>
+                                        No rules yet.<br />Create one from Proxy view.
+                                    </div>
+                                )}
+                            </EnvList>
+                            <EnvDetail>
+                                {selectedRuleId && replaceRules.find(r => r.id === selectedRuleId) ? (() => {
+                                    const rule = replaceRules.find(r => r.id === selectedRuleId)!;
+                                    return (
+                                        <>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                                                <h3 style={{ margin: 0, textTransform: 'uppercase', fontSize: 12 }}>Edit Rule</h3>
+                                                <IconButton onClick={() => handleDeleteRule(selectedRuleId)} style={{ color: 'var(--vscode-errorForeground)' }} title="Delete Rule">
+                                                    <Trash2 size={14} />
+                                                </IconButton>
+                                            </div>
+                                            <FormGroup>
+                                                <Label>Name</Label>
+                                                <Input
+                                                    type="text"
+                                                    value={rule.name || ''}
+                                                    onChange={e => handleRuleChange(rule.id, 'name', e.target.value)}
+                                                    placeholder="Rule Name"
+                                                />
+                                            </FormGroup>
+                                            <FormGroup>
+                                                <Label>XPath</Label>
+                                                <Input
+                                                    type="text"
+                                                    value={rule.xpath}
+                                                    onChange={e => handleRuleChange(rule.id, 'xpath', e.target.value)}
+                                                    placeholder="//element"
+                                                />
+                                            </FormGroup>
+                                            <FormGroup>
+                                                <Label>Match Text</Label>
+                                                <Input
+                                                    type="text"
+                                                    value={rule.matchText}
+                                                    onChange={e => handleRuleChange(rule.id, 'matchText', e.target.value)}
+                                                    placeholder="Text to find"
+                                                />
+                                            </FormGroup>
+                                            <FormGroup>
+                                                <Label>Replace With</Label>
+                                                <Input
+                                                    type="text"
+                                                    value={rule.replaceWith}
+                                                    onChange={e => handleRuleChange(rule.id, 'replaceWith', e.target.value)}
+                                                    placeholder="Replacement text"
+                                                />
+                                            </FormGroup>
+                                            <FormGroup>
+                                                <Label>Apply To</Label>
+                                                <Select
+                                                    value={rule.target}
+                                                    onChange={e => handleRuleChange(rule.id, 'target', e.target.value)}
+                                                >
+                                                    <option value="request">Request Only</option>
+                                                    <option value="response">Response Only</option>
+                                                    <option value="both">Both</option>
+                                                </Select>
+                                            </FormGroup>
+                                            <FormGroup>
+                                                <CheckboxLabel>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={rule.enabled}
+                                                        onChange={e => handleRuleChange(rule.id, 'enabled', e.target.checked)}
+                                                    />
+                                                    Enabled
+                                                </CheckboxLabel>
+                                            </FormGroup>
+                                        </>
+                                    );
+                                })() : (
+                                    <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', color: 'var(--vscode-disabledForeground)' }}>
+                                        Select a rule to edit
                                     </div>
                                 )}
                             </EnvDetail>
