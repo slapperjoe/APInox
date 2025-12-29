@@ -9,10 +9,12 @@ import { FileWatcherService } from '../services/FileWatcherService';
 import { ProxyService } from '../services/ProxyService';
 import { ConfigSwitcherService } from '../services/ConfigSwitcherService';
 import { TestRunnerService } from '../services/TestRunnerService';
+import { AzureDevOpsService } from '../services/AzureDevOpsService';
 
 export class SoapPanel {
     public static currentPanel: SoapPanel | undefined;
     public static readonly viewType = 'dirtySoap';
+    private static _extensionContext: vscode.ExtensionContext;
     private readonly _panel: vscode.WebviewPanel;
     private readonly _extensionUri: vscode.Uri;
     private readonly _soapClient: SoapClient;
@@ -24,10 +26,15 @@ export class SoapPanel {
     private _proxyService: ProxyService;
     private _configSwitcherService: ConfigSwitcherService;
     private _testRunnerService: TestRunnerService;
+    private _azureDevOpsService: AzureDevOpsService;
     private _controller: WebviewController;
     private _disposables: vscode.Disposable[] = [];
     private _autosaveTimeout: NodeJS.Timeout | undefined;
     private _outputChannel: vscode.OutputChannel;
+
+    public static setContext(context: vscode.ExtensionContext) {
+        SoapPanel._extensionContext = context;
+    }
 
     public static createOrShow(extensionUri: vscode.Uri) {
         const column = vscode.window.activeTextEditor
@@ -85,6 +92,7 @@ export class SoapPanel {
 
         this._configSwitcherService = new ConfigSwitcherService();
         this._testRunnerService = new TestRunnerService(this._soapClient, this._outputChannel);
+        this._azureDevOpsService = new AzureDevOpsService(SoapPanel._extensionContext);
 
         this._controller = new WebviewController(
             this._panel,
@@ -97,7 +105,8 @@ export class SoapPanel {
             this._fileWatcherService,
             this._proxyService,
             this._configSwitcherService,
-            this._testRunnerService
+            this._testRunnerService,
+            this._azureDevOpsService
         );
 
         // Watcher starts stopped by default.

@@ -49,6 +49,41 @@ The project generates a VSIX extension that runs in VS Code's Extension Host, wh
 2.  **VS Code Theme integration**: The webview uses CSS variables provided by VS Code (e.g., `--vscode-editor-background`) to look native in any theme.
 3.  **Namespace Issues**: WSDL parsers can sometimes bury the namespace. We specifically look for `$targetNamespace` in `soapClient.ts` as a fallback.
 
+## Dirty Proxy
+
+The Dirty Proxy intercepts HTTP/HTTPS traffic for debugging and testing.
+
+### Key Files
+-   **`src/services/ProxyService.ts`**: HTTP/HTTPS proxy server using `http.createServer` + `axios` for forwarding.
+-   **`src/utils/ReplaceRuleApplier.ts`**: Applies XPath-scoped text replacement to request/response XML.
+
+### Replace Rules
+
+Rules are stored in `~/.dirty-soap/config.jsonc` under `replaceRules`:
+
+```jsonc
+{
+  "replaceRules": [
+    {
+      "id": "uuid",
+      "name": "Mask SSN",
+      "xpath": "//Customer/SSN",
+      "matchText": "\\d{3}-\\d{2}-\\d{4}",
+      "replaceWith": "XXX-XX-XXXX",
+      "target": "response",  // "request" | "response" | "both"
+      "enabled": true,
+      "isRegex": true
+    }
+  ]
+}
+```
+
+**How it works:**
+1. Rules synced to `ProxyService` on config load/save.
+2. Before forwarding request → applies rules with `target = "request"` or `"both"`.
+3. Before forwarding response → applies rules with `target = "response"` or `"both"`.
+4. XPath-scoped: Only replaces text within elements matching the XPath's target element name.
+
 ## Setup Instructions
 
 If you are an agent or developer setting this up from scratch:

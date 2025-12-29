@@ -1,0 +1,251 @@
+/**
+ * useRequestHandlers.ts
+ * 
+ * Extracted from App.tsx - handles SOAP request execution, cancellation, and updates.
+ */
+
+import { useCallback, useRef } from 'react';
+import { bridge } from '../utils/bridge';
+import { CustomXPathEvaluator } from '../utils/xpathEvaluator';
+import { useProject } from '../contexts/ProjectContext';
+import { SoapUIRequest, SoapUIOperation, SoapUIInterface, SoapTestCase } from '../models';
+
+interface UseRequestHandlersProps {
+    selectedRequest: SoapUIRequest | null;
+    setSelectedRequest: (req: SoapUIRequest | null) => void;
+    selectedOperation: SoapUIOperation | null;
+    selectedInterface: SoapUIInterface | null;
+    selectedTestCase: SoapTestCase | null;
+    selectedStep: any;
+    testExecution: Record<string, Record<string, any>>;
+    wsdlUrl: string;
+    setLoading: (loading: boolean) => void;
+    setResponse: (response: any) => void;
+    setWorkspaceDirty: (dirty: boolean) => void;
+    setExploredInterfaces: React.Dispatch<React.SetStateAction<SoapUIInterface[]>>;
+}
+
+interface UseRequestHandlersReturn {
+    executeRequest: (xml: string) => void;
+    cancelRequest: () => void;
+    handleRequestUpdate: (updated: SoapUIRequest) => void;
+    handleResetRequest: () => void;
+    startTimeRef: React.MutableRefObject<number>;
+}
+
+export function useRequestHandlers({
+    selectedRequest,
+    setSelectedRequest,
+    selectedOperation,
+    selectedInterface,
+    selectedTestCase,
+    selectedStep,
+    testExecution,
+    wsdlUrl,
+    setLoading,
+    setResponse,
+    setWorkspaceDirty,
+    setExploredInterfaces,
+}: UseRequestHandlersProps): UseRequestHandlersReturn {
+    const { setProjects, saveProject, selectedProjectName } = useProject();
+    const startTimeRef = useRef<number>(0);
+
+    const executeRequest = useCallback((xml: string) => {
+        console.log('[useRequestHandlers] executeRequest called');
+        console.log('[useRequestHandlers] Context - Operation:', selectedOperation?.name, 'Request:', selectedRequest?.name);
+
+        setLoading(true);
+        setResponse(null);
+        startTimeRef.current = Date.now();
+
+        if (selectedOperation || selectedRequest) {
+            const url = selectedRequest?.endpoint || selectedInterface?.definition || wsdlUrl;
+            const opName = selectedOperation?.name || selectedRequest?.name || 'Unknown Operation';
+
+            console.log('[useRequestHandlers] Sending executeRequest message. URL:', url, 'Op:', opName);
+
+            const logToOutput = (msg: string) => bridge.sendMessage({ command: 'log', message: msg });
+            logToOutput(`Starting execution of step: ${selectedStep?.name || selectedRequest?.name}`);
+
+            // Calculate context variables if running a test step
+            const contextVariables: Record<string, string> = {};
+            if (selectedTestCase && selectedStep) {
+                const currentIndex = selectedTestCase.steps.findIndex(s => s.id === selectedStep.id);
+                if (currentIndex > 0) {
+                    const priorSteps = selectedTestCase.steps.slice(0, currentIndex);
+                    priorSteps.forEach(step => {
+                        if (step.type === 'request' && step.config.request?.extractors) {
+                            const stepExec = testExecution[selectedTestCase.id]?.[step.id];
+                            if (stepExec?.response) {
+                                const rawResp = stepExec.response.rawResponse || (typeof stepExec.response.result === 'string'
+                                    ? stepExec.response.result
+                                    : JSON.stringify(stepExec.response.result));
+
+                                if (rawResp) {
+                                    step.config.request.extractors.forEach(ext => {
+                                        if (ext.source === 'body') {
+                                            try {
+                                                const val = CustomXPathEvaluator.evaluate(rawResp, ext.path);
+                                                if (val) {
+                                                    contextVariables[ext.variable] = val;
+                                                    logToOutput(`[Context] Extracted '${ext.variable}' = '${val}' from step '${step.name}'`);
+                                                } else {
+                                                    logToOutput(`[Context] Warning: Extractor for '${ext.variable}' in step '${step.name}' returned null.`);
+                                                }
+                                            } catch (e) {
+                                                console.warn('[useRequestHandlers] Extractor failed for variable ' + ext.variable, e);
+                                                logToOutput(`[Context] Error evaluating extractor for '${ext.variable}': ${e}`);
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+
+            console.log('[useRequestHandlers] Context Variables:', contextVariables);
+            if (Object.keys(contextVariables).length > 0) {
+                logToOutput(`[Context] Sending ${Object.keys(contextVariables).length} context variables to backend.`);
+            }
+
+            bridge.sendMessage({
+                command: 'executeRequest',
+                url,
+                operation: opName,
+                xml,
+                contentType: selectedRequest?.contentType,
+                assertions: selectedRequest?.assertions,
+                headers: selectedRequest?.headers,
+                contextVariables
+            });
+        } else {
+            console.error('[useRequestHandlers] executeRequest aborted: No selectedOperation or selectedRequest');
+            setLoading(false);
+        }
+    }, [selectedOperation, selectedRequest, selectedInterface, selectedTestCase, selectedStep, testExecution, wsdlUrl, setLoading, setResponse]);
+
+    const cancelRequest = useCallback(() => {
+        bridge.sendMessage({ command: 'cancelRequest' });
+        setLoading(false);
+    }, [setLoading]);
+
+    const handleRequestUpdate = useCallback((updated: SoapUIRequest) => {
+        const dirtyUpdated = { ...updated, dirty: true };
+        setSelectedRequest(dirtyUpdated);
+        setWorkspaceDirty(true);
+
+        if (selectedProjectName) {
+            setProjects(prev => prev.map(p => {
+                if (p.name !== selectedProjectName) return p;
+
+                // 1. Is it a Test Case modification?
+                if (selectedTestCase) {
+                    console.log('[handleRequestUpdate] Updating within Test Case:', selectedTestCase.name);
+                    let caseUpdated = false;
+                    const updatedSuites = p.testSuites?.map(s => {
+                        const tcIndex = s.testCases?.findIndex(tc => tc.id === selectedTestCase.id) ?? -1;
+                        if (tcIndex === -1) return s;
+
+                        const updatedCases = [...(s.testCases || [])];
+                        const stepIndex = updatedCases[tcIndex].steps.findIndex(step =>
+                            (updated.id && step.config.request?.id === updated.id) ||
+                            step.config.request?.name === updated.name ||
+                            (selectedRequest && step.config.request?.name === selectedRequest.name)
+                        );
+
+                        console.log('[handleRequestUpdate] Step Search Result:', stepIndex, 'for request:', updated.name);
+
+                        if (stepIndex !== -1) {
+                            caseUpdated = true;
+                            updatedCases[tcIndex] = {
+                                ...updatedCases[tcIndex],
+                                steps: updatedCases[tcIndex].steps.map((st, i) => {
+                                    if (i === stepIndex) {
+                                        const finalRequest = {
+                                            ...dirtyUpdated,
+                                            id: dirtyUpdated.id || `req-${Date.now()}-healed`
+                                        };
+                                        return { ...st, config: { ...st.config, request: finalRequest } };
+                                    }
+                                    return st;
+                                })
+                            };
+                        }
+                        return { ...s, testCases: updatedCases };
+                    });
+
+                    if (caseUpdated) {
+                        const updatedProject = { ...p, testSuites: updatedSuites, dirty: true };
+                        setTimeout(() => saveProject(updatedProject), 0);
+                        return updatedProject;
+                    }
+                }
+
+                // 2. Normal Request Modification
+                const updatedProject = {
+                    ...p,
+                    dirty: true,
+                    interfaces: p.interfaces.map(i => {
+                        if (i.name !== selectedInterface?.name) return i;
+                        return {
+                            ...i,
+                            operations: i.operations.map(o => {
+                                if (o.name !== selectedOperation?.name) return o;
+                                return {
+                                    ...o,
+                                    requests: o.requests.map(r => r.name === selectedRequest?.name ? dirtyUpdated : r)
+                                };
+                            })
+                        };
+                    })
+                };
+                setTimeout(() => saveProject(updatedProject), 0);
+                return updatedProject;
+            }));
+        } else {
+            setExploredInterfaces(prev => prev.map(i => {
+                if (i.name !== selectedInterface?.name) return i;
+                return {
+                    ...i,
+                    operations: i.operations.map(o => {
+                        if (o.name !== selectedOperation?.name) return o;
+                        return {
+                            ...o,
+                            requests: o.requests.map(r => r.name === selectedRequest?.name ? dirtyUpdated : r)
+                        };
+                    })
+                };
+            }));
+        }
+    }, [selectedProjectName, selectedTestCase, selectedRequest, selectedInterface, selectedOperation, setSelectedRequest, setWorkspaceDirty, setProjects, setExploredInterfaces, saveProject]);
+
+    const handleResetRequest = useCallback(() => {
+        if (selectedRequest && selectedOperation) {
+            const xml = getInitialXml(selectedOperation.input);
+            const updated = { ...selectedRequest, request: xml };
+            handleRequestUpdate(updated);
+        }
+    }, [selectedRequest, selectedOperation, handleRequestUpdate]);
+
+    return {
+        executeRequest,
+        cancelRequest,
+        handleRequestUpdate,
+        handleResetRequest,
+        startTimeRef,
+    };
+}
+
+// Utility function (also used by App.tsx)
+export function getInitialXml(input: any): string {
+    if (!input) return '';
+    if (typeof input === 'string') return input;
+    if (input.body && typeof input.body === 'string') return input.body;
+    try {
+        return JSON.stringify(input, null, 2);
+    } catch {
+        return '';
+    }
+}

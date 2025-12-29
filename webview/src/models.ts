@@ -223,5 +223,10 @@ export interface DirtySoapConfig {
     recentWorkspaces?: string[];
     /** Auto-replace rules for proxy view */
     replaceRules?: ReplaceRule[];
+    /** Azure DevOps integration settings */
+    azureDevOps?: {
+        orgUrl?: string;
+        project?: string;
+    };
 }
 
