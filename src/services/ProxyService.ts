@@ -251,9 +251,11 @@ export class ProxyService extends EventEmitter {
                 let responseData = typeof response.data === 'object' ? JSON.stringify(response.data) : String(response.data);
                 if (this.replaceRules.length > 0) {
                     const originalData = responseData;
+                    const applicableRules = this.replaceRules.filter(r => r.enabled && (r.target === 'response' || r.target === 'both'));
                     responseData = ReplaceRuleApplier.apply(responseData, this.replaceRules, 'response');
                     if (responseData !== originalData) {
-                        this.logDebug(`[Proxy] Applied ${this.replaceRules.filter(r => r.enabled && (r.target === 'response' || r.target === 'both')).length} replace rules to response`);
+                        const ruleNames = applicableRules.map(r => r.name || r.id).join(', ');
+                        this.logDebug(`[Proxy] ✓ Applied replace rules: ${ruleNames}`);
                         // Update event for logging to show modified response
                         event.responseBody = responseData;
                     }
