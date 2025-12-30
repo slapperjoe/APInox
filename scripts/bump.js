@@ -14,8 +14,18 @@ if (!['major', 'minor', 'patch'].includes(type)) {
 
 try {
     console.log(`Bumping version (${type})...`);
-    // 1. Bump Version
+    // 1. Bump Version (root package.json)
     execSync(`npm version ${type} --no-git-tag-version`, { stdio: 'inherit' });
+
+    // 2. Sync webview/package.json version
+    const rootPackageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf8'));
+    const newVersion = rootPackageJson.version;
+
+    const webviewPackagePath = path.join(__dirname, '../webview/package.json');
+    const webviewPackageJson = JSON.parse(fs.readFileSync(webviewPackagePath, 'utf8'));
+    webviewPackageJson.version = newVersion;
+    fs.writeFileSync(webviewPackagePath, JSON.stringify(webviewPackageJson, null, 4) + '\n');
+    console.log(`Synced webview/package.json to v${newVersion}`);
 
     // 2. Update Changelog
     console.log('Updating Changelog...');
@@ -32,9 +42,7 @@ try {
     console.log('Staging all changes...');
     execSync('git add .', { stdio: 'inherit' });
 
-    // 4. Git Commit
-    const packageJson = require('../package.json');
-    const newVersion = packageJson.version;
+    // 4. Git Commit (use newVersion from step 2)
     const commitMsg = message ? `v${newVersion}: ${message}` : `Bump version ${newVersion}`;
 
     console.log(`Committing: ${commitMsg}`);

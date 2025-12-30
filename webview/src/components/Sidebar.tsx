@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Settings, HelpCircle, Eye, Globe, Compass, FolderOpen as FolderIcon } from 'lucide-react';
-import { SoapUIInterface, SoapUIOperation, SoapUIRequest, SoapUIProject, WatcherEvent, SidebarView } from '../models';
+import { SidebarView } from '../models';
 
 // Components
 import { ProjectList } from './sidebar/ProjectList';
@@ -9,135 +9,83 @@ import { WsdlExplorer } from './sidebar/WsdlExplorer';
 import { WatcherPanel } from './sidebar/WatcherPanel';
 import { ProxyUi } from './sidebar/ProxyUi';
 
+// Prop Groups
+import {
+    SidebarProjectProps,
+    SidebarExplorerProps,
+    SidebarWsdlProps,
+    SidebarSelectionProps,
+    SidebarTestRunnerProps,
+    SidebarWatcherProps,
+    SidebarProxyProps
+} from '../types/props';
+
 interface SidebarProps {
-    savedProjects: Set<string>;
-    explorerExpanded: boolean;
-    toggleExplorerExpand: () => void;
-    exploredInterfaces: SoapUIInterface[];
-    projects: SoapUIProject[];
-    inputType: 'url' | 'file';
-    setInputType: (type: 'url' | 'file') => void;
-    wsdlUrl: string;
-    setWsdlUrl: (url: string) => void;
-    selectedFile: string | null;
-    loadWsdl: () => void;
-    pickLocalWsdl: () => void;
-    downloadStatus: string[] | null;
-
-    // Actions
-    addToProject: (iface: SoapUIInterface) => void;
-    addAllToProject: () => void;
-    clearExplorer: () => void;
-    removeFromExplorer: (iface: SoapUIInterface) => void;
-
-    toggleProjectExpand: (name: string) => void;
-    toggleInterfaceExpand: (projName: string, ifaceName: string) => void;
-    toggleOperationExpand: (projName: string, ifaceName: string, opName: string) => void;
-    toggleExploredInterface: (iName: string) => void;
-    toggleExploredOperation: (iName: string, oName: string) => void;
-
-    loadProject: () => void;
-    saveProject: (proj: SoapUIProject) => void;
-    closeProject: (name: string) => void;
-    onAddProject: () => void;
-
-    // Selection State
-    selectedProjectName: string | null;
-    setSelectedProjectName: (name: string | null) => void;
-    selectedInterface: SoapUIInterface | null;
-    setSelectedInterface: (iface: SoapUIInterface | null) => void;
-    selectedOperation: SoapUIOperation | null;
-    setSelectedOperation: (op: SoapUIOperation | null) => void;
-    selectedRequest: SoapUIRequest | null;
-    setSelectedRequest: (req: SoapUIRequest | null) => void;
-    setResponse: (res: any) => void;
-
-    handleContextMenu: (e: React.MouseEvent, type: string, data: any, isExplorer?: boolean) => void;
-    onAddRequest?: (op: SoapUIOperation) => void;
-    onDeleteRequest?: (req: SoapUIRequest) => void;
-    deleteConfirm: string | null;
-    setDeleteConfirm: (id: string | null) => void;
-    backendConnected: boolean;
-
-    // Settings
-    onOpenSettings?: () => void;
-    onOpenHelp?: () => void;
-
-    // Computed
-    workspaceDirty?: boolean;
-    showBackendStatus?: boolean;
-    onSaveUiState?: () => void;
+    projectProps: SidebarProjectProps;
+    explorerProps: SidebarExplorerProps;
+    wsdlProps: SidebarWsdlProps;
+    selectionProps: SidebarSelectionProps;
+    testRunnerProps: SidebarTestRunnerProps;
+    watcherProps: SidebarWatcherProps;
+    proxyProps: SidebarProxyProps;
 
     // View State
-    // Navigation
     activeView: SidebarView;
     onChangeView: (view: SidebarView) => void;
 
-    // Test Runner
-    onAddSuite: (projectName: string) => void;
-    onDeleteSuite: (suiteId: string) => void;
-    onRunSuite: (suiteId: string) => void;
-    onAddTestCase: (suiteId: string) => void;
-    onRunCase: (caseId: string) => void;
-    onDeleteTestCase: (caseId: string) => void;
-    onSelectSuite?: (suiteId: string) => void;
-    onSelectTestCase?: (caseId: string) => void;
-    onToggleSuiteExpand?: (suiteId: string) => void;
-    onToggleCaseExpand?: (caseId: string) => void;
+    // Global/Computed
+    backendConnected: boolean;
+    workspaceDirty?: boolean;
+    showBackendStatus?: boolean;
+    onSaveUiState?: () => void;
+    onOpenSettings?: () => void;
+    onOpenHelp?: () => void;
 
-    // Watcher
-    watcherHistory: WatcherEvent[];
-    onSelectWatcherEvent: (event: WatcherEvent) => void;
-    watcherRunning: boolean;
-    onStartWatcher: () => void;
-    onStopWatcher: () => void;
-    onClearWatcher: () => void;
-
-    // Proxy
-    proxyRunning: boolean;
-    onStartProxy: () => void;
-    onStopProxy: () => void;
-    proxyConfig: { port: number, target: string, systemProxyEnabled?: boolean };
-    onUpdateProxyConfig: (config: { port: number, target: string, systemProxyEnabled?: boolean }) => void;
-    proxyHistory: WatcherEvent[];
-    onClearProxy: () => void;
-    // Reporting
-    onSaveProxyHistory: (content: string) => void;
-    // Config Switcher
-    configPath: string | null;
-    onSelectConfigFile: () => void;
-    onInjectProxy: () => void;
-    onRestoreProxy: () => void;
-    onOpenCertificate?: () => void;
-    onDeleteInterface?: (iface: SoapUIInterface) => void;
-    onDeleteOperation?: (op: SoapUIOperation, iface: SoapUIInterface) => void;
+    // Legacy/Unused or to be cleaned up
+    savedProjects?: Set<string>; // Duplicate of projectProps.savedProjects
+    explorerExpanded?: boolean; // Duplicate
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
-    exploredInterfaces, projects,
-    inputType, setInputType, wsdlUrl, setWsdlUrl, selectedFile, loadWsdl, pickLocalWsdl, downloadStatus,
-    addToProject, addAllToProject, clearExplorer, removeFromExplorer,
-    toggleProjectExpand, toggleInterfaceExpand, toggleOperationExpand,
-    toggleExploredInterface, toggleExploredOperation,
-    loadProject, saveProject, closeProject, onAddProject,
-    onAddSuite, onDeleteSuite,
-    onRunSuite,
-    onAddTestCase, onRunCase, onDeleteTestCase,
-    onSelectSuite, onSelectTestCase,
-    setSelectedProjectName,
-    selectedInterface, setSelectedInterface,
-    selectedOperation, setSelectedOperation,
-    selectedRequest, setSelectedRequest,
-    setResponse,
-    handleContextMenu, deleteConfirm, setDeleteConfirm, backendConnected,
-    onOpenSettings, onOpenHelp, savedProjects, workspaceDirty,
-    activeView, onChangeView, watcherHistory, onSelectWatcherEvent, watcherRunning,
-    onStartWatcher, onStopWatcher, onClearWatcher,
-    proxyRunning, onStartProxy, onStopProxy, proxyConfig, onUpdateProxyConfig, proxyHistory, onClearProxy,
-    onSaveProxyHistory,
-    configPath, onSelectConfigFile, onInjectProxy, onRestoreProxy, onOpenCertificate, onAddRequest, onDeleteRequest, onDeleteInterface, onDeleteOperation,
-    onToggleSuiteExpand, onToggleCaseExpand
+    projectProps,
+    explorerProps,
+    wsdlProps,
+    selectionProps,
+    testRunnerProps,
+    watcherProps,
+    proxyProps,
+    backendConnected,
+    workspaceDirty,
+    onOpenSettings,
+    onOpenHelp,
+    activeView,
+    onChangeView
 }) => {
+    // Destructure for passing to legacy children (can be cleaned up later by moving groups down)
+    const { projects, savedProjects, loadProject, saveProject, closeProject, onAddProject, toggleProjectExpand, toggleInterfaceExpand, toggleOperationExpand } = projectProps;
+    const { exploredInterfaces, addToProject, addAllToProject, clearExplorer, removeFromExplorer, toggleExploredInterface, toggleExploredOperation } = explorerProps;
+    const { inputType, setInputType, wsdlUrl, setWsdlUrl, selectedFile, loadWsdl, pickLocalWsdl, downloadStatus } = wsdlProps;
+    const {
+        setSelectedProjectName,
+        selectedInterface, setSelectedInterface,
+        selectedOperation, setSelectedOperation,
+        selectedRequest, setSelectedRequest,
+        setResponse, handleContextMenu, onAddRequest, onDeleteRequest,
+        deleteConfirm, setDeleteConfirm
+    } = selectionProps;
+    const {
+        onAddSuite, onDeleteSuite, onRunSuite, onAddTestCase, onRunCase, onDeleteTestCase,
+        onSelectSuite, onSelectTestCase, onToggleSuiteExpand, onToggleCaseExpand
+    } = testRunnerProps;
+    const {
+        history: watcherHistory, onSelectEvent: onSelectWatcherEvent, isRunning: watcherRunning,
+        onStart: onStartWatcher, onStop: onStopWatcher, onClear: onClearWatcher
+    } = watcherProps;
+    const {
+        history: proxyHistory, isRunning: proxyRunning, config: proxyConfig,
+        onStart: onStartProxy, onStop: onStopProxy, onUpdateConfig: onUpdateProxyConfig, onClear: onClearProxy,
+        onSaveHistory: onSaveProxyHistory, configPath, onSelectConfigFile, onInject: onInjectProxy, onRestore: onRestoreProxy, onOpenCertificate
+    } = proxyProps;
 
     // Sidebar Navigation Rail Item
     const NavItem = ({ icon: Icon, active, onClick, title }: any) => (
@@ -291,8 +239,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
                         handleContextMenu={handleContextMenu}
                         onAddRequest={onAddRequest}
-                        onDeleteInterface={onDeleteInterface}
-                        onDeleteOperation={onDeleteOperation}
                         onDeleteRequest={onDeleteRequest}
                         deleteConfirm={deleteConfirm}
                         setDeleteConfirm={setDeleteConfirm}

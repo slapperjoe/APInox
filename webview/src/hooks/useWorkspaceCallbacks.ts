@@ -1,0 +1,272 @@
+/**
+ * useWorkspaceCallbacks.ts
+ * 
+ * Hook that provides callbacks for WorkspaceLayout test step operations.
+ * Extracted from App.tsx to reduce inline handler complexity.
+ */
+
+import { useCallback } from 'react';
+import { SoapUIProject, SoapTestStep, SoapTestCase, TestStepType } from '../models';
+import { bridge } from '../utils/bridge';
+
+interface UseWorkspaceCallbacksParams {
+    // Test case state
+    selectedTestCase: SoapTestCase | null;
+    selectedStep: SoapTestStep | null;
+    testExecution: Record<string, Record<string, any>>;
+    setSelectedStep: React.Dispatch<React.SetStateAction<SoapTestStep | null>>;
+    setSelectedRequest: React.Dispatch<React.SetStateAction<any>>;
+    setResponse: React.Dispatch<React.SetStateAction<any>>;
+
+    // Project state
+    setProjects: React.Dispatch<React.SetStateAction<SoapUIProject[]>>;
+    saveProject: (project: SoapUIProject) => void;
+
+    // UI State
+    layoutMode: 'vertical' | 'horizontal';
+    setLayoutMode: React.Dispatch<React.SetStateAction<'vertical' | 'horizontal'>>;
+    showLineNumbers: boolean;
+    setShowLineNumbers: React.Dispatch<React.SetStateAction<boolean>>;
+    inlineElementValues: boolean;
+    setInlineElementValues: React.Dispatch<React.SetStateAction<boolean>>;
+    hideCausalityData: boolean;
+    setHideCausalityData: React.Dispatch<React.SetStateAction<boolean>>;
+    setProxyHistory: React.Dispatch<React.SetStateAction<any[]>>;
+    setWatcherHistory: React.Dispatch<React.SetStateAction<any[]>>;
+    config: any;
+
+    // Modal state
+    setExtractorModal: React.Dispatch<React.SetStateAction<any>>;
+}
+
+interface UseWorkspaceCallbacksReturn {
+    handleSelectStep: (step: SoapTestStep | null) => void;
+    handleDeleteStep: (stepId: string) => void;
+    handleMoveStep: (stepId: string, direction: 'up' | 'down') => void;
+    handleUpdateStep: (updatedStep: SoapTestStep) => void;
+    handleBackToCase: () => void;
+    handleAddStep: (caseId: string, type: TestStepType) => void;
+    handleToggleLayout: () => void;
+    handleToggleLineNumbers: () => void;
+    handleToggleInlineElementValues: () => void;
+    handleToggleHideCausalityData: () => void;
+    handleAddExtractor: (data: { xpath: string; value: string; source: 'body' | 'header' }) => void;
+}
+
+export function useWorkspaceCallbacks({
+    selectedTestCase,
+    selectedStep,
+    testExecution,
+    setSelectedStep,
+    setSelectedRequest,
+    setResponse,
+    setProjects,
+    saveProject,
+    layoutMode,
+    setLayoutMode,
+    showLineNumbers,
+    setShowLineNumbers,
+    inlineElementValues,
+    setInlineElementValues,
+    hideCausalityData,
+    setHideCausalityData,
+    setProxyHistory,
+    setWatcherHistory,
+    config,
+    setExtractorModal
+}: UseWorkspaceCallbacksParams): UseWorkspaceCallbacksReturn {
+
+    const handleSelectStep = useCallback((step: SoapTestStep | null) => {
+        setSelectedStep(step);
+        if (step) {
+            if (step.type === 'request' && step.config.request) {
+                setSelectedRequest(step.config.request);
+                // Update Response Panel Logic
+                if (selectedTestCase) {
+                    const result = testExecution[selectedTestCase.id]?.[step.id];
+                    if (result && result.response) {
+                        setResponse({
+                            ...result.response,
+                            assertionResults: result.assertionResults
+                        });
+                    } else {
+                        setResponse(null);
+                    }
+                }
+            } else {
+                setSelectedRequest(null);
+                setResponse(null);
+            }
+        } else {
+            setSelectedRequest(null);
+            setResponse(null);
+        }
+    }, [selectedTestCase, testExecution, setSelectedStep, setSelectedRequest, setResponse]);
+
+    const handleDeleteStep = useCallback((stepId: string) => {
+        if (!selectedTestCase) return;
+        setProjects(prev => prev.map(p => {
+            const suite = p.testSuites?.find(s => s.testCases?.some(tc => tc.id === selectedTestCase.id));
+            if (!suite) return p;
+
+            const updatedSuite = {
+                ...suite,
+                testCases: suite.testCases?.map(tc => {
+                    if (tc.id !== selectedTestCase.id) return tc;
+                    return {
+                        ...tc,
+                        steps: tc.steps.filter(s => s.id !== stepId)
+                    };
+                })
+            };
+            const updatedProject = { ...p, testSuites: p.testSuites!.map(s => s.id === suite.id ? updatedSuite : s), dirty: true };
+            setTimeout(() => saveProject(updatedProject), 0);
+            return updatedProject;
+        }));
+
+        if (selectedStep?.id === stepId) {
+            setSelectedStep(null);
+            setSelectedRequest(null);
+            setResponse(null);
+        }
+    }, [selectedTestCase, selectedStep, setProjects, saveProject, setSelectedStep, setSelectedRequest, setResponse]);
+
+    const handleMoveStep = useCallback((stepId: string, direction: 'up' | 'down') => {
+        if (!selectedTestCase) return;
+        setProjects(prev => prev.map(p => {
+            const suite = p.testSuites?.find(s => s.testCases?.some(tc => tc.id === selectedTestCase.id));
+            if (!suite) return p;
+
+            const updatedSuite = {
+                ...suite,
+                testCases: suite.testCases?.map(tc => {
+                    if (tc.id !== selectedTestCase.id) return tc;
+                    const steps = [...tc.steps];
+                    const index = steps.findIndex(s => s.id === stepId);
+                    if (index === -1) return tc;
+
+                    if (direction === 'up' && index > 0) {
+                        [steps[index], steps[index - 1]] = [steps[index - 1], steps[index]];
+                    } else if (direction === 'down' && index < steps.length - 1) {
+                        [steps[index], steps[index + 1]] = [steps[index + 1], steps[index]];
+                    } else {
+                        return tc; // No change
+                    }
+
+                    return { ...tc, steps };
+                })
+            };
+            const updatedProject = { ...p, testSuites: p.testSuites!.map(s => s.id === suite.id ? updatedSuite : s), dirty: true };
+            setTimeout(() => saveProject(updatedProject), 0);
+            return updatedProject;
+        }));
+    }, [selectedTestCase, setProjects, saveProject]);
+
+    const handleUpdateStep = useCallback((updatedStep: SoapTestStep) => {
+        if (!selectedTestCase) return;
+        setProjects(prev => prev.map(p => {
+            const suite = p.testSuites?.find(s => s.testCases?.some(tc => tc.id === selectedTestCase.id));
+            if (!suite) return p;
+
+            const updatedSuite = {
+                ...suite,
+                testCases: suite.testCases?.map(tc => {
+                    if (tc.id !== selectedTestCase.id) return tc;
+                    return {
+                        ...tc,
+                        steps: tc.steps.map(s => s.id === updatedStep.id ? updatedStep : s)
+                    };
+                })
+            };
+
+            const updatedProject = { ...p, testSuites: p.testSuites!.map(s => s.id === suite.id ? updatedSuite : s), dirty: true };
+            setTimeout(() => saveProject(updatedProject), 0);
+            return updatedProject;
+        }));
+        setSelectedStep(updatedStep);
+    }, [selectedTestCase, setProjects, saveProject, setSelectedStep]);
+
+    const handleBackToCase = useCallback(() => {
+        setSelectedRequest(null);
+        setSelectedStep(null);
+        setResponse(null);
+    }, [setSelectedRequest, setSelectedStep, setResponse]);
+
+    const handleAddStep = useCallback((caseId: string, type: TestStepType) => {
+        if (type === 'delay') {
+            setProjects(prev => prev.map(p => {
+                const suite = p.testSuites?.find(s => s.testCases?.some(tc => tc.id === caseId));
+                if (!suite) return p;
+
+                const updatedSuite = {
+                    ...suite,
+                    testCases: suite.testCases?.map(tc => {
+                        if (tc.id !== caseId) return tc;
+                        const newStep: SoapTestStep = {
+                            id: `step-${Date.now()}`,
+                            name: 'Delay',
+                            type: 'delay',
+                            config: { delayMs: 1000 }
+                        };
+                        return { ...tc, steps: [...tc.steps, newStep] };
+                    }) || []
+                };
+
+                const updatedProject = { ...p, testSuites: p.testSuites!.map(s => s.id === suite.id ? updatedSuite : s), dirty: true };
+                setTimeout(() => saveProject(updatedProject), 0);
+                return updatedProject;
+            }));
+        } else if (type === 'request') {
+            bridge.sendMessage({ command: 'pickOperationForTestCase', caseId });
+        }
+    }, [setProjects, saveProject]);
+
+    const handleToggleLayout = useCallback(() => {
+        const newMode = layoutMode === 'vertical' ? 'horizontal' : 'vertical';
+        setLayoutMode(newMode);
+        bridge.sendMessage({ command: 'saveUiState', ui: { ...config?.ui, layoutMode: newMode } });
+    }, [layoutMode, setLayoutMode, config]);
+
+    const handleToggleLineNumbers = useCallback(() => {
+        const newState = !showLineNumbers;
+        setShowLineNumbers(newState);
+        bridge.sendMessage({ command: 'saveUiState', ui: { ...config?.ui, showLineNumbers: newState } });
+    }, [showLineNumbers, setShowLineNumbers, config]);
+
+    const handleToggleInlineElementValues = useCallback(() => {
+        const newState = !inlineElementValues;
+        setInlineElementValues(newState);
+        // Invalidate formatted body cache
+        setProxyHistory(prev => prev.map(e => ({ ...e, formattedBody: undefined })));
+        setWatcherHistory(prev => prev.map(e => ({ ...e, formattedBody: undefined })));
+        bridge.sendMessage({ command: 'saveUiState', ui: { ...config?.ui, inlineElementValues: newState } });
+    }, [inlineElementValues, setInlineElementValues, setProxyHistory, setWatcherHistory, config]);
+
+    const handleToggleHideCausalityData = useCallback(() => {
+        const newState = !hideCausalityData;
+        setHideCausalityData(newState);
+        // Invalidate formatted body cache
+        setProxyHistory(prev => prev.map(e => ({ ...e, formattedBody: undefined })));
+        setWatcherHistory(prev => prev.map(e => ({ ...e, formattedBody: undefined })));
+        bridge.sendMessage({ command: 'saveUiState', ui: { ...config?.ui, hideCausalityData: newState } });
+    }, [hideCausalityData, setHideCausalityData, setProxyHistory, setWatcherHistory, config]);
+
+    const handleAddExtractor = useCallback((data: { xpath: string; value: string; source: 'body' | 'header' }) => {
+        if (!selectedStep) return;
+        setExtractorModal({ ...data, variableName: '' });
+    }, [selectedStep, setExtractorModal]);
+
+    return {
+        handleSelectStep,
+        handleDeleteStep,
+        handleMoveStep,
+        handleUpdateStep,
+        handleBackToCase,
+        handleAddStep,
+        handleToggleLayout,
+        handleToggleLineNumbers,
+        handleToggleInlineElementValues,
+        handleToggleHideCausalityData,
+        handleAddExtractor
+    };
+}
