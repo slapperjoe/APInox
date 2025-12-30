@@ -13,8 +13,7 @@ import { ExtractorModal } from './components/modals/ExtractorModal';
 import { SettingsEditorModal } from './components/modals/SettingsEditorModal';
 import { CreateReplaceRuleModal } from './components/modals/CreateReplaceRuleModal';
 import { AddToDevOpsModal } from './components/modals/AddToDevOpsModal';
-import { SoapUIInterface, SoapUIOperation, SoapUIRequest, SoapTestCase, SoapTestStep, WatcherEvent, SidebarView, ReplaceRule } from './models';
-import { formatXml } from './utils/xmlFormatter';
+import { SoapUIRequest, SoapTestCase, SoapTestStep, SidebarView, ReplaceRule } from './models';
 import { useMessageHandler } from './hooks/useMessageHandler';
 import { useProject } from './contexts/ProjectContext';
 import { useSelection } from './contexts/SelectionContext';
@@ -23,7 +22,9 @@ import { useExplorer } from './hooks/useExplorer';
 import { useContextMenu } from './hooks/useContextMenu';
 import { useTestCaseHandlers } from './hooks/useTestCaseHandlers';
 import { useRequestExecution } from './hooks/useRequestExecution';
-
+import { useWatcherProxy } from './hooks/useWatcherProxy';
+import { useSidebarCallbacks } from './hooks/useSidebarCallbacks';
+import { useWorkspaceCallbacks } from './hooks/useWorkspaceCallbacks';
 
 // NOTE: DirtySoapConfigWeb interface removed - config type comes from models.ts
 
@@ -55,7 +56,9 @@ function App() {
         closeProject,
         loadProject,
         saveProject,
-        toggleProjectExpand
+        toggleProjectExpand,
+        toggleInterfaceExpand,
+        toggleOperationExpand
     } = useProject();
 
     // ==========================================================================
@@ -148,12 +151,7 @@ function App() {
     const [selectedFile, setSelectedFile] = useState<string | null>(null);
     const [downloadStatus, setDownloadStatus] = useState<string[] | null>(null);
 
-    // Watcher / Proxy State
-    const [watcherHistory, setWatcherHistory] = useState<WatcherEvent[]>([]);
-    const [watcherRunning, setWatcherRunning] = useState(false);
-    const [proxyHistory, setProxyHistory] = useState<WatcherEvent[]>([]);
-    const [proxyRunning, setProxyRunning] = useState(false);
-    const [proxyConfig, setProxyConfig] = useState({ port: 9000, target: 'http://localhost:8080', systemProxyEnabled: true });
+    // NOTE: Watcher/Proxy state now comes from useWatcherProxy hook
 
     // NOTE: startTimeRef now comes from useRequestExecution hook
 
@@ -240,11 +238,114 @@ function App() {
         saveProject
     });
 
+    // ==========================================================================
+    // WATCHER/PROXY - from useWatcherProxy hook
+    // ==========================================================================
+    const {
+        watcherHistory,
+        setWatcherHistory,
+        watcherRunning,
+        setWatcherRunning,
+        proxyHistory,
+        setProxyHistory,
+        proxyRunning,
+        setProxyRunning,
+        proxyConfig,
+        setProxyConfig,
+        handleSelectWatcherEvent
+    } = useWatcherProxy({
+        activeView,
+        inlineElementValues,
+        hideCausalityData,
+        setSelectedInterface,
+        setSelectedOperation,
+        setSelectedRequest,
+        setSelectedTestCase,
+        setResponse
+    });
+
+    // ==========================================================================
+    // SIDEBAR CALLBACKS - from useSidebarCallbacks hook
+    // ==========================================================================
+    const {
+        handleAddSuite,
+        handleDeleteSuite,
+        handleToggleSuiteExpand,
+        handleToggleCaseExpand,
+        handleAddTestCase,
+        handleDeleteTestCase,
+        handleStartWatcher,
+        handleStopWatcher,
+        handleClearWatcher,
+        handleStartProxy,
+        handleStopProxy,
+        handleUpdateProxyConfig,
+        handleClearProxy,
+        handleInjectProxy,
+        handleRestoreProxy,
+        handleSaveUiState
+    } = useSidebarCallbacks({
+        projects,
+        setProjects,
+        deleteConfirm,
+        setDeleteConfirm,
+        saveProject,
+        setWatcherRunning,
+        setWatcherHistory,
+        setProxyRunning,
+        setProxyHistory,
+        proxyConfig,
+        setProxyConfig,
+        configPath,
+        config
+    });
+
+    // Extractor Modal State (needed before useWorkspaceCallbacks)
+    const [extractorModal, setExtractorModal] = React.useState<{ xpath: string, value: string, source: 'body' | 'header', variableName: string } | null>(null);
+
+    // ==========================================================================
+    // WORKSPACE CALLBACKS - from useWorkspaceCallbacks hook
+    // ==========================================================================
+    const {
+        handleSelectStep,
+        handleDeleteStep,
+        handleMoveStep,
+        handleUpdateStep,
+        handleBackToCase,
+        handleAddStep,
+        handleToggleLayout,
+        handleToggleLineNumbers,
+        handleToggleInlineElementValues,
+        handleToggleHideCausalityData,
+        handleAddExtractor
+    } = useWorkspaceCallbacks({
+        selectedTestCase,
+        selectedStep,
+        testExecution,
+        setSelectedStep,
+        setSelectedRequest,
+        setResponse,
+        setProjects,
+        saveProject,
+        layoutMode,
+        setLayoutMode,
+        showLineNumbers,
+        setShowLineNumbers,
+        inlineElementValues,
+        setInlineElementValues,
+        hideCausalityData,
+        setHideCausalityData,
+        setProxyHistory,
+        setWatcherHistory,
+        config,
+        setExtractorModal
+    });
+
     // Modals (remaining)
     const [confirmationModal, setConfirmationModal] = useState<ConfirmationState | null>(null);
     const [addToTestCaseModal, setAddToTestCaseModal] = React.useState<{ open: boolean, request: SoapUIRequest | null }>({ open: false, request: null });
     const [sampleModal, setSampleModal] = React.useState<{ open: boolean, schema: any | null, operationName: string }>({ open: false, schema: null, operationName: '' });
-    const [extractorModal, setExtractorModal] = React.useState<{ xpath: string, value: string, source: 'body' | 'header', variableName: string } | null>(null);
+    // NOTE: extractorModal moved above useWorkspaceCallbacks
     const [replaceRuleModal, setReplaceRuleModal] = React.useState<{ open: boolean, xpath: string, matchText: string, target: 'request' | 'response' }>({ open: false, xpath: '', matchText: '', target: 'response' });
 
     // Workspace State
@@ -438,26 +539,7 @@ function App() {
         closeProject(name);
     };
 
-    // Expand Toggles (project-level - not in useExplorer)
-    // NOTE: toggleProjectExpand now comes from ProjectContext
-    const toggleInterfaceExpand = (pName: string, iName: string) => {
-        setProjects(prev => prev.map(p => {
-            if (p.name !== pName) return p;
-            return { ...p, interfaces: p.interfaces.map(i => i.name === iName ? { ...i, expanded: !i.expanded } : i) };
-        }));
-    };
-    const toggleOperationExpand = (pName: string, iName: string, oName: string) => {
-        setProjects(prev => prev.map(p => {
-            if (p.name !== pName) return p;
-            return {
-                ...p,
-                interfaces: p.interfaces.map(i => {
-                    if (i.name !== iName) return i;
-                    return { ...i, operations: i.operations.map(o => o.name === oName ? { ...o, expanded: !o.expanded } : o) };
-                })
-            };
-        }));
-    };
+    // NOTE: toggleProjectExpand, toggleInterfaceExpand, toggleOperationExpand now come from ProjectContext
 
     // NOTE: handleContextMenu, closeContextMenu, handleRename, handleDeleteRequest,
     // handleCloneRequest, handleAddRequest, handleDeleteInterface, handleDeleteOperation,
@@ -465,515 +547,167 @@ function App() {
 
     // NOTE: handleGenerateTestSuite now comes from useTestCaseHandlers hook
 
-    const handleSelectWatcherEvent = (event: WatcherEvent) => {
-        let requestBody = event.formattedBody;
-        if (requestBody === undefined) {
-            const raw = event.requestContent || event.requestBody || '';
-            requestBody = formatXml(raw, true, inlineElementValues, hideCausalityData);
-
-            // Cache the formatted body so it doesn't re-format on next click
-            if (activeView === SidebarView.PROXY) {
-                setProxyHistory(prev => prev.map(e => e.id === event.id ? { ...e, formattedBody: requestBody } : e));
-            } else {
-                setWatcherHistory(prev => prev.map(e => e.id === event.id ? { ...e, formattedBody: requestBody } : e));
-            }
-        }
-
-        const tempRequest: SoapUIRequest = {
-            id: event.id,
-            name: `Logged: ${event.timestampLabel}`,
-            request: requestBody,
-            dirty: false,
-            headers: event.requestHeaders || {},
-            endpoint: event.url || '',
-            method: event.method || 'POST'
-        };
-
-        const tempOp: SoapUIOperation = {
-            name: 'External Request',
-            input: '',
-            requests: [tempRequest],
-            action: 'WatcherAction'
-        };
-
-        const tempIface: SoapUIInterface = {
-            name: 'File Watcher',
-            type: 'wsdl',
-            soapVersion: '1.1',
-            definition: '',
-            operations: [tempOp],
-            bindingName: 'WatcherBinding'
-        };
-
-        setSelectedInterface(tempIface);
-        setSelectedOperation(tempOp);
-        setSelectedInterface(tempIface);
-        setSelectedOperation(tempOp);
-        setSelectedRequest(tempRequest);
-        setSelectedTestCase(null); // Ensure we exit test case context
-
-        const responseContent = event.responseContent || event.responseBody;
-        if (responseContent) {
-            setResponse({
-                rawResponse: responseContent,
-                duration: event.duration || 0,
-                lineCount: responseContent.split(/\r\n|\r|\n/).length,
-                success: event.success,
-                headers: event.responseHeaders
-            });
-        } else {
-            setResponse(null);
-        }
-    };
+    // NOTE: handleSelectWatcherEvent now comes from useWatcherProxy hook
 
     // NOTE: handleRunTestCaseWrapper, handleRunTestSuiteWrapper, handleSaveExtractor
     // now come from useTestCaseHandlers hook
 
     return (
         <Container onClick={closeContextMenu}>
+            {/* Sidebar with consolidated props */}
             <Sidebar
-                explorerExpanded={explorerExpanded}
-                toggleExplorerExpand={toggleExplorerExpand}
-                exploredInterfaces={exploredInterfaces}
-                projects={projects}
-                inputType={inputType}
-                setInputType={setInputType}
-                wsdlUrl={wsdlUrl}
-                setWsdlUrl={setWsdlUrl}
-                selectedFile={selectedFile}
-                loadWsdl={loadWsdl}
-                pickLocalWsdl={pickLocalWsdl}
-                downloadStatus={downloadStatus}
-                addToProject={addToProject}
-                addAllToProject={addAllToProject}
-                clearExplorer={clearExplorer}
-                removeFromExplorer={removeFromExplorer}
-                toggleProjectExpand={toggleProjectExpand}
-                toggleInterfaceExpand={toggleInterfaceExpand}
-                toggleOperationExpand={toggleOperationExpand}
-                toggleExploredInterface={toggleExploredInterface}
-                toggleExploredOperation={toggleExploredOperation}
-                loadProject={() => loadProject()}
-                saveProject={saveProject}
-                closeProject={handleCloseProject}
-                onAddProject={addProject}
-                selectedProjectName={selectedProjectName}
-                setSelectedProjectName={setSelectedProjectName}
-                selectedInterface={selectedInterface}
-                setSelectedInterface={setSelectedInterface}
-                selectedOperation={selectedOperation}
-                setSelectedOperation={setSelectedOperation}
-                selectedRequest={selectedRequest}
-                setSelectedRequest={(req) => {
-                    setSelectedRequest(req);
-                    setSelectedTestCase(null);
+                projectProps={{
+                    projects,
+                    savedProjects,
+                    loadProject: () => loadProject(),
+                    saveProject,
+                    closeProject: handleCloseProject,
+                    onAddProject: addProject,
+                    toggleProjectExpand,
+                    toggleInterfaceExpand,
+                    toggleOperationExpand,
+                    onDeleteInterface: handleDeleteInterface,
+                    onDeleteOperation: handleDeleteOperation
                 }}
-                setResponse={setResponse}
-                handleContextMenu={handleContextMenu}
-                onDeleteInterface={handleDeleteInterface}
-                onDeleteOperation={handleDeleteOperation}
-                deleteConfirm={deleteConfirm}
-                setDeleteConfirm={setDeleteConfirm}
-                backendConnected={backendConnected}
-                savedProjects={savedProjects}
-                onOpenSettings={() => setShowSettings(true)}
-                onOpenHelp={() => setShowHelp(true)}
-                workspaceDirty={workspaceDirty}
-                showBackendStatus={!isVsCode()}
+                explorerProps={{
+                    exploredInterfaces,
+                    explorerExpanded,
+                    toggleExplorerExpand,
+                    addToProject,
+                    addAllToProject,
+                    clearExplorer,
+                    removeFromExplorer,
+                    toggleExploredInterface,
+                    toggleExploredOperation
+                }}
+                wsdlProps={{
+                    inputType,
+                    setInputType,
+                    wsdlUrl,
+                    setWsdlUrl,
+                    selectedFile,
+                    loadWsdl,
+                    pickLocalWsdl,
+                    downloadStatus
+                }}
+                selectionProps={{
+                    selectedProjectName,
+                    setSelectedProjectName,
+                    selectedInterface,
+                    setSelectedInterface,
+                    selectedOperation,
+                    setSelectedOperation,
+                    selectedRequest,
+                    setSelectedRequest: (req) => {
+                        setSelectedRequest(req);
+                        setSelectedTestCase(null);
+                    },
+                    setResponse,
+                    handleContextMenu,
+                    onAddRequest: handleAddRequest,
+                    onDeleteRequest: handleDeleteRequest,
+                    deleteConfirm,
+                    setDeleteConfirm
+                }}
+                testRunnerProps={{
+                    onAddSuite: handleAddSuite,
+                    onDeleteSuite: handleDeleteSuite,
+                    onRunSuite: handleRunTestSuiteWrapper,
+                    onAddTestCase: handleAddTestCase,
+                    onRunCase: handleRunTestCaseWrapper,
+                    onDeleteTestCase: handleDeleteTestCase,
+                    onSelectSuite: handleSelectTestSuite,
+                    onSelectTestCase: handleSelectTestCase,
+                    onToggleSuiteExpand: handleToggleSuiteExpand,
+                    onToggleCaseExpand: handleToggleCaseExpand
+                }}
+                watcherProps={{
+                    history: watcherHistory,
+                    onSelectEvent: handleSelectWatcherEvent,
+                    isRunning: watcherRunning,
+                    onStart: handleStartWatcher,
+                    onStop: handleStopWatcher,
+                    onClear: handleClearWatcher
+                }}
+                proxyProps={{
+                    isRunning: proxyRunning,
+                    onStart: handleStartProxy,
+                    onStop: handleStopProxy,
+                    config: proxyConfig,
+                    onUpdateConfig: handleUpdateProxyConfig,
+                    history: proxyHistory,
+                    onClear: handleClearProxy,
+                    configPath,
+                    onSelectConfigFile: () => bridge.sendMessage({ command: 'selectConfigFile' }),
+                    onOpenCertificate: () => bridge.sendMessage({ command: 'installCertificate' }),
+                    onSaveHistory: (content) => bridge.sendMessage({ command: 'saveProxyHistory', content }),
+                    onInject: handleInjectProxy,
+                    onRestore: handleRestoreProxy
+                }}
                 activeView={activeView}
                 onChangeView={setActiveView}
-                onAddSuite={(projName) => {
-                    const project = projects.find(p => p.name === projName);
-                    if (project) {
-                        const newSuite = {
-                            id: `suite-${Date.now()}`,
-                            name: `TestSuite ${((project.testSuites || []).length + 1)}`,
-                            testCases: [],
-                            expanded: true
-                        };
-                        const updatedProject = {
-                            ...project,
-                            testSuites: [...(project.testSuites || []), newSuite],
-                            dirty: true
-                        };
-
-                        // Update State
-                        setProjects(projects.map(p => p.name === projName ? updatedProject : p));
-
-                        // Save
-                        saveProject(updatedProject);
-                    }
-                }}
-                onRunSuite={handleRunTestSuiteWrapper}
-                onDeleteSuite={(suiteId) => {
-                    if (deleteConfirm === suiteId) {
-                        setProjects(prev => prev.map(p => {
-                            if (!p.testSuites || !p.testSuites.some(s => s.id === suiteId)) return p;
-
-                            const remaining = p.testSuites.filter(s => s.id !== suiteId);
-                            const updated = { ...p, testSuites: remaining, dirty: true };
-
-                            setTimeout(() => saveProject(updated), 0);
-                            return updated;
-                        }));
-                        setDeleteConfirm(null);
-                    } else {
-                        setDeleteConfirm(suiteId);
-                        setTimeout(() => setDeleteConfirm(null), 2000);
-                    }
-                }}
-                onSelectSuite={handleSelectTestSuite}
-                onSelectTestCase={handleSelectTestCase}
-                onToggleSuiteExpand={(suiteId) => {
-                    setProjects(prev => prev.map(p => {
-                        if (!p.testSuites?.some(s => s.id === suiteId)) return p;
-
-                        const updatedSuites = p.testSuites.map(s => {
-                            if (s.id !== suiteId) return s;
-                            return { ...s, expanded: s.expanded === false ? true : false };
-                        });
-
-                        const updatedProject = { ...p, testSuites: updatedSuites, dirty: true };
-                        setTimeout(() => saveProject(updatedProject), 0);
-                        return updatedProject;
-                    }));
-                }}
-                onToggleCaseExpand={(caseId) => {
-                    setProjects(prev => prev.map(p => {
-                        const suite = p.testSuites?.find(s => s.testCases?.some(tc => tc.id === caseId));
-                        if (!suite) return p;
-
-                        const updatedSuite = {
-                            ...suite,
-                            testCases: suite.testCases?.map(tc => {
-                                if (tc.id !== caseId) return tc;
-                                return { ...tc, expanded: tc.expanded === false ? true : false };
-                            })
-                        };
-
-                        const updatedProject = {
-                            ...p,
-                            testSuites: p.testSuites!.map(s => s.id === suite.id ? updatedSuite : s),
-                            dirty: true
-                        };
-                        setTimeout(() => saveProject(updatedProject), 0);
-                        return updatedProject;
-                    }));
-                }}
-                onAddTestCase={(suiteId) => {
-                    setProjects(prev => prev.map(p => {
-                        const suite = p.testSuites?.find(s => s.id === suiteId);
-                        if (!suite) return p;
-
-                        const newCase: SoapTestCase = {
-                            id: `tc-${Date.now()}`,
-                            name: `TestCase ${(suite.testCases?.length || 0) + 1}`,
-                            expanded: true,
-                            steps: []
-                        };
-                        const updatedSuite = { ...suite, testCases: [...(suite.testCases || []), newCase] };
-                        const updatedProject = {
-                            ...p,
-                            testSuites: p.testSuites!.map(s => s.id === suiteId ? updatedSuite : s),
-                            dirty: true
-                        };
-
-                        setTimeout(() => saveProject(updatedProject), 0);
-                        return updatedProject;
-                    }));
-                }}
-                onRunCase={handleRunTestCaseWrapper}
-                onDeleteTestCase={(caseId) => {
-                    if (deleteConfirm === caseId) {
-                        setProjects(prev => prev.map(p => {
-                            const suite = p.testSuites?.find(s => s.testCases?.some(tc => tc.id === caseId));
-                            if (!suite) return p;
-
-                            const updatedSuite = { ...suite, testCases: suite.testCases?.filter(tc => tc.id !== caseId) || [] };
-                            const updatedProject = {
-                                ...p,
-                                testSuites: p.testSuites!.map(s => s.id === suite.id ? updatedSuite : s),
-                                dirty: true
-                            };
-
-                            setTimeout(() => saveProject(updatedProject), 0);
-                            return updatedProject;
-                        }));
-                        setDeleteConfirm(null);
-                    } else {
-                        setDeleteConfirm(caseId);
-                        setTimeout(() => setDeleteConfirm(null), 2000);
-                    }
-                }}
-
-                watcherHistory={watcherHistory}
-                onSelectWatcherEvent={handleSelectWatcherEvent}
-                watcherRunning={watcherRunning}
-                onStartWatcher={() => {
-                    setWatcherRunning(true);
-                    bridge.sendMessage({ command: 'startWatcher' });
-                }}
-                onStopWatcher={() => {
-                    setWatcherRunning(false);
-                    bridge.sendMessage({ command: 'stopWatcher' });
-                }}
-                onClearWatcher={() => {
-                    setWatcherHistory([]);
-                    bridge.sendMessage({ command: 'clearWatcherHistory' });
-                }}
-
-                proxyRunning={proxyRunning}
-                onStartProxy={() => {
-                    bridge.sendMessage({ command: 'startProxy' });
-                    // Optimistic update
-                    setProxyRunning(true);
-                }}
-                onStopProxy={() => {
-                    bridge.sendMessage({ command: 'stopProxy' });
-                    setProxyRunning(false);
-                }}
-                proxyConfig={proxyConfig}
-                onUpdateProxyConfig={(config) => {
-                    const newConfig = { ...config, systemProxyEnabled: config.systemProxyEnabled ?? true };
-                    setProxyConfig(newConfig);
-                    bridge.sendMessage({ command: 'updateProxyConfig', config: newConfig });
-                }}
-                proxyHistory={proxyHistory}
-                onClearProxy={() => setProxyHistory([])}
-                configPath={configPath}
-                onSelectConfigFile={() => bridge.sendMessage({ command: 'selectConfigFile' })}
-                onOpenCertificate={() => bridge.sendMessage({ command: 'installCertificate' })}
-                onSaveProxyHistory={(content) => bridge.sendMessage({ command: 'saveProxyHistory', content })}
-                onInjectProxy={() => {
-                    if (configPath) {
-                        const proxyUrl = `http://localhost:${proxyConfig.port}`;
-                        bridge.sendMessage({ command: 'injectProxy', path: configPath, proxyUrl });
-                    }
-                }}
-                onRestoreProxy={() => {
-                    if (configPath) {
-                        bridge.sendMessage({ command: 'restoreProxy', path: configPath });
-                    }
-                }}
-                onSaveUiState={() => {
-                    if (config) {
-                        bridge.sendMessage({ command: 'saveUiState', ui: config.ui });
-                    }
-                }}
-                onAddRequest={handleAddRequest}
-                onDeleteRequest={handleDeleteRequest}
+                backendConnected={backendConnected}
+                workspaceDirty={workspaceDirty}
+                showBackendStatus={!isVsCode()}
+                onOpenSettings={() => setShowSettings(true)}
+                onOpenHelp={() => setShowHelp(true)}
+                onSaveUiState={handleSaveUiState}
             />
 
+            {/* WorkspaceLayout with consolidated props */}
             <WorkspaceLayout
-                selectedRequest={selectedRequest}
-                selectedOperation={selectedOperation}
-                selectedTestCase={selectedTestCase}
-                onRunTestCase={handleRunTestCaseWrapper}
-                onOpenStepRequest={(req) => {
-                    // Legacy Support / Deep Linking? 
-                    // This is triggered by clicking a Request Step in the list IF onSelectStep is not passed.
-                    // But we will pass onSelectStep now.
-                    // However, we still need this logic if invoked elsewise?
-                    // Let's keep the logic inside the new handler or keep this for now.
-                    setSelectedRequest(req);
-                    // ... (rest of logic) ...
+                selectionState={{
+                    request: selectedRequest,
+                    operation: selectedOperation,
+                    testCase: selectedTestCase,
+                    testStep: selectedStep
                 }}
-                onSelectStep={(step) => {
-                    setSelectedStep(step);
-                    if (step) {
-                        if (step.type === 'request' && step.config.request) {
-                            setSelectedRequest(step.config.request);
-                            // Update Response Panel Logic
-                            if (selectedTestCase) {
-                                const result = testExecution[selectedTestCase.id]?.[step.id];
-                                if (result && result.response) {
-                                    setResponse({
-                                        ...result.response,
-                                        assertionResults: result.assertionResults
-                                    });
-                                } else {
-                                    setResponse(null);
-                                }
-                            }
-                        } else {
-                            setSelectedRequest(null);
-                            setResponse(null);
-                        }
-                    } else {
-                        setSelectedRequest(null);
-                        setResponse(null);
-                    }
+                requestActions={{
+                    onExecute: executeRequest,
+                    onCancel: cancelRequest,
+                    onUpdate: handleRequestUpdate,
+                    onReset: handleResetRequest,
+                    response,
+                    loading
                 }}
-                onDeleteStep={(stepId) => {
-                    if (!selectedTestCase) return;
-                    setProjects(prev => prev.map(p => {
-                        const suite = p.testSuites?.find(s => s.testCases?.some(tc => tc.id === selectedTestCase.id));
-                        if (!suite) return p;
-
-                        const updatedSuite = {
-                            ...suite,
-                            testCases: suite.testCases?.map(tc => {
-                                if (tc.id !== selectedTestCase.id) return tc;
-                                return {
-                                    ...tc,
-                                    steps: tc.steps.filter(s => s.id !== stepId)
-                                };
-                            })
-                        };
-                        const updatedProject = { ...p, testSuites: p.testSuites!.map(s => s.id === suite.id ? updatedSuite : s), dirty: true };
-                        setTimeout(() => saveProject(updatedProject), 0);
-                        return updatedProject;
-                    }));
-
-                    if (selectedStep?.id === stepId) {
-                        setSelectedStep(null);
-                        setSelectedRequest(null);
-                        setResponse(null);
-                    }
+                viewState={{
+                    layoutMode,
+                    showLineNumbers,
+                    splitRatio,
+                    isResizing,
+                    onToggleLayout: handleToggleLayout,
+                    onToggleLineNumbers: handleToggleLineNumbers,
+                    onStartResizing: startResizing,
+                    inlineElementValues,
+                    onToggleInlineElementValues: handleToggleInlineElementValues,
+                    hideCausalityData,
+                    onToggleHideCausalityData: handleToggleHideCausalityData
                 }}
-                onMoveStep={(stepId, direction) => {
-                    if (!selectedTestCase) return;
-                    setProjects(prev => prev.map(p => {
-                        const suite = p.testSuites?.find(s => s.testCases?.some(tc => tc.id === selectedTestCase.id));
-                        if (!suite) return p;
-
-                        const updatedSuite = {
-                            ...suite,
-                            testCases: suite.testCases?.map(tc => {
-                                if (tc.id !== selectedTestCase.id) return tc;
-                                const steps = [...tc.steps];
-                                const index = steps.findIndex(s => s.id === stepId);
-                                if (index === -1) return tc;
-
-                                if (direction === 'up' && index > 0) {
-                                    [steps[index], steps[index - 1]] = [steps[index - 1], steps[index]];
-                                } else if (direction === 'down' && index < steps.length - 1) {
-                                    [steps[index], steps[index + 1]] = [steps[index + 1], steps[index]];
-                                } else {
-                                    return tc; // No change
-                                }
-
-                                return { ...tc, steps };
-                            })
-                        };
-                        const updatedProject = { ...p, testSuites: p.testSuites!.map(s => s.id === suite.id ? updatedSuite : s), dirty: true };
-                        setTimeout(() => saveProject(updatedProject), 0);
-                        return updatedProject;
-                    }));
+                configState={{
+                    config,
+                    defaultEndpoint: selectedInterface?.definition || wsdlUrl,
+                    changelog,
+                    onChangeEnvironment: (env) => bridge.sendMessage({ command: 'updateActiveEnvironment', envName: env }),
+                    isReadOnly: activeView === SidebarView.WATCHER || activeView === SidebarView.PROXY
                 }}
-                onAddExtractor={(data) => {
-                    if (!selectedStep) return;
-                    setExtractorModal({ ...data, variableName: '' });
+                stepActions={{
+                    onRunTestCase: handleRunTestCaseWrapper,
+                    onOpenStepRequest: (req) => setSelectedRequest(req),
+                    onBackToCase: handleBackToCase,
+                    onAddStep: handleAddStep,
+                    testExecution,
+                    onUpdateStep: handleUpdateStep,
+                    onSelectStep: handleSelectStep,
+                    onDeleteStep: handleDeleteStep,
+                    onMoveStep: handleMoveStep
                 }}
-                onAddAssertion={handleAddAssertion}
-                onAddExistenceAssertion={handleAddExistenceAssertion}
-                onAddReplaceRule={(data) => setReplaceRuleModal({ open: true, ...data })}
-                onUpdateStep={(updatedStep) => {
-                    if (!selectedTestCase) return;
-                    setProjects(prev => prev.map(p => {
-                        const suite = p.testSuites?.find(s => s.testCases?.some(tc => tc.id === selectedTestCase.id));
-                        if (!suite) return p; // Should be rare
-
-                        const updatedSuite = {
-                            ...suite,
-                            testCases: suite.testCases?.map(tc => {
-                                if (tc.id !== selectedTestCase.id) return tc;
-                                return {
-                                    ...tc,
-                                    steps: tc.steps.map(s => s.id === updatedStep.id ? updatedStep : s)
-                                };
-                            })
-                        };
-
-                        const updatedProject = { ...p, testSuites: p.testSuites!.map(s => s.id === suite.id ? updatedSuite : s), dirty: true };
-                        // Debounce save? User requested less notifications.
-                        // We will address the notification suppression in the backend, but we should debounce the save here too if typing.
-                        // For now, direct save.
-                        setTimeout(() => saveProject(updatedProject), 0);
-                        return updatedProject;
-                    }));
-                    setSelectedStep(updatedStep);
+                toolsActions={{
+                    onAddExtractor: handleAddExtractor,
+                    onAddAssertion: handleAddAssertion,
+                    onAddExistenceAssertion: handleAddExistenceAssertion,
+                    onAddReplaceRule: (data) => setReplaceRuleModal({ open: true, ...data }),
+                    onOpenDevOps: () => setShowDevOpsModal(true)
                 }}
-                onBackToCase={() => {
-                    setSelectedRequest(null);
-                    setSelectedStep(null);
-                    setResponse(null); // Clear response when going back so we don't show stale data
-                }}
-                selectedStep={selectedStep}
-                onAddStep={(caseId, type) => {
-                    if (type === 'delay') {
-                        setProjects(prev => prev.map(p => {
-                            const suite = p.testSuites?.find(s => s.testCases?.some(tc => tc.id === caseId));
-                            if (!suite) return p;
-
-                            const updatedSuite = {
-                                ...suite,
-                                testCases: suite.testCases?.map(tc => {
-                                    if (tc.id !== caseId) return tc;
-                                    const newStep: SoapTestStep = {
-                                        id: `step-${Date.now()}`,
-                                        name: 'Delay',
-                                        type: 'delay',
-                                        config: { delayMs: 1000 }
-                                    };
-                                    return { ...tc, steps: [...tc.steps, newStep] };
-                                }) || []
-                            };
-
-                            const updatedProject = { ...p, testSuites: p.testSuites!.map(s => s.id === suite.id ? updatedSuite : s), dirty: true };
-                            setTimeout(() => saveProject(updatedProject), 0);
-                            return updatedProject;
-                        }));
-                    } else if (type === 'request') {
-                        bridge.sendMessage({ command: 'pickOperationForTestCase', caseId });
-                    }
-                }}
-                testExecution={testExecution}
-                response={response}
-                loading={loading}
-                layoutMode={layoutMode}
-                showLineNumbers={showLineNumbers}
-                splitRatio={splitRatio}
-                isResizing={isResizing}
-                onExecute={executeRequest}
-                onCancel={cancelRequest}
-                onUpdateRequest={handleRequestUpdate}
-                onReset={handleResetRequest}
-                defaultEndpoint={selectedInterface?.definition || wsdlUrl}
-                onToggleLayout={() => {
-                    const newMode = layoutMode === 'vertical' ? 'horizontal' : 'vertical';
-                    setLayoutMode(newMode);
-                    bridge.sendMessage({ command: 'saveUiState', ui: { ...config?.ui, layoutMode: newMode } });
-                }}
-                onToggleLineNumbers={() => {
-                    const newState = !showLineNumbers;
-                    setShowLineNumbers(newState);
-                    bridge.sendMessage({ command: 'saveUiState', ui: { ...config?.ui, showLineNumbers: newState } });
-                }}
-                inlineElementValues={inlineElementValues}
-                onToggleInlineElementValues={() => {
-                    const newState = !inlineElementValues;
-                    setInlineElementValues(newState);
-                    // Invalidate formatted body cache to force re-format with new settings
-                    setProxyHistory(prev => prev.map(e => ({ ...e, formattedBody: undefined })));
-                    setWatcherHistory(prev => prev.map(e => ({ ...e, formattedBody: undefined })));
-                    bridge.sendMessage({ command: 'saveUiState', ui: { ...config?.ui, inlineElementValues: newState } });
-                }}
-                hideCausalityData={hideCausalityData}
-                onToggleHideCausalityData={() => {
-                    const newState = !hideCausalityData;
-                    setHideCausalityData(newState);
-                    // Invalidate formatted body cache
-                    setProxyHistory(prev => prev.map(e => ({ ...e, formattedBody: undefined })));
-                    setWatcherHistory(prev => prev.map(e => ({ ...e, formattedBody: undefined })));
-                    bridge.sendMessage({ command: 'saveUiState', ui: { ...config?.ui, hideCausalityData: newState } });
-                }}
-                isReadOnly={activeView === SidebarView.WATCHER || activeView === SidebarView.PROXY}
-                onStartResizing={startResizing}
-                config={config}
-                onChangeEnvironment={(env) => bridge.sendMessage({ command: 'updateActiveEnvironment', envName: env })}
-                changelog={changelog}
-                onOpenDevOps={() => setShowDevOpsModal(true)}
             />
 
             {

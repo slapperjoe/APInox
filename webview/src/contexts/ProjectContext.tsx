@@ -80,6 +80,12 @@ export interface ProjectContextValue {
     /** Toggles the expanded state of a project in the sidebar */
     toggleProjectExpand: (name: string) => void;
 
+    /** Toggles the expanded state of an interface within a project */
+    toggleInterfaceExpand: (projectName: string, interfaceName: string) => void;
+
+    /** Toggles the expanded state of an operation within an interface */
+    toggleOperationExpand: (projectName: string, interfaceName: string, operationName: string) => void;
+
     // -------------------------------------------------------------------------
     // UTILITIES
     // -------------------------------------------------------------------------
@@ -234,6 +240,42 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
         ));
     }, []);
 
+    /**
+     * Toggles expanded/collapsed state of an interface within a project.
+     */
+    const toggleInterfaceExpand = useCallback((projectName: string, interfaceName: string) => {
+        setProjects(prev => prev.map(p => {
+            if (p.name !== projectName) return p;
+            return {
+                ...p,
+                interfaces: p.interfaces.map(i =>
+                    i.name === interfaceName ? { ...i, expanded: !i.expanded } : i
+                )
+            };
+        }));
+    }, []);
+
+    /**
+     * Toggles expanded/collapsed state of an operation within an interface.
+     */
+    const toggleOperationExpand = useCallback((projectName: string, interfaceName: string, operationName: string) => {
+        setProjects(prev => prev.map(p => {
+            if (p.name !== projectName) return p;
+            return {
+                ...p,
+                interfaces: p.interfaces.map(i => {
+                    if (i.name !== interfaceName) return i;
+                    return {
+                        ...i,
+                        operations: i.operations.map(o =>
+                            o.name === operationName ? { ...o, expanded: !o.expanded } : o
+                        )
+                    };
+                })
+            };
+        }));
+    }, []);
+
     // -------------------------------------------------------------------------
     // UTILITIES
     // -------------------------------------------------------------------------
@@ -285,6 +327,8 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
         loadProject,
         saveProject,
         toggleProjectExpand,
+        toggleInterfaceExpand,
+        toggleOperationExpand,
 
         // Utilities
         updateProject,

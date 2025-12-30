@@ -1,6 +1,10 @@
 import React from 'react';
 import { Layout as LayoutIcon, ListOrdered, Play, Loader2, RotateCcw, WrapText, Bug, AlignLeft, Braces, ChevronLeft, Plus, FileCode, Trash2, ArrowUp, ArrowDown, ListChecks, Replace, Cloud } from 'lucide-react';
-import { SoapUIRequest, SoapUIOperation, SoapTestCase, TestStepType, SoapTestStep } from '../models';
+// Models imported via props.ts indirections, specific enums kept if needed locally (TestStepType is used in code?)
+// Checking code: TestStepType is used in props interface but not local var?
+// Actually TestStepType is used in onAddStep signature but onAddStep comes from props.
+// Let's remove them and add back if needed.
+// import { SoapTestStep } from '../models';
 // ... imports
 import { MonacoRequestEditor, MonacoRequestEditorHandle } from './MonacoRequestEditor';
 import { MonacoResponseViewer } from './MonacoResponseViewer';
@@ -29,68 +33,48 @@ import {
 } from '../styles/WorkspaceLayout.styles';
 
 
+// Prop Groups
+import {
+    WorkspaceSelectionState,
+    WorkspaceRequestActions,
+    WorkspaceViewState,
+    WorkspaceConfigState,
+    WorkspaceStepActions,
+    WorkspaceToolsActions
+} from '../types/props';
+
 interface WorkspaceLayoutProps {
-    selectedRequest: SoapUIRequest | null;
-    selectedOperation: SoapUIOperation | null;
-    selectedTestCase?: SoapTestCase | null;
-    response: any;
-    loading: boolean;
-    layoutMode: 'vertical' | 'horizontal';
-    showLineNumbers: boolean;
-    splitRatio: number;
-    isResizing: boolean;
-
-    onExecute: (xml: string) => void;
-    onCancel: () => void;
-    onUpdateRequest: (req: SoapUIRequest) => void;
-    onReset: () => void;
-    onToggleLayout: () => void;
-    onToggleLineNumbers: () => void;
-    onStartResizing: () => void;
-    defaultEndpoint?: string;
-    changelog?: string;
-
-    // Config options passed from App for formatting
-    inlineElementValues?: boolean;
-    onToggleInlineElementValues?: () => void;
-    hideCausalityData?: boolean;
-    onToggleHideCausalityData?: () => void;
-
-    // Config
-    config?: any;
-    onChangeEnvironment?: (env: string) => void;
-    isReadOnly?: boolean;
-    onRunTestCase?: (caseId: string) => void;
-    onOpenStepRequest?: (req: SoapUIRequest) => void;
-    onBackToCase?: () => void;
-    onAddStep?: (caseId: string, type: TestStepType) => void;
-    testExecution?: Record<string, Record<string, { status: 'running' | 'pass' | 'fail', error?: string, response?: any }>>;
-    selectedStep?: SoapTestStep | null;
-    onUpdateStep?: (step: SoapTestStep) => void;
-    onSelectStep?: (step: SoapTestStep | null) => void;
-    onDeleteStep?: (stepId: string) => void;
-    onMoveStep?: (stepId: string, direction: 'up' | 'down') => void;
-    onAddExtractor?: (data: { xpath: string, value: string, source: 'body' | 'header' }) => void;
-    onAddAssertion?: (data: { xpath: string, expectedContent: string }) => void;
-    onAddExistenceAssertion?: (data: { xpath: string }) => void;
-    /** Handler for adding replace rules (proxy view) */
-    onAddReplaceRule?: (data: { xpath: string, matchText: string, target: 'request' | 'response' }) => void;
-    /** Handler to open Azure DevOps modal */
-    onOpenDevOps?: () => void;
+    selectionState: WorkspaceSelectionState;
+    requestActions: WorkspaceRequestActions;
+    viewState: WorkspaceViewState;
+    configState: WorkspaceConfigState;
+    stepActions: WorkspaceStepActions;
+    toolsActions: WorkspaceToolsActions;
 }
 
 export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
-    selectedRequest, selectedOperation, selectedTestCase, response, loading, layoutMode, showLineNumbers, splitRatio, isResizing,
-    onExecute, onCancel, onUpdateRequest, onReset, onToggleLayout, onToggleLineNumbers, onStartResizing, defaultEndpoint,
-    changelog,
-    config, onChangeEnvironment,
-    inlineElementValues, onToggleInlineElementValues,
-    hideCausalityData, onToggleHideCausalityData,
-    isReadOnly,
-    onRunTestCase, onOpenStepRequest, onBackToCase, onAddStep, testExecution,
-    selectedStep, onUpdateStep, onSelectStep, onDeleteStep, onMoveStep, onAddExtractor, onAddAssertion, onAddExistenceAssertion, onAddReplaceRule,
-    onOpenDevOps
+    selectionState,
+    requestActions,
+    viewState,
+    configState,
+    stepActions,
+    toolsActions
 }) => {
+    // Destructure groups
+    const { request: selectedRequest, operation: selectedOperation, testCase: selectedTestCase, testStep: selectedStep } = selectionState;
+    const { onExecute, onCancel, onUpdate: onUpdateRequest, onReset, response, loading } = requestActions;
+    const {
+        layoutMode, showLineNumbers, splitRatio, isResizing, onToggleLayout, onToggleLineNumbers, onStartResizing,
+        inlineElementValues, onToggleInlineElementValues, hideCausalityData, onToggleHideCausalityData
+    } = viewState;
+    const { config, defaultEndpoint, changelog, onChangeEnvironment, isReadOnly } = configState;
+    const {
+        onRunTestCase, onOpenStepRequest, onBackToCase, onAddStep, testExecution,
+        onUpdateStep, onSelectStep, onDeleteStep, onMoveStep
+    } = stepActions;
+    const {
+        onAddExtractor, onAddAssertion, onAddExistenceAssertion, onAddReplaceRule, onOpenDevOps
+    } = toolsActions;
     const [alignAttributes, setAlignAttributes] = React.useState(false);
     const [activeTab, setActiveTab] = React.useState<'request' | 'headers' | 'assertions' | 'auth' | 'extractors'>('request');
     const [deleteConfirm, setDeleteConfirm] = React.useState<string | null>(null);

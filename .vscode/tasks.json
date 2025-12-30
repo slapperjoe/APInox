@@ -49,6 +49,16 @@
             "type": "shell",
             "command": "npm run version-bump-patch -- \"${input:commitMessage}\"",
             "problemMatcher": []
+        },
+        {
+            "label": "Package Extension",
+            "type": "shell",
+            "command": "npx vsce package",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
         }
     ]
 }
