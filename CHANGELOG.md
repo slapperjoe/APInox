@@ -1,6 +1,14 @@
 # Changelog
 
 
+## [0.7.6] - 2025-12-31
+### Changes
+- **Status Bar Launch**: Added "🧪 Dirty SOAP" button in the status bar for quick access
+- **Manual Save**: Removed auto-save on every keystroke - projects now save manually
+- **Ctrl+S**: Added keyboard shortcut to save all dirty projects
+- **Save Indicators**: Save button only appears when project/request is dirty, turns green after save
+- **Unsaved Warning**: Browser warns when closing with unsaved changes
+
 ## [0.7.5] - 2025-12-30
 ### Auto-Generated Changes
 - feat: Update .vscodeignore and package-lock.json for improved project structure and versioning

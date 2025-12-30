@@ -32,11 +32,14 @@ A visual SOAP client for VS Code, inspired by Bruno and SOAP-UI.
 - **Project Structure**: Organize work into Projects -> Interfaces -> Operations -> Requests.
 - **Context Actions**: Clone, Delete, and Rename requests easily via context menus.
 - **Settings**: Persistent configuration with a built-in JSONC editor and contextual **Help Panel**.
-- **VS Code Integration**: seamless theming and sidebar integration.
+- **VS Code Integration**: 
+    - Status bar button for quick access.
+    - Seamless theming and sidebar integration.
+    - **Ctrl+S** to save all dirty projects.
 
 ## Usage
 
-1. **Open Dirty SOAP**: Run command `Dirty SOAP: Open Interface` or click the Soap icon in the Activity Bar.
+1. **Open Dirty SOAP**: Click the **"🧪 Dirty SOAP"** button in the status bar (bottom), or run command `Dirty SOAP: Open Interface`.
 2. **Load a WSDL**:
     - Use the **WSDL Explorer** section.
     - Select "URL" or "File" input mode.
@@ -52,8 +55,10 @@ A visual SOAP client for VS Code, inspired by Bruno and SOAP-UI.
     - (Optionally) Update the Endpoint URL in the toolbar.
     - Click the "Run" button.
 6. **Workspace**:
-    - Use the **Save** (💾) and **Close** (❌) icons in project headers to manage your work.
-    - Use "New Project" and "Load Project" to organize multiple environments.
+    - Dirty indicator (●) shows unsaved changes.
+    - Save button appears on dirty projects/requests.
+    - Use **Ctrl+S** to save all dirty projects at once.
+    - Use the **Close** (❌) icon to close projects.
 
 ## Roadmap & Planned Features
 

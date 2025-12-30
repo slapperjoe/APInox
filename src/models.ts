@@ -43,6 +43,7 @@ export interface SoapUIAssertion {
         expectedContent?: string; // For XPath
     };
 }
+
 export interface SoapRequestExtractor {
     type: 'XPath' | 'JSONPath';
     source: 'body' | 'header';
@@ -59,8 +60,8 @@ export interface SoapUIRequest {
     endpoint?: string;
     dirty?: boolean;
     assertions?: SoapUIAssertion[];
-    headers?: Record<string, string>;
     extractors?: SoapRequestExtractor[];
+    headers?: Record<string, string>;
     id?: string;
 }
 
@@ -137,3 +138,98 @@ export interface SoapTestSuite {
     testCases: SoapTestCase[];
     expanded?: boolean;
 }
+
+export interface WatcherEvent {
+    id: string;
+    timestamp: number;
+    timestampLabel: string;
+    requestFile?: string;
+    responseFile?: string;
+    requestContent?: string;
+    responseContent?: string;
+    requestOperation?: string;
+    responseOperation?: string;
+
+    // Proxy Fields
+    method?: string;
+    url?: string;
+    status?: number;
+    duration?: number;
+    success?: boolean;
+    error?: string;
+    requestHeaders?: Record<string, string>;
+    responseHeaders?: Record<string, string>;
+
+    // Compatibility with ProxyEvent
+    requestBody?: string;
+    responseBody?: string;
+    formattedBody?: string;
+}
+
+export enum SidebarView {
+    PROJECTS = 'projects',
+    EXPLORER = 'explorer',
+    TESTS = 'tests',
+    WATCHER = 'watcher',
+    PROXY = 'proxy'
+}
+
+/**
+ * Rule for automatically replacing text in proxy request/response XML.
+ * Used for masking sensitive data or normalizing responses.
+ */
+export interface ReplaceRule {
+    /** Unique identifier */
+    id: string;
+    /** Optional friendly name */
+    name?: string;
+    /** XPath expression to target element */
+    xpath: string;
+    /** Text to find within the element */
+    matchText: string;
+    /** Replacement text */
+    replaceWith: string;
+    /** Apply to request, response, or both */
+    target: 'request' | 'response' | 'both';
+    /** Treat matchText as regex */
+    isRegex?: boolean;
+    /** Rule is active */
+    enabled: boolean;
+}
+
+export interface DirtySoapConfig {
+    version: number;
+    network?: {
+        defaultTimeout?: number;
+        retryCount?: number;
+        proxy?: string;
+    };
+    ui?: {
+        layoutMode?: 'vertical' | 'horizontal';
+        showLineNumbers?: boolean;
+        alignAttributes?: boolean;
+        inlineElementValues?: boolean;
+        splitRatio?: number;
+    };
+    activeEnvironment?: string;
+    lastConfigPath?: string;
+    lastProxyTarget?: string;
+    openProjects?: string[];
+    environments?: Record<string, {
+        endpoint_url?: string;
+        env?: string;
+        [key: string]: string | undefined;
+    }>;
+    globals?: Record<string, string>;
+    recentWorkspaces?: string[];
+    /** Auto-replace rules for proxy view */
+    replaceRules?: ReplaceRule[];
+    /** Breakpoints for proxy - pause on matching requests/responses */
+    breakpoints?: any[];
+    /** Azure DevOps integration settings */
+    azureDevOps?: {
+        orgUrl?: string;
+        project?: string;
+    };
+}
+

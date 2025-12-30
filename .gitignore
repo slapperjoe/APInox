@@ -23,3 +23,15 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Testing
+coverage/
+webview/coverage/
+playwright-report/
+test-results/
+
+# Compiled config files
+vitest.config.js
+vitest.config.js.map
+playwright.config.js
+playwright.config.js.map

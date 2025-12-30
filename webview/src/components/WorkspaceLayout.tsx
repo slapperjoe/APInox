@@ -11,17 +11,15 @@ import { MonacoResponseViewer } from './MonacoResponseViewer';
 import { AssertionsPanel } from './AssertionsPanel';
 import { HeadersPanel } from './HeadersPanel';
 import { ExtractorsPanel } from './ExtractorsPanel';
-import ReactMarkdown from 'react-markdown';
+// ReactMarkdown moved to WelcomePanel
 import { MonacoSingleLineInput, MonacoSingleLineInputHandle } from './MonacoSingleLineInput';
 import { formatXml, stripCausalityData } from '../utils/xmlFormatter';
 import { XPathGenerator } from '../utils/xpathGenerator';
-import mascotImg from '../assets/mascot.png';
+import { WelcomePanel } from './workspace';
 
 // Styled components extracted to styles file
 import {
-    Mascot,
     Content,
-    MarkdownContainer,
     Toolbar,
     InfoBar,
     InfoBarMethod,
@@ -445,18 +443,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
             );
         }
 
-        return (
-            <div style={{ padding: 20, flex: 1, overflow: 'auto', color: 'var(--vscode-editor-foreground)', fontFamily: 'var(--vscode-font-family)', position: 'relative' }}>
-                <Mascot src={mascotImg} alt="Dirty Soap Mascot" />
-                <h1>Welcome to Dirty SOAP</h1>
-                <p>Load a WSDL to see available operations.</p>
-                {changelog && (
-                    <MarkdownContainer>
-                        <ReactMarkdown>{changelog}</ReactMarkdown>
-                    </MarkdownContainer>
-                )}
-            </div>
-        );
+        return <WelcomePanel changelog={changelog} />;
     }
 
     return (
