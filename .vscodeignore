@@ -15,6 +15,17 @@ package-lock.json
 
 # Test files
 wsdl_files
+**/*.test.ts
+**/*.test.tsx
+**/__tests__/
+**/test/
+e2e/
+vitest.config.ts
+playwright.config.ts
+coverage/
+
+# CI/CD
+.github/
 
 # Build artifacts that shouldn't be in VSIX
 *.vsix

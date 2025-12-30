@@ -15,6 +15,9 @@
         "node_modules",
         ".vscode-test",
         "webview",
-        "verify_soap.ts"
+        "verify_soap.ts",
+        "vitest.config.ts",
+        "playwright.config.ts",
+        "e2e"
     ]
 }
