@@ -160,6 +160,7 @@ export interface SidebarServerProps {
     mockHistory: MockEvent[];
     onSelectProxyEvent: (event: WatcherEvent) => void;
     onSelectMockEvent: (event: MockEvent) => void;
+    selectedEventId?: string;
     onClearHistory: () => void;
 
     // Mock Rules (mode = mock or both)
