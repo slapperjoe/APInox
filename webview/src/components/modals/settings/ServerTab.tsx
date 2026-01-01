@@ -166,6 +166,28 @@ export const ServerTab: React.FC<ServerTabProps> = ({
                 </CheckboxLabel>
             </FormGroup>
 
+            {/* Config Switcher */}
+            <SectionHeader>
+                <FolderOpen size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
+                Config Switcher
+            </SectionHeader>
+
+            <FormGroup>
+                <Label>Web.config / App.config Path</Label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                    <Input
+                        type="text"
+                        value={configPath || config.lastConfigPath || ''}
+                        placeholder="Select a config file..."
+                        readOnly
+                        style={{ flex: 1 }}
+                    />
+                    <IconButton onClick={onSelectConfigFile} title="Browse">
+                        <FolderOpen size={14} />
+                    </IconButton>
+                </div>
+            </FormGroup>
+
             {/* Mock Options */}
             <>
                 <SectionHeader>Mock Options</SectionHeader>
@@ -280,27 +302,6 @@ export const ServerTab: React.FC<ServerTabProps> = ({
                     )}
                 </FormGroup>
             </>
-            {/* Config Switcher */}
-            <SectionHeader>
-                <FolderOpen size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-                Config Switcher
-            </SectionHeader>
-
-            <FormGroup>
-                <Label>Web.config / App.config Path</Label>
-                <div style={{ display: 'flex', gap: 8 }}>
-                    <Input
-                        type="text"
-                        value={configPath || config.lastConfigPath || ''}
-                        placeholder="Select a config file..."
-                        readOnly
-                        style={{ flex: 1 }}
-                    />
-                    <IconButton onClick={onSelectConfigFile} title="Browse">
-                        <FolderOpen size={14} />
-                    </IconButton>
-                </div>
-            </FormGroup>
 
             <div style={{ display: 'flex', gap: 10 }}>
                 <PrimaryButton
