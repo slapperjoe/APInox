@@ -163,7 +163,7 @@ export const EnvironmentsTab: React.FC<EnvironmentsTabProps> = ({
                             <h3 style={{ margin: 0, textTransform: 'uppercase', fontSize: 12 }}>{selectedEnvKey}</h3>
                             <div style={{ display: 'flex', gap: 8 }}>
                                 {config.activeEnvironment !== selectedEnvKey && (
-                                    <PrimaryButton onClick={() => onSetActive(selectedEnvKey)} style={{ background: 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-secondaryForeground)' }}>
+                                    <PrimaryButton onClick={() => onSetActive(selectedEnvKey)} style={{ height: '20px', background: 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-secondaryForeground)' }}>
                                         <Check size={14} /> Set Active
                                     </PrimaryButton>
                                 )}
