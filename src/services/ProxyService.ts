@@ -139,6 +139,12 @@ export class ProxyService extends EventEmitter {
      * Check if content matches any breakpoint
      */
     private checkBreakpoints(url: string, content: string, headers: Record<string, any>, target: 'request' | 'response'): Breakpoint | null {
+        // BREAKPOINTS only fire in 'proxy' or 'both' mode.
+        // They should NOT fire in 'mock' mode (Moxy) even if passthrough is on.
+        if (this.serverMode === 'mock' || this.serverMode === 'off') {
+            return null;
+        }
+
         for (const bp of this.breakpoints) {
             if (!bp.enabled) continue;
             if (bp.target !== target && bp.target !== 'both') continue;

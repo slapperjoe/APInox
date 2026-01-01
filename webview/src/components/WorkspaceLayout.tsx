@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layout as LayoutIcon, ListOrdered, Play, Loader2, RotateCcw, WrapText, Bug, AlignLeft, Braces, ChevronLeft, Plus, FileCode, Trash2, ArrowUp, ArrowDown, ListChecks, Replace, Cloud } from 'lucide-react';
+import { Layout as LayoutIcon, ListOrdered, Play, Loader2, RotateCcw, WrapText, Bug, AlignLeft, Braces, ChevronLeft, Plus, FileCode, Trash2, ArrowUp, ArrowDown, ListChecks, Replace, Cloud, PlusSquare } from 'lucide-react';
 // Models imported via props.ts indirections, specific enums kept if needed locally (TestStepType is used in code?)
 // Checking code: TestStepType is used in props interface but not local var?
 // Actually TestStepType is used in onAddStep signature but onAddStep comes from props.
@@ -86,7 +86,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         onUpdateStep, onSelectStep, onDeleteStep, onMoveStep
     } = stepActions;
     const {
-        onAddExtractor, onAddAssertion, onAddExistenceAssertion, onAddReplaceRule, onOpenDevOps
+        onAddExtractor, onAddAssertion, onAddExistenceAssertion, onAddReplaceRule, onAddMockRule, onOpenDevOps
     } = toolsActions;
     const [alignAttributes, setAlignAttributes] = React.useState(false);
     const [activeTab, setActiveTab] = React.useState<'request' | 'headers' | 'assertions' | 'auth' | 'extractors'>('request');
@@ -192,6 +192,33 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         if (!selection || !currentXPath || !onAddReplaceRule) return;
 
         onAddReplaceRule({ xpath: currentXPath, matchText: selection.text, target });
+    };
+
+    const handleCreateMockRule = () => {
+        if (!selectedRequest || !response || !onAddMockRule) return;
+
+        // Extract a name from the endpoint or operation if possible
+        const urlObj = new URL(selectedRequest.endpoint || 'http://localhost');
+        const pathParts = urlObj.pathname.split('/').filter(Boolean);
+        const name = pathParts.length > 0 ? pathParts[pathParts.length - 1] : 'Recorded Rule';
+
+        const newRule: any = {
+            id: `imported-${Date.now()}`,
+            name: `Mock: ${name}`,
+            enabled: true,
+            conditions: [
+                { type: 'url', pattern: selectedRequest.endpoint || '', isRegex: false }
+            ],
+            statusCode: response.status || 200,
+            responseBody: response.rawResponse || '',
+            responseHeaders: response.headers || {},
+            contentType: response.headers?.['content-type'] || 'text/xml',
+            recordedFrom: selectedRequest.endpoint,
+            recordedAt: Date.now(),
+            hitCount: 0
+        };
+
+        onAddMockRule(newRule);
     };
     // Reset active tab if it's assertions or extractors and we are in read-only mode (e.g. Watcher/Proxy)
     React.useEffect(() => {
@@ -769,6 +796,16 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                         style={{ width: 24, height: 24, padding: 2 }}
                                     >
                                         <Cloud size={14} />
+                                    </IconButton>
+                                )}
+
+                                {isReadOnly && onAddMockRule && (
+                                    <IconButton
+                                        title="Import to Mock Rule"
+                                        onClick={handleCreateMockRule}
+                                        style={{ width: 24, height: 24, padding: 2, color: 'var(--vscode-charts-orange)' }}
+                                    >
+                                        <PlusSquare size={14} />
                                     </IconButton>
                                 )}
 

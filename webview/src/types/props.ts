@@ -233,5 +233,6 @@ export interface WorkspaceToolsActions {
     onAddAssertion?: (data: { xpath: string, expectedContent: string }) => void;
     onAddExistenceAssertion?: (data: { xpath: string }) => void;
     onAddReplaceRule?: (data: { xpath: string, matchText: string, target: 'request' | 'response' }) => void;
+    onAddMockRule?: (rule: import('../models').MockRule) => void;
     onOpenDevOps?: () => void;
 }

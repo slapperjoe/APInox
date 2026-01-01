@@ -20,6 +20,7 @@ import { FolderProjectStorage } from '../FolderProjectStorage';
 import { ICommand } from '../commands/ICommand';
 import { ExecuteRequestCommand } from '../commands/ExecuteRequestCommand';
 import { SaveProjectCommand } from '../commands/SaveProjectCommand';
+import { ExportNativeCommand } from '../commands/ExportNativeCommand';
 import { LoadProjectCommand } from '../commands/LoadProjectCommand';
 import { DownloadWsdlCommand } from '../commands/DownloadWsdlCommand';
 import { LoadWsdlCommand } from '../commands/LoadWsdlCommand';
@@ -88,6 +89,11 @@ export class WebviewController {
             this._soapClient,
             this._folderStorage,
             this._projectStorage,
+            this._loadedProjects
+        ));
+        this._commands.set('exportNative', new ExportNativeCommand(
+            this._panel,
+            this._folderStorage,
             this._loadedProjects
         ));
         this._commands.set('downloadWsdl', new DownloadWsdlCommand(

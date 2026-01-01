@@ -184,7 +184,8 @@ function App() {
         handleAddRequest,
         handleDeleteInterface,
         handleDeleteOperation,
-        handleViewSample
+        handleViewSample,
+        handleExportNative
     } = useContextMenu({
         setProjects,
         saveProject,
@@ -828,6 +829,7 @@ function App() {
                     onAddAssertion: handleAddAssertion,
                     onAddExistenceAssertion: handleAddExistenceAssertion,
                     onAddReplaceRule: (data) => setReplaceRuleModal({ open: true, ...data }),
+                    onAddMockRule: (rule) => bridge.sendMessage({ command: 'addMockRule', rule }),
                     onOpenDevOps: () => setShowDevOpsModal(true)
                 }}
                 breakpointState={{
@@ -878,6 +880,9 @@ function App() {
                     <ContextMenu top={contextMenu.y} left={contextMenu.x}>
                         {(contextMenu.type === 'request' || contextMenu.type === 'project') && (
                             <ContextMenuItem onClick={handleRename}>Rename</ContextMenuItem>
+                        )}
+                        {contextMenu.type === 'project' && (
+                            <ContextMenuItem onClick={() => handleExportNative(contextMenu.data)}>Export to Native Format</ContextMenuItem>
                         )}
                         {!contextMenu.isExplorer && contextMenu.type === 'request' && (
                             <>
