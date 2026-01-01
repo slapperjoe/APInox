@@ -192,12 +192,5 @@ export class SetServerModeCommand implements ICommand {
         const { mode } = message;
         console.log(`[ProxyCommands] Setting server mode to: ${mode}`);
         this._proxyService.setServerMode(mode);
-
-        if (mode === 'off') {
-            this._proxyService.stop();
-        } else {
-            // Ensure server is started if not already
-            this._proxyService.start();
-        }
     }
 }

@@ -735,18 +735,17 @@ function App() {
                         bridge.sendMessage({ command: 'setServerMode', mode });
                     },
                     onStart: () => {
-                        setServerMode('proxy');
-                        bridge.sendMessage({ command: 'setServerMode', mode: 'proxy' });
+                        bridge.sendMessage({ command: 'startProxy' });
                     },
                     onStop: () => {
-                        setServerMode('off');
-                        bridge.sendMessage({ command: 'setServerMode', mode: 'off' });
+                        bridge.sendMessage({ command: 'stopProxy' });
                     },
                     onOpenSettings: () => openSettings('server'),
                     proxyHistory,
                     mockHistory,
                     onSelectProxyEvent: handleSelectWatcherEvent,
                     onSelectMockEvent: handleSelectMockEvent,
+                    selectedEventId: selectedRequest?.id,
                     onClearHistory: () => {
                         handleClearProxy();
                         handleClearMockHistory();

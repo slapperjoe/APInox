@@ -6,11 +6,12 @@
  */
 
 import React, { useState } from 'react';
-import { Play, Square, Trash2, Settings, Network, ArrowRight, Plus, Edit2, ToggleLeft, ToggleRight, Radio, Bug } from 'lucide-react';
+import { Play, Square, Trash2, Settings, Network, ArrowRight, Plus, Edit2, ToggleLeft, ToggleRight, Radio, Bug, PlusSquare } from 'lucide-react';
 import { WatcherEvent, MockEvent, ServerMode, ServerConfig, MockRule } from '../../models';
 import { HeaderButton, ServiceItem } from './shared/SidebarStyles';
 import { MockRuleModal } from '../modals/MockRuleModal';
 import { BreakpointModal, Breakpoint } from '../modals/BreakpointModal';
+import { createMockRuleFromSource } from '../../utils/mockUtils';
 
 export interface ServerUiProps {
     // Server state
@@ -28,6 +29,7 @@ export interface ServerUiProps {
     mockHistory: MockEvent[];
     onSelectProxyEvent: (event: WatcherEvent) => void;
     onSelectMockEvent: (event: MockEvent) => void;
+    selectedEventId?: string;
     onClearHistory: () => void;
 
     // Mock Rules (shown when mode = mock or both)
@@ -59,6 +61,7 @@ export const ServerUi: React.FC<ServerUiProps> = ({
     mockHistory,
     onSelectProxyEvent,
     onSelectMockEvent,
+    selectedEventId,
     onClearHistory,
     mockRules = [],
     onAddMockRule,
@@ -107,6 +110,21 @@ export const ServerUi: React.FC<ServerUiProps> = ({
         }
     };
 
+    const handleCreateMockFromEvent = (e: React.MouseEvent, event: WatcherEvent | MockEvent) => {
+        e.stopPropagation();
+        if (onAddMockRule) {
+            // Normalize event to MockSourceData
+            const sourceData = {
+                url: event.url || '',
+                statusCode: event.status || 200,
+                responseBody: 'responseContent' in event ? (event.responseContent || '') : (event.responseBody || ''),
+                responseHeaders: event.responseHeaders
+            };
+            const newRule = createMockRuleFromSource(sourceData);
+            onAddMockRule(newRule);
+        }
+    };
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             {/* Header */}
@@ -140,11 +158,13 @@ export const ServerUi: React.FC<ServerUiProps> = ({
                 {/* Mode Toggle */}
                 <div style={{ marginBottom: 10 }}>
                     <div style={{ fontSize: '0.8em', marginBottom: 4 }}>Mode</div>
-                    <div style={{ display: 'flex', gap: 4 }}>
+                    <div style={{ display: 'flex', gap: 4, opacity: isRunning ? 0.6 : 1 }}>
                         {MODE_OPTIONS.map(opt => (
                             <button
                                 key={opt.value}
-                                onClick={() => onModeChange(opt.value)}
+                                onClick={() => !isRunning && onModeChange(opt.value)}
+                                disabled={isRunning}
+                                title={isRunning ? "Stop the server to change modes" : opt.label}
                                 style={{
                                     flex: 1,
                                     padding: '6px 8px',
@@ -157,7 +177,7 @@ export const ServerUi: React.FC<ServerUiProps> = ({
                                     color: serverConfig.mode === opt.value
                                         ? 'var(--vscode-button-foreground)'
                                         : 'var(--vscode-input-foreground)',
-                                    cursor: 'pointer',
+                                    cursor: isRunning ? 'not-allowed' : 'pointer',
                                     transition: 'all 0.15s ease'
                                 }}
                             >
@@ -423,7 +443,16 @@ export const ServerUi: React.FC<ServerUiProps> = ({
                                     item.type === 'proxy' ? (
                                         <ServiceItem
                                             key={`proxy-${i}`}
-                                            style={{ paddingLeft: 5, paddingRight: 5 }}
+                                            style={{
+                                                paddingLeft: 5,
+                                                paddingRight: 5,
+                                                backgroundColor: (item.event as WatcherEvent).id === selectedEventId
+                                                    ? 'var(--vscode-list-activeSelectionBackground)'
+                                                    : undefined,
+                                                color: (item.event as WatcherEvent).id === selectedEventId
+                                                    ? 'var(--vscode-list-activeSelectionForeground)'
+                                                    : undefined
+                                            }}
                                             onClick={() => onSelectProxyEvent(item.event as WatcherEvent)}
                                         >
                                             <div style={{ flex: 1, fontSize: '0.85em', overflow: 'hidden' }}>
@@ -438,11 +467,38 @@ export const ServerUi: React.FC<ServerUiProps> = ({
                                                     {(item.event as WatcherEvent).url}
                                                 </div>
                                             </div>
+                                            {onAddMockRule && (
+                                                <button
+                                                    onClick={(e) => handleCreateMockFromEvent(e, item.event as WatcherEvent)}
+                                                    title="Create Mock Rule"
+                                                    style={{
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        cursor: 'pointer',
+                                                        color: 'inherit',
+                                                        opacity: (item.event as WatcherEvent).id === selectedEventId ? 1 : 0.5,
+                                                        padding: 4,
+                                                        display: 'flex',
+                                                        alignItems: 'center'
+                                                    }}
+                                                >
+                                                    <PlusSquare size={14} />
+                                                </button>
+                                            )}
                                         </ServiceItem>
                                     ) : (
                                         <ServiceItem
                                             key={`mock-${i}`}
-                                            style={{ paddingLeft: 5, paddingRight: 5 }}
+                                            style={{
+                                                paddingLeft: 5,
+                                                paddingRight: 5,
+                                                backgroundColor: (item.event as MockEvent).id === selectedEventId
+                                                    ? 'var(--vscode-list-activeSelectionBackground)'
+                                                    : undefined,
+                                                color: (item.event as MockEvent).id === selectedEventId
+                                                    ? 'var(--vscode-list-activeSelectionForeground)'
+                                                    : undefined
+                                            }}
                                             onClick={() => onSelectMockEvent(item.event as MockEvent)}
                                         >
                                             <div style={{ flex: 1, fontSize: '0.85em', overflow: 'hidden' }}>
@@ -469,6 +525,24 @@ export const ServerUi: React.FC<ServerUiProps> = ({
                                                     </div>
                                                 )}
                                             </div>
+                                            {onAddMockRule && (
+                                                <button
+                                                    onClick={(e) => handleCreateMockFromEvent(e, item.event as MockEvent)}
+                                                    title="Create Mock Rule"
+                                                    style={{
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        cursor: 'pointer',
+                                                        color: 'inherit',
+                                                        opacity: (item.event as MockEvent).id === selectedEventId ? 1 : 0.5,
+                                                        padding: 4,
+                                                        display: 'flex',
+                                                        alignItems: 'center'
+                                                    }}
+                                                >
+                                                    <PlusSquare size={14} />
+                                                </button>
+                                            )}
                                         </ServiceItem>
                                     )
                                 ))}

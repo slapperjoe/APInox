@@ -19,6 +19,14 @@ import { WelcomePanel } from './workspace';
 
 // Styled components extracted to styles file
 import {
+    SoapUIRequest,
+    SoapUIProject,
+    SoapTestSuite,
+    SoapTestCase,
+    SoapTestStep
+} from '../../models';
+import { createMockRuleFromSource } from '../utils/mockUtils';
+import {
     Content,
     Toolbar,
     InfoBar,
@@ -195,28 +203,17 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     };
 
     const handleCreateMockRule = () => {
-        if (!selectedRequest || !response || !onAddMockRule) return;
+        if (!selectedRequest || !response || !onAddMockRule) {
+            console.warn('[WorkspaceLayout] handleCreateMockRule aborted: missing data or callback');
+            return;
+        }
 
-        // Extract a name from the endpoint or operation if possible
-        const urlObj = new URL(selectedRequest.endpoint || 'http://localhost');
-        const pathParts = urlObj.pathname.split('/').filter(Boolean);
-        const name = pathParts.length > 0 ? pathParts[pathParts.length - 1] : 'Recorded Rule';
-
-        const newRule: any = {
-            id: `imported-${Date.now()}`,
-            name: `Mock: ${name}`,
-            enabled: true,
-            conditions: [
-                { type: 'url', pattern: selectedRequest.endpoint || '', isRegex: false }
-            ],
+        const newRule = createMockRuleFromSource({
+            url: selectedRequest.endpoint || '',
             statusCode: response.status || 200,
             responseBody: response.rawResponse || '',
-            responseHeaders: response.headers || {},
-            contentType: response.headers?.['content-type'] || 'text/xml',
-            recordedFrom: selectedRequest.endpoint,
-            recordedAt: Date.now(),
-            hitCount: 0
-        };
+            responseHeaders: response.headers || {}
+        });
 
         onAddMockRule(newRule);
     };
