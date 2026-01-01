@@ -267,6 +267,7 @@ export interface DirtySoapConfig {
         alignAttributes?: boolean;
         inlineElementValues?: boolean;
         splitRatio?: number;
+        autoFoldElements?: string[];
     };
     activeEnvironment?: string;
     lastConfigPath?: string;

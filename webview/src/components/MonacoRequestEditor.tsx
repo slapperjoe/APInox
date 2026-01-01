@@ -1,10 +1,11 @@
 
-import { useRef, useImperativeHandle, forwardRef, useEffect } from 'react';
+import { useRef, useImperativeHandle, forwardRef, useEffect, useState } from 'react';
 import Editor, { Monaco, loader } from '@monaco-editor/react';
 import * as monaco from 'monaco-editor';
 import styled from 'styled-components';
 import { useWildcardDecorations } from '../hooks/useWildcardDecorations';
 import { bridge } from '../utils/bridge';
+import { applyAutoFolding } from '../utils/xmlFoldingUtils';
 
 loader.config({ monaco });
 
@@ -20,6 +21,8 @@ export interface MonacoRequestEditorProps {
     language?: string;
     readOnly?: boolean;
     onFocus?: () => void;
+    autoFoldElements?: string[];
+    requestId?: string; // Used to detect when user switches to different request
 }
 
 export interface MonacoRequestEditorHandle {
@@ -31,10 +34,14 @@ export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoR
     onChange,
     language = 'xml',
     readOnly = false,
-    onFocus
+    onFocus,
+    autoFoldElements,
+    requestId
 }, ref) => {
     const editorRef = useRef<any>(null);
     const monacoRef = useRef<Monaco | null>(null);
+    const previousRequestIdRef = useRef<string | undefined>(undefined);
+    const [isReady, setIsReady] = useState(!autoFoldElements || autoFoldElements.length === 0);
 
     useImperativeHandle(ref, () => ({
         insertText: (text: string) => {
@@ -62,6 +69,13 @@ export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoR
         editor.onDidFocusEditorText(() => {
             if (onFocus) onFocus();
         });
+
+        // Apply auto-folding if configured
+        if (autoFoldElements && autoFoldElements.length > 0 && value) {
+            applyAutoFolding(editor, value, autoFoldElements, () => setIsReady(true));
+        } else {
+            setIsReady(true);
+        }
 
         // --- Clipboard Fixes ---
 
@@ -171,8 +185,23 @@ export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoR
         return () => window.removeEventListener('message', handleMessage);
     }, []);
 
+    // Apply auto-folding when switching to a different request
+    useEffect(() => {
+        if (!editorRef.current || !autoFoldElements || autoFoldElements.length === 0 || !value) {
+            previousRequestIdRef.current = requestId;
+            return;
+        }
+
+        // If requestId changed, it's a different request - apply folding
+        if (requestId !== previousRequestIdRef.current) {
+            setIsReady(false); // Hide while folding
+            applyAutoFolding(editorRef.current, value, autoFoldElements, () => setIsReady(true));
+            previousRequestIdRef.current = requestId;
+        }
+    }, [requestId, value, autoFoldElements]);
+
     return (
-        <EditorContainer>
+        <EditorContainer style={{ opacity: isReady ? 1 : 0, transition: 'opacity 0.1s' }}>
             <style>
                 {/* Styles moved to index.css */}
             </style>
