@@ -53,7 +53,6 @@ export const ServerTab: React.FC<ServerTabProps> = ({
     const [ruleModal, setRuleModal] = useState<{ open: boolean; rule?: MockRule | null }>({ open: false });
 
     const rules = serverConfig.mockRules || [];
-    const showMockOptions = serverConfig.mode === 'mock' || serverConfig.mode === 'both';
 
     const handleAddRule = () => {
         setRuleModal({ open: true, rule: null });
@@ -167,123 +166,120 @@ export const ServerTab: React.FC<ServerTabProps> = ({
                 </CheckboxLabel>
             </FormGroup>
 
-            {/* Mock Options - shown when mode is mock or both */}
-            {showMockOptions && (
-                <>
-                    <SectionHeader>Mock Options</SectionHeader>
+            {/* Mock Options */}
+            <>
+                <SectionHeader>Mock Options</SectionHeader>
 
-                    <FormGroup>
-                        <CheckboxLabel>
-                            <input
-                                type="checkbox"
-                                checked={serverConfig.passthroughEnabled}
-                                onChange={e => onServerConfigChange({ passthroughEnabled: e.target.checked })}
-                            />
-                            Forward unmatched requests to target
-                        </CheckboxLabel>
-                    </FormGroup>
+                <FormGroup>
+                    <CheckboxLabel>
+                        <input
+                            type="checkbox"
+                            checked={serverConfig.passthroughEnabled}
+                            onChange={e => onServerConfigChange({ passthroughEnabled: e.target.checked })}
+                        />
+                        Forward unmatched requests to target
+                    </CheckboxLabel>
+                </FormGroup>
 
-                    <FormGroup>
-                        <CheckboxLabel>
-                            <input
-                                type="checkbox"
-                                checked={serverConfig.recordMode ?? false}
-                                onChange={e => onServerConfigChange({ recordMode: e.target.checked })}
-                            />
-                            <span style={{ color: serverConfig.recordMode ? 'var(--vscode-charts-yellow)' : undefined }}>
-                                🔴 Record Mode (auto-capture responses as mocks)
+                <FormGroup>
+                    <CheckboxLabel>
+                        <input
+                            type="checkbox"
+                            checked={serverConfig.recordMode ?? false}
+                            onChange={e => onServerConfigChange({ recordMode: e.target.checked })}
+                        />
+                        <span style={{ color: serverConfig.recordMode ? 'var(--vscode-charts-yellow)' : undefined }}>
+                            🔴 Record Mode (auto-capture responses as mocks)
+                        </span>
+                    </CheckboxLabel>
+                </FormGroup>
+
+                {/* Mock Rules List */}
+                <FormGroup>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <Label style={{ marginBottom: 0 }}>Mock Rules ({rules.length})</Label>
+                        <PrimaryButton onClick={handleAddRule} style={{ padding: '4px 10px' }}>
+                            <Plus size={12} /> Add Rule
+                        </PrimaryButton>
+                    </div>
+
+                    {rules.length === 0 ? (
+                        <div style={{
+                            padding: 20,
+                            textAlign: 'center',
+                            color: 'var(--vscode-descriptionForeground)',
+                            background: 'var(--vscode-input-background)',
+                            borderRadius: 4,
+                            fontSize: 12
+                        }}>
+                            No mock rules configured.
+                            <br />
+                            <span
+                                style={{ color: 'var(--vscode-textLink-foreground)', cursor: 'pointer' }}
+                                onClick={handleAddRule}
+                            >
+                                Click to add your first rule.
                             </span>
-                        </CheckboxLabel>
-                    </FormGroup>
-
-                    {/* Mock Rules List */}
-                    <FormGroup>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                            <Label style={{ marginBottom: 0 }}>Mock Rules ({rules.length})</Label>
-                            <PrimaryButton onClick={handleAddRule} style={{ padding: '4px 10px' }}>
-                                <Plus size={12} /> Add Rule
-                            </PrimaryButton>
                         </div>
-
-                        {rules.length === 0 ? (
-                            <div style={{
-                                padding: 20,
-                                textAlign: 'center',
-                                color: 'var(--vscode-descriptionForeground)',
-                                background: 'var(--vscode-input-background)',
-                                borderRadius: 4,
-                                fontSize: 12
-                            }}>
-                                No mock rules configured.
-                                <br />
-                                <span
-                                    style={{ color: 'var(--vscode-textLink-foreground)', cursor: 'pointer' }}
-                                    onClick={handleAddRule}
+                    ) : (
+                        <div style={{
+                            border: '1px solid var(--vscode-input-border)',
+                            borderRadius: 4,
+                            overflow: 'hidden'
+                        }}>
+                            {rules.map((rule, index) => (
+                                <div
+                                    key={rule.id}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 8,
+                                        padding: '8px 12px',
+                                        background: selectedRuleId === rule.id
+                                            ? 'var(--vscode-list-activeSelectionBackground)'
+                                            : index % 2 === 0
+                                                ? 'var(--vscode-input-background)'
+                                                : 'transparent',
+                                        borderBottom: index < rules.length - 1 ? '1px solid var(--vscode-input-border)' : 'none',
+                                        cursor: 'pointer',
+                                        opacity: rule.enabled ? 1 : 0.5
+                                    }}
+                                    onClick={() => setSelectedRuleId(rule.id)}
                                 >
-                                    Click to add your first rule.
-                                </span>
-                            </div>
-                        ) : (
-                            <div style={{
-                                border: '1px solid var(--vscode-input-border)',
-                                borderRadius: 4,
-                                overflow: 'hidden'
-                            }}>
-                                {rules.map((rule, index) => (
-                                    <div
-                                        key={rule.id}
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 8,
-                                            padding: '8px 12px',
-                                            background: selectedRuleId === rule.id
-                                                ? 'var(--vscode-list-activeSelectionBackground)'
-                                                : index % 2 === 0
-                                                    ? 'var(--vscode-input-background)'
-                                                    : 'transparent',
-                                            borderBottom: index < rules.length - 1 ? '1px solid var(--vscode-input-border)' : 'none',
-                                            cursor: 'pointer',
-                                            opacity: rule.enabled ? 1 : 0.5
+                                    <input
+                                        type="checkbox"
+                                        checked={rule.enabled}
+                                        onChange={e => {
+                                            e.stopPropagation();
+                                            handleToggleRule(rule.id, e.target.checked);
                                         }}
-                                        onClick={() => setSelectedRuleId(rule.id)}
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            checked={rule.enabled}
-                                            onChange={e => {
-                                                e.stopPropagation();
-                                                handleToggleRule(rule.id, e.target.checked);
-                                            }}
-                                            style={{ cursor: 'pointer' }}
-                                        />
-                                        <div style={{ flex: 1, overflow: 'hidden' }}>
-                                            <div style={{ fontWeight: 500, fontSize: 12 }}>{rule.name}</div>
-                                            <div style={{ fontSize: 10, color: 'var(--vscode-descriptionForeground)' }}>
-                                                {rule.conditions.map(c => `${c.type}: ${c.pattern.substring(0, 25)}${c.pattern.length > 25 ? '...' : ''}`).join(' & ')}
-                                            </div>
+                                        style={{ cursor: 'pointer' }}
+                                    />
+                                    <div style={{ flex: 1, overflow: 'hidden' }}>
+                                        <div style={{ fontWeight: 500, fontSize: 12 }}>{rule.name}</div>
+                                        <div style={{ fontSize: 10, color: 'var(--vscode-descriptionForeground)' }}>
+                                            {rule.conditions.map(c => `${c.type}: ${c.pattern.substring(0, 25)}${c.pattern.length > 25 ? '...' : ''}`).join(' & ')}
                                         </div>
-                                        {rule.hitCount !== undefined && rule.hitCount > 0 && (
-                                            <span style={{ fontSize: 10, opacity: 0.7 }}>({rule.hitCount})</span>
-                                        )}
-                                        <IconButton onClick={(e) => { e.stopPropagation(); handleEditRule(rule); }} title="Edit">
-                                            <Edit2 size={12} />
-                                        </IconButton>
-                                        <IconButton
-                                            onClick={(e) => { e.stopPropagation(); handleDeleteRule(rule.id); }}
-                                            title="Delete"
-                                            style={{ color: 'var(--vscode-testing-iconFailed)' }}
-                                        >
-                                            <Trash2 size={12} />
-                                        </IconButton>
                                     </div>
-                                ))}
-                            </div>
-                        )}
-                    </FormGroup>
-                </>
-            )}
-
+                                    {rule.hitCount !== undefined && rule.hitCount > 0 && (
+                                        <span style={{ fontSize: 10, opacity: 0.7 }}>({rule.hitCount})</span>
+                                    )}
+                                    <IconButton onClick={(e) => { e.stopPropagation(); handleEditRule(rule); }} title="Edit">
+                                        <Edit2 size={12} />
+                                    </IconButton>
+                                    <IconButton
+                                        onClick={(e) => { e.stopPropagation(); handleDeleteRule(rule.id); }}
+                                        title="Delete"
+                                        style={{ color: 'var(--vscode-testing-iconFailed)' }}
+                                    >
+                                        <Trash2 size={12} />
+                                    </IconButton>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </FormGroup>
+            </>
             {/* Config Switcher */}
             <SectionHeader>
                 <FolderOpen size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />

@@ -170,11 +170,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             flexDirection: 'column',
                             alignItems: 'center',
                             padding: '8px 4px',
-                            marginBottom: 5,
-                            cursor: 'pointer'
+                            marginBottom: 5
                         }}
-                        onClick={onOpenSettings}
-                        title={`Active Environment: ${activeEnvironment}\nClick to manage environments`}
+                        title={`Active Environment: ${activeEnvironment}`}
                     >
                         <div style={{
                             fontSize: 9,

@@ -450,8 +450,15 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
                             onServerConfigChange={(updates) => setServerConfig(prev => ({ ...prev, ...updates }))}
                             configPath={guiConfig.lastConfigPath || null}
                             onSelectConfigFile={() => bridge.sendMessage({ command: 'selectConfigFile' })}
-                            onInjectConfig={() => bridge.sendMessage({ command: 'injectProxyConfig' })}
-                            onRestoreConfig={() => bridge.sendMessage({ command: 'restoreConfig' })}
+                            onInjectConfig={() => bridge.sendMessage({
+                                command: 'injectProxy',
+                                path: guiConfig.lastConfigPath,
+                                proxyUrl: `http://localhost:${serverConfig.port || 9000}`
+                            })}
+                            onRestoreConfig={() => bridge.sendMessage({
+                                command: 'restoreProxy',
+                                path: guiConfig.lastConfigPath
+                            })}
                         />
                     )}
 
