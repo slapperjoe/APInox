@@ -18,13 +18,7 @@ import { XPathGenerator } from '../utils/xpathGenerator';
 import { WelcomePanel } from './workspace';
 
 // Styled components extracted to styles file
-import {
-    SoapUIRequest,
-    SoapUIProject,
-    SoapTestSuite,
-    SoapTestCase,
-    SoapTestStep
-} from '../../models';
+// unused models removed
 import { createMockRuleFromSource } from '../utils/mockUtils';
 import {
     Content,
