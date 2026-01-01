@@ -53,6 +53,7 @@ interface UseContextMenuReturn {
     handleDeleteInterface: (iface: SoapUIInterface) => void;
     handleDeleteOperation: (op: SoapUIOperation, iface: SoapUIInterface) => void;
     handleViewSample: () => void;
+    handleExportNative: (project: SoapUIProject) => void;
 }
 
 export function useContextMenu({
@@ -273,6 +274,11 @@ export function useContextMenu({
         }
     }, [contextMenu, closeContextMenu]);
 
+    const handleExportNative = useCallback((project: SoapUIProject) => {
+        bridge.sendMessage({ command: 'exportNative', project });
+        closeContextMenu();
+    }, [closeContextMenu]);
+
     return {
         // State
         contextMenu,
@@ -289,6 +295,7 @@ export function useContextMenu({
         handleAddRequest,
         handleDeleteInterface,
         handleDeleteOperation,
-        handleViewSample
+        handleViewSample,
+        handleExportNative
     };
 }

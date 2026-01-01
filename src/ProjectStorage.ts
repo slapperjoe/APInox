@@ -233,10 +233,10 @@ export class ProjectStorage {
         if (projectRoot["con:testSuite"]) {
             const suites = Array.isArray(projectRoot["con:testSuite"]) ? projectRoot["con:testSuite"] : [projectRoot["con:testSuite"]];
             project.testSuites = suites.map((suite: any) => ({
-                id: suite["@_id"] || `suite-${Date.now()}-${Math.random()}`,
+                id: suite["@_id"] || `suite-${Math.random().toString(36).substring(2, 9)}-${Date.now()}`,
                 name: suite["@_name"],
                 testCases: suite["con:testCase"] ? (Array.isArray(suite["con:testCase"]) ? suite["con:testCase"] : [suite["con:testCase"]]).map((tc: any) => ({
-                    id: tc["@_id"] || `tc-${Date.now()}-${Math.random()}`,
+                    id: tc["@_id"] || `tc-${Math.random().toString(36).substring(2, 9)}-${Date.now()}`,
                     name: tc["@_name"],
                     steps: tc["con:testStep"] ? (Array.isArray(tc["con:testStep"]) ? tc["con:testStep"] : [tc["con:testStep"]]).map((step: any) => {
                         const cfg = step["con:config"] || {};
@@ -275,7 +275,7 @@ export class ProjectStorage {
                         }
 
                         return {
-                            id: step["@_id"] || `step-${Date.now()}-${Math.random()}`,
+                            id: step["@_id"] || `step-${Math.random().toString(36).substring(2, 9)}-${Date.now()}`,
                             name: step["@_name"],
                             type: type,
                             config: parsedConfig

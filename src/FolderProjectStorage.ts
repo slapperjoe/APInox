@@ -239,7 +239,7 @@ export class FolderProjectStorage {
             for (const suiteNameSafe of suiteDirs) {
                 const suiteDir = path.join(testsDir, suiteNameSafe);
                 const sMetaPath = path.join(suiteDir, 'suite.json');
-                const sMeta = fs.existsSync(sMetaPath) ? JSON.parse(fs.readFileSync(sMetaPath, 'utf8')) : { name: suiteNameSafe, id: `suite-${Date.now()}` };
+                const sMeta = fs.existsSync(sMetaPath) ? JSON.parse(fs.readFileSync(sMetaPath, 'utf8')) : { name: suiteNameSafe, id: `suite-${Math.random().toString(36).substring(2, 9)}-${Date.now()}` };
 
                 const suite: SoapTestSuite = {
                     ...sMeta,
@@ -250,7 +250,7 @@ export class FolderProjectStorage {
                 for (const caseNameSafe of caseDirs) {
                     const caseDir = path.join(suiteDir, caseNameSafe);
                     const cMetaPath = path.join(caseDir, 'case.json');
-                    const cMeta = fs.existsSync(cMetaPath) ? JSON.parse(fs.readFileSync(cMetaPath, 'utf8')) : { name: caseNameSafe, id: `tc-${Date.now()}` };
+                    const cMeta = fs.existsSync(cMetaPath) ? JSON.parse(fs.readFileSync(cMetaPath, 'utf8')) : { name: caseNameSafe, id: `tc-${Math.random().toString(36).substring(2, 9)}-${Date.now()}` };
 
                     const testCase: SoapTestCase = {
                         ...cMeta,

@@ -134,7 +134,7 @@ Right-click on items in the Explorer to access context actions:
 
 The core of Dirty SOAP is the interactive WSDL Editor. It allows you to explore SOAP services, construct requests, and analyze responses directly within VS Code.
 
-![WSDL Editor Diagram](help/wsdl_editor_diagram.png)
+![WSDL Editor Screenshot](help/wsdl_editor_screenshot.png)
 
 ## Key Features
 
