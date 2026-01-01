@@ -291,6 +291,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                             value={breakpointContent}
                             onChange={setBreakpointContent}
                             readOnly={false}
+                            autoFoldElements={config?.ui?.autoFoldElements}
                         />
                     </div>
                 </div>
@@ -822,6 +823,8 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                     readOnly={isReadOnly}
                                     onChange={(val) => onUpdateRequest({ ...selectedRequest, request: val })}
                                     onFocus={() => lastFocusedRef.current = bodyEditorRef.current}
+                                    autoFoldElements={config?.ui?.autoFoldElements}
+                                    requestId={selectedRequest.id || selectedRequest.name}
                                 />
                                 {/* Format Button Overlay */}
 
@@ -980,6 +983,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                 value={response ? (response.rawResponse ? formatXml(response.rawResponse, alignAttributes, inlineElementValues) : (response.error || '')) : ''}
                                 showLineNumbers={showLineNumbers}
                                 onSelectionChange={setSelection}
+                                autoFoldElements={config?.ui?.autoFoldElements}
                             />
                         </div>
                     )}

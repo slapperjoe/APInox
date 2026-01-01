@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import Editor, { loader } from '@monaco-editor/react';
 import * as monaco from 'monaco-editor';
 import styled from 'styled-components';
+import { applyAutoFolding } from '../utils/xmlFoldingUtils';
 
 loader.config({ monaco });
 
@@ -16,16 +17,33 @@ interface MonacoResponseViewerProps {
     language?: string;
     showLineNumbers?: boolean;
     onSelectionChange?: (data: { text: string, offset: number } | null) => void;
+    autoFoldElements?: string[];
 }
 
 export const MonacoResponseViewer: React.FC<MonacoResponseViewerProps> = ({
     value,
     language = 'xml',
     showLineNumbers = true,
-    onSelectionChange
+    onSelectionChange,
+    autoFoldElements
 }) => {
+    const editorRef = useRef<any>(null);
+    const [isReady, setIsReady] = React.useState(!autoFoldElements || autoFoldElements.length === 0 || !value);
+
+    // Apply auto-folding when response content changes
+    // Response viewer is read-only, so any value change is a new response
+    useEffect(() => {
+        if (!editorRef.current || !autoFoldElements || autoFoldElements.length === 0 || !value) {
+            setIsReady(true);
+            return;
+        }
+
+        setIsReady(false); // Hide while folding
+        applyAutoFolding(editorRef.current, value, autoFoldElements, () => setIsReady(true));
+    }, [value, autoFoldElements]);
+
     return (
-        <ViewerContainer>
+        <ViewerContainer style={{ opacity: isReady ? 1 : 0, transition: 'opacity 0.1s' }}>
             <Editor
                 height="100%"
                 defaultLanguage={language}
@@ -44,6 +62,8 @@ export const MonacoResponseViewer: React.FC<MonacoResponseViewerProps> = ({
                     contextmenu: true,
                 }}
                 onMount={(editor, monaco) => {
+                    editorRef.current = editor;
+
                     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyC, () => {
                         editor.trigger('keyboard', 'editor.action.clipboardCopyAction', null);
                     });
