@@ -206,7 +206,9 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
             url: selectedRequest.endpoint || '',
             statusCode: response.status || 200,
             responseBody: response.rawResponse || '',
-            responseHeaders: response.headers || {}
+            responseHeaders: response.headers || {},
+            // Include request body for SOAP operation name extraction
+            requestBody: selectedRequest.request || ''
         });
 
         onAddMockRule(newRule);

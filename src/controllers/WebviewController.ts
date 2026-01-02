@@ -411,6 +411,10 @@ export class WebviewController {
             // Sync replace rules and breakpoints to proxy service on config load
             this._proxyService.setReplaceRules(config.replaceRules || []);
             this._proxyService.setBreakpoints(config.breakpoints || []);
+            // Sync last proxy target to proxy service so it has the correct backend URL
+            if (config.lastProxyTarget) {
+                this._proxyService.updateConfig({ targetUrl: config.lastProxyTarget });
+            }
         }
     }
 

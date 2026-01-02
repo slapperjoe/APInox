@@ -122,7 +122,9 @@ export const ServerUi: React.FC<ServerUiProps> = ({
                 url: event.url || '',
                 statusCode: event.status || 200,
                 responseBody: 'responseContent' in event ? (event.responseContent || '') : (event.responseBody || ''),
-                responseHeaders: event.responseHeaders
+                responseHeaders: event.responseHeaders,
+                // Include request body for SOAP operation name extraction
+                requestBody: 'requestContent' in event ? (event.requestContent || '') : (event.requestBody || '')
             };
             const newRule = createMockRuleFromSource(sourceData);
             onAddMockRule(newRule);
