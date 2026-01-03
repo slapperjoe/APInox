@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { WsdlParser } from '../WsdlParser';
+import { WsdlParser } from '../../WsdlParser';
 
 // Mock the soap module
 vi.mock('soap', () => ({

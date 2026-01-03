@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { WildcardProcessor } from '../utils/WildcardProcessor';
+import { WildcardProcessor } from '../../utils/WildcardProcessor';
 
 describe('WildcardProcessor', () => {
     describe('process', () => {
