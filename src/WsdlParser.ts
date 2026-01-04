@@ -4,7 +4,8 @@ import { HttpProxyAgent } from 'http-proxy-agent';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 
 export interface WsdlParserOptions {
-    useProxy?: boolean;
+    proxyUrl?: string;
+    strictSSL?: boolean;
 }
 
 export class WsdlParser {
@@ -35,24 +36,38 @@ export class WsdlParser {
 
         const soapOptions: any = {};
 
-        // Configure proxy if enabled
-        if (this.options.useProxy) {
-            const proxyUrl = process.env.HTTPS_PROXY || process.env.https_proxy ||
-                process.env.HTTP_PROXY || process.env.http_proxy;
+        // Default strictSSL to true if undefined
+        const strictSSL = this.options.strictSSL !== false;
 
-            if (proxyUrl) {
-                this.log(`Using proxy: ${proxyUrl}`);
-                const isHttps = url.toLowerCase().startsWith('https');
-                const agent = isHttps
-                    ? new HttpsProxyAgent(proxyUrl)
-                    : new HttpProxyAgent(proxyUrl);
+        // Determine Proxy URL: Options > Env Vars
+        const proxyUrl = this.options.proxyUrl ||
+            process.env.HTTPS_PROXY || process.env.https_proxy ||
+            process.env.HTTP_PROXY || process.env.http_proxy;
 
+        if (proxyUrl) {
+            this.log(`Using proxy: ${proxyUrl}`);
+            this.log(`Strict SSL: ${strictSSL}`);
+
+            const isHttps = url.toLowerCase().startsWith('https');
+            const agentOptions = { rejectUnauthorized: strictSSL };
+
+            const agent = isHttps
+                ? new HttpsProxyAgent(proxyUrl, agentOptions)
+                : new HttpProxyAgent(proxyUrl); // HttpProxyAgent doesn't really need rejectUnauthorized but good practice
+
+            soapOptions.request = require('axios').create({
+                httpAgent: agent,
+                httpsAgent: agent,
+                proxy: false // Important: Disable axios default proxy handling
+            });
+        } else {
+            // No Proxy
+            if (!strictSSL) {
+                this.log(`No proxy set, but Strict SSL is DISABLED.`);
+                const agent = new (require('https').Agent)({ rejectUnauthorized: false });
                 soapOptions.request = require('axios').create({
-                    httpAgent: agent,
                     httpsAgent: agent
                 });
-            } else {
-                this.log('Proxy enabled but no proxy URL found in environment (HTTP_PROXY, HTTPS_PROXY)');
             }
         }
 

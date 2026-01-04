@@ -270,6 +270,7 @@ export interface DirtySoapConfig {
         defaultTimeout?: number;
         retryCount?: number;
         proxy?: string;
+        strictSSL?: boolean; // Default should be true
         proxyRules?: ProxyRule[];
     };
     ui?: {

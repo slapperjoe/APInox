@@ -12,6 +12,7 @@ export interface DirtySoapConfig {
         defaultTimeout?: number;
         retryCount?: number;
         proxy?: string;
+        strictSSL?: boolean;
         proxyRules?: ProxyRule[];
     };
     ui?: {
@@ -51,7 +52,8 @@ const DEFAULT_CONFIG: DirtySoapConfig = {
     network: {
         defaultTimeout: 30,
         retryCount: 3,
-        proxy: ""
+        proxy: "",
+        strictSSL: true
     },
     ui: {
         layoutMode: 'vertical',
