@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { Play, Plus, Trash2, Settings, Clock, Repeat, Flame, Zap, GripVertical, Loader, Square, Calendar, ToggleLeft, ToggleRight, Import, Download, ChevronDown, ChevronRight, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
-import { PerformanceSuite, PerformanceRun, PerformanceSchedule, PerformanceRequest } from '../../models';
+import { PerformanceSuite, PerformanceRun, PerformanceSchedule, PerformanceRequest, CoordinatorStatus } from '../../models';
+import { WorkerStatusPanel } from './WorkerStatusPanel';
 import {
     Content,
     Toolbar,
@@ -243,6 +244,10 @@ interface PerformanceSuiteEditorProps {
     onAddSchedule?: (suiteId: string, cronExpression: string) => void;
     onToggleSchedule?: (scheduleId: string, enabled: boolean) => void;
     onDeleteSchedule?: (scheduleId: string) => void;
+    // Coordinator props
+    coordinatorStatus?: CoordinatorStatus;
+    onStartCoordinator?: (port: number, expectedWorkers: number) => void;
+    onStopCoordinator?: () => void;
 }
 
 export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
@@ -260,7 +265,10 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
     onToggleSchedule,
     onDeleteSchedule,
     progress,
-    history = []
+    history = [],
+    coordinatorStatus,
+    onStartCoordinator,
+    onStopCoordinator
 }) => {
     const [draggedId, setDraggedId] = useState<string | null>(null);
     const [dropTargetId, setDropTargetId] = useState<string | null>(null);
@@ -569,6 +577,15 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                         </div>
                     )}
                 </Section>
+
+                {/* Distributed Workers Section */}
+                {coordinatorStatus && onStartCoordinator && onStopCoordinator && (
+                    <WorkerStatusPanel
+                        status={coordinatorStatus}
+                        onStart={onStartCoordinator}
+                        onStop={onStopCoordinator}
+                    />
+                )}
 
                 {/* Run Progress - Only show when running */}
                 {isRunning && (

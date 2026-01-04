@@ -423,6 +423,8 @@ export interface PerformanceRun {
 export interface PerformanceResult {
     requestId: string;
     requestName: string;
+    interfaceName?: string;
+    operationName?: string;
     iteration: number;
     duration: number;
     status: number;
@@ -478,4 +480,27 @@ export interface PerformanceSchedule {
     createdAt: number;
 }
 
+// ============================================
+// Distributed Worker Types
+// ============================================
 
+/** Status of a connected distributed worker */
+export interface DistributedWorker {
+    id: string;
+    status: 'connected' | 'working' | 'idle' | 'disconnected';
+    maxConcurrent: number;
+    platform?: string;
+    nodeVersion?: string;
+    connectedAt: number;
+    lastHeartbeat?: number;
+    assignedIterations?: { start: number; end: number };
+    completedIterations?: number;
+}
+
+/** Status of the performance test coordinator */
+export interface CoordinatorStatus {
+    running: boolean;
+    port: number;
+    workers: DistributedWorker[];
+    expectedWorkers: number;
+}

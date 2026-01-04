@@ -298,4 +298,8 @@ export interface WorkspaceLayoutProps extends WorkspacePerformanceActions {
     stepActions: WorkspaceStepActions;
     toolsActions: WorkspaceToolsActions;
     breakpointState?: WorkspaceBreakpointState;
+    // Coordinator props for distributed workers
+    coordinatorStatus?: import('../models').CoordinatorStatus;
+    onStartCoordinator?: (port: number, expectedWorkers: number) => void;
+    onStopCoordinator?: () => void;
 }

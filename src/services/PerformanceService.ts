@@ -312,6 +312,8 @@ export class PerformanceService extends EventEmitter {
         return {
             requestId: req.id,
             requestName: req.name,
+            interfaceName: req.interfaceName,
+            operationName: req.operationName,
             iteration,
             duration,
             status,

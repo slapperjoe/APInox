@@ -14,6 +14,7 @@ import { ConfigSwitcherService } from '../services/ConfigSwitcherService';
 import { TestRunnerService } from '../services/TestRunnerService';
 import { AzureDevOpsService } from '../services/AzureDevOpsService';
 import { MockService } from '../services/MockService';
+import { CoordinatorService } from '../services/CoordinatorService';
 import { SoapUIProject, SoapTestSuite, SoapTestCase } from '../models';
 import { FolderProjectStorage } from '../FolderProjectStorage';
 
@@ -87,6 +88,7 @@ export class WebviewController {
     private _loadedProjects: Map<string, SoapUIProject> = new Map();
     private _commands: Map<string, ICommand> = new Map();
     private _diagnosticService = DiagnosticService.getInstance();
+    private _coordinatorService: CoordinatorService = new CoordinatorService();
 
     constructor(
         private readonly _panel: vscode.WebviewPanel,
@@ -245,6 +247,14 @@ export class WebviewController {
         });
         this._mockService.on('mockRecorded', (rule) => {
             this._postMessage({ command: 'mockRecorded', rule });
+        });
+
+        // Coordinator Callbacks
+        this._coordinatorService.on('statusUpdate', (status) => {
+            this._postMessage({ command: 'coordinatorStatus', status });
+        });
+        this._coordinatorService.on('log', (msg) => {
+            console.log(`[Coordinator] ${msg}`);
         });
     }
 
@@ -434,6 +444,17 @@ export class WebviewController {
                     message.text
                 );
                 this._postMessage({ command: 'adoAddCommentResult', ...commentResult });
+                break;
+
+            // Coordinator Commands
+            case 'startCoordinator':
+                this._coordinatorService.start(message.port || 8765, message.expectedWorkers || 1);
+                break;
+            case 'stopCoordinator':
+                this._coordinatorService.stop();
+                break;
+            case 'getCoordinatorStatus':
+                this._postMessage({ command: 'coordinatorStatus', status: this._coordinatorService.getStatus() });
                 break;
 
         }
