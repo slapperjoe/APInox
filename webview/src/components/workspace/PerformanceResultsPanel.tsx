@@ -128,10 +128,13 @@ const BarRow = styled.div`
 `;
 
 const BarLabel = styled.div`
-    width: 80px;
+    width: 150px;
     font-size: 0.85em;
     text-align: right;
     opacity: 0.7;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 `;
 
 const BarTrack = styled.div`
@@ -302,18 +305,27 @@ export const PerformanceResultsPanel: React.FC<PerformanceResultsPanelProps> = (
                             <BarContainer>
                                 {(() => {
                                     // Group results by request and calculate avg
-                                    const avgByRequest = new Map<string, { name: string; avg: number; count: number }>();
+                                    const avgByRequest = new Map<string, { name: string; displayName: string; avg: number; count: number }>();
                                     for (const r of latestRun.results) {
-                                        const existing = avgByRequest.get(r.requestName) || { name: r.requestName, avg: 0, count: 0 };
+                                        // Create a display name that includes operation/interface if available
+                                        const displayParts: string[] = [];
+                                        if (r.operationName) displayParts.push(r.operationName);
+                                        else if (r.requestName !== 'Request 1') displayParts.push(r.requestName);
+                                        if (r.interfaceName) displayParts.push(`(${r.interfaceName})`);
+                                        const displayName = displayParts.length > 0
+                                            ? displayParts.join(' ')
+                                            : r.requestName;
+
+                                        const existing = avgByRequest.get(r.requestId) || { name: r.requestName, displayName, avg: 0, count: 0 };
                                         existing.avg = (existing.avg * existing.count + r.duration) / (existing.count + 1);
                                         existing.count++;
-                                        avgByRequest.set(r.requestName, existing);
+                                        avgByRequest.set(r.requestId, existing);
                                     }
                                     const data = Array.from(avgByRequest.values());
                                     const maxDuration = Math.max(...data.map(d => d.avg), 1);
                                     return data.map((d, i) => (
                                         <BarRow key={i}>
-                                            <BarLabel>{d.name.substring(0, 12)}</BarLabel>
+                                            <BarLabel title={d.displayName}>{d.displayName.substring(0, 20)}{d.displayName.length > 20 ? '...' : ''}</BarLabel>
                                             <BarTrack>
                                                 <BarFill
                                                     width={(d.avg / maxDuration) * 100}

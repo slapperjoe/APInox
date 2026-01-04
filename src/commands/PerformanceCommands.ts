@@ -28,7 +28,8 @@ export class AddPerformanceSuiteCommand implements ICommand {
     async execute(message: any): Promise<PerformanceSuite> {
         const now = Date.now();
         const suite: PerformanceSuite = {
-            id: `perf-suite-${now}`,
+            // Use provided ID (for frontend auto-select sync) or generate one
+            id: message.id || `perf-suite-${now}`,
             name: message.name || 'New Performance Suite',
             description: message.description || '',
             requests: [],

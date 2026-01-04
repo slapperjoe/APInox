@@ -81,8 +81,7 @@ function App() {
         loading,
         setLoading,
         selectedPerformanceSuiteId,
-        setSelectedPerformanceSuiteId,
-        clearSelection
+        setSelectedPerformanceSuiteId
     } = useSelection();
 
 
@@ -182,6 +181,15 @@ function App() {
     // Performance Run State
     const [activeRunId, setActiveRunId] = useState<string | undefined>(undefined);
     const [performanceProgress, setPerformanceProgress] = useState<{ iteration: number; total: number } | null>(null);
+
+    // Coordinator State for Distributed Workers
+    const [coordinatorStatus, setCoordinatorStatus] = useState<{
+        running: boolean;
+        port: number;
+        workers: any[];
+        expectedWorkers: number;
+    }>({ running: false, port: 8765, workers: [], expectedWorkers: 1 });
+    console.log(coordinatorStatus);
 
     // NOTE: Watcher/Proxy state now comes from useWatcherProxy hook
 
@@ -346,15 +354,35 @@ function App() {
     });
 
     // Performance Handlers
-    const handleAddPerformanceSuite = (name: string) => bridge.sendMessage({ command: 'addPerformanceSuite', name });
+    const handleAddPerformanceSuite = (name: string) => {
+        // Generate ID locally so we can auto-select it
+        const newId = `perf-suite-${Date.now()}`;
+        bridge.sendMessage({ command: 'addPerformanceSuite', name, id: newId });
+        // Auto-select the new suite
+        setSelectedPerformanceSuiteId(newId);
+        // Clear other selections so the new suite shows in workspace
+        setSelectedInterface(null);
+        setSelectedOperation(null);
+        setSelectedRequest(null);
+        setSelectedTestCase(null);
+        setSelectedStep(null);
+    };
     const handleDeletePerformanceSuite = (id: string) => bridge.sendMessage({ command: 'deletePerformanceSuite', suiteId: id });
     const handleRunPerformanceSuite = (id: string) => { setActiveRunId(id); bridge.sendMessage({ command: 'runPerformanceSuite', suiteId: id }); };
     const handleStopPerformanceRun = () => { bridge.sendMessage({ command: 'abortPerformanceSuite' }); }; // Backend sends runCompleted event
     const handleSelectPerformanceSuite = (id: string) => {
+        // Skip if already selected (no redraw needed)
+        if (selectedPerformanceSuiteId === id) return;
+
         const suite = config?.performanceSuites?.find(s => s.id === id);
         if (suite) {
-            clearSelection();
-            setTimeout(() => setSelectedPerformanceSuiteId(suite.id), 0);
+            // Clear other selections but set suite ID atomically (no setTimeout flash)
+            setSelectedInterface(null);
+            setSelectedOperation(null);
+            setSelectedRequest(null);
+            setSelectedTestCase(null);
+            setSelectedStep(null);
+            setSelectedPerformanceSuiteId(suite.id);
         }
     };
     const handleUpdatePerformanceSuite = (suite: PerformanceSuite) => bridge.sendMessage({ command: 'updatePerformanceSuite', suiteId: suite.id, updates: suite });
@@ -389,6 +417,30 @@ function App() {
         setSelectedStep(null);
     };
 
+    // Coordinator handlers for distributed workers
+    const handleStartCoordinator = (port: number, expectedWorkers: number) => {
+        bridge.sendMessage({ command: 'startCoordinator', port, expectedWorkers });
+    };
+
+    const handleStopCoordinator = () => {
+        bridge.sendMessage({ command: 'stopCoordinator' });
+    };
+    console.log(handleStartCoordinator);
+    console.log(handleStopCoordinator);
+
+    // Listen for coordinator status updates
+    useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            const message = event.data;
+            if (message.command === 'coordinatorStatus') {
+                setCoordinatorStatus(message.status);
+            }
+        };
+        window.addEventListener('message', handleMessage);
+        // Request initial status
+        bridge.sendMessage({ command: 'getCoordinatorStatus' });
+        return () => window.removeEventListener('message', handleMessage);
+    }, []);
 
 
     const sidebarPerformanceProps = {
