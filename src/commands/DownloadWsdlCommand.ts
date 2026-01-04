@@ -1,17 +1,19 @@
 
 import { ICommand } from './ICommand';
 import { SoapClient } from '../soapClient';
-import * as vscode from 'vscode';
+import * as vscode from 'vscode'; // Used for global config fallback
 import * as fs from 'fs';
 import * as path from 'path';
 import axios from 'axios';
+import { SettingsManager } from '../utils/SettingsManager';
 
 
 export class DownloadWsdlCommand implements ICommand {
     constructor(
         private readonly _panel: vscode.WebviewPanel,
         private readonly _soapClient: SoapClient,
-        private readonly _storagePath: string // Extension Global Storage Path
+        private readonly _storagePath: string, // Extension Global Storage Path
+        private readonly _settingsManager: SettingsManager
     ) { }
 
     async execute(message: any): Promise<void> {
@@ -57,9 +59,41 @@ export class DownloadWsdlCommand implements ICommand {
             // Ideally we map URLs to local filenames.
             // For now, simple implementation.
 
-            const response = await axios.get(url, {
-                responseType: 'text'
-            });
+            const config = this._settingsManager.getConfig();
+            const httpConfig = vscode.workspace.getConfiguration('http');
+
+            // Prioritize extension settings, fallback to VS Code settings
+            const proxyUrl = config.network?.proxy || httpConfig.get<string>('proxy');
+
+            let strictSSL = config.network?.strictSSL;
+            if (strictSSL === undefined) {
+                strictSSL = httpConfig.get<boolean>('proxyStrictSSL', true);
+            }
+
+            const axiosConfig: any = { responseType: 'text', proxy: false };
+            const agentOptions = { rejectUnauthorized: strictSSL };
+
+            if (proxyUrl) {
+                const { HttpsProxyAgent } = require('https-proxy-agent');
+                const { HttpProxyAgent } = require('http-proxy-agent');
+
+                // Determine agent based on Target URL protocol, but using Proxy
+                if (url.toLowerCase().startsWith('https')) {
+                    const agent = new HttpsProxyAgent(proxyUrl, agentOptions);
+                    axiosConfig.httpsAgent = agent;
+                    axiosConfig.httpAgent = agent;
+                } else {
+                    const agent = new HttpProxyAgent(proxyUrl);
+                    axiosConfig.httpAgent = agent;
+                    axiosConfig.httpsAgent = agent;
+                }
+            } else {
+                if (!strictSSL) {
+                    axiosConfig.httpsAgent = new (require('https').Agent)(agentOptions);
+                }
+            }
+
+            const response = await axios.get(url, axiosConfig);
 
             const content = response.data;
             const filename = forcedFilename || path.basename(url).split('?')[0] || 'service.wsdl';

@@ -3,32 +3,70 @@ import axios from 'axios';
 import { SoapService, SoapSchemaNode } from './models';
 import { WsdlParser } from './WsdlParser';
 import { DiagnosticService } from './services/DiagnosticService';
+import { SettingsManager } from './utils/SettingsManager';
+
+import * as vscode from 'vscode'; // Need to import vscode to read settings
 
 export class SoapClient {
     private client: soap.Client | null = null;
     private currentRequest: any = null;
     private cancelTokenSource: any = null;
     private outputChannel: any = null;
+    private settingsManager: SettingsManager;
     private wsdlParser: WsdlParser;
 
-    constructor(outputChannel?: any) {
+    constructor(settingsManager: SettingsManager, outputChannel?: any) {
         this.outputChannel = outputChannel;
+        this.settingsManager = settingsManager;
+        // Initial setup - settings will be refreshed on parseWsdl
         this.wsdlParser = new WsdlParser(outputChannel);
     }
 
     public log(message: string, data?: any) {
         // Also pipe to diagnostic service
-        DiagnosticService.getInstance().log('BACKEND', `[SoapClient] ${message}`, data);
+        DiagnosticService.getInstance().log('BACKEND', `[SoapClient] ${message} `, data);
 
         if (this.outputChannel) {
-            this.outputChannel.appendLine(`[${new Date().toLocaleTimeString()}] ${message}`);
+            this.outputChannel.appendLine(`[${new Date().toLocaleTimeString()}] ${message} `);
             if (data) {
                 this.outputChannel.appendLine(typeof data === 'string' ? data : JSON.stringify(data, null, 2));
             }
         }
     }
 
+    private getProxySettings() {
+        // 1. Check Extension Config
+        const config = this.settingsManager.getConfig();
+        let proxyUrl = config.network?.proxy;
+        let strictSSL = config.network?.strictSSL;
+
+        // 2. Check VS Code Config
+        const httpConfig = vscode.workspace.getConfiguration('http');
+        if (!proxyUrl) {
+            proxyUrl = httpConfig.get<string>('proxy');
+        }
+
+        // If extension setting is undefined, fall back to vscode setting. 
+        // If that is undefined, default true.
+        if (strictSSL === undefined) {
+            strictSSL = httpConfig.get<boolean>('proxyStrictSSL', true);
+        }
+
+        return { proxyUrl, strictSSL };
+    }
+
     async parseWsdl(url: string, localWsdlDir?: string): Promise<SoapService[]> {
+        // Refresh settings
+        const { proxyUrl, strictSSL } = this.getProxySettings();
+
+        this.log(`Configuring WSDL Parser - Proxy: ${proxyUrl || 'None'}, StrictSSL: ${strictSSL} `);
+
+        // Re-create parser with latest settings
+        this.wsdlParser = new WsdlParser(this.outputChannel, {
+            proxyUrl,
+            strictSSL
+        });
+
         const services = await this.wsdlParser.parseWsdl(url, localWsdlDir);
         this.client = this.wsdlParser.getClient();
         return services;
@@ -168,11 +206,35 @@ export class SoapClient {
         const CancelToken = axios.CancelToken;
         this.cancelTokenSource = CancelToken.source();
 
-        const agentOptions = { keepAlive: false, rejectUnauthorized: false };
-        const httpsAgent = new (require('https').Agent)(agentOptions);
-        const httpAgent = new (require('http').Agent)(agentOptions);
+        const { proxyUrl, strictSSL } = this.getProxySettings();
+        const agentOptions = { keepAlive: false, rejectUnauthorized: strictSSL };
 
-        this.log(`Methods: POST ${endpoint}`);
+        let httpsAgent: any;
+        let httpAgent: any;
+
+        if (proxyUrl) {
+            const { HttpsProxyAgent } = require('https-proxy-agent');
+            const { HttpProxyAgent } = require('http-proxy-agent');
+            const isHttps = endpoint.toLowerCase().startsWith('https');
+
+            // If we are proxying, the agent needs to be proxy aware
+            // Note: HttpsProxyAgent handles CONNECT for https, HttpProxyAgent for http
+            // But if we are sending to https, we need HttpsProxyAgent
+            // If sending to http via proxy, usually HttpProxyAgent (or standard http proxy behavior)
+
+            if (isHttps) {
+                httpsAgent = new HttpsProxyAgent(proxyUrl, agentOptions);
+            } else {
+                httpsAgent = new HttpProxyAgent(proxyUrl);
+            }
+            httpAgent = httpsAgent; // Reuse
+        } else {
+            // No Proxy
+            httpsAgent = new (require('https').Agent)(agentOptions);
+            httpAgent = new (require('http').Agent)(agentOptions);
+        }
+
+        this.log(`Methods: POST ${endpoint} `);
         this.log('Headers:', requestHeaders);
         this.log('Body:', xml);
 

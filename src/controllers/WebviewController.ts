@@ -133,7 +133,8 @@ export class WebviewController {
         this._commands.set('downloadWsdl', new DownloadWsdlCommand(
             this._panel,
             this._soapClient,
-            this._extensionUri.fsPath
+            this._extensionUri.fsPath,
+            this._settingsManager
         ));
         this._commands.set('loadWsdl', new LoadWsdlCommand(this._panel, this._soapClient));
         this._commands.set('getLocalWsdls', new GetLocalWsdlsCommand(this._panel, this._soapClient, this._extensionUri.fsPath));

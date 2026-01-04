@@ -163,6 +163,16 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange }) => {
                             onChange={e => onChange('network', 'proxy', e.target.value)}
                         />
                     </FormGroup>
+                    <FormGroup>
+                        <CheckboxLabel>
+                            <input
+                                type="checkbox"
+                                checked={config.network?.strictSSL ?? true}
+                                onChange={e => onChange('network', 'strictSSL', e.target.checked)}
+                            />
+                            Strict SSL (Verify Certificates)
+                        </CheckboxLabel>
+                    </FormGroup>
 
                     <ProxyRulesEditor config={config} onChange={onChange} />
                 </div>
