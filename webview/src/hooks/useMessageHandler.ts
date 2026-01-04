@@ -305,33 +305,53 @@ export function useMessageHandler(state: MessageHandlerState) {
 
                 case 'addOperationToPerformance':
                     debugLog('addOperationToPerformance', { suiteId: message.suiteId, operation: message.operation?.name });
+                    console.log('[useMessageHandler] ADD_OP_PERF: Received message', JSON.stringify(message));
+
                     const perfOp = message.operation;
+                    const perfReq = message.request; // From new backend command
+
                     debugLog('addOperationToPerformance', {
                         hasPerfOp: !!perfOp,
+                        hasPerfReq: !!perfReq,
                         hasSuiteId: !!message.suiteId,
                         hasConfig: !!config,
                         hasPerformanceSuites: !!config?.performanceSuites,
                         suitesCount: config?.performanceSuites?.length || 0
                     });
-                    if (perfOp && message.suiteId && config?.performanceSuites) {
+
+                    if ((perfOp || perfReq) && message.suiteId && config?.performanceSuites) {
                         const suiteIndex = config.performanceSuites.findIndex((s: any) => s.id === message.suiteId);
                         debugLog('addOperationToPerformance', { suiteIndex, lookingForId: message.suiteId });
-                        if (suiteIndex !== -1) {
-                            const suite = config.performanceSuites[suiteIndex];
-                            debugLog('addOperationToPerformance', { suiteName: suite.name, currentStepsCount: suite.steps?.length || 0 });
+                        console.log('[useMessageHandler] ADD_OP_PERF: Found suite index', suiteIndex);
 
-                            const newStep: any = {
-                                id: `perf-step-${Date.now()}`,
-                                name: perfOp.name,
-                                type: 'request',
-                                config: {
-                                    request: {
-                                        id: `perf-req-${Date.now()}`,
+                        if (suiteIndex !== -1) {
+                            // Diagnostics
+                            console.log('[useMessageHandler] addOperationToPerformance', { suiteId: message.suiteId, existingRequests: config.performanceSuites[suiteIndex].requests?.length });
+
+                            const suite = { ...config.performanceSuites[suiteIndex] };
+                            let newRequest = message.request;
+
+                            // Ensure unique ID for the new request instance
+                            if (newRequest) {
+                                newRequest = {
+                                    ...newRequest,
+                                    id: `perf-req-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                                    method: newRequest.method || 'POST',
+                                    interfaceName: newRequest.interfaceName, // From payload
+                                    operationName: newRequest.operationName, // From payload
+                                    order: (suite.requests?.length || 0) + 1
+                                };
+                            } else {
+                                // Fallback construction
+                                const perfOp = message.operation; // Assuming it might be passed if request isn't
+                                if (perfOp) {
+                                    newRequest = {
+                                        id: `perf-req-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
                                         name: perfOp.name,
                                         endpoint: (perfOp as any).originalEndpoint || '',
                                         method: 'POST',
                                         soapAction: perfOp.soapAction,
-                                        request: `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="${perfOp.targetNamespace || 'http://tempuri.org/'}">
+                                        requestBody: `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="${perfOp.targetNamespace || 'http://tempuri.org/'}">
    <soapenv:Header/>
    <soapenv:Body>
       <tem:${perfOp.name}>
@@ -341,16 +361,36 @@ export function useMessageHandler(state: MessageHandlerState) {
 </soapenv:Envelope>`,
                                         headers: {},
                                         extractors: [],
-                                        assertions: []
-                                    }
+                                        slaThreshold: 200,
+                                        order: (suite.requests?.length || 0) + 1
+                                    };
                                 }
-                            };
-                            suite.steps = [...(suite.steps || []), newStep];
-                            const updatedSuites = [...config.performanceSuites];
-                            updatedSuites[suiteIndex] = { ...suite };
-                            bridge.sendMessage({ command: 'updatePerformanceSuite', suiteId: suite.id, updates: suite });
+                            }
+
+                            if (newRequest) {
+                                // Send to backend FIRST (side effect outside setConfig)
+                                const nextRequests = [...(suite.requests || []), newRequest];
+                                const nextSuite = { ...suite, requests: nextRequests };
+                                bridge.sendMessage({ command: 'updatePerformanceSuite', suiteId: nextSuite.id, updates: nextSuite });
+
+                                // Optimistic Update
+                                setConfig((prevConfig: any) => {
+                                    const currentSuites = prevConfig.performanceSuites || [];
+                                    const idx = currentSuites.findIndex((s: any) => s.id === message.suiteId);
+                                    if (idx !== -1) {
+                                        const s = { ...currentSuites[idx] };
+                                        // Use the NEW request with unique ID
+                                        s.requests = [...(s.requests || []), newRequest];
+
+                                        const newSuites = [...currentSuites];
+                                        newSuites[idx] = s;
+                                        return { ...prevConfig, performanceSuites: newSuites };
+                                    }
+                                    return prevConfig;
+                                });
+                            }
                         } else {
-                            debugLog('addOperationToPerformance', { error: 'Suite not found', availableSuiteIds: config.performanceSuites.map((s: any) => s.id) });
+                            console.error('[useMessageHandler] Suite not found for addOperationToPerformance');
                         }
                     } else {
                         debugLog('addOperationToPerformance', { error: 'Missing required data' });

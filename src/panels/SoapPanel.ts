@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { SoapClient } from '../soapClient';
+import { DiagnosticService } from '../services/DiagnosticService';
 import { ProjectStorage } from '../ProjectStorage';
 import { FolderProjectStorage } from '../FolderProjectStorage';
 import { SettingsManager } from '../utils/SettingsManager';
@@ -36,6 +37,7 @@ export class SoapPanel {
     private _disposables: vscode.Disposable[] = [];
     private _autosaveTimeout: NodeJS.Timeout | undefined;
     private _outputChannel: vscode.OutputChannel;
+    private _diagnosticService: DiagnosticService;
 
     public static setContext(context: vscode.ExtensionContext) {
         SoapPanel._extensionContext = context;
@@ -71,6 +73,9 @@ export class SoapPanel {
         this._extensionUri = extensionUri;
 
         this._outputChannel = vscode.window.createOutputChannel('Dirty SOAP');
+        this._diagnosticService = DiagnosticService.getInstance();
+        this._diagnosticService.log('BACKEND', 'SoapPanel Initialized');
+
         this._soapClient = new SoapClient(this._outputChannel);
         this._projectStorage = new ProjectStorage(this._outputChannel);
         this._folderStorage = new FolderProjectStorage(this._outputChannel);
@@ -114,15 +119,25 @@ export class SoapPanel {
             }
         });
 
+        // Initialize Config
+        const config = this._settingsManager.getConfig();
+
         // Performance Service
         this._performanceService = new PerformanceService(this._soapClient);
         this._performanceService.setLogger(msg => this._outputChannel.appendLine(msg));
+
+        // Initialize with saved data
+        if (config.performanceSuites) {
+            this._performanceService.setSuites(config.performanceSuites);
+        }
+        if (config.performanceHistory) {
+            this._performanceService.setHistory(config.performanceHistory);
+        }
 
         // Schedule Service
         const scheduleService = new ScheduleService(this._performanceService);
 
         // Load saved schedules
-        const config = this._settingsManager.getConfig();
         if (config.performanceSchedules) {
             scheduleService.loadSchedules(config.performanceSchedules);
         }

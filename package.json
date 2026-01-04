@@ -36,6 +36,12 @@
         "title": "Reset Configuration (Hard Reset)",
         "category": "Dirty Soap",
         "icon": "$(trash)"
+      },
+      {
+        "command": "dirty-soap.exportDiagnostics",
+        "title": "Export Diagnostic Logs",
+        "category": "Dirty Soap",
+        "icon": "$(output)"
       }
     ]
   },

@@ -81,10 +81,12 @@ import {
 } from '../commands/ScheduleCommands';
 import { PerformanceService } from '../services/PerformanceService';
 import { ScheduleService } from '../services/ScheduleService';
+import { DiagnosticService } from '../services/DiagnosticService';
 
 export class WebviewController {
     private _loadedProjects: Map<string, SoapUIProject> = new Map();
     private _commands: Map<string, ICommand> = new Map();
+    private _diagnosticService = DiagnosticService.getInstance();
 
     constructor(
         private readonly _panel: vscode.WebviewPanel,
@@ -103,7 +105,10 @@ export class WebviewController {
         private readonly _performanceService: PerformanceService,
         private readonly _scheduleService: ScheduleService
     ) {
+        this._diagnosticService.log('BACKEND', 'WebviewController Initialized');
+
         // Initialize Commands
+
         this._commands.set('executeRequest', new ExecuteRequestCommand(this._panel, this._soapClient, this._settingsManager));
         this._commands.set('saveProject', new SaveProjectCommand(
             this._panel,
@@ -168,7 +173,7 @@ export class WebviewController {
         this._commands.set('updatePerformanceSuite', new UpdatePerformanceSuiteCommand(this._performanceService, this._settingsManager));
         this._commands.set('deletePerformanceSuite', new DeletePerformanceSuiteCommand(this._performanceService, this._settingsManager));
         this._commands.set('addPerformanceRequest', new AddPerformanceRequestCommand(this._performanceService, this._settingsManager));
-        this._commands.set('pickOperationForPerformance', new PickOperationForPerformanceCommand(this._panel, Array.from(this._loadedProjects.values())));
+        this._commands.set('pickOperationForPerformance', new PickOperationForPerformanceCommand(this._panel, () => Array.from(this._loadedProjects.values())));
         this._commands.set('updatePerformanceRequest', new UpdatePerformanceRequestCommand(this._performanceService, this._settingsManager));
         this._commands.set('deletePerformanceRequest', new DeletePerformanceRequestCommand(this._performanceService, this._settingsManager));
         this._commands.set('runPerformanceSuite', new RunPerformanceSuiteCommand(this._performanceService, this._settingsManager));
@@ -186,48 +191,48 @@ export class WebviewController {
 
         // Setup Update Callback
         this._fileWatcherService.setCallback((history) => {
-            this._panel.webview.postMessage({ command: 'watcherUpdate', history });
+            this._postMessage({ command: 'watcherUpdate', history });
         });
 
         // Proxy Callbacks
         this._proxyService.on('log', (event) => {
-            this._panel.webview.postMessage({ command: 'proxyLog', event });
+            this._postMessage({ command: 'proxyLog', event });
         });
         this._proxyService.on('status', (running) => {
-            this._panel.webview.postMessage({ command: 'proxyStatus', running });
+            this._postMessage({ command: 'proxyStatus', running });
         });
 
         // Breakpoint events
         this._proxyService.on('breakpointHit', (data) => {
-            this._panel.webview.postMessage({ command: 'breakpointHit', ...data });
+            this._postMessage({ command: 'breakpointHit', ...data });
         });
         this._proxyService.on('breakpointTimeout', (data) => {
-            this._panel.webview.postMessage({ command: 'breakpointTimeout', ...data });
+            this._postMessage({ command: 'breakpointTimeout', ...data });
         });
 
         // Test Runner Callback
         this._testRunnerService.setCallback((data) => {
-            this._panel.webview.postMessage({ command: 'testRunnerUpdate', data });
+            this._postMessage({ command: 'testRunnerUpdate', data });
         });
 
         // Mock Server Callbacks
         this._mockService.on('log', (event) => {
-            this._panel.webview.postMessage({ command: 'mockLog', event });
+            this._postMessage({ command: 'mockLog', event });
         });
         this._mockService.on('status', (running) => {
-            this._panel.webview.postMessage({ command: 'mockStatus', running });
+            this._postMessage({ command: 'mockStatus', running });
         });
         this._mockService.on('rulesUpdated', (rules) => {
-            this._panel.webview.postMessage({ command: 'mockRulesUpdated', rules });
+            this._postMessage({ command: 'mockRulesUpdated', rules });
         });
 
         // Performance Callbacks
         this._performanceService.on('runCompleted', (run) => {
-            this._panel.webview.postMessage({ command: 'performanceRunComplete', run });
+            this._postMessage({ command: 'performanceRunComplete', run });
             this._settingsManager.updatePerformanceHistory(run); // Ensure history is saved (redundant if service does it, but safer)
         });
         this._performanceService.on('iterationComplete', (data) => {
-            this._panel.webview.postMessage({ command: 'performanceIterationComplete', data });
+            this._postMessage({ command: 'performanceIterationComplete', data });
         });
         this._performanceService.on('suitesUpdated', () => {
             // Note: Commands now handle settings sync explicitly after updating SettingsManager
@@ -236,22 +241,30 @@ export class WebviewController {
             console.log('[WebviewController] suitesUpdated event received (commands handle sync)');
         });
         this._mockService.on('mockHit', (data) => {
-            this._panel.webview.postMessage({ command: 'mockHit', ...data });
+            this._postMessage({ command: 'mockHit', ...data });
         });
         this._mockService.on('mockRecorded', (rule) => {
-            this._panel.webview.postMessage({ command: 'mockRecorded', rule });
+            this._postMessage({ command: 'mockRecorded', rule });
         });
     }
 
+    private _postMessage(message: any) {
+        this._diagnosticService.log('BRIDGE_OUT', message.command, message);
+        this._panel.webview.postMessage(message);
+    }
+
     public async handleMessage(message: any) {
+        this._diagnosticService.log('BRIDGE_IN', message.command, message);
+
         if (this._commands.has(message.command)) {
             await this._commands.get(message.command)?.execute(message);
 
             // After performance commands, explicitly sync settings to webview
-            // This ensures SettingsManager has been updated before we send to webview
             if (message.command.startsWith('addPerformance') ||
                 message.command.startsWith('deletePerformance') ||
                 message.command.startsWith('updatePerformance')) {
+                console.log('[WebviewController] Performance command executed:', message.command);
+                console.log('[WebviewController] Syncing settings to webview...');
                 this.sendSettingsToWebview();
             }
             return;
@@ -283,7 +296,7 @@ export class WebviewController {
             case 'clipboardAction':
                 if (message.action === 'read') {
                     const text = await vscode.env.clipboard.readText();
-                    this._panel.webview.postMessage({ command: 'clipboardText', text });
+                    this._postMessage({ command: 'clipboardText', text });
                 } else if (message.action === 'write') {
                     await vscode.env.clipboard.writeText(message.text);
                 }
@@ -342,7 +355,7 @@ export class WebviewController {
                 this.handleGetAutosave();
                 break;
             case 'getWatcherHistory':
-                this._panel.webview.postMessage({ command: 'watcherUpdate', history: this._fileWatcherService.getHistory() });
+                this._postMessage({ command: 'watcherUpdate', history: this._fileWatcherService.getHistory() });
                 break;
             case 'clearWatcherHistory':
                 this._fileWatcherService.clearHistory();
@@ -368,27 +381,27 @@ export class WebviewController {
             // Azure DevOps Integration
             case 'adoStorePat':
                 await this._azureDevOpsService.storePat(message.pat);
-                this._panel.webview.postMessage({ command: 'adoPatStored', success: true });
+                this._postMessage({ command: 'adoPatStored', success: true });
                 break;
             case 'adoHasPat':
                 const hasPat = await this._azureDevOpsService.hasPat();
-                this._panel.webview.postMessage({ command: 'adoHasPatResult', hasPat });
+                this._postMessage({ command: 'adoHasPatResult', hasPat });
                 break;
             case 'adoDeletePat':
                 await this._azureDevOpsService.deletePat();
-                this._panel.webview.postMessage({ command: 'adoPatDeleted', success: true });
+                this._postMessage({ command: 'adoPatDeleted', success: true });
                 break;
             case 'adoListProjects':
                 try {
                     const projects = await this._azureDevOpsService.listProjects(message.orgUrl);
-                    this._panel.webview.postMessage({ command: 'adoProjectsResult', projects, success: true });
+                    this._postMessage({ command: 'adoProjectsResult', projects, success: true });
                 } catch (error: any) {
-                    this._panel.webview.postMessage({ command: 'adoProjectsResult', projects: [], success: false, error: error.message });
+                    this._postMessage({ command: 'adoProjectsResult', projects: [], success: false, error: error.message });
                 }
                 break;
             case 'adoTestConnection':
                 const result = await this._azureDevOpsService.testConnection(message.orgUrl);
-                this._panel.webview.postMessage({ command: 'adoTestConnectionResult', ...result });
+                this._postMessage({ command: 'adoTestConnectionResult', ...result });
                 break;
             case 'adoAddComment':
                 const commentResult = await this._azureDevOpsService.addWorkItemComment(
@@ -397,7 +410,7 @@ export class WebviewController {
                     message.workItemId,
                     message.text
                 );
-                this._panel.webview.postMessage({ command: 'adoAddCommentResult', ...commentResult });
+                this._postMessage({ command: 'adoAddCommentResult', ...commentResult });
                 break;
 
         }
@@ -406,7 +419,7 @@ export class WebviewController {
     private handleGetAutosave() {
         const content = this._settingsManager.getAutosave();
         if (content) {
-            this._panel.webview.postMessage({ command: 'restoreAutosave', content });
+            this._postMessage({ command: 'restoreAutosave', content });
         }
     }
 
@@ -441,6 +454,10 @@ export class WebviewController {
             });
             if (uris && uris.length > 0) {
                 const projects = await this._projectStorage.loadWorkspace(uris[0].fsPath);
+
+                // Clear existing projects to prevent stale entries
+                this._loadedProjects.clear();
+
                 // We need to associate projects with their paths? 
                 // loadWorkspace returns array of projects, but doesn't necessarily set fileName on them if not saved?
                 // ProjectStorage.loadWorkspace likely sets fileName if loaded from disk.
@@ -448,7 +465,7 @@ export class WebviewController {
                     if (p.fileName) this._loadedProjects.set(p.fileName, p);
                 });
 
-                this._panel.webview.postMessage({
+                this._postMessage({
                     command: 'workspaceLoaded',
                     projects: projects
                 });
@@ -463,7 +480,7 @@ export class WebviewController {
 
     private handleGetSampleSchema(message: any) {
         const schema = this._soapClient.getOperationSchema(message.operationName);
-        this._panel?.webview.postMessage({ command: 'sampleSchema', schema, operationName: message.operationName });
+        this._postMessage({ command: 'sampleSchema', schema, operationName: message.operationName });
     }
 
 
@@ -488,7 +505,7 @@ export class WebviewController {
             const config = this._settingsManager.getConfig();
             const raw = this._settingsManager.getRawConfig();
             this.sendChangelogToWebview(); // Piggyback changelog
-            this._panel.webview.postMessage({ command: 'settingsUpdate', config, raw });
+            this._postMessage({ command: 'settingsUpdate', config, raw });
             // Sync replace rules and breakpoints to proxy service on config load
             this._proxyService.setReplaceRules(config.replaceRules || []);
             this._proxyService.setBreakpoints(config.breakpoints || []);
@@ -514,7 +531,7 @@ export class WebviewController {
             const changelogPath = path.join(this._extensionUri.fsPath, 'CHANGELOG.md');
             if (fs.existsSync(changelogPath)) {
                 const content = fs.readFileSync(changelogPath, 'utf8');
-                this._panel.webview.postMessage({ command: 'changelog', content });
+                this._postMessage({ command: 'changelog', content });
             }
         } catch (e) {
             console.error('Failed to read changelog', e);

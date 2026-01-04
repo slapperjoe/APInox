@@ -2,6 +2,7 @@ import * as soap from 'soap';
 import axios from 'axios';
 import { SoapService, SoapSchemaNode } from './models';
 import { WsdlParser } from './WsdlParser';
+import { DiagnosticService } from './services/DiagnosticService';
 
 export class SoapClient {
     private client: soap.Client | null = null;
@@ -16,6 +17,9 @@ export class SoapClient {
     }
 
     public log(message: string, data?: any) {
+        // Also pipe to diagnostic service
+        DiagnosticService.getInstance().log('BACKEND', `[SoapClient] ${message}`, data);
+
         if (this.outputChannel) {
             this.outputChannel.appendLine(`[${new Date().toLocaleTimeString()}] ${message}`);
             if (data) {

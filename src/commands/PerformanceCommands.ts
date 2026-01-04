@@ -2,6 +2,7 @@ import { ICommand } from './ICommand';
 import { PerformanceService } from '../services/PerformanceService';
 import { SettingsManager } from '../utils/SettingsManager';
 import { PerformanceSuite, PerformanceRequest, SoapRequestExtractor } from '../models';
+import { DiagnosticService } from '../services/DiagnosticService';
 import * as vscode from 'vscode';
 
 /**
@@ -115,23 +116,50 @@ export class AddPerformanceRequestCommand implements ICommand {
 export class PickOperationForPerformanceCommand implements ICommand {
     constructor(
         private readonly _panel: vscode.WebviewPanel,
-        private readonly _loadedProjects: any[]
+        private readonly _projectProvider: () => any[]
     ) { }
 
     async execute(message: any): Promise<void> {
         const items: vscode.QuickPickItem[] = [];
+        const projects = this._projectProvider();
 
-        for (const project of this._loadedProjects) {
+        for (const project of projects) {
             for (const iface of project.interfaces) {
                 for (const op of iface.operations) {
-                    items.push({
-                        label: op.name,
-                        description: `${project.name} - ${iface.name}`,
-                        detail: op.soapAction,
-                        // @ts-ignore
-                        operation: op,
-                        suiteId: message.suiteId
-                    });
+                    // Iterate requests to show specific saved requests
+                    if (op.requests && op.requests.length > 0) {
+                        for (const req of op.requests) {
+                            // Enrich request with operation metadata if missing
+                            const enrichedRequest = { ...req };
+                            if (!enrichedRequest.endpoint) {
+                                if (op.originalEndpoint) {
+                                    enrichedRequest.endpoint = op.originalEndpoint;
+                                } else {
+                                    // Fallback if WSDL parsing didn't find an endpoint
+                                    DiagnosticService.getInstance().log('BACKEND', `WARN: Missing endpoint for operation ${op.name}`, op);
+                                    enrichedRequest.endpoint = 'http://localhost/missing-endpoint';
+                                }
+                            }
+                            if (!enrichedRequest.soapAction) enrichedRequest.soapAction = op.action;
+
+                            // Attach metadata for PerformanceRequest
+                            (enrichedRequest as any).interfaceName = iface.name;
+                            (enrichedRequest as any).operationName = op.name;
+
+                            items.push({
+                                label: req.name, // label
+                                description: `${op.name} (${iface.name}) - ${enrichedRequest.endpoint}`,
+                                detail: project.name,
+                                // @ts-ignore
+                                request: enrichedRequest,
+                                suiteId: message.suiteId
+                            });
+                        }
+                    } else {
+                        // Fallback for operations with no saved requests? 
+                        // Or just show operation? User said "show requests".
+                        // Let's stick to requests. If no requests, nothing to add (Performance runner executes requests).
+                    }
                 }
             }
         }
@@ -141,11 +169,18 @@ export class PickOperationForPerformanceCommand implements ICommand {
         });
 
         if (selected) {
-            this._panel.webview.postMessage({
-                type: 'addOperationToPerformance',
+            console.log('[PickOperation] Selected item:', selected.label);
+            const messagePayload = {
+                command: 'addOperationToPerformance',
                 suiteId: (selected as any).suiteId,
-                operation: (selected as any).operation
-            });
+                request: (selected as any).request
+            };
+            console.log('[PickOperation] Sending message to frontend:', JSON.stringify(messagePayload, null, 2));
+
+            DiagnosticService.getInstance().log('BRIDGE_OUT', messagePayload.command, messagePayload);
+            this._panel.webview.postMessage(messagePayload);
+        } else {
+            console.log('[PickOperation] No item selected');
         }
     }
 }
