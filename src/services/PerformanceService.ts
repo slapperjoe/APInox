@@ -57,10 +57,16 @@ export class PerformanceService extends EventEmitter {
     }
 
     public updateSuite(id: string, updates: Partial<PerformanceSuite>) {
+        this.log(`[PerformanceService] updateSuite called for ${id}. Updates: ${Object.keys(updates).join(', ')}`);
         const idx = this.suites.findIndex(s => s.id === id);
         if (idx !== -1) {
             this.suites[idx] = { ...this.suites[idx], ...updates, modifiedAt: Date.now() };
+            if (updates.requests) {
+                this.log(`[PerformanceService] Suite ${id} updated with ${updates.requests.length} requests`);
+            }
             this.emit('suitesUpdated', this.suites);
+        } else {
+            this.log(`[PerformanceService] Suite ${id} not found for update`);
         }
     }
 

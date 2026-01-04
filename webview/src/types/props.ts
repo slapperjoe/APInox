@@ -272,6 +272,7 @@ export interface WorkspacePerformanceActions {
     onStopRun?: () => void;
     performanceProgress?: { iteration: number; total: number } | null;
     performanceHistory?: import('../models').PerformanceRun[];
+    onBackToSuite?: () => void;
 }
 
 export interface WorkspaceBreakpointState {

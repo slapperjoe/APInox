@@ -341,6 +341,11 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                                     <div style={{ fontSize: '0.85em', opacity: 0.7, marginTop: 4 }}>
                                         {req.endpoint}
                                     </div>
+                                    {req.soapAction && (
+                                        <div style={{ fontSize: '0.8em', opacity: 0.6, marginTop: 2, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={req.soapAction}>
+                                            Action: {req.soapAction}
+                                        </div>
+                                    )}
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                                     {onDeleteRequest && (

@@ -16,7 +16,7 @@
  */
 
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { SoapUIInterface, SoapUIOperation, SoapUIRequest, SoapTestCase, SoapTestStep, PerformanceSuite } from '../models';
+import { SoapUIInterface, SoapUIOperation, SoapUIRequest, SoapTestCase, SoapTestStep } from '../models';
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -46,8 +46,8 @@ export interface SelectionContextValue {
     /** Currently selected test case (for test runner) */
     selectedTestCase: SoapTestCase | null;
 
-    /** Currently selected performance suite */
-    selectedPerformanceSuite: PerformanceSuite | null;
+    /** Currently selected performance suite ID */
+    selectedPerformanceSuiteId: string | null;
 
     // -------------------------------------------------------------------------
     // REQUEST/RESPONSE STATE
@@ -68,7 +68,7 @@ export interface SelectionContextValue {
     setSelectedRequest: React.Dispatch<React.SetStateAction<SoapUIRequest | null>>;
     setSelectedStep: React.Dispatch<React.SetStateAction<SoapTestStep | null>>;
     setSelectedTestCase: React.Dispatch<React.SetStateAction<SoapTestCase | null>>;
-    setSelectedPerformanceSuite: React.Dispatch<React.SetStateAction<PerformanceSuite | null>>;
+    setSelectedPerformanceSuiteId: React.Dispatch<React.SetStateAction<string | null>>;
     setResponse: React.Dispatch<React.SetStateAction<any>>;
     setLoading: React.Dispatch<React.SetStateAction<boolean>>;
 
@@ -121,7 +121,7 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
     const [selectedRequest, setSelectedRequest] = useState<SoapUIRequest | null>(null);
     const [selectedStep, setSelectedStep] = useState<SoapTestStep | null>(null);
     const [selectedTestCase, setSelectedTestCase] = useState<SoapTestCase | null>(null);
-    const [selectedPerformanceSuite, setSelectedPerformanceSuite] = useState<PerformanceSuite | null>(null);
+    const [selectedPerformanceSuiteId, setSelectedPerformanceSuiteId] = useState<string | null>(null);
     const [response, setResponse] = useState<any>(null);
     const [loading, setLoading] = useState(false);
 
@@ -139,7 +139,7 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
         setSelectedRequest(null);
         setSelectedStep(null);
         setSelectedTestCase(null);
-        setSelectedPerformanceSuite(null);
+        setSelectedPerformanceSuiteId(null);
         setResponse(null);
     }, []);
 
@@ -152,7 +152,7 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
         setSelectedRequest(null);
         setSelectedOperation(null);
         setSelectedInterface(null);
-        setSelectedPerformanceSuite(null);
+        setSelectedPerformanceSuiteId(null);
         setResponse(null);
     }, []);
 
@@ -167,7 +167,7 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
         selectedRequest,
         selectedStep,
         selectedTestCase,
-        selectedPerformanceSuite,
+        selectedPerformanceSuiteId,
 
         // Request/Response State
         response,
@@ -179,7 +179,7 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
         setSelectedRequest,
         setSelectedStep,
         setSelectedTestCase,
-        setSelectedPerformanceSuite,
+        setSelectedPerformanceSuiteId,
         setResponse,
         setLoading,
 

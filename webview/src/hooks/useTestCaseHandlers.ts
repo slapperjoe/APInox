@@ -32,7 +32,7 @@ interface UseTestCaseHandlersParams {
     setSelectedRequest: React.Dispatch<React.SetStateAction<SoapUIRequest | null>>;
     setSelectedOperation: React.Dispatch<React.SetStateAction<SoapUIOperation | null>>;
     setSelectedInterface: React.Dispatch<React.SetStateAction<SoapUIInterface | null>>;
-    setSelectedPerformanceSuite: React.Dispatch<React.SetStateAction<any>>;
+    setSelectedPerformanceSuiteId: React.Dispatch<React.SetStateAction<string | null>>;
     setResponse: React.Dispatch<React.SetStateAction<any>>;
     setActiveView: React.Dispatch<React.SetStateAction<SidebarView>>;
     closeContextMenu: () => void;
@@ -60,7 +60,7 @@ export function useTestCaseHandlers({
     setSelectedRequest,
     setSelectedOperation,
     setSelectedInterface,
-    setSelectedPerformanceSuite,
+    setSelectedPerformanceSuiteId,
     setResponse,
     setActiveView,
     closeContextMenu
@@ -74,11 +74,11 @@ export function useTestCaseHandlers({
             setSelectedRequest(null);
             setSelectedOperation(null);
             setSelectedInterface(null);
-            setSelectedPerformanceSuite(null);
+            setSelectedPerformanceSuiteId(null);
             setResponse(null);
             // Don't change activeView - let user stay on current sidebar tab
         }
-    }, [projects, setSelectedTestCase, setSelectedStep, setSelectedRequest, setSelectedOperation, setSelectedInterface, setSelectedPerformanceSuite, setResponse]);
+    }, [projects, setSelectedTestCase, setSelectedStep, setSelectedRequest, setSelectedOperation, setSelectedInterface, setSelectedPerformanceSuiteId, setResponse]);
 
     const handleSelectTestCase = useCallback((caseId: string) => {
         let foundCase: SoapTestCase | null = null;
@@ -101,13 +101,13 @@ export function useTestCaseHandlers({
             setSelectedRequest(null);
             setSelectedOperation(null);
             setSelectedInterface(null);
-            setSelectedPerformanceSuite(null);
+            setSelectedPerformanceSuiteId(null);
             setResponse(null);
             // Don't change activeView - let user stay on current sidebar tab
         } else {
             bridge.sendMessage({ command: 'error', message: `Could not find Test Case: ${caseId}` });
         }
-    }, [projects, setSelectedTestCase, setSelectedStep, setSelectedRequest, setSelectedOperation, setSelectedInterface, setSelectedPerformanceSuite, setResponse]);
+    }, [projects, setSelectedTestCase, setSelectedStep, setSelectedRequest, setSelectedOperation, setSelectedInterface, setSelectedPerformanceSuiteId, setResponse]);
 
     const handleAddAssertion = useCallback((data: { xpath: string, expectedContent: string }) => {
         console.log("handleAddAssertion Called.", data, "TC:", selectedTestCase?.id, "Step:", selectedStep?.id);

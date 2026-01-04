@@ -62,7 +62,8 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     onUpdatePerformanceRequest,
     onImportFromWorkspace,
     performanceProgress,
-    performanceHistory
+    performanceHistory,
+    onBackToSuite
 }) => {
     // Destructure groups
     const { request: selectedRequest, operation: selectedOperation, testCase: selectedTestCase, testStep: selectedStep, performanceSuite: selectedPerformanceSuite } = selectionState;
@@ -496,6 +497,15 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                         {selectedTestCase && onBackToCase && (
                             <>
                                 <ToolbarButton onClick={onBackToCase} title="Back to Test Case">
+                                    <ChevronLeft size={14} /> Back
+                                </ToolbarButton>
+                                <div style={{ width: 1, height: 20, background: 'var(--vscode-panel-border)', margin: '0 5px' }} />
+                            </>
+                        )}
+
+                        {selectedPerformanceSuite && onBackToSuite && (
+                            <>
+                                <ToolbarButton onClick={onBackToSuite} title="Back to Performance Suite">
                                     <ChevronLeft size={14} /> Back
                                 </ToolbarButton>
                                 <div style={{ width: 1, height: 20, background: 'var(--vscode-panel-border)', margin: '0 5px' }} />

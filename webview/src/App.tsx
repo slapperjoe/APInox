@@ -80,10 +80,12 @@ function App() {
         setResponse,
         loading,
         setLoading,
-        selectedPerformanceSuite,
-        setSelectedPerformanceSuite,
+        selectedPerformanceSuiteId,
+        setSelectedPerformanceSuiteId,
         clearSelection
     } = useSelection();
+
+
 
     // ==========================================================================
     // EXPLORER - from useExplorer hook
@@ -158,6 +160,9 @@ function App() {
     // UI State (remaining)
     const [inputType, setInputType] = useState<'url' | 'file'>('url');
     const [wsdlUrl, setWsdlUrl] = useState('http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso?WSDL');
+
+    // Derived State (must be after config is defined)
+    const selectedPerformanceSuite = config?.performanceSuites?.find(s => s.id === selectedPerformanceSuiteId) || null;
     const [wsdlUrlHistory, setWsdlUrlHistory] = useState<string[]>([]);
     const [selectedFile, setSelectedFile] = useState<string | null>(null);
     const [downloadStatus, setDownloadStatus] = useState<string[] | null>(null);
@@ -233,7 +238,7 @@ function App() {
         setSelectedRequest,
         setSelectedOperation,
         setSelectedInterface,
-        setSelectedPerformanceSuite,
+        setSelectedPerformanceSuiteId,
         setResponse,
         setActiveView,
         closeContextMenu
@@ -348,7 +353,7 @@ function App() {
         const suite = config?.performanceSuites?.find(s => s.id === id);
         if (suite) {
             clearSelection();
-            setTimeout(() => setSelectedPerformanceSuite(suite), 0);
+            setTimeout(() => setSelectedPerformanceSuiteId(suite.id), 0);
         }
     };
     const handleUpdatePerformanceSuite = (suite: PerformanceSuite) => bridge.sendMessage({ command: 'updatePerformanceSuite', suiteId: suite.id, updates: suite });
@@ -373,7 +378,7 @@ function App() {
             name: request.name,
             endpoint: request.endpoint,
             method: request.method,
-            request: request.requestBody,
+            request: request.requestBody, // Map requestBody to request for visibility
             headers: request.headers,
             extractors: request.extractors,
             // assertions: ... we might need to map SLA to assertions if we want visual editing, or just keep SLA separate
@@ -876,7 +881,27 @@ function App() {
                 requestActions={{
                     onExecute: executeRequest,
                     onCancel: cancelRequest,
-                    onUpdate: handleRequestUpdate,
+                    onUpdate: (updated) => {
+                        if (selectedPerformanceSuite) {
+                            // Map back to PerformanceRequest for saving
+                            bridge.sendMessage({
+                                command: 'updatePerformanceRequest',
+                                suiteId: selectedPerformanceSuite.id,
+                                requestId: updated.id,
+                                updates: {
+                                    requestBody: updated.request, // Map request back to requestBody
+                                    headers: updated.headers,
+                                    endpoint: updated.endpoint,
+                                    method: updated.method,
+                                    name: updated.name
+                                }
+                            });
+                            // Update local selection state to reflect changes immediately
+                            setSelectedRequest(updated);
+                        } else {
+                            handleRequestUpdate(updated);
+                        }
+                    },
                     onReset: handleResetRequest,
                     response,
                     loading
@@ -925,6 +950,7 @@ function App() {
                 onStopRun={handleStopPerformanceRun}
                 performanceProgress={performanceProgress}
                 performanceHistory={config?.performanceHistory || []}
+                onBackToSuite={() => setSelectedRequest(null)}
 
 
                 breakpointState={{

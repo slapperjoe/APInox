@@ -65,6 +65,30 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     context.subscriptions.push(resetDisposable);
+
+    // Register Export Diagnostics Command
+    const exportDiagnosticsDisposable = vscode.commands.registerCommand('dirty-soap.exportDiagnostics', async () => {
+        try {
+            const { DiagnosticService } = require('./services/DiagnosticService');
+            const service = DiagnosticService.getInstance();
+            const filePath = await service.exportLogs();
+
+            const openFile = 'Open File';
+            const result = await vscode.window.showInformationMessage(
+                `Diagnostic logs exported to: ${filePath}`,
+                openFile
+            );
+
+            if (result === openFile) {
+                const doc = await vscode.workspace.openTextDocument(filePath);
+                await vscode.window.showTextDocument(doc);
+            }
+        } catch (error: any) {
+            vscode.window.showErrorMessage(`Failed to export diagnostics: ${error.message}`);
+        }
+    });
+
+    context.subscriptions.push(exportDiagnosticsDisposable);
 }
 
 export function deactivate() {
