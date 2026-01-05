@@ -1,62 +1,10 @@
 import React from 'react';
 import styled from 'styled-components';
-import { Users, Play, Square, Server, Cpu, Clock, CheckCircle, AlertCircle, Loader } from 'lucide-react';
+import { Users, Server, Cpu, Clock, CheckCircle, AlertCircle, Loader } from 'lucide-react';
 import { CoordinatorStatus } from '../../models';
 
 const Container = styled.div`
     /* No outer styling - panel is now embedded in a Section */
-`;
-
-
-
-const Controls = styled.div`
-    display: flex;
-    align-items: center;
-    gap: 10px;
-`;
-
-const Input = styled.input`
-    width: 70px;
-    padding: 4px 8px;
-    border: 1px solid var(--vscode-input-border);
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border-radius: 3px;
-    font-size: 0.9em;
-`;
-
-const Label = styled.label`
-    font-size: 0.85em;
-    color: var(--vscode-descriptionForeground);
-    display: flex;
-    align-items: center;
-    gap: 5px;
-`;
-
-const Button = styled.button<{ variant?: 'primary' | 'danger' }>`
-    padding: 5px 12px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 0.85em;
-    background: ${props => props.variant === 'danger'
-        ? 'var(--vscode-testing-iconFailed)'
-        : 'var(--vscode-button-background)'};
-    color: ${props => props.variant === 'danger'
-        ? '#fff'
-        : 'var(--vscode-button-foreground)'};
-    
-    &:hover {
-        opacity: 0.9;
-    }
-    
-    &:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
 `;
 
 const WorkerList = styled.div`
@@ -145,22 +93,13 @@ const EmptyState = styled.div`
     font-size: 0.9em;
 `;
 
-
-
 interface WorkerStatusPanelProps {
     status: CoordinatorStatus;
-    onStart: (port: number, expectedWorkers: number) => void;
-    onStop: () => void;
 }
 
 export const WorkerStatusPanel: React.FC<WorkerStatusPanelProps> = ({
-    status,
-    onStart,
-    onStop
+    status
 }) => {
-    const [port, setPort] = React.useState(status.port || 8765);
-    const [expectedWorkers, setExpectedWorkers] = React.useState(status.expectedWorkers || 1);
-
     const formatTime = (timestamp: number) => {
         const date = new Date(timestamp);
         return date.toLocaleTimeString();
@@ -178,50 +117,6 @@ export const WorkerStatusPanel: React.FC<WorkerStatusPanelProps> = ({
 
     return (
         <Container>
-            {/* Controls for starting/stopping coordinator */}
-            <Controls style={{ marginBottom: 15 }}>
-                {!status.running ? (
-                    <>
-                        <Label>
-                            Port:
-                            <Input
-                                type="number"
-                                value={port}
-                                onChange={e => setPort(parseInt(e.target.value) || 8765)}
-                                min={1024}
-                                max={65535}
-                            />
-                        </Label>
-                        <Label>
-                            Expected:
-                            <Input
-                                type="number"
-                                value={expectedWorkers}
-                                onChange={e => setExpectedWorkers(parseInt(e.target.value) || 1)}
-                                min={1}
-                                max={100}
-                            />
-                        </Label>
-                        <Button onClick={() => onStart(port, expectedWorkers)}>
-                            <Play size={14} /> Start Coordinator
-                        </Button>
-                    </>
-                ) : (
-                    <>
-                        <Label>
-                            <Server size={14} />
-                            ws://localhost:{status.port}
-                        </Label>
-                        <Label>
-                            {status.workers.length}/{status.expectedWorkers} connected
-                        </Label>
-                        <Button variant="danger" onClick={onStop}>
-                            <Square size={14} /> Stop
-                        </Button>
-                    </>
-                )}
-            </Controls>
-
             <WorkerList>
                 {status.workers.length === 0 ? (
                     <EmptyState>

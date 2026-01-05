@@ -73,6 +73,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
     onChangeEnvironment
 }) => {
     const [showEnvMenu, setShowEnvMenu] = React.useState(false);
+
+    const envColors = ['#58A6FF', '#7EE787', '#FF7B72', '#FFA657', '#D29922', '#F2CC60', '#3FB950', '#A371F7', '#79C0FF', '#FFA198', '#FFCB6B', '#C9D1D9'];
+    const getEnvColor = (env: string) => {
+        if (!environments) return 'var(--vscode-charts-green)';
+        const envData = environments[env];
+        if (envData?.color) return envData.color;
+        const index = Object.keys(environments).indexOf(env);
+        return index >= 0 ? envColors[index % envColors.length] : 'var(--vscode-charts-green)';
+    };
     // Destructure for passing to legacy children (can be cleaned up later by moving groups down)
     const { projects, savedProjects, loadProject, saveProject, closeProject, onAddProject, toggleProjectExpand, toggleInterfaceExpand, toggleOperationExpand, onDeleteInterface, onDeleteOperation } = projectProps;
     const { exploredInterfaces, addToProject, addAllToProject, clearExplorer, removeFromExplorer, toggleExploredInterface, toggleExploredOperation } = explorerProps;
@@ -179,7 +188,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             <div style={{
                                 fontSize: 9,
                                 fontWeight: 600,
-                                color: 'var(--vscode-charts-green)',
+                                color: activeEnvironment ? getEnvColor(activeEnvironment) : 'var(--vscode-charts-green)',
                                 textAlign: 'center',
                                 textTransform: 'uppercase',
                                 letterSpacing: '0.5px',
@@ -228,8 +237,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 </div>
                                 {Object.keys(environments).map((env, index) => {
                                     // Use index directly for color assignment to avoid duplicates
-                                    const colors = ['#58A6FF', '#7EE787', '#FF7B72', '#FFA657', '#D29922', '#F2CC60', '#3FB950', '#A371F7', '#79C0FF', '#FFA198', '#FFCB6B', '#C9D1D9'];
-                                    const color = colors[index % colors.length];
+                                    const fallbackColor = envColors[index % envColors.length];
+                                    const color = environments[env].color || fallbackColor;
 
                                     return (
                                         <div

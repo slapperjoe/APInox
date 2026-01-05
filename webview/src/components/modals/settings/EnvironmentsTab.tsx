@@ -194,6 +194,20 @@ export const EnvironmentsTab: React.FC<EnvironmentsTabProps> = ({
                                 placeholder="dev01"
                             />
                         </FormGroup>
+                        <FormGroup>
+                            <Label>Color</Label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <Input
+                                    type="color"
+                                    value={environments[selectedEnvKey].color ?? '#58A6FF'}
+                                    onChange={e => onEnvChange(selectedEnvKey, 'color', e.target.value)}
+                                    style={{ width: '50px', padding: '2px', height: '30px' }}
+                                />
+                                <span style={{ fontSize: '12px', color: 'var(--vscode-descriptionForeground)' }}>
+                                    {environments[selectedEnvKey].color ?? '#58A6FF'}
+                                </span>
+                            </div>
+                        </FormGroup>
                         <div style={{ fontSize: 12, color: 'var(--vscode-descriptionForeground)', padding: '10px', background: 'var(--vscode-textBlockQuote-background)', borderLeft: '3px solid var(--vscode-textBlockQuote-border)' }}>
                             <p style={{ margin: 0 }}>
                                 Use <code>{'{{url}}'}</code> in your requests to reference the Endpoint URL.<br />
