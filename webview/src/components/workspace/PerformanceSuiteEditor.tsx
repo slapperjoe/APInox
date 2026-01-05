@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { Play, Plus, Trash2, Settings, Clock, Repeat, Flame, Zap, GripVertical, Loader, Square, Calendar, ToggleLeft, ToggleRight, Import, Download, ChevronDown, ChevronRight, CheckCircle, XCircle, AlertTriangle, Users } from 'lucide-react';
+import { Play, Plus, Trash2, Settings, Clock, Repeat, Flame, Zap, GripVertical, Loader, Square, Calendar, ToggleLeft, ToggleRight, Import, Download, ChevronDown, ChevronRight, CheckCircle, XCircle, AlertTriangle, Users, Server } from 'lucide-react';
 import { PerformanceSuite, PerformanceRun, PerformanceSchedule, PerformanceRequest, CoordinatorStatus } from '../../models';
 import { WorkerStatusPanel } from './WorkerStatusPanel';
 import {
@@ -292,6 +292,8 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
     const [newCron, setNewCron] = useState('0 3 * * *'); // Default: daily at 3am
     const [showScheduleInput, setShowScheduleInput] = useState(false);
     const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
+    const [coordPort, setCoordPort] = useState(8765);
+    const [coordExpected, setCoordExpected] = useState(1);
 
     // Helper to check if section is collapsed
     const isCollapsed = (sectionId: string) => {
@@ -616,12 +618,58 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                         <SectionHeader $clickable onClick={() => toggleSection('workers')}>
                             {isCollapsed('workers') ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
                             <SectionTitle><Users size={16} /> Distributed Workers ({coordinatorStatus.workers.length})</SectionTitle>
+
+                            {/* Coordinator Controls - Only visible when expanded */}
+                            {!isCollapsed('workers') && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }} onClick={e => e.stopPropagation()}>
+                                    {!coordinatorStatus.running ? (
+                                        <>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                                <span style={{ fontSize: '0.85em', opacity: 0.7 }}>Port:</span>
+                                                <Input
+                                                    type="number"
+                                                    value={coordPort}
+                                                    onChange={e => setCoordPort(parseInt(e.target.value) || 8765)}
+                                                    min={1024}
+                                                    max={65535}
+                                                    style={{ width: 60, padding: 2 }}
+                                                />
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                                <span style={{ fontSize: '0.85em', opacity: 0.7 }}>Expected:</span>
+                                                <Input
+                                                    type="number"
+                                                    value={coordExpected}
+                                                    onChange={e => setCoordExpected(parseInt(e.target.value) || 1)}
+                                                    min={1}
+                                                    max={100}
+                                                    style={{ width: 40, padding: 2 }}
+                                                />
+                                            </div>
+                                            <ToolbarButton onClick={() => onStartCoordinator(coordPort, coordExpected)} title="Start Coordinator" style={{ color: 'var(--vscode-testing-iconPassed)' }}>
+                                                <Play size={14} /> Start
+                                            </ToolbarButton>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.85em' }} title="Coordinator running">
+                                                <Server size={14} style={{ color: 'var(--vscode-testing-iconPassed)' }} />
+                                                <span>Port {coordinatorStatus.port}</span>
+                                            </div>
+                                            <div style={{ fontSize: '0.85em', opacity: 0.7 }}>
+                                                {coordinatorStatus.workers.length}/{coordinatorStatus.expectedWorkers} connected
+                                            </div>
+                                            <ToolbarButton onClick={onStopCoordinator} title="Stop Coordinator" style={{ color: 'var(--vscode-errorForeground)' }}>
+                                                <Square size={14} /> Stop
+                                            </ToolbarButton>
+                                        </>
+                                    )}
+                                </div>
+                            )}
                         </SectionHeader>
                         <SectionContent $collapsed={isCollapsed('workers')}>
                             <WorkerStatusPanel
                                 status={coordinatorStatus}
-                                onStart={onStartCoordinator}
-                                onStop={onStopCoordinator}
                             />
                         </SectionContent>
                     </Section>

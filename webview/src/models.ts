@@ -332,6 +332,7 @@ export interface DirtySoapConfig {
     environments?: Record<string, {
         endpoint_url?: string;
         env?: string;
+        color?: string;
         [key: string]: string | undefined;
     }>;
     globals?: Record<string, string>;
