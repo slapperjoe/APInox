@@ -67,24 +67,47 @@ export class BackendXPathEvaluator {
 
                 if (!current) return null;
 
-                const { key, index } = this.parseSegment(segment);
+                // Handle text() selector
+                if (segment === 'text()') {
+                    if (typeof current === 'string' || typeof current === 'number' || typeof current === 'boolean') {
+                        return String(current);
+                    }
+                    if (typeof current === 'object' && current !== null && '#text' in current) {
+                        return String(current['#text']);
+                    }
+                    // If object but no #text and asking for text(), might be empty or mixed content not handled.
+                    // Returning JSON/String of object might be unexpected for text(), usually expects simple text.
+                    // For now, let's return empty string or null?
+                    // Given the previous failure "Expected [John Doe] but got [null]", 
+                    // we want to catch the case where current IS "John Doe" and we asked for children "text()".
+
+                    // Actually, the loop logic: if segment is "text()", we reach here.
+                    // If `current` was "John Doe", `current[key]` (undefined) would be checked below.
+                    // So we must intercept here.
+                    return typeof current === 'object' ? null : String(current);
+                }
+
+                const { key: parsedKey, index: parsedIndex } = this.parseSegment(segment);
+
+                // Use parsedKey and parsedIndex for subsequent lookup
+                // Note: The original code called parseSegment again below. We unify here.
 
                 // Direct Child Search
-                if (current[key] !== undefined) {
-                    current = current[key];
+                if (current[parsedKey] !== undefined) {
+                    current = current[parsedKey];
                 } else {
                     return null;
                 }
 
                 // Handle Array/Index
                 if (Array.isArray(current)) {
-                    if (index >= 0 && index < current.length) {
-                        current = current[index];
+                    if (parsedIndex >= 0 && parsedIndex < current.length) {
+                        current = current[parsedIndex];
                     } else {
                         return null;
                     }
                 } else {
-                    if (index > 0) return null;
+                    if (parsedIndex > 0) return null;
                 }
             }
 

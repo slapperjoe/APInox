@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-import * as path from 'path';
+
 
 export interface WatcherEvent {
     id: string;
@@ -95,7 +95,7 @@ export class FileWatcherService {
     private watchFile(filePath: string, type: 'request' | 'response') {
         try {
             this.log(`Watching ${filePath}`);
-            const watcher = fs.watch(filePath, (eventType, filename) => {
+            const watcher = fs.watch(filePath, (eventType, _filename) => {
                 if (eventType === 'change') {
                     this.handleFileChange(type);
                 }

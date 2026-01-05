@@ -13,7 +13,7 @@ import { TestRunnerService } from '../services/TestRunnerService';
 import { AzureDevOpsService } from '../services/AzureDevOpsService';
 import { MockService } from '../services/MockService';
 import { CoordinatorService } from '../services/CoordinatorService';
-import { SoapUIProject, SoapTestCase } from '../models';
+import { SoapUIProject } from '../models';
 import { FolderProjectStorage } from '../FolderProjectStorage';
 
 import { ICommand } from '../commands/ICommand';

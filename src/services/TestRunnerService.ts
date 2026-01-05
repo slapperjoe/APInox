@@ -110,7 +110,7 @@ export class TestRunnerService {
 
                         const result = vm.runInContext(wrappedScript, sandbox);
 
-                        if (result instanceof Promise) {
+                        if (result && typeof result.then === 'function') {
                             await result;
                         }
                         this.notifyUi('stepPass', { caseId: testCase.id, stepId: step.id });
