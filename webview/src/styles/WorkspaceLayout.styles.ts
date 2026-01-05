@@ -27,6 +27,26 @@ export const Mascot = styled.img`
     }
 `;
 
+export const EmptyStateImage = styled.img`
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100vw;
+    height: 100vh;
+    object-fit: contain;
+    opacity: 0.15;
+    pointer-events: none;
+    z-index: 0;
+    mix-blend-mode: multiply;
+
+    body.vscode-dark &, body.vscode-high-contrast & {
+        filter: invert(1);
+        mix-blend-mode: screen;
+        opacity: 0.1;
+    }
+`;
+
 export const Content = styled.div`
     flex: 1;
     display: flex;
