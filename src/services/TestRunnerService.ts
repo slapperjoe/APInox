@@ -1,3 +1,4 @@
+import * as vm from 'vm';
 import { SoapTestCase, SoapTestStep } from "../models";
 import { SoapClient } from "../soapClient";
 import { AssertionRunner } from "../utils/AssertionRunner";
@@ -6,12 +7,7 @@ import { WildcardProcessor } from "../utils/WildcardProcessor";
 
 export class TestRunnerService {
     private soapClient: SoapClient;
-    private outputChannel: any; // Can rely on soapClient's output or pass separately? 
-    // Actually SoapClient has .log, but outputChannel is useful for "Step Started" etc without polluting HTTP log?
-    // Let's keep outputChannel but optional, or assume SoapClient has access.
-    // For simplicity, let's take outputChannel AND soapClient.
-
-    // Callback for UI updates
+    private outputChannel: any;
     private updateCallback?: (data: any) => void;
 
     constructor(soapClient: SoapClient, outputChannel: any) {
@@ -40,10 +36,24 @@ export class TestRunnerService {
         this.notifyUi('testCaseStart', { id: testCase.id });
 
         const context: Record<string, any> = {};
+        const MAX_STEPS = 200;
+        let stepCount = 0;
+        let currentStepIndex = 0;
 
-        for (const step of testCase.steps) {
-            this.log(`Running Step: ${step.name} (${step.type})`);
+        while (currentStepIndex < testCase.steps.length) {
+            if (stepCount++ > MAX_STEPS) {
+                const error = `Max steps (${MAX_STEPS}) exceeded. Possible infinite loop.`;
+                this.log(error);
+                this.notifyUi('testCaseFail', { id: testCase.id, error });
+                break;
+            }
+
+            const step = testCase.steps[currentStepIndex];
+            this.log(`Running Step [${currentStepIndex + 1}/${testCase.steps.length}]: ${step.name} (${step.type})`);
             this.notifyUi('stepStart', { caseId: testCase.id, stepId: step.id });
+
+            // Next step index logic (default is +1)
+            let nextStepIndex = currentStepIndex + 1;
 
             try {
                 if (step.type === 'delay') {
@@ -55,26 +65,75 @@ export class TestRunnerService {
                 else if (step.type === 'request') {
                     await this.runRequestStep(step, context, testCase.id, fallbackEndpoint);
                 }
+                else if (step.type === 'script') {
+                    const script = step.config.scriptContent;
+                    if (!script) {
+                        this.log('Empty script, skipping.');
+                        this.notifyUi('stepPass', { caseId: testCase.id, stepId: step.id });
+                    } else {
+                        // SANDBOX API
+                        const stepLog = (msg: string) => this.log(`[Script] ${msg}`);
+                        const fail = (reason: string) => {
+                            throw new Error(reason);
+                        };
+                        const delay = async (ms: number) => {
+                            stepLog(`Delaying ${ms}ms`);
+                            await new Promise(r => setTimeout(r, ms));
+                        };
+                        const goto = (stepName: string) => {
+                            const foundIndex = testCase.steps.findIndex(s => s.name === stepName);
+                            if (foundIndex !== -1) {
+                                stepLog(`Goto -> '${stepName}'`);
+                                nextStepIndex = foundIndex;
+                            } else {
+                                stepLog(`Goto failed: Step '${stepName}' not found`);
+                            }
+                        };
+
+                        const sandbox = {
+                            log: stepLog,
+                            context: context,
+                            fail: fail,
+                            delay: delay,
+                            goto: goto,
+                            // Safe globals
+                            setTimeout,
+                            console: { log: stepLog }
+                        };
+
+                        vm.createContext(sandbox);
+
+                        // Wrap script in async IIFE to support await
+                        const wrappedScript = `(async () => {
+                            ${script}
+                        })()`;
+
+                        const result = vm.runInContext(wrappedScript, sandbox);
+
+                        if (result instanceof Promise) {
+                            await result;
+                        }
+                        this.notifyUi('stepPass', { caseId: testCase.id, stepId: step.id });
+                    }
+                }
                 else if (step.type === 'transfer') {
-                    // TODO: Implement property transfer
                     this.log('Property Transfer not yet implemented');
+                    this.notifyUi('stepPass', { caseId: testCase.id, stepId: step.id });
                 }
                 else {
                     this.log(`Unknown step type: ${step.type}`);
                 }
-                // this.notifyUi('stepPass', { caseId: testCase.id, stepId: step.id }); // Handled in runRequestStep for requests
+
             } catch (error: any) {
-                // Handled in runRequestStep? Or re-throw?
-                // If runRequestStep throws, we catch here.
                 this.log(`Step Failed: ${error.message}`);
-                // Only notify if not already notified? 
-                // Let's assume runRequestStep handles notification for Requests. 
-                // For other steps (delay) we might need to notify?
                 if (step.type !== 'request') {
                     this.notifyUi('stepFail', { caseId: testCase.id, stepId: step.id, error: error.message });
                 }
-                break;
+                break; // Stop test case on failure
             }
+
+            // Move to next step
+            currentStepIndex = nextStepIndex;
         }
 
         this.log(`Test Case Finished: ${testCase.name}`);
@@ -87,14 +146,6 @@ export class TestRunnerService {
         }
 
         const req = step.config.request;
-        // Resolve variables in request content using context
-
-        // 1. Variable Replacement
-        // We need env/globals. Where to get them?
-        // Ideally passed into runTestCase or fetched from SettingsManager?
-        // For now, let's use empty env/globals or fetch via singleton if possible?
-        // TestRunnerService doesn't have SettingsManager currently.
-        // We will assume empty Env/Globals for now and focus on Context Variables (TestCase level).
         const envVars = {};
         const globals = {};
 
@@ -102,11 +153,9 @@ export class TestRunnerService {
         const resolvedUrl = WildcardProcessor.process(req.endpoint || fallbackEndpoint || '', envVars, globals, undefined, context);
 
         this.log(`Resolving Variables for Step '${step.name}'...`);
-        // Log if changes
         if (resolvedXml !== req.request) this.log(`- Payload substituted`);
         if (resolvedUrl !== req.endpoint) this.log(`- URL substituted: ${resolvedUrl}`);
 
-        // Use request endpoint, or fallback
         const endpoint = req.endpoint || fallbackEndpoint || '';
 
         if (!endpoint) {
@@ -120,7 +169,7 @@ export class TestRunnerService {
 
         const result = await this.soapClient.executeRequest(
             resolvedUrl,
-            req.name, // Operation name might be needed?
+            req.name,
             resolvedXml,
             headers
         );
@@ -144,10 +193,9 @@ export class TestRunnerService {
                 stepId: step.id,
                 error: errorMsg,
                 assertionResults: assertionResults,
-                response: result // Pass full response for UI to simulate view
+                response: result
             });
-            this.log(`Step Failed: ${errorMsg}`);
-            throw new Error(errorMsg); // Re-throw to start breakage
+            throw new Error(errorMsg);
         } else {
             this.notifyUi('stepPass', {
                 caseId: caseId,
@@ -157,13 +205,11 @@ export class TestRunnerService {
             });
             this.log(`Step Passed`);
 
-            // 2. Extraction
             if (req.extractors && req.extractors.length > 0) {
                 this.log(`Running ${req.extractors.length} extractors...`);
                 req.extractors.forEach(ext => {
                     if (ext.source === 'body') {
                         try {
-                            // Use rawResponse which contains the XML string
                             const rawBody = result.rawResponse || '';
                             const val = BackendXPathEvaluator.evaluate(rawBody, ext.path);
                             if (val) {

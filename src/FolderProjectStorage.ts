@@ -104,6 +104,17 @@ export class FolderProjectStorage {
         const testsDir = path.join(dirPath, 'tests');
         if (!fs.existsSync(testsDir)) fs.mkdirSync(testsDir);
 
+        // Cleanup: Delete orphan test suite directories
+        const currentSuiteNames = new Set((project.testSuites || []).map(s => this.sanitizeName(s.name)));
+        const existingSuiteDirs = fs.readdirSync(testsDir).filter(f =>
+            fs.statSync(path.join(testsDir, f)).isDirectory()
+        );
+        existingSuiteDirs.forEach(dir => {
+            if (!currentSuiteNames.has(dir)) {
+                fs.rmSync(path.join(testsDir, dir), { recursive: true });
+            }
+        });
+
         if (project.testSuites) {
             for (const suite of project.testSuites) {
                 const safeSuiteName = this.sanitizeName(suite.name);
@@ -116,6 +127,17 @@ export class FolderProjectStorage {
                     name: suite.name
                 };
                 fs.writeFileSync(path.join(suiteDir, 'suite.json'), JSON.stringify(suiteMeta, null, 2));
+
+                // Cleanup: Delete orphan test case directories
+                const currentCaseNames = new Set((suite.testCases || []).map(tc => this.sanitizeName(tc.name)));
+                const existingCaseDirs = fs.readdirSync(suiteDir).filter(f =>
+                    f !== 'suite.json' && fs.statSync(path.join(suiteDir, f)).isDirectory()
+                );
+                existingCaseDirs.forEach(dir => {
+                    if (!currentCaseNames.has(dir)) {
+                        fs.rmSync(path.join(suiteDir, dir), { recursive: true });
+                    }
+                });
 
                 // Test Cases
                 if (suite.testCases) {
@@ -133,6 +155,15 @@ export class FolderProjectStorage {
 
                         // Steps
                         // Steps are ordered. Saving as 01_stepname.json feels good.
+                        // First, delete any existing step files to remove orphaned steps
+                        const existingFiles = fs.readdirSync(caseDir);
+                        existingFiles.forEach(f => {
+                            if (f.endsWith('.json') && f !== 'case.json') {
+                                fs.unlinkSync(path.join(caseDir, f));
+                            }
+                        });
+
+                        // Now write current steps
                         if (tc.steps) {
                             tc.steps.forEach((step, index) => {
                                 const indexStr = (index + 1).toString().padStart(2, '0');

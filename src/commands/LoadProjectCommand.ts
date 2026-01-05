@@ -50,6 +50,21 @@ export class LoadProjectCommand implements ICommand {
                     project = await this._projectStorage.loadProject(targetPath);
                 }
 
+                if (project && project.testSuites) {
+                    project.testSuites.forEach(ts => {
+                        ts.testCases.forEach(tc => {
+                            tc.steps.forEach(step => {
+                                if (step.type === 'script') {
+                                    this._soapClient.log(`[LoadProjectCommand] Sending step ${step.name} with scriptContent length: ${step.config.scriptContent?.length || 0}`);
+                                    if (step.config.scriptContent) {
+                                        this._soapClient.log(`[LoadProjectCommand] Content: ${step.config.scriptContent.substring(0, 50)}...`);
+                                    }
+                                }
+                            });
+                        });
+                    });
+                }
+
                 this._loadedProjects.set(targetPath, project);
                 this._panel.webview.postMessage({
                     command: 'projectLoaded',

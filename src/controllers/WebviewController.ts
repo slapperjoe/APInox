@@ -21,6 +21,7 @@ import { FolderProjectStorage } from '../FolderProjectStorage';
 import { ICommand } from '../commands/ICommand';
 import { ExecuteRequestCommand } from '../commands/ExecuteRequestCommand';
 import { SaveProjectCommand } from '../commands/SaveProjectCommand';
+import { UpdateTestStepCommand } from '../commands/UpdateTestStepCommand';
 import { ExportNativeCommand } from '../commands/ExportNativeCommand';
 import { LoadProjectCommand } from '../commands/LoadProjectCommand';
 import { DownloadWsdlCommand } from '../commands/DownloadWsdlCommand';
@@ -140,6 +141,11 @@ export class WebviewController {
         this._commands.set(FrontendCommand.LoadWsdl, new LoadWsdlCommand(this._panel, this._soapClient));
         this._commands.set(FrontendCommand.GetLocalWsdls, new GetLocalWsdlsCommand(this._panel, this._soapClient, this._extensionUri.fsPath));
         this._commands.set(FrontendCommand.SelectLocalWsdl, new SelectLocalWsdlCommand(this._panel, this._soapClient));
+        this._commands.set(FrontendCommand.UpdateTestStep, new UpdateTestStepCommand(
+            this._loadedProjects,
+            this._projectStorage,
+            this._folderStorage
+        ));
 
         // Proxy Commands
         this._commands.set(FrontendCommand.StartProxy, new StartProxyCommand(this._proxyService));

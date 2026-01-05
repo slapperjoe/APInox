@@ -11,6 +11,7 @@ export enum FrontendCommand {
     ClipboardAction = 'clipboardAction',
     CancelRequest = 'cancelRequest',
     SaveSettings = 'saveSettings',
+    UpdateTestStep = 'updateTestStep',
     GetSettings = 'getSettings',
     SetActiveEnvironment = 'setActiveEnvironment',
     SaveUiState = 'saveUiState',

@@ -80,8 +80,6 @@ export function useWorkspaceCallbacks({
 }: UseWorkspaceCallbacksParams): UseWorkspaceCallbacksReturn {
 
     const handleSelectStep = useCallback((step: SoapTestStep | null) => {
-        console.log('[handleSelectStep] Called with step:', step?.id, step?.name);
-        setSelectedStep(step);
         if (step) {
             // Look up the current step from projects state to get latest edits (e.g., assertions)
             // Search ALL test cases for the step by ID to avoid relying on stale selectedTestCase
@@ -92,20 +90,27 @@ export function useWorkspaceCallbacks({
                     for (const tc of (suite.testCases || [])) {
                         const foundStep = tc.steps.find(s => s.id === step.id);
                         if (foundStep) {
-                            currentStep = foundStep;
+                            // Merge: Use foundStep but preserve scriptContent from incoming step if foundStep lacks it
+                            // This handles the case where projects state was restored from cache without scriptContent
+                            if (step.type === 'script' && step.config.scriptContent && !foundStep.config.scriptContent) {
+                                currentStep = { ...foundStep, config: { ...foundStep.config, scriptContent: step.config.scriptContent } };
+                            } else {
+                                currentStep = foundStep;
+                            }
                             foundInProjects = true;
-                            console.log('[handleSelectStep] Found step in projects with assertions:', foundStep.config.request?.assertions?.length || 0);
                             break outer;
                         }
                     }
                 }
             }
             if (!foundInProjects) {
-                console.log('[handleSelectStep] Step NOT found in projects, using passed-in step with assertions:', step.config.request?.assertions?.length || 0);
+                // Step not found in projects, using passed-in step
             }
 
+            // Update selectedStep with the fresh version found in projects (or the passed one if not found)
+            setSelectedStep(currentStep);
+
             if (currentStep.type === 'request' && currentStep.config.request) {
-                console.log('[handleSelectStep] Setting selectedRequest with assertions:', currentStep.config.request.assertions?.length || 0);
                 setSelectedRequest(currentStep.config.request);
                 // Update Response Panel Logic
                 if (selectedTestCase) {
@@ -189,7 +194,11 @@ export function useWorkspaceCallbacks({
     }, [selectedTestCase, setProjects, saveProject]);
 
     const handleUpdateStep = useCallback((updatedStep: SoapTestStep) => {
-        if (!selectedTestCase) return;
+        bridge.sendMessage({ command: 'log', message: `[handleUpdateStep] Called with: ${updatedStep.id} Script len: ${updatedStep.config.scriptContent?.length}` });
+        if (!selectedTestCase) {
+            bridge.sendMessage({ command: 'log', message: '[handleUpdateStep] No selectedTestCase!' });
+            return;
+        }
         setProjects(prev => prev.map(p => {
             const suite = p.testSuites?.find(s => s.testCases?.some(tc => tc.id === selectedTestCase.id));
             if (!suite) return p;
@@ -198,6 +207,7 @@ export function useWorkspaceCallbacks({
                 ...suite,
                 testCases: suite.testCases?.map(tc => {
                     if (tc.id !== selectedTestCase.id) return tc;
+                    bridge.sendMessage({ command: 'log', message: `[handleUpdateStep] Updating step in TC: ${tc.id}` });
                     return {
                         ...tc,
                         steps: tc.steps.map(s => s.id === updatedStep.id ? updatedStep : s)
@@ -233,6 +243,31 @@ export function useWorkspaceCallbacks({
                             name: 'Delay',
                             type: 'delay',
                             config: { delayMs: 1000 }
+                        };
+                        return { ...tc, steps: [...tc.steps, newStep] };
+                    }) || []
+                };
+
+                const updatedProject = { ...p, testSuites: p.testSuites!.map(s => s.id === suite.id ? updatedSuite : s), dirty: true };
+                setTimeout(() => saveProject(updatedProject), 0);
+                return updatedProject;
+            }));
+        } else if (type === 'script') {
+            setProjects(prev => prev.map(p => {
+                const suite = p.testSuites?.find(s => s.testCases?.some(tc => tc.id === caseId));
+                if (!suite) return p;
+
+                const updatedSuite = {
+                    ...suite,
+                    testCases: suite.testCases?.map(tc => {
+                        if (tc.id !== caseId) return tc;
+                        const newStep: SoapTestStep = {
+                            id: `step-${Date.now()}`,
+                            name: 'Script',
+                            type: 'script',
+                            config: {
+                                scriptContent: "// Script Step\n// Available: context, log(msg), goto(stepName), fail(reason), delay(ms)\n\nlog('Script started');\n"
+                            }
                         };
                         return { ...tc, steps: [...tc.steps, newStep] };
                     }) || []

@@ -97,7 +97,7 @@ export class ScheduleService extends EventEmitter {
             this.startSchedule(updated);
         } else {
             // Store disabled schedule with a no-op task
-            const stoppedTask = cron.schedule(updated.cronExpression, () => { });
+            const stoppedTask = cron.schedule(updated.cronExpression, () => { /* no-op */ });
             stoppedTask.stop();
             this._schedules.set(updated.id, { schedule: updated, task: stoppedTask });
         }

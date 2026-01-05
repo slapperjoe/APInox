@@ -124,6 +124,7 @@ export interface SoapTestStep {
 
         // For 'script'
         scriptName?: string;
+        scriptContent?: string;
     };
 }
 
