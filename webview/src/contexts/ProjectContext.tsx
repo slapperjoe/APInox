@@ -149,6 +149,8 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
         // Debounce sync to avoid spamming bridge on rapid state changes
         const timer = setTimeout(() => {
             if (projects.length > 0) {
+                // debugLog('Syncing projects to backend', { count: projects.length });
+                bridge.sendMessage({ command: 'log', message: `[ProjectContext] Syncing projects. Count: ${projects.length}` });
                 bridge.sendMessage({ command: 'syncProjects', projects });
             }
         }, 500);
@@ -243,6 +245,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
      */
     const saveProject = useCallback((project: SoapUIProject) => {
         debugLog('saveProject', { name: project.name });
+        bridge.sendMessage({ command: 'log', message: `[ProjectContext] saveProject called for: ${project.name}` });
         bridge.sendMessage({ command: 'saveProject', project });
     }, [debugLog]);
 

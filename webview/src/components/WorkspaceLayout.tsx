@@ -17,6 +17,7 @@ import { formatXml, stripCausalityData } from '../utils/xmlFormatter';
 import { XPathGenerator } from '../utils/xpathGenerator';
 import { WelcomePanel } from './workspace';
 import { PerformanceSuiteEditor } from './workspace/PerformanceSuiteEditor';
+import { ScriptEditor } from './ScriptEditor';
 
 // Styled components extracted to styles file
 // unused models removed
@@ -284,6 +285,8 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     // Breakpoint State
     const [breakpointContent, setBreakpointContent] = React.useState<string>('');
     const [breakpointTimeRemaining, setBreakpointTimeRemaining] = React.useState<number>(0);
+
+    // ... imports
 
     // Initialize breakpoint content when breakpoint becomes active - format the XML for readability
     React.useEffect(() => {
@@ -561,7 +564,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
             );
         }
 
-        if (selectedTestCase) {
+        if (selectedTestCase && !selectedStep) {
             return (
                 <div style={{ padding: 20, flex: 1, overflow: 'auto', color: 'var(--vscode-editor-foreground)', fontFamily: 'var(--vscode-font-family)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -579,6 +582,9 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                             <ToolbarButton onClick={() => onAddStep(selectedTestCase.id, 'request')}>
                                 <FileCode size={14} /> Add Request
                             </ToolbarButton>
+                            <ToolbarButton onClick={() => onAddStep(selectedTestCase.id, 'script')}>
+                                <FileCode size={14} /> Add Script
+                            </ToolbarButton>
                         </div>
                     )}
 
@@ -595,7 +601,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                         display: 'flex',
                                         alignItems: 'center',
                                         gap: 10,
-                                        cursor: step.type === 'request' || step.type === 'delay' ? 'pointer' : 'default',
+                                        cursor: step.type === 'request' || step.type === 'delay' || step.type === 'script' ? 'pointer' : 'default',
                                         backgroundColor: 'var(--vscode-list-hoverBackground)'
                                     }}
                                         onClick={() => {
@@ -686,7 +692,9 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
             );
         }
 
-        return <EmptyState title="No Test Case Selected" message="Select a test case from the sidebar or create a new test suite." icon={FlaskConical} />;
+        if (!selectedTestCase) {
+            return <EmptyState title="No Test Case Selected" message="Select a test case from the sidebar or create a new test suite." icon={FlaskConical} />;
+        }
     }
 
     // PROJECTS VIEW
@@ -722,6 +730,16 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
 
     // Fallback for other views that usually show Welcome if no request selected
     if (!selectedRequest) {
+        if (selectedStep && selectedStep.type === 'script' && onUpdateStep) {
+            return (
+                <ScriptEditor
+                    step={selectedStep}
+                    onUpdate={onUpdateStep}
+                    isReadOnly={isReadOnly}
+                    onBack={onBackToCase}
+                />
+            );
+        }
         return <WelcomePanel changelog={changelog} />;
     }
 

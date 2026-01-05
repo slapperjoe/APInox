@@ -5,7 +5,7 @@
  * Contains temporary debug logging for troubleshooting.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { bridge } from '../utils/bridge';
 import { BackendCommand, FrontendCommand } from '../messages';
 import {
@@ -153,6 +153,8 @@ export function useMessageHandler(state: MessageHandlerState) {
         startTimeRef,
         saveProject
     } = state;
+
+    const hasPerformedInitialLoad = useRef(false);
 
     useEffect(() => {
         debugLog('Setting up message listener');
@@ -402,14 +404,43 @@ export function useMessageHandler(state: MessageHandlerState) {
 
                 case BackendCommand.ProjectLoaded:
                     debugLog('projectLoaded', { projectName: message.project?.name });
+
+                    // Detailed inspection of received project
+                    if (message.project?.testSuites) {
+                        message.project.testSuites.forEach((ts: any) => {
+                            ts.testCases?.forEach((tc: any) => {
+                                tc.steps?.forEach((step: any) => {
+                                    if (step.type === 'script') {
+                                        bridge.sendMessage({
+                                            command: 'log',
+                                            message: `[useMessageHandler] Received Script Step: ${step.name}. Content Length: ${step.config?.scriptContent?.length || 0}`
+                                        });
+                                    }
+                                });
+                            });
+                        });
+                    }
+
+                    bridge.sendMessage({ command: 'log', message: `[useMessageHandler] ProjectLoaded for: ${message.project?.name}. FileName: ${message.filename}` });
                     const newProj = message.project;
                     setProjects(prev => {
                         const existingIndex = prev.findIndex(p => (p.id && p.id === newProj.id) || p.name === newProj.name);
 
                         if (existingIndex !== -1) {
                             const existing = prev[existingIndex];
-                            const updated = { ...existing, fileName: message.filename };
-                            if (!updated.id && newProj.id) updated.id = newProj.id;
+                            // MERGE logic: Take new project data, but preserve UI state (expanded, dirty?) 
+                            // and ensure ID consistency.
+                            const updated = {
+                                ...newProj,
+                                fileName: message.filename,
+                                expanded: existing.expanded,
+                                // If we have local changes (dirty=true), should we overwrite? 
+                                // "Load Project" usually implies "Reload from Disk", so yes, overwrite.
+                                dirty: false
+                            };
+
+                            // Ensure ID is stable if missing in newProj (though it should be there)
+                            if (!updated.id && existing.id) updated.id = existing.id;
 
                             const newArr = [...prev];
                             newArr[existingIndex] = updated;
@@ -446,12 +477,23 @@ export function useMessageHandler(state: MessageHandlerState) {
                         if (message.config.ui.inlineElementValues !== undefined) setInlineElementValues(message.config.ui.inlineElementValues);
                     }
 
-                    if (projects.length === 0 && message.config.openProjects && message.config.openProjects.length > 0) {
+                    // Auto-load projects defined in settings (if not already handled by App restore)
+                    // We check hasPerformedInitialLoad to avoid repeated loads on settings updates
+                    if (!hasPerformedInitialLoad.current && message.config.openProjects && message.config.openProjects.length > 0) {
                         debugLog('settingsUpdate: Auto-loading projects', { count: message.config.openProjects.length });
+                        hasPerformedInitialLoad.current = true;
                         message.config.openProjects.forEach((path: string) => {
                             bridge.sendMessage({ command: FrontendCommand.LoadProject, path });
                         });
                     }
+                    else if (projects.length === 0 && message.config.openProjects && message.config.openProjects.length > 0) {
+                        // Fallback: If for some reason we have no projects and get an update (e.g. settings change manually),
+                        // maybe we should load? But "openProjects" comes from settings, which might not change often.
+                        // Let's stick to the initial load or explicit user action.
+                        // Actually, keeping the length==0 check as a secondary gate might be okay, but
+                        // the initial load flag is the primary fix.
+                    }
+
                     if (message.config.lastConfigPath) {
                         setConfigPath(message.config.lastConfigPath);
                     }
@@ -474,6 +516,16 @@ export function useMessageHandler(state: MessageHandlerState) {
                             setExplorerExpanded(savedState.explorerExpanded ?? true);
                             setWsdlUrl(savedState.wsdlUrl || '');
                             if (savedState.lastSelectedProject) setSelectedProjectName(savedState.lastSelectedProject);
+
+                            // Trigger fresh load from disk for each project to get scriptContent
+                            // Autosave only stores UI state, not full data like scriptContent
+                            if (savedState.projects) {
+                                savedState.projects.forEach((p: any) => {
+                                    if (p.fileName) {
+                                        bridge.sendMessage({ command: 'loadProject', path: p.fileName });
+                                    }
+                                });
+                            }
                         } catch (e) {
                             debugLog('restoreAutosave FAILED', { error: String(e) });
                         }

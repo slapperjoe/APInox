@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { XMLParser, XMLBuilder } from 'fast-xml-parser';
 import { SoapUIProject } from './models';
+import { DiagnosticService } from './services/DiagnosticService';
 
 export class ProjectStorage {
     private outputChannel: any = null;
@@ -14,6 +15,7 @@ export class ProjectStorage {
         if (this.outputChannel) {
             this.outputChannel.appendLine(`[${new Date().toLocaleTimeString()}] ${message}`);
         }
+        DiagnosticService.getInstance().log('BACKEND', `[ProjectStorage] ${message}`);
     }
 
     public async saveProject(project: SoapUIProject, filePath: string) {
@@ -75,53 +77,64 @@ export class ProjectStorage {
                         }))
                     }))
                 }))
-            }, // Fixed: Removed extra ')' and added ','
-            "con:testSuite": (project.testSuites || []).map(suite => ({
-                "@_name": suite.name,
-                "@_id": suite.id,
-                "con:testCase": suite.testCases.map(tc => ({
-                    "@_name": tc.name,
-                    "@_id": tc.id,
-                    "con:testStep": tc.steps.map(step => ({
-                        "@_name": step.name,
-                        "@_type": step.type,
-                        "@_id": step.id,
-                        "con:config": {
-                            "request": step.config.request ? {
-                                "@_name": step.config.request.name,
-                                "con:endpoint": step.config.request.endpoint,
-                                "con:request": {
-                                    "@_mediaType": step.config.request.contentType || "text/xml",
-                                    "@_method": step.config.request.method || "POST",
-                                    "#text": step.config.request.request
-                                },
-                                "con:assertion": step.config.request.assertions ? step.config.request.assertions.map(a => ({
-                                    "@_type": a.type,
-                                    "@_name": a.name || a.type,
-                                    "@_id": a.id,
-                                    "con:configuration": {
-                                        "token": a.configuration?.token,
-                                        "ignoreCase": a.configuration?.ignoreCase,
-                                        "sla": a.configuration?.sla,
-                                        "path": a.configuration?.xpath,
-                                        "content": a.configuration?.expectedContent
+                ,
+                "con:testSuite": (project.testSuites || []).map(suite => ({
+                    "@_name": suite.name,
+                    "@_id": suite.id,
+                    "con:testCase": suite.testCases.map(tc => ({
+                        "@_name": tc.name,
+                        "@_id": tc.id,
+                        "con:testStep": tc.steps.map(step => ({
+                            "@_name": step.name,
+                            "@_type": step.type,
+                            "@_id": step.id,
+                            "con:config": {
+                                "request": step.config.request ? {
+                                    "@_name": step.config.request.name,
+                                    "con:endpoint": step.config.request.endpoint,
+                                    "con:request": {
+                                        "@_mediaType": step.config.request.contentType || "text/xml",
+                                        "@_method": step.config.request.method || "POST",
+                                        "#text": step.config.request.request
+                                    },
+                                    "con:assertion": step.config.request.assertions ? step.config.request.assertions.map(a => ({
+                                        "@_type": a.type,
+                                        "@_name": a.name || a.type,
+                                        "@_id": a.id,
+                                        "con:configuration": {
+                                            "token": a.configuration?.token,
+                                            "ignoreCase": a.configuration?.ignoreCase,
+                                            "sla": a.configuration?.sla,
+                                            "path": a.configuration?.xpath,
+                                            "content": a.configuration?.expectedContent
+                                        }
+                                    })) : []
+                                } : undefined,
+                                "delay": step.config.delayMs !== undefined ? { "@_ms": step.config.delayMs } : undefined,
+                                "transfer": step.config.sourceStepId ? {
+                                    "@_sourceStepId": step.config.sourceStepId,
+                                    "@_sourceProperty": step.config.sourceProperty,
+                                    "@_sourcePath": step.config.sourcePath,
+                                    "@_targetStepId": step.config.targetStepId,
+                                    "@_targetProperty": step.config.targetProperty,
+                                    "@_targetPath": step.config.targetPath
+                                } : undefined,
+                                "script": step.config.scriptName || step.config.scriptContent ? (() => {
+                                    if (step.config.scriptContent) {
+                                        this.log(`Saving script content for ${step.name}. Length: ${step.config.scriptContent.length}`);
+                                    } else {
+                                        this.log(`No script content found for ${step.name}`);
                                     }
-                                })) : []
-                            } : undefined,
-                            "delay": step.config.delayMs !== undefined ? { "@_ms": step.config.delayMs } : undefined,
-                            "transfer": step.config.sourceStepId ? {
-                                "@_sourceStepId": step.config.sourceStepId,
-                                "@_sourceProperty": step.config.sourceProperty,
-                                "@_sourcePath": step.config.sourcePath,
-                                "@_targetStepId": step.config.targetStepId,
-                                "@_targetProperty": step.config.targetProperty,
-                                "@_targetPath": step.config.targetPath
-                            } : undefined,
-                            "script": step.config.scriptName ? { "@_name": step.config.scriptName } : undefined
-                        }
+                                    return {
+                                        "@_name": step.config.scriptName,
+                                        "#text": step.config.scriptContent
+                                    };
+                                })() : undefined
+                            }
+                        }))
                     }))
                 }))
-            }))
+            }
         };
 
         const xmlContent = builder.build(soapUiObj);
@@ -272,6 +285,14 @@ export class ProjectStorage {
                             parsedConfig.targetPath = t["@_targetPath"];
                         } else if (type === 'script' && cfg["script"]) {
                             parsedConfig.scriptName = cfg["script"]["@_name"];
+                            // Handle script content (could be simple string or object with #text)
+                            const s = cfg["script"];
+                            if (typeof s === 'string') {
+                                parsedConfig.scriptContent = s;
+                            } else if (s["#text"]) {
+                                parsedConfig.scriptContent = s["#text"];
+                            }
+                            this.log(`Loaded script step '${step["@_name"]}': Content found: ${!!parsedConfig.scriptContent}, Raw type: ${typeof s}`);
                         }
 
                         return {

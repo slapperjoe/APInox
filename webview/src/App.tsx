@@ -533,6 +533,24 @@ function App() {
         }
     }, [projects, selectedTestCase, setSelectedTestCase]);
 
+    // Sync selectedTestCase with authoritative projects state when projects changes
+    // This fixes stale data (e.g. scriptContent) after projectLoaded updates projects
+    useEffect(() => {
+        if (!selectedTestCase) return;
+
+        // Find the matching test case in the current projects state
+        for (const proj of projects) {
+            for (const suite of (proj.testSuites || [])) {
+                const freshTestCase = suite.testCases?.find(tc => tc.id === selectedTestCase.id);
+                if (freshTestCase && freshTestCase !== selectedTestCase) {
+                    // Update selectedTestCase with fresh data from projects
+                    setSelectedTestCase(freshTestCase);
+                    return;
+                }
+            }
+        }
+    }, [projects, selectedTestCase, setSelectedTestCase]);
+
     const sidebarPerformanceProps = {
         suites: config?.performanceSuites || [],
         onAddSuite: handleAddPerformanceSuite,
@@ -660,6 +678,16 @@ function App() {
             setExplorerExpanded(state.explorerExpanded ?? true);
             setWsdlUrl(state.wsdlUrl || '');
             if (state.lastSelectedProject) setSelectedProjectName(state.lastSelectedProject);
+
+            // Force reload from disk to ensure we have fresh content (scripts, etc.)
+            // The cached state in 'projects' behaves like a stub
+            if (state.projects) {
+                state.projects.forEach((p: any) => {
+                    if (p.fileName) {
+                        bridge.sendMessage({ command: 'loadProject', path: p.fileName });
+                    }
+                });
+            }
         }
 
         // Test Backend Connection
@@ -1144,7 +1172,10 @@ function App() {
                     onBackToCase: () => { setSelectedStep(null); setSelectedRequest(null); },
                     onAddStep: handleAddStep,
                     testExecution,
-                    onUpdateStep: (step) => bridge.sendMessage({ command: 'updateTestStep', step }),
+                    onUpdateStep: (step) => {
+                        console.log('[App] Sending updateTestStep with content:', step.config.scriptContent);
+                        bridge.sendMessage({ command: 'updateTestStep', step });
+                    },
                     onSelectStep: handleSelectStep,
                     onDeleteStep: handleDeleteStep,
                     onMoveStep: handleMoveStep
