@@ -125,7 +125,7 @@ export const TestsUi: React.FC<TestsUiProps> = ({
         (p.testSuites || []).map(suite => ({ suite, projectName: p.name }))
     );
 
-    const projectsWithSuites = projects.filter(p => (p.testSuites?.length || 0) > 0);
+
 
     return (
         <>
@@ -205,140 +205,124 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                         </div>
                     )}
 
-                    {/* Test Suites grouped by project */}
-                    {projectsWithSuites.map(proj => (
-                        <div key={proj.name} style={{ marginBottom: 15 }}>
-                            <div style={{
-                                fontSize: '0.8em',
-                                opacity: 0.7,
-                                marginBottom: 5,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 5
-                            }}>
-                                <FolderOpen size={12} />
-                                {proj.name}
-                            </div>
+                    {/* Unique Test Suites List (Deduplicated) */}
+                    {Array.from(new Map(projects.flatMap(p => (p.testSuites || []).map(s => [s.id, s]))).values()).map(suite => {
+                        const isSuiteSelected = selectedSuiteId === suite.id && selectedCaseId === null;
+                        return (
+                            <div key={suite.id}>
+                                {/* Suite Header */}
+                                <OperationItem
+                                    active={isSuiteSelected}
+                                    onClick={() => {
+                                        // Toggle suite selection and notify parent
+                                        if (isSuiteSelected) {
+                                            setSelectedSuiteId(null);
+                                        } else {
+                                            setSelectedSuiteId(suite.id);
+                                            setSelectedCaseId(null); // Clear case selection
+                                            onSelectSuite(suite.id); // Notify parent
+                                        }
+                                    }}
+                                    style={{ paddingLeft: 8 }}
+                                >
+                                    <span
+                                        onClick={(e) => { e.stopPropagation(); onToggleSuiteExpand(suite.id); }}
+                                        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                                    >
+                                        {suite.expanded !== false ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                    </span>
+                                    <ListChecks size={14} style={{ marginLeft: 4 }} />
+                                    <span style={{ flex: 1, marginLeft: 6, fontWeight: 'bold' }}>{suite.name}</span>
+                                    <span style={{ fontSize: '0.8em', opacity: 0.6, marginRight: 6 }}>
+                                        ({suite.testCases?.length || 0})
+                                    </span>
+                                    {isSuiteSelected && (
+                                        <>
+                                            <HeaderButton onClick={(e) => { e.stopPropagation(); onRunSuite(suite.id); }} title="Run Suite" style={{ padding: 2 }}>
+                                                <Play size={12} />
+                                            </HeaderButton>
+                                            <HeaderButton onClick={(e) => { e.stopPropagation(); onAddTestCase(suite.id); }} title="Add Test Case" style={{ padding: 2 }}>
+                                                <Plus size={12} />
+                                            </HeaderButton>
+                                            <HeaderButton
+                                                onClick={(e) => { e.stopPropagation(); onDeleteSuite(suite.id); }}
+                                                title={deleteConfirm === suite.id ? 'Click again to confirm' : 'Delete Suite'}
+                                                style={{ padding: 2, color: deleteConfirm === suite.id ? 'var(--vscode-testing-iconFailed)' : undefined }}
+                                            >
+                                                <Trash2 size={12} />
+                                            </HeaderButton>
+                                        </>
+                                    )}
+                                </OperationItem>
 
-                            {(proj.testSuites || []).map(suite => {
-                                const isSuiteSelected = selectedSuiteId === suite.id && selectedCaseId === null;
-                                return (
-                                    <div key={suite.id}>
-                                        {/* Suite Header */}
-                                        <OperationItem
-                                            active={isSuiteSelected}
+                                {/* Test Cases */}
+                                {suite.expanded !== false && (suite.testCases || []).map(tc => {
+                                    const isSelected = selectedCaseId === tc.id;
+                                    return (
+                                        <RequestItem
+                                            key={tc.id}
+                                            active={isSelected}
                                             onClick={() => {
-                                                // Toggle suite selection and notify parent
-                                                if (isSuiteSelected) {
-                                                    setSelectedSuiteId(null);
+                                                // Select case and notify parent
+                                                if (isSelected) {
+                                                    setSelectedCaseId(null);
                                                 } else {
-                                                    setSelectedSuiteId(suite.id);
-                                                    setSelectedCaseId(null); // Clear case selection
-                                                    onSelectSuite(suite.id); // Notify parent
+                                                    setSelectedCaseId(tc.id);
+                                                    setSelectedSuiteId(null); // Clear suite selection
+                                                    onSelectTestCase(tc.id); // Notify parent
                                                 }
                                             }}
-                                            style={{ paddingLeft: 8 }}
+                                            onContextMenu={(e) => handleContextMenu(tc.id, tc.name, e)}
+                                            style={{ paddingLeft: 35 }}
                                         >
-                                            <span
-                                                onClick={(e) => { e.stopPropagation(); onToggleSuiteExpand(suite.id); }}
-                                                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                                            >
-                                                {suite.expanded !== false ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                            {renameId === tc.id ? (
+                                                <input
+                                                    type="text"
+                                                    value={renameName}
+                                                    onChange={(e) => setRenameName(e.target.value)}
+                                                    onBlur={submitRename}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') submitRename();
+                                                        if (e.key === 'Escape') cancelRename();
+                                                    }}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    autoFocus
+                                                    style={{
+                                                        background: 'var(--vscode-input-background)',
+                                                        border: '1px solid var(--vscode-input-border)',
+                                                        color: 'var(--vscode-input-foreground)',
+                                                        padding: '2px 4px',
+                                                        flex: 1,
+                                                        fontSize: '12px',
+                                                        outline: 'none'
+                                                    }}
+                                                />
+                                            ) : (
+                                                <span style={{ flex: 1 }} title="Right-click to rename">{tc.name}</span>
+                                            )}
+                                            <span style={{ fontSize: '0.75em', opacity: 0.6, marginRight: 6 }}>
+                                                {tc.steps?.length || 0} steps
                                             </span>
-                                            <ListChecks size={14} style={{ marginLeft: 4 }} />
-                                            <span style={{ flex: 1, marginLeft: 6, fontWeight: 'bold' }}>{suite.name}</span>
-                                            <span style={{ fontSize: '0.8em', opacity: 0.6, marginRight: 6 }}>
-                                                ({suite.testCases?.length || 0})
-                                            </span>
-                                            {isSuiteSelected && (
+                                            {isSelected && (
                                                 <>
-                                                    <HeaderButton onClick={(e) => { e.stopPropagation(); onRunSuite(suite.id); }} title="Run Suite" style={{ padding: 2 }}>
+                                                    <HeaderButton onClick={(e) => { e.stopPropagation(); onRunCase(tc.id); }} title="Run Test Case" style={{ padding: 2 }}>
                                                         <Play size={12} />
                                                     </HeaderButton>
-                                                    <HeaderButton onClick={(e) => { e.stopPropagation(); onAddTestCase(suite.id); }} title="Add Test Case" style={{ padding: 2 }}>
-                                                        <Plus size={12} />
-                                                    </HeaderButton>
                                                     <HeaderButton
-                                                        onClick={(e) => { e.stopPropagation(); onDeleteSuite(suite.id); }}
-                                                        title={deleteConfirm === suite.id ? 'Click again to confirm' : 'Delete Suite'}
-                                                        style={{ padding: 2, color: deleteConfirm === suite.id ? 'var(--vscode-testing-iconFailed)' : undefined }}
+                                                        onClick={(e) => { e.stopPropagation(); onDeleteTestCase(tc.id); }}
+                                                        title={deleteConfirm === tc.id ? 'Click again to confirm' : 'Delete Case'}
+                                                        style={{ padding: 2, color: deleteConfirm === tc.id ? 'var(--vscode-testing-iconFailed)' : undefined }}
                                                     >
                                                         <Trash2 size={12} />
                                                     </HeaderButton>
                                                 </>
                                             )}
-                                        </OperationItem>
-
-                                        {/* Test Cases */}
-                                        {suite.expanded !== false && (suite.testCases || []).map(tc => {
-                                            const isSelected = selectedCaseId === tc.id;
-                                            return (
-                                                <RequestItem
-                                                    key={tc.id}
-                                                    active={isSelected}
-                                                    onClick={() => {
-                                                        // Select case and notify parent
-                                                        if (isSelected) {
-                                                            setSelectedCaseId(null);
-                                                        } else {
-                                                            setSelectedCaseId(tc.id);
-                                                            setSelectedSuiteId(null); // Clear suite selection
-                                                            onSelectTestCase(tc.id); // Notify parent
-                                                        }
-                                                    }}
-                                                    onContextMenu={(e) => handleContextMenu(tc.id, tc.name, e)}
-                                                    style={{ paddingLeft: 35 }}
-                                                >
-                                                    {renameId === tc.id ? (
-                                                        <input
-                                                            type="text"
-                                                            value={renameName}
-                                                            onChange={(e) => setRenameName(e.target.value)}
-                                                            onBlur={submitRename}
-                                                            onKeyDown={(e) => {
-                                                                if (e.key === 'Enter') submitRename();
-                                                                if (e.key === 'Escape') cancelRename();
-                                                            }}
-                                                            onClick={(e) => e.stopPropagation()}
-                                                            autoFocus
-                                                            style={{
-                                                                background: 'var(--vscode-input-background)',
-                                                                border: '1px solid var(--vscode-input-border)',
-                                                                color: 'var(--vscode-input-foreground)',
-                                                                padding: '2px 4px',
-                                                                flex: 1,
-                                                                fontSize: '12px',
-                                                                outline: 'none'
-                                                            }}
-                                                        />
-                                                    ) : (
-                                                        <span style={{ flex: 1 }} title="Right-click to rename">{tc.name}</span>
-                                                    )}
-                                                    <span style={{ fontSize: '0.75em', opacity: 0.6, marginRight: 6 }}>
-                                                        {tc.steps?.length || 0} steps
-                                                    </span>
-                                                    {isSelected && (
-                                                        <>
-                                                            <HeaderButton onClick={(e) => { e.stopPropagation(); onRunCase(tc.id); }} title="Run Test Case" style={{ padding: 2 }}>
-                                                                <Play size={12} />
-                                                            </HeaderButton>
-                                                            <HeaderButton
-                                                                onClick={(e) => { e.stopPropagation(); onDeleteTestCase(tc.id); }}
-                                                                title={deleteConfirm === tc.id ? 'Click again to confirm' : 'Delete Case'}
-                                                                style={{ padding: 2, color: deleteConfirm === tc.id ? 'var(--vscode-testing-iconFailed)' : undefined }}
-                                                            >
-                                                                <Trash2 size={12} />
-                                                            </HeaderButton>
-                                                        </>
-                                                    )}
-                                                </RequestItem>
-                                            );
-                                        })}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    ))}
+                                        </RequestItem>
+                                    );
+                                })}
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
 
