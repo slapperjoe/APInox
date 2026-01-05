@@ -1,11 +1,16 @@
 import React from 'react';
-import { Layout as LayoutIcon, ListOrdered, Play, Loader2, RotateCcw, WrapText, Bug, AlignLeft, Braces, ChevronLeft, Plus, FileCode, Trash2, ArrowUp, ArrowDown, ListChecks, Replace, Cloud, PlusSquare, FolderOpen, Activity, FlaskConical, Eye, Compass } from 'lucide-react';
+import { Layout as LayoutIcon, ListOrdered, Play, Loader2, RotateCcw, WrapText, Bug, AlignLeft, Braces, ChevronLeft, ListChecks, Replace, Cloud, PlusSquare } from 'lucide-react';
 // Models imported via props.ts indirections, specific enums kept if needed locally (TestStepType is used in code?)
 // Checking code: TestStepType is used in props interface but not local var?
 // Actually TestStepType is used in onAddStep signature but onAddStep comes from props.
 // Let's remove them and add back if needed.
 import { SidebarView } from '../models';
 // ... imports
+import emptyServerImg from '../assets/empty-server.png';
+import emptyWsdlImg from '../assets/empty-wsdl.png';
+import emptyWatcherImg from '../assets/empty-watcher.png';
+import emptyPerformanceImg from '../assets/empty-performance.png';
+import emptyProjectImg from '../assets/empty-project.png';
 import { MonacoRequestEditor, MonacoRequestEditorHandle } from './MonacoRequestEditor';
 import { MonacoResponseViewer } from './MonacoResponseViewer';
 import { AssertionsPanel } from './AssertionsPanel';
@@ -15,7 +20,7 @@ import { ExtractorsPanel } from './ExtractorsPanel';
 import { MonacoSingleLineInput, MonacoSingleLineInputHandle } from './MonacoSingleLineInput';
 import { formatXml, stripCausalityData } from '../utils/xmlFormatter';
 import { XPathGenerator } from '../utils/xpathGenerator';
-import { WelcomePanel } from './workspace';
+import { WelcomePanel, BreakpointOverlay, TestCaseView, EmptyTestCase } from './workspace';
 import { PerformanceSuiteEditor } from './workspace/PerformanceSuiteEditor';
 import { ScriptEditor } from './ScriptEditor';
 
@@ -32,6 +37,7 @@ import {
     ToolbarSelect,
     MainFooter,
     IconButton,
+    EmptyStateImage
 } from '../styles/WorkspaceLayout.styles';
 
 
@@ -47,9 +53,13 @@ import {
 
 
 // Helper Components
-const EmptyState: React.FC<{ title: string; message: string; icon?: React.ElementType }> = ({ title, message, icon: Icon }) => (
+const EmptyState: React.FC<{ title: string; message: string; icon?: React.ElementType; image?: string }> = ({ title, message, icon: Icon, image }) => (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--vscode-descriptionForeground)', padding: 20, textAlign: 'center' }}>
-        {Icon && <Icon size={48} style={{ marginBottom: 20, opacity: 0.5 }} />}
+        {image ? (
+            <EmptyStateImage src={image} alt={title} />
+        ) : (
+            Icon && <Icon size={48} style={{ marginBottom: 20, opacity: 0.5 }} />
+        )}
         <h2 style={{ marginBottom: 10, color: 'var(--vscode-foreground)' }}>{title}</h2>
         <p>{message}</p>
     </div>
@@ -58,24 +68,24 @@ const EmptyState: React.FC<{ title: string; message: string; icon?: React.Elemen
 const EmptyFileWatcher: React.FC = () => (
     <EmptyState
         title="File Watcher"
-        message="The File Watcher monitors your project files for changes. Events will appear in the sidebar. Select an event to view the request and response details."
-        icon={Eye}
+        message="The File Watcher monitors your project files for changes. Events will appear in the sidebar."
+        image={emptyWatcherImg}
     />
 );
 
 const EmptyWsdlExplorer: React.FC = () => (
     <EmptyState
         title="WSDL Explorer"
-        message="Load a WSDL file to browse its interfaces, operations, and requests. Select an item to view its details or add it to your project."
-        icon={Compass}
+        message="Load a WSDL file to browse its interfaces, operations, and requests."
+        image={emptyWsdlImg}
     />
 );
 
 const EmptyServer: React.FC = () => (
     <EmptyState
         title="Dirty SOAP Server"
-        message="Configure a local proxy server to inspect traffic or mock responses. Select an event to view details, or configure mock rules."
-        icon={Activity}
+        message="Configure a local proxy server to inspect traffic or mock responses."
+        image={emptyServerImg}
     />
 );
 
@@ -279,7 +289,6 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
 
     const [alignAttributes, setAlignAttributes] = React.useState(false);
     const [activeTab, setActiveTab] = React.useState<'request' | 'headers' | 'assertions' | 'auth' | 'extractors'>('request');
-    const [deleteConfirm, setDeleteConfirm] = React.useState<string | null>(null);
     const [showVariables, setShowVariables] = React.useState(false);
 
     // Breakpoint State
@@ -411,82 +420,15 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
 
     // Breakpoint Overlay - takes over the entire workspace when active
     if (breakpointState?.activeBreakpoint) {
-        const bp = breakpointState.activeBreakpoint;
-        const seconds = Math.ceil(breakpointTimeRemaining / 1000);
-        const progress = (breakpointTimeRemaining / bp.timeoutMs) * 100;
-
         return (
-            <Content style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                {/* Breakpoint Banner */}
-                <div style={{
-                    background: 'linear-gradient(90deg, #d97706 0%, #b45309 100%)',
-                    padding: '12px 20px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    color: 'white'
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <Bug size={20} />
-                        <div>
-                            <strong>Breakpoint Hit: {bp.breakpointName}</strong>
-                            <span style={{ marginLeft: 10, opacity: 0.9 }}>
-                                ({bp.type === 'request' ? 'Outgoing Request' : 'Incoming Response'})
-                            </span>
-                        </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
-                        <div style={{
-                            width: 120,
-                            height: 6,
-                            background: 'rgba(255,255,255,0.3)',
-                            borderRadius: 3,
-                            overflow: 'hidden'
-                        }}>
-                            <div style={{
-                                width: `${progress}%`,
-                                height: '100%',
-                                background: 'white',
-                                transition: 'width 1s linear'
-                            }} />
-                        </div>
-                        <span style={{ fontWeight: 'bold', minWidth: 40 }}>{seconds}s</span>
-                        <ToolbarButton
-                            onClick={() => {
-                                // Minify XML back to single line (remove pretty-print formatting)
-                                const minified = breakpointContent.replace(/>\s+</g, '><').trim();
-                                breakpointState.onResolve(minified);
-                            }}
-                            style={{ background: 'white', color: '#b45309', padding: '6px 12px' }}
-                        >
-                            <Play size={14} /> Continue
-                        </ToolbarButton>
-                        <ToolbarButton
-                            onClick={() => breakpointState.onResolve(bp.content, true)}
-                            style={{ background: 'rgba(255,255,255,0.2)', color: 'white', padding: '6px 12px' }}
-                        >
-                            Cancel
-                        </ToolbarButton>
-                    </div>
-                </div>
-
-                {/* Editable Content */}
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                    <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--vscode-panel-border)' }}>
-                        <span style={{ fontWeight: 'bold' }}>
-                            Edit {bp.type === 'request' ? 'Request' : 'Response'} Content:
-                        </span>
-                    </div>
-                    <div style={{ flex: 1, position: 'relative' }}>
-                        <MonacoRequestEditor
-                            value={breakpointContent}
-                            onChange={setBreakpointContent}
-                            readOnly={false}
-                            autoFoldElements={config?.ui?.autoFoldElements}
-                        />
-                    </div>
-                </div>
-            </Content>
+            <BreakpointOverlay
+                breakpoint={breakpointState.activeBreakpoint}
+                content={breakpointContent}
+                onContentChange={setBreakpointContent}
+                timeRemaining={breakpointTimeRemaining}
+                onResolve={breakpointState.onResolve}
+                config={config}
+            />
         );
     }
 
@@ -518,7 +460,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                 />
             );
         }
-        return <EmptyState title="No Performance Suite Selected" message="Select a suite from the sidebar or create a new one." icon={Activity} />;
+        return <EmptyState title="No Performance Suite Selected" message="Select a suite from the sidebar or create a new one." image={emptyPerformanceImg} />;
     }
 
     // TESTS VIEW
@@ -566,134 +508,21 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
 
         if (selectedTestCase && !selectedStep) {
             return (
-                <div style={{ padding: 20, flex: 1, overflow: 'auto', color: 'var(--vscode-editor-foreground)', fontFamily: 'var(--vscode-font-family)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h1>Test Case: {selectedTestCase.name}</h1>
-                        <ToolbarButton onClick={() => onRunTestCase && onRunTestCase(selectedTestCase.id)} style={{ color: 'var(--vscode-testing-iconPassed)' }}>
-                            <Play size={14} /> Run Test Case
-                        </ToolbarButton>
-                    </div>
-
-                    {onAddStep && (
-                        <div style={{ padding: '10px 0', borderBottom: '1px solid var(--vscode-panel-border)', display: 'flex', gap: 10 }}>
-                            <ToolbarButton onClick={() => onAddStep(selectedTestCase.id, 'delay')}>
-                                <Plus size={14} /> Add Delay
-                            </ToolbarButton>
-                            <ToolbarButton onClick={() => onAddStep(selectedTestCase.id, 'request')}>
-                                <FileCode size={14} /> Add Request
-                            </ToolbarButton>
-                            <ToolbarButton onClick={() => onAddStep(selectedTestCase.id, 'script')}>
-                                <FileCode size={14} /> Add Script
-                            </ToolbarButton>
-                        </div>
-                    )}
-
-                    <div style={{ marginTop: 20 }}>
-                        <h2 style={{ borderBottom: '1px solid var(--vscode-panel-border)', paddingBottom: 5 }}>Steps</h2>
-                        <ul style={{ listStyle: 'none', padding: 0 }}>
-                            {selectedTestCase.steps.map((step, index) => {
-                                const status = testExecution && testExecution[selectedTestCase.id] && testExecution[selectedTestCase.id][step.id];
-                                const isConfirming = deleteConfirm === step.id;
-                                return (
-                                    <li key={step.id} style={{
-                                        padding: '10px',
-                                        borderBottom: '1px solid var(--vscode-panel-border)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 10,
-                                        cursor: step.type === 'request' || step.type === 'delay' || step.type === 'script' ? 'pointer' : 'default',
-                                        backgroundColor: 'var(--vscode-list-hoverBackground)'
-                                    }}
-                                        onClick={() => {
-                                            if (onSelectStep) {
-                                                onSelectStep(step);
-                                            } else if (step.type === 'request' && step.config.request && onOpenStepRequest) {
-                                                // Fallback for legacy prop
-                                                onOpenStepRequest(step.config.request);
-                                            }
-                                        }}
-                                    >
-                                        <div style={{ opacity: 0.7, width: 24, display: 'flex', justifyContent: 'center' }}>
-                                            {status?.status === 'running' && <Loader2 size={14} className="spin" />}
-                                            {status?.status === 'pass' && <div style={{ color: 'var(--vscode-testing-iconPassed)' }}>✔</div>}
-                                            {status?.status === 'fail' && <div style={{ color: 'var(--vscode-testing-iconFailed)' }}>✘</div>}
-                                            {!status && <span>{index + 1}.</span>}
-                                        </div>
-                                        <div style={{ flex: 1 }}>
-                                            <strong>{step.name}</strong> <span style={{ opacity: 0.7 }}>({step.type})</span>
-                                            {step.type === 'request' && step.config.request && (
-                                                <div style={{ fontSize: '0.8em', opacity: 0.6 }}>
-                                                    {step.config.request.method || 'POST'} {step.config.request.endpoint || 'No Endpoint'}
-                                                </div>
-                                            )}
-                                            {step.type === 'delay' && (
-                                                <div style={{ fontSize: '0.8em', opacity: 0.6, color: 'var(--vscode-textLink-foreground)' }}>
-                                                    Delay: {step.config.delayMs || 0} ms
-                                                </div>
-                                            )}
-                                            {status?.error && (
-                                                <div style={{ color: 'var(--vscode-errorForeground)', fontSize: '0.8em' }}>Error: {status.error}</div>
-                                            )}
-                                        </div>
-                                        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.8em', opacity: 0.9 }}>
-                                            {status?.response?.duration !== undefined && <span title="Duration" style={{ marginRight: 5 }}>{status.response.duration.toFixed(3)}s</span>}
-                                            {status?.response?.rawResponse !== undefined && <span title="Response Size" style={{ marginRight: 10 }}>{(status.response.rawResponse.length / 1024).toFixed(2)} KB</span>}
-
-                                            {onMoveStep && (
-                                                <>
-                                                    <IconButton
-                                                        onClick={(e) => { e.stopPropagation(); onMoveStep(step.id, 'up'); }}
-                                                        title="Move Up"
-                                                        disabled={index === 0}
-                                                        style={{ opacity: index === 0 ? 0.3 : 1 }}
-                                                    >
-                                                        <ArrowUp size={14} />
-                                                    </IconButton>
-                                                    <IconButton
-                                                        onClick={(e) => { e.stopPropagation(); onMoveStep(step.id, 'down'); }}
-                                                        title="Move Down"
-                                                        disabled={index === selectedTestCase.steps.length - 1}
-                                                        style={{ opacity: index === selectedTestCase.steps.length - 1 ? 0.3 : 1 }}
-                                                    >
-                                                        <ArrowDown size={14} />
-                                                    </IconButton>
-                                                </>
-                                            )}
-
-                                            {onDeleteStep && (
-                                                <IconButton
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        if (isConfirming) {
-                                                            onDeleteStep(step.id);
-                                                            setDeleteConfirm(null);
-                                                        } else {
-                                                            setDeleteConfirm(step.id);
-                                                            setTimeout(() => setDeleteConfirm(null), 2000);
-                                                        }
-                                                    }}
-                                                    style={{
-                                                        color: isConfirming ? 'var(--vscode-errorForeground)' : 'inherit',
-                                                        animation: isConfirming ? 'shake 0.5s' : 'none',
-                                                        marginLeft: 5
-                                                    }}
-                                                    title={isConfirming ? "Click to Confirm Delete" : "Delete Step"}
-                                                >
-                                                    <Trash2 size={14} />
-                                                </IconButton>
-                                            )}
-                                        </div>
-                                    </li>
-                                );
-                            })}
-                        </ul>
-                    </div>
-                </div>
+                <TestCaseView
+                    testCase={selectedTestCase}
+                    testExecution={testExecution}
+                    onRunTestCase={onRunTestCase}
+                    onAddStep={onAddStep}
+                    onSelectStep={onSelectStep}
+                    onMoveStep={onMoveStep}
+                    onDeleteStep={onDeleteStep}
+                    onOpenStepRequest={onOpenStepRequest}
+                />
             );
         }
 
         if (!selectedTestCase) {
-            return <EmptyState title="No Test Case Selected" message="Select a test case from the sidebar or create a new test suite." icon={FlaskConical} />;
+            return <EmptyTestCase />;
         }
     }
 
@@ -703,7 +532,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
             if (selectedOperation) return <OperationSummary operation={selectedOperation} onSelectRequest={navigationActions?.onSelectRequest} />;
             if (selectedInterface) return <InterfaceSummary interface={selectedInterface} onSelectOperation={navigationActions?.onSelectOperation} />;
             if (selectedProject) return <ProjectSummary project={selectedProject} onSelectInterface={navigationActions?.onSelectInterface} />;
-            return <EmptyState title="No Project Selected" message="Select a project, interface, or operation to view details." icon={FolderOpen} />;
+            return <EmptyState title="No Project Selected" message="Select a project, interface, or operation to view details." image={emptyProjectImg} />;
         }
         // If request IS selected, fall through to Request Editor
     }
