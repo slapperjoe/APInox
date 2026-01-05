@@ -135,7 +135,7 @@ export class DiagnosticService {
     }
 
     // Deprecated but kept for compatibility with existing calls, now just returns current path
-    public async exportLogs(context?: vscode.ExtensionContext): Promise<string> {
+    public async exportLogs(_context?: vscode.ExtensionContext): Promise<string> {
         return this.currentLogPath;
     }
 }

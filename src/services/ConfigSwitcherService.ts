@@ -1,5 +1,4 @@
 import * as fs from 'fs';
-import * as path from 'path';
 
 export class ConfigSwitcherService {
 
@@ -7,7 +6,7 @@ export class ConfigSwitcherService {
      * Injects the proxy URL into the given config file.
      * Backs up the original file to {fileName}.original
      */
-    public inject(filePath: string, proxyBaseUrl: string): { success: boolean, message: string, originalUrl?: string } {
+    public inject(filePath: string, _proxyBaseUrl: string): { success: boolean, message: string, originalUrl?: string } {
         try {
             if (!fs.existsSync(filePath)) {
                 return { success: false, message: 'File not found.' };
@@ -32,8 +31,6 @@ export class ConfigSwitcherService {
             // capturing the first match's base URL.
 
             // New Regex to capture the URL inside quotes
-            const urlRegex = /address="((http|https):\/\/[^"]+)"/g;
-
             const proxyPort = 9000; // Deduce from config or pass in? Hardcoded for now based on ProxyService default.
 
             // Capture the original URL to return it
@@ -45,16 +42,15 @@ export class ConfigSwitcherService {
             }
 
             const protocol = match[1]; // 'http' or 'https'
-            const originalUrl = match[0].split('"')[1]; // This captures the first full URL found.
 
             const proxyBase = `${protocol}://localhost:${proxyPort}`;
 
             // Replace all occurrences of address="http(s)://..." with address="proxyBase/..."
             // We need to preserve the path!
-            // Regex: address="(https?:\/\/[^"\/]+)(\/[^"]*)?"
+            // Regex: address="(https?:\/\/[^"/]+)(\/[^"]*)?"
             // Replace with: address="proxyBase$2"
 
-            const newContent2 = content.replace(/address="(https?:\/\/[^"\/]+)(\/[^"]*)?"/g, (match, baseUrl, path) => {
+            const newContent2 = content.replace(/address="(https?:\/\/[^"/]+)(\/[^"]*)?"/g, (match, baseUrl, path) => {
                 matchCount++; // Increment for each replacement
                 if (!capturedUrl) capturedUrl = baseUrl + (path || ''); // Capture the first full URL before modification
                 return `address="${proxyBase}${path || ''}"`;
