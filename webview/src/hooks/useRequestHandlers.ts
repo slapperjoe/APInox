@@ -123,7 +123,9 @@ export function useRequestHandlers({
                 // History context fields
                 projectName: selectedProjectName || undefined,
                 interfaceName: selectedInterface?.name || undefined,
-                requestName: selectedRequest?.name || undefined
+                requestName: selectedRequest?.name || undefined,
+                // WS-Security
+                wsSecurity: selectedRequest?.wsSecurity
             });
         } else {
             console.error('[useRequestHandlers] executeRequest aborted: No selectedOperation or selectedRequest');
