@@ -539,7 +539,10 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
 
     // EXPLORER VIEW
     if (activeView === SidebarView.EXPLORER) {
-        return <EmptyWsdlExplorer />;
+        // If a request is selected, fall through to main render
+        if (!selectedRequest) {
+            return <EmptyWsdlExplorer />;
+        }
     }
 
     // WATCHER VIEW
