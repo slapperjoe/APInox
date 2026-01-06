@@ -54,6 +54,34 @@ export interface SoapRequestExtractor {
     defaultValue?: string;
 }
 
+// ============================================================================
+// WS-SECURITY TYPES
+// ============================================================================
+
+export enum WSSecurityType {
+    None = 'none',
+    UsernameToken = 'usernameToken',
+    Certificate = 'certificate'
+}
+
+export enum PasswordType {
+    PasswordText = 'PasswordText',
+    PasswordDigest = 'PasswordDigest'
+}
+
+export interface WSSecurityConfig {
+    type: WSSecurityType;
+    // UsernameToken Fields
+    username?: string;
+    password?: string;
+    passwordType?: PasswordType;
+    hasNonce?: boolean;
+    hasCreated?: boolean; // For Timestamp
+    // Certificate Fields
+    privateKeyPath?: string;
+    publicCertPath?: string;
+}
+
 export interface SoapUIRequest {
     name: string;
     request: string; // The XML content
@@ -65,6 +93,7 @@ export interface SoapUIRequest {
     extractors?: SoapRequestExtractor[];
     headers?: Record<string, string>;
     id?: string;
+    wsSecurity?: WSSecurityConfig;
 }
 
 export interface SoapUIOperation {

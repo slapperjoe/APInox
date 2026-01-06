@@ -25,13 +25,22 @@ This plan breaks down the work into logical phases to integrate WS-Security into
 
 We first need to extend our data models to support storing security configuration for each request.
 
-**File:** `webview/src/models.ts`
+**Files:** `webview/src/models.ts` and `src/models.ts`
 
-**Step:** Extend `SoapUIRequest` to include a `wsSecurity` configuration object.
+**Step:** Add enums and extend `SoapUIRequest` to include a `wsSecurity` configuration object.
 
 ```typescript
-export type WSSecurityType = 'None' | 'UsernameToken' | 'Certificate';
-export type PasswordType = 'PasswordText' | 'PasswordDigest';
+// Use enums for type safety (consistent with project patterns)
+export enum WSSecurityType {
+    None = 'none',
+    UsernameToken = 'usernameToken',
+    Certificate = 'certificate'
+}
+
+export enum PasswordType {
+    PasswordText = 'PasswordText',
+    PasswordDigest = 'PasswordDigest'
+}
 
 export interface WSSecurityConfig {
     type: WSSecurityType;
@@ -41,9 +50,9 @@ export interface WSSecurityConfig {
     passwordType?: PasswordType;
     hasNonce?: boolean;
     hasCreated?: boolean; // For Timestamp
-    // Certificate Fields (Future proofing)
-    keystorePath?: string;
-    keystorePassword?: string;
+    // Certificate Fields (Phase 2 - Future)
+    // keystorePath?: string;
+    // keystorePassword?: string;
 }
 
 export interface SoapUIRequest {
@@ -52,35 +61,51 @@ export interface SoapUIRequest {
 }
 ```
 
-**Benefit:** This ensures that security settings are saved with the project and persist across sessions.
+> [!NOTE]
+> Credentials support environment variable expansion (e.g., `${#Env#wss_password}`) for different environments.
 
 ### Phase 2: Frontend UI Implementation
 
 We need a user-friendly interface to configure these settings.
 
-**File:** `webview/src/components/request/RequestEditor.tsx` (or similar)
+**File:** `webview/src/components/WorkspaceLayout.tsx` (Auth tab alongside Headers, Assertions, Extractors)
+
+**New Component:** `webview/src/components/SecurityPanel.tsx`
 
 **Steps:**
-1.  Add a new "Auth" or "Security" tab to the Request Editor (next to "Headers").
+1.  Add a new "Auth" tab to the Request Editor tabs (next to "Headers", "Assertions", "Extractors").
 2.  Create a `SecurityPanel` component that allows selecting the security type.
 3.  **Input Fields**:
-    *   **Dropdown**: Security Type (None, UsernameToken).
-    *   **Inputs**: Username, Password.
-    *   **Dropdown**: Password Type (Text vs Digest).
-    *   **Checkboxes**: "Add Nonce", "Add Created (Timestamp)".
-4.  Update the state of the active request when these values change.
+    *   **Dropdown**: Security Type (None, UsernameToken) - using `WSSecurityType` enum.
+    *   **Inputs**: Username, Password (password field masked).
+    *   **Dropdown**: Password Type (Text vs Digest) - using `PasswordType` enum.
+    *   **Checkboxes**: "Add Nonce", "Add Timestamp".
+4.  Update the state of the active request when these values change via `onUpdateRequest`.
 
-**Benefit:** Users can easily configure complex security requirements without manually crafting XML headers.
+> [!TIP]
+> For future enhancement: Consider using VS Code's `SecretStorage` API for secure credential storage rather than plain JSON.
 
 ### Phase 3: Message Passing (Frontend -> Backend)
 
 Ensure the security configuration travels with the execution request.
 
-**File:** `webview/src/messages.ts` (Implicit) & `src/controllers/WebviewController.ts`
+**Files:** 
+- `webview/src/hooks/useRequestExecution.ts`
+- `webview/src/hooks/useRequestHandlers.ts`
+- `src/commands/ExecuteRequestCommand.ts`
 
 **Steps:**
-1.  When `ExecuteRequest` is triggered in the UI, ensure the `wsSecurity` object is included in the message payload sent to the VS Code extension.
-2.  In `WebviewController.ts`, verify that `message.wsSecurity` is correctly extracted and passed to the `SoapClient`.
+1.  When `FrontendCommand.ExecuteRequest` is triggered, include the `wsSecurity` object in the message payload.
+2.  In `ExecuteRequestCommand.ts`, extract `message.wsSecurity` and pass to the `SoapClient`.
+
+```typescript
+// In useRequestExecution.ts - add to bridge.sendMessage
+bridge.sendMessage({
+    command: FrontendCommand.ExecuteRequest,
+    // ... existing fields ...
+    wsSecurity: selectedRequest?.wsSecurity
+});
+```
 
 ### Phase 4: Backend Implementation (The Core)
 
@@ -89,68 +114,82 @@ This is where the actual SOAP header generation happens using `node-soap`.
 **File:** `src/soapClient.ts`
 
 **Steps:**
-1.  Update `executeRequest` method signature or options to accept `wsSecurity` config.
-2.  Import `WSSecurity` from `soap` package.
-3.  Implement logic to apply the security:
+1.  Import `WSSecurity` from the `soap` package.
+2.  Update `executeRawRequest` to accept and apply `wsSecurity` config.
+3.  Generate the WS-Security header XML and inject into the SOAP envelope.
 
 ```typescript
-// Pseudocode for soapClient.ts updates
-
 import { WSSecurity } from 'soap';
 
-// Inside executeRequest
-if (wsSecurityConfig && wsSecurityConfig.type === 'UsernameToken') {
+// For Raw XML mode: Generate header and inject
+if (wsSecurityConfig && wsSecurityConfig.type === WSSecurityType.UsernameToken) {
     const { username, password, passwordType, hasNonce, hasCreated } = wsSecurityConfig;
     
-    // node-soap's WSSecurity takes options:
-    // new WSSecurity(username, password, options)
-    // passwordType maps to 'PasswordText' or 'PasswordDigest'
-    
     const wsSecurity = new WSSecurity(username, password, {
-        hasNonce: hasNonce,
-        hasTimeStamp: hasCreated,
-        passwordType: passwordType
+        hasNonce: hasNonce ?? true,
+        hasTimeStamp: hasCreated ?? true,
+        passwordType: passwordType || PasswordType.PasswordDigest
     });
     
-    this.client.setSecurity(wsSecurity);
+    // Get the header XML and inject into soap:Header
+    const headerXml = wsSecurity.toXML();
+    processedXml = injectSecurityHeader(processedXml, headerXml);
 }
 ```
 
-4.  **Raw Requests**: For "Raw XML" mode (`executeRawRequest`), `node-soap`'s `setSecurity` might not automatically apply if we are bypassing the standard method call.
-    *   *Challenge*: `node-soap` client methods usually handle the injection. If we execute raw XML via Axios directly (as `executeRawRequest` currently does), we bypass `node-soap`'s processing.
-    *   *Solution*: We might need to generate the WS-Security header XML content manually (or use `node-soap` to generate just the header) and inject it into the raw XML string before sending, OR advise users that Raw Mode requires manual header crafting.
-    *   *Alternative*: We can use `wsSecurity.toXML()` (if available) to get the header string and inject it into `<soap:Header>`.
+**Helper Function:**
+```typescript
+function injectSecurityHeader(soapXml: string, securityHeaderXml: string): string {
+    // Find or create <soap:Header> and inject the security header
+    // Handle both existing headers and no-header cases
+}
+```
 
 ### Phase 5: Verification & Testing
 
-1.  **Unit Tests**: Mock `node-soap` and verify `setSecurity` is called with correct parameters.
-2.  **Integration**: Use a public WSDL that requires WS-Security (e.g., some public calculators or weather services often have secured endpoints, or mock one).
-3.  **UI Verification**: Ensure toggling settings in UI updates the "Raw Request" view if possible, or at least that the sent request contains the headers in the Output Log.
+1.  **Unit Tests**: 
+    - Test `injectSecurityHeader` function with various SOAP envelope formats
+    - Mock `WSSecurity` and verify correct parameters
+2.  **Integration**: 
+    - Use a test service that requires WS-Security
+    - Verify Nonce and Timestamp are generated fresh each request
+3.  **UI Verification**: 
+    - Ensure toggling settings updates request state
+    - Verify security config persists with project save/load
 
 ---
 
-## 3. Detailed Benefits Breakdown
+## 3. Files to Modify
 
-### 1. Enterprise Compatibility
-Many "Enterprise" grade SOAP services (banking, insurance, government) **require** WS-Security. Without this, DirtySoap is unusable for a large segment of professional developers. This implementation opens the door to these users.
+| Phase | File | Changes |
+|-------|------|---------|
+| 1 | `webview/src/models.ts` | Add `WSSecurityType`, `PasswordType` enums, `WSSecurityConfig` interface |
+| 1 | `src/models.ts` | Mirror the same types for backend |
+| 2 | `webview/src/components/SecurityPanel.tsx` | **NEW** - Security configuration UI panel |
+| 2 | `webview/src/components/WorkspaceLayout.tsx` | Add "Auth" tab, render SecurityPanel |
+| 3 | `webview/src/hooks/useRequestExecution.ts` | Include `wsSecurity` in execute message |
+| 3 | `webview/src/hooks/useRequestHandlers.ts` | Include `wsSecurity` in execute message |
+| 4 | `src/soapClient.ts` | Add `injectSecurityHeader`, apply WSSecurity |
+| 4 | `src/commands/ExecuteRequestCommand.ts` | Pass `wsSecurity` to SoapClient |
+| 5 | `src/tests/` | Add unit tests for security header injection |
 
-### 2. Simplified Workflow
-Currently, a user would have to manually construct a complex XML block like this:
+---
 
-```xml
-<wsse:Security>
-  <wsse:UsernameToken>
-    <wsse:Username>admin</wsse:Username>
-    <wsse:Password Type="...#PasswordDigest">dGhpcyBpcyBhIHBhc3N3b3Jk</wsse:Password>
-    <wsse:Nonce>...</wsse:Nonce>
-  </wsse:UsernameToken>
-</wsse:Security>
-```
+## 4. Out of Scope (Future Enhancements)
 
-Generating the **Nonce** and **Digest** manually is extremely difficult (requires SHA-1 hashing, base64 encoding specific combinations of time+nonce+password). Autosolving this via the "UsernameToken" UI setting saves hours of frustration.
+- **X.509 Certificate-based security** (WSSecurityCert)
+- **Secure credential storage** via VS Code SecretStorage API
+- **SAML Token support**
+- **XML Encryption** for message confidentiality
 
-### 3. Replay Attack Prevention
-By implementing the `Timestamp` and `Nonce` options, we help users test services that enforce strict replay protection. This allows them to debug issues where their manual requests fail because "the timestamp is too old" or "nonce was used", as our tool will generate fresh values for every click of "Run".
+---
 
-## Conclusion
-Implementing WS-Security is a high-value enhancement that matures DirtySoap from a casual utility to a professional-grade development tool. The plan utilizes existing libraries (`node-soap`) to minimize complexity while maximizing compatibility.
+## 5. Success Criteria
+
+- [ ] User can select "UsernameToken" security type from Auth tab
+- [ ] Username/Password/PasswordType/Nonce/Timestamp options work correctly
+- [ ] Security header is correctly injected into SOAP requests
+- [ ] Nonce and Timestamp are generated fresh for each request
+- [ ] Security settings persist when project is saved/loaded
+- [ ] Environment variables are expanded in credentials
+- [ ] All existing tests continue to pass

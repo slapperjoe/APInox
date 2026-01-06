@@ -15,6 +15,7 @@ import { MonacoRequestEditor, MonacoRequestEditorHandle } from './MonacoRequestE
 import { MonacoResponseViewer } from './MonacoResponseViewer';
 import { AssertionsPanel } from './AssertionsPanel';
 import { HeadersPanel } from './HeadersPanel';
+import { SecurityPanel } from './SecurityPanel';
 import { ExtractorsPanel } from './ExtractorsPanel';
 // ReactMarkdown moved to WelcomePanel
 import { MonacoSingleLineInput, MonacoSingleLineInputHandle } from './MonacoSingleLineInput';
@@ -912,13 +913,12 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                     cursor: 'pointer',
                                     borderBottom: activeTab === 'auth' ? '2px solid var(--vscode-textLink-foreground)' : '2px solid transparent',
                                     padding: '5px 0',
-                                    color: activeTab === 'auth' ? 'var(--vscode-foreground)' : 'var(--vscode-descriptionForeground)',
-                                    opacity: 0.6
+                                    color: activeTab === 'auth' ? 'var(--vscode-foreground)' : 'var(--vscode-descriptionForeground)'
                                 }}
-                                title="Coming Soon"
-                            // onClick={() => setActiveTab('auth')} 
+                                onClick={() => setActiveTab('auth')}
                             >
                                 Auth
+                                {selectedRequest.wsSecurity && selectedRequest.wsSecurity.type !== 'none' && ' ✓'}
                             </div>
 
                             <div style={{ marginLeft: 'auto', display: 'flex', gap: '5px', alignItems: 'center', fontSize: '0.9em' }}>
@@ -1075,6 +1075,12 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                 onChange={(newExtractors) => onUpdateRequest({ ...selectedRequest, extractors: newExtractors })}
                                 onEdit={onEditExtractor}
                                 rawResponse={response?.rawResponse}
+                            />
+                        )}
+                        {activeTab === 'auth' && (
+                            <SecurityPanel
+                                security={selectedRequest.wsSecurity}
+                                onChange={(newSecurity) => onUpdateRequest({ ...selectedRequest, wsSecurity: newSecurity })}
                             />
                         )}
                     </div>

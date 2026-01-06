@@ -4,9 +4,11 @@ import { SoapClient } from '../soapClient';
 import { SettingsManager } from '../utils/SettingsManager';
 import { WildcardProcessor } from '../utils/WildcardProcessor';
 import { AssertionRunner } from '../utils/AssertionRunner';
+import { WSSecurityUtil } from '../utils/WSSecurityUtil';
 import { RequestHistoryService } from '../services/RequestHistoryService';
-import { RequestHistoryEntry } from '../models';
+import { RequestHistoryEntry, WSSecurityConfig, WSSecurityType } from '../models';
 import * as vscode from 'vscode';
+import * as fs from 'fs';
 
 export class ExecuteRequestCommand implements ICommand {
     constructor(
@@ -28,7 +30,40 @@ export class ExecuteRequestCommand implements ICommand {
 
             const contextVars = message.contextVariables || {};
             const processedUrl = WildcardProcessor.process(message.url, envVars, globals, scriptsDir, contextVars);
-            const processedXml = WildcardProcessor.process(message.xml, envVars, globals, scriptsDir, contextVars);
+            let processedXml = WildcardProcessor.process(message.xml, envVars, globals, scriptsDir, contextVars);
+
+            // Apply WS-Security if configured
+            const wsSecurity = message.wsSecurity as WSSecurityConfig | undefined;
+            if (wsSecurity && wsSecurity.type !== WSSecurityType.None) {
+                // Process any environment variables in credentials and paths
+                const processedWsSecurity: WSSecurityConfig = {
+                    ...wsSecurity,
+                    username: wsSecurity.username ? WildcardProcessor.process(wsSecurity.username, envVars, globals, scriptsDir, contextVars) : undefined,
+                    password: wsSecurity.password ? WildcardProcessor.process(wsSecurity.password, envVars, globals, scriptsDir, contextVars) : undefined,
+                    privateKeyPath: wsSecurity.privateKeyPath ? WildcardProcessor.process(wsSecurity.privateKeyPath, envVars, globals, scriptsDir, contextVars) : undefined,
+                    publicCertPath: wsSecurity.publicCertPath ? WildcardProcessor.process(wsSecurity.publicCertPath, envVars, globals, scriptsDir, contextVars) : undefined
+                };
+
+                if (wsSecurity.type === WSSecurityType.UsernameToken) {
+                    processedXml = WSSecurityUtil.applyToRequest(processedXml, processedWsSecurity);
+                    this._soapClient.log('WS-Security (UsernameToken) applied');
+                } else if (wsSecurity.type === WSSecurityType.Certificate) {
+                    // Read certificate files
+                    if (!processedWsSecurity.privateKeyPath || !processedWsSecurity.publicCertPath) {
+                        throw new Error('Certificate authentication requires both private key and public certificate paths');
+                    }
+
+                    const privateKey = fs.readFileSync(processedWsSecurity.privateKeyPath, 'utf8');
+                    const publicCert = fs.readFileSync(processedWsSecurity.publicCertPath, 'utf8');
+
+                    processedXml = WSSecurityUtil.applyCertificateToRequest(processedXml, {
+                        privateKey,
+                        publicCert,
+                        password: processedWsSecurity.password
+                    });
+                    this._soapClient.log('WS-Security (Certificate) applied');
+                }
+            }
 
             this._soapClient.log('--- Executing Request ---');
             this._soapClient.log('Original URL:', message.url);
