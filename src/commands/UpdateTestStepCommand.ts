@@ -5,11 +5,13 @@ import { ProjectStorage } from '../ProjectStorage';
 import { FolderProjectStorage } from '../FolderProjectStorage';
 import { DiagnosticService } from '../services/DiagnosticService';
 import * as fs from 'fs';
+import * as vscode from 'vscode';
 
 export class UpdateTestStepCommand implements ICommand {
     private readonly _diagnosticService = DiagnosticService.getInstance();
 
     constructor(
+        private readonly _panel: vscode.WebviewPanel,
         private readonly _loadedProjects: Map<string, SoapUIProject>,
         private readonly _projectStorage: ProjectStorage,
         private readonly _folderStorage: FolderProjectStorage
@@ -71,8 +73,16 @@ export class UpdateTestStepCommand implements ICommand {
                     this._diagnosticService.log('BACKEND', `Saved XML project ${projectToSave.name}`);
                 }
 
-                // Update cache to ensure it stays fresh (though we just mutated the object in the cache, so maybe redundant but safe)
+                // Update cache to ensure it stays fresh
                 this._loadedProjects.set(fileName, projectToSave);
+
+                // 4. IMPORTANT: Send updated project back to webview to sync state
+                this._panel.webview.postMessage({
+                    command: 'projectLoaded',
+                    project: projectToSave,
+                    filename: fileName
+                });
+                this._diagnosticService.log('BACKEND', `Sent updated project ${projectToSave.name} to webview for sync`);
             } else {
                 this._diagnosticService.log('ERROR', `Project ${projectToSave.name} has no valid filename, cannot save.`);
             }

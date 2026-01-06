@@ -9,7 +9,10 @@
         "sourceMap": true,
         "rootDir": "src",
         "strict": true,
-        "skipLibCheck": true
+        "skipLibCheck": true,
+        "types": [
+            "vitest/globals"
+        ]
     },
     "exclude": [
         "node_modules",

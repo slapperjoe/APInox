@@ -780,6 +780,28 @@ function App() {
         }
     }, [projects, selectedTestCase]);
 
+    // Sync selectedStep with latest projects state
+    useEffect(() => {
+        if (selectedStep && selectedTestCase) {
+            // Re-hydrate stale selectedStep from the current testCase
+            for (const p of projects) {
+                if (p.testSuites) {
+                    for (const s of p.testSuites) {
+                        const updatedCase = s.testCases?.find(tc => tc.id === selectedTestCase.id);
+                        if (updatedCase) {
+                            const updatedStep = updatedCase.steps.find(step => step.id === selectedStep.id);
+                            if (updatedStep && updatedStep !== selectedStep) {
+                                // console.log('[sync] Re-hydrating selectedStep', updatedStep.name);
+                                setSelectedStep(updatedStep);
+                            }
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+    }, [projects, selectedStep, selectedTestCase]);
+
     // (Message handling moved to useMessageHandler hook)
 
     // Resizing Logic
@@ -910,6 +932,9 @@ function App() {
                 }
             }
         } else if (view === SidebarView.TESTS) {
+            // Clear workspace request to prevent bleed-through
+            setSelectedRequest(null);
+
             if (!selectedTestCase && !selectedStep) {
                 for (const p of projects) {
                     if (p.testSuites?.length) {
@@ -922,6 +947,9 @@ function App() {
                 }
             }
         } else if (view === SidebarView.PERFORMANCE) {
+            // Clear workspace request to prevent bleed-through
+            setSelectedRequest(null);
+
             if (!selectedPerformanceSuiteId && config?.performanceSuites?.length) {
                 setSelectedPerformanceSuiteId(config.performanceSuites[0].id);
             }

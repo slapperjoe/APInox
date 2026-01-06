@@ -140,6 +140,7 @@ export class WebviewController {
         this._commands.set(FrontendCommand.GetLocalWsdls, new GetLocalWsdlsCommand(this._panel, this._soapClient, this._extensionUri.fsPath));
         this._commands.set(FrontendCommand.SelectLocalWsdl, new SelectLocalWsdlCommand(this._panel, this._soapClient));
         this._commands.set(FrontendCommand.UpdateTestStep, new UpdateTestStepCommand(
+            this._panel,
             this._loadedProjects,
             this._projectStorage,
             this._folderStorage

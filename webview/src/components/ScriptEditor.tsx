@@ -98,7 +98,11 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ step, onUpdate, isRe
 
     const handleBack = () => {
         if (isDirty) {
-            handleSave();
+            // Show confirmation dialog
+            const confirmed = window.confirm('You have unsaved changes. Do you want to save before leaving?');
+            if (confirmed) {
+                handleSave();
+            }
         }
         if (onBack) {
             onBack();
@@ -108,20 +112,20 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ step, onUpdate, isRe
     return (
         <div style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', width: '100%' }}>
             <Toolbar>
-                <div style={{ display: 'flex', alignItems: 'center' }}>
-                    {onBack && (
-                        <ToolbarButton onClick={handleBack} title="Back to Test Case (Auto-saves)">
-                            <ChevronLeft size={14} /> Back
-                        </ToolbarButton>
-                    )}
+                {onBack && (
+                    <ToolbarButton onClick={handleBack} title="Back to Test Case">
+                        <ChevronLeft size={14} /> Back
+                    </ToolbarButton>
+                )}
+                <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
                     <span style={{ fontWeight: 'bold', marginLeft: 10 }}>Script: {step.name}</span>
                     {isDirty && <span style={{ marginLeft: 5, fontSize: '0.8em', color: 'var(--vscode-descriptionForeground)' }}>(Unsaved)</span>}
                 </div>
-                <div>
-                    <ToolbarButton onClick={handleSave} disabled={!isDirty && false} title="Save Script">
+                {isDirty && (
+                    <ToolbarButton onClick={handleSave} title="Save Script" style={{ marginLeft: 'auto' }}>
                         <Save size={14} /> Save
                     </ToolbarButton>
-                </div>
+                )}
             </Toolbar>
 
             <div style={{ padding: '5px 10px', background: 'var(--vscode-editor-background)', borderBottom: '1px solid var(--vscode-panel-border)' }}>
