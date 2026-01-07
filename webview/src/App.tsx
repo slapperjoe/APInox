@@ -81,10 +81,10 @@ function App() {
         setResponse,
         loading,
         setLoading,
-        selectedPerformanceSuiteId,
-        setSelectedPerformanceSuiteId,
         selectedTestSuite,
-        setSelectedTestSuite
+        setSelectedTestSuite,
+        selectedPerformanceSuiteId,
+        setSelectedPerformanceSuiteId
     } = useSelection();
 
 
@@ -158,6 +158,24 @@ function App() {
         configPath,
         setConfigPath
     } = useUI();
+
+    // View Isolation Logic - Prevent leaking requests between contexts
+    useEffect(() => {
+        // If we switch TO Performance view, and have a non-perf request selected -> Clear it
+        if (activeView === SidebarView.PERFORMANCE && selectedRequest?.id && !selectedRequest.id.startsWith('perf-req-')) {
+            setSelectedRequest(null);
+        }
+
+        // If we switch TO Projects/Explorer view, and have a perf request selected -> Clear it
+        if ((activeView === SidebarView.PROJECTS || activeView === SidebarView.EXPLORER) && selectedRequest?.id && selectedRequest.id.startsWith('perf-req-')) {
+            setSelectedRequest(null);
+        }
+
+        // Tests view handles its own selection logic via useTestCaseHandlers usually, but safely:
+        if (activeView === SidebarView.TESTS && selectedRequest?.id && selectedRequest.id.startsWith('perf-req-')) {
+            setSelectedRequest(null);
+        }
+    }, [activeView, selectedRequest, setSelectedRequest]);
 
     // UI State (remaining)
     const [inputType, setInputType] = useState<'url' | 'file'>('url');
@@ -321,7 +339,11 @@ function App() {
         setSelectedRequest,
         setProjects,
         setWorkspaceDirty,
-        testExecution
+        testExecution,
+        // Performance Persistence Props
+        selectedPerformanceSuiteId,
+        config,
+        setConfig
     });
 
     // ==========================================================================

@@ -38,6 +38,11 @@ interface UseRequestExecutionParams {
 
     // Other
     testExecution: Record<string, Record<string, { response?: any }>>;
+
+    // Performance Support
+    selectedPerformanceSuiteId?: string | null;
+    config?: any;
+    setConfig?: React.Dispatch<React.SetStateAction<any>>;
 }
 
 interface UseRequestExecutionReturn {
@@ -61,7 +66,10 @@ export function useRequestExecution({
     setSelectedRequest,
     setProjects,
     setWorkspaceDirty,
-    testExecution
+    testExecution,
+    selectedPerformanceSuiteId,
+    config,
+    setConfig
 }: UseRequestExecutionParams): UseRequestExecutionReturn {
 
     const startTimeRef = useRef<number>(0);
@@ -186,6 +194,56 @@ export function useRequestExecution({
         setSelectedRequest(dirtyUpdated);
         setWorkspaceDirty(true);
 
+        // 0. Performance Request Modification
+        if (selectedPerformanceSuiteId && updated.id?.startsWith('perf-req-')) {
+            console.log('[handleRequestUpdate] Updating Performance Request:', updated.id);
+
+            // Send update to backend
+            bridge.sendMessage({
+                command: FrontendCommand.UpdatePerformanceRequest,
+                suiteId: selectedPerformanceSuiteId,
+                requestId: updated.id!,
+                updates: {
+                    name: updated.name,
+                    requestBody: updated.request,
+                    headers: updated.headers,
+                    method: updated.method,
+                    endpoint: updated.endpoint
+                }
+            });
+
+            // Optimistic update of local config
+            if (setConfig && config) {
+                setConfig((prev: any) => {
+                    const suites = prev.performanceSuites || [];
+                    const suiteIndex = suites.findIndex((s: any) => s.id === selectedPerformanceSuiteId);
+                    if (suiteIndex === -1) return prev;
+
+                    const suite = { ...suites[suiteIndex] };
+                    const reqIndex = suite.requests.findIndex((r: any) => r.id === updated.id);
+
+                    if (reqIndex !== -1) {
+                        const updatedReq = {
+                            ...suite.requests[reqIndex],
+                            name: updated.name,
+                            requestBody: updated.request,
+                            headers: updated.headers,
+                            method: updated.method,
+                            endpoint: updated.endpoint
+                        };
+                        const newRequests = [...suite.requests];
+                        newRequests[reqIndex] = updatedReq;
+
+                        const newSuites = [...suites];
+                        newSuites[suiteIndex] = { ...suite, requests: newRequests };
+                        return { ...prev, performanceSuites: newSuites };
+                    }
+                    return prev;
+                });
+            }
+            return;
+        }
+
         // Update in Project/Explorer
         // IMPORTANT: When updating test case steps, search ALL projects for the test case
         // because selectedProjectName may be stale/wrong
@@ -262,7 +320,7 @@ export function useRequestExecution({
             // No longer auto-saving - user must click Save button
             return updatedProject;
         }));
-    }, [selectedProjectName, selectedTestCase, selectedInterface, selectedOperation, selectedRequest, setProjects, setSelectedRequest, setWorkspaceDirty]);
+    }, [selectedProjectName, selectedTestCase, selectedInterface, selectedOperation, selectedRequest, setProjects, setSelectedRequest, setWorkspaceDirty, selectedPerformanceSuiteId, config, setConfig]);
 
     const handleResetRequest = useCallback(() => {
         if (selectedRequest && selectedOperation) {

@@ -511,28 +511,30 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
 
     // PERFORMANCE VIEW
     if (activeView === SidebarView.PERFORMANCE) {
-        if (selectedPerformanceSuite) {
-            return (
-                <PerformanceSuiteEditor
-                    suite={selectedPerformanceSuite}
-                    onUpdate={onUpdateSuite!}
-                    onRun={onRunSuite!}
-                    onStop={onStopPerformanceRun!}
-                    isRunning={!!performanceProgress}
-                    progress={performanceProgress}
-                    history={performanceHistory?.filter(r => r.suiteId === selectedPerformanceSuite.id) || []}
-                    onAddRequest={onAddPerformanceRequest}
-                    onDeleteRequest={onDeletePerformanceRequest}
-                    onSelectRequest={onSelectPerformanceRequest}
-                    onUpdateRequest={onUpdatePerformanceRequest}
-                    onImportFromWorkspace={onImportFromWorkspace}
-                    coordinatorStatus={coordinatorStatus}
-                    onStartCoordinator={onStartCoordinator}
-                    onStopCoordinator={onStopCoordinator}
-                />
-            );
+        if (!selectedRequest) {
+            if (selectedPerformanceSuite) {
+                return (
+                    <PerformanceSuiteEditor
+                        suite={selectedPerformanceSuite}
+                        onUpdate={onUpdateSuite!}
+                        onRun={onRunSuite!}
+                        onStop={onStopPerformanceRun!}
+                        isRunning={!!performanceProgress}
+                        progress={performanceProgress}
+                        history={performanceHistory?.filter(r => r.suiteId === selectedPerformanceSuite.id) || []}
+                        onAddRequest={onAddPerformanceRequest}
+                        onDeleteRequest={onDeletePerformanceRequest}
+                        onSelectRequest={onSelectPerformanceRequest}
+                        onUpdateRequest={onUpdatePerformanceRequest}
+                        onImportFromWorkspace={onImportFromWorkspace}
+                        coordinatorStatus={coordinatorStatus}
+                        onStartCoordinator={onStartCoordinator}
+                        onStopCoordinator={onStopCoordinator}
+                    />
+                );
+            }
+            return <EmptyState title="No Performance Suite Selected" message="Select a suite from the sidebar or create a new one." image={emptyPerformanceImg} />;
         }
-        return <EmptyState title="No Performance Suite Selected" message="Select a suite from the sidebar or create a new one." image={emptyPerformanceImg} />;
     }
 
     // TESTS VIEW
@@ -621,7 +623,9 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     if (activeView === SidebarView.WATCHER) {
         // If an event is selected (it's a request), it will have been handled by selectedRequest above?
         // Wait, selectedRequest handles everything. If we are here, it means !selectedRequest.
-        return <EmptyFileWatcher />;
+        if (!selectedRequest) {
+            return <EmptyFileWatcher />;
+        }
     }
 
     // SERVER VIEW
