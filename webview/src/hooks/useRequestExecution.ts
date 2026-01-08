@@ -156,7 +156,7 @@ export function useRequestExecution({
                 url,
                 operation: opName,
                 xml,
-                contentType: selectedRequest?.contentType,
+                contentType: selectedRequest?.contentType || 'application/soap+xml',
                 assertions: selectedRequest?.assertions,
                 headers: selectedRequest?.headers,
                 contextVariables,

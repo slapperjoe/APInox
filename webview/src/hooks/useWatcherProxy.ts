@@ -112,7 +112,8 @@ export function useWatcherProxy({
             dirty: false,
             headers: event.requestHeaders || {},
             endpoint: event.url || '',
-            method: event.method || 'POST'
+            method: event.method || 'POST',
+            contentType: 'application/soap+xml'
         };
 
         const tempOp: SoapUIOperation = {
@@ -163,7 +164,8 @@ export function useWatcherProxy({
             dirty: false,
             headers: event.requestHeaders || {},
             endpoint: event.url || '',
-            method: event.method || 'POST'
+            method: event.method || 'POST',
+            contentType: 'application/soap+xml'
         };
 
         const tempOp: SoapUIOperation = {

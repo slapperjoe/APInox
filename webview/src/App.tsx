@@ -505,6 +505,7 @@ function App() {
             request: request.requestBody, // Map requestBody to request for visibility
             headers: request.headers,
             extractors: request.extractors,
+            contentType: 'application/soap+xml', // Default content type
             // assertions: ... we might need to map SLA to assertions if we want visual editing, or just keep SLA separate
         };
         setSelectedRequest(soapRequest);
@@ -580,7 +581,8 @@ function App() {
             name: entry.requestName || 'Replayed Request',
             endpoint: entry.endpoint,
             request: entry.requestBody,
-            headers: entry.headers
+            headers: entry.headers,
+            contentType: 'application/soap+xml' // Default content type
         };
         setSelectedRequest(req);
     };
@@ -1236,7 +1238,7 @@ function App() {
                         setActiveView(SidebarView.PROJECTS);
                     },
                     onSelectRequest: (r) => {
-                        setSelectedRequest(r);
+                        setSelectedRequest({ ...r, contentType: r.contentType || 'application/soap+xml' });
                         setActiveView(SidebarView.PROJECTS);
                     },
                     onSelectTestCase: (tc) => {
