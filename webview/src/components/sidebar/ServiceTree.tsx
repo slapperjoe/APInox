@@ -70,7 +70,7 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
             {interfaces.map((iface, i) => (
                 <div key={i}>
                     <OperationItem
-                        active={selectedInterface === iface}
+                        active={selectedInterface?.name === iface.name}
                         onContextMenu={(e) => onContextMenu(e, 'interface', iface)}
                         onClick={() => onSelectInterface(iface)}
                         style={{ paddingLeft: 20 }}
@@ -84,7 +84,7 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
                         <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {iface.name} {isExplorer ? '(Preview)' : ''}
                         </span>
-                        {isExplorer && selectedInterface === iface && onAddToProject && onRemoveFromExplorer && (
+                        {isExplorer && selectedInterface?.name === iface.name && onAddToProject && onRemoveFromExplorer && (
                             <div style={{ display: 'flex', alignItems: 'center' }}>
                                 <HeaderButton onClick={(e) => { e.stopPropagation(); onAddToProject(iface); }} title="Add to Project">
                                     <Plus size={14} />
@@ -94,7 +94,7 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
                                 </HeaderButton>
                             </div>
                         )}
-                        {!isExplorer && selectedInterface === iface && onDeleteInterface && (
+                        {!isExplorer && selectedInterface?.name === iface.name && onDeleteInterface && (
                             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>
                                 <HeaderButton
                                     onClick={(e) => {
@@ -123,7 +123,7 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
                         return (
                             <div key={j} style={{ marginLeft: 15 }}>
                                 <OperationItem
-                                    active={selectedOperation === op && (!hasSingleRequest || selectedRequest === singleRequest)}
+                                    active={selectedOperation?.name === op.name && (!hasSingleRequest || selectedRequest?.id === singleRequest?.id)}
                                     onClick={() => onSelectOperation(op, iface)}
                                     onContextMenu={(e) => onContextMenu(e, 'operation', op)}
                                 >
@@ -145,7 +145,7 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
                                             <Save size={12} />
                                         </HeaderButton>
                                     )}
-                                    {!isExplorer && selectedOperation === op && (
+                                    {!isExplorer && selectedOperation?.name === op.name && (
                                         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>
                                             {onAddRequest && (
                                                 <HeaderButton
@@ -183,7 +183,7 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
                                 {!hasSingleRequest && op.expanded !== false && op.requests.map((req: any, k: number) => (
                                     <RequestItem
                                         key={k}
-                                        active={selectedRequest === req}
+                                        active={selectedRequest?.id === req.id}
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             onSelectRequest(req, op, iface);

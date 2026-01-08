@@ -672,7 +672,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                             </>
                         )}
 
-                        {selectedPerformanceSuite && onBackToSuite && (
+                        {!selectedTestCase && selectedPerformanceSuite && onBackToSuite && (
                             <>
                                 <ToolbarButton onClick={onBackToSuite} title="Back to Performance Suite">
                                     <ChevronLeft size={14} /> Back
@@ -1043,6 +1043,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                         <HeadersPanel
                                             headers={selectedRequest.headers || {}}
                                             onChange={(newHeaders) => onUpdateRequest({ ...selectedRequest, headers: newHeaders })}
+                                            contentType={selectedRequest.contentType}
                                         />
                                     ) : (
                                         <div style={{ overflow: 'auto', height: '100%', backgroundColor: 'var(--vscode-editor-background)' }}>

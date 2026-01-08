@@ -40,12 +40,22 @@ const IconButton = styled.button`
 interface HeadersPanelProps {
     headers: Record<string, string>;
     onChange: (headers: Record<string, string>) => void;
+    contentType?: string; // Managed by toolbar dropdown, shown read-only here
 }
 
-export const HeadersPanel: React.FC<HeadersPanelProps> = ({ headers, onChange }) => {
-    const entries = Object.entries(headers || {});
+export const HeadersPanel: React.FC<HeadersPanelProps> = ({ headers, onChange, contentType }) => {
+    // Filter out Content-Type as it's managed by the toolbar dropdown
+    const filteredHeaders = Object.fromEntries(
+        Object.entries(headers || {}).filter(([key]) => key.toLowerCase() !== 'content-type')
+    );
+    const entries = Object.entries(filteredHeaders);
+    const displayContentType = contentType || 'application/soap+xml';
 
     const updateHeader = (oldKey: string, newKey: string, newValue: string) => {
+        // Prevent adding Content-Type via this panel
+        if (newKey.toLowerCase() === 'content-type') {
+            return; // Silently ignore - Content-Type is managed by toolbar
+        }
         const newHeaders = { ...headers };
         if (oldKey !== newKey) {
             delete newHeaders[oldKey];
@@ -77,6 +87,39 @@ export const HeadersPanel: React.FC<HeadersPanelProps> = ({ headers, onChange })
                     <Plus size={16} /> Add
                 </IconButton>
             </div>
+
+            {/* Read-only Content-Type row */}
+            <HeaderRow style={{ opacity: 0.7 }}>
+                <div style={{ flex: 1 }}>
+                    <div style={{
+                        padding: '6px 8px',
+                        background: 'var(--vscode-input-background)',
+                        border: '1px solid var(--vscode-input-border)',
+                        borderRadius: 4,
+                        color: 'var(--vscode-disabledForeground)',
+                        fontFamily: 'monospace',
+                        fontSize: 12
+                    }}>
+                        Content-Type
+                    </div>
+                </div>
+                <div style={{ flex: 1 }}>
+                    <div style={{
+                        padding: '6px 8px',
+                        background: 'var(--vscode-input-background)',
+                        border: '1px solid var(--vscode-input-border)',
+                        borderRadius: 4,
+                        color: 'var(--vscode-disabledForeground)',
+                        fontFamily: 'monospace',
+                        fontSize: 12
+                    }}>
+                        {displayContentType}
+                    </div>
+                </div>
+                <div style={{ width: 30, textAlign: 'center', fontSize: 10, opacity: 0.5 }} title="Managed by toolbar dropdown">
+                    🔒
+                </div>
+            </HeaderRow>
 
             {entries.length === 0 && (
                 <div style={{ opacity: 0.6, fontStyle: 'italic', padding: 10, textAlign: 'center' }}>
