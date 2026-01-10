@@ -126,6 +126,11 @@ export const ToolbarButton = styled.button`
         opacity: 0.5;
         cursor: not-allowed;
     }
+
+    /* Enforce uppercase labels */
+    text-transform: uppercase;
+    font-size: 11px;
+    font-weight: 600;
 `;
 
 export const ToolbarSelect = styled.select`
@@ -136,10 +141,19 @@ export const ToolbarSelect = styled.select`
     outline: none;
     height: 26px;
     box-sizing: border-box;
+    font-size: 11px;
 
     &:focus {
         border-color: var(--vscode-focusBorder);
     }
+`;
+
+export const ToolbarSeparator = styled.div`
+    width: 1px;
+    height: 16px;
+    background-color: var(--vscode-panel-border);
+    margin: 0 4px;
+    flex-shrink: 0;
 `;
 
 export const MainFooter = styled.div`

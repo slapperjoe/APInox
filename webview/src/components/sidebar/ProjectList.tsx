@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Plus, FolderPlus, ChevronDown, ChevronRight, Save, Trash2 } from 'lucide-react';
 import { SoapUIProject, SoapUIInterface, SoapUIOperation, SoapUIRequest } from '@shared/models';
 import { HeaderButton, DirtyMarker, OperationItem } from './shared/SidebarStyles';
 import { ServiceTree } from './ServiceTree';
+import { FolderTree } from './FolderTree';
 
 export interface ProjectListProps {
     projects: SoapUIProject[];
@@ -35,6 +36,11 @@ export interface ProjectListProps {
     onDeleteInterface?: (iface: SoapUIInterface) => void;
     onDeleteOperation?: (op: SoapUIOperation, iface: SoapUIInterface) => void;
     onDeleteRequest?: (req: SoapUIRequest) => void;
+    // Folder handlers
+    onAddFolder?: (projectName: string, parentFolderId?: string) => void;
+    onAddRequestToFolder?: (projectName: string, folderId: string) => void;
+    onDeleteFolder?: (projectName: string, folderId: string) => void;
+    onToggleFolderExpand?: (projectName: string, folderId: string) => void;
 
     deleteConfirm: string | null;
     setDeleteConfirm: (id: string | null) => void;
@@ -65,10 +71,15 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     onDeleteInterface,
     onDeleteOperation,
     onDeleteRequest,
+    onAddFolder,
+    onAddRequestToFolder,
+    onDeleteFolder,
+    onToggleFolderExpand,
     deleteConfirm, // Global delete confirm from Sidebar parent
     setDeleteConfirm
 }) => {
-
+    // Local state for folder selection
+    const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'hidden' }}>
@@ -124,6 +135,15 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                                         <Save size={14} />
                                     </HeaderButton>
                                 )}
+                                {/* Add Folder button - only on selected project */}
+                                {isProjectActive && onAddFolder && (
+                                    <HeaderButton
+                                        onClick={(e) => { e.stopPropagation(); onAddFolder(proj.name); }}
+                                        title="Add Folder"
+                                    >
+                                        <FolderPlus size={14} />
+                                    </HeaderButton>
+                                )}
                                 {/* Close button only when selected */}
                                 {isProjectActive && (
                                     <HeaderButton
@@ -159,18 +179,11 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                                         }}
                                         onToggleOperation={(op, iface) => toggleOperationExpand(proj.name, iface.name, op.name)}
                                         onSelectOperation={(op, iface) => {
-                                            // Only select, don't expand - expand is chevron-only
+                                            // Only select operation, don't auto-select request
                                             setSelectedProjectName(proj.name);
                                             setSelectedInterface(iface);
                                             setSelectedOperation(op);
-
-                                            const hasSingleRequest = op.requests.length === 1;
-                                            if (hasSingleRequest && op.requests[0]) {
-                                                setSelectedRequest(op.requests[0]);
-                                                setResponse(null);
-                                            } else {
-                                                setSelectedRequest(null);
-                                            }
+                                            setSelectedRequest(null);
                                         }}
                                         onSelectRequest={(req, op, iface) => {
                                             setSelectedProjectName(proj.name);
@@ -188,6 +201,29 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                                         onSaveProject={() => saveProject(proj)}
                                         recentlySaved={savedProjects.has(proj.name)}
                                     />
+
+                                    {/* Folders */}
+                                    {proj.folders && proj.folders.length > 0 && (
+                                        <FolderTree
+                                            folders={proj.folders}
+                                            projectName={proj.name}
+                                            selectedFolderId={selectedFolderId}
+                                            setSelectedFolderId={setSelectedFolderId}
+                                            selectedRequest={selectedRequest}
+                                            setSelectedRequest={setSelectedRequest}
+                                            setSelectedProjectName={setSelectedProjectName}
+                                            setResponse={setResponse}
+                                            onAddFolder={onAddFolder}
+                                            onAddRequest={onAddRequestToFolder}
+                                            onDeleteFolder={onDeleteFolder}
+                                            onDeleteRequest={onDeleteRequest}
+                                            onToggleFolderExpand={onToggleFolderExpand}
+                                            deleteConfirm={deleteConfirm}
+                                            setDeleteConfirm={setDeleteConfirm}
+                                            onSaveProject={() => saveProject(proj)}
+                                            handleContextMenu={handleContextMenu}
+                                        />
+                                    )}
                                 </>
                             )}
                         </div>

@@ -1,6 +1,6 @@
 import * as soap from 'soap';
 import axios from 'axios';
-import { SoapService, SoapSchemaNode } from '@shared/models';
+import { SoapService, SoapSchemaNode } from '../shared/src/models';
 import { WsdlParser } from './WsdlParser';
 import { DiagnosticService } from './services/DiagnosticService';
 import { SettingsManager } from './utils/SettingsManager';

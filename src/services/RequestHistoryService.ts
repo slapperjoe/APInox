@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { RequestHistoryEntry, HistoryConfig } from '@shared/models';
+import { RequestHistoryEntry, HistoryConfig } from '../../shared/src/models';
 
 /**
  * Service for managing request history

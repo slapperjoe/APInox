@@ -1,5 +1,5 @@
 import { AssertionRunner } from '../../utils/AssertionRunner';
-import { SoapUIAssertion } from '@shared/models';
+import { SoapUIAssertion } from '../../../shared/src/models';
 
 describe('AssertionRunner', () => {
     describe('Simple Contains', () => {

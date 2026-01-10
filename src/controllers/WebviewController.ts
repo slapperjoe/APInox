@@ -13,7 +13,7 @@ import { TestRunnerService } from '../services/TestRunnerService';
 import { AzureDevOpsService } from '../services/AzureDevOpsService';
 import { MockService } from '../services/MockService';
 import { CoordinatorService } from '../services/CoordinatorService';
-import { SoapUIProject } from '@shared/models';
+import { SoapUIProject } from '../../shared/src/models';
 import { FolderProjectStorage } from '../FolderProjectStorage';
 
 import { ICommand } from '../commands/ICommand';
@@ -26,7 +26,7 @@ import { DownloadWsdlCommand } from '../commands/DownloadWsdlCommand';
 import { LoadWsdlCommand } from '../commands/LoadWsdlCommand';
 import { GetLocalWsdlsCommand } from '../commands/GetLocalWsdlsCommand';
 import { SelectLocalWsdlCommand } from '../commands/SelectLocalWsdlCommand';
-import { FrontendCommand, BackendCommand } from '@shared/messages';
+import { BackendCommand, FrontendCommand } from '../../shared/src/messages';
 import {
     StartProxyCommand,
     StopProxyCommand,

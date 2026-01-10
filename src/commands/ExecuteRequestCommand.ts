@@ -7,17 +7,22 @@ import { AssertionRunner } from '../utils/AssertionRunner';
 import { WSSecurityUtil } from '../utils/WSSecurityUtil';
 import { AttachmentUtil } from '../utils/AttachmentUtil';
 import { RequestHistoryService } from '../services/RequestHistoryService';
-import { RequestHistoryEntry, WSSecurityConfig, WSSecurityType, SoapAttachment } from '@shared/models';
+import { HttpClient } from '../services/HttpClient';
+import { RequestHistoryEntry, WSSecurityConfig, WSSecurityType, SoapAttachment, RequestType, SoapUIRequest } from '../../shared/src/models';
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 
 export class ExecuteRequestCommand implements ICommand {
+    private readonly _httpClient: HttpClient;
+
     constructor(
         private readonly _panel: vscode.WebviewPanel,
         private readonly _soapClient: SoapClient,
         private readonly _settingsManager: SettingsManager,
         private readonly _historyService?: RequestHistoryService
-    ) { }
+    ) {
+        this._httpClient = new HttpClient(_settingsManager);
+    }
 
     async execute(message: any): Promise<void> {
         try {
@@ -114,11 +119,28 @@ export class ExecuteRequestCommand implements ICommand {
             const startTime = Date.now();
             let result;
 
-            if (isMultipart && formData) {
-                // Use multipart request for SwA attachments
+            // Determine request type - default to 'soap' for backward compatibility
+            const requestType: RequestType = message.requestType || 'soap';
+
+            if (requestType === 'rest' || requestType === 'graphql') {
+                // Use HttpClient for REST and GraphQL
+                const request: SoapUIRequest = {
+                    name: message.requestName || 'Request',
+                    request: processedXml,
+                    endpoint: processedUrl,
+                    method: message.method || (requestType === 'graphql' ? 'POST' : 'GET'),
+                    headers: headers,
+                    requestType: requestType,
+                    bodyType: message.bodyType || (requestType === 'graphql' ? 'graphql' : 'json'),
+                    restConfig: message.restConfig,
+                    graphqlConfig: message.graphqlConfig
+                };
+                result = await this._httpClient.execute(request);
+            } else if (isMultipart && formData) {
+                // Use multipart request for SwA attachments (SOAP)
                 result = await this._soapClient.executeMultipartRequest(processedUrl, message.operation, processedXml, formData, headers);
             } else {
-                // Standard request
+                // Standard SOAP request
                 result = await this._soapClient.executeRequest(processedUrl, message.operation, processedXml, headers);
             }
             const timeTaken = Date.now() - startTime;

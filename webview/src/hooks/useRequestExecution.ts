@@ -193,14 +193,16 @@ export function useRequestExecution({
             selectedPerformanceSuiteId
         };
 
+
         console.log('[handleRequestUpdate] Called with:', logContext);
         bridge.sendMessage({ command: 'log', message: '[handleRequestUpdate] START', data: JSON.stringify(logContext) });
 
         const dirtyUpdated = { ...updated, dirty: true };
-        setSelectedRequest(dirtyUpdated);
+        // Removed: setSelectedRequest(dirtyUpdated); - will re-select from updated projects to avoid flicker
         setWorkspaceDirty(true);
 
-        bridge.sendMessage({ command: 'log', message: '[handleRequestUpdate] Set dirty: true on selectedRequest', data: JSON.stringify({ requestId: updated.id }) });
+        bridge.sendMessage({ command: 'log', message: '[handleRequestUpdate] Set dirty: true on request', data: JSON.stringify({ requestId: updated.id }) });
+
 
         // 0. Performance Request Modification
         if (selectedPerformanceSuiteId && updated.id?.startsWith('perf-req-')) {
@@ -262,68 +264,57 @@ export function useRequestExecution({
         setProjects(prev => {
             bridge.sendMessage({ command: 'log', message: '[handleRequestUpdate] setProjects callback - projects count', data: JSON.stringify({ count: prev.length }) });
 
-            return prev.map(p => {
-                // 1. Is it a Test Case modification? 
+            const updatedProjects = prev.map(p => {
+                // 1. Is it a Test Case modification?
                 // Only take this path if selectedTestCase is set AND request is actually found in the test case
                 if (selectedTestCase) {
-                    // First, check if this request belongs to the selected test case
-                    const isRequestInTestCase = selectedTestCase.steps.some(step =>
-                        (updated.id && step.config.request?.id === updated.id) ||
-                        step.config.request?.name === updated.name ||
-                        (selectedRequest && step.config.request?.name === selectedRequest.name)
-                    );
+                    console.log('[handleRequestUpdate] TEST CASE PATH - searching for request in test case');
+                    bridge.sendMessage({ command: 'log', message: '[handleRequestUpdate] TEST CASE PATH - searching', data: JSON.stringify({ testCaseId: selectedTestCase.id }) });
 
-                    if (isRequestInTestCase) {
-                        let caseUpdated = false;
-                        const updatedSuites = p.testSuites?.map(s => {
-                            const tcIndex = s.testCases?.findIndex(tc => tc.id === selectedTestCase.id) ?? -1;
-                            if (tcIndex === -1) return s;
+                    let caseUpdated = false;
+                    const updatedSuites = p.testSuites?.map(s => {
+                        const tcIndex = s.testCases?.findIndex(tc => tc.id === selectedTestCase.id) ?? -1;
+                        if (tcIndex === -1) return s;
 
-                            console.log('[handleRequestUpdate] Found test case in project:', p.name, 'suite:', s.name);
-                            bridge.sendMessage({ command: 'log', message: '[handleRequestUpdate] Found test case', data: JSON.stringify({ project: p.name, suite: s.name }) });
+                        const updatedCases = [...(s.testCases || [])];
+                        const stepIndex = updatedCases[tcIndex].steps.findIndex(step =>
+                            (updated.id && step.config.request?.id === updated.id) ||
+                            step.config.request?.name === updated.name ||
+                            (selectedRequest && step.config.request?.name === selectedRequest.name)
+                        );
 
-                            const updatedCases = [...(s.testCases || [])];
+                        console.log('[handleRequestUpdate] Step Search Result:', stepIndex, 'for request:', updated.name);
+                        bridge.sendMessage({ command: 'log', message: '[handleRequestUpdate] Step search', data: JSON.stringify({ stepIndex, requestName: updated.name }) });
 
-                            // Find step containing this request - Prefer ID match, fallback to Name
-                            const stepIndex = updatedCases[tcIndex].steps.findIndex(step =>
-                                (updated.id && step.config.request?.id === updated.id) ||
-                                step.config.request?.name === updated.name ||
-                                (selectedRequest && step.config.request?.name === selectedRequest.name)
-                            );
-
-                            console.log('[handleRequestUpdate] Step Search:', stepIndex, 'for request:', updated.name);
-
-                            if (stepIndex !== -1) {
-                                caseUpdated = true;
-                                console.log('[handleRequestUpdate] Updating step with assertions:', updated.assertions?.length || 0);
-                                updatedCases[tcIndex] = {
-                                    ...updatedCases[tcIndex],
-                                    steps: updatedCases[tcIndex].steps.map((st, i) => {
-                                        if (i === stepIndex) {
-                                            const finalRequest = {
-                                                ...dirtyUpdated,
-                                                id: dirtyUpdated.id || `req-${Date.now()}-healed`
-                                            };
-                                            return { ...st, config: { ...st.config, request: finalRequest } };
-                                        }
-                                        return st;
-                                    })
-                                };
-                            }
-                            return { ...s, testCases: updatedCases };
-                        });
-
-                        if (caseUpdated) {
-                            console.log('[handleRequestUpdate] Updated project:', p.name);
-                            bridge.sendMessage({ command: 'log', message: '[handleRequestUpdate] TEST CASE PATH - updated project', data: JSON.stringify({ project: p.name }) });
-                            return { ...p, testSuites: updatedSuites, dirty: true };
+                        if (stepIndex !== -1) {
+                            caseUpdated = true;
+                            updatedCases[tcIndex] = {
+                                ...updatedCases[tcIndex],
+                                steps: updatedCases[tcIndex].steps.map((st, i) => {
+                                    if (i === stepIndex) {
+                                        const finalRequest = {
+                                            ...dirtyUpdated,
+                                            id: dirtyUpdated.id || `req-${Date.now()}-healed`
+                                        };
+                                        return { ...st, config: { ...st.config, request: finalRequest } };
+                                    }
+                                    return st;
+                                })
+                            };
                         }
-                        // Test case not in this project, continue to next project (don't fall through to normal path)
-                        return p;
+                        return { ...s, testCases: updatedCases };
+                    });
+
+                    if (caseUpdated) {
+                        console.log('[handleRequestUpdate] Updated project:', p.name);
+                        bridge.sendMessage({ command: 'log', message: '[handleRequestUpdate] TEST CASE PATH - updated project', data: JSON.stringify({ project: p.name }) });
+                        return { ...p, testSuites: updatedSuites, dirty: true };
                     }
-                    // Request not in test case - fall through to normal workspace path
-                    bridge.sendMessage({ command: 'log', message: '[handleRequestUpdate] Request not in test case - trying normal path', data: JSON.stringify({ requestName: updated.name }) });
+                    // Test case not in this project, continue to next project (don't fall through to normal path)
+                    return p;
                 }
+                // Request not in test case - fall through to normal workspace path
+                bridge.sendMessage({ command: 'log', message: '[handleRequestUpdate] Request not in test case - trying normal path', data: JSON.stringify({ requestName: updated.name }) });
 
                 // 2. Normal Request Modification - requires selectedProjectName match
                 if (!selectedProjectName || p.name !== selectedProjectName) {
@@ -357,7 +348,8 @@ export function useRequestExecution({
                                 };
                             })
                         };
-                    })
+                    }),
+                    folders: p.folders ? updateFolderRequestInExecution(p.folders, updated.id || updated.name, dirtyUpdated, (found) => { requestFound = requestFound || found; }) : p.folders
                 };
 
                 if (!requestFound) {
@@ -367,6 +359,8 @@ export function useRequestExecution({
                 // No longer auto-saving - user must click Save button
                 return updatedProject;
             });
+
+            return updatedProjects;
         });
 
         bridge.sendMessage({ command: 'log', message: '[handleRequestUpdate] END', data: '{}' });
@@ -387,4 +381,26 @@ export function useRequestExecution({
         handleResetRequest,
         startTimeRef
     };
+}
+
+// Helper function to recursively update a request in folder structure
+function updateFolderRequestInExecution(folders: any[], requestId: string, updated: any, onFound: (found: boolean) => void): any[] {
+    return folders.map(folder => {
+        let foundInThis = false;
+        const updatedRequests = folder.requests.map((r: any) => {
+            if (r.id === requestId || r.name === requestId) {
+                foundInThis = true;
+                return updated;
+            }
+            return r;
+        });
+
+        if (foundInThis) onFound(true);
+
+        return {
+            ...folder,
+            requests: updatedRequests,
+            folders: folder.folders ? updateFolderRequestInExecution(folder.folders, requestId, updated, onFound) : folder.folders
+        };
+    });
 }

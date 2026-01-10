@@ -9,7 +9,7 @@
 
 import * as crypto from 'crypto';
 import { WSSecurityCert } from 'soap';
-import { WSSecurityConfig, WSSecurityType, PasswordType } from '@shared/models';
+import { WSSecurityConfig, WSSecurityType, PasswordType } from '../../shared/src/models';
 
 /**
  * Certificate contents for signing

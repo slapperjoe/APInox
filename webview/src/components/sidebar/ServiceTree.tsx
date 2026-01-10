@@ -61,7 +61,6 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
     onDeleteOperation,
     onDeleteRequest,
     onSaveProject,
-    recentlySaved,
     setConfirmDeleteId
 
 }) => {
@@ -70,7 +69,7 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
             {interfaces.map((iface, i) => (
                 <div key={i}>
                     <OperationItem
-                        active={selectedInterface?.name === iface.name}
+                        active={selectedInterface?.id && iface.id ? selectedInterface.id === iface.id : selectedInterface?.name === iface.name}
                         onContextMenu={(e) => onContextMenu(e, 'interface', iface)}
                         onClick={() => onSelectInterface(iface)}
                         style={{ paddingLeft: 20 }}
@@ -117,34 +116,19 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
                         )}
                     </OperationItem>
                     {(iface as any).expanded !== false && iface.operations.map((op: any, j: number) => {
-                        const hasSingleRequest = op.requests.length === 1;
-                        const singleRequest = hasSingleRequest ? op.requests[0] : null;
-
                         return (
                             <div key={j} style={{ marginLeft: 15 }}>
                                 <OperationItem
-                                    active={selectedOperation?.name === op.name && (!hasSingleRequest || selectedRequest?.id === singleRequest?.id)}
+                                    active={selectedOperation?.id && op.id ? selectedOperation.id === op.id : (selectedOperation?.name === op.name && selectedInterface?.name === iface.name)}
                                     onClick={() => onSelectOperation(op, iface)}
                                     onContextMenu={(e) => onContextMenu(e, 'operation', op)}
                                 >
                                     <span style={{ marginRight: 5, display: 'flex', alignItems: 'center', width: 14 }}>
-                                        {!hasSingleRequest && (
-                                            <div onClick={(e) => { e.stopPropagation(); onToggleOperation(op, iface); }} style={{ display: 'flex' }}>
-                                                {op.expanded !== false ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                                            </div>
-                                        )}
+                                        <div onClick={(e) => { e.stopPropagation(); onToggleOperation(op, iface); }} style={{ display: 'flex' }}>
+                                            {op.expanded !== false ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                        </div>
                                     </span>
                                     {op.name}
-                                    {!isExplorer && hasSingleRequest && singleRequest?.dirty && <DirtyMarker>●</DirtyMarker>}
-                                    {hasSingleRequest && singleRequest?.dirty && !isExplorer && onSaveProject && (
-                                        <HeaderButton
-                                            onClick={(e) => { e.stopPropagation(); onSaveProject(); }}
-                                            title="Save Project"
-                                            style={{ marginLeft: 5, color: recentlySaved ? 'var(--vscode-testing-iconPassed)' : 'inherit' }}
-                                        >
-                                            <Save size={12} />
-                                        </HeaderButton>
-                                    )}
                                     {!isExplorer && selectedOperation?.name === op.name && (
                                         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>
                                             {onAddRequest && (
@@ -179,8 +163,8 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
                                     )}
                                 </OperationItem>
 
-                                {/* Render Children only if NOT single request */}
-                                {!hasSingleRequest && op.expanded !== false && op.requests.map((req: any, k: number) => (
+                                {/* Always render request children */}
+                                {op.expanded !== false && op.requests.map((req: any, k: number) => (
                                     <RequestItem
                                         key={k}
                                         active={selectedRequest?.id === req.id}

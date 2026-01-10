@@ -9,7 +9,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as FormData from 'form-data';
-import { SoapAttachment } from '@shared/models';
+import { SoapAttachment } from '../../shared/src/models';
 
 export class AttachmentUtil {
     /**

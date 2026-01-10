@@ -1,7 +1,7 @@
 import { ICommand } from './ICommand';
 import { PerformanceService } from '../services/PerformanceService';
 import { SettingsManager } from '../utils/SettingsManager';
-import { PerformanceSuite, PerformanceRequest, SoapRequestExtractor } from '@shared/models';
+import { PerformanceSuite, PerformanceRequest, SoapRequestExtractor } from '../../shared/src/models';
 import { DiagnosticService } from '../services/DiagnosticService';
 import * as vscode from 'vscode';
 

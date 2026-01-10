@@ -19,9 +19,9 @@
   "activationEvents": [
     "onStartupFinished"
   ],
-  "main": "./out/extension.js",
+  "main": "./out/src/extension.js",
   "bin": {
-    "dirty-soap": "./out/cli/index.js"
+    "dirty-soap": "./out/src/cli/index.js"
   },
   "contributes": {
     "commands": [
@@ -60,16 +60,16 @@
     "version-bump-minor": "node scripts/bump.js minor",
     "version-bump-patch": "node scripts/bump.js patch",
     "prepare": "npx simple-git-hooks",
-    "build-cli": "tsc -p ./ && chmod +x ./out/cli/index.js 2>/dev/null || true",
-    "cli": "node ./out/cli/index.js",
-    "build-binary": "npm run compile && pkg ./out/cli/index.js --targets node18-win-x64,node18-macos-x64,node18-linux-x64 --out-path ./bin",
-    "build-binary-win": "npm run compile && pkg ./out/cli/index.js --targets node18-win-x64 --out-path ./bin"
+    "build-cli": "tsc -p ./ && chmod +x ./out/src/cli/index.js 2>/dev/null || true",
+    "cli": "node ./out/src/cli/index.js",
+    "build-binary": "npm run compile && pkg ./out/src/cli/index.js --targets node18-win-x64,node18-macos-x64,node18-linux-x64 --out-path ./bin",
+    "build-binary-win": "npm run compile && pkg ./out/src/cli/index.js --targets node18-win-x64 --out-path ./bin"
   },
   "pkg": {
     "scripts": [
-      "out/cli/**/*.js",
-      "out/services/**/*.js",
-      "out/models.js"
+      "out/src/cli/**/*.js",
+      "out/src/services/**/*.js",
+      "out/src/models.js"
     ],
     "assets": [],
     "outputPath": "bin"

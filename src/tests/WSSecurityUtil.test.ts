@@ -1,5 +1,5 @@
 import { WSSecurityUtil } from '../../src/utils/WSSecurityUtil';
-import { WSSecurityType, PasswordType, WSSecurityConfig } from '@shared/models';
+import { WSSecurityType, PasswordType, WSSecurityConfig } from '../../shared/src/models';
 
 describe('WSSecurityUtil', () => {
     describe('generateHeader', () => {

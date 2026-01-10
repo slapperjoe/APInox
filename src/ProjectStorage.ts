@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { XMLParser, XMLBuilder } from 'fast-xml-parser';
-import { SoapUIProject } from '@shared/models';
+import { SoapUIProject } from '../shared/src/models';
 import { DiagnosticService } from './services/DiagnosticService';
 
 export class ProjectStorage {
@@ -134,12 +134,40 @@ export class ProjectStorage {
                         }))
                     }))
                 }))
+                ,
+                // Folders - user-created organizational structure
+                "dirty:folder": (project.folders || []).map(folder => this.serializeFolder(folder))
             }
         };
 
         const xmlContent = builder.build(soapUiObj);
         fs.writeFileSync(filePath, xmlContent);
         this.log(`Project saved to ${filePath}`);
+    }
+
+    private serializeFolder(folder: any): any {
+        return {
+            "@_id": folder.id,
+            "@_name": folder.name,
+            "@_expanded": folder.expanded !== false,
+            "dirty:request": (folder.requests || []).map((req: any) => ({
+                "@_id": req.id,
+                "@_name": req.name,
+                "@_requestType": req.requestType || 'rest',
+                "@_method": req.method || 'GET',
+                "@_bodyType": req.bodyType,
+                "con:endpoint": req.endpoint,
+                "con:request": {
+                    "@_mediaType": req.contentType || "application/json",
+                    "#text": req.request || ""
+                },
+                "dirty:headers": req.headers ? Object.entries(req.headers).map(([k, v]) => ({
+                    "@_key": k,
+                    "@_value": v
+                })) : []
+            })),
+            "dirty:folder": (folder.folders || []).map((f: any) => this.serializeFolder(f))
+        };
     }
 
     public async loadProject(filePath: string): Promise<SoapUIProject> {
@@ -156,7 +184,7 @@ export class ProjectStorage {
             ignoreAttributes: false,
             attributeNamePrefix: "@_",
             isArray: (name) => {
-                return ["con:interface", "con:operation", "con:call", "con:request", "con:assertion", "con:testSuite", "con:testCase", "con:testStep"].indexOf(name) !== -1;
+                return ["con:interface", "con:operation", "con:call", "con:request", "con:assertion", "con:testSuite", "con:testCase", "con:testStep", "dirty:folder", "dirty:request"].indexOf(name) !== -1;
             }
         });
         const result = parser.parse(xmlContent);
@@ -306,7 +334,36 @@ export class ProjectStorage {
             }));
         }
 
+        // Parse folders (user-created organizational structure)
+        if (projectRoot["dirty:folder"]) {
+            const folders = Array.isArray(projectRoot["dirty:folder"]) ? projectRoot["dirty:folder"] : [projectRoot["dirty:folder"]];
+            project.folders = folders.map((f: any) => this.deserializeFolder(f));
+        }
+
         return project;
+    }
+
+    private deserializeFolder(folder: any): any {
+        return {
+            id: folder["@_id"],
+            name: folder["@_name"],
+            expanded: folder["@_expanded"] !== 'false' && folder["@_expanded"] !== false,
+            requests: folder["dirty:request"] ? (Array.isArray(folder["dirty:request"]) ? folder["dirty:request"] : [folder["dirty:request"]]).map((req: any) => ({
+                id: req["@_id"],
+                name: req["@_name"],
+                requestType: req["@_requestType"] || 'rest',
+                method: req["@_method"] || 'GET',
+                bodyType: req["@_bodyType"],
+                endpoint: req["con:endpoint"],
+                contentType: req["con:request"]?.["@_mediaType"] || "application/json",
+                request: req["con:request"]?.["#text"] || "",
+                headers: req["dirty:headers"] ? (Array.isArray(req["dirty:headers"]) ? req["dirty:headers"] : [req["dirty:headers"]]).reduce((acc: any, curr: any) => {
+                    acc[curr["@_key"]] = curr["@_value"];
+                    return acc;
+                }, {}) : {}
+            })) : [],
+            folders: folder["dirty:folder"] ? (Array.isArray(folder["dirty:folder"]) ? folder["dirty:folder"] : [folder["dirty:folder"]]).map((f: any) => this.deserializeFolder(f)) : []
+        };
     }
 
     public async saveWorkspace(projects: any[], filePath: string) {

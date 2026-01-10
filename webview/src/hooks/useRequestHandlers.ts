@@ -142,78 +142,124 @@ export function useRequestHandlers({
 
     const handleRequestUpdate = useCallback((updated: SoapUIRequest) => {
         const dirtyUpdated = { ...updated, dirty: true };
-        setSelectedRequest(dirtyUpdated);
         setWorkspaceDirty(true);
 
         if (selectedProjectName) {
-            setProjects(prev => prev.map(p => {
-                if (p.name !== selectedProjectName) return p;
+            setProjects(prev => {
+                const updatedProjects = prev.map(p => {
+                    if (p.name !== selectedProjectName) return p;
 
-                // 1. Is it a Test Case modification?
-                if (selectedTestCase) {
-                    console.log('[handleRequestUpdate] Updating within Test Case:', selectedTestCase.name);
-                    let caseUpdated = false;
-                    const updatedSuites = p.testSuites?.map(s => {
-                        const tcIndex = s.testCases?.findIndex(tc => tc.id === selectedTestCase.id) ?? -1;
-                        if (tcIndex === -1) return s;
+                    // 1. Is it a Test Case modification?
+                    if (selectedTestCase) {
+                        console.log('[handleRequestUpdate] Updating within Test Case:', selectedTestCase.name);
+                        let caseUpdated = false;
+                        const updatedSuites = p.testSuites?.map(s => {
+                            const tcIndex = s.testCases?.findIndex(tc => tc.id === selectedTestCase.id) ?? -1;
+                            if (tcIndex === -1) return s;
 
-                        const updatedCases = [...(s.testCases || [])];
-                        const stepIndex = updatedCases[tcIndex].steps.findIndex(step =>
-                            (updated.id && step.config.request?.id === updated.id) ||
-                            step.config.request?.name === updated.name ||
-                            (selectedRequest && step.config.request?.name === selectedRequest.name)
-                        );
+                            const updatedCases = [...(s.testCases || [])];
+                            const stepIndex = updatedCases[tcIndex].steps.findIndex(step =>
+                                (updated.id && step.config.request?.id === updated.id) ||
+                                step.config.request?.name === updated.name ||
+                                (selectedRequest && step.config.request?.name === selectedRequest.name)
+                            );
 
-                        console.log('[handleRequestUpdate] Step Search Result:', stepIndex, 'for request:', updated.name);
+                            console.log('[handleRequestUpdate] Step Search Result:', stepIndex, 'for request:', updated.name);
 
-                        if (stepIndex !== -1) {
-                            caseUpdated = true;
-                            updatedCases[tcIndex] = {
-                                ...updatedCases[tcIndex],
-                                steps: updatedCases[tcIndex].steps.map((st, i) => {
-                                    if (i === stepIndex) {
-                                        const finalRequest = {
-                                            ...dirtyUpdated,
-                                            id: dirtyUpdated.id || `req-${Date.now()}-healed`
-                                        };
-                                        return { ...st, config: { ...st.config, request: finalRequest } };
-                                    }
-                                    return st;
+                            if (stepIndex !== -1) {
+                                caseUpdated = true;
+                                updatedCases[tcIndex] = {
+                                    ...updatedCases[tcIndex],
+                                    steps: updatedCases[tcIndex].steps.map((st, i) => {
+                                        if (i === stepIndex) {
+                                            const finalRequest = {
+                                                ...dirtyUpdated,
+                                                id: dirtyUpdated.id || `req-${Date.now()}-healed`
+                                            };
+                                            return { ...st, config: { ...st.config, request: finalRequest } };
+                                        }
+                                        return st;
+                                    })
+                                };
+                            }
+                            return { ...s, testCases: updatedCases };
+                        });
+
+                        if (caseUpdated) {
+                            const updatedProject = { ...p, testSuites: updatedSuites, dirty: true };
+                            // No longer auto-saving - user must click Save button
+                            return updatedProject;
+                        }
+                    }
+
+                    // 2. Normal Request Modification
+                    const updatedProject = {
+                        ...p,
+                        dirty: true,
+                        interfaces: p.interfaces.map(i => {
+                            if (i.name !== selectedInterface?.name) return i;
+                            return {
+                                ...i,
+                                operations: i.operations.map(o => {
+                                    if (o.name !== selectedOperation?.name) return o;
+                                    return {
+                                        ...o,
+                                        requests: o.requests.map(r => r.name === selectedRequest?.name ? dirtyUpdated : r)
+                                    };
                                 })
                             };
-                        }
-                        return { ...s, testCases: updatedCases };
-                    });
+                        }),
+                        // 3. Check folder requests (user-created/REST/GraphQL)
+                        folders: p.folders ? updateFolderRequest(p.folders, updated.id || updated.name, dirtyUpdated) : p.folders
+                    };
+                    // No longer auto-saving - user must click Save button
+                    return updatedProject;
+                });
 
-                    if (caseUpdated) {
-                        const updatedProject = { ...p, testSuites: updatedSuites, dirty: true };
-                        // No longer auto-saving - user must click Save button
-                        return updatedProject;
+                // After updating projects, find and re-select the updated request to maintain correct reference
+                const updatedProject = updatedProjects.find(p => p.name === selectedProjectName);
+                if (updatedProject && selectedRequest) {
+                    // Search for updated request in folders
+                    const findInFolders = (folders: any[]): any => {
+                        for (const folder of folders) {
+                            const found = folder.requests.find((r: any) => {
+                                if (selectedRequest.id) {
+                                    return r.id === selectedRequest.id;
+                                }
+                                return r.name === selectedRequest.name;
+                            });
+
+                            if (found) return found;
+                            if (folder.folders) {
+                                const nested = findInFolders(folder.folders);
+                                if (nested) return nested;
+                            }
+                        }
+                        return null;
+                    };
+
+                    const foundInFolders = updatedProject.folders ? findInFolders(updatedProject.folders) : null;
+                    if (foundInFolders) {
+                        setSelectedRequest(foundInFolders);
+                        return updatedProjects;
+                    }
+
+                    // Search in interfaces if not in folders
+                    const foundInInterface = updatedProject.interfaces
+                        .find(i => i.name === selectedInterface?.name)
+                        ?.operations.find(o => o.name === selectedOperation?.name)
+                        ?.requests.find(r => r.name === selectedRequest.name);
+
+                    if (foundInInterface) {
+                        setSelectedRequest(foundInInterface);
                     }
                 }
 
-                // 2. Normal Request Modification
-                const updatedProject = {
-                    ...p,
-                    dirty: true,
-                    interfaces: p.interfaces.map(i => {
-                        if (i.name !== selectedInterface?.name) return i;
-                        return {
-                            ...i,
-                            operations: i.operations.map(o => {
-                                if (o.name !== selectedOperation?.name) return o;
-                                return {
-                                    ...o,
-                                    requests: o.requests.map(r => r.name === selectedRequest?.name ? dirtyUpdated : r)
-                                };
-                            })
-                        };
-                    })
-                };
-                // No longer auto-saving - user must click Save button
-                return updatedProject;
-            }));
+                return updatedProjects;
+            });
         } else {
+            // WSDL Explorer path (no project selected)
+            setSelectedRequest(dirtyUpdated);
             setExploredInterfaces(prev => prev.map(i => {
                 if (i.name !== selectedInterface?.name) return i;
                 return {
@@ -245,6 +291,17 @@ export function useRequestHandlers({
         handleResetRequest,
         startTimeRef,
     };
+}
+
+// Helper function to recursively update a request in folder structure
+function updateFolderRequest(folders: any[], requestId: string, updated: SoapUIRequest): any[] {
+    return folders.map(folder => ({
+        ...folder,
+        requests: folder.requests.map((r: any) =>
+            (r.id === requestId || r.name === requestId) ? updated : r
+        ),
+        folders: folder.folders ? updateFolderRequest(folder.folders, requestId, updated) : folder.folders
+    }));
 }
 
 // Utility function (also used by App.tsx)

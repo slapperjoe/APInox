@@ -240,17 +240,10 @@ export const WsdlExplorer: React.FC<WsdlExplorerProps> = ({
                     }}
                     onToggleOperation={(op, iface) => toggleExploredOperation(iface.name, op.name)}
                     onSelectOperation={(op, iface) => {
-                        // Only select, don't expand - expand is chevron-only
+                        // Only select operation, don't auto-select request
                         setSelectedInterface(iface);
                         setSelectedOperation(op);
-
-                        const hasSingleRequest = op.requests.length === 1;
-                        if (hasSingleRequest && op.requests[0]) {
-                            setSelectedRequest(op.requests[0]);
-                            setResponse(null);
-                        } else {
-                            setSelectedRequest(null);
-                        }
+                        setSelectedRequest(null);
                     }}
                     onSelectRequest={(req, op, iface) => {
                         setSelectedInterface(iface);

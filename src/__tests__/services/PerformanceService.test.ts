@@ -6,7 +6,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { PerformanceService } from '../../services/PerformanceService';
-import { PerformanceSuite, PerformanceRequest } from '@shared/models';
+import { PerformanceSuite, PerformanceRequest } from '../../../shared/src/models';
 
 // Mock SoapClient
 const createMockSoapClient = () => ({
