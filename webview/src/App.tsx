@@ -1,6 +1,8 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Container, ContextMenu, ContextMenuItem } from './styles/App.styles';
 import { bridge, isVsCode } from './utils/bridge';
+import { updateProjectWithRename } from './utils/projectUtils';
 import { Sidebar } from './components/Sidebar';
 import { WorkspaceLayout } from './components/WorkspaceLayout';
 import { HelpModal } from './components/HelpModal';
@@ -192,6 +194,111 @@ function App() {
     const [selectedFile, setSelectedFile] = useState<string | null>(null);
     const [downloadStatus, setDownloadStatus] = useState<string[] | null>(null);
     const [wsdlUseProxy, setWsdlUseProxy] = useState<boolean>(false);
+
+
+    // ==========================================================================
+    // FOLDER HANDLERS - Work with project.folders for unified structure
+    // ==========================================================================
+    const handleAddFolder = useCallback((projectName: string, parentFolderId?: string) => {
+        const newId = `folder - ${Date.now()} `;
+        const newFolder: import('@shared/models').ApinoxFolder = {
+            id: newId,
+            name: `New Folder`,
+            requests: [],
+            expanded: true
+        };
+
+        setProjects(prev => prev.map(p => {
+            if (p.name !== projectName) return p;
+            if (!parentFolderId) {
+                // Add to project root
+                return { ...p, folders: [...(p.folders || []), newFolder], dirty: true };
+            }
+            // Add to parent folder recursively
+            const addToParent = (folders: import('@shared/models').ApinoxFolder[]): import('@shared/models').ApinoxFolder[] => {
+                return folders.map(f => {
+                    if (f.id === parentFolderId) {
+                        // Found the parent - add new folder to its folders array
+                        return { ...f, folders: [...(f.folders || []), newFolder] };
+                    }
+                    if (f.folders && f.folders.length > 0) {
+                        // Recurse into subfolders
+                        return { ...f, folders: addToParent(f.folders) };
+                    }
+                    return f;
+                });
+            };
+            return { ...p, folders: addToParent(p.folders || []), dirty: true };
+        }));
+        setWorkspaceDirty(true);
+    }, [setProjects, setWorkspaceDirty]);
+
+    const handleAddRequestToFolder = useCallback((projectName: string, folderId: string) => {
+        const newRequestId = `request - ${Date.now()} `;
+        const newRequest: SoapUIRequest = {
+            id: newRequestId,
+            name: 'New Request',
+            request: '',
+            endpoint: 'https://api.example.com',
+            method: 'GET',
+            requestType: 'rest',
+            bodyType: 'json'
+        };
+
+        setProjects(prev => prev.map(p => {
+            if (p.name !== projectName) return p;
+            const updateFolders = (folders: import('@shared/models').ApinoxFolder[]): import('@shared/models').ApinoxFolder[] => {
+                return folders.map(f => {
+                    if (f.id === folderId) {
+                        return { ...f, requests: [...f.requests, newRequest] };
+                    }
+                    if (f.folders) {
+                        return { ...f, folders: updateFolders(f.folders) };
+                    }
+                    return f;
+                });
+            };
+            return { ...p, folders: updateFolders(p.folders || []), dirty: true };
+        }));
+
+        setSelectedRequest(newRequest);
+        setWorkspaceDirty(true);
+    }, [setProjects, setSelectedRequest, setWorkspaceDirty]);
+
+    const handleDeleteFolder = useCallback((projectName: string, folderId: string) => {
+        setProjects(prev => prev.map(p => {
+            if (p.name !== projectName) return p;
+            const filterFolders = (folders: import('@shared/models').ApinoxFolder[]): import('@shared/models').ApinoxFolder[] => {
+                return folders.filter(f => f.id !== folderId).map(f => ({
+                    ...f,
+                    folders: f.folders ? filterFolders(f.folders) : undefined
+                }));
+            };
+            return { ...p, folders: filterFolders(p.folders || []), dirty: true };
+        }));
+        setWorkspaceDirty(true);
+    }, [setProjects, setWorkspaceDirty]);
+
+    const handleToggleFolderExpand = useCallback((projectName: string, folderId: string) => {
+        setProjects(prev => prev.map(p => {
+            if (p.name !== projectName) return p;
+            const toggleFolder = (folders: import('@shared/models').ApinoxFolder[]): import('@shared/models').ApinoxFolder[] => {
+                return folders.map(f => {
+                    if (f.id === folderId) {
+                        return { ...f, expanded: !f.expanded };
+                    }
+                    if (f.folders) {
+                        return { ...f, folders: toggleFolder(f.folders) };
+                    }
+                    return f;
+                });
+            };
+            return { ...p, folders: toggleFolder(p.folders || []) };
+        }));
+    }, [setProjects]);
+
+    // Log unused handlers temporarily
+    console.log(handleAddFolder, handleAddRequestToFolder, handleDeleteFolder, handleToggleFolderExpand);
 
     // Breakpoint State
     const [activeBreakpoint, setActiveBreakpoint] = useState<{
@@ -451,7 +558,7 @@ function App() {
     // Performance Handlers
     const handleAddPerformanceSuite = (name: string) => {
         // Generate ID locally so we can auto-select it
-        const newId = `perf-suite-${Date.now()}`;
+        const newId = `perf - suite - ${Date.now()} `;
         bridge.sendMessage({ command: 'addPerformanceSuite', name, id: newId });
         // Auto-select the new suite
         setSelectedPerformanceSuiteId(newId);
@@ -617,6 +724,99 @@ function App() {
 
     // Extractor Modal State (needed before useWorkspaceCallbacks)
     const [extractorModal, setExtractorModal] = React.useState<{ xpath: string, value: string, source: 'body' | 'header', variableName: string } | null>(null);
+
+    // ==========================================================================
+    // SYNC SELECTED REQUEST FROM PROJECTS
+    // ==========================================================================
+    // When projects updates, re-sync selectedRequest to point to the updated object reference
+    // ONLY if the current selectedRequest is stale (not found in projects anymore)
+    React.useEffect(() => {
+        if (!selectedRequest || !selectedProjectName) return;
+
+        const project = projects.find(p => p.name === selectedProjectName);
+        if (!project) return;
+
+        // Check if selectedRequest is stale by searching for it in projects
+        let isStale = true;
+
+        // Search in folders
+        const checkInFolders = (folders: any[]): boolean => {
+            for (const folder of folders) {
+                // Check if selectedRequest object reference exists in this folder
+                if (folder.requests.some((r: any) => r === selectedRequest)) {
+                    return false; // Not stale, found the exact object
+                }
+                if (folder.folders && !checkInFolders(folder.folders)) {
+                    return false;
+                }
+            }
+            return true; // Stale, not found
+        };
+
+        if (project.folders) {
+            isStale = checkInFolders(project.folders);
+        }
+
+        // If not stale in folders, check interfaces
+        if (!isStale) return; // selectedRequest is still valid, don't re-sync
+
+        if (selectedInterface && selectedOperation) {
+            const foundInInterface = project.interfaces
+                .find(i => i.name === selectedInterface.name)
+                ?.operations.find(o => o.name === selectedOperation.name)
+                ?.requests.find(r => r === selectedRequest);
+
+            if (foundInInterface) {
+                isStale = false; // Not stale
+            }
+        }
+
+        // Only re-sync if selectedRequest is stale
+        if (!isStale) return;
+
+        // Find the updated request by ID
+        const findInFolders = (folders: any[]): any => {
+            for (const folder of folders) {
+                // STRICT MATCHING: If we have an ID, we MUST match by ID.
+                const found = folder.requests.find((r: any) => {
+                    if (selectedRequest.id) {
+                        return r.id === selectedRequest.id;
+                    }
+                    return r.name === selectedRequest.name;
+                });
+                if (found) return found;
+                if (folder.folders) {
+                    const nested = findInFolders(folder.folders);
+                    if (nested) return nested;
+                }
+            }
+            return null;
+        };
+
+        const foundInFolders = project.folders ? findInFolders(project.folders) : null;
+        if (foundInFolders) {
+            setSelectedRequest(foundInFolders);
+            return;
+        }
+
+        // Search in interfaces
+        if (selectedInterface && selectedOperation) {
+            const foundInInterface = project.interfaces
+                .find(i => i.name === selectedInterface.name)
+                ?.operations.find(o => o.name === selectedOperation.name)
+                ?.requests.find(r => {
+                    if (selectedRequest.id) {
+                        return r.id === selectedRequest.id;
+                    }
+                    return r.name === selectedRequest.name;
+                });
+
+            if (foundInInterface) {
+                setSelectedRequest(foundInInterface);
+            }
+        }
+    }, [projects]); // Only run when projects changes, NOT when selectedRequest changes
+
 
     // ==========================================================================
     // WORKSPACE CALLBACKS - from useWorkspaceCallbacks hook
@@ -1060,7 +1260,11 @@ function App() {
                     toggleInterfaceExpand,
                     toggleOperationExpand,
                     onDeleteInterface: handleDeleteInterface,
-                    onDeleteOperation: handleDeleteOperation
+                    onDeleteOperation: handleDeleteOperation,
+                    onAddFolder: handleAddFolder,
+                    onAddRequestToFolder: handleAddRequestToFolder,
+                    onDeleteFolder: handleDeleteFolder,
+                    onToggleFolderExpand: handleToggleFolderExpand
                 }}
                 explorerProps={{
                     exploredInterfaces,
@@ -1212,6 +1416,7 @@ function App() {
 
             {/* WorkspaceLayout with consolidated props */}
             <WorkspaceLayout
+                projects={projects}
                 selectionState={{
                     project: projects.find(p => p.name === selectedProjectName) || null,
                     interface: selectedInterface,
@@ -1387,7 +1592,7 @@ function App() {
             {
                 contextMenu && (
                     <ContextMenu top={contextMenu.y} left={contextMenu.x}>
-                        {(contextMenu.type === 'request' || contextMenu.type === 'project') && (
+                        {(contextMenu.type === 'request' || contextMenu.type === 'project' || contextMenu.type === 'folder') && (
                             <ContextMenuItem onClick={handleRename}>Rename</ContextMenuItem>
                         )}
                         {contextMenu.type === 'project' && (
@@ -1424,7 +1629,7 @@ function App() {
             {/* Rename Modal */}
             <RenameModal
                 isOpen={!!renameState}
-                title={`Rename ${renameState?.type}`}
+                title={`Rename ${renameState?.type} `}
                 initialValue={renameState?.value || ''}
                 onCancel={() => setRenameState(null)}
                 onSave={(value) => {
@@ -1438,12 +1643,24 @@ function App() {
                             if (hasInterface) {
                                 return {
                                     ...p,
-                                    interfaces: p.interfaces.map(i => i === renameState.data ? { ...i, name: value } : i)
+                                    interfaces: p.interfaces.map(i => i === renameState.data ? { ...i, name: value } : i),
+                                    dirty: true
                                 };
                             }
                             return p;
                         }));
+                    } else if (renameState.type === 'folder' || renameState.type === 'request') {
+                        // Use helper to handle deep recursion for folders and requests within them
+                        setProjects(prev => updateProjectWithRename(
+                            prev,
+                            renameState.data.id || renameState.data.name, // Use ID if available, else name
+                            renameState.type as 'folder' | 'request',
+                            value,
+                            renameState.data
+                        ));
+
                     }
+
                     setRenameState(null);
                 }}
             />
@@ -1465,11 +1682,11 @@ function App() {
                         onAdd={(target) => {
                             const req = addToTestCaseModal.request!;
                             const newStep: SoapTestStep = {
-                                id: `step - ${Date.now()}`,
+                                id: `step - ${Date.now()} `,
                                 name: req.name,
                                 type: 'request',
                                 config: {
-                                    request: { ...req, id: `req - ${Date.now()}` },
+                                    request: { ...req, id: `req - ${Date.now()} ` },
                                     requestId: undefined
                                 }
                             };
@@ -1485,7 +1702,7 @@ function App() {
                                         // If creating new case
                                         if (target.type === 'new') {
                                             const newCase: SoapTestCase = {
-                                                id: `tc - ${Date.now()}`,
+                                                id: `tc - ${Date.now()} `,
                                                 name: `TestCase ${(s.testCases?.length || 0) + 1} `,
                                                 expanded: true,
                                                 steps: [newStep]

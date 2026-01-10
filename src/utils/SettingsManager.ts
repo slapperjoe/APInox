@@ -4,7 +4,7 @@ import * as os from 'os';
 import { parse, modify, applyEdits } from 'jsonc-parser';
 import { ReplaceRule } from './ReplaceRuleApplier';
 import { Breakpoint } from '../services/ProxyService';
-import { MockConfig, MockRule, PerformanceSuite, PerformanceRun, PerformanceSchedule, ProxyRule } from '@shared/models';
+import { MockConfig, MockRule, PerformanceSuite, PerformanceRun, PerformanceSchedule, ProxyRule } from '../../shared/src/models';
 
 export interface DirtySoapConfig {
     version: number;
@@ -211,7 +211,7 @@ export class SettingsManager {
         this.updateConfigPath(['performanceHistory'], history);
     }
 
-    public updatePerformanceSchedules(schedules: import('@shared/models').PerformanceSchedule[]) {
+    public updatePerformanceSchedules(schedules: import('../../shared/src/models').PerformanceSchedule[]) {
         this.updateConfigPath(['performanceSchedules'], schedules);
     }
 

@@ -7,7 +7,7 @@
 import { ICommand } from './ICommand';
 import { ScheduleService } from '../services/ScheduleService';
 import { SettingsManager } from '../utils/SettingsManager';
-import { PerformanceSchedule } from '@shared/models';
+import { PerformanceSchedule } from '../../shared/src/models';
 
 /**
  * Get all schedules

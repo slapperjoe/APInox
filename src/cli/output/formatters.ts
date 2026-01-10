@@ -2,7 +2,7 @@
  * Output formatters for CLI results
  */
 
-import { PerformanceRun } from '@shared/models';
+import { PerformanceRun } from '../../../shared/src/models';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const Table = require('cli-table3');
 // eslint-disable-next-line @typescript-eslint/no-var-requires

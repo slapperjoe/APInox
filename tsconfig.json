@@ -11,13 +11,7 @@
         "skipLibCheck": true,
         "types": [
             "vitest/globals"
-        ],
-        "baseUrl": ".",
-        "paths": {
-            "@shared/*": [
-                "shared/src/*"
-            ]
-        }
+        ]
     },
     "include": [
         "src/**/*",

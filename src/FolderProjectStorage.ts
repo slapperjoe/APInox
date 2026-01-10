@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { SoapUIProject, SoapUIInterface, SoapUIOperation, SoapUIRequest, SoapTestSuite, SoapTestCase } from '@shared/models';
+import { SoapUIProject, SoapUIInterface, SoapUIOperation, SoapUIRequest, SoapTestSuite, SoapTestCase } from '../shared/src/models';
 
 export class FolderProjectStorage {
     private outputChannel: any = null;
@@ -178,6 +178,28 @@ export class FolderProjectStorage {
             }
         }
 
+        // 4. Save Folders (user-created organizational structure)
+        const foldersDir = path.join(dirPath, 'folders');
+        if (!fs.existsSync(foldersDir)) fs.mkdirSync(foldersDir);
+
+        // Cleanup: Delete all existing folder files (we'll rewrite)
+        if (fs.existsSync(foldersDir)) {
+            const existing = fs.readdirSync(foldersDir);
+            existing.forEach(f => {
+                fs.unlinkSync(path.join(foldersDir, f));
+            });
+        }
+
+        // Save each top-level folder
+        if (project.folders) {
+            project.folders.forEach((folder, index) => {
+                const indexStr = (index + 1).toString().padStart(2, '0');
+                const safeName = this.sanitizeName(folder.name);
+                const filename = `${indexStr}_${safeName}.json`;
+                fs.writeFileSync(path.join(foldersDir, filename), JSON.stringify(folder, null, 2));
+            });
+        }
+
         this.log(`Project saved to folder: ${dirPath}`);
     }
 
@@ -303,6 +325,19 @@ export class FolderProjectStorage {
                 if (project.testSuites) {
                     project.testSuites.push(suite);
                 }
+            }
+        }
+
+        // Load Folders
+        const foldersDir = path.join(dirPath, 'folders');
+        if (fs.existsSync(foldersDir)) {
+            const folderFiles = fs.readdirSync(foldersDir).filter(f => f.endsWith('.json'));
+            folderFiles.sort(); // 01_..., 02_...
+
+            project.folders = [];
+            for (const ff of folderFiles) {
+                const folderData = JSON.parse(fs.readFileSync(path.join(foldersDir, ff), 'utf8'));
+                project.folders.push(folderData);
             }
         }
 

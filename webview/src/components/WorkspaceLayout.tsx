@@ -1,10 +1,10 @@
 import React from 'react';
-import { Layout as LayoutIcon, ListOrdered, Play, Loader2, RotateCcw, WrapText, Bug, AlignLeft, Braces, ChevronLeft, ListChecks, Replace, Cloud, PlusSquare } from 'lucide-react';
+import { Layout as LayoutIcon, ListOrdered, Play, Loader2, RotateCcw, WrapText, Bug, AlignLeft, Braces, ChevronLeft, ChevronRight, ListChecks, Replace, Cloud, PlusSquare } from 'lucide-react';
 // Models imported via props.ts indirections, specific enums kept if needed locally (TestStepType is used in code?)
 // Checking code: TestStepType is used in props interface but not local var?
 // Actually TestStepType is used in onAddStep signature but onAddStep comes from props.
 // Let's remove them and add back if needed.
-import { SidebarView } from '@shared/models';
+import { SidebarView, RequestType, BodyType, HttpMethod } from '@shared/models';
 // ... imports
 import emptyServerImg from '../assets/empty-server.png';
 import emptyWsdlImg from '../assets/empty-wsdl.png';
@@ -24,22 +24,20 @@ import { formatXml, stripCausalityData } from '@shared/utils/xmlFormatter';
 import { XPathGenerator } from '../utils/xpathGenerator';
 import { WelcomePanel, BreakpointOverlay, TestCaseView, EmptyTestCase } from './workspace';
 import { PerformanceSuiteEditor } from './workspace/PerformanceSuiteEditor';
+import { RequestTypeSelector } from './workspace/RequestTypeSelector';
+import { QueryParamsPanel } from './QueryParamsPanel';
+import { RestAuthPanel } from './RestAuthPanel';
+import { GraphQLVariablesPanel } from './GraphQLVariablesPanel';
 import { ScriptEditor } from './ScriptEditor';
 
 // Styled components extracted to styles file
 // unused models removed
 import { createMockRuleFromSource } from '../utils/mockUtils';
+import { findPathToRequest } from '../utils/projectUtils';
 import {
-    Content,
-    Toolbar,
-    InfoBar,
-    InfoBarMethod,
-    InfoBarUrl,
-    ToolbarButton,
-    ToolbarSelect,
-    MainFooter,
-    IconButton,
-    EmptyStateImage
+    Toolbar, InfoBar, InfoBarMethod, InfoBarUrl,
+    ToolbarButton, MainFooter, IconButton, ToolbarSeparator,
+    Content, EmptyStateImage
 } from '../styles/WorkspaceLayout.styles';
 
 
@@ -297,6 +295,7 @@ const OperationSummary: React.FC<{ operation: import('@shared/models').SoapUIOpe
 
 
 export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
+    projects,
     selectionState,
     requestActions,
     viewState,
@@ -352,7 +351,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         layoutMode, showLineNumbers, splitRatio, isResizing, onToggleLayout, onToggleLineNumbers, onStartResizing,
         inlineElementValues, onToggleInlineElementValues, hideCausalityData, onToggleHideCausalityData
     } = viewState;
-    const { config, defaultEndpoint, changelog, onChangeEnvironment, isReadOnly } = configState;
+    const { config, defaultEndpoint, changelog, isReadOnly } = configState;
     const {
         onRunTestCase, onOpenStepRequest, onBackToCase, onAddStep, testExecution,
         onUpdateStep, onSelectStep, onDeleteStep, onMoveStep
@@ -366,7 +365,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
 
 
     const [alignAttributes, setAlignAttributes] = React.useState(false);
-    const [activeTab, setActiveTab] = React.useState<'request' | 'headers' | 'assertions' | 'auth' | 'extractors' | 'attachments'>('request');
+    const [activeTab, setActiveTab] = React.useState<'request' | 'headers' | 'params' | 'assertions' | 'auth' | 'extractors' | 'attachments' | 'variables'>('request');
     const [showVariables, setShowVariables] = React.useState(false);
 
     // Breakpoint State
@@ -674,7 +673,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                 <ToolbarButton onClick={onBackToCase} title="Back to Test Case">
                                     <ChevronLeft size={14} /> Back
                                 </ToolbarButton>
-                                <div style={{ width: 1, height: 20, background: 'var(--vscode-panel-border)', margin: '0 5px' }} />
+                                <ToolbarSeparator />
                             </>
                         )}
 
@@ -683,20 +682,22 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                 <ToolbarButton onClick={onBackToSuite} title="Back to Performance Suite">
                                     <ChevronLeft size={14} /> Back
                                 </ToolbarButton>
-                                <div style={{ width: 1, height: 20, background: 'var(--vscode-panel-border)', margin: '0 5px' }} />
+                                <ToolbarSeparator />
                             </>
                         )}
 
-                        {/* Method */}
-                        <ToolbarSelect
-                            value={selectedRequest.method || 'POST'}
-                            onChange={(e) => onUpdateRequest({ ...selectedRequest, method: e.target.value })}
-                            title="HTTP Method"
-                        >
-                            <option value="POST">POST</option>
-                            <option value="GET">GET</option>
-                        </ToolbarSelect>
-
+                        {/* Request Type / Method / Content-Type - Unified Selector */}
+                        <RequestTypeSelector
+                            requestType={selectedRequest.requestType}
+                            method={selectedRequest.method as HttpMethod}
+                            bodyType={selectedRequest.bodyType}
+                            contentType={selectedRequest.contentType}
+                            onRequestTypeChange={(type: RequestType) => onUpdateRequest({ ...selectedRequest, requestType: type })}
+                            onMethodChange={(method) => onUpdateRequest({ ...selectedRequest, method: method as string })}
+                            onBodyTypeChange={(type: BodyType) => onUpdateRequest({ ...selectedRequest, bodyType: type })}
+                            onContentTypeChange={(ct) => onUpdateRequest({ ...selectedRequest, contentType: ct })}
+                            compact={true}
+                        />
 
                         {/* URL */}
                         <div style={{ flex: 1, minWidth: '150px' }}>
@@ -709,22 +710,11 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                             />
                         </div>
 
-                        {/* Content Type */}
-                        <ToolbarSelect
-                            value={selectedRequest.contentType || 'application/soap+xml'}
-                            onChange={(e) => onUpdateRequest({ ...selectedRequest, contentType: e.target.value })}
-                            title="Content Type"
-                        >
-                            <option value="text/xml">text/xml</option>
-                            <option value="application/soap+xml">application/soap+xml</option>
-                            <option value="application/xml">application/xml</option>
-                        </ToolbarSelect>
-
                         {/* Actions */}
                         {!selectedTestCase && (
-                            <IconButton onClick={onReset} title="Revert to Default XML">
-                                <RotateCcw size={16} />
-                            </IconButton>
+                            <ToolbarButton onClick={onReset} title="Revert to Default XML">
+                                <RotateCcw size={14} /> Reset
+                            </ToolbarButton>
                         )}
 
                         {loading ? (
@@ -737,21 +727,9 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                             </ToolbarButton>
                         )}
 
-                        <div style={{ width: 1, height: 20, background: 'var(--vscode-panel-border)', margin: '0 5px' }} />
+                        <ToolbarSeparator />
 
-                        {/* Environment Selector */}
-                        {config && config.environments && (
-                            <ToolbarSelect
-                                value={config.activeEnvironment}
-                                onChange={(e) => onChangeEnvironment && onChangeEnvironment(e.target.value)}
-                                title="Active Environment"
-                                style={{ minWidth: 100 }}
-                            >
-                                {Object.keys(config.environments).map(env => (
-                                    <option key={env} value={env}>{env}</option>
-                                ))}
-                            </ToolbarSelect>
-                        )}
+
 
                         {/* Variables Inserter */}
                         {selectedTestCase && selectedStep && (
@@ -839,16 +817,47 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                         width: 'auto'
                     }}>
                         {/* Title Section (Moved above tabs) */}
+                        {/* Title Section (Breadcrumbs) */}
                         <div style={{
                             padding: '10px 15px',
                             backgroundColor: 'var(--vscode-editor-background)',
                             borderBottom: '1px solid var(--vscode-panel-border)',
                             display: 'flex',
-                            flexDirection: 'column',
-                            gap: 5
+                            alignItems: 'center',
+                            gap: 5,
+                            fontSize: '0.9em',
+                            color: 'var(--vscode-descriptionForeground)'
                         }}>
-                            <div style={{ fontSize: '1.2em', fontWeight: 'bold' }}>{selectedOperation?.name}</div>
-                            <div style={{ fontSize: '0.9em', opacity: 0.7 }}>{selectedRequest.name}</div>
+                            {(() => {
+                                const breadcrumbPath = projects && selectedRequest && selectedRequest.id ? findPathToRequest(projects, selectedRequest.id) : null;
+
+                                if (breadcrumbPath) {
+                                    return (
+                                        <>
+                                            {breadcrumbPath.map((segment, i) => (
+                                                <React.Fragment key={i}>
+                                                    {i > 0 && <ChevronRight size={12} />}
+                                                    <span>{segment}</span>
+                                                </React.Fragment>
+                                            ))}
+                                            <ChevronRight size={12} />
+                                            <span style={{ fontWeight: 'bold', color: 'var(--vscode-foreground)' }}>
+                                                {selectedRequest.name}
+                                            </span>
+                                        </>
+                                    );
+                                }
+                                // Fallback
+                                return (
+                                    <>
+                                        <span>{selectedOperation?.name}</span>
+                                        {selectedOperation && <ChevronRight size={12} />}
+                                        <span style={{ fontWeight: 'bold', color: 'var(--vscode-foreground)' }}>
+                                            {selectedRequest.name}
+                                        </span>
+                                    </>
+                                );
+                            })()}
                         </div>
 
                         {/* Tabs Header */}
@@ -886,6 +895,37 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                 {selectedRequest.headers && Object.keys(selectedRequest.headers).length > 0 && ` (${Object.keys(selectedRequest.headers).length})`}
                             </div>
 
+                            {/* Params tab - only for REST requests */}
+                            {selectedRequest.requestType === 'rest' && (
+                                <div
+                                    style={{
+                                        cursor: 'pointer',
+                                        borderBottom: activeTab === 'params' ? '2px solid var(--vscode-textLink-foreground)' : '2px solid transparent',
+                                        padding: '5px 0',
+                                        color: activeTab === 'params' ? 'var(--vscode-foreground)' : 'var(--vscode-descriptionForeground)'
+                                    }}
+                                    onClick={() => setActiveTab('params')}
+                                >
+                                    Params
+                                    {selectedRequest.restConfig?.queryParams && Object.keys(selectedRequest.restConfig.queryParams).length > 0 && ` (${Object.keys(selectedRequest.restConfig.queryParams).length})`}
+                                </div>
+                            )}
+
+                            {/* Variables tab - only for GraphQL requests */}
+                            {selectedRequest.requestType === 'graphql' && (
+                                <div
+                                    style={{
+                                        cursor: 'pointer',
+                                        borderBottom: activeTab === 'variables' ? '2px solid var(--vscode-textLink-foreground)' : '2px solid transparent',
+                                        padding: '5px 0',
+                                        color: activeTab === 'variables' ? 'var(--vscode-foreground)' : 'var(--vscode-descriptionForeground)'
+                                    }}
+                                    onClick={() => setActiveTab('variables')}
+                                >
+                                    Variables
+                                    {selectedRequest.graphqlConfig?.variables && Object.keys(selectedRequest.graphqlConfig.variables).length > 0 && ' ✓'}
+                                </div>
+                            )}
                             {!isReadOnly && (
                                 <>
                                     <div
@@ -1031,7 +1071,15 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                 <MonacoRequestEditor
                                     ref={bodyEditorRef}
                                     value={hideCausalityData ? stripCausalityData(selectedRequest.request) : selectedRequest.request}
-                                    language="xml"
+                                    language={
+                                        // Dynamic language based on bodyType or requestType
+                                        selectedRequest.bodyType === 'json' ? 'json' :
+                                            selectedRequest.bodyType === 'graphql' ? 'graphql' :
+                                                selectedRequest.bodyType === 'text' ? 'plaintext' :
+                                                    selectedRequest.requestType === 'graphql' ? 'graphql' :
+                                                        selectedRequest.requestType === 'rest' ? 'json' :
+                                                            'xml'
+                                    }
                                     readOnly={isReadOnly}
                                     onChange={(val) => onUpdateRequest({ ...selectedRequest, request: val })}
                                     onFocus={() => lastFocusedRef.current = bodyEditorRef.current}
@@ -1086,6 +1134,36 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                 )}
                             </div>
                         )}
+                        {/* Query Params Panel - REST only */}
+                        {activeTab === 'params' && selectedRequest.requestType === 'rest' && (
+                            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+                                <QueryParamsPanel
+                                    params={selectedRequest.restConfig?.queryParams || {}}
+                                    onChange={(newParams) => onUpdateRequest({
+                                        ...selectedRequest,
+                                        restConfig: { ...selectedRequest.restConfig, queryParams: newParams }
+                                    })}
+                                    title="Query Parameters"
+                                />
+                            </div>
+                        )}
+                        {/* GraphQL Variables Panel - GraphQL only */}
+                        {activeTab === 'variables' && selectedRequest.requestType === 'graphql' && (
+                            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+                                <GraphQLVariablesPanel
+                                    variables={selectedRequest.graphqlConfig?.variables}
+                                    operationName={selectedRequest.graphqlConfig?.operationName}
+                                    onChange={(newVars) => onUpdateRequest({
+                                        ...selectedRequest,
+                                        graphqlConfig: { ...selectedRequest.graphqlConfig, variables: newVars }
+                                    })}
+                                    onOperationNameChange={(name) => onUpdateRequest({
+                                        ...selectedRequest,
+                                        graphqlConfig: { ...selectedRequest.graphqlConfig, operationName: name }
+                                    })}
+                                />
+                            </div>
+                        )}
                         {activeTab === 'assertions' && (
                             <AssertionsPanel
                                 assertions={selectedRequest.assertions || []}
@@ -1102,10 +1180,20 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                             />
                         )}
                         {activeTab === 'auth' && (
-                            <SecurityPanel
-                                security={selectedRequest.wsSecurity}
-                                onChange={(newSecurity) => onUpdateRequest({ ...selectedRequest, wsSecurity: newSecurity })}
-                            />
+                            selectedRequest.requestType === 'rest' || selectedRequest.requestType === 'graphql' ? (
+                                <RestAuthPanel
+                                    auth={selectedRequest.restConfig?.auth}
+                                    onChange={(newAuth) => onUpdateRequest({
+                                        ...selectedRequest,
+                                        restConfig: { ...selectedRequest.restConfig, auth: newAuth }
+                                    })}
+                                />
+                            ) : (
+                                <SecurityPanel
+                                    security={selectedRequest.wsSecurity}
+                                    onChange={(newSecurity) => onUpdateRequest({ ...selectedRequest, wsSecurity: newSecurity })}
+                                />
+                            )
                         )}
                         {activeTab === 'attachments' && (
                             <AttachmentsPanel

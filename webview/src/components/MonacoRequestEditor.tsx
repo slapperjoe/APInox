@@ -1,5 +1,5 @@
 
-import { useRef, useImperativeHandle, forwardRef, useEffect, useState } from 'react';
+import { useRef, useImperativeHandle, forwardRef, useEffect } from 'react';
 import Editor, { Monaco, loader } from '@monaco-editor/react';
 import * as monaco from 'monaco-editor';
 import styled from 'styled-components';
@@ -41,7 +41,6 @@ export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoR
     const editorRef = useRef<any>(null);
     const monacoRef = useRef<Monaco | null>(null);
     const previousRequestIdRef = useRef<string | undefined>(undefined);
-    const [isReady, setIsReady] = useState(!autoFoldElements || autoFoldElements.length === 0);
 
     useImperativeHandle(ref, () => ({
         insertText: (text: string) => {
@@ -71,9 +70,7 @@ export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoR
         });
 
         if (autoFoldElements && autoFoldElements.length > 0 && value) {
-            applyAutoFolding(editor, value, autoFoldElements, () => setIsReady(true));
-        } else {
-            setIsReady(true);
+            applyAutoFolding(editor, value, autoFoldElements);
         }
 
         // Fix Enter key to insert newline (prevents Enter from being stolen)
@@ -174,7 +171,11 @@ export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoR
     };
 
     // Listen for Clipboard Data from Backend (Fallback for Paste)
+    // Listen for Clipboard Data from Backend (Fallback for Paste)
     useEffect(() => {
+        // Log mount
+        bridge.sendMessage({ command: 'log', message: `[MonacoRequestEditor] Mounted. RequestId: ${requestId}` });
+
         const handleMessage = (event: MessageEvent) => {
             const message = event.data;
             if (message.command === 'clipboardText' && message.text) {
@@ -191,7 +192,10 @@ export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoR
         };
 
         window.addEventListener('message', handleMessage);
-        return () => window.removeEventListener('message', handleMessage);
+        return () => {
+            bridge.sendMessage({ command: 'log', message: `[MonacoRequestEditor] Unmounted. RequestId: ${requestId}` });
+            window.removeEventListener('message', handleMessage);
+        };
     }, []);
 
     // Apply auto-folding when switching to a different request
@@ -201,16 +205,20 @@ export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoR
             return;
         }
 
-        // If requestId changed, it's a different request - apply folding
-        if (requestId !== previousRequestIdRef.current) {
-            setIsReady(false); // Hide while folding
-            applyAutoFolding(editorRef.current, value, autoFoldElements, () => setIsReady(true));
-            previousRequestIdRef.current = requestId;
+        const currentReqId = requestId || '';
+        const prevReqId = previousRequestIdRef.current || '';
+
+        if (currentReqId && prevReqId && currentReqId !== prevReqId) {
+            applyAutoFolding(editorRef.current, value, autoFoldElements);
+        } else if (!previousRequestIdRef.current && requestId) {
+            applyAutoFolding(editorRef.current, value, autoFoldElements);
         }
+
+        previousRequestIdRef.current = requestId;
     }, [requestId, value, autoFoldElements]);
 
     return (
-        <EditorContainer style={{ opacity: isReady ? 1 : 0, transition: 'opacity 0.1s' }}>
+        <EditorContainer>
             <style>
                 {/* Styles moved to index.css */}
             </style>

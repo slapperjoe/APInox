@@ -206,18 +206,21 @@ export function useMessageHandler(state: MessageHandlerState) {
                             const interfaceName = portName === 'Default' ? svc.name : portName;
 
                             splitInterfaces.push({
+                                id: crypto.randomUUID(),
                                 name: interfaceName,
                                 type: 'wsdl',
                                 bindingName: portName,
                                 soapVersion: portName.includes('12') ? '1.2' : '1.1',
                                 definition: wsdlUrlRef.current,
                                 operations: ops.map((op: any) => ({
+                                    id: crypto.randomUUID(),
                                     name: op.name,
                                     action: '',
                                     input: op.input,
                                     targetNamespace: op.targetNamespace || svc.targetNamespace,
                                     originalEndpoint: op.originalEndpoint,
                                     requests: [{
+                                        id: crypto.randomUUID(),
                                         name: 'Request 1',
                                         endpoint: op.originalEndpoint,
                                         headers: {
@@ -293,7 +296,7 @@ export function useMessageHandler(state: MessageHandlerState) {
 
                 case BackendCommand.AddStepToCase:
                     debugLog('addStepToCase', { caseId: message.caseId });
-                    const op = message.operation;
+                    // const op = message.operation; // Removed unused var, accessed inside loop
                     setProjects(prev => prev.map(p => {
                         if (!p.testSuites) return p;
                         const suite = p.testSuites.find(s => s.testCases?.some(tc => tc.id === message.caseId));
@@ -304,20 +307,42 @@ export function useMessageHandler(state: MessageHandlerState) {
                             testCases: suite.testCases?.map(tc => {
                                 if (tc.id !== message.caseId) return tc;
 
-                                const newStep: SoapTestStep = {
-                                    id: `step-${Date.now()}`,
-                                    name: op.name,
-                                    type: 'request',
-                                    config: {
-                                        request: {
-                                            id: `req-${Date.now()}`,
-                                            name: op.name,
-                                            endpoint: (op as any).originalEndpoint,
-                                            request: `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="${op.targetNamespace || 'http://tempuri.org/'}">\n   <soapenv:Header/>\n   <soapenv:Body>\n      <tem:${op.name}>\n         <!--Optional:-->\n         ${getInitialXml(op.input)}\n      </tem:${op.name}>\n   </soapenv:Body>\n</soapenv:Envelope>`,
-                                            assertions: []
+                                let newStep: SoapTestStep;
+
+                                if (message.request) {
+                                    // Created from existing Folder Request - Clone it
+                                    const sourceReq = message.request;
+                                    newStep = {
+                                        id: `step-${Date.now()}`,
+                                        name: sourceReq.name,
+                                        type: 'request',
+                                        config: {
+                                            request: {
+                                                ...sourceReq,
+                                                id: `req-${Date.now()}`, // New ID for the step's copy
+                                                // Ensure assertions init if missing
+                                                assertions: sourceReq.assertions || []
+                                            }
                                         }
-                                    }
-                                };
+                                    };
+                                } else {
+                                    // Created from WSDL Operation - Generate default
+                                    const op = message.operation;
+                                    newStep = {
+                                        id: `step-${Date.now()}`,
+                                        name: op.name,
+                                        type: 'request',
+                                        config: {
+                                            request: {
+                                                id: `req-${Date.now()}`,
+                                                name: op.name,
+                                                endpoint: (op as any).originalEndpoint,
+                                                request: `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="${op.targetNamespace || 'http://tempuri.org/'}">\n   <soapenv:Header/>\n   <soapenv:Body>\n      <tem:${op.name}>\n         <!--Optional:-->\n         ${getInitialXml(op.input)}\n      </tem:${op.name}>\n   </soapenv:Body>\n</soapenv:Envelope>`,
+                                                assertions: []
+                                            }
+                                        }
+                                    };
+                                }
                                 return { ...tc, steps: [...tc.steps, newStep] };
                             })
                         };
@@ -451,11 +476,12 @@ ${getInitialXml(perfOp.input)}
                         if (existingIndex !== -1) {
                             const existing = prev[existingIndex];
                             // MERGE logic: Take new project data, but preserve UI state (expanded, dirty?) 
-                            // and ensure ID consistency.
+                            // and user-created folders (not yet persisted to disk)
                             const updated = {
                                 ...newProj,
                                 fileName: message.filename,
                                 expanded: existing.expanded,
+                                folders: existing.folders || newProj.folders, // Preserve in-memory folders
                                 // If we have local changes (dirty=true), should we overwrite? 
                                 // "Load Project" usually implies "Reload from Disk", so yes, overwrite.
                                 dirty: false
@@ -533,7 +559,35 @@ ${getInitialXml(perfOp.input)}
                     if (message.content) {
                         try {
                             const savedState = JSON.parse(message.content);
-                            setProjects(savedState.projects || []);
+                            // Merge with existing projects to preserve UI state like expanded
+                            setProjects(prev => {
+                                const savedProjects = savedState.projects || [];
+                                if (prev.length === 0) {
+                                    // No existing projects, use autosave directly but preserve expanded
+                                    return savedProjects.map((p: any) => ({
+                                        ...p,
+                                        expanded: p.expanded !== false // Default to true if not set
+                                    }));
+                                }
+                                // Merge: for each saved project, update existing or add new
+                                const merged = [...prev];
+                                savedProjects.forEach((saved: any) => {
+                                    const existingIdx = merged.findIndex(p =>
+                                        (p.id && p.id === saved.id) || p.name === saved.name
+                                    );
+                                    if (existingIdx >= 0) {
+                                        // Merge - preserve expanded state from existing
+                                        merged[existingIdx] = {
+                                            ...saved,
+                                            expanded: merged[existingIdx].expanded ?? saved.expanded ?? true
+                                        };
+                                    } else {
+                                        // Add new with expanded true
+                                        merged.push({ ...saved, expanded: saved.expanded !== false });
+                                    }
+                                });
+                                return merged;
+                            });
                             setExploredInterfaces(savedState.exploredInterfaces || []);
                             setExplorerExpanded(savedState.explorerExpanded ?? true);
                             setWsdlUrl(savedState.wsdlUrl || '');
@@ -568,6 +622,14 @@ ${getInitialXml(perfOp.input)}
                     });
                     setProjects(prev => prev.map(p => {
                         if (p.name !== message.projectName) return p;
+                        const clearFoldersDirty = (folders: any[]): any[] => {
+                            return folders.map(f => ({
+                                ...f,
+                                requests: f.requests.map((r: any) => ({ ...r, dirty: false })),
+                                folders: f.folders ? clearFoldersDirty(f.folders) : undefined
+                            }));
+                        };
+
                         return {
                             ...p,
                             fileName: message.fileName || p.fileName,
@@ -578,7 +640,8 @@ ${getInitialXml(perfOp.input)}
                                     ...o,
                                     requests: o.requests.map(r => ({ ...r, dirty: false }))
                                 }))
-                            }))
+                            })),
+                            folders: p.folders ? clearFoldersDirty(p.folders) : undefined
                         };
                     }));
                     setTimeout(() => {

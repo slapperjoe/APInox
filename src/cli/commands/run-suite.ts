@@ -8,7 +8,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const chalk = require('chalk');
-import { PerformanceSuite, PerformanceRun, PerformanceResult, PerformanceStats } from '@shared/models';
+import { PerformanceSuite, PerformanceRun, PerformanceResult, PerformanceStats } from '../../../shared/src/models';
 import { formatJson, formatTable, formatCsv } from '../output/formatters';
 
 // Minimal SoapClient for CLI (no VS Code dependencies)

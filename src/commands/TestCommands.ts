@@ -1,8 +1,9 @@
 
 import { ICommand } from './ICommand';
 import { TestRunnerService } from '../services/TestRunnerService';
-import { SoapUIProject, SoapTestSuite, SoapTestCase } from '@shared/models';
+import { SoapUIProject, SoapTestSuite, SoapTestCase } from '../../shared/src/models';
 import * as vscode from 'vscode';
+import { DiagnosticService } from '../services/DiagnosticService';
 
 // Helper to find Test Suite/Case
 function findTestSuite(loadedProjects: Map<string, SoapUIProject>, suiteId: string): { suite: SoapTestSuite, project: SoapUIProject } | undefined {
@@ -87,34 +88,92 @@ export class PickOperationForTestCaseCommand implements ICommand {
     async execute(message: any): Promise<void> {
         const caseId = message.caseId;
         const items: vscode.QuickPickItem[] = [];
-        const operations: any[] = [];
+        const payload: any[] = []; // Stores the underlying data
+        const logger = DiagnosticService.getInstance();
+
+        logger.log('BACKEND', '[PickOperationForTestCaseCommand] Executing for caseId:', { caseId });
+        logger.log('BACKEND', '[PickOperationForTestCaseCommand] Loaded projects count:', this._loadedProjects.size);
 
         for (const project of this._loadedProjects.values()) {
+            logger.log('BACKEND', `[PickOperationForTestCaseCommand] Processing project: ${project.name}`);
+            logger.log('BACKEND', `[PickOperationForTestCaseCommand] Interfaces: ${project.interfaces?.length || 0}, Folders: ${project.folders?.length || 0}`);
+
+            // 1. Interfaces (WSDL Operations)
             if (project.interfaces) {
                 for (const iface of project.interfaces) {
                     if (iface.operations) {
                         for (const op of iface.operations) {
                             items.push({
-                                label: op.name,
+                                label: `$(symbol-method) ${op.name}`,
                                 description: `${project.name} > ${iface.name}`,
-                                detail: (op as any).originalEndpoint || ''
+                                detail: (op as any).originalEndpoint || 'WSDL Operation'
                             });
-                            operations.push(op);
+                            payload.push({ type: 'operation', data: op });
                         }
                     }
                 }
             }
+
+            // 2. Folders (Requests) - Recursive
+            const traverseFolders = (folders: any[], parentPath: string) => {
+                logger.log('BACKEND', `[PickOperationForTestCaseCommand] Traversing folders at path: "${parentPath}", count: ${folders.length}`);
+                for (const folder of folders) {
+                    const currentPath = parentPath ? `${parentPath} / ${folder.name}` : folder.name;
+
+                    // Add Requests in this folder
+                    if (folder.requests) {
+                        logger.log('BACKEND', `[PickOperationForTestCaseCommand] Found ${folder.requests.length} requests in ${folder.name}`);
+                        for (const req of folder.requests) {
+                            // Ensure we have a request object
+                            if (!req) continue;
+
+                            items.push({
+                                label: `$(file-code) ${req.name}`,
+                                description: `${project.name} > ${currentPath}`,
+                                detail: req.endpoint || 'REST/SOAP Request'
+                            });
+                            payload.push({ type: 'request', data: req });
+                        }
+                    } else {
+                        logger.log('BACKEND', `[PickOperationForTestCaseCommand] No requests array in folder: ${folder.name}`);
+                    }
+
+                    // Recurse
+                    if (folder.folders) {
+                        traverseFolders(folder.folders, currentPath);
+                    }
+                }
+            };
+
+            if (project.folders && project.folders.length > 0) {
+                traverseFolders(project.folders, '');
+            } else {
+                logger.log('BACKEND', '[PickOperationForTestCaseCommand] No folders to traverse for project:', project.name);
+            }
         }
 
-        const selected = await vscode.window.showQuickPick(items, { placeHolder: 'Select Operation to Add' });
+        logger.log('BACKEND', `[PickOperationForTestCaseCommand] Total items found: ${items.length}`);
+
+        if (items.length === 0) {
+            vscode.window.showWarningMessage('No requests or operations found in the loaded projects.');
+        }
+
+        const selected = await vscode.window.showQuickPick(items, { placeHolder: 'Select Request or Operation to Add' });
         if (selected) {
             const index = items.indexOf(selected);
-            const op = operations[index];
-            if (op) {
+            const entry = payload[index];
+
+            if (entry.type === 'operation') {
                 this._panel.webview.postMessage({
                     command: 'addStepToCase',
                     caseId,
-                    operation: op
+                    operation: entry.data
+                });
+            } else if (entry.type === 'request') {
+                this._panel.webview.postMessage({
+                    command: 'addStepToCase',
+                    caseId,
+                    request: entry.data
                 });
             }
         }

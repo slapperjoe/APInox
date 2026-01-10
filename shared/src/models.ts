@@ -28,6 +28,56 @@ export interface SoapSchemaNode {
     isOptional?: boolean;
 }
 
+// ============================================================================
+// REQUEST TYPE DISCRIMINATORS (REST/GraphQL Support)
+// ============================================================================
+
+/** Type of API request */
+export type RequestType = 'soap' | 'rest' | 'graphql';
+
+/** HTTP methods supported */
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
+
+/** Body content type */
+export type BodyType = 'xml' | 'json' | 'graphql' | 'text' | 'form-data' | 'binary' | 'none';
+
+/** REST authentication type */
+export type RestAuthType = 'none' | 'basic' | 'bearer' | 'apiKey' | 'oauth2';
+
+/** REST authentication configuration */
+export interface RestAuthConfig {
+    type: RestAuthType;
+    // Basic Auth
+    username?: string;
+    password?: string;
+    // Bearer Token / API Key
+    token?: string;
+    // API Key specifics
+    apiKeyIn?: 'header' | 'query';
+    apiKeyName?: string;
+    // OAuth2 (future)
+    oauth2Config?: {
+        authUrl?: string;
+        tokenUrl?: string;
+        clientId?: string;
+        clientSecret?: string;
+        scope?: string;
+    };
+}
+
+/** REST-specific request configuration */
+export interface RestConfig {
+    queryParams?: Record<string, string>;
+    pathParams?: Record<string, string>;
+    auth?: RestAuthConfig;
+}
+
+/** GraphQL-specific request configuration */
+export interface GraphQLConfig {
+    variables?: Record<string, any>;
+    operationName?: string;
+}
+
 // Assertion Types
 export interface SoapUIAssertion {
     type: 'Simple Contains' | 'Simple Not Contains' | 'Response SLA' | 'XPath Match' | 'SOAP Fault' | 'HTTP Status' | 'Script';
@@ -104,9 +154,9 @@ export interface SoapAttachment {
 
 export interface SoapUIRequest {
     name: string;
-    request: string; // The XML content
+    request: string; // The body content (XML, JSON, GraphQL query, etc.)
     contentType?: string;
-    method?: string;
+    method?: HttpMethod | string;
     endpoint?: string;
     dirty?: boolean;
     assertions?: SoapUIAssertion[];
@@ -115,6 +165,16 @@ export interface SoapUIRequest {
     id?: string;
     wsSecurity?: WSSecurityConfig;
     attachments?: SoapAttachment[];
+
+    // REST/GraphQL Support (Phase 1)
+    /** Request type discriminator - defaults to 'soap' for backward compatibility */
+    requestType?: RequestType;
+    /** Body content type - defaults based on requestType */
+    bodyType?: BodyType;
+    /** REST-specific configuration (query params, path params, auth) */
+    restConfig?: RestConfig;
+    /** GraphQL-specific configuration (variables, operation name) */
+    graphqlConfig?: GraphQLConfig;
 }
 
 export interface SoapUIOperation {
@@ -125,6 +185,7 @@ export interface SoapUIOperation {
     input?: any;
     targetNamespace?: string;
     originalEndpoint?: string;
+    id?: string;
 }
 
 export interface SoapUIInterface {
@@ -135,18 +196,63 @@ export interface SoapUIInterface {
     definition: string; // WSDL URL
     operations: SoapUIOperation[];
     expanded?: boolean;
+    id?: string;
 }
 
-export interface SoapUIProject {
+// ============================================================================
+// FOLDER TYPES (Unified Structure)
+// ============================================================================
+
+/** Universal folder for organizing requests of any type */
+export interface ApinoxFolder {
+    id: string;
+    name: string;
+    requests: SoapUIRequest[];
+    folders?: ApinoxFolder[];
+    expanded?: boolean;
+}
+
+/** @deprecated Use ApinoxFolder instead */
+export type RestFolder = ApinoxFolder;
+
+/** REST API collection (deprecated - use folders on ApinoxProject) */
+export interface RestCollection {
+    id: string;
     name: string;
     description?: string;
+    /** Base URL for all requests (can use variables like {{baseUrl}}) */
+    baseUrl?: string;
+    /** Collection-level variables */
+    variables?: Record<string, string>;
+    /** Top-level requests */
+    requests: SoapUIRequest[];
+    /** Nested folders */
+    folders?: ApinoxFolder[];
+    expanded?: boolean;
+}
+
+// ============================================================================
+// PROJECT TYPES
+// ============================================================================
+
+export interface ApinoxProject {
+    name: string;
+    description?: string;
+    /** WSDL-imported interfaces (read-only structure) */
     interfaces: SoapUIInterface[];
+    /** User-created folders (can contain any request type) */
+    folders?: ApinoxFolder[];
     expanded?: boolean;
     fileName?: string;
     id?: string;
     dirty?: boolean;
     testSuites?: SoapTestSuite[];
+    /** @deprecated Use folders instead */
+    collections?: RestCollection[];
 }
+
+/** @deprecated Use ApinoxProject instead - kept for backward compatibility */
+export type SoapUIProject = ApinoxProject;
 
 // Test Runner Types
 export type TestStepType = 'request' | 'delay' | 'transfer' | 'script';
@@ -222,6 +328,7 @@ export interface WatcherEvent {
 export enum SidebarView {
     HOME = 'home',
     PROJECTS = 'projects',
+    COLLECTIONS = 'collections', // REST/GraphQL collections
     EXPLORER = 'explorer',
     TESTS = 'tests',
     WATCHER = 'watcher',

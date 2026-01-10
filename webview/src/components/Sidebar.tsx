@@ -11,6 +11,7 @@ import { ServerUi } from './sidebar/ServerUi';
 import { PerformanceUi } from './sidebar/PerformanceUi';
 import { HistorySidebar } from './sidebar/HistorySidebar';
 
+
 // Prop Groups
 import {
     SidebarProjectProps,
@@ -36,6 +37,7 @@ interface SidebarProps {
     serverProps?: SidebarServerProps;
     performanceProps?: SidebarPerformanceProps;
     historyProps?: SidebarHistoryProps;
+
 
     // View State
     activeView: SidebarView;
@@ -87,7 +89,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         return index >= 0 ? envColors[index % envColors.length] : 'var(--vscode-charts-green)';
     };
     // Destructure for passing to legacy children (can be cleaned up later by moving groups down)
-    const { projects, savedProjects, loadProject, saveProject, closeProject, onAddProject, toggleProjectExpand, toggleInterfaceExpand, toggleOperationExpand, onDeleteInterface, onDeleteOperation } = projectProps;
+    const { projects, savedProjects, loadProject, saveProject, closeProject, onAddProject, toggleProjectExpand, toggleInterfaceExpand, toggleOperationExpand, onDeleteInterface, onDeleteOperation, onAddFolder, onAddRequestToFolder, onDeleteFolder, onToggleFolderExpand } = projectProps;
     const { exploredInterfaces, addToProject, addAllToProject, clearExplorer, removeFromExplorer, toggleExploredInterface, toggleExploredOperation } = explorerProps;
     const { inputType, setInputType, wsdlUrl, setWsdlUrl, wsdlUrlHistory, selectedFile, loadWsdl, pickLocalWsdl, downloadStatus, useProxy, setUseProxy } = wsdlProps;
     const {
@@ -143,7 +145,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     icon={FolderIcon}
                     active={activeView === SidebarView.PROJECTS}
                     onClick={() => onChangeView(SidebarView.PROJECTS)}
-                    title="Project"
+                    title="Projects"
                 />
                 <NavItem
                     icon={Compass}
@@ -417,10 +419,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         onDeleteInterface={onDeleteInterface}
                         onDeleteOperation={onDeleteOperation}
                         onDeleteRequest={onDeleteRequest}
+                        onAddFolder={onAddFolder}
+                        onAddRequestToFolder={onAddRequestToFolder}
+                        onDeleteFolder={onDeleteFolder}
+                        onToggleFolderExpand={onToggleFolderExpand}
                         deleteConfirm={deleteConfirm}
                         setDeleteConfirm={setDeleteConfirm}
                     />
                 )}
+
+
             </div>
         </div>
     );

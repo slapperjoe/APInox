@@ -31,6 +31,11 @@ export interface SidebarProjectProps {
     toggleOperationExpand: (projName: string, ifaceName: string, opName: string) => void;
     onDeleteInterface?: (iface: SoapUIInterface) => void;
     onDeleteOperation?: (op: SoapUIOperation, iface: SoapUIInterface) => void;
+    // Folder handlers
+    onAddFolder?: (projectName: string, parentFolderId?: string) => void;
+    onAddRequestToFolder?: (projectName: string, folderId: string) => void;
+    onDeleteFolder?: (projectName: string, folderId: string) => void;
+    onToggleFolderExpand?: (projectName: string, folderId: string) => void;
 }
 
 export interface SidebarExplorerProps {
@@ -323,4 +328,6 @@ export interface WorkspaceLayoutProps extends WorkspacePerformanceActions {
     coordinatorStatus?: import('@shared/models').CoordinatorStatus;
     onStartCoordinator?: (port: number, expectedWorkers: number) => void;
     onStopCoordinator?: () => void;
+    // For breadcrumb resolution
+    projects?: import('@shared/models').SoapUIProject[];
 }
