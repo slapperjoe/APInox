@@ -159,7 +159,11 @@ export class AssertionRunner {
                         pass: () => ({ status: 'PASS' as const }),
                         fail: (msg?: string) => ({ status: 'FAIL' as const, message: msg }),
                         // Provide console for debugging (won't show but won't crash)
-                        console: { log: () => { }, warn: () => { }, error: () => { } },
+                        console: {
+                            log: (...args: any[]) => { if (args.length) { /* discard sandbox logs */ } },
+                            warn: (...args: any[]) => { if (args.length) { /* discard sandbox warnings */ } },
+                            error: (...args: any[]) => { if (args.length) { /* discard sandbox errors */ } }
+                        },
                         // Common utilities
                         JSON,
                         parseInt,

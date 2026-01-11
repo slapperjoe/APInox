@@ -215,7 +215,6 @@ describe('RequestHistoryService', () => {
     describe('clearOlderThan', () => {
         it('should remove entries older than specified days', () => {
             const now = Date.now();
-            const twoDaysAgo = now - (2 * 24 * 60 * 60 * 1000);
             const fiveDaysAgo = now - (5 * 24 * 60 * 60 * 1000);
 
             service.addEntry({

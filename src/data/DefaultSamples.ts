@@ -19,7 +19,9 @@ export const SAMPLES_PROJECT: SoapUIProject = {
                     endpoint: 'http://www.dneonline.com/calculator.asmx',
                     method: 'POST',
                     requestType: 'soap',
+                    contentType: 'text/xml; charset=utf-8',
                     headers: {
+                        // Explicit Content-Type to avoid webview defaulting to SOAP 1.2
                         'Content-Type': 'text/xml; charset=utf-8',
                         'SOAPAction': 'http://tempuri.org/Add'
                     },

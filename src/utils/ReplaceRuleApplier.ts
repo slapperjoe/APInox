@@ -5,7 +5,6 @@
  * Uses XPath to locate elements and performs scoped text replacement.
  */
 
-import { XMLParser, XMLBuilder } from 'fast-xml-parser';
 
 export interface ReplaceRule {
     id: string;
@@ -19,23 +18,6 @@ export interface ReplaceRule {
 }
 
 export class ReplaceRuleApplier {
-    private static parser = new XMLParser({
-        ignoreAttributes: false,
-        attributeNamePrefix: "@_",
-        textNodeName: "#text",
-        trimValues: false,
-        parseTagValue: false,
-        ignoreDeclaration: false,
-        removeNSPrefix: false,
-    });
-
-    private static builder = new XMLBuilder({
-        ignoreAttributes: false,
-        attributeNamePrefix: "@_",
-        textNodeName: "#text",
-        format: false,
-        suppressEmptyNode: false,
-    });
 
     /**
      * Apply all enabled rules to XML content

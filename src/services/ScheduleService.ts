@@ -166,7 +166,7 @@ export class ScheduleService extends EventEmitter {
     /**
      * Calculate next run time from cron expression
      */
-    private getNextRunTime(cronExpression: string): number {
+    private getNextRunTime(_cronExpression: string): number {
         // Simple approximation - node-cron doesn't expose this directly
         // For a proper implementation, use cron-parser
         try {

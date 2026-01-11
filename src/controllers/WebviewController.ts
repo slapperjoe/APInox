@@ -4,7 +4,6 @@ import * as fs from 'fs';
 import { SoapClient } from '../soapClient';
 import { ProjectStorage } from '../ProjectStorage';
 import { SettingsManager } from '../utils/SettingsManager';
-import { WildcardProcessor } from '../utils/WildcardProcessor';
 
 import { FileWatcherService } from '../services/FileWatcherService';
 import { ProxyService } from '../services/ProxyService';
@@ -101,7 +100,6 @@ export class WebviewController {
         private readonly _folderStorage: FolderProjectStorage,
         private _projectStorage: ProjectStorage,
         private _settingsManager: SettingsManager,
-        private readonly _wildcardProcessor: WildcardProcessor,
         private readonly _fileWatcherService: FileWatcherService,
         private readonly _proxyService: ProxyService,
         private readonly _configSwitcherService: ConfigSwitcherService,
@@ -155,9 +153,9 @@ export class WebviewController {
         // Proxy Commands
         this._commands.set(FrontendCommand.StartProxy, new StartProxyCommand(this._proxyService));
         this._commands.set(FrontendCommand.StopProxy, new StopProxyCommand(this._proxyService));
-        this._commands.set(FrontendCommand.UpdateProxyConfig, new UpdateProxyConfigCommand(this._proxyService, this._settingsManager));
+        this._commands.set(FrontendCommand.UpdateProxyConfig, new UpdateProxyConfigCommand(this._proxyService));
         this._commands.set(FrontendCommand.SaveProxyHistory, new SaveProxyHistoryCommand());
-        this._commands.set(FrontendCommand.InjectProxy, new InjectProxyCommand(this._panel, this._configSwitcherService, this._proxyService, this._soapClient, this._settingsManager));
+        this._commands.set(FrontendCommand.InjectProxy, new InjectProxyCommand(this._panel, this._configSwitcherService, this._settingsManager));
         this._commands.set(FrontendCommand.RestoreProxy, new RestoreProxyCommand(this._panel, this._configSwitcherService));
         this._commands.set(FrontendCommand.OpenCertificate, new OpenCertificateCommand(this._proxyService, this._soapClient));
         this._commands.set(FrontendCommand.ResolveBreakpoint, new ResolveBreakpointCommand(this._proxyService));
@@ -195,7 +193,7 @@ export class WebviewController {
         this._commands.set(FrontendCommand.AbortPerformanceSuite, new AbortPerformanceSuiteCommand(this._performanceService));
         this._commands.set(FrontendCommand.GetPerformanceHistory, new GetPerformanceHistoryCommand(this._performanceService));
         this._commands.set(FrontendCommand.ImportTestSuiteToPerformance, new ImportTestSuiteToPerformanceCommand(this._performanceService, this._settingsManager));
-        this._commands.set(FrontendCommand.ExportPerformanceResults, new ExportPerformanceResultsCommand(this._performanceService));
+        this._commands.set(FrontendCommand.ExportPerformanceResults, new ExportPerformanceResultsCommand());
 
         // Schedule Commands
         this._commands.set(FrontendCommand.GetSchedules, new GetSchedulesCommand(this._scheduleService));
@@ -630,20 +628,6 @@ export class WebviewController {
 
 
 
-
-
-
-
-
-
-
-
-    private handleSaveSettings(message: any) {
-        if (message.raw) {
-            this._settingsManager.saveRawConfig(message.content);
-        }
-        this.sendSettingsToWebview();
-    }
 
     public loadSamples() {
         if (SAMPLES_PROJECT.id) {

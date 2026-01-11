@@ -25,8 +25,7 @@ export class StopProxyCommand implements ICommand {
 
 export class UpdateProxyConfigCommand implements ICommand {
     constructor(
-        private readonly _proxyService: ProxyService,
-        private readonly _settingsManager: SettingsManager
+        private readonly _proxyService: ProxyService
     ) { }
 
     async execute(message: any): Promise<void> {
@@ -69,8 +68,6 @@ export class InjectProxyCommand implements ICommand {
     constructor(
         private readonly _panel: vscode.WebviewPanel,
         private readonly _configSwitcherService: ConfigSwitcherService,
-        private readonly _proxyService: ProxyService,
-        private readonly _soapClient: SoapClient,
         private readonly _settingsManager: SettingsManager
     ) { }
 

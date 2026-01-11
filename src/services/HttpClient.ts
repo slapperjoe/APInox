@@ -4,7 +4,7 @@
  */
 
 import axios, { AxiosRequestConfig, AxiosResponse, CancelTokenSource } from 'axios';
-import { SoapUIRequest, RequestType, BodyType, HttpMethod, RestConfig } from '../../shared/src/models';
+import { SoapUIRequest, BodyType, HttpMethod, RestConfig } from '../../shared/src/models';
 import { SettingsManager } from '../utils/SettingsManager';
 
 export interface HttpResponse {
@@ -267,7 +267,7 @@ export class HttpClient {
     /**
      * Create HTTP/HTTPS agents with proxy support
      */
-    private createAgents(endpoint: string, proxyUrl?: string, strictSSL: boolean = true) {
+    private createAgents(endpoint: string, proxyUrl?: string, strictSSL = true) {
         if (!proxyUrl) {
             // If no proxy, let axios use its default agents (which handles global settings correctly)
             // This avoids issues with manually created agents in VS Code/Electron environment
