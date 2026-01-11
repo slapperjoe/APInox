@@ -4,7 +4,7 @@ import { WebviewController } from '../controllers/WebviewController';
 export class WebviewReadyCommand implements ICommand {
     constructor(private readonly _controller: WebviewController) { }
 
-    async execute(message: any): Promise<void> {
+    async execute(_message: any): Promise<void> {
         // Webview is ready to receive messages.
         // Send initial state that might have been missed during startup.
 

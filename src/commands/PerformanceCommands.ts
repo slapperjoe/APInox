@@ -303,10 +303,14 @@ export class RunPerformanceSuiteCommand implements ICommand {
  * Abort a running performance suite
  */
 export class AbortPerformanceSuiteCommand implements ICommand {
-    constructor(private readonly _performanceService: PerformanceService) { }
+    private readonly performanceService: PerformanceService;
+
+    constructor(performanceService: PerformanceService) {
+        this.performanceService = performanceService;
+    }
 
     async execute(_message: any): Promise<void> {
-        this._performanceService.abort();
+        this.performanceService.abort();
     }
 }
 
@@ -314,10 +318,14 @@ export class AbortPerformanceSuiteCommand implements ICommand {
  * Get performance history
  */
 export class GetPerformanceHistoryCommand implements ICommand {
-    constructor(private readonly _performanceService: PerformanceService) { }
+    private readonly performanceService: PerformanceService;
+
+    constructor(performanceService: PerformanceService) {
+        this.performanceService = performanceService;
+    }
 
     async execute(_message: any): Promise<any[]> {
-        return this._performanceService.getHistory();
+        return this.performanceService.getHistory();
     }
 }
 
@@ -325,8 +333,6 @@ export class GetPerformanceHistoryCommand implements ICommand {
  * Export performance results to CSV/JSON
  */
 export class ExportPerformanceResultsCommand implements ICommand {
-    constructor(private readonly _performanceService: PerformanceService) { }
-
     async execute(message: any): Promise<void> {
         const results = message.results;
         const format = message.format || 'json';

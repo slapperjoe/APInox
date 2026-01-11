@@ -127,7 +127,7 @@ export class SoapClient {
             }
 
             const startTime = Date.now();
-            const req = method(args, (err: any, result: any, rawResponse: any, soapHeader: any, rawRequest: any) => {
+            const req = method(args, (err: any, result: any, rawResponse: any, _soapHeader: any, rawRequest: any) => {
                 const endTime = Date.now();
                 const timeTaken = endTime - startTime;
                 this.currentRequest = null;

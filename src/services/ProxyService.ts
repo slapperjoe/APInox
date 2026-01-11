@@ -639,6 +639,7 @@ export class ProxyService extends EventEmitter {
 
             // Clean headers for probes
             const { data: _data, ...baseConfig } = originalConfig;
+            void _data; // explicitly ignore original body for probe configs
             const headers = { ...baseConfig.headers } as any;
             delete headers['content-length'];
             delete headers['Content-Length'];

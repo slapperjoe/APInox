@@ -4,7 +4,6 @@ import { DiagnosticService } from '../services/DiagnosticService';
 import { ProjectStorage } from '../ProjectStorage';
 import { FolderProjectStorage } from '../FolderProjectStorage';
 import { SettingsManager } from '../utils/SettingsManager';
-import { WildcardProcessor } from '../utils/WildcardProcessor';
 import { WebviewController } from '../controllers/WebviewController';
 import { FileWatcherService } from '../services/FileWatcherService';
 import { ProxyService } from '../services/ProxyService';
@@ -26,7 +25,6 @@ export class SoapPanel {
     private readonly _projectStorage: ProjectStorage;
     private readonly _folderStorage: FolderProjectStorage;
     private readonly _settingsManager: SettingsManager;
-    private readonly _wildcardProcessor: WildcardProcessor;
     private readonly _fileWatcherService: FileWatcherService;
     private _proxyService: ProxyService;
     private _configSwitcherService: ConfigSwitcherService;
@@ -82,7 +80,6 @@ export class SoapPanel {
         this._soapClient = new SoapClient(this._settingsManager, this._outputChannel);
         this._projectStorage = new ProjectStorage(this._outputChannel);
         this._folderStorage = new FolderProjectStorage(this._outputChannel);
-        this._wildcardProcessor = new WildcardProcessor();
 
         this._fileWatcherService = new FileWatcherService(this._outputChannel);
         this._proxyService = new ProxyService();
@@ -168,7 +165,6 @@ export class SoapPanel {
             this._folderStorage,
             this._projectStorage,
             this._settingsManager,
-            this._wildcardProcessor,
             this._fileWatcherService,
             this._proxyService,
             this._configSwitcherService,

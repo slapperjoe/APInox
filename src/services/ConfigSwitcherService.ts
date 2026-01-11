@@ -50,7 +50,7 @@ export class ConfigSwitcherService {
             // Regex: address="(https?:\/\/[^"/]+)(\/[^"]*)?"
             // Replace with: address="proxyBase$2"
 
-            const newContent2 = content.replace(/address="(https?:\/\/[^"/]+)(\/[^"]*)?"/g, (match, baseUrl, path) => {
+            const newContent2 = content.replace(/address="(https?:\/\/[^"/]+)(\/[^"]*)?"/g, (_match, baseUrl, path) => {
                 matchCount++; // Increment for each replacement
                 if (!capturedUrl) capturedUrl = baseUrl + (path || ''); // Capture the first full URL before modification
                 return `address="${proxyBase}${path || ''}"`;
