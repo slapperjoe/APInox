@@ -325,11 +325,23 @@ export interface NavigationActions {
     onSelectTestCase: (testCase: TestCase) => void;
 }
 
+// Explorer State for Main View
+export interface WorkspaceExplorerState {
+    inputType: 'url' | 'file';
+    setInputType: (type: 'url' | 'file') => void;
+    wsdlUrl: string;
+    setWsdlUrl: (url: string) => void;
+    loadWsdl: (url: string, type: 'url' | 'file') => Promise<void>;
+    downloadStatus: 'idle' | 'loading' | 'success' | 'error'; // simplified from string array
+    onClearSelection: () => void;
+}
+
 export interface WorkspaceLayoutProps extends WorkspacePerformanceActions {
     selectionState: WorkspaceSelectionState;
     requestActions: WorkspaceRequestActions;
     viewState: WorkspaceViewState;
     configState: WorkspaceConfigState;
+    explorerState?: WorkspaceExplorerState;
     stepActions: WorkspaceStepActions;
     toolsActions: WorkspaceToolsActions;
     breakpointState?: WorkspaceBreakpointState;

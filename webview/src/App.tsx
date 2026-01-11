@@ -1596,6 +1596,36 @@ function App() {
                 coordinatorStatus={coordinatorStatus}
                 onStartCoordinator={handleStartCoordinator}
                 onStopCoordinator={handleStopCoordinator}
+                explorerState={{
+                    inputType,
+                    setInputType,
+                    wsdlUrl,
+                    setWsdlUrl,
+                    loadWsdl: async (url, type) => {
+                        // Ensure state is updated (react batches updates, so we might need to rely on the args or just assume state sync)
+                        // But since existing loadWsdl uses state, we should probably update state and call it.
+                        // However, calling setWsdlUrl here might not update state immediately for loadWsdl to see it if called synchronously.
+                        // Better to send message directly here using args, mirroring loadWsdl logic.
+                        if (type === 'url' && url) {
+                            bridge.sendMessage({ command: 'loadWsdl', url: url, isLocal: false, useProxy: wsdlUseProxy });
+                            // Add to history
+                            if (!wsdlUrlHistory.includes(url)) {
+                                setWsdlUrlHistory(prev => [url, ...prev].slice(0, 10));
+                            }
+                        } else if (type === 'file') {
+                            bridge.sendMessage({ command: 'loadWsdl', url: url, isLocal: true, useProxy: false });
+                        }
+                    },
+                    downloadStatus: !downloadStatus ? 'idle'
+                        : downloadStatus.some(s => s.toLowerCase().includes('error')) ? 'error'
+                            : downloadStatus.some(s => s.toLowerCase().includes('loading') || s.includes('Downloading')) ? 'loading'
+                                : 'success',
+                    onClearSelection: () => {
+                        setSelectedInterface(null);
+                        setSelectedOperation(null);
+                        setSelectedRequest(null);
+                    }
+                }}
             />
 
             {
