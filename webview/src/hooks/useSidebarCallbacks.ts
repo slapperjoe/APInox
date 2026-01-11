@@ -64,22 +64,28 @@ export function useSidebarCallbacks({
 
     const handleAddSuite = useCallback((projName: string) => {
         const project = projects.find(p => p.name === projName);
-        if (project) {
-            const newSuite: SoapTestSuite = {
-                id: `suite-${Date.now()}`,
-                name: `TestSuite ${((project.testSuites || []).length + 1)}`,
-                testCases: [],
-                expanded: true
-            };
-            const updatedProject = {
-                ...project,
-                testSuites: [...(project.testSuites || []), newSuite],
-                dirty: true
-            };
-            setProjects(projects.map(p => p.name === projName ? updatedProject : p));
-            saveProject(updatedProject);
+        if (!project) return;
+
+        // Prevent creating suites when project/workspace is read-only
+        if (project.readOnly || config?.isReadOnly) {
+            bridge.sendMessage({ command: 'error', message: 'Cannot create test suites in a read-only workspace.' });
+            return;
         }
-    }, [projects, setProjects, saveProject]);
+
+        const newSuite: SoapTestSuite = {
+            id: `suite-${Date.now()}`,
+            name: `TestSuite ${((project.testSuites || []).length + 1)}`,
+            testCases: [],
+            expanded: true
+        };
+        const updatedProject = {
+            ...project,
+            testSuites: [...(project.testSuites || []), newSuite],
+            dirty: true
+        };
+        setProjects(projects.map(p => p.name === projName ? updatedProject : p));
+        saveProject(updatedProject);
+    }, [projects, setProjects, saveProject, config]);
 
     const handleDeleteSuite = useCallback((suiteId: string) => {
         if (deleteConfirm === suiteId) {

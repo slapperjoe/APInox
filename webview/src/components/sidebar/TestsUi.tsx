@@ -199,18 +199,21 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                                             <div
                                                 key={p.name}
                                                 onClick={() => {
+                                                    if (p.readOnly) return; // Disable for read-only projects
                                                     onAddSuite(p.name);
                                                     setShowAddSuiteMenu(false);
                                                 }}
                                                 style={{
                                                     padding: '8px 12px',
-                                                    cursor: 'pointer',
+                                                    cursor: p.readOnly ? 'not-allowed' : 'pointer',
                                                     display: 'flex',
                                                     alignItems: 'center',
-                                                    gap: 6
+                                                    gap: 6,
+                                                    opacity: p.readOnly ? 0.5 : 1
                                                 }}
                                                 onMouseEnter={(e) => e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'}
                                                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                title={p.readOnly ? 'Workspace is read-only; cannot add suites.' : undefined}
                                             >
                                                 <FolderOpen size={14} />
                                                 {p.name}
