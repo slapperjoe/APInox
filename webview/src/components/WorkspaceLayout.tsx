@@ -22,6 +22,7 @@ import { MonacoSingleLineInput, MonacoSingleLineInputHandle } from './MonacoSing
 import { formatXml, stripCausalityData } from '@shared/utils/xmlFormatter';
 import { XPathGenerator } from '../utils/xpathGenerator';
 import { WelcomePanel, TestCaseView, EmptyTestCase } from './workspace';
+import { PerformanceSuiteEditor } from './workspace/PerformanceSuiteEditor';
 import { RequestTypeSelector } from './workspace/RequestTypeSelector';
 import { QueryParamsPanel } from './QueryParamsPanel';
 import { RestAuthPanel } from './RestAuthPanel';
@@ -476,8 +477,21 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     configState,
     stepActions,
     toolsActions,
+    onUpdateSuite,
+    onAddPerformanceRequest,
+    onDeletePerformanceRequest,
+    onSelectPerformanceRequest,
+    onUpdatePerformanceRequest,
+    onImportFromWorkspace,
+    onRunSuite,
+    onStopRun,
+    performanceProgress,
+    performanceHistory,
     onBackToSuite,
-    navigationActions
+    navigationActions,
+    coordinatorStatus,
+    onStartCoordinator,
+    onStopCoordinator
 }) => {
     // Destructure groups
     const {
@@ -617,6 +631,41 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
 
         onAddMockRule(newRule);
     };
+
+    // PERFORMANCE VIEW
+    if (activeView === SidebarView.PERFORMANCE) {
+        const suiteHistory = (performanceHistory || []).filter(run => selectedPerformanceSuite ? run.suiteId === selectedPerformanceSuite.id : false);
+        const performanceSchedules = config?.performanceSchedules || [];
+        const isPerfRunning = !!performanceProgress;
+
+        if (!selectedPerformanceSuite && !selectedRequest) {
+            return <EmptyState title="No Performance Suite Selected" message="Pick or create a performance suite from the sidebar." icon={Play} />;
+        }
+
+        if (selectedPerformanceSuite && !selectedRequest) {
+            return (
+                <PerformanceSuiteEditor
+                    suite={selectedPerformanceSuite}
+                    onUpdate={onUpdateSuite || (() => { })}
+                    onRun={onRunSuite || (() => { })}
+                    onStop={onStopRun || (() => { })}
+                    isRunning={isPerfRunning}
+                    onAddRequest={onAddPerformanceRequest}
+                    onDeleteRequest={onDeletePerformanceRequest}
+                    onUpdateRequest={onUpdatePerformanceRequest}
+                    onSelectRequest={onSelectPerformanceRequest}
+                    onImportFromWorkspace={onImportFromWorkspace}
+                    progress={performanceProgress || null}
+                    history={suiteHistory}
+                    schedules={performanceSchedules}
+                    coordinatorStatus={coordinatorStatus}
+                    onStartCoordinator={onStartCoordinator}
+                    onStopCoordinator={onStopCoordinator}
+                />
+            );
+        }
+        // If a performance request is selected, fall through to the request editor below.
+    }
 
     // TESTS VIEW
     if (activeView === SidebarView.TESTS) {
