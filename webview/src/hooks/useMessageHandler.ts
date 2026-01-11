@@ -249,19 +249,66 @@ export function useMessageHandler(state: MessageHandlerState) {
 
                     let lineCount = 0;
                     let displayResponse = '';
+                    let language: 'xml' | 'json' = 'xml';
 
                     const res = message.result;
                     if (res) {
+                        const contentType = (res.headers?.['content-type'] || res.headers?.['Content-Type'] || '').toLowerCase();
+                        const tryPrettyJson = (value: string) => {
+                            try {
+                                return JSON.stringify(JSON.parse(value), null, 2);
+                            } catch {
+                                return null;
+                            }
+                        };
+
                         if (res.rawResponse) {
-                            displayResponse = typeof res.rawResponse === 'object' ? JSON.stringify(res.rawResponse, null, 2) : res.rawResponse;
+                            if (typeof res.rawResponse === 'object') {
+                                displayResponse = JSON.stringify(res.rawResponse, null, 2);
+                                language = 'json';
+                            } else if (typeof res.rawResponse === 'string') {
+                                const trimmed = res.rawResponse.trim();
+                                const isJsonLike = contentType.includes('json') || contentType.includes('graphql') || trimmed.startsWith('{') || trimmed.startsWith('[');
+                                if (isJsonLike) {
+                                    const pretty = tryPrettyJson(res.rawResponse);
+                                    displayResponse = pretty || res.rawResponse;
+                                    language = 'json';
+                                } else {
+                                    displayResponse = res.rawResponse;
+                                }
+                            }
                         } else if (typeof res === 'string') {
-                            displayResponse = res;
+                            const pretty = tryPrettyJson(res);
+                            if (pretty) {
+                                displayResponse = pretty;
+                                language = 'json';
+                            } else {
+                                displayResponse = res;
+                            }
                         } else if (res.body) {
-                            displayResponse = typeof res.body === 'object' ? JSON.stringify(res.body, null, 2) : res.body;
+                            if (typeof res.body === 'object') {
+                                displayResponse = JSON.stringify(res.body, null, 2);
+                                language = 'json';
+                            } else {
+                                const pretty = tryPrettyJson(res.body);
+                                if (pretty) {
+                                    displayResponse = pretty;
+                                    language = 'json';
+                                } else {
+                                    displayResponse = res.body;
+                                }
+                            }
                         } else if (res.data && typeof res.data === 'string') {
-                            displayResponse = res.data;
+                            const pretty = tryPrettyJson(res.data);
+                            if (pretty) {
+                                displayResponse = pretty;
+                                language = 'json';
+                            } else {
+                                displayResponse = res.data;
+                            }
                         } else {
                             displayResponse = JSON.stringify(res, null, 2);
+                            language = 'json';
                         }
                     }
 
@@ -269,7 +316,7 @@ export function useMessageHandler(state: MessageHandlerState) {
                         lineCount = displayResponse.split(/\r\n|\r|\n/).length;
                     }
 
-                    setResponse({ ...res, rawResponse: displayResponse, duration, lineCount, assertionResults: message.assertionResults });
+                    setResponse({ ...res, rawResponse: displayResponse, duration, lineCount, assertionResults: message.assertionResults, language });
                     break;
 
                 case BackendCommand.Error:

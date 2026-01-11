@@ -217,6 +217,15 @@ export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoR
         previousRequestIdRef.current = requestId;
     }, [requestId, value, autoFoldElements]);
 
+    // Keep Monaco language in sync when request or body type changes
+    useEffect(() => {
+        if (!editorRef.current || !language) return;
+        const model = editorRef.current.getModel?.();
+        if (model) {
+            monaco.editor.setModelLanguage(model, language);
+        }
+    }, [language, requestId]);
+
     return (
         <EditorContainer>
             <style>
