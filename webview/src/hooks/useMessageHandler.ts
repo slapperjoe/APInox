@@ -142,6 +142,7 @@ export function useMessageHandler(state: MessageHandlerState) {
         setProxyHistory,
         setProxyRunning,
         setTestExecution,
+        setActiveView,
         setActiveBreakpoint,
         setMockHistory,
         setMockRunning,
@@ -186,59 +187,73 @@ export function useMessageHandler(state: MessageHandlerState) {
 
             switch (message.command) {
                 case BackendCommand.WsdlParsed:
-                    debugLog('wsdlParsed', { serviceCount: message.services?.length });
-                    // Convert raw SoapService to ApiInterface, Splitting by Port
-                    const splitInterfaces: ApiInterface[] = [];
-
-                    message.services.forEach((svc: any) => {
-                        // Group operations by Port
-                        const operationsByPort = new Map<string, any[]>();
-                        svc.operations.forEach((op: any) => {
-                            const port = op.portName || 'Default';
-                            if (!operationsByPort.has(port)) {
-                                operationsByPort.set(port, []);
-                            }
-                            operationsByPort.get(port)!.push(op);
-                        });
-
-                        // Create an Interface for each Port
-                        operationsByPort.forEach((ops, portName) => {
-                            const interfaceName = portName === 'Default' ? svc.name : portName;
-
-                            splitInterfaces.push({
-                                id: crypto.randomUUID(),
-                                name: interfaceName,
-                                type: 'wsdl',
-                                bindingName: portName,
-                                soapVersion: portName.includes('12') ? '1.2' : '1.1',
-                                definition: wsdlUrlRef.current,
-                                operations: ops.map((op: any) => ({
-                                    id: crypto.randomUUID(),
-                                    name: op.name,
-                                    action: '',
-                                    input: op.input,
-                                    targetNamespace: op.targetNamespace || svc.targetNamespace,
-                                    originalEndpoint: op.originalEndpoint,
-                                    requests: [{
-                                        id: crypto.randomUUID(),
-                                        name: 'Request 1',
-                                        endpoint: op.originalEndpoint,
-                                        headers: {
-                                            'Content-Type': portName.includes('12') ? 'application/soap+xml' : 'text/xml'
-                                        },
-                                        request: portName.includes('12')
-                                            ? `<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:tem="${op.targetNamespace || svc.targetNamespace || 'http://tempuri.org/'}">\n   <soap:Header/>\n   <soap:Body>\n      <tem:${op.name}>\n         <!--Optional:-->\n${getInitialXml(op.input)}\n      </tem:${op.name}>\n   </soap:Body>\n</soap:Envelope>`
-                                            : `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="${op.targetNamespace || svc.targetNamespace || 'http://tempuri.org/'}">\n   <soapenv:Header/>\n   <soapenv:Body>\n      <tem:${op.name}>\n         <!--Optional:-->\n${getInitialXml(op.input)}\n      </tem:${op.name}>\n   </soapenv:Body>\n</soapenv:Envelope>`
-                                    }]
-                                }))
-                            });
-                        });
+                    const data = message.services;
+                    debugLog('wsdlParsed Raw Data', {
+                        isArray: Array.isArray(data),
+                        keys: data ? Object.keys(data) : 'null',
+                        hasInterfaces: !!data?.interfaces,
+                        interfacesLength: data?.interfaces?.length
                     });
 
-                    const uniqueInterfaces = splitInterfaces.filter((v, i, a) => a.findIndex(t => t.name === v.name) === i);
+                    const newInterfaces: ApiInterface[] = [];
+
+                    if (Array.isArray(data)) {
+                        // WSDL Handling: Convert SoapService[] to ApiInterface[]
+                        data.forEach((svc: any) => {
+                            // Group operations by Port
+                            const operationsByPort = new Map<string, any[]>();
+                            svc.operations.forEach((op: any) => {
+                                const port = op.portName || 'Default';
+                                if (!operationsByPort.has(port)) {
+                                    operationsByPort.set(port, []);
+                                }
+                                operationsByPort.get(port)!.push(op);
+                            });
+
+                            // Create an Interface for each Port
+                            operationsByPort.forEach((ops, portName) => {
+                                const interfaceName = portName === 'Default' ? svc.name : portName;
+
+                                newInterfaces.push({
+                                    id: crypto.randomUUID(),
+                                    name: interfaceName,
+                                    type: 'wsdl',
+                                    bindingName: portName,
+                                    soapVersion: portName.includes('12') ? '1.2' : '1.1',
+                                    definition: wsdlUrlRef.current,
+                                    operations: ops.map((op: any) => ({
+                                        id: crypto.randomUUID(),
+                                        name: op.name,
+                                        action: '',
+                                        input: op.input,
+                                        targetNamespace: op.targetNamespace || svc.targetNamespace,
+                                        originalEndpoint: op.originalEndpoint,
+                                        requests: [{
+                                            id: crypto.randomUUID(),
+                                            name: 'Request 1',
+                                            endpoint: op.originalEndpoint,
+                                            headers: {
+                                                'Content-Type': portName.includes('12') ? 'application/soap+xml' : 'text/xml'
+                                            },
+                                            request: portName.includes('12')
+                                                ? `<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:tem="${op.targetNamespace || svc.targetNamespace || 'http://tempuri.org/'}">\n   <soap:Header/>\n   <soap:Body>\n      <tem:${op.name}>\n         <!--Optional:-->\n${getInitialXml(op.input)}\n      </tem:${op.name}>\n   </soap:Body>\n</soap:Envelope>`
+                                                : `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="${op.targetNamespace || svc.targetNamespace || 'http://tempuri.org/'}">\n   <soapenv:Header/>\n   <soapenv:Body>\n      <tem:${op.name}>\n         <!--Optional:-->\n${getInitialXml(op.input)}\n      </tem:${op.name}>\n   </soapenv:Body>\n</soapenv:Envelope>`
+                                        }]
+                                    }))
+                                });
+                            });
+                        });
+                    } else if (data && data.interfaces) {
+                        // OpenAPI Handling: Already correctly formatted
+                        // Ensure IDs are unique if needed, or rely on Parser
+                        newInterfaces.push(...data.interfaces);
+                    }
+
+                    const uniqueInterfaces = newInterfaces.filter((v, i, a) => a.findIndex(t => t.name === v.name) === i);
                     debugLog('wsdlParsed complete', { interfaceCount: uniqueInterfaces.length });
                     setExploredInterfaces(uniqueInterfaces);
                     setExplorerExpanded(true);
+                    setActiveView(SidebarView.EXPLORER);
                     break;
 
                 case BackendCommand.Response:

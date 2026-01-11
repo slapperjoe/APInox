@@ -22,6 +22,7 @@ import { MonacoSingleLineInput, MonacoSingleLineInputHandle } from './MonacoSing
 import { formatXml, stripCausalityData } from '@shared/utils/xmlFormatter';
 import { XPathGenerator } from '../utils/xpathGenerator';
 import { WelcomePanel, TestCaseView, EmptyTestCase } from './workspace';
+import { ApiExplorerMain } from './explorer/ApiExplorerMain';
 import { PerformanceSuiteEditor } from './workspace/PerformanceSuiteEditor';
 import { RequestTypeSelector } from './workspace/RequestTypeSelector';
 import { QueryParamsPanel } from './QueryParamsPanel';
@@ -501,7 +502,8 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     navigationActions,
     coordinatorStatus,
     onStartCoordinator,
-    onStopCoordinator
+    onStopCoordinator,
+    explorerState // Add this
 }) => {
     // Destructure groups
     const {
@@ -756,7 +758,21 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     // EXPLORER VIEW
     if (activeView === SidebarView.EXPLORER) {
         // If a request is selected, fall through to main render
-        if (!selectedRequest) {
+        if (!selectedRequest && explorerState) {
+            return (
+                <ApiExplorerMain
+                    inputType={explorerState.inputType}
+                    setInputType={explorerState.setInputType}
+                    wsdlUrl={explorerState.wsdlUrl}
+                    setWsdlUrl={explorerState.setWsdlUrl}
+                    loadWsdl={explorerState.loadWsdl}
+                    downloadStatus={explorerState.downloadStatus}
+                    onClearSelection={explorerState.onClearSelection}
+                    selectedInterface={selectedInterface || undefined}
+                    selectedOperation={selectedOperation || undefined}
+                />
+            );
+        } else if (!selectedRequest) {
             return <EmptyWsdlExplorer />;
         }
     }

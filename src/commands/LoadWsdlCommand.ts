@@ -45,10 +45,27 @@ export class LoadWsdlCommand implements ICommand {
                 this._soapClient.log('Using system proxy for WSDL fetch...');
             }
 
-            this._soapClient.log(`Parsing WSDL from URL: ${url}`);
+            this._soapClient.log(`Parsing API from URL: ${url}`);
 
-            // Use the centralized soapClient to parse, which handles settings/proxies correctly
-            const parsed = await this._soapClient.parseWsdl(url);
+            // Detection Logic
+            const isJson = url.toLowerCase().endsWith('.json') || url.toLowerCase().endsWith('.yaml') || url.toLowerCase().endsWith('.yml');
+            // Basic detection for "swagger" or "openapi" in content if we had it, but for URL based, extension is best guess + fallback
+
+            let parsed: any;
+
+            if (isJson) {
+                this._soapClient.log('Detected OpenAPI/Swagger format (JSON/YAML)...');
+                const { OpenApiParser } = require('../OpenApiParser');
+                const parser = new OpenApiParser();
+                // We need to pass the logger or use console
+                // parser.log = this._soapClient.log;
+                parsed = await parser.parse(url);
+            } else {
+                // Fallback to WSDL
+                this._soapClient.log('Using WSDL parser...');
+                // Use the centralized soapClient to parse, which handles settings/proxies correctly
+                parsed = await this._soapClient.parseWsdl(url);
+            }
 
             this._panel.webview.postMessage({
                 command: 'wsdlParsed',
@@ -57,7 +74,7 @@ export class LoadWsdlCommand implements ICommand {
                 url: url, // Return the path/url used
                 localPath: localPath
             });
-            this._soapClient.log(`WSDL Parsed Successfully.`);
+            this._soapClient.log(`API Parsed Successfully.`);
 
             // Cleanup temp file if raw
             if (source === 'raw') {

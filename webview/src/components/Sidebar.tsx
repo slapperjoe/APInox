@@ -4,7 +4,8 @@ import { SidebarView } from '@shared/models';
 
 // Components
 import { ProjectList } from './sidebar/ProjectList';
-import { WsdlExplorer } from './sidebar/WsdlExplorer';
+import { ApiExplorerSidebar } from './sidebar/ApiExplorerSidebar';
+
 import { WatcherPanel } from './sidebar/WatcherPanel';
 import { TestsUi } from './sidebar/TestsUi';
 import { ServerUi } from './sidebar/ServerUi';
@@ -60,7 +61,6 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({
     projectProps,
     explorerProps,
-    wsdlProps,
     selectionProps,
     testRunnerProps: _testRunnerProps, // Legacy, tests now use testsProps
     watcherProps,
@@ -68,7 +68,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     serverProps,
     performanceProps,
     historyProps,
-    backendConnected,
     workspaceDirty,
     onOpenSettings,
     onOpenHelp,
@@ -91,7 +90,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     // Destructure for passing to legacy children (can be cleaned up later by moving groups down)
     const { projects, savedProjects, loadProject, saveProject, onUpdateProject, closeProject, onAddProject, toggleProjectExpand, toggleInterfaceExpand, toggleOperationExpand, onDeleteInterface, onDeleteOperation, onAddFolder, onAddRequestToFolder, onDeleteFolder, onToggleFolderExpand } = projectProps;
     const { exploredInterfaces, addToProject, addAllToProject, clearExplorer, removeFromExplorer, toggleExploredInterface, toggleExploredOperation } = explorerProps;
-    const { inputType, setInputType, wsdlUrl, setWsdlUrl, wsdlUrlHistory, selectedFile, loadWsdl, pickLocalWsdl, downloadStatus, useProxy, setUseProxy } = wsdlProps;
+    // const { inputType, setInputType, wsdlUrl, setWsdlUrl, wsdlUrlHistory, selectedFile, loadWsdl, pickLocalWsdl, downloadStatus, useProxy, setUseProxy } = wsdlProps; // Unused in Sidebar now
     const {
         selectedProjectName, setSelectedProjectName,
         selectedInterface, setSelectedInterface,
@@ -369,20 +368,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 )}
 
                 {activeView === SidebarView.EXPLORER && (
-                    <WsdlExplorer
+                    <ApiExplorerSidebar
                         exploredInterfaces={exploredInterfaces}
-                        backendConnected={backendConnected}
-                        inputType={inputType}
-                        setInputType={setInputType}
-                        wsdlUrl={wsdlUrl}
-                        setWsdlUrl={setWsdlUrl}
-                        wsdlUrlHistory={wsdlUrlHistory}
-                        selectedFile={selectedFile}
-                        loadWsdl={loadWsdl}
-                        pickLocalWsdl={pickLocalWsdl}
-                        downloadStatus={downloadStatus}
-                        useProxy={useProxy}
-                        setUseProxy={setUseProxy}
 
                         addToProject={addToProject}
                         addAllToProject={addAllToProject}
