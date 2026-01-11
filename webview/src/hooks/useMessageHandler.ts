@@ -242,7 +242,7 @@ export function useMessageHandler(state: MessageHandlerState) {
                     break;
 
                 case BackendCommand.Response:
-                    debugLog('response', { hasResult: !!message.result });
+                    debugLog('response', { hasResult: !!message.result, op: message.operation, request: message.requestName });
                     setLoading(false);
                     const endTime = Date.now();
                     const duration = (endTime - startTimeRef.current) / 1000;
@@ -252,6 +252,7 @@ export function useMessageHandler(state: MessageHandlerState) {
                     let language: 'xml' | 'json' = 'xml';
 
                     const res = message.result;
+                    const createdAt = Date.now();
                     if (res) {
                         const contentType = (res.headers?.['content-type'] || res.headers?.['Content-Type'] || '').toLowerCase();
                         const tryPrettyJson = (value: string) => {
@@ -316,7 +317,9 @@ export function useMessageHandler(state: MessageHandlerState) {
                         lineCount = displayResponse.split(/\r\n|\r|\n/).length;
                     }
 
-                    setResponse({ ...res, rawResponse: displayResponse, duration, lineCount, assertionResults: message.assertionResults, language });
+                    const nextResponse = { ...res, rawResponse: displayResponse, duration, lineCount, assertionResults: message.assertionResults, language, createdAt };
+                    debugLog('response:setResponse', { duration, lineCount, language, hasRaw: !!displayResponse });
+                    setResponse(nextResponse);
                     break;
 
                 case BackendCommand.Error:
