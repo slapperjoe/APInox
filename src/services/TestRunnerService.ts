@@ -1,5 +1,5 @@
 import * as vm from 'vm';
-import { SoapTestCase, SoapTestStep } from '../../shared/src/models';
+import { TestCase, TestStep } from '../../shared/src/models';
 import { SoapClient } from "../soapClient";
 import { AssertionRunner } from "../utils/AssertionRunner";
 import { BackendXPathEvaluator } from "../utils/BackendXPathEvaluator";
@@ -31,7 +31,7 @@ export class TestRunnerService {
         }
     }
 
-    public async runTestCase(testCase: SoapTestCase, fallbackEndpoint?: string): Promise<void> {
+    public async runTestCase(testCase: TestCase, fallbackEndpoint?: string): Promise<void> {
         this.log(`Starting Test Case: ${testCase.name}`);
         this.notifyUi('testCaseStart', { id: testCase.id });
 
@@ -140,7 +140,7 @@ export class TestRunnerService {
         this.notifyUi('testCaseEnd', { id: testCase.id });
     }
 
-    private async runRequestStep(step: SoapTestStep, context: Record<string, any>, caseId: string, fallbackEndpoint?: string) {
+    private async runRequestStep(step: TestStep, context: Record<string, any>, caseId: string, fallbackEndpoint?: string) {
         if (!step.config.request) {
             throw new Error("No request configuration found in step");
         }

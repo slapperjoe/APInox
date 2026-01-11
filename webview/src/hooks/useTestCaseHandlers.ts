@@ -7,37 +7,37 @@
 
 import { useCallback } from 'react';
 import {
-    SoapUIProject,
-    SoapUIInterface,
-    SoapUIOperation,
-    SoapUIRequest,
-    SoapTestCase,
-    SoapTestStep,
-    SoapTestSuite,
-    SoapUIAssertion,
-    SoapRequestExtractor,
+    ApinoxProject,
+    ApiInterface,
+    ApiOperation,
+    ApiRequest,
+    TestCase,
+    TestStep,
+    TestSuite,
+    Assertion,
+    RequestExtractor,
     SidebarView
 } from '@shared/models';
 import { bridge } from '../utils/bridge';
 import { getInitialXml } from '@shared/utils/xmlUtils';
 
 interface UseTestCaseHandlersParams {
-    projects: SoapUIProject[];
-    setProjects: React.Dispatch<React.SetStateAction<SoapUIProject[]>>;
-    saveProject: (project: SoapUIProject) => void;
-    selectedTestCase: SoapTestCase | null;
-    selectedStep: SoapTestStep | null;
-    setSelectedTestCase: React.Dispatch<React.SetStateAction<SoapTestCase | null>>;
-    setSelectedStep: React.Dispatch<React.SetStateAction<SoapTestStep | null>>;
-    setSelectedRequest: React.Dispatch<React.SetStateAction<SoapUIRequest | null>>;
-    setSelectedOperation: React.Dispatch<React.SetStateAction<SoapUIOperation | null>>;
-    setSelectedInterface: React.Dispatch<React.SetStateAction<SoapUIInterface | null>>;
+    projects: ApinoxProject[];
+    setProjects: React.Dispatch<React.SetStateAction<ApinoxProject[]>>;
+    saveProject: (project: ApinoxProject) => void;
+    selectedTestCase: TestCase | null;
+    selectedStep: TestStep | null;
+    setSelectedTestCase: React.Dispatch<React.SetStateAction<TestCase | null>>;
+    setSelectedStep: React.Dispatch<React.SetStateAction<TestStep | null>>;
+    setSelectedRequest: React.Dispatch<React.SetStateAction<ApiRequest | null>>;
+    setSelectedOperation: React.Dispatch<React.SetStateAction<ApiOperation | null>>;
+    setSelectedInterface: React.Dispatch<React.SetStateAction<ApiInterface | null>>;
     setSelectedPerformanceSuiteId: React.Dispatch<React.SetStateAction<string | null>>;
     setResponse: React.Dispatch<React.SetStateAction<any>>;
     setActiveView: React.Dispatch<React.SetStateAction<SidebarView>>;
     closeContextMenu: () => void;
-    selectedTestSuite: SoapTestSuite | null;
-    setSelectedTestSuite: React.Dispatch<React.SetStateAction<SoapTestSuite | null>>;
+    selectedTestSuite: TestSuite | null;
+    setSelectedTestSuite: React.Dispatch<React.SetStateAction<TestSuite | null>>;
 }
 
 interface UseTestCaseHandlersReturn {
@@ -45,7 +45,7 @@ interface UseTestCaseHandlersReturn {
     handleSelectTestCase: (caseId: string) => void;
     handleAddAssertion: (data: { xpath: string, expectedContent: string }) => void;
     handleAddExistenceAssertion: (data: { xpath: string }) => void;
-    handleGenerateTestSuite: (target: SoapUIInterface | SoapUIOperation) => void;
+    handleGenerateTestSuite: (target: ApiInterface | ApiOperation) => void;
     handleRunTestCaseWrapper: (caseId: string) => void;
     handleRunTestSuiteWrapper: (suiteId: string) => void;
     handleSaveExtractor: (data: { xpath: string, value: string, source: 'body' | 'header', variableName: string, defaultValue?: string, editingId?: string }) => void;
@@ -90,7 +90,7 @@ export function useTestCaseHandlers({
     }, [projects, setSelectedTestSuite, setSelectedTestCase, setSelectedStep, setSelectedRequest, setSelectedOperation, setSelectedInterface, setSelectedPerformanceSuiteId, setResponse]);
 
     const handleSelectTestCase = useCallback((caseId: string) => {
-        let foundCase: SoapTestCase | null = null;
+        let foundCase: TestCase | null = null;
         for (const p of projects) {
             if (p.testSuites) {
                 for (const s of p.testSuites) {
@@ -126,8 +126,8 @@ export function useTestCaseHandlers({
             return;
         }
 
-        let updatedStep: SoapTestStep | null = null;
-        let updatedProjectOrNull: SoapUIProject | null = null;
+        let updatedStep: TestStep | null = null;
+        let updatedProjectOrNull: ApinoxProject | null = null;
 
         const nextProjects = projects.map(p => {
             const suite = p.testSuites?.find(s => s.testCases?.some(tc => tc.id === selectedTestCase.id));
@@ -143,7 +143,7 @@ export function useTestCaseHandlers({
                             if (s.id !== selectedStep.id) return s;
                             if (s.type !== 'request' || !s.config.request) return s;
 
-                            const newAssertion: SoapUIAssertion = {
+                            const newAssertion: Assertion = {
                                 id: crypto.randomUUID(),
                                 type: 'XPath Match',
                                 name: 'XPath Match - ' + data.xpath.split('/').pop(),
@@ -191,8 +191,8 @@ export function useTestCaseHandlers({
     const handleAddExistenceAssertion = useCallback((data: { xpath: string }) => {
         if (!selectedTestCase || !selectedStep) return;
 
-        let updatedStep: SoapTestStep | null = null;
-        let updatedProjectOrNull: SoapUIProject | null = null;
+        let updatedStep: TestStep | null = null;
+        let updatedProjectOrNull: ApinoxProject | null = null;
 
         const nextProjects = projects.map(p => {
             const suite = p.testSuites?.find(s => s.testCases?.some(tc => tc.id === selectedTestCase.id));
@@ -208,7 +208,7 @@ export function useTestCaseHandlers({
                             if (s.id !== selectedStep.id) return s;
                             if (s.type !== 'request' || !s.config.request) return s;
 
-                            const newAssertion: SoapUIAssertion = {
+                            const newAssertion: Assertion = {
                                 id: crypto.randomUUID(),
                                 type: 'XPath Match',
                                 name: 'Node Exists - ' + data.xpath.split('/').pop(),
@@ -253,9 +253,9 @@ export function useTestCaseHandlers({
         }
     }, [projects, selectedTestCase, selectedStep, setProjects, saveProject, setSelectedStep, setSelectedRequest]);
 
-    const handleGenerateTestSuite = useCallback((target: SoapUIInterface | SoapUIOperation) => {
+    const handleGenerateTestSuite = useCallback((target: ApiInterface | ApiOperation) => {
         // Find the project containing this target
-        let targetProject: SoapUIProject | null = null;
+        let targetProject: ApinoxProject | null = null;
         for (const p of projects) {
             if (p.interfaces.some(i => i === target || i.operations.some(o => o === target))) {
                 targetProject = p;
@@ -265,18 +265,18 @@ export function useTestCaseHandlers({
         if (!targetProject) return;
 
         // Identify Operations
-        let operationsToProcess: SoapUIOperation[] = [];
+        let operationsToProcess: ApiOperation[] = [];
         let baseName = '';
         if ((target as any).operations) {
-            operationsToProcess = (target as SoapUIInterface).operations;
+            operationsToProcess = (target as ApiInterface).operations;
             baseName = target.name;
         } else {
-            operationsToProcess = [target as SoapUIOperation];
+            operationsToProcess = [target as ApiOperation];
             baseName = target.name;
         }
 
         // Create Suite
-        const newSuite: SoapTestSuite = {
+        const newSuite: TestSuite = {
             id: `ts-${Date.now()}`,
             name: `Test Suite - ${baseName}`,
             testCases: [],
@@ -285,14 +285,14 @@ export function useTestCaseHandlers({
 
         // Generate Cases
         operationsToProcess.forEach(op => {
-            const newCase: SoapTestCase = {
+            const newCase: TestCase = {
                 id: `tc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                 name: op.name,
                 steps: [],
                 expanded: true
             };
 
-            const newStep: SoapTestStep = {
+            const newStep: TestStep = {
                 id: `step-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                 name: 'Request 1',
                 type: 'request',
@@ -352,7 +352,7 @@ export function useTestCaseHandlers({
         bridge.sendMessage({ command: 'log', message: `[Run Test Case] Starting: ${caseId}` });
 
         // Find case
-        let testCase: SoapTestCase | null = null;
+        let testCase: TestCase | null = null;
         for (const p of projects) {
             if (p.testSuites) {
                 for (const s of p.testSuites) {
@@ -400,9 +400,9 @@ export function useTestCaseHandlers({
         }
 
         // Build the updated step for immediate UI update
-        let updatedStep: SoapTestStep | null = null;
+        let updatedStep: TestStep | null = null;
         if (selectedStep.type === 'request' && selectedStep.config.request) {
-            let newExtractors: SoapRequestExtractor[];
+            let newExtractors: RequestExtractor[];
 
             if (data.editingId) {
                 // Edit mode - update existing extractor
@@ -414,7 +414,7 @@ export function useTestCaseHandlers({
                 console.log('[handleSaveExtractor] Editing extractor:', data.editingId);
             } else {
                 // Create mode - add new extractor
-                const newExtractor: SoapRequestExtractor = {
+                const newExtractor: RequestExtractor = {
                     id: crypto.randomUUID(),
                     type: 'XPath',
                     path: data.xpath,

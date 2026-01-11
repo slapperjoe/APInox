@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { SoapUIProject, SoapUIInterface, SoapUIOperation, SoapUIRequest, SoapTestSuite, SoapTestCase } from '../shared/src/models';
+import { ApinoxProject, ApiInterface, ApiOperation, ApiRequest, TestSuite, TestCase } from '../shared/src/models';
 
 export class FolderProjectStorage {
     private outputChannel: any = null;
@@ -20,7 +20,7 @@ export class FolderProjectStorage {
      * @param project The project to save
      * @param dirPath The absolute path to the directory (e.g., C:/Projects/MyDirtyProject)
      */
-    public async saveProject(project: SoapUIProject, dirPath: string) {
+    public async saveProject(project: ApinoxProject, dirPath: string) {
         if (!fs.existsSync(dirPath)) {
             fs.mkdirSync(dirPath, { recursive: true });
         }
@@ -203,7 +203,7 @@ export class FolderProjectStorage {
         this.log(`Project saved to folder: ${dirPath}`);
     }
 
-    public async loadProject(dirPath: string): Promise<SoapUIProject> {
+    public async loadProject(dirPath: string): Promise<ApinoxProject> {
         this.log(`Loading project from folder: ${dirPath}`);
 
         const propsPath = path.join(dirPath, 'properties.json');
@@ -213,7 +213,7 @@ export class FolderProjectStorage {
 
         const props = JSON.parse(fs.readFileSync(propsPath, 'utf8'));
 
-        const project: SoapUIProject = {
+        const project: ApinoxProject = {
             name: props.name,
             description: props.description,
             id: props.id,
@@ -232,7 +232,7 @@ export class FolderProjectStorage {
                 const ifMetaPath = path.join(ifDir, 'interface.json');
                 const ifMeta = fs.existsSync(ifMetaPath) ? JSON.parse(fs.readFileSync(ifMetaPath, 'utf8')) : { name: ifName };
 
-                const iface: SoapUIInterface = {
+                const iface: ApiInterface = {
                     ...ifMeta,
                     operations: []
                 };
@@ -244,7 +244,7 @@ export class FolderProjectStorage {
                     const opMetaPath = path.join(opDir, 'operation.json');
                     const opMeta = fs.existsSync(opMetaPath) ? JSON.parse(fs.readFileSync(opMetaPath, 'utf8')) : { name: opNameSafe };
 
-                    const op: SoapUIOperation = {
+                    const op: ApiOperation = {
                         ...opMeta,
                         requests: []
                     };
@@ -270,7 +270,7 @@ export class FolderProjectStorage {
                     for (const [, data] of requestsMap.entries()) {
                         if (data.body !== undefined && data.meta) { // Must have both? Or allow implied?
                             // Merge
-                            const req: SoapUIRequest = {
+                            const req: ApiRequest = {
                                 ...data.meta,
                                 request: data.body
                             };
@@ -294,7 +294,7 @@ export class FolderProjectStorage {
                 const sMetaPath = path.join(suiteDir, 'suite.json');
                 const sMeta = fs.existsSync(sMetaPath) ? JSON.parse(fs.readFileSync(sMetaPath, 'utf8')) : { name: suiteNameSafe, id: `suite-${Math.random().toString(36).substring(2, 9)}-${Date.now()}` };
 
-                const suite: SoapTestSuite = {
+                const suite: TestSuite = {
                     ...sMeta,
                     testCases: []
                 };
@@ -305,7 +305,7 @@ export class FolderProjectStorage {
                     const cMetaPath = path.join(caseDir, 'case.json');
                     const cMeta = fs.existsSync(cMetaPath) ? JSON.parse(fs.readFileSync(cMetaPath, 'utf8')) : { name: caseNameSafe, id: `tc-${Math.random().toString(36).substring(2, 9)}-${Date.now()}` };
 
-                    const testCase: SoapTestCase = {
+                    const testCase: TestCase = {
                         ...cMeta,
                         steps: []
                     };

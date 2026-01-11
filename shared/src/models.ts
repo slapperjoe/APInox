@@ -1,6 +1,6 @@
-export interface SoapOperation {
+export interface ServiceOperation {
     name: string;
-    input: any;
+    input?: any;
     output: any;
     description?: string;
     targetNamespace?: string;
@@ -9,21 +9,21 @@ export interface SoapOperation {
     originalEndpoint?: string;
 }
 
-export interface SoapService {
+export interface ApiService {
     name: string;
     ports: string[];
-    operations: SoapOperation[];
+    operations: ServiceOperation[];
     targetNamespace?: string;
 }
 
-export interface SoapSchemaNode {
+export interface SchemaNode {
     name: string;
     type: string; // e.g. "xsd:string", "tns:CountryCode"
     kind: 'complex' | 'simple';
     minOccurs?: string;
     maxOccurs?: string;
     documentation?: string;
-    children?: SoapSchemaNode[];
+    children?: SchemaNode[];
     options?: string[]; // Enums
     isOptional?: boolean;
 }
@@ -79,7 +79,7 @@ export interface GraphQLConfig {
 }
 
 // Assertion Types
-export interface SoapUIAssertion {
+export interface Assertion {
     type: 'Simple Contains' | 'Simple Not Contains' | 'Response SLA' | 'XPath Match' | 'SOAP Fault' | 'HTTP Status' | 'Script';
     name?: string;
     id?: string;
@@ -101,7 +101,7 @@ export interface SoapUIAssertion {
     };
 }
 
-export interface SoapRequestExtractor {
+export interface RequestExtractor {
     type: 'XPath' | 'JSONPath';
     source: 'body' | 'header';
     path: string;
@@ -142,7 +142,7 @@ export interface WSSecurityConfig {
 // SOAP Attachments
 export type AttachmentType = 'Base64' | 'MTOM' | 'SwA';
 
-export interface SoapAttachment {
+export interface RequestAttachment {
     id: string;          // UUID
     name: string;        // "document.pdf"
     fsPath: string;      // Absolute path to file
@@ -152,19 +152,19 @@ export interface SoapAttachment {
     size?: number;       // File size in bytes for UI display
 }
 
-export interface SoapUIRequest {
+export interface ApiRequest {
     name: string;
     request: string; // The body content (XML, JSON, GraphQL query, etc.)
     contentType?: string;
     method?: HttpMethod | string;
     endpoint?: string;
     dirty?: boolean;
-    assertions?: SoapUIAssertion[];
-    extractors?: SoapRequestExtractor[];
+    assertions?: Assertion[];
+    extractors?: RequestExtractor[];
     headers?: Record<string, string>;
     id?: string;
     wsSecurity?: WSSecurityConfig;
-    attachments?: SoapAttachment[];
+    attachments?: RequestAttachment[];
 
     // REST/GraphQL Support (Phase 1)
     /** Request type discriminator - defaults to 'soap' for backward compatibility */
@@ -179,10 +179,10 @@ export interface SoapUIRequest {
     readOnly?: boolean;
 }
 
-export interface SoapUIOperation {
+export interface ApiOperation {
     name: string;
     action: string;
-    requests: SoapUIRequest[];
+    requests: ApiRequest[];
     expanded?: boolean;
     input?: any;
     targetNamespace?: string;
@@ -190,13 +190,13 @@ export interface SoapUIOperation {
     id?: string;
 }
 
-export interface SoapUIInterface {
+export interface ApiInterface {
     name: string;
     type: string;
     bindingName: string;
     soapVersion: string;
     definition: string; // WSDL URL
-    operations: SoapUIOperation[];
+    operations: ApiOperation[];
     expanded?: boolean;
     id?: string;
 }
@@ -209,7 +209,7 @@ export interface SoapUIInterface {
 export interface ApinoxFolder {
     id: string;
     name: string;
-    requests: SoapUIRequest[];
+    requests: ApiRequest[];
     folders?: ApinoxFolder[];
     expanded?: boolean;
 }
@@ -227,7 +227,7 @@ export interface RestCollection {
     /** Collection-level variables */
     variables?: Record<string, string>;
     /** Top-level requests */
-    requests: SoapUIRequest[];
+    requests: ApiRequest[];
     /** Nested folders */
     folders?: ApinoxFolder[];
     expanded?: boolean;
@@ -241,14 +241,14 @@ export interface ApinoxProject {
     name: string;
     description?: string;
     /** WSDL-imported interfaces (read-only structure) */
-    interfaces: SoapUIInterface[];
+    interfaces: ApiInterface[];
     /** User-created folders (can contain any request type) */
     folders?: ApinoxFolder[];
     expanded?: boolean;
     fileName?: string;
     id?: string;
     dirty?: boolean;
-    testSuites?: SoapTestSuite[];
+    testSuites?: TestSuite[];
     /** @deprecated Use folders instead */
     collections?: RestCollection[];
     /** Marks the project as read-only (e.g. Samples) */
@@ -261,7 +261,7 @@ export type SoapUIProject = ApinoxProject;
 // Test Runner Types
 export type TestStepType = 'request' | 'delay' | 'transfer' | 'script';
 
-export interface SoapTestStep {
+export interface TestStep {
     id: string;
     name: string;
     type: TestStepType;
@@ -269,7 +269,7 @@ export interface SoapTestStep {
     config: {
         // For 'request'
         requestId?: string; // Reference to a project request (if linked)
-        request?: SoapUIRequest; // Standalone request copy
+        request?: ApiRequest; // Standalone request copy
 
         // For 'delay'
         delayMs?: number;
@@ -288,17 +288,17 @@ export interface SoapTestStep {
     };
 }
 
-export interface SoapTestCase {
+export interface TestCase {
     id: string;
     name: string;
-    steps: SoapTestStep[];
+    steps: TestStep[];
     expanded?: boolean;
 }
 
-export interface SoapTestSuite {
+export interface TestSuite {
     id: string;
     name: string;
-    testCases: SoapTestCase[];
+    testCases: TestCase[];
     expanded?: boolean;
 }
 
@@ -566,7 +566,7 @@ export interface PerformanceRequest {
     requestBody: string;
     headers?: Record<string, string>;
     /** Extractors for passing values between requests */
-    extractors: SoapRequestExtractor[];
+    extractors: RequestExtractor[];
     /** Expected max response time in ms */
     slaThreshold?: number;
     /** Order in the sequence */

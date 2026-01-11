@@ -6,15 +6,15 @@
  */
 
 import { useCallback } from 'react';
-import { SoapUIProject, SoapTestCase, SoapTestSuite } from '@shared/models';
+import { ApinoxProject, TestCase, TestSuite } from '@shared/models';
 import { bridge } from '../utils/bridge';
 
 interface UseSidebarCallbacksParams {
-    projects: SoapUIProject[];
-    setProjects: React.Dispatch<React.SetStateAction<SoapUIProject[]>>;
+    projects: ApinoxProject[];
+    setProjects: React.Dispatch<React.SetStateAction<ApinoxProject[]>>;
     deleteConfirm: string | null;
     setDeleteConfirm: React.Dispatch<React.SetStateAction<string | null>>;
-    saveProject: (project: SoapUIProject) => void;
+    saveProject: (project: ApinoxProject) => void;
     setWatcherRunning: React.Dispatch<React.SetStateAction<boolean>>;
     setWatcherHistory: React.Dispatch<React.SetStateAction<any[]>>;
     setProxyRunning: React.Dispatch<React.SetStateAction<boolean>>;
@@ -72,7 +72,7 @@ export function useSidebarCallbacks({
             return;
         }
 
-        const newSuite: SoapTestSuite = {
+        const newSuite: TestSuite = {
             id: `suite-${Date.now()}`,
             name: `TestSuite ${((project.testSuites || []).length + 1)}`,
             testCases: [],
@@ -141,7 +141,7 @@ export function useSidebarCallbacks({
         setProjects(prev => prev.map(p => {
             const suite = p.testSuites?.find(s => s.id === suiteId);
             if (!suite) return p;
-            const newCase: SoapTestCase = {
+            const newCase: TestCase = {
                 id: `tc-${Date.now()}`,
                 name: `TestCase ${(suite.testCases?.length || 0) + 1}`,
                 expanded: true,

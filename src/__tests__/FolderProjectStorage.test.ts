@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as os from 'os';
 
 import { FolderProjectStorage } from '../FolderProjectStorage';
-import { SoapUIProject } from '../../shared/src/models';
+import { ApinoxProject } from '../../shared/src/models';
 
 describe('FolderProjectStorage', () => {
     let storage: FolderProjectStorage;
@@ -21,7 +21,7 @@ describe('FolderProjectStorage', () => {
         }
     });
 
-    const createTestProject = (): SoapUIProject => ({
+    const createTestProject = (): ApinoxProject => ({
         name: 'Test Project',
         description: 'A test project',
         interfaces: [],

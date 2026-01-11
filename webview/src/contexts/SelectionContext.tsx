@@ -16,7 +16,7 @@
  */
 
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
-import { SoapUIInterface, SoapUIOperation, SoapUIRequest, SoapTestCase, SoapTestStep } from '@shared/models';
+import { ApiInterface, ApiOperation, ApiRequest, TestCase, TestStep, TestSuite } from '@shared/models';
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -32,22 +32,22 @@ export interface SelectionContextValue {
     // -------------------------------------------------------------------------
 
     /** Currently selected WSDL interface */
-    selectedInterface: SoapUIInterface | null;
+    selectedInterface: ApiInterface | null;
 
     /** Currently selected operation within an interface */
-    selectedOperation: SoapUIOperation | null;
+    selectedOperation: ApiOperation | null;
 
     /** Currently selected request within an operation */
-    selectedRequest: SoapUIRequest | null;
+    selectedRequest: ApiRequest | null;
 
     /** Currently selected test step (for test runner) */
-    selectedStep: SoapTestStep | null;
+    selectedStep: TestStep | null;
 
     /** Currently selected Test Suite */
-    selectedTestSuite: import('@shared/models').SoapTestSuite | null;
+    selectedTestSuite: TestSuite | null;
 
     /** Currently selected test case (for test runner) */
-    selectedTestCase: SoapTestCase | null;
+    selectedTestCase: TestCase | null;
 
     /** Currently selected performance suite ID */
     selectedPerformanceSuiteId: string | null;
@@ -66,12 +66,12 @@ export interface SelectionContextValue {
     // STATE SETTERS
     // -------------------------------------------------------------------------
 
-    setSelectedInterface: React.Dispatch<React.SetStateAction<SoapUIInterface | null>>;
-    setSelectedOperation: React.Dispatch<React.SetStateAction<SoapUIOperation | null>>;
-    setSelectedRequest: React.Dispatch<React.SetStateAction<SoapUIRequest | null>>;
-    setSelectedStep: React.Dispatch<React.SetStateAction<SoapTestStep | null>>;
-    setSelectedTestSuite: React.Dispatch<React.SetStateAction<import('@shared/models').SoapTestSuite | null>>;
-    setSelectedTestCase: React.Dispatch<React.SetStateAction<SoapTestCase | null>>;
+    setSelectedInterface: React.Dispatch<React.SetStateAction<ApiInterface | null>>;
+    setSelectedOperation: React.Dispatch<React.SetStateAction<ApiOperation | null>>;
+    setSelectedRequest: React.Dispatch<React.SetStateAction<ApiRequest | null>>;
+    setSelectedStep: React.Dispatch<React.SetStateAction<TestStep | null>>;
+    setSelectedTestSuite: React.Dispatch<React.SetStateAction<TestSuite | null>>;
+    setSelectedTestCase: React.Dispatch<React.SetStateAction<TestCase | null>>;
     setSelectedPerformanceSuiteId: React.Dispatch<React.SetStateAction<string | null>>;
     setResponse: React.Dispatch<React.SetStateAction<any>>;
     setLoading: React.Dispatch<React.SetStateAction<boolean>>;
@@ -120,22 +120,22 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
     // STATE
     // -------------------------------------------------------------------------
 
-    const [selectedInterface, setSelectedInterface] = useState<SoapUIInterface | null>(null);
-    const [selectedOperation, setSelectedOperation] = useState<SoapUIOperation | null>(null);
-    const [selectedRequestState, setSelectedRequestState] = useState<SoapUIRequest | null>(null);
-    const selectedRequestRef = React.useRef<SoapUIRequest | null>(null);
-    const [selectedStep, setSelectedStep] = useState<SoapTestStep | null>(null);
-    const [selectedTestSuite, setSelectedTestSuite] = useState<import('@shared/models').SoapTestSuite | null>(null);
-    const [selectedTestCase, setSelectedTestCase] = useState<SoapTestCase | null>(null);
+    const [selectedInterface, setSelectedInterface] = useState<ApiInterface | null>(null);
+    const [selectedOperation, setSelectedOperation] = useState<ApiOperation | null>(null);
+    const [selectedRequestState, setSelectedRequestState] = useState<ApiRequest | null>(null);
+    const selectedRequestRef = React.useRef<ApiRequest | null>(null);
+    const [selectedStep, setSelectedStep] = useState<TestStep | null>(null);
+    const [selectedTestSuite, setSelectedTestSuite] = useState<TestSuite | null>(null);
+    const [selectedTestCase, setSelectedTestCase] = useState<TestCase | null>(null);
     const [selectedPerformanceSuiteId, setSelectedPerformanceSuiteId] = useState<string | null>(null);
     const [response, setResponseState] = useState<any>(null);
     const [responseCache, setResponseCache] = useState<Record<string, any>>({});
     const [loading, setLoading] = useState(false);
 
-    const getCacheKey = useCallback((req: SoapUIRequest | null) => req?.id || req?.name || null, []);
+    const getCacheKey = useCallback((req: ApiRequest | null) => req?.id || req?.name || null, []);
     const getStorageKey = useCallback((key: string) => `apinox:lastResponse:${key}`, []);
 
-    const restoreResponseForRequest = useCallback((req: SoapUIRequest | null, existingCache?: Record<string, any>) => {
+    const restoreResponseForRequest = useCallback((req: ApiRequest | null, existingCache?: Record<string, any>) => {
         const key = getCacheKey(req);
         if (!req || !key) {
             console.log('[SelectionContext] restoreResponseForRequest: no request/key, clearing response');
@@ -168,9 +168,9 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
         setResponseState(null);
     }, [getCacheKey, getStorageKey, responseCache]);
 
-    const setSelectedRequest = useCallback<React.Dispatch<React.SetStateAction<SoapUIRequest | null>>>((next) => {
+    const setSelectedRequest = useCallback<React.Dispatch<React.SetStateAction<ApiRequest | null>>>((next) => {
         const resolved = typeof next === 'function'
-            ? (next as (prev: SoapUIRequest | null) => SoapUIRequest | null)(selectedRequestRef.current)
+            ? (next as (prev: ApiRequest | null) => ApiRequest | null)(selectedRequestRef.current)
             : next;
 
         console.log('[SelectionContext] setSelectedRequest', { name: resolved?.name, id: (resolved as any)?.id });

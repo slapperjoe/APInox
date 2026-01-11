@@ -9,13 +9,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as FormData from 'form-data';
-import { SoapAttachment } from '../../shared/src/models';
+import { RequestAttachment } from '../../shared/src/models';
 
 export class AttachmentUtil {
     /**
      * Inline Base64 attachments into the XML by replacing cid: references
      */
-    static inlineBase64Attachments(xml: string, attachments: SoapAttachment[]): string {
+    static inlineBase64Attachments(xml: string, attachments: RequestAttachment[]): string {
         let result = xml;
         const base64Attachments = attachments.filter(a => a.type === 'Base64');
 
@@ -37,14 +37,14 @@ export class AttachmentUtil {
     /**
      * Check if any attachments require multipart handling
      */
-    static hasMultipartAttachments(attachments: SoapAttachment[]): boolean {
+    static hasMultipartAttachments(attachments: RequestAttachment[]): boolean {
         return attachments.some(a => a.type === 'SwA' || a.type === 'MTOM');
     }
 
     /**
      * Build a multipart request for SwA/MTOM attachments
      */
-    static buildMultipartRequest(xml: string, attachments: SoapAttachment[]): FormData {
+    static buildMultipartRequest(xml: string, attachments: RequestAttachment[]): FormData {
         const form = new FormData();
 
         // First part: the SOAP envelope
@@ -83,7 +83,7 @@ export class AttachmentUtil {
      */
     static processAttachments(
         xml: string,
-        attachments: SoapAttachment[]
+        attachments: RequestAttachment[]
     ): { xml: string; formData?: FormData; isMultipart: boolean } {
         if (!attachments || attachments.length === 0) {
             return { xml, isMultipart: false };

@@ -1,4 +1,4 @@
-import { SoapUIAssertion } from '../../shared/src/models';
+import { Assertion } from '../../shared/src/models';
 import { BackendXPathEvaluator } from "./BackendXPathEvaluator";
 
 export interface AssertionResult {
@@ -10,14 +10,14 @@ export interface AssertionResult {
 
 export class AssertionRunner {
 
-    public static run(responseVal: string | null | undefined, timeTakenMs: number, assertions: SoapUIAssertion[], statusCode?: number): AssertionResult[] {
+    public static run(responseVal: string | null | undefined, timeTakenMs: number, assertions: Assertion[], statusCode?: number): AssertionResult[] {
         if (!assertions || assertions.length === 0) return [];
 
         const safeResponse = responseVal || '';
         return assertions.map(a => this.evaluate(safeResponse, timeTakenMs, a, statusCode));
     }
 
-    private static evaluate(response: string, timeTaken: number, assertion: SoapUIAssertion, statusCode?: number): AssertionResult {
+    private static evaluate(response: string, timeTaken: number, assertion: Assertion, statusCode?: number): AssertionResult {
         const config = assertion.configuration || {};
 
         switch (assertion.type) {

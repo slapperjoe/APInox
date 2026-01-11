@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import styled, { keyframes, css } from 'styled-components';
-import { SoapUIProject } from '@shared/models';
+import { ApinoxProject } from '@shared/models';
 import { Play, Plus, ChevronRight, ChevronDown, FlaskConical, Folder, Trash2 } from 'lucide-react';
 
 const Container = styled.div`
@@ -68,7 +68,7 @@ const TreeItem = styled.div<{ depth: number, active?: boolean }>`
 `;
 
 interface TestNavigatorProps {
-    projects: SoapUIProject[];
+    projects: ApinoxProject[];
     onAddSuite: (projectName: string) => void;
     onDeleteSuite: (suiteId: string) => void;
     onRunSuite: (suiteId: string) => void;

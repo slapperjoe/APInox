@@ -2,13 +2,13 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { SoapPanel } from './panels/SoapPanel';
+import { WebviewPanel } from './panels/WebviewPanel';
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('Congratulations, your extension "apinox" is now active!');
 
     // Pass extension context for SecretStorage (used by AzureDevOpsService)
-    SoapPanel.setContext(context);
+    WebviewPanel.setContext(context);
 
     // Create status bar button
     const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
@@ -19,7 +19,7 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(statusBarItem);
 
     const disposable = vscode.commands.registerCommand('apinox.openInterface', () => {
-        SoapPanel.createOrShow(context.extensionUri);
+        WebviewPanel.createOrShow(context.extensionUri);
     });
 
     context.subscriptions.push(disposable);
@@ -38,8 +38,8 @@ export function activate(context: vscode.ExtensionContext) {
 
                 if (fs.existsSync(configDir)) {
                     // Close panel if open - need to wait for disposal to complete
-                    if (SoapPanel.currentPanel) {
-                        SoapPanel.currentPanel.dispose();
+                    if (WebviewPanel.currentPanel) {
+                        WebviewPanel.currentPanel.dispose();
                         // Wait for webview channel to fully close (especially important in debugger)
                         await new Promise(resolve => setTimeout(resolve, 500));
                     }
@@ -94,9 +94,9 @@ export function activate(context: vscode.ExtensionContext) {
 export function deactivate() {
     console.log('APInox: Deactivate called.');
     // Ensure the panel is properly disposed when the extension is deactivated
-    if (SoapPanel.currentPanel) {
+    if (WebviewPanel.currentPanel) {
         console.log('APInox: Disposing panel...');
-        SoapPanel.currentPanel.dispose();
+        WebviewPanel.currentPanel.dispose();
         console.log('APInox: Panel disposed.');
     }
     console.log('APInox: Deactivate finished.');

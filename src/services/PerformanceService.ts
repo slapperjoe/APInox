@@ -5,7 +5,7 @@ import {
     PerformanceRun,
     PerformanceResult,
     PerformanceStats,
-    SoapRequestExtractor
+    RequestExtractor
 } from '../../shared/src/models';
 import { SoapClient } from '../soapClient';
 import * as xpath from 'xpath';
@@ -325,7 +325,7 @@ export class PerformanceService extends EventEmitter {
         };
     }
 
-    private extractValue(responseBody: string, extractor: SoapRequestExtractor): string | null {
+    private extractValue(responseBody: string, extractor: RequestExtractor): string | null {
         if (extractor.type === 'XPath') {
             try {
                 const doc = new DOMParser().parseFromString(responseBody, 'text/xml');

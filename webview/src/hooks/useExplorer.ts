@@ -6,29 +6,29 @@
  */
 
 import { useState, useCallback } from 'react';
-import { SoapUIInterface, SoapUIProject } from '@shared/models';
+import { ApiInterface, ApinoxProject } from '@shared/models';
 
 interface UseExplorerParams {
-    projects: SoapUIProject[];
-    setProjects: React.Dispatch<React.SetStateAction<SoapUIProject[]>>;
+    projects: ApinoxProject[];
+    setProjects: React.Dispatch<React.SetStateAction<ApinoxProject[]>>;
     setWorkspaceDirty: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 interface UseExplorerReturn {
     // State
-    exploredInterfaces: SoapUIInterface[];
-    setExploredInterfaces: React.Dispatch<React.SetStateAction<SoapUIInterface[]>>;
+    exploredInterfaces: ApiInterface[];
+    setExploredInterfaces: React.Dispatch<React.SetStateAction<ApiInterface[]>>;
     explorerExpanded: boolean;
     setExplorerExpanded: React.Dispatch<React.SetStateAction<boolean>>;
-    pendingAddInterface: SoapUIInterface | null;
-    setPendingAddInterface: React.Dispatch<React.SetStateAction<SoapUIInterface | null>>;
+    pendingAddInterface: ApiInterface | null;
+    setPendingAddInterface: React.Dispatch<React.SetStateAction<ApiInterface | null>>;
 
     // Actions
-    addToProject: (iface: SoapUIInterface) => void;
-    addInterfaceToNamedProject: (iface: SoapUIInterface, projectName: string, isNew: boolean) => void;
+    addToProject: (iface: ApiInterface) => void;
+    addInterfaceToNamedProject: (iface: ApiInterface, projectName: string, isNew: boolean) => void;
     addAllToProject: () => void;
     clearExplorer: () => void;
-    removeFromExplorer: (iface: SoapUIInterface) => void;
+    removeFromExplorer: (iface: ApiInterface) => void;
     toggleExplorerExpand: () => void;
     toggleExploredInterface: (iName: string) => void;
     toggleExploredOperation: (iName: string, oName: string) => void;
@@ -40,9 +40,9 @@ export function useExplorer({
     setWorkspaceDirty
 }: UseExplorerParams): UseExplorerReturn {
     // State
-    const [exploredInterfaces, setExploredInterfaces] = useState<SoapUIInterface[]>([]);
+    const [exploredInterfaces, setExploredInterfaces] = useState<ApiInterface[]>([]);
     const [explorerExpanded, setExplorerExpanded] = useState(false);
-    const [pendingAddInterface, setPendingAddInterface] = useState<SoapUIInterface | null>(null);
+    const [pendingAddInterface, setPendingAddInterface] = useState<ApiInterface | null>(null);
 
     // Actions
     const clearExplorer = useCallback(() => {
@@ -62,7 +62,7 @@ export function useExplorer({
     }, []);
 
     // Add interface to a specific named project (new or existing)
-    const addInterfaceToNamedProject = useCallback((iface: SoapUIInterface, projectName: string, isNew: boolean) => {
+    const addInterfaceToNamedProject = useCallback((iface: ApiInterface, projectName: string, isNew: boolean) => {
         if (isNew) {
             // Create new project with this interface
             setProjects(prev => [...prev, {
@@ -84,7 +84,7 @@ export function useExplorer({
         removeInterfaceFromExplorer(iface.name);
     }, [setProjects, setWorkspaceDirty, removeInterfaceFromExplorer]);
 
-    const addToProject = useCallback((iface: SoapUIInterface) => {
+    const addToProject = useCallback((iface: ApiInterface) => {
         // Set pending interface to trigger modal
         setPendingAddInterface(iface);
     }, []);
@@ -98,7 +98,7 @@ export function useExplorer({
         }
     }, [exploredInterfaces]);
 
-    const removeFromExplorer = useCallback((iface: SoapUIInterface) => {
+    const removeFromExplorer = useCallback((iface: ApiInterface) => {
         setExploredInterfaces(prev => prev.filter(i => i !== iface));
     }, []);
 

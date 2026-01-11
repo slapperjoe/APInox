@@ -1,7 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { Trash2, CheckCircle2, XCircle, Clock, Play } from 'lucide-react';
-import { SoapUIAssertion } from '@shared/models';
+import { Assertion } from '@shared/models';
 import { StatusCodePicker } from './StatusCodePicker';
 import Editor from '@monaco-editor/react';
 import { ScriptPlaygroundModal } from './modals/ScriptPlaygroundModal';
@@ -101,16 +101,16 @@ function generateId() {
 }
 
 interface AssertionsPanelProps {
-    assertions: SoapUIAssertion[];
-    onChange: (assertions: SoapUIAssertion[]) => void;
+    assertions: Assertion[];
+    onChange: (assertions: Assertion[]) => void;
     lastResult?: any[]; // Results from last run
 }
 
 export const AssertionsPanel: React.FC<AssertionsPanelProps> = ({ assertions, onChange, lastResult }) => {
     const [playgroundScript, setPlaygroundScript] = React.useState<string | null>(null);
 
-    const handleAdd = (type: SoapUIAssertion['type']) => {
-        const newAssertion: SoapUIAssertion = {
+    const handleAdd = (type: Assertion['type']) => {
+        const newAssertion: Assertion = {
             id: generateId(),
             type,
             name: type,

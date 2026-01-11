@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ScriptEditor } from '../ScriptEditor';
-import { SoapTestStep } from '@shared/models';
+import { TestStep } from '@shared/models';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock the bridge
@@ -11,7 +11,7 @@ vi.mock('../../utils/bridge', () => ({
 }));
 
 describe('ScriptEditor', () => {
-    const mockStep: SoapTestStep = {
+    const mockStep: TestStep = {
         id: 'step-123',
         name: 'Test Script',
         type: 'script',
@@ -102,7 +102,7 @@ describe('ScriptEditor', () => {
             />
         );
 
-        const updatedStep: SoapTestStep = {
+        const updatedStep: TestStep = {
             ...mockStep,
             config: {
                 scriptContent: '// Updated content\nlog("updated");'

@@ -1,10 +1,10 @@
 import {
-    SoapUIProject,
-    SoapUIInterface,
-    SoapUIOperation,
-    SoapUIRequest,
-    SoapTestCase,
-    SoapTestStep,
+    ApinoxProject,
+    ApiInterface,
+    ApiOperation,
+    ApiRequest,
+    TestCase,
+    TestStep,
     TestStepType,
     WatcherEvent,
     MockConfig,
@@ -20,18 +20,18 @@ import {
 // ============================================================================
 
 export interface SidebarProjectProps {
-    projects: SoapUIProject[];
+    projects: ApinoxProject[];
     savedProjects: Set<string>;
     loadProject: () => void;
-    saveProject: (project: SoapUIProject) => void;
-    onUpdateProject: (oldProject: SoapUIProject, newProject: SoapUIProject) => void;
+    saveProject: (project: ApinoxProject) => void;
+    onUpdateProject: (oldProject: ApinoxProject, newProject: ApinoxProject) => void;
     closeProject: (name: string) => void;
     onAddProject: () => void;
     toggleProjectExpand: (name: string) => void;
     toggleInterfaceExpand: (projName: string, ifaceName: string) => void;
     toggleOperationExpand: (projName: string, ifaceName: string, opName: string) => void;
-    onDeleteInterface?: (iface: SoapUIInterface) => void;
-    onDeleteOperation?: (op: SoapUIOperation, iface: SoapUIInterface) => void;
+    onDeleteInterface?: (iface: ApiInterface) => void;
+    onDeleteOperation?: (op: ApiOperation, iface: ApiInterface) => void;
     // Folder handlers
     onAddFolder?: (projectName: string, parentFolderId?: string) => void;
     onAddRequestToFolder?: (projectName: string, folderId: string) => void;
@@ -40,13 +40,13 @@ export interface SidebarProjectProps {
 }
 
 export interface SidebarExplorerProps {
-    exploredInterfaces: SoapUIInterface[];
+    exploredInterfaces: ApiInterface[];
     explorerExpanded: boolean;
     toggleExplorerExpand: () => void;
-    addToProject: (iface: SoapUIInterface) => void;
+    addToProject: (iface: ApiInterface) => void;
     addAllToProject: () => void;
     clearExplorer: () => void;
-    removeFromExplorer: (iface: SoapUIInterface) => void;
+    removeFromExplorer: (iface: ApiInterface) => void;
     toggleExploredInterface: (iName: string) => void;
     toggleExploredOperation: (iName: string, oName: string) => void;
 }
@@ -68,16 +68,16 @@ export interface SidebarWsdlProps {
 export interface SidebarSelectionProps {
     selectedProjectName: string | null;
     setSelectedProjectName: (name: string | null) => void;
-    selectedInterface: SoapUIInterface | null;
-    setSelectedInterface: (iface: SoapUIInterface | null) => void;
-    selectedOperation: SoapUIOperation | null;
-    setSelectedOperation: (op: SoapUIOperation | null) => void;
-    selectedRequest: SoapUIRequest | null;
-    setSelectedRequest: (req: SoapUIRequest | null) => void;
+    selectedInterface: ApiInterface | null;
+    setSelectedInterface: (iface: ApiInterface | null) => void;
+    selectedOperation: ApiOperation | null;
+    setSelectedOperation: (op: ApiOperation | null) => void;
+    selectedRequest: ApiRequest | null;
+    setSelectedRequest: (req: ApiRequest | null) => void;
     setResponse: (res: any) => void;
     handleContextMenu: (e: React.MouseEvent, type: string, data: any, isExplorer?: boolean) => void;
-    onAddRequest?: (op: SoapUIOperation) => void;
-    onDeleteRequest?: (req: SoapUIRequest) => void;
+    onAddRequest?: (op: ApiOperation) => void;
+    onDeleteRequest?: (req: ApiRequest) => void;
     deleteConfirm: string | null;
     setDeleteConfirm: (id: string | null) => void;
 }
@@ -125,7 +125,7 @@ export interface SidebarProxyProps {
 }
 
 export interface SidebarTestsProps {
-    projects: SoapUIProject[];
+    projects: ApinoxProject[];
     onAddSuite: (projectName: string) => void;
     onDeleteSuite: (suiteId: string) => void;
     onRunSuite: (suiteId: string) => void;
@@ -225,20 +225,20 @@ export interface SidebarHistoryProps {
 // ============================================================================
 
 export interface WorkspaceSelectionState {
-    project?: import('@shared/models').SoapUIProject | null;
-    interface?: import('@shared/models').SoapUIInterface | null;
-    request: SoapUIRequest | null;
-    operation: SoapUIOperation | null;
-    testSuite?: import('@shared/models').SoapTestSuite | null;
-    testCase?: SoapTestCase | null;
-    testStep?: SoapTestStep | null;
+    project?: import('@shared/models').ApinoxProject | null;
+    interface?: import('@shared/models').ApiInterface | null;
+    request: ApiRequest | null;
+    operation: ApiOperation | null;
+    testSuite?: import('@shared/models').TestSuite | null;
+    testCase?: TestCase | null;
+    testStep?: TestStep | null;
     performanceSuite?: PerformanceSuite | null;
 }
 
 export interface WorkspaceRequestActions {
     onExecute: (xml: string) => void;
     onCancel: () => void;
-    onUpdate: (req: SoapUIRequest) => void;
+    onUpdate: (req: ApiRequest) => void;
     onReset: () => void;
     response: any;
     loading: boolean;
@@ -270,19 +270,19 @@ export interface WorkspaceConfigState {
 
 export interface WorkspaceStepActions {
     onRunTestCase?: (caseId: string) => void;
-    onOpenStepRequest?: (req: SoapUIRequest) => void;
+    onOpenStepRequest?: (req: ApiRequest) => void;
     onBackToCase?: () => void;
     onAddStep?: (caseId: string, type: TestStepType) => void;
     testExecution?: Record<string, Record<string, { status: 'running' | 'pass' | 'fail', error?: string, response?: any }>>;
-    onUpdateStep?: (step: SoapTestStep) => void;
-    onSelectStep?: (step: SoapTestStep | null) => void;
+    onUpdateStep?: (step: TestStep) => void;
+    onSelectStep?: (step: TestStep | null) => void;
     onDeleteStep?: (stepId: string) => void;
     onMoveStep?: (stepId: string, direction: 'up' | 'down') => void;
 }
 
 export interface WorkspaceToolsActions {
     onAddExtractor?: (data: { xpath: string, value: string, source: 'body' | 'header' }) => void;
-    onEditExtractor?: (extractor: import('@shared/models').SoapRequestExtractor, index: number) => void;
+    onEditExtractor?: (extractor: import('@shared/models').RequestExtractor, index: number) => void;
     onAddAssertion?: (data: { xpath: string, expectedContent: string }) => void;
     onAddExistenceAssertion?: (data: { xpath: string }) => void;
     onAddReplaceRule?: (data: { xpath: string, matchText: string, target: 'request' | 'response' }) => void;
@@ -318,11 +318,11 @@ export interface WorkspaceBreakpointState {
 }
 
 export interface NavigationActions {
-    onSelectProject: (project: import('@shared/models').SoapUIProject) => void;
-    onSelectInterface: (iface: import('@shared/models').SoapUIInterface) => void;
-    onSelectOperation: (operation: import('@shared/models').SoapUIOperation) => void;
-    onSelectRequest: (request: SoapUIRequest) => void;
-    onSelectTestCase: (testCase: SoapTestCase) => void;
+    onSelectProject: (project: import('@shared/models').ApinoxProject) => void;
+    onSelectInterface: (iface: import('@shared/models').ApiInterface) => void;
+    onSelectOperation: (operation: import('@shared/models').ApiOperation) => void;
+    onSelectRequest: (request: ApiRequest) => void;
+    onSelectTestCase: (testCase: TestCase) => void;
 }
 
 export interface WorkspaceLayoutProps extends WorkspacePerformanceActions {
@@ -339,5 +339,5 @@ export interface WorkspaceLayoutProps extends WorkspacePerformanceActions {
     onStartCoordinator?: (port: number, expectedWorkers: number) => void;
     onStopCoordinator?: () => void;
     // For breadcrumb resolution
-    projects?: import('@shared/models').SoapUIProject[];
+    projects?: import('@shared/models').ApinoxProject[];
 }

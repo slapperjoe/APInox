@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { Plus, ChevronDown, ChevronRight, Folder, FolderOpen, Trash2, FileJson } from 'lucide-react';
-import { RestCollection, RestFolder, SoapUIRequest } from '@shared/models';
+import { RestCollection, RestFolder, ApiRequest } from '@shared/models';
 import { HeaderButton, OperationItem } from './shared/SidebarStyles';
 
 export interface CollectionListProps {
@@ -14,8 +14,8 @@ export interface CollectionListProps {
     // Selection
     selectedCollectionId: string | null;
     setSelectedCollectionId: (id: string | null) => void;
-    selectedRequest: SoapUIRequest | null;
-    setSelectedRequest: (req: SoapUIRequest | null) => void;
+    selectedRequest: ApiRequest | null;
+    setSelectedRequest: (req: ApiRequest | null) => void;
     setResponse: (res: any) => void;
 
     // Actions
@@ -24,7 +24,7 @@ export interface CollectionListProps {
     onAddFolder: (collectionId: string, parentFolderId?: string) => void;
     onDeleteCollection?: (collection: RestCollection) => void;
     onDeleteFolder?: (folder: RestFolder, collectionId: string) => void;
-    onDeleteRequest?: (req: SoapUIRequest) => void;
+    onDeleteRequest?: (req: ApiRequest) => void;
     onRenameCollection?: (collection: RestCollection, newName: string) => void;
 
     // Toggle expansion
@@ -36,7 +36,7 @@ export interface CollectionListProps {
 }
 
 const RequestItem: React.FC<{
-    request: SoapUIRequest;
+    request: ApiRequest;
     isSelected: boolean;
     onClick: () => void;
     onDelete?: () => void;
@@ -105,11 +105,11 @@ const FolderItem: React.FC<{
     folder: RestFolder;
     collectionId: string;
     level: number;
-    selectedRequest: SoapUIRequest | null;
-    onSelectRequest: (req: SoapUIRequest) => void;
+    selectedRequest: ApiRequest | null;
+    onSelectRequest: (req: ApiRequest) => void;
     onToggleExpand: () => void;
     onAddRequest?: () => void;
-    onDeleteRequest?: (req: SoapUIRequest) => void;
+    onDeleteRequest?: (req: ApiRequest) => void;
     deleteConfirm: string | null;
     setDeleteConfirm: (id: string | null) => void;
 }> = ({
@@ -187,7 +187,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
     deleteConfirm,
     setDeleteConfirm
 }) => {
-    const handleSelectRequest = (req: SoapUIRequest) => {
+    const handleSelectRequest = (req: ApiRequest) => {
         setSelectedRequest(req);
         setResponse(null);
     };

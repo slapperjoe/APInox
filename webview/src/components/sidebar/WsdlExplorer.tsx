@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Globe, FileCode, Play, Plus, Trash2 } from 'lucide-react';
-import { SoapUIInterface, SoapUIOperation, SoapUIRequest } from '@shared/models';
+import { ApiInterface, ApiOperation, ApiRequest } from '@shared/models';
 import { HeaderButton, SectionHeader, Input } from './shared/SidebarStyles';
 import { ServiceTree } from './ServiceTree';
 
@@ -13,7 +13,7 @@ const DEFAULT_WSDL_URLS = [
 ];
 
 export interface WsdlExplorerProps {
-    exploredInterfaces: SoapUIInterface[];
+    exploredInterfaces: ApiInterface[];
     backendConnected: boolean;
     inputType: 'url' | 'file';
     setInputType: (type: 'url' | 'file') => void;
@@ -30,20 +30,20 @@ export interface WsdlExplorerProps {
     setUseProxy?: (useProxy: boolean) => void;
 
     // Actions
-    addToProject: (iface: SoapUIInterface) => void;
+    addToProject: (iface: ApiInterface) => void;
     addAllToProject: () => void;
     clearExplorer: () => void;
-    removeFromExplorer: (iface: SoapUIInterface) => void;
+    removeFromExplorer: (iface: ApiInterface) => void;
     toggleExploredInterface: (iName: string) => void;
     toggleExploredOperation: (iName: string, oName: string) => void;
 
     // Selection State
-    selectedInterface: SoapUIInterface | null;
-    setSelectedInterface: (iface: SoapUIInterface | null) => void;
-    selectedOperation: SoapUIOperation | null;
-    setSelectedOperation: (op: SoapUIOperation | null) => void;
-    selectedRequest: SoapUIRequest | null;
-    setSelectedRequest: (req: SoapUIRequest | null) => void;
+    selectedInterface: ApiInterface | null;
+    setSelectedInterface: (iface: ApiInterface | null) => void;
+    selectedOperation: ApiOperation | null;
+    setSelectedOperation: (op: ApiOperation | null) => void;
+    selectedRequest: ApiRequest | null;
+    setSelectedRequest: (req: ApiRequest | null) => void;
     setResponse: (res: any) => void;
 
     handleContextMenu: (e: React.MouseEvent, type: string, data: any, isExplorer?: boolean) => void;

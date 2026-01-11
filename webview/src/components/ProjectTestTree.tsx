@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import styled, { keyframes, css } from 'styled-components';
-import { SoapUIProject } from '@shared/models';
+import { ApinoxProject } from '@shared/models';
 import { Play, Plus, ChevronRight, ChevronDown, FlaskConical, Trash2 } from 'lucide-react';
 
 const shakeAnimation = keyframes`
@@ -48,7 +48,7 @@ const TreeItem = styled.div<{ depth: number, active?: boolean }>`
 `;
 
 interface ProjectTestTreeProps {
-    project: SoapUIProject;
+    project: ApinoxProject;
     onAddSuite: (projectName: string) => void;
     onDeleteSuite: (suiteId: string) => void;
     onRunSuite: (suiteId: string) => void;

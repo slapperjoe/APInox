@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronRight, ChevronDown, FolderPlus, Plus, Trash2, Folder, Code, Globe, Zap, Save } from 'lucide-react';
-import { ApinoxFolder, SoapUIRequest } from '@shared/models';
+import { ApinoxFolder, ApiRequest } from '@shared/models';
 import { HeaderButton, OperationItem, RequestItem, DirtyMarker } from './shared/SidebarStyles';
 
 export interface FolderTreeProps {
@@ -11,8 +11,8 @@ export interface FolderTreeProps {
     // Selection
     selectedFolderId: string | null;
     setSelectedFolderId: (id: string | null) => void;
-    selectedRequest: SoapUIRequest | null;
-    setSelectedRequest: (req: SoapUIRequest | null) => void;
+    selectedRequest: ApiRequest | null;
+    setSelectedRequest: (req: ApiRequest | null) => void;
     setSelectedProjectName: (name: string | null) => void;
     setResponse: (res: any) => void;
 
@@ -20,7 +20,7 @@ export interface FolderTreeProps {
     onAddFolder?: (projectName: string, parentFolderId?: string) => void;
     onAddRequest?: (projectName: string, folderId: string) => void;
     onDeleteFolder?: (projectName: string, folderId: string) => void;
-    onDeleteRequest?: (req: SoapUIRequest) => void;
+    onDeleteRequest?: (req: ApiRequest) => void;
     onToggleFolderExpand?: (projectName: string, folderId: string) => void;
     onSaveProject?: () => void;
 
@@ -75,7 +75,7 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
         setSelectedRequest(null);
     };
 
-    const handleRequestClick = (req: SoapUIRequest, folder: ApinoxFolder) => {
+    const handleRequestClick = (req: ApiRequest, folder: ApinoxFolder) => {
         setSelectedProjectName(projectName);
         setSelectedFolderId(folder.id);
         setSelectedRequest(req);

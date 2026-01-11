@@ -6,7 +6,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { SoapUIProject, SoapUIInterface, SoapUIOperation, SoapUIRequest } from '@shared/models';
+import { ApinoxProject, ApiInterface, ApiOperation, ApiRequest } from '@shared/models';
 import { bridge } from '../utils/bridge';
 
 interface ContextMenuState {
@@ -25,14 +25,14 @@ interface RenameState {
 }
 
 interface UseContextMenuParams {
-    setProjects: React.Dispatch<React.SetStateAction<SoapUIProject[]>>;
-    saveProject: (project: SoapUIProject) => void;
+    setProjects: React.Dispatch<React.SetStateAction<ApinoxProject[]>>;
+    saveProject: (project: ApinoxProject) => void;
     setWorkspaceDirty: React.Dispatch<React.SetStateAction<boolean>>;
-    selectedInterface: SoapUIInterface | null;
-    selectedOperation: SoapUIOperation | null;
-    setSelectedInterface: React.Dispatch<React.SetStateAction<SoapUIInterface | null>>;
-    setSelectedOperation: React.Dispatch<React.SetStateAction<SoapUIOperation | null>>;
-    setSelectedRequest: React.Dispatch<React.SetStateAction<SoapUIRequest | null>>;
+    selectedInterface: ApiInterface | null;
+    selectedOperation: ApiOperation | null;
+    setSelectedInterface: React.Dispatch<React.SetStateAction<ApiInterface | null>>;
+    setSelectedOperation: React.Dispatch<React.SetStateAction<ApiOperation | null>>;
+    setSelectedRequest: React.Dispatch<React.SetStateAction<ApiRequest | null>>;
     setResponse: React.Dispatch<React.SetStateAction<any>>;
 }
 
@@ -47,13 +47,13 @@ interface UseContextMenuReturn {
     handleContextMenu: (e: React.MouseEvent, type: string, data: any, isExplorer?: boolean) => void;
     closeContextMenu: () => void;
     handleRename: () => void;
-    handleDeleteRequest: (targetReq?: SoapUIRequest) => void;
+    handleDeleteRequest: (targetReq?: ApiRequest) => void;
     handleCloneRequest: () => void;
-    handleAddRequest: (targetOp?: SoapUIOperation) => void;
-    handleDeleteInterface: (iface: SoapUIInterface) => void;
-    handleDeleteOperation: (op: SoapUIOperation, iface: SoapUIInterface) => void;
+    handleAddRequest: (targetOp?: ApiOperation) => void;
+    handleDeleteInterface: (iface: ApiInterface) => void;
+    handleDeleteOperation: (op: ApiOperation, iface: ApiInterface) => void;
     handleViewSample: () => void;
-    handleExportNative: (project: SoapUIProject) => void;
+    handleExportNative: (project: ApinoxProject) => void;
 }
 
 export function useContextMenu({
@@ -92,14 +92,14 @@ export function useContextMenu({
         }
     }, [contextMenu, closeContextMenu]);
 
-    const handleDeleteRequest = useCallback((targetReq?: SoapUIRequest) => {
-        const reqToRemove = targetReq || (contextMenu?.type === 'request' ? contextMenu.data as SoapUIRequest : null);
+    const handleDeleteRequest = useCallback((targetReq?: ApiRequest) => {
+        const reqToRemove = targetReq || (contextMenu?.type === 'request' ? contextMenu.data as ApiRequest : null);
         if (reqToRemove) {
             // Check context menu if relying on it
             if (!targetReq && contextMenu?.isExplorer) return;
 
             setProjects(prev => {
-                let projectChanged: SoapUIProject | null = null;
+                let projectChanged: ApinoxProject | null = null;
                 const newProjects = prev.map(p => {
                     let changed = false;
                     const newInterfaces = p.interfaces.map(i => ({
@@ -134,7 +134,7 @@ export function useContextMenu({
 
     const handleCloneRequest = useCallback(() => {
         if (contextMenu && contextMenu.type === 'request' && !contextMenu.isExplorer) {
-            const req = contextMenu.data as SoapUIRequest;
+            const req = contextMenu.data as ApiRequest;
             setProjects(prev => prev.map(p => {
                 let found = false;
                 const newInterfaces = p.interfaces.map(i => ({
@@ -158,8 +158,8 @@ export function useContextMenu({
         }
     }, [contextMenu, setProjects, closeContextMenu]);
 
-    const handleAddRequest = useCallback((targetOp?: SoapUIOperation) => {
-        const op = targetOp || (contextMenu?.type === 'operation' ? contextMenu.data as SoapUIOperation : null);
+    const handleAddRequest = useCallback((targetOp?: ApiOperation) => {
+        const op = targetOp || (contextMenu?.type === 'operation' ? contextMenu.data as ApiOperation : null);
         if (op) {
             const newReqName = `Request ${op.requests.length + 1}`;
 
@@ -171,7 +171,7 @@ export function useContextMenu({
                 newReqContent = `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:web="${op.input || 'http://example.com/'}">\n   <soapenv:Header/>\n   <soapenv:Body>\n      <web:${op.name}>\n         <!--Optional:-->\n      </web:${op.name}>\n   </soapenv:Body>\n</soapenv:Envelope>`;
             }
 
-            const newRequest: SoapUIRequest = {
+            const newRequest: ApiRequest = {
                 name: newReqName,
                 request: newReqContent,
                 id: crypto.randomUUID(),
@@ -206,9 +206,9 @@ export function useContextMenu({
         }
     }, [contextMenu, setProjects, closeContextMenu, setSelectedRequest, setResponse]);
 
-    const handleDeleteInterface = useCallback((iface: SoapUIInterface) => {
+    const handleDeleteInterface = useCallback((iface: ApiInterface) => {
         setProjects(prev => {
-            let projectChanged: SoapUIProject | null = null;
+            let projectChanged: ApinoxProject | null = null;
             const newProjects = prev.map(p => {
                 const hasInterface = p.interfaces.some(i => i.name === iface.name);
                 if (hasInterface) {
@@ -233,9 +233,9 @@ export function useContextMenu({
         }
     }, [setProjects, saveProject, setWorkspaceDirty, selectedInterface, setSelectedInterface, setSelectedOperation, setSelectedRequest, setResponse]);
 
-    const handleDeleteOperation = useCallback((op: SoapUIOperation, iface: SoapUIInterface) => {
+    const handleDeleteOperation = useCallback((op: ApiOperation, iface: ApiInterface) => {
         setProjects(prev => {
-            let projectChanged: SoapUIProject | null = null;
+            let projectChanged: ApinoxProject | null = null;
             const newProjects = prev.map(p => {
                 const targetInterface = p.interfaces.find(i => i.name === iface.name);
                 if (targetInterface) {
@@ -274,7 +274,7 @@ export function useContextMenu({
         }
     }, [contextMenu, closeContextMenu]);
 
-    const handleExportNative = useCallback((project: SoapUIProject) => {
+    const handleExportNative = useCallback((project: ApinoxProject) => {
         bridge.sendMessage({ command: 'exportNative', project });
         closeContextMenu();
     }, [closeContextMenu]);

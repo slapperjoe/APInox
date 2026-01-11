@@ -14,7 +14,7 @@ export class WebviewReadyCommand implements ICommand {
         // Resend Settings (in case missed)
         this._controller.sendSettingsToWebview();
 
-        // Note: Autosave restore logic is in SoapPanel. 
+        // Note: Autosave restore logic is in WebviewPanel. 
         // We might need to handle it here too if strict race condition persists,
         // but Samples and Settings are the static data we definitely want.
     }

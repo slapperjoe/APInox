@@ -11,9 +11,9 @@ import {
   RequestHistoryEntry,
   WSSecurityConfig,
   WSSecurityType,
-  SoapAttachment,
+  RequestAttachment,
   RequestType,
-  SoapUIRequest,
+  ApiRequest,
 } from "../../shared/src/models";
 import * as vscode from "vscode";
 import * as fs from "fs";
@@ -69,39 +69,39 @@ export class ExecuteRequestCommand implements ICommand {
           ...wsSecurity,
           username: wsSecurity.username
             ? WildcardProcessor.process(
-                wsSecurity.username,
-                envVars,
-                globals,
-                scriptsDir,
-                contextVars,
-              )
+              wsSecurity.username,
+              envVars,
+              globals,
+              scriptsDir,
+              contextVars,
+            )
             : undefined,
           password: wsSecurity.password
             ? WildcardProcessor.process(
-                wsSecurity.password,
-                envVars,
-                globals,
-                scriptsDir,
-                contextVars,
-              )
+              wsSecurity.password,
+              envVars,
+              globals,
+              scriptsDir,
+              contextVars,
+            )
             : undefined,
           privateKeyPath: wsSecurity.privateKeyPath
             ? WildcardProcessor.process(
-                wsSecurity.privateKeyPath,
-                envVars,
-                globals,
-                scriptsDir,
-                contextVars,
-              )
+              wsSecurity.privateKeyPath,
+              envVars,
+              globals,
+              scriptsDir,
+              contextVars,
+            )
             : undefined,
           publicCertPath: wsSecurity.publicCertPath
             ? WildcardProcessor.process(
-                wsSecurity.publicCertPath,
-                envVars,
-                globals,
-                scriptsDir,
-                contextVars,
-              )
+              wsSecurity.publicCertPath,
+              envVars,
+              globals,
+              scriptsDir,
+              contextVars,
+            )
             : undefined,
         };
 
@@ -144,7 +144,7 @@ export class ExecuteRequestCommand implements ICommand {
       }
 
       // Process Attachments
-      const attachments = message.attachments as SoapAttachment[] | undefined;
+      const attachments = message.attachments as RequestAttachment[] | undefined;
       let formData: any = null;
       let isMultipart = false;
 
@@ -217,7 +217,7 @@ export class ExecuteRequestCommand implements ICommand {
 
       if (requestType === "rest" || requestType === "graphql") {
         // Use HttpClient for REST and GraphQL
-        const request: SoapUIRequest = {
+        const request: ApiRequest = {
           name: message.requestName || "Request",
           request: processedXml,
           endpoint: processedUrl,
@@ -234,7 +234,7 @@ export class ExecuteRequestCommand implements ICommand {
         result = await this._httpClient.execute(request);
       } else {
         const soapHeaders = { ...(headers || {}) };
-        let soapRequest: SoapUIRequest;
+        let soapRequest: ApiRequest;
 
         if (isMultipart && formData) {
           const multipartHeaders = { ...soapHeaders, ...formData.getHeaders() };
