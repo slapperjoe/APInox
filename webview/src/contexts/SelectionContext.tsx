@@ -15,7 +15,7 @@
  *   const { selectedRequest, setSelectedRequest, clearSelection } = useSelection();
  */
 
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
 import { SoapUIInterface, SoapUIOperation, SoapUIRequest, SoapTestCase, SoapTestStep } from '@shared/models';
 
 // =============================================================================
@@ -122,13 +122,87 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
 
     const [selectedInterface, setSelectedInterface] = useState<SoapUIInterface | null>(null);
     const [selectedOperation, setSelectedOperation] = useState<SoapUIOperation | null>(null);
-    const [selectedRequest, setSelectedRequest] = useState<SoapUIRequest | null>(null);
+    const [selectedRequestState, setSelectedRequestState] = useState<SoapUIRequest | null>(null);
+    const selectedRequestRef = React.useRef<SoapUIRequest | null>(null);
     const [selectedStep, setSelectedStep] = useState<SoapTestStep | null>(null);
     const [selectedTestSuite, setSelectedTestSuite] = useState<import('@shared/models').SoapTestSuite | null>(null);
     const [selectedTestCase, setSelectedTestCase] = useState<SoapTestCase | null>(null);
     const [selectedPerformanceSuiteId, setSelectedPerformanceSuiteId] = useState<string | null>(null);
-    const [response, setResponse] = useState<any>(null);
+    const [response, setResponseState] = useState<any>(null);
+    const [responseCache, setResponseCache] = useState<Record<string, any>>({});
     const [loading, setLoading] = useState(false);
+
+    const getCacheKey = useCallback((req: SoapUIRequest | null) => req?.id || req?.name || null, []);
+    const getStorageKey = useCallback((key: string) => `dirty-soap:lastResponse:${key}`, []);
+
+    const restoreResponseForRequest = useCallback((req: SoapUIRequest | null, existingCache?: Record<string, any>) => {
+        const key = getCacheKey(req);
+        if (!req || !key) {
+            console.log('[SelectionContext] restoreResponseForRequest: no request/key, clearing response');
+            setResponseState(null);
+            return;
+        }
+
+        const cache = existingCache || responseCache;
+        if (cache.hasOwnProperty(key)) {
+            console.log('[SelectionContext] restoreResponseForRequest: restored from in-memory cache', { key });
+            setResponseState(cache[key]);
+            return;
+        }
+
+        try {
+            const stored = window.localStorage.getItem(getStorageKey(key));
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                console.log('[SelectionContext] restoreResponseForRequest: restored from localStorage', { key });
+                setResponseCache((c) => ({ ...c, [key]: parsed }));
+                setResponseState(parsed);
+                return;
+            }
+        } catch (e) {
+            console.warn('[SelectionContext] Failed to read persisted response', e);
+        }
+
+        console.log('[SelectionContext] restoreResponseForRequest: no cached response', { key });
+
+        setResponseState(null);
+    }, [getCacheKey, getStorageKey, responseCache]);
+
+    const setSelectedRequest = useCallback<React.Dispatch<React.SetStateAction<SoapUIRequest | null>>>((next) => {
+        const resolved = typeof next === 'function'
+            ? (next as (prev: SoapUIRequest | null) => SoapUIRequest | null)(selectedRequestRef.current)
+            : next;
+
+        console.log('[SelectionContext] setSelectedRequest', { name: resolved?.name, id: (resolved as any)?.id });
+        selectedRequestRef.current = resolved;
+        setSelectedRequestState(resolved);
+        restoreResponseForRequest(resolved);
+    }, [restoreResponseForRequest]);
+
+    const setResponse = useCallback<React.Dispatch<React.SetStateAction<any>>>((next) => {
+        setResponseState((prev) => {
+            const resolved = typeof next === 'function' ? (next as any)(prev) : next;
+            const key = getCacheKey(selectedRequestRef.current);
+            if (key && resolved != null) {
+                setResponseCache((cache) => ({ ...cache, [key]: resolved }));
+                try {
+                    const storageKey = getStorageKey(key);
+                    window.localStorage.setItem(storageKey, JSON.stringify(resolved));
+                } catch (e) {
+                    console.warn('[SelectionContext] Failed to persist response', e);
+                }
+            } else {
+                console.log('[SelectionContext] setResponse skipped persisting (no key or null response)', { key, hasResponse: resolved != null });
+            }
+            return resolved;
+        });
+    }, [getCacheKey, getStorageKey]);
+
+    // Restore cached response when switching requests
+    useEffect(() => {
+        console.log('[SelectionContext] selectedRequest changed, attempting restore');
+        restoreResponseForRequest(selectedRequestState, responseCache);
+    }, [selectedRequestState, responseCache, restoreResponseForRequest]);
 
     // -------------------------------------------------------------------------
     // UTILITY ACTIONS
@@ -146,7 +220,8 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
         setSelectedTestSuite(null);
         setSelectedTestCase(null);
         setSelectedPerformanceSuiteId(null);
-        setResponse(null);
+        setResponseState(null);
+        setResponseCache({});
     }, []);
 
     /**
@@ -159,7 +234,7 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
         setSelectedOperation(null);
         setSelectedInterface(null);
         setSelectedPerformanceSuiteId(null);
-        setResponse(null);
+        setResponseState(null);
     }, []);
 
     // -------------------------------------------------------------------------
@@ -170,7 +245,7 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
         // Selection State
         selectedInterface,
         selectedOperation,
-        selectedRequest,
+        selectedRequest: selectedRequestState,
         selectedStep,
         selectedTestSuite,
         selectedTestCase,

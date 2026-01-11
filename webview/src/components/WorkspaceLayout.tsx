@@ -9,7 +9,6 @@ import { SidebarView, RequestType, BodyType, HttpMethod } from '@shared/models';
 import emptyServerImg from '../assets/empty-server.png';
 import emptyWsdlImg from '../assets/empty-wsdl.png';
 import emptyWatcherImg from '../assets/empty-watcher.png';
-import emptyPerformanceImg from '../assets/empty-performance.png';
 import emptyProjectImg from '../assets/empty-project.png';
 import { MonacoRequestEditor, MonacoRequestEditorHandle } from './MonacoRequestEditor';
 import { MonacoResponseViewer } from './MonacoResponseViewer';
@@ -22,8 +21,7 @@ import { ExtractorsPanel } from './ExtractorsPanel';
 import { MonacoSingleLineInput, MonacoSingleLineInputHandle } from './MonacoSingleLineInput';
 import { formatXml, stripCausalityData } from '@shared/utils/xmlFormatter';
 import { XPathGenerator } from '../utils/xpathGenerator';
-import { WelcomePanel, BreakpointOverlay, TestCaseView, EmptyTestCase } from './workspace';
-import { PerformanceSuiteEditor } from './workspace/PerformanceSuiteEditor';
+import { WelcomePanel, TestCaseView, EmptyTestCase } from './workspace';
 import { RequestTypeSelector } from './workspace/RequestTypeSelector';
 import { QueryParamsPanel } from './QueryParamsPanel';
 import { RestAuthPanel } from './RestAuthPanel';
@@ -34,6 +32,7 @@ import { ScriptEditor } from './ScriptEditor';
 // unused models removed
 import { createMockRuleFromSource } from '../utils/mockUtils';
 import { findPathToRequest } from '../utils/projectUtils';
+import styled from 'styled-components';
 import {
     Toolbar, InfoBarMethod, InfoBarUrl,
     ToolbarButton, MainFooter, IconButton, ToolbarSeparator,
@@ -53,16 +52,32 @@ import {
 
 
 // Helper Components
+const EmptyStateContainer = styled.div`
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--vscode-descriptionForeground);
+    padding: 20px;
+    text-align: center;
+`;
+
+const EmptyStateTitle = styled.h2`
+    margin-bottom: 10px;
+    color: var(--vscode-foreground);
+`;
+
 const EmptyState: React.FC<{ title: string; message: string; icon?: React.ElementType; image?: string }> = ({ title, message, icon: Icon, image }) => (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--vscode-descriptionForeground)', padding: 20, textAlign: 'center' }}>
+    <EmptyStateContainer>
         {image ? (
             <EmptyStateImage src={image} alt={title} />
         ) : (
             Icon && <Icon size={48} style={{ marginBottom: 20, opacity: 0.5 }} />
         )}
-        <h2 style={{ marginBottom: 10, color: 'var(--vscode-foreground)' }}>{title}</h2>
+        <EmptyStateTitle>{title}</EmptyStateTitle>
         <p>{message}</p>
-    </div>
+    </EmptyStateContainer>
 );
 
 const EmptyFileWatcher: React.FC = () => (
@@ -89,6 +104,200 @@ const EmptyServer: React.FC = () => (
     />
 );
 
+const ProjectContainer = styled.div`
+    padding: 40px;
+    color: var(--vscode-foreground);
+    overflow-y: auto;
+    flex: 1;
+`;
+
+const ProjectHeader = styled.div`
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+`;
+
+const ProjectName = styled.h1`
+    margin: 0;
+`;
+
+const ProjectDescription = styled.p`
+    font-size: 1.1em;
+    opacity: 0.8;
+    margin: 8px 0 0 0;
+`;
+
+const StatsGrid = styled.div`
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+`;
+
+const StatCard = styled.div`
+    padding: 20px;
+    background: var(--vscode-editor-inactiveSelectionBackground);
+    border-radius: 6px;
+`;
+
+const StatLabel = styled.div`
+    font-size: 0.85em;
+    opacity: 0.7;
+    margin-bottom: 8px;
+`;
+
+const StatValue = styled.span`
+    font-size: 2em;
+    font-weight: bold;
+`;
+
+const InterfacesHeading = styled.h2`
+    margin-top: 40px;
+    border-bottom: 1px solid var(--vscode-panel-border);
+    padding-bottom: 10px;
+`;
+
+const SectionHeading = styled(InterfacesHeading)`
+    margin-top: 40px;
+`;
+
+const InterfacesList = styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 15px;
+`;
+
+const InterfaceItem = styled.div`
+    padding: 15px;
+    background: var(--vscode-list-hoverBackground);
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+`;
+
+const InterfaceInfo = styled.div`
+    flex: 1;
+`;
+
+const InterfaceName = styled.span`
+    font-weight: bold;
+    font-size: 1.1em;
+`;
+
+const InterfaceOps = styled.div`
+    font-size: 0.8em;
+    opacity: 0.7;
+    margin-top: 4px;
+`;
+
+const InterfaceDef = styled.div`
+    font-size: 0.75em;
+    opacity: 0.5;
+    margin-top: 4px;
+    font-family: monospace;
+`;
+
+const InterfaceContainer = styled(ProjectContainer)``;
+
+const InfoCard = styled.div`
+    margin-top: 20px;
+    padding: 20px;
+    background: var(--vscode-editor-inactiveSelectionBackground);
+    border-radius: 6px;
+`;
+
+const InfoGrid = styled.div`
+    display: grid;
+    gap: 12px;
+`;
+
+const EndpointText = styled.span`
+    font-family: monospace;
+    font-size: 0.9em;
+    word-break: break-all;
+`;
+
+const OperationsHeading = styled.h2`
+    margin-top: 30px;
+    border-bottom: 1px solid var(--vscode-panel-border);
+    padding-bottom: 10px;
+`;
+
+const OperationsList = styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 15px;
+`;
+
+const OperationItem = styled.div`
+    padding: 15px;
+    background: var(--vscode-list-hoverBackground);
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid var(--vscode-panel-border);
+`;
+
+const OperationRow = styled.div`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+`;
+
+const OperationMeta = styled.span`
+    margin-left: 8px;
+    font-size: 0.85em;
+    opacity: 0.6;
+`;
+
+const StatsGridSpaced = styled(StatsGrid)`
+    margin-top: 30px;
+`;
+
+const OperationContainer = styled(ProjectContainer)``;
+
+const RequestsHeading = styled.h2`
+    margin-top: 30px;
+    border-bottom: 1px solid var(--vscode-panel-border);
+    padding-bottom: 10px;
+`;
+
+const RequestGrid = styled.div`
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+`;
+
+const RequestCard = styled(OperationItem)`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+`;
+
+const LinkText = styled.a`
+    color: var(--vscode-textLink-foreground);
+`;
+
+const ChevronIcon = styled(ChevronLeft)`
+    transform: rotate(180deg);
+    opacity: 0.5;
+`;
+
+const ChevronIconFaint = styled(ChevronLeft)`
+    transform: rotate(180deg);
+    opacity: 0.3;
+`;
+
+const RequestName = styled.span`
+    font-weight: 500;
+`;
+
 const ProjectSummary: React.FC<{ project: import('@shared/models').SoapUIProject; onSelectInterface?: (i: import('@shared/models').SoapUIInterface) => void }> = ({ project, onSelectInterface }) => {
     // Calculate statistics
     const totalOperations = project.interfaces.reduce((sum, iface) => sum + iface.operations.length, 0);
@@ -97,67 +306,58 @@ const ProjectSummary: React.FC<{ project: import('@shared/models').SoapUIProject
     );
 
     return (
-        <div style={{ padding: 40, color: 'var(--vscode-foreground)', overflowY: 'auto', flex: 1 }}>
+        <ProjectContainer>
             {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30 }}>
+            <ProjectHeader>
                 <div>
-                    <h1 style={{ margin: 0 }}>Project: {project.name}</h1>
-                    {project.description && <p style={{ fontSize: '1.1em', opacity: 0.8, margin: '8px 0 0 0' }}>{project.description}</p>}
+                    <ProjectName>Project: {project.name}</ProjectName>
+                    {project.description && <ProjectDescription>{project.description}</ProjectDescription>}
                 </div>
                 {/* Action buttons could go here - placeholder for now since we need to wire up handlers */}
-            </div>
+            </ProjectHeader>
 
             {/* Statistics Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 20, marginTop: 20 }}>
-                <div style={{ padding: 20, background: 'var(--vscode-editor-inactiveSelectionBackground)', borderRadius: 6 }}>
-                    <div style={{ fontSize: '0.85em', opacity: 0.7, marginBottom: 8 }}>Interfaces</div>
-                    <span style={{ fontSize: '2em', fontWeight: 'bold' }}>{project.interfaces.length}</span>
-                </div>
-                <div style={{ padding: 20, background: 'var(--vscode-editor-inactiveSelectionBackground)', borderRadius: 6 }}>
-                    <div style={{ fontSize: '0.85em', opacity: 0.7, marginBottom: 8 }}>Test Suites</div>
-                    <span style={{ fontSize: '2em', fontWeight: 'bold' }}>{project.testSuites?.length || 0}</span>
-                </div>
-                <div style={{ padding: 20, background: 'var(--vscode-editor-inactiveSelectionBackground)', borderRadius: 6 }}>
-                    <div style={{ fontSize: '0.85em', opacity: 0.7, marginBottom: 8 }}>Operations</div>
-                    <span style={{ fontSize: '2em', fontWeight: 'bold' }}>{totalOperations}</span>
-                </div>
-                <div style={{ padding: 20, background: 'var(--vscode-editor-inactiveSelectionBackground)', borderRadius: 6 }}>
-                    <div style={{ fontSize: '0.85em', opacity: 0.7, marginBottom: 8 }}>Requests</div>
-                    <span style={{ fontSize: '2em', fontWeight: 'bold' }}>{totalRequests}</span>
-                </div>
-            </div>
+            <StatsGrid>
+                <StatCard>
+                    <StatLabel>Interfaces</StatLabel>
+                    <StatValue>{project.interfaces.length}</StatValue>
+                </StatCard>
+                <StatCard>
+                    <StatLabel>Test Suites</StatLabel>
+                    <StatValue>{project.testSuites?.length || 0}</StatValue>
+                </StatCard>
+                <StatCard>
+                    <StatLabel>Operations</StatLabel>
+                    <StatValue>{totalOperations}</StatValue>
+                </StatCard>
+                <StatCard>
+                    <StatLabel>Requests</StatLabel>
+                    <StatValue>{totalRequests}</StatValue>
+                </StatCard>
+            </StatsGrid>
 
             {/* Interfaces List */}
-            <h2 style={{ marginTop: 40, borderBottom: '1px solid var(--vscode-panel-border)', paddingBottom: 10 }}>Interfaces</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 15 }}>
+            <InterfacesHeading>Interfaces</InterfacesHeading>
+            <InterfacesList>
                 {project.interfaces.map(iface => (
-                    <div
+                    <InterfaceItem
                         key={iface.name}
                         onClick={() => onSelectInterface && onSelectInterface(iface)}
-                        style={{
-                            padding: 15,
-                            background: 'var(--vscode-list-hoverBackground)',
-                            borderRadius: 4,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center'
-                        }}
                     >
-                        <div style={{ flex: 1 }}>
-                            <span style={{ fontWeight: 'bold', fontSize: '1.1em' }}>{iface.name}</span>
-                            <div style={{ fontSize: '0.8em', opacity: 0.7, marginTop: 4 }}>{iface.operations.length} operations</div>
+                        <InterfaceInfo>
+                            <InterfaceName>{iface.name}</InterfaceName>
+                            <InterfaceOps>{iface.operations.length} operations</InterfaceOps>
                             {iface.definition && (
-                                <div style={{ fontSize: '0.75em', opacity: 0.5, marginTop: 4, fontFamily: 'monospace' }}>
+                                <InterfaceDef>
                                     {iface.definition}
-                                </div>
+                                </InterfaceDef>
                             )}
-                        </div>
-                        <ChevronLeft size={16} style={{ transform: 'rotate(180deg)', opacity: 0.5 }} />
-                    </div>
+                        </InterfaceInfo>
+                        <ChevronIcon size={16} />
+                    </InterfaceItem>
                 ))}
-            </div>
-        </div>
+            </InterfacesList>
+        </ProjectContainer>
     );
 };
 
@@ -167,43 +367,35 @@ const InterfaceSummary: React.FC<{ interface: import('@shared/models').SoapUIInt
     const firstEndpoint = iface.operations[0]?.requests[0]?.endpoint;
 
     return (
-        <div style={{ padding: 40, color: 'var(--vscode-foreground)', overflowY: 'auto', flex: 1 }}>
+        <InterfaceContainer>
             <h1>Interface: {iface.name}</h1>
-            <div style={{ marginTop: 20, padding: 20, background: 'var(--vscode-editor-inactiveSelectionBackground)', borderRadius: 6 }}>
-                <div style={{ display: 'grid', gap: 12 }}>
-                    <div><strong>WSDL:</strong> <a href="#" style={{ color: 'var(--vscode-textLink-foreground)' }}>{iface.definition}</a></div>
+            <InfoCard>
+                <InfoGrid>
+                    <div><strong>WSDL:</strong> <LinkText href="#">{iface.definition}</LinkText></div>
                     <div><strong>SOAP Version:</strong> {iface.soapVersion}</div>
                     {iface.bindingName && <div><strong>Binding:</strong> {iface.bindingName}</div>}
-                    {firstEndpoint && <div><strong>Endpoint:</strong> <span style={{ fontFamily: 'monospace', fontSize: '0.9em' }}>{firstEndpoint}</span></div>}
+                    {firstEndpoint && <div><strong>Endpoint:</strong> <EndpointText>{firstEndpoint}</EndpointText></div>}
                     <div><strong>Operations:</strong> {iface.operations.length}</div>
-                </div>
-            </div>
-            <h2 style={{ marginTop: 30, borderBottom: '1px solid var(--vscode-panel-border)', paddingBottom: 10 }}>Operations</h2>
-            <ul style={{ listStyle: 'none', padding: 0, marginTop: 10 }}>
+                </InfoGrid>
+            </InfoCard>
+            <OperationsHeading>Operations</OperationsHeading>
+            <OperationsList>
                 {iface.operations.map(op => (
-                    <li
+                    <OperationItem
                         key={op.name}
                         onClick={() => onSelectOperation && onSelectOperation(op)}
-                        style={{
-                            padding: '12px 10px',
-                            borderBottom: '1px solid var(--vscode-panel-border)',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--vscode-list-hoverBackground)'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                     >
-                        <div>
-                            <span>{op.name}</span>
-                            <span style={{ marginLeft: 10, fontSize: '0.85em', opacity: 0.6 }}>({op.requests.length} request{op.requests.length !== 1 ? 's' : ''})</span>
-                        </div>
-                        <ChevronLeft size={14} style={{ transform: 'rotate(180deg)', opacity: 0.3 }} />
-                    </li>
+                        <OperationRow>
+                            <div>
+                                <strong>{op.name}</strong>
+                                <OperationMeta>({op.requests.length} request{op.requests.length !== 1 ? 's' : ''})</OperationMeta>
+                            </div>
+                            <ChevronIconFaint size={14} />
+                        </OperationRow>
+                    </OperationItem>
                 ))}
-            </ul>
-        </div>
+            </OperationsList>
+        </InterfaceContainer>
     );
 };
 
@@ -212,85 +404,67 @@ const TestSuiteSummary: React.FC<{ suite: import('@shared/models').SoapTestSuite
     const totalSteps = suite.testCases.reduce((sum, tc) => sum + tc.steps.length, 0);
 
     return (
-        <div style={{ padding: 40, color: 'var(--vscode-foreground)', overflowY: 'auto', flex: 1 }}>
+        <ProjectContainer>
             <h1>Test Suite: {suite.name}</h1>
 
             {/* Statistics Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 20, marginTop: 30 }}>
-                <div style={{ padding: 20, background: 'var(--vscode-editor-inactiveSelectionBackground)', borderRadius: 6 }}>
-                    <div style={{ fontSize: '0.85em', opacity: 0.7, marginBottom: 8 }}>Test Cases</div>
-                    <span style={{ fontSize: '2em', fontWeight: 'bold' }}>{suite.testCases.length}</span>
-                </div>
-                <div style={{ padding: 20, background: 'var(--vscode-editor-inactiveSelectionBackground)', borderRadius: 6 }}>
-                    <div style={{ fontSize: '0.85em', opacity: 0.7, marginBottom: 8 }}>Total Steps</div>
-                    <span style={{ fontSize: '2em', fontWeight: 'bold' }}>{totalSteps}</span>
-                </div>
-            </div>
+            <StatsGridSpaced>
+                <StatCard>
+                    <StatLabel>Test Cases</StatLabel>
+                    <StatValue>{suite.testCases.length}</StatValue>
+                </StatCard>
+                <StatCard>
+                    <StatLabel>Total Steps</StatLabel>
+                    <StatValue>{totalSteps}</StatValue>
+                </StatCard>
+            </StatsGridSpaced>
 
-            <h2 style={{ marginTop: 40, borderBottom: '1px solid var(--vscode-panel-border)', paddingBottom: 10 }}>Test Cases</h2>
-            <ul style={{ listStyle: 'none', padding: 0, marginTop: 10 }}>
+            <SectionHeading>Test Cases</SectionHeading>
+            <OperationsList>
                 {suite.testCases.map(tc => (
-                    <li
+                    <OperationItem
                         key={tc.id}
                         onClick={() => onSelectTestCase && onSelectTestCase(tc)}
-                        style={{
-                            padding: '12px 10px',
-                            borderBottom: '1px solid var(--vscode-panel-border)',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--vscode-list-hoverBackground)'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                     >
-                        <div>
-                            <span>{tc.name}</span>
-                            <span style={{ marginLeft: 10, fontSize: '0.85em', opacity: 0.6 }}>({tc.steps.length} step{tc.steps.length !== 1 ? 's' : ''})</span>
-                        </div>
-                        <ChevronLeft size={14} style={{ transform: 'rotate(180deg)', opacity: 0.3 }} />
-                    </li>
+                        <OperationRow>
+                            <div>
+                                <span>{tc.name}</span>
+                                <OperationMeta>({tc.steps.length} step{tc.steps.length !== 1 ? 's' : ''})</OperationMeta>
+                            </div>
+                            <ChevronIconFaint size={14} />
+                        </OperationRow>
+                    </OperationItem>
                 ))}
-            </ul>
-        </div>
+            </OperationsList>
+        </ProjectContainer>
     );
 };
 
 const OperationSummary: React.FC<{ operation: import('@shared/models').SoapUIOperation; onSelectRequest?: (r: import('@shared/models').SoapUIRequest) => void }> = ({ operation, onSelectRequest }) => (
-    <div style={{ padding: 40, color: 'var(--vscode-foreground)', overflowY: 'auto', flex: 1 }}>
+    <OperationContainer>
         <h1>Operation: {operation.name}</h1>
 
         {/* Metadata */}
-        <div style={{ marginTop: 20, padding: 20, background: 'var(--vscode-editor-inactiveSelectionBackground)', borderRadius: 6 }}>
-            <div style={{ display: 'grid', gap: 12 }}>
-                {operation.action && <div><strong>Action:</strong> <span style={{ fontFamily: 'monospace', fontSize: '0.9em' }}>{operation.action}</span></div>}
+        <InfoCard>
+            <InfoGrid>
+                {operation.action && <div><strong>Action:</strong> <EndpointText>{operation.action}</EndpointText></div>}
                 <div><strong>Requests:</strong> {operation.requests.length}</div>
-            </div>
-        </div>
+            </InfoGrid>
+        </InfoCard>
 
-        <h2 style={{ marginTop: 30, borderBottom: '1px solid var(--vscode-panel-border)', paddingBottom: 10 }}>Requests</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 15, marginTop: 15 }}>
+        <RequestsHeading>Requests</RequestsHeading>
+        <RequestGrid>
             {operation.requests.map(req => (
-                <div
+                <RequestCard
                     key={req.id}
                     onClick={() => onSelectRequest && onSelectRequest(req)}
-                    style={{
-                        padding: 15,
-                        background: 'var(--vscode-list-hoverBackground)',
-                        borderRadius: 6,
-                        cursor: 'pointer',
-                        border: '1px solid var(--vscode-panel-border)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between'
-                    }}
                 >
-                    <span style={{ fontWeight: '500' }}>{req.name}</span>
-                    <ChevronLeft size={14} style={{ transform: 'rotate(180deg)', opacity: 0.5 }} />
-                </div>
+                    <RequestName>{req.name}</RequestName>
+                    <ChevronIcon size={14} />
+                </RequestCard>
             ))}
-        </div>
-    </div>
+        </RequestGrid>
+    </OperationContainer>
 );
 
 
@@ -302,22 +476,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     configState,
     stepActions,
     toolsActions,
-    breakpointState,
-    onUpdateSuite,
-    onRunSuite,
-    onStopRun: onStopPerformanceRun,
-    onAddPerformanceRequest,
-    onDeletePerformanceRequest,
-    onSelectPerformanceRequest,
-    onUpdatePerformanceRequest,
-    onImportFromWorkspace,
-    performanceProgress,
-    performanceHistory,
     onBackToSuite,
-    // Coordinator props
-    coordinatorStatus,
-    onStartCoordinator,
-    onStopCoordinator,
     navigationActions
 }) => {
     // Destructure groups
@@ -373,41 +532,8 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     const [activeTab, setActiveTab] = React.useState<'request' | 'headers' | 'params' | 'assertions' | 'auth' | 'extractors' | 'attachments' | 'variables'>('request');
     const [showVariables, setShowVariables] = React.useState(false);
 
-    // Breakpoint State
-    const [breakpointContent, setBreakpointContent] = React.useState<string>('');
-    const [breakpointTimeRemaining, setBreakpointTimeRemaining] = React.useState<number>(0);
-
     // ... imports
-
-    // Initialize breakpoint content when breakpoint becomes active - format the XML for readability
-    React.useEffect(() => {
-        if (breakpointState?.activeBreakpoint) {
-            const rawContent = breakpointState.activeBreakpoint.content;
-            // Format XML for user readability
-            const formatted = rawContent.trim().startsWith('<')
-                ? formatXml(rawContent, false, true)
-                : rawContent;
-            setBreakpointContent(formatted);
-        }
-    }, [breakpointState?.activeBreakpoint]);
-
-    // Countdown timer for breakpoint
-    React.useEffect(() => {
-        if (!breakpointState?.activeBreakpoint) {
-            setBreakpointTimeRemaining(0);
-            return;
-        }
-
-        const updateTimer = () => {
-            const elapsed = Date.now() - breakpointState.activeBreakpoint!.startTime;
-            const remaining = Math.max(0, breakpointState.activeBreakpoint!.timeoutMs - elapsed);
-            setBreakpointTimeRemaining(remaining);
-        };
-
-        updateTimer();
-        const interval = setInterval(updateTimer, 1000);
-        return () => clearInterval(interval);
-    }, [breakpointState?.activeBreakpoint]);
+    // Breakpoint State currently unused; effects removed
 
     // Editor Refs for insertion
     const urlEditorRef = React.useRef<MonacoSingleLineInputHandle>(null);
@@ -487,65 +613,10 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
             statusCode: response.status || 200,
             responseBody: response.rawResponse || '',
             responseHeaders: response.headers || {},
-            // Include request body for SOAP operation name extraction
-            requestBody: selectedRequest.request || ''
         });
 
         onAddMockRule(newRule);
     };
-    // Reset active tab if it's assertions or extractors and we are in read-only mode (e.g. Watcher/Proxy)
-    React.useEffect(() => {
-        if (isReadOnly && (activeTab === 'assertions' || activeTab === 'extractors')) {
-            setActiveTab('request');
-        }
-    }, [isReadOnly, activeTab]);
-
-    // Breakpoint Overlay - takes over the entire workspace when active
-    if (breakpointState?.activeBreakpoint) {
-        return (
-            <BreakpointOverlay
-                breakpoint={breakpointState.activeBreakpoint}
-                content={breakpointContent}
-                onContentChange={setBreakpointContent}
-                timeRemaining={breakpointTimeRemaining}
-                onResolve={breakpointState.onResolve}
-                config={config}
-            />
-        );
-    }
-
-    // FORCE HOME VIEW if active
-    if (activeView === SidebarView.HOME) {
-        return <WelcomePanel changelog={changelog} />;
-    }
-
-    // PERFORMANCE VIEW
-    if (activeView === SidebarView.PERFORMANCE) {
-        if (!selectedRequest) {
-            if (selectedPerformanceSuite) {
-                return (
-                    <PerformanceSuiteEditor
-                        suite={selectedPerformanceSuite}
-                        onUpdate={onUpdateSuite!}
-                        onRun={onRunSuite!}
-                        onStop={onStopPerformanceRun!}
-                        isRunning={!!performanceProgress}
-                        progress={performanceProgress}
-                        history={performanceHistory?.filter(r => r.suiteId === selectedPerformanceSuite.id) || []}
-                        onAddRequest={onAddPerformanceRequest}
-                        onDeleteRequest={onDeletePerformanceRequest}
-                        onSelectRequest={onSelectPerformanceRequest}
-                        onUpdateRequest={onUpdatePerformanceRequest}
-                        onImportFromWorkspace={onImportFromWorkspace}
-                        coordinatorStatus={coordinatorStatus}
-                        onStartCoordinator={onStartCoordinator}
-                        onStopCoordinator={onStopCoordinator}
-                    />
-                );
-            }
-            return <EmptyState title="No Performance Suite Selected" message="Select a suite from the sidebar or create a new one." image={emptyPerformanceImg} />;
-        }
-    }
 
     // TESTS VIEW
     if (activeView === SidebarView.TESTS) {
@@ -1283,12 +1354,15 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                         </ToolbarButton>
                                     )}
                                 </div>
-                                {response && !isReadOnly && (
+                                {response && (
                                     <div style={{ marginLeft: 'auto', display: 'flex', gap: '15px', alignItems: 'center' }}>
                                         {/* ... stats ... */}
                                         <span style={{ opacity: 0.8 }}>Lines: {response.lineCount || 0}</span>
                                         <span style={{ opacity: 0.8 }}>Time: {(response.duration || 0).toFixed(1)}s</span>
                                         <span style={{ opacity: 0.8 }}>Size: {typeof response.rawResponse === 'string' ? (response.rawResponse.length / 1024).toFixed(2) : 0} KB</span>
+                                        {response.createdAt && (
+                                            <span style={{ opacity: 0.8 }}>Received: {new Date(response.createdAt).toLocaleTimeString()}</span>
+                                        )}
                                         {response.headers && response.headers['content-type'] && (
                                             <span title="Content-Type" style={{ opacity: 0.8, borderLeft: '1px solid var(--vscode-panel-border)', paddingLeft: '10px' }}>
                                                 {response.headers['content-type'].split(';')[0]}

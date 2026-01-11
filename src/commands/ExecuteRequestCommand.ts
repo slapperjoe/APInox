@@ -292,8 +292,11 @@ export class ExecuteRequestCommand implements ICommand {
       // Capture to history if this is a manual request (not from test run)
       if (this._historyService && !message.isTestRun) {
         try {
-          const responsePayload =
-            result.rawResponse !== undefined ? result.rawResponse : result.result;
+          const responsePayload = result.rawResponse ?? result.result;
+          const responseSize =
+            typeof responsePayload === "string"
+              ? responsePayload.length
+              : JSON.stringify(responsePayload ?? "").length;
           const historyEntry: RequestHistoryEntry = {
             id: `hist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             timestamp: startTime,
@@ -307,10 +310,7 @@ export class ExecuteRequestCommand implements ICommand {
             headers: headers || {},
             statusCode: result.status ?? 200,
             duration: timeTaken,
-            responseSize:
-              typeof responsePayload === "string"
-                ? responsePayload.length
-                : JSON.stringify(responsePayload ?? "").length,
+            responseSize,
             success: result.success,
             starred: false,
           };
