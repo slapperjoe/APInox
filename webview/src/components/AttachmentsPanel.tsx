@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
 import styled from 'styled-components';
 import { Paperclip, Plus, Trash2, File, FileText, Image, Film, Music } from 'lucide-react';
-import { SoapAttachment, AttachmentType } from '@shared/models';
+import { RequestAttachment, AttachmentType } from '@shared/models';
 import { FrontendCommand } from '@shared/messages';
 import { bridge } from '../utils/bridge';
 
@@ -170,8 +170,8 @@ const DropZone = styled.div<{ isDragging?: boolean }>`
 `;
 
 interface AttachmentsPanelProps {
-    attachments: SoapAttachment[];
-    onChange: (attachments: SoapAttachment[]) => void;
+    attachments: RequestAttachment[];
+    onChange: (attachments: RequestAttachment[]) => void;
 }
 
 // Helper to get icon based on content type

@@ -9,17 +9,17 @@ import { useEffect, useRef } from 'react';
 import { bridge } from '../utils/bridge';
 import { BackendCommand, FrontendCommand } from '@shared/messages';
 import {
-    SoapUIInterface,
-    SoapUIProject,
-    SoapUIRequest,
-    SoapTestStep,
-    SoapTestCase,
+    ApiInterface,
+    ApinoxProject,
+    ApiRequest,
+    TestStep,
+    TestCase,
     WatcherEvent,
     SidebarView,
     MockEvent,
     MockConfig,
     RequestHistoryEntry,
-    SoapAttachment
+    RequestAttachment
 } from '@shared/models';
 
 // Debug logger - sends to VS Code output and console
@@ -56,8 +56,8 @@ const getInitialXml = (input: any): string => {
 
 export interface MessageHandlerState {
     // Setters for state that the handler modifies
-    setProjects: React.Dispatch<React.SetStateAction<SoapUIProject[]>>;
-    setExploredInterfaces: React.Dispatch<React.SetStateAction<SoapUIInterface[]>>;
+    setProjects: React.Dispatch<React.SetStateAction<ApinoxProject[]>>;
+    setExploredInterfaces: React.Dispatch<React.SetStateAction<ApiInterface[]>>;
     setExplorerExpanded: React.Dispatch<React.SetStateAction<boolean>>;
     setLoading: React.Dispatch<React.SetStateAction<boolean>>;
     setResponse: React.Dispatch<React.SetStateAction<any>>;
@@ -102,16 +102,16 @@ export interface MessageHandlerState {
 
     // Current values needed for message handling
     wsdlUrl: string;
-    projects: SoapUIProject[];
+    projects: ApinoxProject[];
     proxyConfig: any;
     config: any;
-    selectedTestCase: SoapTestCase | null;
-    selectedRequest: SoapUIRequest | null;
+    selectedTestCase: TestCase | null;
+    selectedRequest: ApiRequest | null;
     startTimeRef: React.MutableRefObject<number>;
 
     // Callbacks
-    saveProject: (project: SoapUIProject) => void;
-    onAttachmentSelected?: (attachment: SoapAttachment) => void;
+    saveProject: (project: ApinoxProject) => void;
+    onAttachmentSelected?: (attachment: RequestAttachment) => void;
 }
 
 export function useMessageHandler(state: MessageHandlerState) {
@@ -187,8 +187,8 @@ export function useMessageHandler(state: MessageHandlerState) {
             switch (message.command) {
                 case BackendCommand.WsdlParsed:
                     debugLog('wsdlParsed', { serviceCount: message.services?.length });
-                    // Convert raw SoapService to SoapUIInterface, Splitting by Port
-                    const splitInterfaces: SoapUIInterface[] = [];
+                    // Convert raw SoapService to ApiInterface, Splitting by Port
+                    const splitInterfaces: ApiInterface[] = [];
 
                     message.services.forEach((svc: any) => {
                         // Group operations by Port
@@ -357,7 +357,7 @@ export function useMessageHandler(state: MessageHandlerState) {
                             testCases: suite.testCases?.map(tc => {
                                 if (tc.id !== message.caseId) return tc;
 
-                                let newStep: SoapTestStep;
+                                let newStep: TestStep;
 
                                 if (message.request) {
                                     // Created from existing Folder Request - Clone it

@@ -7,7 +7,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { X, ChevronRight, ChevronDown, Check } from 'lucide-react';
-import { SoapUIProject, SoapUIRequest } from '@shared/models';
+import { ApinoxProject, ApiRequest } from '@shared/models';
 
 const Overlay = styled.div`
     position: fixed;
@@ -124,8 +124,8 @@ const EmptyState = styled.div`
 interface ImportRequestsModalProps {
     open: boolean;
     onClose: () => void;
-    onImport: (requests: SoapUIRequest[]) => void;
-    projects: SoapUIProject[];
+    onImport: (requests: ApiRequest[]) => void;
+    projects: ApinoxProject[];
 }
 
 interface ExpandedState {
@@ -174,7 +174,7 @@ export const ImportRequestsModal: React.FC<ImportRequestsModalProps> = ({
     };
 
     const handleImport = () => {
-        const requests: SoapUIRequest[] = [];
+        const requests: ApiRequest[] = [];
         for (const project of projects) {
             for (const iface of project.interfaces) {
                 for (const op of iface.operations) {

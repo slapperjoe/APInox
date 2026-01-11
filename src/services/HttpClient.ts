@@ -9,7 +9,7 @@ import axios, {
   CancelTokenSource,
 } from "axios";
 import {
-  SoapUIRequest,
+  ApiRequest,
   BodyType,
   HttpMethod,
   RestConfig,
@@ -55,7 +55,7 @@ export class HttpClient {
    * Execute a request based on its type
    */
   async execute(
-    request: SoapUIRequest,
+    request: ApiRequest,
     options?: HttpClientOptions,
   ): Promise<HttpResponse> {
     const requestType = request.requestType || "soap";
@@ -75,7 +75,7 @@ export class HttpClient {
    * Execute a REST request
    */
   async executeRest(
-    request: SoapUIRequest,
+    request: ApiRequest,
     options?: HttpClientOptions,
   ): Promise<HttpResponse> {
     const method = (request.method || "GET") as HttpMethod;
@@ -123,7 +123,7 @@ export class HttpClient {
    * Execute a GraphQL request
    */
   async executeGraphQL(
-    request: SoapUIRequest,
+    request: ApiRequest,
     options?: HttpClientOptions,
   ): Promise<HttpResponse> {
     const endpoint = request.endpoint || "";
@@ -153,7 +153,7 @@ export class HttpClient {
    * Execute a SOAP request (delegates to existing logic pattern)
    */
   async executeSoap(
-    request: SoapUIRequest,
+    request: ApiRequest,
     options?: HttpClientOptions,
   ): Promise<HttpResponse> {
     const endpoint = request.endpoint || "";

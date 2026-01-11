@@ -1,10 +1,10 @@
 import { AssertionRunner } from '../../utils/AssertionRunner';
-import { SoapUIAssertion } from '../../../shared/src/models';
+import { Assertion } from '../../../shared/src/models';
 
 describe('AssertionRunner', () => {
     describe('Simple Contains', () => {
         it('should pass when response contains token', () => {
-            const assertions: SoapUIAssertion[] = [{
+            const assertions: Assertion[] = [{
                 id: 'a1',
                 name: 'Contains Check',
                 type: 'Simple Contains',
@@ -19,7 +19,7 @@ describe('AssertionRunner', () => {
         });
 
         it('should fail when response does not contain token', () => {
-            const assertions: SoapUIAssertion[] = [{
+            const assertions: Assertion[] = [{
                 id: 'a2',
                 name: 'Contains Check',
                 type: 'Simple Contains',
@@ -34,7 +34,7 @@ describe('AssertionRunner', () => {
         });
 
         it('should handle case-insensitive matching', () => {
-            const assertions: SoapUIAssertion[] = [{
+            const assertions: Assertion[] = [{
                 id: 'a3',
                 name: 'Case Insensitive',
                 type: 'Simple Contains',
@@ -49,7 +49,7 @@ describe('AssertionRunner', () => {
 
     describe('Simple Not Contains', () => {
         it('should pass when response does not contain token', () => {
-            const assertions: SoapUIAssertion[] = [{
+            const assertions: Assertion[] = [{
                 id: 'a4',
                 name: 'Not Contains Check',
                 type: 'Simple Not Contains',
@@ -62,7 +62,7 @@ describe('AssertionRunner', () => {
         });
 
         it('should fail when response contains token', () => {
-            const assertions: SoapUIAssertion[] = [{
+            const assertions: Assertion[] = [{
                 id: 'a5',
                 name: 'Not Contains Check',
                 type: 'Simple Not Contains',
@@ -77,7 +77,7 @@ describe('AssertionRunner', () => {
 
     describe('Response SLA', () => {
         it('should pass when response time is within SLA', () => {
-            const assertions: SoapUIAssertion[] = [{
+            const assertions: Assertion[] = [{
                 id: 'a6',
                 name: 'SLA Check',
                 type: 'Response SLA',
@@ -91,7 +91,7 @@ describe('AssertionRunner', () => {
         });
 
         it('should fail when response time exceeds SLA', () => {
-            const assertions: SoapUIAssertion[] = [{
+            const assertions: Assertion[] = [{
                 id: 'a7',
                 name: 'SLA Check',
                 type: 'Response SLA',
@@ -118,7 +118,7 @@ describe('AssertionRunner', () => {
         `;
 
         it('should pass when XPath matches expected value', () => {
-            const assertions: SoapUIAssertion[] = [{
+            const assertions: Assertion[] = [{
                 id: 'a8',
                 name: 'XPath Check',
                 type: 'XPath Match',
@@ -134,7 +134,7 @@ describe('AssertionRunner', () => {
         });
 
         it('should fail when XPath value does not match', () => {
-            const assertions: SoapUIAssertion[] = [{
+            const assertions: Assertion[] = [{
                 id: 'a9',
                 name: 'XPath Check',
                 type: 'XPath Match',
@@ -152,7 +152,7 @@ describe('AssertionRunner', () => {
         });
 
         it('should fail when no XPath configured', () => {
-            const assertions: SoapUIAssertion[] = [{
+            const assertions: Assertion[] = [{
                 id: 'a10',
                 name: 'XPath Check',
                 type: 'XPath Match',
@@ -173,7 +173,7 @@ describe('AssertionRunner', () => {
         });
 
         it('should handle null response', () => {
-            const assertions: SoapUIAssertion[] = [{
+            const assertions: Assertion[] = [{
                 id: 'a11',
                 name: 'Contains Check',
                 type: 'Simple Contains',
@@ -186,7 +186,7 @@ describe('AssertionRunner', () => {
         });
 
         it('should handle undefined response', () => {
-            const assertions: SoapUIAssertion[] = [{
+            const assertions: Assertion[] = [{
                 id: 'a12',
                 name: 'Contains Check',
                 type: 'Simple Contains',
@@ -199,7 +199,7 @@ describe('AssertionRunner', () => {
         });
 
         it('should handle unknown assertion type', () => {
-            const assertions: SoapUIAssertion[] = [{
+            const assertions: Assertion[] = [{
                 id: 'a13',
                 name: 'Unknown',
                 type: 'Unknown Type' as any,
@@ -215,7 +215,7 @@ describe('AssertionRunner', () => {
 
     describe('Multiple assertions', () => {
         it('should run all assertions and return all results', () => {
-            const assertions: SoapUIAssertion[] = [
+            const assertions: Assertion[] = [
                 {
                     id: 'a14',
                     name: 'Contains',
@@ -266,7 +266,7 @@ describe('AssertionRunner', () => {
         `;
 
         it('should pass when expecting fault and fault exists', () => {
-            const assertions: SoapUIAssertion[] = [{
+            const assertions: Assertion[] = [{
                 id: 'sf1',
                 name: 'Fault Check',
                 type: 'SOAP Fault',
@@ -278,7 +278,7 @@ describe('AssertionRunner', () => {
         });
 
         it('should fail when expecting fault but no fault', () => {
-            const assertions: SoapUIAssertion[] = [{
+            const assertions: Assertion[] = [{
                 id: 'sf2',
                 name: 'Fault Check',
                 type: 'SOAP Fault',
@@ -290,7 +290,7 @@ describe('AssertionRunner', () => {
         });
 
         it('should pass when not expecting fault and no fault', () => {
-            const assertions: SoapUIAssertion[] = [{
+            const assertions: Assertion[] = [{
                 id: 'sf3',
                 name: 'Success Check',
                 type: 'SOAP Fault',
@@ -302,7 +302,7 @@ describe('AssertionRunner', () => {
         });
 
         it('should fail when not expecting fault but fault exists', () => {
-            const assertions: SoapUIAssertion[] = [{
+            const assertions: Assertion[] = [{
                 id: 'sf4',
                 name: 'Success Check',
                 type: 'SOAP Fault',
@@ -314,7 +314,7 @@ describe('AssertionRunner', () => {
         });
 
         it('should check fault code when specified', () => {
-            const assertions: SoapUIAssertion[] = [{
+            const assertions: Assertion[] = [{
                 id: 'sf5',
                 name: 'Fault Code Check',
                 type: 'SOAP Fault',
@@ -328,7 +328,7 @@ describe('AssertionRunner', () => {
 
     describe('HTTP Status', () => {
         it('should pass when status matches', () => {
-            const assertions: SoapUIAssertion[] = [{
+            const assertions: Assertion[] = [{
                 id: 'hs1',
                 name: 'Status Check',
                 type: 'HTTP Status',
@@ -340,7 +340,7 @@ describe('AssertionRunner', () => {
         });
 
         it('should fail when status does not match', () => {
-            const assertions: SoapUIAssertion[] = [{
+            const assertions: Assertion[] = [{
                 id: 'hs2',
                 name: 'Status Check',
                 type: 'HTTP Status',
@@ -352,7 +352,7 @@ describe('AssertionRunner', () => {
         });
 
         it('should allow multiple status codes', () => {
-            const assertions: SoapUIAssertion[] = [{
+            const assertions: Assertion[] = [{
                 id: 'hs3',
                 name: 'Status Check',
                 type: 'HTTP Status',
@@ -364,7 +364,7 @@ describe('AssertionRunner', () => {
         });
 
         it('should fail when status code not available', () => {
-            const assertions: SoapUIAssertion[] = [{
+            const assertions: Assertion[] = [{
                 id: 'hs4',
                 name: 'Status Check',
                 type: 'HTTP Status',
@@ -379,7 +379,7 @@ describe('AssertionRunner', () => {
 
     describe('Script', () => {
         it('should pass when script returns true', () => {
-            const assertions: SoapUIAssertion[] = [{
+            const assertions: Assertion[] = [{
                 id: 'sc1',
                 name: 'Script True',
                 type: 'Script',
@@ -391,7 +391,7 @@ describe('AssertionRunner', () => {
         });
 
         it('should fail when script returns false', () => {
-            const assertions: SoapUIAssertion[] = [{
+            const assertions: Assertion[] = [{
                 id: 'sc2',
                 name: 'Script False',
                 type: 'Script',
@@ -403,7 +403,7 @@ describe('AssertionRunner', () => {
         });
 
         it('should have access to response variable', () => {
-            const assertions: SoapUIAssertion[] = [{
+            const assertions: Assertion[] = [{
                 id: 'sc3',
                 name: 'Script Response',
                 type: 'Script',
@@ -415,7 +415,7 @@ describe('AssertionRunner', () => {
         });
 
         it('should have access to statusCode variable', () => {
-            const assertions: SoapUIAssertion[] = [{
+            const assertions: Assertion[] = [{
                 id: 'sc4',
                 name: 'Script Status',
                 type: 'Script',
@@ -427,7 +427,7 @@ describe('AssertionRunner', () => {
         });
 
         it('should fail on script error', () => {
-            const assertions: SoapUIAssertion[] = [{
+            const assertions: Assertion[] = [{
                 id: 'sc5',
                 name: 'Script Error',
                 type: 'Script',
@@ -440,7 +440,7 @@ describe('AssertionRunner', () => {
         });
 
         it('should fail when no script configured', () => {
-            const assertions: SoapUIAssertion[] = [{
+            const assertions: Assertion[] = [{
                 id: 'sc6',
                 name: 'No Script',
                 type: 'Script',

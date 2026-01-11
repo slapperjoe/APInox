@@ -1,5 +1,5 @@
 import * as soap from 'soap';
-import { SoapService, SoapOperation, SoapSchemaNode } from '../shared/src/models';
+import { ApiService, ServiceOperation, SchemaNode } from '../shared/src/models';
 import { HttpProxyAgent } from 'http-proxy-agent';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 
@@ -31,7 +31,7 @@ export class WsdlParser {
         return this.client;
     }
 
-    public async parseWsdl(url: string, _localWsdlDir?: string): Promise<SoapService[]> {
+    public async parseWsdl(url: string, _localWsdlDir?: string): Promise<ApiService[]> {
         this.log(`Attempting to parse WSDL: ${url}`);
 
         const soapOptions: any = {};
@@ -77,7 +77,7 @@ export class WsdlParser {
             this.log('WSDL Client created successfully.');
 
             const description = client.describe();
-            const services: SoapService[] = [];
+            const services: ApiService[] = [];
 
             // Try to get targetNamespace from definitions
             const definitions = (client as any).wsdl.definitions;
@@ -131,7 +131,7 @@ export class WsdlParser {
                 this.log(`Processing Service: ${serviceName}`);
                 const service = description[serviceName];
                 const ports: string[] = [];
-                const operations: SoapOperation[] = [];
+                const operations: ServiceOperation[] = [];
 
                 for (const portName in service) {
                     this.log(`  Processing Port: ${portName}`);
@@ -188,7 +188,7 @@ export class WsdlParser {
         }
     }
 
-    public getOperationSchema(operationName: string, _portName?: string): SoapSchemaNode | null {
+    public getOperationSchema(operationName: string, _portName?: string): SchemaNode | null {
         if (!this.client) return null;
 
         const definitions = (this.client as any).wsdl.definitions;
@@ -223,8 +223,8 @@ export class WsdlParser {
         };
 
         // Recursive Build
-        const buildNode = (name: string, typeName: string, doc = '', minOccurs = '1'): SoapSchemaNode => {
-            const node: SoapSchemaNode = {
+        const buildNode = (name: string, typeName: string, doc = '', minOccurs = '1'): SchemaNode => {
+            const node: SchemaNode = {
                 name,
                 type: typeName,
                 kind: 'simple' as const,
@@ -237,7 +237,7 @@ export class WsdlParser {
                 node.kind = 'complex';
                 node.documentation = typeDef.annotation?.documentation || doc;
 
-                const children: SoapSchemaNode[] = [];
+                const children: SchemaNode[] = [];
                 const sequence = typeDef.sequence || typeDef.all;
 
                 if (sequence) {

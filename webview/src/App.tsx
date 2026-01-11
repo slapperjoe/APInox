@@ -16,7 +16,7 @@ import { SettingsEditorModal } from './components/modals/SettingsEditorModal';
 import { CreateReplaceRuleModal } from './components/modals/CreateReplaceRuleModal';
 import { AddToDevOpsModal } from './components/modals/AddToDevOpsModal';
 import { AddToProjectModal } from './components/modals/AddToProjectModal';
-import { SoapUIRequest, SoapTestCase, SoapTestStep, SidebarView, ReplaceRule, PerformanceSuite, PerformanceRequest, RequestHistoryEntry } from '@shared/models';
+import { ApiRequest, TestCase, TestStep, SidebarView, ReplaceRule, PerformanceSuite, PerformanceRequest, RequestHistoryEntry } from '@shared/models';
 import { FrontendCommand } from '@shared/messages';
 import { useMessageHandler } from './hooks/useMessageHandler';
 import { useProject } from './contexts/ProjectContext';
@@ -254,7 +254,7 @@ function App() {
 
     const handleAddRequestToFolder = useCallback((projectName: string, folderId: string) => {
         const newRequestId = `request - ${Date.now()} `;
-        const newRequest: SoapUIRequest = {
+        const newRequest: ApiRequest = {
             id: newRequestId,
             name: 'New Request',
             request: '',
@@ -347,7 +347,7 @@ function App() {
 
     // NOTE: startTimeRef now comes from useRequestExecution hook
 
-    const handleUpdateProject = useCallback((oldProject: import('@shared/models').SoapUIProject, newProject: import('@shared/models').SoapUIProject) => {
+    const handleUpdateProject = useCallback((oldProject: import('@shared/models').ApinoxProject, newProject: import('@shared/models').ApinoxProject) => {
         setProjects(prev => prev.map(p => p === oldProject ? newProject : p));
         saveProject(newProject);
     }, [setProjects, saveProject]);
@@ -382,7 +382,7 @@ function App() {
     });
 
     // Cleanup wrappers for Project structure
-    const handleDeleteInterface = (iface: import('@shared/models').SoapUIInterface) => {
+    const handleDeleteInterface = (iface: import('@shared/models').ApiInterface) => {
         _handleDeleteInterface(iface);
         // If selected interface matches, or selected operation/request belongs to it
         if (selectedInterface?.name === iface.name) {
@@ -396,7 +396,7 @@ function App() {
         // ... (Checking strictly by name might be risky if duplicates allowed, but names are usually unique per project)
     };
 
-    const handleDeleteOperation = (op: import('@shared/models').SoapUIOperation, iface: import('@shared/models').SoapUIInterface) => {
+    const handleDeleteOperation = (op: import('@shared/models').ApiOperation, iface: import('@shared/models').ApiInterface) => {
         _handleDeleteOperation(op, iface);
         if (selectedOperation?.name === op.name) {
             setSelectedOperation(null);
@@ -408,8 +408,8 @@ function App() {
         }
     };
 
-    const handleDeleteRequest = (req?: import('@shared/models').SoapUIRequest) => {
-        const target = req || (contextMenu?.type === 'request' ? contextMenu.data as import('@shared/models').SoapUIRequest : null);
+    const handleDeleteRequest = (req?: import('@shared/models').ApiRequest) => {
+        const target = req || (contextMenu?.type === 'request' ? contextMenu.data as import('@shared/models').ApiRequest : null);
         _handleDeleteRequest(req);
 
         if (target && selectedRequest?.id === target.id) {
@@ -633,7 +633,7 @@ function App() {
     const handleSelectPerformanceRequest = (request: PerformanceRequest) => {
         console.log('[App] Selecting performance request', request.id);
         // We select it as a normal request to use the standard editor
-        const soapRequest: SoapUIRequest = {
+        const soapRequest: ApiRequest = {
             id: request.id,
             name: request.name,
             endpoint: request.endpoint,
@@ -712,7 +712,7 @@ function App() {
     }, [projects, selectedTestCase, setSelectedTestCase]);
 
     const handleReplayRequest = (entry: RequestHistoryEntry) => {
-        const req: SoapUIRequest = {
+        const req: ApiRequest = {
             id: entry.id,
             name: entry.requestName || 'Replayed Request',
             endpoint: entry.endpoint,
@@ -887,7 +887,7 @@ function App() {
 
     // Modals (remaining)
     const [confirmationModal, setConfirmationModal] = useState<ConfirmationState | null>(null);
-    const [addToTestCaseModal, setAddToTestCaseModal] = React.useState<{ open: boolean, request: SoapUIRequest | null }>({ open: false, request: null });
+    const [addToTestCaseModal, setAddToTestCaseModal] = React.useState<{ open: boolean, request: ApiRequest | null }>({ open: false, request: null });
     const [sampleModal, setSampleModal] = React.useState<{ open: boolean, schema: any | null, operationName: string }>({ open: false, schema: null, operationName: '' });
     // NOTE: extractorModal moved above useWorkspaceCallbacks
     const [replaceRuleModal, setReplaceRuleModal] = React.useState<{ open: boolean, xpath: string, matchText: string, target: 'request' | 'response' }>({ open: false, xpath: '', matchText: '', target: 'response' });
@@ -1653,7 +1653,7 @@ function App() {
                                 <ContextMenuItem onClick={handleCloneRequest}>Clone Request</ContextMenuItem>
                                 <ContextMenuItem onClick={() => {
                                     if (contextMenu) {
-                                        setAddToTestCaseModal({ open: true, request: contextMenu.data as SoapUIRequest });
+                                        setAddToTestCaseModal({ open: true, request: contextMenu.data as ApiRequest });
                                         closeContextMenu();
                                     }
                                 }}>Add to Test Case</ContextMenuItem>
@@ -1731,7 +1731,7 @@ function App() {
                         onClose={() => setAddToTestCaseModal({ open: false, request: null })}
                         onAdd={(target) => {
                             const req = addToTestCaseModal.request!;
-                            const newStep: SoapTestStep = {
+                            const newStep: TestStep = {
                                 id: `step - ${Date.now()} `,
                                 name: req.name,
                                 type: 'request',
@@ -1751,7 +1751,7 @@ function App() {
                                     if (s.id === suite.id) {
                                         // If creating new case
                                         if (target.type === 'new') {
-                                            const newCase: SoapTestCase = {
+                                            const newCase: TestCase = {
                                                 id: `tc - ${Date.now()} `,
                                                 name: `TestCase ${(s.testCases?.length || 0) + 1} `,
                                                 expanded: true,

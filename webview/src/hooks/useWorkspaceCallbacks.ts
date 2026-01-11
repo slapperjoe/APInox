@@ -6,22 +6,22 @@
  */
 
 import { useCallback } from 'react';
-import { SoapUIProject, SoapTestStep, SoapTestCase, TestStepType, SoapRequestExtractor } from '@shared/models';
+import { ApinoxProject, TestStep, TestCase, TestStepType, RequestExtractor } from '@shared/models';
 import { bridge } from '../utils/bridge';
 
 interface UseWorkspaceCallbacksParams {
     // Test case state
-    selectedTestCase: SoapTestCase | null;
-    selectedStep: SoapTestStep | null;
+    selectedTestCase: TestCase | null;
+    selectedStep: TestStep | null;
     testExecution: Record<string, Record<string, any>>;
-    projects: SoapUIProject[];
-    setSelectedStep: React.Dispatch<React.SetStateAction<SoapTestStep | null>>;
+    projects: ApinoxProject[];
+    setSelectedStep: React.Dispatch<React.SetStateAction<TestStep | null>>;
     setSelectedRequest: React.Dispatch<React.SetStateAction<any>>;
     setResponse: React.Dispatch<React.SetStateAction<any>>;
 
     // Project state
-    setProjects: React.Dispatch<React.SetStateAction<SoapUIProject[]>>;
-    saveProject: (project: SoapUIProject) => void;
+    setProjects: React.Dispatch<React.SetStateAction<ApinoxProject[]>>;
+    saveProject: (project: ApinoxProject) => void;
 
     // UI State
     layoutMode: 'vertical' | 'horizontal';
@@ -41,10 +41,10 @@ interface UseWorkspaceCallbacksParams {
 }
 
 interface UseWorkspaceCallbacksReturn {
-    handleSelectStep: (step: SoapTestStep | null) => void;
+    handleSelectStep: (step: TestStep | null) => void;
     handleDeleteStep: (stepId: string) => void;
     handleMoveStep: (stepId: string, direction: 'up' | 'down') => void;
-    handleUpdateStep: (updatedStep: SoapTestStep) => void;
+    handleUpdateStep: (updatedStep: TestStep) => void;
     handleBackToCase: () => void;
     handleAddStep: (caseId: string, type: TestStepType) => void;
     handleToggleLayout: () => void;
@@ -52,7 +52,7 @@ interface UseWorkspaceCallbacksReturn {
     handleToggleInlineElementValues: () => void;
     handleToggleHideCausalityData: () => void;
     handleAddExtractor: (data: { xpath: string; value: string; source: 'body' | 'header' }) => void;
-    handleEditExtractor: (extractor: SoapRequestExtractor, index: number) => void;
+    handleEditExtractor: (extractor: RequestExtractor, index: number) => void;
 }
 
 export function useWorkspaceCallbacks({
@@ -79,7 +79,7 @@ export function useWorkspaceCallbacks({
     setExtractorModal
 }: UseWorkspaceCallbacksParams): UseWorkspaceCallbacksReturn {
 
-    const handleSelectStep = useCallback((step: SoapTestStep | null) => {
+    const handleSelectStep = useCallback((step: TestStep | null) => {
         if (step) {
             // Look up the current step from projects state to get latest edits (e.g., assertions)
             // Search ALL test cases for the step by ID to avoid relying on stale selectedTestCase
@@ -193,7 +193,7 @@ export function useWorkspaceCallbacks({
         }));
     }, [selectedTestCase, setProjects, saveProject]);
 
-    const handleUpdateStep = useCallback((updatedStep: SoapTestStep) => {
+    const handleUpdateStep = useCallback((updatedStep: TestStep) => {
         bridge.sendMessage({ command: 'log', message: `[handleUpdateStep] Called with: ${updatedStep.id} Script len: ${updatedStep.config.scriptContent?.length}` });
         if (!selectedTestCase) {
             bridge.sendMessage({ command: 'log', message: '[handleUpdateStep] No selectedTestCase!' });
@@ -238,7 +238,7 @@ export function useWorkspaceCallbacks({
                     ...suite,
                     testCases: suite.testCases?.map(tc => {
                         if (tc.id !== caseId) return tc;
-                        const newStep: SoapTestStep = {
+                        const newStep: TestStep = {
                             id: `step-${Date.now()}`,
                             name: 'Delay',
                             type: 'delay',
@@ -261,7 +261,7 @@ export function useWorkspaceCallbacks({
                     ...suite,
                     testCases: suite.testCases?.map(tc => {
                         if (tc.id !== caseId) return tc;
-                        const newStep: SoapTestStep = {
+                        const newStep: TestStep = {
                             id: `step-${Date.now()}`,
                             name: 'Script',
                             type: 'script',
@@ -317,7 +317,7 @@ export function useWorkspaceCallbacks({
         setExtractorModal({ ...data, variableName: '' });
     }, [selectedStep, setExtractorModal]);
 
-    const handleEditExtractor = useCallback((extractor: SoapRequestExtractor, _index: number) => {
+    const handleEditExtractor = useCallback((extractor: RequestExtractor, _index: number) => {
         if (!selectedStep) return;
         setExtractorModal({
             xpath: extractor.path,

@@ -9,27 +9,27 @@ import { bridge } from '../utils/bridge';
 import { FrontendCommand } from '@shared/messages';
 import { CustomXPathEvaluator } from '../utils/xpathEvaluator';
 import { useProject } from '../contexts/ProjectContext';
-import { SoapUIRequest, SoapUIOperation, SoapUIInterface, SoapTestCase } from '@shared/models';
+import { ApiRequest, ApiOperation, ApiInterface, TestCase } from '@shared/models';
 
 interface UseRequestHandlersProps {
-    selectedRequest: SoapUIRequest | null;
-    setSelectedRequest: (req: SoapUIRequest | null) => void;
-    selectedOperation: SoapUIOperation | null;
-    selectedInterface: SoapUIInterface | null;
-    selectedTestCase: SoapTestCase | null;
+    selectedRequest: ApiRequest | null;
+    setSelectedRequest: (req: ApiRequest | null) => void;
+    selectedOperation: ApiOperation | null;
+    selectedInterface: ApiInterface | null;
+    selectedTestCase: TestCase | null;
     selectedStep: any;
     testExecution: Record<string, Record<string, any>>;
     wsdlUrl: string;
     setLoading: (loading: boolean) => void;
     setResponse: (response: any) => void;
     setWorkspaceDirty: (dirty: boolean) => void;
-    setExploredInterfaces: React.Dispatch<React.SetStateAction<SoapUIInterface[]>>;
+    setExploredInterfaces: React.Dispatch<React.SetStateAction<ApiInterface[]>>;
 }
 
 interface UseRequestHandlersReturn {
     executeRequest: (xml: string) => void;
     cancelRequest: () => void;
-    handleRequestUpdate: (updated: SoapUIRequest) => void;
+    handleRequestUpdate: (updated: ApiRequest) => void;
     handleResetRequest: () => void;
     startTimeRef: React.MutableRefObject<number>;
 }
@@ -140,7 +140,7 @@ export function useRequestHandlers({
         setLoading(false);
     }, [setLoading]);
 
-    const handleRequestUpdate = useCallback((updated: SoapUIRequest) => {
+    const handleRequestUpdate = useCallback((updated: ApiRequest) => {
         if (selectedRequest?.readOnly) {
             console.log('[useRequestHandlers] Blocked update on read-only request:', updated.id);
             return;
@@ -299,7 +299,7 @@ export function useRequestHandlers({
 }
 
 // Helper function to recursively update a request in folder structure
-function updateFolderRequest(folders: any[], requestId: string, updated: SoapUIRequest): any[] {
+function updateFolderRequest(folders: any[], requestId: string, updated: ApiRequest): any[] {
     return folders.map(folder => ({
         ...folder,
         requests: folder.requests.map((r: any) =>

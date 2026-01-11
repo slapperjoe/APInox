@@ -1,6 +1,6 @@
 import { TestRunnerService } from './TestRunnerService';
 import { SoapClient } from '../soapClient';
-import { SoapTestCase, SoapTestStep } from '../../shared/src/models';
+import { TestCase, TestStep } from '../../shared/src/models';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 describe('TestRunnerService Scripting', () => {
@@ -15,16 +15,16 @@ describe('TestRunnerService Scripting', () => {
     });
 
     it('should execute scripts and share context', async () => {
-        const step1: SoapTestStep = {
+        const step1: TestStep = {
             id: '1', name: 'Init', type: 'script',
             config: { scriptContent: "context.count = 5; log('Set count');" }
         };
-        const step2: SoapTestStep = {
+        const step2: TestStep = {
             id: '2', name: 'Check', type: 'script',
             config: { scriptContent: "context.count++; log('New count: ' + context.count);" }
         };
 
-        const testCase: SoapTestCase = {
+        const testCase: TestCase = {
             id: 'tc1', name: 'Script Test', steps: [step1, step2]
         };
 
@@ -35,16 +35,16 @@ describe('TestRunnerService Scripting', () => {
     });
 
     it('should support goto flow control', async () => {
-        const step1: SoapTestStep = {
+        const step1: TestStep = {
             id: '1', name: 'Start', type: 'script',
             config: { scriptContent: "if (!context.loop) { context.loop = 0; } context.loop++; log('Loop ' + context.loop);" }
         };
-        const step2: SoapTestStep = {
+        const step2: TestStep = {
             id: '2', name: 'Decision', type: 'script',
             config: { scriptContent: "if (context.loop < 3) { goto('Start'); } else { log('Done'); }" }
         };
 
-        const testCase: SoapTestCase = {
+        const testCase: TestCase = {
             id: 'tc2', name: 'Goto Test', steps: [step1, step2]
         };
 
@@ -58,11 +58,11 @@ describe('TestRunnerService Scripting', () => {
     });
 
     it('should enforce max steps limit', async () => {
-        const step1: SoapTestStep = {
+        const step1: TestStep = {
             id: '1', name: 'Infinite', type: 'script',
             config: { scriptContent: "goto('Infinite');" }
         };
-        const testCase: SoapTestCase = {
+        const testCase: TestCase = {
             id: 'tc3', name: 'Inf Test', steps: [step1]
         };
 
@@ -71,11 +71,11 @@ describe('TestRunnerService Scripting', () => {
     });
 
     it('should support async delay', async () => {
-        const step1: SoapTestStep = {
+        const step1: TestStep = {
             id: '1', name: 'DelayScript', type: 'script',
             config: { scriptContent: "await delay(100);" }
         };
-        const testCase: SoapTestCase = {
+        const testCase: TestCase = {
             id: 'tc4', name: 'Delay Test', steps: [step1]
         };
 

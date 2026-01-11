@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { SoapUIProject } from '@shared/models';
+import { ApinoxProject } from '@shared/models';
 import { FlaskConical, Play } from 'lucide-react';
 
 const Overlay = styled.div`
@@ -77,7 +77,7 @@ const Item = styled.div<{ active?: boolean, depth: number }>`
 `;
 
 interface AddToTestCaseModalProps {
-    projects: SoapUIProject[];
+    projects: ApinoxProject[];
     onClose: () => void;
     onAdd: (target: { type: 'new' | 'existing', suiteId?: string, caseId?: string }) => void;
 }

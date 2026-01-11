@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { UpdateTestStepCommand } from '../commands/UpdateTestStepCommand';
-import { SoapUIProject, SoapTestStep } from '../../shared/src/models';
+import { ApinoxProject, TestStep } from '../../shared/src/models';
 
 // Mock vscode
 vi.mock('vscode', () => ({
@@ -9,12 +9,12 @@ vi.mock('vscode', () => ({
 
 describe('UpdateTestStepCommand', () => {
     let mockPanel: any;
-    let loadedProjects: Map<string, SoapUIProject>;
+    let loadedProjects: Map<string, ApinoxProject>;
     let mockProjectStorage: any;
     let mockFolderStorage: any;
     let command: UpdateTestStepCommand;
 
-    const createMockProject = (): SoapUIProject => ({
+    const createMockProject = (): ApinoxProject => ({
         name: 'Test Project',
         id: 'proj-1',
         fileName: 'c:\\Users\\Test\\project',
@@ -71,7 +71,7 @@ describe('UpdateTestStepCommand', () => {
     });
 
     it('should update step in memory', async () => {
-        const updatedStep: SoapTestStep = {
+        const updatedStep: TestStep = {
             id: 'step-1',
             name: 'Script Step',
             type: 'script',
@@ -89,7 +89,7 @@ describe('UpdateTestStepCommand', () => {
     });
 
     it('should save project to disk after updating step', async () => {
-        const updatedStep: SoapTestStep = {
+        const updatedStep: TestStep = {
             id: 'step-1',
             name: 'Script Step',
             type: 'script',
@@ -104,7 +104,7 @@ describe('UpdateTestStepCommand', () => {
     });
 
     it('should send projectLoaded message to webview after save', async () => {
-        const updatedStep: SoapTestStep = {
+        const updatedStep: TestStep = {
             id: 'step-1',
             name: 'Script Step',
             type: 'script',
@@ -123,7 +123,7 @@ describe('UpdateTestStepCommand', () => {
     });
 
     it('should include updated project in projectLoaded message', async () => {
-        const updatedStep: SoapTestStep = {
+        const updatedStep: TestStep = {
             id: 'step-1',
             name: 'Script Step',
             type: 'script',
@@ -140,7 +140,7 @@ describe('UpdateTestStepCommand', () => {
     });
 
     it('should handle non-existent step gracefully', async () => {
-        const nonExistentStep: SoapTestStep = {
+        const nonExistentStep: TestStep = {
             id: 'step-999',
             name: 'Non-existent',
             type: 'script',

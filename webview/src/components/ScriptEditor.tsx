@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import Editor, { Monaco } from '@monaco-editor/react';
-import { SoapTestStep } from '@shared/models';
+import { TestStep } from '@shared/models';
 import { bridge } from '../utils/bridge';
 import { Toolbar, ToolbarButton } from '../styles/WorkspaceLayout.styles';
 import { ChevronLeft, Save, Play } from 'lucide-react';
@@ -8,8 +8,8 @@ import { ScriptPlaygroundModal } from './modals/ScriptPlaygroundModal';
 import { ToolbarSeparator } from '../styles/WorkspaceLayout.styles';
 
 interface ScriptEditorProps {
-    step: SoapTestStep;
-    onUpdate: (step: SoapTestStep) => void;
+    step: TestStep;
+    onUpdate: (step: TestStep) => void;
     isReadOnly?: boolean;
     onBack?: () => void;
 }

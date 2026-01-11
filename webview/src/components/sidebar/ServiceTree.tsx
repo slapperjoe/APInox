@@ -1,37 +1,37 @@
 import React from 'react';
 import { ChevronRight, ChevronDown, Plus, Trash2, Save } from 'lucide-react';
-import { SoapUIInterface, SoapUIOperation, SoapUIRequest, SoapUIProject } from '@shared/models';
+import { ApiInterface, ApiOperation, ApiRequest, ApinoxProject } from '@shared/models';
 import { HeaderButton, OperationItem, RequestItem, DirtyMarker } from './shared/SidebarStyles';
 
 export interface ServiceTreeProps {
-    interfaces: SoapUIInterface[];
-    projects?: SoapUIProject[]; // For lookup when in project view
+    interfaces: ApiInterface[];
+    projects?: ApinoxProject[]; // For lookup when in project view
     isExplorer: boolean;
 
     // State
-    selectedInterface: SoapUIInterface | null;
-    selectedOperation: SoapUIOperation | null;
-    selectedRequest: SoapUIRequest | null;
+    selectedInterface: ApiInterface | null;
+    selectedOperation: ApiOperation | null;
+    selectedRequest: ApiRequest | null;
     confirmDeleteId: string | null;
 
 
     // Actions
-    onToggleInterface: (iface: SoapUIInterface) => void;
-    onSelectInterface: (iface: SoapUIInterface) => void;
-    onToggleOperation: (op: SoapUIOperation, iface: SoapUIInterface) => void;
-    onSelectOperation: (op: SoapUIOperation, iface: SoapUIInterface) => void;
-    onSelectRequest: (req: SoapUIRequest, op: SoapUIOperation, iface: SoapUIInterface) => void;
+    onToggleInterface: (iface: ApiInterface) => void;
+    onSelectInterface: (iface: ApiInterface) => void;
+    onToggleOperation: (op: ApiOperation, iface: ApiInterface) => void;
+    onSelectOperation: (op: ApiOperation, iface: ApiInterface) => void;
+    onSelectRequest: (req: ApiRequest, op: ApiOperation, iface: ApiInterface) => void;
     onContextMenu: (e: React.MouseEvent, type: string, data: any) => void;
 
     // Explorer Specific
-    onAddToProject?: (iface: SoapUIInterface) => void;
-    onRemoveFromExplorer?: (iface: SoapUIInterface) => void;
+    onAddToProject?: (iface: ApiInterface) => void;
+    onRemoveFromExplorer?: (iface: ApiInterface) => void;
 
     // Project Specific
-    onDeleteInterface?: (iface: SoapUIInterface) => void;
-    onAddRequest?: (op: SoapUIOperation) => void;
-    onDeleteOperation?: (op: SoapUIOperation, iface: SoapUIInterface) => void;
-    onDeleteRequest?: (req: SoapUIRequest) => void;
+    onDeleteInterface?: (iface: ApiInterface) => void;
+    onAddRequest?: (op: ApiOperation) => void;
+    onDeleteOperation?: (op: ApiOperation, iface: ApiInterface) => void;
+    onDeleteRequest?: (req: ApiRequest) => void;
     onSaveProject?: () => void; // Saves the parent project
     recentlySaved?: boolean; // True if project was recently saved (for green confirmation)
 

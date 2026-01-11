@@ -1,7 +1,7 @@
 
-import { SoapUIProject } from '../../shared/src/models';
+import { ApinoxProject } from '../../shared/src/models';
 
-export const SAMPLES_PROJECT: SoapUIProject = {
+export const SAMPLES_PROJECT: ApinoxProject = {
     id: 'samples-project-read-only',
     name: 'Samples',
     description: 'A collection of read-only sample requests (SOAP, REST, GraphQL)',

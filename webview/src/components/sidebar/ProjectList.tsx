@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, FolderPlus, ChevronDown, ChevronRight, Save, Trash2, Lock } from 'lucide-react';
-import { SoapUIProject, SoapUIInterface, SoapUIOperation, SoapUIRequest } from '@shared/models';
+import { ApinoxProject, ApiInterface, ApiOperation, ApiRequest } from '@shared/models';
 import { HeaderButton, DirtyMarker, OperationItem } from './shared/SidebarStyles';
 import { ServiceTree } from './ServiceTree';
 import { FolderTree } from './FolderTree';
@@ -8,13 +8,13 @@ import { ContextMenu, ContextMenuItem } from '../../styles/App.styles';
 import { updateProjectWithRename } from '../../utils/projectUtils';
 
 export interface ProjectListProps {
-    projects: SoapUIProject[];
+    projects: ApinoxProject[];
     savedProjects: Set<string>;
     workspaceDirty?: boolean;
     onAddProject: () => void;
     loadProject: () => void;
-    saveProject: (proj: SoapUIProject) => void;
-    onUpdateProject: (oldProject: SoapUIProject, newProject: SoapUIProject) => void;
+    saveProject: (proj: ApinoxProject) => void;
+    onUpdateProject: (oldProject: ApinoxProject, newProject: ApinoxProject) => void;
     closeProject: (name: string) => void;
 
     // Toggle
@@ -25,20 +25,20 @@ export interface ProjectListProps {
     // Selection
     selectedProjectName: string | null;
     setSelectedProjectName: (name: string | null) => void;
-    selectedInterface: SoapUIInterface | null;
-    setSelectedInterface: (iface: SoapUIInterface | null) => void;
-    selectedOperation: SoapUIOperation | null;
-    setSelectedOperation: (op: SoapUIOperation | null) => void;
-    selectedRequest: SoapUIRequest | null;
-    setSelectedRequest: (req: SoapUIRequest | null) => void;
+    selectedInterface: ApiInterface | null;
+    setSelectedInterface: (iface: ApiInterface | null) => void;
+    selectedOperation: ApiOperation | null;
+    setSelectedOperation: (op: ApiOperation | null) => void;
+    selectedRequest: ApiRequest | null;
+    setSelectedRequest: (req: ApiRequest | null) => void;
     setResponse: (res: any) => void;
 
     // Actions
     handleContextMenu: (e: React.MouseEvent, type: string, data: any, isExplorer?: boolean) => void;
-    onAddRequest?: (op: SoapUIOperation) => void;
-    onDeleteInterface?: (iface: SoapUIInterface) => void;
-    onDeleteOperation?: (op: SoapUIOperation, iface: SoapUIInterface) => void;
-    onDeleteRequest?: (req: SoapUIRequest) => void;
+    onAddRequest?: (op: ApiOperation) => void;
+    onDeleteInterface?: (iface: ApiInterface) => void;
+    onDeleteOperation?: (op: ApiOperation, iface: ApiInterface) => void;
+    onDeleteRequest?: (req: ApiRequest) => void;
     // Folder handlers
     onAddFolder?: (projectName: string, parentFolderId?: string) => void;
     onAddRequestToFolder?: (projectName: string, folderId: string) => void;
@@ -105,7 +105,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
         // If type is 'folder' or 'request', we don't easily know parent project here without searching or passing it.
         // However, we blocked triggering context menu in the children components (FolderTree)!
         // So here we only care about project triggers.
-        if (type === 'project' && (data as SoapUIProject).readOnly) return;
+        if (type === 'project' && (data as ApinoxProject).readOnly) return;
 
         setLocalContextMenu({ x: e.clientX, y: e.clientY, type, data });
         // Also call parent handler if needed for side effects? No, we replace it.

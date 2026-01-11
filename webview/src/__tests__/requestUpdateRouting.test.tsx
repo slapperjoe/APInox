@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { SoapUIProject, SoapUIRequest, SoapTestCase } from '@shared/models';
+import { ApinoxProject, ApiRequest, TestCase } from '@shared/models';
 
 /**
  * Integration tests for request update routing logic.
@@ -18,7 +18,7 @@ import { SoapUIProject, SoapUIRequest, SoapTestCase } from '@shared/models';
 describe('Request Update Routing', () => {
 
     // Helper to create a mock request
-    const createMockRequest = (id: string, name: string): SoapUIRequest => ({
+    const createMockRequest = (id: string, name: string): ApiRequest => ({
         id,
         name,
         request: '<soap:Envelope>test</soap:Envelope>',
@@ -27,7 +27,7 @@ describe('Request Update Routing', () => {
     });
 
     // Helper to create a mock project with a workspace request
-    const createMockProject = (requests: SoapUIRequest[]): SoapUIProject => ({
+    const createMockProject = (requests: ApiRequest[]): ApinoxProject => ({
         name: 'Test Project',
         id: 'proj-1',
         interfaces: [{
@@ -46,7 +46,7 @@ describe('Request Update Routing', () => {
     });
 
     // Helper to create a mock test case
-    const createMockTestCase = (stepRequests: SoapUIRequest[]): SoapTestCase => ({
+    const createMockTestCase = (stepRequests: ApiRequest[]): TestCase => ({
         id: 'tc-123',
         name: 'Test Case 1',
         steps: stepRequests.map((req, i) => ({
@@ -62,21 +62,21 @@ describe('Request Update Routing', () => {
             const perfRequest = createMockRequest('perf-req-1234567', 'Performance Request');
             const workspaceRequest = createMockRequest('req-1234567', 'Workspace Request');
 
-            const isPerformanceRequest = (req: SoapUIRequest) => req.id?.startsWith('perf-req-');
+            const isPerformanceRequest = (req: ApiRequest) => req.id?.startsWith('perf-req-');
 
             expect(isPerformanceRequest(perfRequest)).toBe(true);
             expect(isPerformanceRequest(workspaceRequest)).toBe(false);
         });
 
         it('should handle requests without ID gracefully', () => {
-            const requestNoId: SoapUIRequest = {
+            const requestNoId: ApiRequest = {
                 name: 'No ID Request',
                 request: '',
                 endpoint: 'http://test.com',
                 contentType: 'text/xml'
             };
 
-            const isPerformanceRequest = (req: SoapUIRequest) => req.id?.startsWith('perf-req-') ?? false;
+            const isPerformanceRequest = (req: ApiRequest) => req.id?.startsWith('perf-req-') ?? false;
 
             expect(isPerformanceRequest(requestNoId)).toBe(false);
         });

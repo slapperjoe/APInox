@@ -1,5 +1,5 @@
 
-import { ApinoxFolder, SoapUIProject } from '@shared/models';
+import { ApinoxFolder, ApinoxProject } from '@shared/models';
 
 /**
  * Recursively updates a folder name or a request name within a folder structure.
@@ -59,12 +59,12 @@ export const renameInFolders = (
  * Helper to update project structure with a renamed item
  */
 export const updateProjectWithRename = (
-    projects: SoapUIProject[],
+    projects: ApinoxProject[],
     targetId: string, // ID or Name depending on what's available context
     targetType: 'folder' | 'request' | 'project',
     newName: string,
     targetData?: any // Fallback if we need to match by reference
-): SoapUIProject[] => {
+): ApinoxProject[] => {
     return projects.map(p => {
         // 0. Handle Project Rename
         if (targetType === 'project') {
@@ -149,7 +149,7 @@ const findPathInFolders = (folders: ApinoxFolder[], targetId: string): string[] 
  * Finds the breadcrumb path to a specific request ID across all projects.
  * Returns null if not found.
  */
-export const findPathToRequest = (projects: SoapUIProject[], targetId: string): string[] | null => {
+export const findPathToRequest = (projects: ApinoxProject[], targetId: string): string[] | null => {
     for (const p of projects) {
         // 1. Check Interfaces (Legacy/WSDL structure)
         if (p.interfaces) {

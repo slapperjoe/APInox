@@ -17,7 +17,7 @@
  */
 
 import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
-import { SoapUIProject } from '@shared/models';
+import { ApinoxProject } from '@shared/models';
 import { bridge } from '../utils/bridge';
 
 // =============================================================================
@@ -34,7 +34,7 @@ export interface ProjectContextValue {
     // -------------------------------------------------------------------------
 
     /** Array of all loaded projects */
-    projects: SoapUIProject[];
+    projects: ApinoxProject[];
 
     /** Name of the currently selected project (if any) */
     selectedProjectName: string | null;
@@ -52,7 +52,7 @@ export interface ProjectContextValue {
     // STATE SETTERS (exposed for complex handlers in App.tsx)
     // -------------------------------------------------------------------------
 
-    setProjects: React.Dispatch<React.SetStateAction<SoapUIProject[]>>;
+    setProjects: React.Dispatch<React.SetStateAction<ApinoxProject[]>>;
     setSelectedProjectName: React.Dispatch<React.SetStateAction<string | null>>;
     setWorkspaceDirty: React.Dispatch<React.SetStateAction<boolean>>;
     setSavedProjects: React.Dispatch<React.SetStateAction<Set<string>>>;
@@ -75,7 +75,7 @@ export interface ProjectContextValue {
     loadProject: (path?: string) => void;
 
     /** Sends saveProject command to backend */
-    saveProject: (project: SoapUIProject) => void;
+    saveProject: (project: ApinoxProject) => void;
 
     /** Toggles the expanded state of a project in the sidebar */
     toggleProjectExpand: (name: string) => void;
@@ -97,13 +97,13 @@ export interface ProjectContextValue {
      * @param name - Project name to update
      * @param updater - Function that receives the project and returns updated version
      */
-    updateProject: (name: string, updater: (p: SoapUIProject) => SoapUIProject) => void;
+    updateProject: (name: string, updater: (p: ApinoxProject) => ApinoxProject) => void;
 
     /**
      * Finds a project by its name.
      * @returns The project or undefined if not found
      */
-    findProjectByName: (name: string) => SoapUIProject | undefined;
+    findProjectByName: (name: string) => ApinoxProject | undefined;
 }
 
 // =============================================================================
@@ -126,7 +126,7 @@ interface ProjectProviderProps {
      * Optional initial projects (e.g., from autosave restoration).
      * If not provided, starts with empty array.
      */
-    initialProjects?: SoapUIProject[];
+    initialProjects?: ApinoxProject[];
 }
 
 /**
@@ -138,7 +138,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
     // STATE
     // -------------------------------------------------------------------------
 
-    const [projects, setProjects] = useState<SoapUIProject[]>(initialProjects);
+    const [projects, setProjects] = useState<ApinoxProject[]>(initialProjects);
     const [selectedProjectName, setSelectedProjectName] = useState<string | null>(null);
     const [workspaceDirty, setWorkspaceDirty] = useState(false);
     const [savedProjects, setSavedProjects] = useState<Set<string>>(new Set());
@@ -180,7 +180,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
         debugLog('addProject', { currentCount: projects.length });
 
         const name = `Project ${projects.length + 1}`;
-        const newProject: SoapUIProject = {
+        const newProject: ApinoxProject = {
             name,
             interfaces: [],
             expanded: true,
@@ -243,7 +243,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
      * The backend handles file system operations and will respond
      * with 'projectSaved' message handled by useMessageHandler.
      */
-    const saveProject = useCallback((project: SoapUIProject) => {
+    const saveProject = useCallback((project: ApinoxProject) => {
         debugLog('saveProject', { name: project.name });
         bridge.sendMessage({ command: 'log', message: `[ProjectContext] saveProject called for: ${project.name}` });
         bridge.sendMessage({ command: 'saveProject', project });
@@ -302,7 +302,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
      * Helper to update a specific project by name.
      * Automatically marks project and workspace as dirty.
      */
-    const updateProject = useCallback((name: string, updater: (p: SoapUIProject) => SoapUIProject) => {
+    const updateProject = useCallback((name: string, updater: (p: ApinoxProject) => ApinoxProject) => {
         setProjects(prev => prev.map(p => {
             if (p.name === name) {
                 const updated = updater(p);
@@ -316,7 +316,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
     /**
      * Finds a project by name.
      */
-    const findProjectByName = useCallback((name: string): SoapUIProject | undefined => {
+    const findProjectByName = useCallback((name: string): ApinoxProject | undefined => {
         return projects.find(p => p.name === name);
     }, [projects]);
 

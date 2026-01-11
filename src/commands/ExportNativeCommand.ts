@@ -1,7 +1,7 @@
 
 import { ICommand } from './ICommand';
 import { FolderProjectStorage } from '../FolderProjectStorage';
-import { SoapUIProject } from '../../shared/src/models';
+import { ApinoxProject } from '../../shared/src/models';
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -10,7 +10,7 @@ export class ExportNativeCommand implements ICommand {
     constructor(
         private readonly _panel: vscode.WebviewPanel,
         private readonly _folderStorage: FolderProjectStorage,
-        private readonly _loadedProjects: Map<string, SoapUIProject>
+        private readonly _loadedProjects: Map<string, ApinoxProject>
     ) { }
 
     async execute(message: any): Promise<void> {

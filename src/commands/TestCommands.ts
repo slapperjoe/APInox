@@ -1,12 +1,12 @@
 
 import { ICommand } from './ICommand';
 import { TestRunnerService } from '../services/TestRunnerService';
-import { SoapUIProject, SoapTestSuite, SoapTestCase } from '../../shared/src/models';
+import { ApinoxProject, TestSuite, TestCase } from '../../shared/src/models';
 import * as vscode from 'vscode';
 import { DiagnosticService } from '../services/DiagnosticService';
 
 // Helper to find Test Suite/Case
-function findTestSuite(loadedProjects: Map<string, SoapUIProject>, suiteId: string): { suite: SoapTestSuite, project: SoapUIProject } | undefined {
+function findTestSuite(loadedProjects: Map<string, ApinoxProject>, suiteId: string): { suite: TestSuite, project: ApinoxProject } | undefined {
     for (const project of loadedProjects.values()) {
         if (project.testSuites) {
             const suite = project.testSuites.find(s => s.id === suiteId);
@@ -16,7 +16,7 @@ function findTestSuite(loadedProjects: Map<string, SoapUIProject>, suiteId: stri
     return undefined;
 }
 
-function findTestCase(loadedProjects: Map<string, SoapUIProject>, caseId: string): { testCase: SoapTestCase, project: SoapUIProject } | undefined {
+function findTestCase(loadedProjects: Map<string, ApinoxProject>, caseId: string): { testCase: TestCase, project: ApinoxProject } | undefined {
     for (const project of loadedProjects.values()) {
         if (project.testSuites) {
             for (const suite of project.testSuites) {
@@ -31,7 +31,7 @@ function findTestCase(loadedProjects: Map<string, SoapUIProject>, caseId: string
 export class RunTestSuiteCommand implements ICommand {
     constructor(
         private readonly _testRunnerService: TestRunnerService,
-        private readonly _loadedProjects: Map<string, SoapUIProject>
+        private readonly _loadedProjects: Map<string, ApinoxProject>
     ) { }
 
     async execute(message: any): Promise<void> {
@@ -56,7 +56,7 @@ export class RunTestSuiteCommand implements ICommand {
 export class RunTestCaseCommand implements ICommand {
     constructor(
         private readonly _testRunnerService: TestRunnerService,
-        private readonly _loadedProjects: Map<string, SoapUIProject>
+        private readonly _loadedProjects: Map<string, ApinoxProject>
     ) { }
 
     async execute(message: any): Promise<void> {
@@ -82,7 +82,7 @@ export class RunTestCaseCommand implements ICommand {
 export class PickOperationForTestCaseCommand implements ICommand {
     constructor(
         private readonly _panel: vscode.WebviewPanel,
-        private readonly _loadedProjects: Map<string, SoapUIProject>
+        private readonly _loadedProjects: Map<string, ApinoxProject>
     ) { }
 
     async execute(message: any): Promise<void> {

@@ -15,8 +15,8 @@ import { PerformanceService } from '../services/PerformanceService';
 import { ScheduleService } from '../services/ScheduleService';
 import { RequestHistoryService } from '../services/RequestHistoryService';
 
-export class SoapPanel {
-    public static currentPanel: SoapPanel | undefined;
+export class WebviewPanel {
+    public static currentPanel: WebviewPanel | undefined;
     public static readonly viewType = 'apinox';
     private static _extensionContext: vscode.ExtensionContext;
     private readonly _panel: vscode.WebviewPanel;
@@ -40,7 +40,7 @@ export class SoapPanel {
     private _diagnosticService: DiagnosticService;
 
     public static setContext(context: vscode.ExtensionContext) {
-        SoapPanel._extensionContext = context;
+        WebviewPanel._extensionContext = context;
     }
 
     public static createOrShow(extensionUri: vscode.Uri) {
@@ -48,13 +48,13 @@ export class SoapPanel {
             ? vscode.window.activeTextEditor.viewColumn
             : undefined;
 
-        if (SoapPanel.currentPanel) {
-            SoapPanel.currentPanel._panel.reveal(column);
+        if (WebviewPanel.currentPanel) {
+            WebviewPanel.currentPanel._panel.reveal(column);
             return;
         }
 
         const panel = vscode.window.createWebviewPanel(
-            SoapPanel.viewType,
+            WebviewPanel.viewType,
             'APInox',
             column || vscode.ViewColumn.One,
             {
@@ -65,7 +65,7 @@ export class SoapPanel {
             }
         );
 
-        SoapPanel.currentPanel = new SoapPanel(panel, extensionUri);
+        WebviewPanel.currentPanel = new WebviewPanel(panel, extensionUri);
     }
 
     private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
@@ -74,7 +74,7 @@ export class SoapPanel {
 
         this._outputChannel = vscode.window.createOutputChannel('APInox');
         this._diagnosticService = DiagnosticService.getInstance();
-        this._diagnosticService.log('BACKEND', 'SoapPanel Initialized');
+        this._diagnosticService.log('BACKEND', 'WebviewPanel Initialized');
 
         this._settingsManager = new SettingsManager();
         this._soapClient = new SoapClient(this._settingsManager, this._outputChannel);
@@ -100,7 +100,7 @@ export class SoapPanel {
 
         this._configSwitcherService = new ConfigSwitcherService();
         this._testRunnerService = new TestRunnerService(this._soapClient, this._outputChannel);
-        this._azureDevOpsService = new AzureDevOpsService(SoapPanel._extensionContext);
+        this._azureDevOpsService = new AzureDevOpsService(WebviewPanel._extensionContext);
 
         // Mock Service
         this._mockService = new MockService();
@@ -216,7 +216,7 @@ export class SoapPanel {
         }
         this._isDisposed = true;
 
-        SoapPanel.currentPanel = undefined;
+        WebviewPanel.currentPanel = undefined;
 
         // Clear timeouts
         if (this._autosaveTimeout) {

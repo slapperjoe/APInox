@@ -300,7 +300,7 @@ const RequestName = styled.span`
     font-weight: 500;
 `;
 
-const ProjectSummary: React.FC<{ project: import('@shared/models').SoapUIProject; onSelectInterface?: (i: import('@shared/models').SoapUIInterface) => void }> = ({ project, onSelectInterface }) => {
+const ProjectSummary: React.FC<{ project: import('@shared/models').ApinoxProject; onSelectInterface?: (i: import('@shared/models').ApiInterface) => void }> = ({ project, onSelectInterface }) => {
     // Calculate statistics
     const totalOperations = project.interfaces.reduce((sum, iface) => sum + iface.operations.length, 0);
     const totalRequests = project.interfaces.reduce((sum, iface) =>
@@ -364,7 +364,7 @@ const ProjectSummary: React.FC<{ project: import('@shared/models').SoapUIProject
 };
 
 
-const InterfaceSummary: React.FC<{ interface: import('@shared/models').SoapUIInterface; onSelectOperation?: (o: import('@shared/models').SoapUIOperation) => void }> = ({ interface: iface, onSelectOperation }) => {
+const InterfaceSummary: React.FC<{ interface: import('@shared/models').ApiInterface; onSelectOperation?: (o: import('@shared/models').ApiOperation) => void }> = ({ interface: iface, onSelectOperation }) => {
     // Get endpoint from first operation if available
     const firstEndpoint = iface.operations[0]?.requests[0]?.endpoint;
 
@@ -404,7 +404,7 @@ const InterfaceSummary: React.FC<{ interface: import('@shared/models').SoapUIInt
     );
 };
 
-const TestSuiteSummary: React.FC<{ suite: import('@shared/models').SoapTestSuite; onSelectTestCase?: (c: import('@shared/models').SoapTestCase) => void }> = ({ suite, onSelectTestCase }) => {
+const TestSuiteSummary: React.FC<{ suite: import('@shared/models').TestSuite; onSelectTestCase?: (c: import('@shared/models').TestCase) => void }> = ({ suite, onSelectTestCase }) => {
     // Calculate total steps
     const totalSteps = suite.testCases.reduce((sum, tc) => sum + tc.steps.length, 0);
 
@@ -448,7 +448,7 @@ const TestSuiteSummary: React.FC<{ suite: import('@shared/models').SoapTestSuite
     );
 };
 
-const OperationSummary: React.FC<{ operation: import('@shared/models').SoapUIOperation; onSelectRequest?: (r: import('@shared/models').SoapUIRequest) => void }> = ({ operation, onSelectRequest }) => (
+const OperationSummary: React.FC<{ operation: import('@shared/models').ApiOperation; onSelectRequest?: (r: import('@shared/models').ApiRequest) => void }> = ({ operation, onSelectRequest }) => (
     <OperationContainer>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h1>Operation: {operation.name}</h1>

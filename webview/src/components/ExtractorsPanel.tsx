@@ -2,7 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 import { Trash2, Pencil } from 'lucide-react';
 import { CustomXPathEvaluator } from '../utils/xpathEvaluator';
-import { SoapRequestExtractor } from '@shared/models';
+import { RequestExtractor } from '@shared/models';
 
 const Container = styled.div`
     height: 100%;
@@ -90,9 +90,9 @@ const ButtonGroup = styled.div`
 `;
 
 interface ExtractorsPanelProps {
-    extractors: SoapRequestExtractor[];
-    onChange: (extractors: SoapRequestExtractor[]) => void;
-    onEdit?: (extractor: SoapRequestExtractor, index: number) => void;
+    extractors: RequestExtractor[];
+    onChange: (extractors: RequestExtractor[]) => void;
+    onEdit?: (extractor: RequestExtractor, index: number) => void;
     rawResponse?: string;
 }
 

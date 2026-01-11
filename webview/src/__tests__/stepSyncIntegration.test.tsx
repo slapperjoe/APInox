@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { SoapUIProject, SoapTestStep } from '@shared/models';
+import { ApinoxProject, TestStep } from '@shared/models';
 
 /**
  * Integration tests for step sync logic
@@ -7,7 +7,7 @@ import { SoapUIProject, SoapTestStep } from '@shared/models';
  * the selectedStep is properly re-hydrated with the new data.
  */
 describe('Step Sync Integration', () => {
-    const createMockProject = (scriptContent: string): SoapUIProject => ({
+    const createMockProject = (scriptContent: string): ApinoxProject => ({
         name: 'Test Project',
         id: 'proj-1',
         interfaces: [],
@@ -52,7 +52,7 @@ describe('Step Sync Integration', () => {
         const testCaseId = 'case-1';
         const stepId = 'step-1';
 
-        let foundStep: SoapTestStep | undefined;
+        let foundStep: TestStep | undefined;
 
         for (const suite of project.testSuites || []) {
             const testCase = suite.testCases?.find(tc => tc.id === testCaseId);
@@ -88,7 +88,7 @@ describe('Step Sync Integration', () => {
         const project = createMockProject('// Test');
         const nonExistentStepId = 'step-999';
 
-        let foundStep: SoapTestStep | undefined;
+        let foundStep: TestStep | undefined;
 
         for (const suite of project.testSuites || []) {
             for (const testCase of suite.testCases || []) {
@@ -101,7 +101,7 @@ describe('Step Sync Integration', () => {
     });
 
     it('should preserve step order when updating', () => {
-        const project: SoapUIProject = {
+        const project: ApinoxProject = {
             name: 'Test Project',
             id: 'proj-1',
             interfaces: [],
@@ -142,7 +142,7 @@ describe('Step Sync Integration', () => {
         expect(testCase.steps.length).toBe(3);
 
         // Update the script step
-        const updatedStep: SoapTestStep = {
+        const updatedStep: TestStep = {
             ...testCase.steps[scriptStepIndex],
             config: { scriptContent: '// Updated content' }
         };

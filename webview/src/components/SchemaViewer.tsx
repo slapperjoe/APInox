@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { SoapSchemaNode } from '@shared/models';
+import { SchemaNode } from '@shared/models';
 import { ChevronRight, ChevronDown, Box, FileType } from 'lucide-react';
 
 const TreeItem = styled.div`
@@ -34,7 +34,7 @@ const NodeIcon = ({ kind }: { kind: string }) => {
     return kind === 'complex' ? <Box size={14} color="var(--vscode-symbolIcon-classForeground)" /> : <FileType size={14} color="var(--vscode-symbolIcon-variableForeground)" />;
 };
 
-const SchemaNode: React.FC<{ node: SoapSchemaNode }> = ({ node }) => {
+const SchemaNodeItem: React.FC<{ node: SchemaNode }> = ({ node }) => {
     const [expanded, setExpanded] = useState(true);
     const hasChildren = node.children && node.children.length > 0;
 
@@ -54,7 +54,7 @@ const SchemaNode: React.FC<{ node: SoapSchemaNode }> = ({ node }) => {
             {hasChildren && expanded && (
                 <TreeItem>
                     {node.children!.map((child, idx) => (
-                        <SchemaNode key={idx} node={child} />
+                        <SchemaNodeItem key={idx} node={child} />
                     ))}
                 </TreeItem>
             )}
@@ -62,10 +62,10 @@ const SchemaNode: React.FC<{ node: SoapSchemaNode }> = ({ node }) => {
     );
 };
 
-export const SchemaViewer: React.FC<{ schema: SoapSchemaNode }> = ({ schema }) => {
+export const SchemaViewer: React.FC<{ schema: SchemaNode }> = ({ schema }) => {
     return (
         <div style={{ padding: 10, overflow: 'auto', height: '100%', userSelect: 'text' }}>
-            <SchemaNode node={schema} />
+            <SchemaNodeItem node={schema} />
         </div>
     );
 };

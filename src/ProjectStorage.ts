@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { XMLParser, XMLBuilder } from 'fast-xml-parser';
-import { SoapUIProject } from '../shared/src/models';
+import { ApinoxProject } from '../shared/src/models';
 import { DiagnosticService } from './services/DiagnosticService';
 
 export class ProjectStorage {
@@ -18,7 +18,7 @@ export class ProjectStorage {
         DiagnosticService.getInstance().log('BACKEND', `[ProjectStorage] ${message}`);
     }
 
-    public async saveProject(project: SoapUIProject, filePath: string) {
+    public async saveProject(project: ApinoxProject, filePath: string) {
         const builder = new XMLBuilder({
             ignoreAttributes: false,
             attributeNamePrefix: "@_",
@@ -170,7 +170,7 @@ export class ProjectStorage {
         };
     }
 
-    public async loadProject(filePath: string): Promise<SoapUIProject> {
+    public async loadProject(filePath: string): Promise<ApinoxProject> {
         this.log(`Loading project from: ${filePath}`);
         let xmlContent = '';
         try {
@@ -209,7 +209,7 @@ export class ProjectStorage {
             this.log(`Keeping original project name: ${name}`);
         }
 
-        const project: SoapUIProject = {
+        const project: ApinoxProject = {
             name: name,
             interfaces: [],
             testSuites: []
@@ -405,7 +405,7 @@ export class ProjectStorage {
         fs.writeFileSync(filePath, xmlContent);
     }
 
-    public async loadWorkspace(filePath: string): Promise<SoapUIProject[]> {
+    public async loadWorkspace(filePath: string): Promise<ApinoxProject[]> {
         const xmlContent = fs.readFileSync(filePath, 'utf8');
         const parser = new XMLParser({
             ignoreAttributes: false,
@@ -416,7 +416,7 @@ export class ProjectStorage {
         const wsRoot = result["con:soapui-workspace"];
         if (!wsRoot) throw new Error("Invalid SoapUI workspace file");
 
-        const projects: SoapUIProject[] = [];
+        const projects: ApinoxProject[] = [];
         const workspaceDir = path.dirname(filePath);
 
         if (wsRoot["con:project"]) {

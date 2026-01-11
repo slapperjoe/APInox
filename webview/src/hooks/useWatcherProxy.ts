@@ -6,7 +6,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { WatcherEvent, SoapUIRequest, SoapUIOperation, SoapUIInterface, SidebarView, MockEvent, MockConfig } from '@shared/models';
+import { WatcherEvent, ApiRequest, ApiOperation, ApiInterface, SidebarView, MockEvent, MockConfig } from '@shared/models';
 import { formatXml } from '@shared/utils/xmlFormatter';
 
 interface UseWatcherProxyParams {
@@ -16,9 +16,9 @@ interface UseWatcherProxyParams {
     hideCausalityData: boolean;
 
     // Selection setters
-    setSelectedInterface: React.Dispatch<React.SetStateAction<SoapUIInterface | null>>;
-    setSelectedOperation: React.Dispatch<React.SetStateAction<SoapUIOperation | null>>;
-    setSelectedRequest: React.Dispatch<React.SetStateAction<SoapUIRequest | null>>;
+    setSelectedInterface: React.Dispatch<React.SetStateAction<ApiInterface | null>>;
+    setSelectedOperation: React.Dispatch<React.SetStateAction<ApiOperation | null>>;
+    setSelectedRequest: React.Dispatch<React.SetStateAction<ApiRequest | null>>;
     setSelectedTestCase: React.Dispatch<React.SetStateAction<any>>;
     setResponse: React.Dispatch<React.SetStateAction<any>>;
 }
@@ -105,7 +105,7 @@ export function useWatcherProxy({
             }
         }
 
-        const tempRequest: SoapUIRequest = {
+        const tempRequest: ApiRequest = {
             id: event.id,
             name: `Logged: ${event.timestampLabel}`,
             request: requestBody,
@@ -116,14 +116,14 @@ export function useWatcherProxy({
             contentType: 'application/soap+xml'
         };
 
-        const tempOp: SoapUIOperation = {
+        const tempOp: ApiOperation = {
             name: 'External Request',
             input: '',
             requests: [tempRequest],
             action: 'WatcherAction'
         };
 
-        const tempIface: SoapUIInterface = {
+        const tempIface: ApiInterface = {
             name: 'File Watcher',
             type: 'wsdl',
             soapVersion: '1.1',
@@ -157,7 +157,7 @@ export function useWatcherProxy({
     const handleSelectMockEvent = useCallback((event: MockEvent) => {
         const requestBody = formatXml(event.requestBody || '', true, inlineElementValues, hideCausalityData);
 
-        const tempRequest: SoapUIRequest = {
+        const tempRequest: ApiRequest = {
             id: event.id,
             name: `Mock: ${event.timestampLabel}`,
             request: requestBody,
@@ -168,14 +168,14 @@ export function useWatcherProxy({
             contentType: 'application/soap+xml'
         };
 
-        const tempOp: SoapUIOperation = {
+        const tempOp: ApiOperation = {
             name: event.matchedRule ? `Mock: ${event.matchedRule}` : 'Mock Request',
             input: '',
             requests: [tempRequest],
             action: 'MockAction'
         };
 
-        const tempIface: SoapUIInterface = {
+        const tempIface: ApiInterface = {
             name: 'Mock Server',
             type: 'wsdl',
             soapVersion: '1.1',

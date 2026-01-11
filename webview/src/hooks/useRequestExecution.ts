@@ -11,29 +11,29 @@ import { CustomXPathEvaluator } from '../utils/xpathEvaluator';
 import { FrontendCommand } from '@shared/messages';
 import { getInitialXml } from '@shared/utils/xmlUtils';
 import {
-    SoapUIProject,
-    SoapUIInterface,
-    SoapUIOperation,
-    SoapUIRequest,
-    SoapTestCase,
-    SoapTestStep
+    ApinoxProject,
+    ApiInterface,
+    ApiOperation,
+    ApiRequest,
+    TestCase,
+    TestStep
 } from '@shared/models';
 
 interface UseRequestExecutionParams {
     // Selection state
-    selectedOperation: SoapUIOperation | null;
-    selectedRequest: SoapUIRequest | null;
-    selectedInterface: SoapUIInterface | null;
-    selectedTestCase: SoapTestCase | null;
-    selectedStep: SoapTestStep | null;
+    selectedOperation: ApiOperation | null;
+    selectedRequest: ApiRequest | null;
+    selectedInterface: ApiInterface | null;
+    selectedTestCase: TestCase | null;
+    selectedStep: TestStep | null;
     selectedProjectName: string | null;
     wsdlUrl: string;
 
     // State setters
     setLoading: React.Dispatch<React.SetStateAction<boolean>>;
     setResponse: React.Dispatch<React.SetStateAction<any>>;
-    setSelectedRequest: React.Dispatch<React.SetStateAction<SoapUIRequest | null>>;
-    setProjects: React.Dispatch<React.SetStateAction<SoapUIProject[]>>;
+    setSelectedRequest: React.Dispatch<React.SetStateAction<ApiRequest | null>>;
+    setProjects: React.Dispatch<React.SetStateAction<ApinoxProject[]>>;
     setWorkspaceDirty: React.Dispatch<React.SetStateAction<boolean>>;
 
     // Other
@@ -48,7 +48,7 @@ interface UseRequestExecutionParams {
 interface UseRequestExecutionReturn {
     executeRequest: (xml: string) => void;
     cancelRequest: () => void;
-    handleRequestUpdate: (updated: SoapUIRequest) => void;
+    handleRequestUpdate: (updated: ApiRequest) => void;
     handleResetRequest: () => void;
     startTimeRef: React.MutableRefObject<number>;
 }
@@ -186,7 +186,7 @@ export function useRequestExecution({
         setLoading(false);
     }, [setLoading]);
 
-    const handleRequestUpdate = useCallback((updated: SoapUIRequest) => {
+    const handleRequestUpdate = useCallback((updated: ApiRequest) => {
         const logContext = {
             requestName: updated.name,
             requestId: updated.id,

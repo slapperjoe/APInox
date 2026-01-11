@@ -12,7 +12,7 @@ import { TestRunnerService } from '../services/TestRunnerService';
 import { AzureDevOpsService } from '../services/AzureDevOpsService';
 import { MockService } from '../services/MockService';
 import { CoordinatorService } from '../services/CoordinatorService';
-import { SoapUIProject } from '../../shared/src/models';
+import { ApinoxProject } from '../../shared/src/models';
 import { FolderProjectStorage } from '../FolderProjectStorage';
 
 import { ICommand } from '../commands/ICommand';
@@ -89,7 +89,7 @@ import { WebviewReadyCommand } from '../commands/WebviewReadyCommand';
 import { SAMPLES_PROJECT } from '../data/DefaultSamples';
 
 export class WebviewController {
-    private _loadedProjects: Map<string, SoapUIProject> = new Map();
+    private _loadedProjects: Map<string, ApinoxProject> = new Map();
     private _commands: Map<string, ICommand> = new Map();
     private _diagnosticService = DiagnosticService.getInstance();
     private _coordinatorService: CoordinatorService = new CoordinatorService();
@@ -450,7 +450,7 @@ export class WebviewController {
                     // We don't want to wipe the map if we have local paths we want to keep,
                     // but we do want to ensure all frontend projects are present.
                     // For now, let's update/add from frontend.
-                    message.projects.forEach((p: SoapUIProject) => {
+                    message.projects.forEach((p: ApinoxProject) => {
                         const key = p.fileName || p.id || p.name;
                         this._loadedProjects.set(key, p);
                     });

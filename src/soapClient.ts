@@ -1,8 +1,8 @@
 import * as soap from "soap";
 import {
-  SoapService,
-  SoapSchemaNode,
-  SoapUIRequest,
+  ApiService,
+  SchemaNode,
+  ApiRequest,
 } from "../shared/src/models";
 import { HttpClient } from "./services/HttpClient";
 import { WsdlParser } from "./WsdlParser";
@@ -72,7 +72,7 @@ export class SoapClient {
     return { proxyUrl, strictSSL };
   }
 
-  async parseWsdl(url: string, localWsdlDir?: string): Promise<SoapService[]> {
+  async parseWsdl(url: string, localWsdlDir?: string): Promise<ApiService[]> {
     // Refresh settings
     const { proxyUrl, strictSSL } = this.getProxySettings();
 
@@ -94,7 +94,7 @@ export class SoapClient {
   public getOperationSchema(
     operationName: string,
     portName?: string,
-  ): SoapSchemaNode | null {
+  ): SchemaNode | null {
     return this.wsdlParser.getOperationSchema(operationName, portName);
   }
 
@@ -132,11 +132,11 @@ export class SoapClient {
         ? args
         : (this.client as any)?.wsdl?.objectToDocumentXML
           ? (this.client as any).wsdl.objectToDocumentXML(
-              operation,
-              args,
-              "",
-              (this.client as any).wsdl.definitions?.$targetNamespace,
-            )
+            operation,
+            args,
+            "",
+            (this.client as any).wsdl.definitions?.$targetNamespace,
+          )
           : JSON.stringify(args);
 
     return this.executeRawRequest(operation, xmlPayload, headers, url);
@@ -212,7 +212,7 @@ export class SoapClient {
       headers: requestHeaders,
       requestType: "soap",
       contentType: requestHeaders["Content-Type"],
-    } as SoapUIRequest);
+    } as ApiRequest);
 
     return response;
   }
@@ -268,6 +268,6 @@ export class SoapClient {
       endpoint,
       headers: requestHeaders,
       requestType: "soap",
-    } as SoapUIRequest);
+    } as ApiRequest);
   }
 }

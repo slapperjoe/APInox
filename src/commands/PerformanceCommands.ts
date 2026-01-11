@@ -1,7 +1,7 @@
 import { ICommand } from './ICommand';
 import { PerformanceService } from '../services/PerformanceService';
 import { SettingsManager } from '../utils/SettingsManager';
-import { PerformanceSuite, PerformanceRequest, SoapRequestExtractor } from '../../shared/src/models';
+import { PerformanceSuite, PerformanceRequest, RequestExtractor } from '../../shared/src/models';
 import { DiagnosticService } from '../services/DiagnosticService';
 import * as vscode from 'vscode';
 
@@ -395,7 +395,7 @@ export class ImportTestSuiteToPerformanceCommand implements ICommand {
                         soapAction: step.config.request.soapAction,
                         requestBody: step.config.request.request || '',
                         headers: step.config.request.headers || {},
-                        extractors: (step.config.request.extractors || []) as SoapRequestExtractor[],
+                        extractors: (step.config.request.extractors || []) as RequestExtractor[],
                         slaThreshold: undefined,
                         order: order++
                     });

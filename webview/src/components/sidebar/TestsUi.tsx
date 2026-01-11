@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { Play, Plus, Trash2, ChevronDown, ChevronRight, FlaskConical, FolderOpen, ListChecks, Edit2, Clock, FileCode, ArrowRight, FileText } from 'lucide-react';
-import { SoapUIProject, SoapTestSuite } from '@shared/models';
+import { ApinoxProject, TestSuite } from '@shared/models';
 import { HeaderButton, OperationItem, RequestItem } from './shared/SidebarStyles';
 
 const StepItem = styled(RequestItem)`
@@ -15,7 +15,7 @@ const StepItem = styled(RequestItem)`
 `;
 
 export interface TestsUiProps {
-    projects: SoapUIProject[];
+    projects: ApinoxProject[];
     onAddSuite: (projectName: string) => void;
     onDeleteSuite: (suiteId: string) => void;
     onRunSuite: (suiteId: string) => void;
@@ -33,7 +33,7 @@ export interface TestsUiProps {
 }
 
 interface FlatSuite {
-    suite: SoapTestSuite;
+    suite: TestSuite;
     projectName: string;
 }
 

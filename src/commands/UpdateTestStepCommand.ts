@@ -1,6 +1,6 @@
 
 import { ICommand } from './ICommand';
-import { SoapUIProject, SoapTestStep } from '../../shared/src/models';
+import { ApinoxProject, TestStep } from '../../shared/src/models';
 import { ProjectStorage } from '../ProjectStorage';
 import { FolderProjectStorage } from '../FolderProjectStorage';
 import { DiagnosticService } from '../services/DiagnosticService';
@@ -12,13 +12,13 @@ export class UpdateTestStepCommand implements ICommand {
 
     constructor(
         private readonly _panel: vscode.WebviewPanel,
-        private readonly _loadedProjects: Map<string, SoapUIProject>,
+        private readonly _loadedProjects: Map<string, ApinoxProject>,
         private readonly _projectStorage: ProjectStorage,
         private readonly _folderStorage: FolderProjectStorage
     ) { }
 
     async execute(message: any): Promise<void> {
-        const step = message.step as SoapTestStep;
+        const step = message.step as TestStep;
         if (!step) {
             this._diagnosticService.log('ERROR', 'UpdateTestStepCommand: Received empty step');
             return;
@@ -33,7 +33,7 @@ export class UpdateTestStepCommand implements ICommand {
         }
 
         // 2. Find and Update the Step in Memory
-        let projectToSave: SoapUIProject | null = null;
+        let projectToSave: ApinoxProject | null = null;
 
         for (const project of this._loadedProjects.values()) {
             if (project.testSuites) {
