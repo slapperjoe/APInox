@@ -30,6 +30,15 @@ export const MonacoResponseViewer: React.FC<MonacoResponseViewerProps> = ({
     const editorRef = useRef<any>(null);
     const [isReady, setIsReady] = React.useState(!autoFoldElements || autoFoldElements.length === 0 || !value);
 
+    // Keep Monaco language in sync so highlighting matches the response format (e.g., JSON vs XML)
+    useEffect(() => {
+        if (!editorRef.current || !language) return;
+        const model = editorRef.current.getModel?.();
+        if (model) {
+            monaco.editor.setModelLanguage(model, language);
+        }
+    }, [language, value]);
+
     // Apply auto-folding when response content changes
     // Response viewer is read-only, so any value change is a new response
     useEffect(() => {

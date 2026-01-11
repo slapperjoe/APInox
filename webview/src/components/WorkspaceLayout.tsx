@@ -1304,7 +1304,14 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                 )}
                             </div>
                             <MonacoResponseViewer
-                                value={response ? (response.rawResponse ? formatXml(response.rawResponse, alignAttributes, inlineElementValues) : (response.error || '')) : ''}
+                                value={(() => {
+                                    const raw = response ? (response.rawResponse ? response.rawResponse : (response.error || '')) : '';
+                                    const viewerLanguage = response?.language || 'xml';
+                                    if (!raw) return '';
+                                    if (viewerLanguage === 'json') return raw;
+                                    return formatXml(raw, alignAttributes, inlineElementValues);
+                                })()}
+                                language={response?.language || 'xml'}
                                 showLineNumbers={showLineNumbers}
                                 onSelectionChange={setSelection}
                                 autoFoldElements={config?.ui?.autoFoldElements}
