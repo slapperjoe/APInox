@@ -374,7 +374,7 @@ export class PerformanceService extends EventEmitter {
             totalRequests: results.length,
             successCount,
             failureCount: results.length - successCount,
-            successRate: (successCount / results.length) * 100,
+            successRate: (successCount / results.length),
             avgResponseTime: durations.reduce((a, b) => a + b, 0) / durations.length,
             minResponseTime: Math.min(...durations),
             maxResponseTime: Math.max(...durations),

@@ -69,7 +69,7 @@ export interface MessageHandlerState {
     setRawConfig: React.Dispatch<React.SetStateAction<string>>;
     setLayoutMode: React.Dispatch<React.SetStateAction<'vertical' | 'horizontal'>>;
     setShowLineNumbers: React.Dispatch<React.SetStateAction<boolean>>;
-    setSplitRatio: React.Dispatch<React.SetStateAction<number>>;
+    setSplitRatio: React.Dispatch<React.SetStateAction<number>> | ((ratio: number) => void);
     setInlineElementValues: React.Dispatch<React.SetStateAction<boolean>>;
     setConfigPath: React.Dispatch<React.SetStateAction<string | null>>;
     setProxyConfig: React.Dispatch<React.SetStateAction<any>>;
@@ -97,6 +97,7 @@ export interface MessageHandlerState {
     setMockConfig: React.Dispatch<React.SetStateAction<MockConfig>>;
     setActiveRunId: React.Dispatch<React.SetStateAction<string | undefined>>;
     setPerformanceProgress: React.Dispatch<React.SetStateAction<{ iteration: number; total: number } | null>>;
+    setCoordinatorStatus: React.Dispatch<React.SetStateAction<{ running: boolean; port: number; workers: any[]; expectedWorkers: number }>>;
     setRequestHistory: React.Dispatch<React.SetStateAction<RequestHistoryEntry[]>>;
 
 
