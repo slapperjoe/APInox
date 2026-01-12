@@ -18,7 +18,7 @@ The main navigation and tool panel on the left side.
 - **`ProjectList.tsx`**: Renders the loaded projects, interfaces, and test cases.
     - Uses `ServiceTree` for the request structure.
     - Uses `ProjectTestTree` for test suites/cases.
-- **`WsdlExplorer.tsx`**: The WSDL browsing interface. Allows loading WSDLs and previewing them before adding to the project.
+- **`ApiExplorerSidebar.tsx`**: The API/WSDL browsing interface. Allows loading definitions and previewing them before adding to the project.
     - Uses `ServiceTree` for preview.
 - **`WatcherPanel.tsx`**: Controls and history for the File Watcher feature.
 - **`ProxyUi.tsx`**: Controls and history for the "Dirty Proxy" feature.

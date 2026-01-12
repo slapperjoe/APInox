@@ -91,10 +91,10 @@ const EmptyFileWatcher: React.FC = () => (
     />
 );
 
-const EmptyWsdlExplorer: React.FC = () => (
+const EmptyApiExplorer: React.FC = () => (
     <EmptyState
-        title="WSDL Explorer"
-        message="Load a WSDL file to browse its interfaces, operations, and requests."
+        title="API Explorer"
+        message="Load a WSDL or OpenAPI file to browse its interfaces, operations, and requests."
         image={emptyWsdlImg}
     />
 );
@@ -539,7 +539,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     const { config, defaultEndpoint, changelog, isReadOnly: isHistoryMode } = configState;
 
     // Derived read-only state
-    const isStructureLocked = (activeView === SidebarView.PERFORMANCE);
+    const isStructureLocked = (activeView === SidebarView.PERFORMANCE || activeView === SidebarView.TESTS);
     const isContentLocked = (selectedRequest?.readOnly === true) ||
         (!isStructureLocked && selectedProject?.readOnly === true);
     const preventEditing = isHistoryMode || isContentLocked;
@@ -773,7 +773,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                 />
             );
         } else if (!selectedRequest) {
-            return <EmptyWsdlExplorer />;
+            return <EmptyApiExplorer />;
         }
     }
 

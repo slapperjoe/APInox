@@ -17,7 +17,7 @@
  */
 
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { SidebarView, ApinoxConfig } from '@shared/models';
+import { ApinoxConfig } from '@shared/models';
 import { bridge } from '../utils/bridge';
 
 // =============================================================================
@@ -30,12 +30,8 @@ import { bridge } from '../utils/bridge';
  */
 export interface UIContextValue {
     // -------------------------------------------------------------------------
-    // VIEW STATE
+    // VIEW STATE - Moved to NavigationContext
     // -------------------------------------------------------------------------
-
-    /** Currently active sidebar view */
-    activeView: SidebarView;
-    setActiveView: React.Dispatch<React.SetStateAction<SidebarView>>;
 
     // -------------------------------------------------------------------------
     // LAYOUT STATE
@@ -136,10 +132,8 @@ interface UIProviderProps {
  */
 export function UIProvider({ children }: UIProviderProps) {
     // -------------------------------------------------------------------------
-    // VIEW STATE
+    // VIEW STATE - Moved to NavigationContext
     // -------------------------------------------------------------------------
-
-    const [activeView, setActiveView] = useState<SidebarView>(SidebarView.PROJECTS);
 
     // -------------------------------------------------------------------------
     // LAYOUT STATE
@@ -218,9 +212,7 @@ export function UIProvider({ children }: UIProviderProps) {
     // -------------------------------------------------------------------------
 
     const value: UIContextValue = {
-        // View State
-        activeView,
-        setActiveView,
+        // View State - Moved to NavigationContext
 
         // Layout State
         layoutMode,
