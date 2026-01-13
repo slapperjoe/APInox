@@ -16,7 +16,7 @@
  *   const { activeView, setActiveView, layoutMode, toggleLayout } = useUI();
  */
 
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 import { ApinoxConfig } from '@shared/models';
 import { bridge } from '../utils/bridge';
 

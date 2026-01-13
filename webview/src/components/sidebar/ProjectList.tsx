@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Plus, FolderPlus, ChevronDown, ChevronRight, Save, Trash2, Lock } from 'lucide-react';
+import { Plus, FolderPlus, ChevronDown, ChevronRight, Trash2, Lock, Save } from 'lucide-react';
 import { ApinoxProject, ApiInterface, ApiOperation, ApiRequest } from '@shared/models';
-import { HeaderButton, DirtyMarker, OperationItem } from './shared/SidebarStyles';
+import { HeaderButton, OperationItem } from './shared/SidebarStyles';
 import { ServiceTree } from './ServiceTree';
 import { FolderTree } from './FolderTree';
 import { ContextMenu, ContextMenuItem } from '../../styles/App.styles';
@@ -47,12 +47,13 @@ export interface ProjectListProps {
 
     deleteConfirm: string | null;
     setDeleteConfirm: (id: string | null) => void;
+    onRefreshInterface?: (projectName: string, interfaceName: string) => void;
 }
 
 export const ProjectList: React.FC<ProjectListProps> = ({
     projects,
     savedProjects,
-    // workspaceDirty - removed, no longer shown
+
     onAddProject,
     loadProject,
     saveProject,
@@ -80,7 +81,8 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     onDeleteFolder,
     onToggleFolderExpand,
     deleteConfirm, // Global delete confirm from Sidebar parent
-    setDeleteConfirm
+    setDeleteConfirm,
+    onRefreshInterface
 }) => {
     // Local state for folder selection
     const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
@@ -249,18 +251,23 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                                         />
                                     ) : (
                                         <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginLeft: 5 }}>
-                                            {proj.name || (proj as any).fileName} {proj.dirty && <DirtyMarker>●</DirtyMarker>}
+                                            {proj.name || (proj as any).fileName}
                                         </span>
+                                    )}
+
+                                    {/* Unsaved Project: Show Manual Save Button (Required for first save) */}
+                                    {(!(proj as any).fileName) && !isRenaming && !isReadOnly && (
+                                        <HeaderButton
+                                            onClick={(e) => { e.stopPropagation(); saveProject(proj); }}
+                                            title="Save Project (Required for Auto-Save)"
+                                            style={{ color: 'var(--vscode-charts-orange)' }}
+                                        >
+                                            <Save size={14} />
+                                        </HeaderButton>
                                     )}
 
                                     {isReadOnly && <Lock size={12} style={{ opacity: 0.5, marginLeft: 5 }} />}
 
-                                    {/* Save button when dirty OR recently saved (green confirmation) */}
-                                    {(proj.dirty || savedProjects.has(proj.name)) && !isRenaming && !isReadOnly && (
-                                        <HeaderButton onClick={(e) => { e.stopPropagation(); saveProject(proj); }} title="Save Project" style={{ color: savedProjects.has(proj.name) ? 'var(--vscode-testing-iconPassed)' : 'inherit' }}>
-                                            <Save size={14} />
-                                        </HeaderButton>
-                                    )}
                                     {/* Add Folder button - only on selected project */}
                                     {isProjectActive && onAddFolder && !isRenaming && !isReadOnly && (
                                         <HeaderButton
@@ -273,7 +280,18 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                                     {/* Close button only when selected */}
                                     {isProjectActive && !isRenaming && !isReadOnly && (
                                         <HeaderButton
-                                            onClick={(e) => { e.stopPropagation(); closeProject(proj.name); }}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (deleteConfirm === proj.name) {
+                                                    closeProject(proj.name);
+                                                    setDeleteConfirm(null);
+                                                } else {
+                                                    setDeleteConfirm(proj.name);
+                                                    setTimeout(() => {
+                                                        setDeleteConfirm(null);
+                                                    }, 3000);
+                                                }
+                                            }}
                                             title={deleteConfirm === proj.name ? "Click again to Confirm Delete" : "Close Project"}
                                             style={{ color: deleteConfirm === proj.name ? 'var(--vscode-errorForeground)' : undefined }}
                                             shake={deleteConfirm === proj.name}
@@ -394,6 +412,32 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                     )}
                     {localContextMenu.type === 'folder' && onDeleteFolder && (
                         <ContextMenuItem onClick={() => { onDeleteFolder((localContextMenu.data as any).projectName || selectedProjectName || '', localContextMenu.data.id); closeLocalContextMenu(); }}>Delete</ContextMenuItem>
+                    )}
+
+                    {localContextMenu.type === 'interface' && onRefreshInterface && (
+                        <>
+                            <div style={{ height: 1, backgroundColor: 'var(--vscode-menu-separatorBackground)', margin: '4px 0' }}></div>
+                            <ContextMenuItem onClick={() => {
+                                // We need project name. 
+                                // `data` is ApiInterface. We need parent project.
+                                // How do we get parent project name? 
+                                // We don't have it easily in local data unless we passed it.
+                                // But we can find it in projects array.
+                                const iface = localContextMenu.data as ApiInterface;
+                                const proj = projects.find(p => p.interfaces.some(i => i.name === iface.name));
+                                // Note: Finding by interface name across projects is risky if duplicates exist.
+                                // Ideally we pass project name in context menu data or look up safer.
+                                // Wait, ServiceTree calls onContextMenu with (e, 'interface', iface).
+                                // We can pass project name into data when rendering ServiceTree?
+                                // Or just simpler:
+                                if (proj) {
+                                    onRefreshInterface(proj.name, iface.name);
+                                }
+                                closeLocalContextMenu();
+                            }}>
+                                Refresh Definition
+                            </ContextMenuItem>
+                        </>
                     )}
 
                     {/* Note: This is a simplified menu. Complex global actions like "Export Native" or "Add to Project" might be missing if not handled here. 

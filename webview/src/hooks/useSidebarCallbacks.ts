@@ -84,7 +84,7 @@ export function useSidebarCallbacks({
             dirty: true
         };
         setProjects(projects.map(p => p.name === projName ? updatedProject : p));
-        saveProject(updatedProject);
+        // saveProject(updatedProject);
     }, [projects, setProjects, saveProject, config]);
 
     const handleDeleteSuite = useCallback((suiteId: string) => {
@@ -93,7 +93,7 @@ export function useSidebarCallbacks({
                 if (!p.testSuites || !p.testSuites.some(s => s.id === suiteId)) return p;
                 const remaining = p.testSuites.filter(s => s.id !== suiteId);
                 const updated = { ...p, testSuites: remaining, dirty: true };
-                setTimeout(() => saveProject(updated), 0);
+                // setTimeout(() => saveProject(updated), 0);
                 return updated;
             }));
             setDeleteConfirm(null);
@@ -111,7 +111,7 @@ export function useSidebarCallbacks({
                 return { ...s, expanded: s.expanded === false ? true : false };
             });
             const updatedProject = { ...p, testSuites: updatedSuites, dirty: true };
-            setTimeout(() => saveProject(updatedProject), 0);
+            // setTimeout(() => saveProject(updatedProject), 0);
             return updatedProject;
         }));
     }, [setProjects, saveProject]);
@@ -132,7 +132,7 @@ export function useSidebarCallbacks({
                 testSuites: p.testSuites!.map(s => s.id === suite.id ? updatedSuite : s),
                 dirty: true
             };
-            setTimeout(() => saveProject(updatedProject), 0);
+            // setTimeout(() => saveProject(updatedProject), 0);
             return updatedProject;
         }));
     }, [setProjects, saveProject]);
@@ -153,7 +153,7 @@ export function useSidebarCallbacks({
                 testSuites: p.testSuites!.map(s => s.id === suiteId ? updatedSuite : s),
                 dirty: true
             };
-            setTimeout(() => saveProject(updatedProject), 0);
+            // setTimeout(() => saveProject(updatedProject), 0);
             return updatedProject;
         }));
     }, [setProjects, saveProject]);
@@ -169,7 +169,7 @@ export function useSidebarCallbacks({
                     testSuites: p.testSuites!.map(s => s.id === suite.id ? updatedSuite : s),
                     dirty: true
                 };
-                setTimeout(() => saveProject(updatedProject), 0);
+                // setTimeout(() => saveProject(updatedProject), 0);
                 return updatedProject;
             }));
             setDeleteConfirm(null);
@@ -202,7 +202,7 @@ export function useSidebarCallbacks({
                     dirty: true
                 };
                 console.log('[useSidebarCallbacks] Calling saveProject for:', updatedProject.name);
-                setTimeout(() => saveProject(updatedProject), 0);
+                // setTimeout(() => saveProject(updatedProject), 0);
                 return updatedProject;
             });
         });
@@ -232,7 +232,7 @@ export function useSidebarCallbacks({
                     testSuites: p.testSuites!.map(s => s.id === suite.id ? updatedSuite : s),
                     dirty: true
                 };
-                setTimeout(() => saveProject(updatedProject), 0);
+                // setTimeout(() => saveProject(updatedProject), 0);
                 return updatedProject;
             });
         });

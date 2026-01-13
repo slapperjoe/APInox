@@ -16,7 +16,8 @@ import { SettingsEditorModal } from './modals/SettingsEditorModal';
 import { CreateReplaceRuleModal } from './modals/CreateReplaceRuleModal';
 import { AddToDevOpsModal } from './modals/AddToDevOpsModal';
 import { AddToProjectModal } from './modals/AddToProjectModal';
-import { ApiRequest, TestCase, TestStep, SidebarView, ReplaceRule, RequestHistoryEntry } from '@shared/models';
+import { WsdlSyncModal } from './modals/WsdlSyncModal';
+import { ApiRequest, TestCase, TestStep, SidebarView, ReplaceRule, RequestHistoryEntry, WsdlDiff } from '@shared/models';
 import { FrontendCommand } from '@shared/messages';
 import { useMessageHandler } from '../hooks/useMessageHandler';
 import { useProject } from '../contexts/ProjectContext';
@@ -32,8 +33,7 @@ import { useSidebarCallbacks } from '../hooks/useSidebarCallbacks';
 import { useWorkspaceCallbacks } from '../hooks/useWorkspaceCallbacks';
 import { useAppLifecycle } from '../hooks/useAppLifecycle';
 import { useLayoutHandler } from '../hooks/useLayoutHandler';
-
-// NOTE: DirtySoapConfigWeb interface removed - config type comes from models.ts
+import { useFolderManager } from '../hooks/useFolderManager';
 
 interface ConfirmationState {
     title: string;
@@ -41,7 +41,7 @@ interface ConfirmationState {
     onConfirm: () => void;
 }
 
-// NOTE: Container, ContextMenu, ContextMenuItem moved to styles/App.styles.ts
+
 
 
 export function MainContent() {
@@ -117,14 +117,12 @@ export function MainContent() {
         toggleExplorerExpand,
         toggleExploredInterface,
         toggleExploredOperation
-    } = useExplorer({ projects, setProjects, setWorkspaceDirty });
+    } = useExplorer({ projects, setProjects, setWorkspaceDirty, saveProject });
 
     // ==========================================================================
     // LOCAL STATE - Remaining state that stays in App
     // ==========================================================================
-    // testExecution moved to TestRunnerContext
 
-    // NOTE: handleSelectTestSuite, handleSelectTestCase now come from useTestRunner hook
 
     // Backend Connection
     const [backendConnected, setBackendConnected] = useState(false);
@@ -184,127 +182,36 @@ export function MainContent() {
         }
     }, [activeView, selectedRequest, setSelectedRequest]);
 
-    // UI State (remaining)
-    const [inputType, setInputType] = useState<'url' | 'file'>('url');
-    const [wsdlUrl, setWsdlUrl] = useState('');
+    // Local State (remaining)
+    const [selectedFile, setSelectedFile] = useState<string | null>(null);
 
-    // Derived State (must be after config is defined)
-    // NOTE: selectedPerformanceSuite is derived from config further down or used inline?
-    // Checking usage, it's used in selectionState prop.
-    // It creates a derived variable.
+    // inputType, wsdlUrl were in original.
+    const [inputType, setInputType] = useState<'url' | 'file'>('url');
+    const [wsdlUrl, setWsdlUrl] = useState<string>('');
+    const [wsdlUrlHistory, setWsdlUrlHistory] = useState<string[]>([]);
+    const [downloadStatus, setDownloadStatus] = useState<string[] | null>(null);
+    const [wsdlUseProxy, setWsdlUseProxy] = useState<boolean>(false);
+    const [wsdlDiff, setWsdlDiff] = useState<WsdlDiff | null>(null);
 
     // Derived State
     const selectedPerformanceSuite = config?.performanceSuites?.find(s => s.id === selectedPerformanceSuiteId) || null;
-    const [wsdlUrlHistory, setWsdlUrlHistory] = useState<string[]>([]);
-    const [selectedFile, setSelectedFile] = useState<string | null>(null);
-    const [downloadStatus, setDownloadStatus] = useState<string[] | null>(null);
-    const [wsdlUseProxy, setWsdlUseProxy] = useState<boolean>(false);
-
-    // Performance Suite Expansion State moved to PerformanceContext
-
-
-
 
     // ==========================================================================
     // FOLDER HANDLERS - Work with project.folders for unified structure
     // ==========================================================================
-    const handleAddFolder = useCallback((projectName: string, parentFolderId?: string) => {
-        const newId = `folder - ${Date.now()} `;
-        const newFolder: import('@shared/models').ApinoxFolder = {
-            id: newId,
-            name: `New Folder`,
-            requests: [],
-            expanded: true
-        };
-
-        setProjects(prev => prev.map(p => {
-            if (p.name !== projectName) return p;
-            if (!parentFolderId) {
-                // Add to project root
-                return { ...p, folders: [...(p.folders || []), newFolder], dirty: true };
-            }
-            // Add to parent folder recursively
-            const addToParent = (folders: import('@shared/models').ApinoxFolder[]): import('@shared/models').ApinoxFolder[] => {
-                return folders.map(f => {
-                    if (f.id === parentFolderId) {
-                        // Found the parent - add new folder to its folders array
-                        return { ...f, folders: [...(f.folders || []), newFolder] };
-                    }
-                    if (f.folders && f.folders.length > 0) {
-                        // Recurse into subfolders
-                        return { ...f, folders: addToParent(f.folders) };
-                    }
-                    return f;
-                });
-            };
-            return { ...p, folders: addToParent(p.folders || []), dirty: true };
-        }));
-        setWorkspaceDirty(true);
-    }, [setProjects, setWorkspaceDirty]);
-
-    const handleAddRequestToFolder = useCallback((projectName: string, folderId: string) => {
-        const newRequestId = `request - ${Date.now()} `;
-        const newRequest: ApiRequest = {
-            id: newRequestId,
-            name: 'New Request',
-            request: '',
-            endpoint: 'https://api.example.com',
-            method: 'GET',
-            requestType: 'rest',
-            bodyType: 'json'
-        };
-
-        setProjects(prev => prev.map(p => {
-            if (p.name !== projectName) return p;
-            const updateFolders = (folders: import('@shared/models').ApinoxFolder[]): import('@shared/models').ApinoxFolder[] => {
-                return folders.map(f => {
-                    if (f.id === folderId) {
-                        return { ...f, requests: [...f.requests, newRequest] };
-                    }
-                    if (f.folders) {
-                        return { ...f, folders: updateFolders(f.folders) };
-                    }
-                    return f;
-                });
-            };
-            return { ...p, folders: updateFolders(p.folders || []), dirty: true };
-        }));
-
-        setSelectedRequest(newRequest);
-        setWorkspaceDirty(true);
-    }, [setProjects, setSelectedRequest, setWorkspaceDirty]);
-
-    const handleDeleteFolder = useCallback((projectName: string, folderId: string) => {
-        setProjects(prev => prev.map(p => {
-            if (p.name !== projectName) return p;
-            const filterFolders = (folders: import('@shared/models').ApinoxFolder[]): import('@shared/models').ApinoxFolder[] => {
-                return folders.filter(f => f.id !== folderId).map(f => ({
-                    ...f,
-                    folders: f.folders ? filterFolders(f.folders) : undefined
-                }));
-            };
-            return { ...p, folders: filterFolders(p.folders || []), dirty: true };
-        }));
-        setWorkspaceDirty(true);
-    }, [setProjects, setWorkspaceDirty]);
-
-    const handleToggleFolderExpand = useCallback((projectName: string, folderId: string) => {
-        setProjects(prev => prev.map(p => {
-            if (p.name !== projectName) return p;
-            const toggleFolder = (folders: import('@shared/models').ApinoxFolder[]): import('@shared/models').ApinoxFolder[] => {
-                return folders.map(f => {
-                    if (f.id === folderId) {
-                        return { ...f, expanded: !f.expanded };
-                    }
-                    if (f.folders) {
-                        return { ...f, folders: toggleFolder(f.folders) };
-                    }
-                    return f;
-                });
-            };
-            return { ...p, folders: toggleFolder(p.folders || []) };
-        }));
-    }, [setProjects]);
+    // ==========================================================================
+    // FOLDER HANDLERS - Work with project.folders for unified structure
+    // ==========================================================================
+    const {
+        handleAddFolder,
+        handleAddRequestToFolder,
+        handleDeleteFolder,
+        handleToggleFolderExpand
+    } = useFolderManager({
+        setProjects,
+        setWorkspaceDirty,
+        setSelectedRequest
+    });
 
     // Log unused handlers temporarily
     console.log(handleAddFolder, handleAddRequestToFolder, handleDeleteFolder, handleToggleFolderExpand);
@@ -320,15 +227,15 @@ export function MainContent() {
         startTime: number;
     } | null>(null);
 
-    // Performance/Coordinator State moved to PerformanceContext
 
-    // NOTE: Watcher/Proxy state now comes from useWatcherProxy hook
-
-    // NOTE: startTimeRef now comes from useRequestExecution hook
 
     const handleUpdateProject = useCallback((oldProject: import('@shared/models').ApinoxProject, newProject: import('@shared/models').ApinoxProject) => {
         setProjects(prev => prev.map(p => p === oldProject ? newProject : p));
-        saveProject(newProject);
+        // Only auto-save if project already has a file path (persisted).
+        // Otherwise, rely on dirty flag and manual save for new projects.
+        if (newProject.fileName) {
+            saveProject(newProject);
+        }
     }, [setProjects, saveProject]);
 
     // ==========================================================================
@@ -401,7 +308,6 @@ export function MainContent() {
     // ==========================================================================
     const {
         testExecution,
-        setTestExecution,
         handleSelectTestSuite,
         handleSelectTestCase,
         handleAddAssertion,
@@ -434,11 +340,11 @@ export function MainContent() {
         handleSelectWatcherEvent,
         // Mock state
         mockHistory,
-        setMockHistory, // Will be used in message handler
+        // setMockHistory unused
         mockRunning: _mockRunning,
-        setMockRunning, // Will be used in message handler
+        // setMockRunning unused
         mockConfig,
-        setMockConfig,
+        // setMockConfig unused
         handleSelectMockEvent,
         handleClearMockHistory,
         // Unified Server Mode
@@ -526,11 +432,11 @@ export function MainContent() {
     // ==========================================================================
     const {
         activeRunId,
-        setActiveRunId,
+        // setActiveRunId,
         performanceProgress,
-        setPerformanceProgress,
+        // setPerformanceProgress,
         coordinatorStatus,
-        setCoordinatorStatus,
+        // setCoordinatorStatus,
         expandedPerformanceSuiteIds,
         handleAddPerformanceSuite,
         handleDeletePerformanceSuite,
@@ -762,7 +668,7 @@ export function MainContent() {
     const [confirmationModal, setConfirmationModal] = useState<ConfirmationState | null>(null);
     const [addToTestCaseModal, setAddToTestCaseModal] = React.useState<{ open: boolean, request: ApiRequest | null }>({ open: false, request: null });
     const [sampleModal, setSampleModal] = React.useState<{ open: boolean, schema: any | null, operationName: string }>({ open: false, schema: null, operationName: '' });
-    // NOTE: extractorModal moved above useWorkspaceCallbacks
+
     const [replaceRuleModal, setReplaceRuleModal] = React.useState<{ open: boolean, xpath: string, matchText: string, target: 'request' | 'response' }>({ open: false, xpath: '', matchText: '', target: 'response' });
     const [importToPerformanceModal, setImportToPerformanceModal] = React.useState<{ open: boolean, suiteId: string | null }>({ open: false, suiteId: null });
 
@@ -770,8 +676,24 @@ export function MainContent() {
     const [changelog, setChangelog] = useState<string>('');
     const [requestHistory, setRequestHistory] = useState<RequestHistoryEntry[]>([]);
 
+    const handleRefreshWsdl = useCallback((projectName: string, interfaceName: string) => {
+        bridge.sendMessage({
+            command: FrontendCommand.RefreshWsdl,
+            projectId: projectName,
+            interfaceId: interfaceName
+        });
+    }, []);
 
-    // NOTE: saveProject now comes from ProjectContext
+    const handleApplyWsdlSync = useCallback((diff: WsdlDiff) => {
+        bridge.sendMessage({
+            command: FrontendCommand.ApplyWsdlSync,
+            projectId: diff.projectId,
+            diff
+        });
+        setWsdlDiff(null);
+    }, []);
+
+
 
     // Message Handler Hook
     // ==========================================================================
@@ -806,7 +728,7 @@ export function MainContent() {
     useMessageHandler({
         setProjects,
         setExploredInterfaces,
-        setExplorerExpanded,
+        setExplorerExpanded, // Passed via alias
         setLoading,
         setResponse,
         setDownloadStatus,
@@ -820,41 +742,29 @@ export function MainContent() {
         setSplitRatio,
         setInlineElementValues,
         setConfigPath,
-        setProxyConfig,
+        // setProxyConfig, // Handled in MockProxyContext
         setSelectedProjectName,
         setWsdlUrl,
         setWorkspaceDirty,
         setSavedProjects,
         setChangelog,
         setWatcherHistory,
-        setProxyHistory,
-        setProxyRunning,
-        setTestExecution,
+        // Mock/Proxy setters moved to MockProxyContext but kept for useSidebarCallbacks via MainContent state
         setActiveView,
         setActiveBreakpoint,
-        setMockHistory,
-        setMockRunning,
-        setMockConfig,
-        setActiveRunId,
-        setPerformanceProgress,
-        setCoordinatorStatus,
         setRequestHistory,
+
+        // Current values
         wsdlUrl,
         projects,
-        proxyConfig,
         config,
         selectedTestCase,
         selectedRequest,
         startTimeRef,
+
+        // Callbacks
         saveProject,
-        onAttachmentSelected: (attachment) => {
-            // Add selected attachment to current request
-            if (selectedRequest) {
-                const updatedAttachments = [...(selectedRequest.attachments || []), attachment];
-                setSelectedRequest({ ...selectedRequest, attachments: updatedAttachments, dirty: true });
-                setWorkspaceDirty(true);
-            }
-        }
+        setWsdlDiff
     });
 
     // ==========================================================================
@@ -962,18 +872,13 @@ export function MainContent() {
         bridge.sendMessage({ command: 'selectLocalWsdl' });
     };
 
-    // NOTE: executeRequest, cancelRequest, handleRequestUpdate, handleResetRequest
-    // now come from useRequestExecution hook
 
-    // NOTE: handleAddAssertion, handleAddExistenceAssertion, handleGenerateTestSuite,
-    // handleRunTestCaseWrapper, handleRunTestSuiteWrapper, handleSaveExtractor
-    // now come from useTestCaseHandlers hook
 
-    // NOTE: addToProject, addAllToProject, clearExplorer, removeFromExplorer,
-    // toggleExplorerExpand, toggleExploredInterface, toggleExploredOperation
-    // are now in useExplorer hook
 
-    // NOTE: closeProject, loadProject, addProject now come from ProjectContext
+
+
+
+
     // Handle selection reset when closing a project (context handles the deletion)
     const handleCloseProject = (name: string) => {
         // If we're closing the selected project, clear selection
@@ -986,18 +891,15 @@ export function MainContent() {
         closeProject(name);
     };
 
-    // NOTE: toggleProjectExpand, toggleInterfaceExpand, toggleOperationExpand now come from ProjectContext
 
-    // NOTE: handleContextMenu, closeContextMenu, handleRename, handleDeleteRequest,
-    // handleCloneRequest, handleAddRequest, handleDeleteInterface, handleDeleteOperation,
-    // handleViewSample are now in useContextMenu hook
 
-    // NOTE: handleGenerateTestSuite now comes from useTestCaseHandlers hook
 
-    // NOTE: handleSelectWatcherEvent now comes from useWatcherProxy hook
 
-    // NOTE: handleRunTestCaseWrapper, handleRunTestSuiteWrapper, handleSaveExtractor
-    // now come from useTestCaseHandlers hook
+
+
+
+
+
 
     // Breakpoint Resolution Handler
     const handleResolveBreakpoint = (modifiedContent: string, cancelled: boolean = false) => {
@@ -1034,7 +936,8 @@ export function MainContent() {
                     onAddFolder: handleAddFolder,
                     onAddRequestToFolder: handleAddRequestToFolder,
                     onDeleteFolder: handleDeleteFolder,
-                    onToggleFolderExpand: handleToggleFolderExpand
+                    onToggleFolderExpand: handleToggleFolderExpand,
+                    onRefreshInterface: handleRefreshWsdl
                 }}
                 explorerProps={{
                     exploredInterfaces,
@@ -1249,30 +1152,7 @@ export function MainContent() {
                 requestActions={{
                     onExecute: executeRequest,
                     onCancel: cancelRequest,
-                    onUpdate: (updated) => {
-                        // Check if this is actually a performance request by ID prefix
-                        const isPerformanceRequest = updated.id?.startsWith('perf-req-');
-
-                        if (selectedPerformanceSuite && isPerformanceRequest) {
-                            // Map back to PerformanceRequest for saving
-                            bridge.sendMessage({
-                                command: 'updatePerformanceRequest',
-                                suiteId: selectedPerformanceSuite.id,
-                                requestId: updated.id,
-                                updates: {
-                                    requestBody: updated.request, // Map request back to requestBody
-                                    headers: updated.headers,
-                                    endpoint: updated.endpoint,
-                                    method: updated.method,
-                                    name: updated.name
-                                }
-                            });
-                            // Update local selection state to reflect changes immediately
-                            setSelectedRequest(updated);
-                        } else {
-                            handleRequestUpdate(updated);
-                        }
-                    },
+                    onUpdate: handleRequestUpdate,
                     onReset: handleResetRequest,
                     response,
                     loading
@@ -1709,11 +1589,18 @@ export function MainContent() {
                 }}
             />
 
+            {wsdlDiff && (
+                <WsdlSyncModal
+                    diff={wsdlDiff}
+                    onClose={() => setWsdlDiff(null)}
+                    onSync={handleApplyWsdlSync}
+                />
+            )}
         </Container >
     );
 }
 
-// NOTE: getInitialXml moved to utils/xmlUtils.ts
+
 
 
 

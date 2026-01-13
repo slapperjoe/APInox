@@ -90,7 +90,7 @@ const ContentContainer = styled.div`
     flex-direction: column;
 `;
 
-// Styled components for tabs moved to ./settings/SettingsTypes.ts
+
 
 const ModalFooter = styled.div`
     display: flex;

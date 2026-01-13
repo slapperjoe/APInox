@@ -8,6 +8,7 @@
 import { useState, useCallback } from 'react';
 import { ApinoxProject, ApiInterface, ApiOperation, ApiRequest } from '@shared/models';
 import { bridge } from '../utils/bridge';
+import { generateXmlFromSchema } from '../utils/soapUtils';
 
 interface ContextMenuState {
     x: number;
@@ -99,7 +100,7 @@ export function useContextMenu({
             if (!targetReq && contextMenu?.isExplorer) return;
 
             setProjects(prev => {
-                let projectChanged: ApinoxProject | null = null;
+                // let projectChanged: ApinoxProject | null = null;
                 const newProjects = prev.map(p => {
                     let changed = false;
                     const newInterfaces = p.interfaces.map(i => ({
@@ -115,13 +116,13 @@ export function useContextMenu({
 
                     if (changed) {
                         const newP = { ...p, interfaces: newInterfaces, dirty: true };
-                        projectChanged = newP;
+                        // projectChanged = newP;
                         return newP;
                     }
                     return p;
                 });
 
-                if (projectChanged) saveProject(projectChanged);
+                // if (projectChanged) saveProject(projectChanged);
                 return newProjects;
             });
 
@@ -167,8 +168,14 @@ export function useContextMenu({
             let newReqContent = '';
             if (op.requests.length > 0) {
                 newReqContent = op.requests[0].request;
+            } else if (op.input && typeof op.input === 'object') {
+                // Use schema generator
+                const targetNs = op.targetNamespace || 'http://tempuri.org/';
+                newReqContent = generateXmlFromSchema(op.name, op.input, targetNs);
             } else {
-                newReqContent = `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:web="${op.input || 'http://example.com/'}">\n   <soapenv:Header/>\n   <soapenv:Body>\n      <web:${op.name}>\n         <!--Optional:-->\n      </web:${op.name}>\n   </soapenv:Body>\n</soapenv:Envelope>`;
+                // Fallback for empty/string input
+                const targetNs = op.targetNamespace || (typeof op.input === 'string' ? op.input : 'http://tempuri.org/');
+                newReqContent = `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:web="${targetNs}">\n   <soapenv:Header/>\n   <soapenv:Body>\n      <web:${op.name}>\n         <!--Optional:-->\n      </web:${op.name}>\n   </soapenv:Body>\n</soapenv:Envelope>`;
             }
 
             const newRequest: ApiRequest = {
@@ -208,19 +215,19 @@ export function useContextMenu({
 
     const handleDeleteInterface = useCallback((iface: ApiInterface) => {
         setProjects(prev => {
-            let projectChanged: ApinoxProject | null = null;
+            // let projectChanged: ApinoxProject | null = null;
             const newProjects = prev.map(p => {
                 const hasInterface = p.interfaces.some(i => i.name === iface.name);
                 if (hasInterface) {
                     const newInterfaces = p.interfaces.filter(i => i.name !== iface.name);
                     const newP = { ...p, interfaces: newInterfaces, dirty: true };
-                    projectChanged = newP;
+                    // projectChanged = newP;
                     return newP;
                 }
                 return p;
             });
 
-            if (projectChanged) saveProject(projectChanged);
+            // if (projectChanged) saveProject(projectChanged);
             return newProjects;
         });
         setWorkspaceDirty(true);
@@ -235,7 +242,7 @@ export function useContextMenu({
 
     const handleDeleteOperation = useCallback((op: ApiOperation, iface: ApiInterface) => {
         setProjects(prev => {
-            let projectChanged: ApinoxProject | null = null;
+            // let projectChanged: ApinoxProject | null = null;
             const newProjects = prev.map(p => {
                 const targetInterface = p.interfaces.find(i => i.name === iface.name);
                 if (targetInterface) {
@@ -247,13 +254,13 @@ export function useContextMenu({
                         return i;
                     });
                     const newP = { ...p, interfaces: newInterfaces, dirty: true };
-                    projectChanged = newP;
+                    // projectChanged = newP;
                     return newP;
                 }
                 return p;
             });
 
-            if (projectChanged) saveProject(projectChanged);
+            // if (projectChanged) saveProject(projectChanged);
             return newProjects;
         });
         setWorkspaceDirty(true);

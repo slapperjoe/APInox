@@ -6,6 +6,7 @@ import { useSelection } from './SelectionContext';
 import { useUI } from './UIContext';
 import { useNavigation } from './NavigationContext';
 import { ApiInterface, ApiOperation, ApiRequest } from '@shared/models';
+import { BackendCommand } from '@shared/messages';
 
 interface TestExecutionState {
     status: 'running' | 'pass' | 'fail';
@@ -74,7 +75,29 @@ export const TestRunnerProvider = ({ children }: { children: ReactNode }) => {
     // Note: TestRunnerProvider must be inside UIProvider and NavigationProvider
     const { config, setConfig } = useUI();
     const { setActiveView } = useNavigation();
+    // -------------------------------------------------------------------------
+    // MESSAGE HANDLING
+    // -------------------------------------------------------------------------
 
+    React.useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            const message = event.data;
+            switch (message.command) {
+                case BackendCommand.TestRunnerUpdate:
+                    if (message.update) {
+                        setTestExecution(prev => ({ ...prev, ...message.update }));
+                    }
+                    break;
+            }
+        };
+
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, []);
+
+    // -------------------------------------------------------------------------
+    // CONTEXT VALUE
+    // -------------------------------------------------------------------------
     // Hooks
     // We pass a minimal mock for closeContextMenu if it's not available in UIContext directly (it was in useContextMenu hook result in App.tsx)
     // Wait, closeContextMenu was from useContextMenu in App.tsx. 
