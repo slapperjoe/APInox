@@ -38,6 +38,10 @@
         "icon": "$(trash)"
       },
       {
+        "command": "apinox.exportToSoapUI",
+        "title": "Dirty Soap: Export to SoapUI"
+      },
+      {
         "command": "apinox.exportDiagnostics",
         "title": "Export Diagnostic Logs",
         "category": "APInox",

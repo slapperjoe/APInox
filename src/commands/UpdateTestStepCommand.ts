@@ -1,7 +1,7 @@
 
 import { ICommand } from './ICommand';
 import { ApinoxProject, TestStep } from '../../shared/src/models';
-import { ProjectStorage } from '../ProjectStorage';
+// import { ProjectStorage } from '../ProjectStorage'; // Removed
 import { FolderProjectStorage } from '../FolderProjectStorage';
 import { DiagnosticService } from '../services/DiagnosticService';
 import * as fs from 'fs';
@@ -13,7 +13,7 @@ export class UpdateTestStepCommand implements ICommand {
     constructor(
         private readonly _panel: vscode.WebviewPanel,
         private readonly _loadedProjects: Map<string, ApinoxProject>,
-        private readonly _projectStorage: ProjectStorage,
+        // private readonly _projectStorage: ProjectStorage, // Removed
         private readonly _folderStorage: FolderProjectStorage
     ) { }
 
@@ -68,23 +68,24 @@ export class UpdateTestStepCommand implements ICommand {
                 if (stats.isDirectory()) {
                     await this._folderStorage.saveProject(projectToSave, fileName);
                     this._diagnosticService.log('BACKEND', `Saved folder project ${projectToSave.name}`);
+
+                    // Update cache to ensure it stays fresh
+                    this._loadedProjects.set(fileName, projectToSave);
+
+                    // 4. IMPORTANT: Send updated project back to webview to sync state
+                    this._panel.webview.postMessage({
+                        command: 'projectLoaded',
+                        project: projectToSave,
+                        filename: fileName
+                    });
+                    this._diagnosticService.log('BACKEND', `Sent updated project ${projectToSave.name} to webview for sync`);
                 } else {
-                    await this._projectStorage.saveProject(projectToSave, fileName);
-                    this._diagnosticService.log('BACKEND', `Saved XML project ${projectToSave.name}`);
+                    // Was XML file or legacy. We do NOT save automatically here anymore since we removed XML support.
+                    // This aligns with "Import" behavior where user must save manually first.
+                    this._diagnosticService.log('BACKEND', `Skipping auto-save for XML/Legacy project ${projectToSave.name}. User must Save As Folder first.`);
                 }
-
-                // Update cache to ensure it stays fresh
-                this._loadedProjects.set(fileName, projectToSave);
-
-                // 4. IMPORTANT: Send updated project back to webview to sync state
-                this._panel.webview.postMessage({
-                    command: 'projectLoaded',
-                    project: projectToSave,
-                    filename: fileName
-                });
-                this._diagnosticService.log('BACKEND', `Sent updated project ${projectToSave.name} to webview for sync`);
             } else {
-                this._diagnosticService.log('ERROR', `Project ${projectToSave.name} has no valid filename, cannot save.`);
+                this._diagnosticService.log('ERROR', `Project ${projectToSave.name} has no valid filename (or file incorrect), cannot auto-save path: ${fileName}`);
             }
         } catch (e: any) {
             this._diagnosticService.log('ERROR', `Failed to save project after step update: ${e.message}`);

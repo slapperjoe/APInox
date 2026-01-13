@@ -1,6 +1,6 @@
 
 import { ICommand } from './ICommand';
-import { ProjectStorage } from '../ProjectStorage';
+import { SoapUIExporter } from '../SoapUIExporter';
 import { FolderProjectStorage } from '../FolderProjectStorage';
 import { SoapClient } from '../soapClient';
 import { SoapUIProject } from '../../shared/src/models';
@@ -13,7 +13,7 @@ export class LoadProjectCommand implements ICommand {
         private readonly _panel: vscode.WebviewPanel,
         private readonly _soapClient: SoapClient, // For logging
         private readonly _folderStorage: FolderProjectStorage,
-        private readonly _projectStorage: ProjectStorage,
+        private readonly _soapUiExporter: SoapUIExporter,
         private readonly _loadedProjects: Map<string, SoapUIProject>
     ) { }
 
@@ -51,8 +51,10 @@ export class LoadProjectCommand implements ICommand {
                     }
                     project = await this._folderStorage.loadProject(targetPath);
                 } else {
-                    // Assume XML
-                    project = await this._projectStorage.loadProject(targetPath);
+                    // Import from XML using SoapUIExporter, but treat as new/unsaved (Import)
+                    project = await this._soapUiExporter.importProject(targetPath);
+                    // Clear fileName to force "Save As" on next save
+                    project.fileName = '';
                 }
 
                 if (project && project.testSuites) {
@@ -70,11 +72,11 @@ export class LoadProjectCommand implements ICommand {
                     });
                 }
 
-                this._loadedProjects.set(targetPath, project);
+                this._loadedProjects.set(project.name, project);
                 this._panel.webview.postMessage({
                     command: 'projectLoaded',
                     project,
-                    filename: targetPath // Send full path (dir or file)
+                    filename: project.fileName // Will be empty for imported XML, forcing Save As
                 });
                 vscode.window.showInformationMessage(`Project loaded from ${targetPath}`);
             }

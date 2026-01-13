@@ -1,8 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { bridge } from '../utils/bridge';
 import { PerformanceSuite, PerformanceRequest, ApiRequest } from '@shared/models';
+import { BackendCommand, FrontendCommand } from '@shared/messages';
+import { getInitialXml } from '../utils/soapUtils';
 import { useUI } from './UIContext';
 import { useSelection } from './SelectionContext';
+
+const debugLog = (_message: string, _data?: any) => { // Allowed unused for now or used
+    // console.debug(`[PerformanceContext] ${_message}`, _data);
+};
 
 interface CoordinatorStatus {
     running: boolean;
@@ -62,7 +68,7 @@ export const PerformanceProvider = ({ children }: { children: ReactNode }) => {
     const [expandedPerformanceSuiteIds, setExpandedPerformanceSuiteIds] = useState<string[]>([]);
 
     // Dependencies
-    const { config } = useUI();
+    const { config, setConfig } = useUI();
     const {
         selectedPerformanceSuiteId,
         setSelectedPerformanceSuiteId,
@@ -179,7 +185,148 @@ export const PerformanceProvider = ({ children }: { children: ReactNode }) => {
         return () => window.removeEventListener('message', handleMessage);
     }, []);
 
-    // Auto-select first performance suite
+    // -------------------------------------------------------------------------
+    // MESSAGE HANDLING
+    // -------------------------------------------------------------------------
+
+    React.useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            const message = event.data;
+            switch (message.command) {
+                case BackendCommand.PerformanceRunStarted:
+                    debugLog('performanceRunStarted', { runId: message.runId });
+                    setActiveRunId(message.runId);
+                    setPerformanceProgress({ iteration: 0, total: 0 }); // Initialize valid object
+                    break;
+
+                case BackendCommand.PerformanceRunComplete:
+                    debugLog('performanceRunComplete', { runId: message.runId });
+                    setActiveRunId(undefined); // undefined matches state type
+                    break;
+
+                case BackendCommand.PerformanceIterationComplete:
+                    // debugLog('performanceIterationComplete', { runId: message.runId, iteration: message.iteration });
+                    if (message.runId) {
+                        setPerformanceProgress((prev: { iteration: number; total: number } | null) => ({
+                            iteration: message.iteration || (prev?.iteration || 0) + 1,
+                            total: message.total || prev?.total || 0
+                        }));
+                    }
+                    break;
+
+                case BackendCommand.CoordinatorStatus:
+                    if (message.status) {
+                        setCoordinatorStatus(message.status);
+                    }
+                    if (message.error) {
+                        debugLog('Coordinator Error', { error: message.error });
+                        // Ideally show a toast or error
+                    }
+                    break;
+
+                case BackendCommand.AddOperationToPerformance:
+                    handleBackendAddOperation(message);
+                    break;
+            }
+        };
+
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, [setConfig]); // Only stable deps needed if debugLog is constant
+
+    // Helper for complex AddOperation logic
+    const handleBackendAddOperation = async (message: any) => {
+        debugLog('addOperationToPerformance', { suiteId: message.suiteId, operation: message.operation?.name });
+        // We need current config. Since this is inside useEffect/event listener, 
+        // we might have stale state if we just use 'config'. 
+        // However, 'setProperty' style updates are safe. 
+        // For reading 'config.performanceSuites', we should probably use a Ref or Functional State update if possible.
+        // But here we need to READ to find the index.
+
+        // Ideally, we move this logic to a separate function that we can call with fresh state?
+        // Or we use a ref for config which is kept in sync.
+
+        // For now, let's implement the logic using the functional update pattern where possible,
+        // or accept that we might need `config` in dependency array (which re-binds listener).
+        // Re-binding listener on config change is expensive? Config changes often?
+        // Yes, config changes on every keystroke in some editors.
+
+        // Better approach: Use the ref pattern for config like useMessageHandler did, OR
+        // Use the `setConfig` functional update heavily.
+
+        // Let's rely on `setConfig` functional update to find and update.
+
+        setConfig((prevConfig: any) => {
+            const currentSuites = prevConfig.performanceSuites || [];
+            const idx = currentSuites.findIndex((s: any) => s.id === message.suiteId);
+
+            if (idx === -1) {
+                console.error('[PerformanceContext] Suite not found for addOperationToPerformance');
+                return prevConfig;
+            }
+
+            const suite = { ...currentSuites[idx] };
+            let newRequest = message.request;
+            const perfOp = message.operation;
+
+            if (newRequest) {
+                newRequest = {
+                    ...newRequest,
+                    id: `perf-req-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                    method: newRequest.method || 'POST',
+                    requestBody: newRequest.requestBody || (newRequest as any).request || '',
+                    interfaceName: newRequest.interfaceName,
+                    operationName: newRequest.operationName,
+                    order: (suite.requests?.length || 0) + 1,
+                    readOnly: false
+                };
+            } else if (perfOp) {
+                newRequest = {
+                    id: `perf-req-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                    name: perfOp.name,
+                    endpoint: (perfOp as any).originalEndpoint || '',
+                    method: 'POST',
+                    soapAction: perfOp.soapAction,
+                    requestBody: `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="${perfOp.targetNamespace || 'http://tempuri.org/'}">
+    <soapenv:Header/>
+    <soapenv:Body>
+       <tem:${perfOp.name}>
+          <!--Optional:-->
+          ${getInitialXml(perfOp.input)}
+       </tem:${perfOp.name}>
+    </soapenv:Body>
+</soapenv:Envelope>`,
+                    headers: {},
+                    extractors: [],
+                    slaThreshold: 200,
+                    order: (suite.requests?.length || 0) + 1,
+                    readOnly: false
+                };
+            }
+
+            if (newRequest) {
+                const nextRequests = [...(suite.requests || []), newRequest];
+                const nextSuite = { ...suite, requests: nextRequests };
+
+                // Send FULL suite update to backend
+                bridge.sendMessage({
+                    command: FrontendCommand.UpdatePerformanceSuite,
+                    suiteId: nextSuite.id,
+                    updates: nextSuite
+                });
+
+                const newSuites = [...currentSuites];
+                newSuites[idx] = nextSuite;
+                return { ...prevConfig, performanceSuites: newSuites };
+            }
+
+            return prevConfig;
+        });
+    };
+
+    // -------------------------------------------------------------------------
+    // CONTEXT VALUE
+    // -------------------------------------------------------------------------select first performance suite
     useEffect(() => {
         const suites = config?.performanceSuites || [];
         if (suites.length > 0 && !selectedPerformanceSuiteId) {
