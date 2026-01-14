@@ -14,6 +14,8 @@ import { MockService } from '../services/MockService';
 import { PerformanceService } from '../services/PerformanceService';
 import { ScheduleService } from '../services/ScheduleService';
 import { RequestHistoryService } from '../services/RequestHistoryService';
+import { createVSCodeServices } from '../adapters/vscode';
+import { IPlatformServices } from '../interfaces';
 
 export class WebviewPanel {
     public static currentPanel: WebviewPanel | undefined;
@@ -34,6 +36,7 @@ export class WebviewPanel {
     private _performanceService: PerformanceService;
     private _historyService: RequestHistoryService;
     private _controller: WebviewController;
+    private _platformServices: IPlatformServices;
 
     public get controller(): WebviewController {
         return this._controller;
@@ -81,13 +84,20 @@ export class WebviewPanel {
         this._diagnosticService = DiagnosticService.getInstance();
         this._diagnosticService.log('BACKEND', 'WebviewPanel Initialized');
 
+        // Create platform-agnostic services (VS Code implementations)
+        this._platformServices = createVSCodeServices(WebviewPanel._extensionContext);
+
         this._settingsManager = new SettingsManager();
-        this._soapClient = new SoapClient(this._settingsManager, this._outputChannel);
+        this._soapClient = new SoapClient(this._settingsManager, this._outputChannel, this._platformServices.config);
         this._soapUiExporter = new SoapUIExporter(this._outputChannel);
         this._folderStorage = new FolderProjectStorage(this._outputChannel);
 
         this._fileWatcherService = new FileWatcherService(this._outputChannel);
-        this._proxyService = new ProxyService();
+        this._proxyService = new ProxyService(
+            { port: 9000, targetUrl: 'http://localhost:8080', systemProxyEnabled: true },
+            this._platformServices.notifications,
+            this._platformServices.config
+        );
         this._proxyService.setLogger(msg => this._outputChannel.appendLine(msg));
         this._proxyService.on('log', (event: any) => {
             if (event.type === 'request') {
@@ -105,10 +115,10 @@ export class WebviewPanel {
 
         this._configSwitcherService = new ConfigSwitcherService();
         this._testRunnerService = new TestRunnerService(this._soapClient, this._outputChannel);
-        this._azureDevOpsService = new AzureDevOpsService(WebviewPanel._extensionContext);
+        this._azureDevOpsService = new AzureDevOpsService(this._platformServices.secrets);
 
         // Mock Service
-        this._mockService = new MockService();
+        this._mockService = new MockService({}, this._platformServices.notifications);
         this._mockService.setLogger(msg => this._outputChannel.appendLine(msg));
         this._mockService.setProxyPort(this._proxyService.getConfig().port);
 

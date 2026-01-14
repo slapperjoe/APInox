@@ -4,12 +4,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import axios, { AxiosRequestConfig, Method } from 'axios';
-import * as vscode from 'vscode';
 import { EventEmitter } from 'events';
 import * as selfsigned from 'selfsigned';
 import { MockConfig, MockRule, MockMatchCondition } from '../../shared/src/models';
 import { DOMParser } from '@xmldom/xmldom';
 import * as xpath from 'xpath';
+import { INotificationService } from '../interfaces';
 
 export interface MockEvent {
     id: string;
@@ -43,10 +43,12 @@ export class MockService extends EventEmitter {
     private certPath: string | null = null;
     private keyPath: string | null = null;
     private proxyPort = 9000; // Default Dirty Proxy port
+    private notificationService?: INotificationService;
 
-    constructor(initialConfig: Partial<MockConfig> = {}) {
+    constructor(initialConfig: Partial<MockConfig> = {}, notificationService?: INotificationService) {
         super();
         this.config = { ...DEFAULT_CONFIG, ...initialConfig };
+        this.notificationService = notificationService;
     }
 
     private logger: (msg: string) => void = console.log;
@@ -242,12 +244,12 @@ export class MockService extends EventEmitter {
 
             this.server.on('error', (err: any) => {
                 console.error('Mock Server Error:', err);
-                vscode.window.showErrorMessage(`Mock Server Error: ${err.message}`);
+                this.notificationService?.showError(`Mock Server Error: ${err.message}`);
                 this.stop();
             });
 
         } catch (err: any) {
-            vscode.window.showErrorMessage(`Failed to start Mock Server: ${err.message}`);
+            this.notificationService?.showError(`Failed to start Mock Server: ${err.message}`);
             this.stop();
         }
     }

@@ -7,12 +7,12 @@ import * as dns from 'dns';
 import * as net from 'net';
 import * as tls from 'tls';
 import axios, { AxiosRequestConfig, Method } from 'axios';
-import * as vscode from 'vscode';
 import { EventEmitter } from 'events';
 import * as selfsigned from 'selfsigned';
 import { ReplaceRuleApplier, ReplaceRule } from '../utils/ReplaceRuleApplier';
 import type { MockService } from './MockService';
 import { ProxyRule } from '../../shared/src/models';
+import { INotificationService, IConfigService } from '../interfaces';
 
 export type ServerMode = 'off' | 'mock' | 'proxy' | 'both';
 export interface ProxyConfig {
@@ -71,10 +71,18 @@ export class ProxyService extends EventEmitter {
     private static BREAKPOINT_TIMEOUT_MS = 45000; // 45 seconds
     private mockService: MockService | null = null;
     private serverMode: ServerMode = 'proxy';
+    private notificationService?: INotificationService;
+    private configService?: IConfigService;
 
-    constructor(initialConfig: ProxyConfig = { port: 9000, targetUrl: 'http://localhost:8080', systemProxyEnabled: true }) {
+    constructor(
+        initialConfig: ProxyConfig = { port: 9000, targetUrl: 'http://localhost:8080', systemProxyEnabled: true },
+        notificationService?: INotificationService,
+        configService?: IConfigService
+    ) {
         super();
         this.config = initialConfig;
+        this.notificationService = notificationService;
+        this.configService = configService;
     }
 
     private logger: (msg: string) => void = console.log;
@@ -297,12 +305,12 @@ export class ProxyService extends EventEmitter {
 
             this.server.on('error', (err: any) => {
                 console.error('APInox Proxy Server Error:', err);
-                vscode.window.showErrorMessage(`APInox Proxy Error: ${err.message}`);
+                this.notificationService?.showError(`APInox Proxy Error: ${err.message}`);
                 this.stop();
             });
 
         } catch (err: any) {
-            vscode.window.showErrorMessage(`Failed to start Proxy: ${err.message}`);
+            this.notificationService?.showError(`Failed to start Proxy: ${err.message}`);
             this.stop();
         }
     }
@@ -361,10 +369,9 @@ export class ProxyService extends EventEmitter {
                 const requestPath = (req.url || '/').replace(/^\//, '');
                 const fullTargetUrl = `${targetBase}/${requestPath}`;
 
-                // Detect VS Code Proxy Settings
-                const httpConfig = vscode.workspace.getConfiguration('http');
-                const proxyUrl = httpConfig.get<string>('proxy') || process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
-                const strictSSL = httpConfig.get<boolean>('proxyStrictSSL', false);
+                // Detect Proxy Settings (via IConfigService or environment)
+                const proxyUrl = this.configService?.getProxyUrl() || process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
+                const strictSSL = this.configService?.getStrictSSL() ?? false;
 
                 let agent: any;
 

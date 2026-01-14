@@ -5,8 +5,8 @@
  * Handles PAT storage, project listing, and work item comments.
  */
 
-import * as vscode from 'vscode';
 import axios from 'axios';
+import { ISecretStorage } from '../interfaces';
 
 const SECRET_KEY = 'dirtysoap.azuredevops.pat';
 
@@ -23,31 +23,31 @@ export interface AzureDevOpsConfig {
 }
 
 export class AzureDevOpsService {
-    private context: vscode.ExtensionContext;
+    private secretStorage: ISecretStorage;
 
-    constructor(context: vscode.ExtensionContext) {
-        this.context = context;
+    constructor(secretStorage: ISecretStorage) {
+        this.secretStorage = secretStorage;
     }
 
     /**
-     * Store PAT securely in VS Code SecretStorage
+     * Store PAT securely
      */
     async storePat(pat: string): Promise<void> {
-        await this.context.secrets.store(SECRET_KEY, pat);
+        await this.secretStorage.store(SECRET_KEY, pat);
     }
 
     /**
      * Get stored PAT
      */
     async getPat(): Promise<string | undefined> {
-        return await this.context.secrets.get(SECRET_KEY);
+        return await this.secretStorage.get(SECRET_KEY);
     }
 
     /**
      * Delete stored PAT
      */
     async deletePat(): Promise<void> {
-        await this.context.secrets.delete(SECRET_KEY);
+        await this.secretStorage.delete(SECRET_KEY);
     }
 
     /**
