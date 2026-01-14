@@ -722,6 +722,8 @@ export interface RequestHistoryEntry {
     statusCode?: number;
     duration?: number;
     responseSize?: number;
+    responseBody?: string;
+    responseHeaders?: Record<string, string>;
     success?: boolean;
     error?: string;
 

@@ -49,14 +49,14 @@ const Pill = styled.span<{ $isError: boolean }>`
     font-size: 11px;
     font-weight: 500;
     background: ${props => props.$isError
-        ? 'rgba(255, 100, 100, 0.2)'
-        : 'rgba(100, 150, 255, 0.2)'};
+        ? 'var(--vscode-diffEditor-removedTextBackground)'
+        : 'var(--vscode-diffEditor-insertedTextBackground)'};
     color: ${props => props.$isError
-        ? 'var(--vscode-testing-iconFailed, #f88)'
-        : 'var(--vscode-testing-iconPassed, #8cf)'};
+        ? 'var(--vscode-testing-iconFailed)'
+        : 'var(--vscode-testing-iconPassed)'};
     border: 1px solid ${props => props.$isError
-        ? 'rgba(255, 100, 100, 0.4)'
-        : 'rgba(100, 150, 255, 0.4)'};
+        ? 'var(--vscode-testing-iconFailed)'
+        : 'var(--vscode-testing-iconPassed)'};
 `;
 
 const RemoveButton = styled.button`
@@ -94,7 +94,7 @@ const Dropdown = styled.div`
     max-height: 200px;
     overflow-y: auto;
     min-width: 180px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 12px var(--vscode-widget-shadow);
 `;
 
 const DropdownItem = styled.div<{ $isSelected: boolean }>`

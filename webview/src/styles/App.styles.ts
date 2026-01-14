@@ -41,7 +41,7 @@ export const ContextMenu = styled.div<{ top: number, left: number }>`
     background-color: var(--vscode-menu-background);
     color: var(--vscode-menu-foreground);
     border: 1px solid var(--vscode-menu-border);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    box-shadow: 0 2px 8px var(--vscode-widget-shadow);
     z-index: 2000;
     min-width: 150px;
     padding: 4px 0;

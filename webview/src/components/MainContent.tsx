@@ -462,7 +462,9 @@ export function MainContent() {
     }, [config?.performanceSuites, selectedPerformanceSuiteId, setSelectedPerformanceSuiteId]);
 
     // Auto-select first test case when none is selected but test cases exist
+    // ONLY in Tests view to avoid re-selecting after user clears selection for navigation
     useEffect(() => {
+        if (activeView !== SidebarView.TESTS) return;
         // Flatten all test cases from all projects/suites
         const allCases = projects.flatMap(p =>
             (p.testSuites || []).flatMap(s => s.testCases || [])
@@ -470,7 +472,7 @@ export function MainContent() {
         if (allCases.length > 0 && !selectedTestCase) {
             setSelectedTestCase(allCases[0]);
         }
-    }, [projects, selectedTestCase, setSelectedTestCase]);
+    }, [projects, selectedTestCase, setSelectedTestCase, activeView]);
 
     // Sync selectedTestCase with authoritative projects state when projects changes
     // This fixes stale data (e.g. scriptContent) after projectLoaded updates projects
@@ -497,9 +499,24 @@ export function MainContent() {
             endpoint: entry.endpoint,
             request: entry.requestBody,
             headers: entry.headers,
-            contentType: 'application/soap+xml' // Default content type
+            contentType: 'application/soap+xml', // Default content type
+            readOnly: true // Mark as read-only since it's from history
         };
         setSelectedRequest(req);
+
+        // Also restore the response if available
+        if (entry.responseBody) {
+            setResponse({
+                rawResponse: entry.responseBody,
+                status: entry.statusCode,
+                headers: entry.responseHeaders || {},
+                success: entry.success,
+                error: entry.error,
+                timeTaken: entry.duration
+            });
+        } else {
+            setResponse(null);
+        }
     };
 
     const handleToggleHistoryStar = (id: string) => {

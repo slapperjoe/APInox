@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layout as LayoutIcon, ListOrdered, Play, Loader2, RotateCcw, WrapText, Bug, AlignLeft, Braces, ChevronLeft, ChevronRight, ListChecks, Replace, Cloud, PlusSquare } from 'lucide-react';
+import { Layout as LayoutIcon, ListOrdered, Play, Loader2, RotateCcw, WrapText, Bug, AlignLeft, Braces, ChevronLeft, ChevronRight, ListChecks, Replace, Cloud, PlusSquare, FileCode } from 'lucide-react';
 // Models imported via props.ts indirections, specific enums kept if needed locally (TestStepType is used in code?)
 // Checking code: TestStepType is used in props interface but not local var?
 // Actually TestStepType is used in onAddStep signature but onAddStep comes from props.
@@ -18,6 +18,7 @@ import { ExtractorsPanel } from './ExtractorsPanel';
 import { MonacoSingleLineInput, MonacoSingleLineInputHandle } from './MonacoSingleLineInput';
 import { formatXml, stripCausalityData } from '@shared/utils/xmlFormatter';
 import { XPathGenerator } from '../utils/xpathGenerator';
+import { CodeSnippetModal } from './modals/CodeSnippetModal';
 import { WelcomePanel, TestCaseView, EmptyTestCase } from './workspace';
 import { ApiExplorerMain } from './explorer/ApiExplorerMain';
 import { EmptyState, EmptyFileWatcher, EmptyApiExplorer, EmptyServer, EmptyProject } from './workspace/EmptyStates';
@@ -146,6 +147,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     const [alignAttributes, setAlignAttributes] = React.useState(false);
     const [activeTab, setActiveTab] = React.useState<'request' | 'headers' | 'params' | 'assertions' | 'auth' | 'extractors' | 'attachments' | 'variables'>('request');
     const [showVariables, setShowVariables] = React.useState(false);
+    const [showCodeSnippet, setShowCodeSnippet] = React.useState(false);
 
     // ... imports
 
@@ -241,7 +243,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         const isPerfRunning = !!performanceProgress;
 
         if (!selectedPerformanceSuite && !selectedRequest) {
-            return <EmptyState title="No Performance Suite Selected" message="Pick or create a performance suite from the sidebar." icon={Play} />;
+            return <EmptyState title="No Performance Suite Selected" description="Pick or create a performance suite from the sidebar." icon={Play} />;
         }
 
         if (selectedPerformanceSuite && !selectedRequest) {
@@ -397,8 +399,18 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         return <WelcomePanel changelog={changelog} />;
     }
 
+
+
     return (
         <Content>
+            {/* Modal */}
+            <CodeSnippetModal
+                isOpen={showCodeSnippet}
+                onClose={() => setShowCodeSnippet(false)}
+                request={selectedRequest}
+                environment={config?.environments && config?.activeEnvironment ? config.environments[config.activeEnvironment] : undefined}
+            />
+
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
                 {/* Toolbar */}
 
@@ -422,7 +434,6 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                             </>
                         )}
 
-                        {/* Request Type / Method / Content-Type - Unified Selector */}
                         {/* Request Type / Method / Content-Type - Unified Selector */}
                         {preventEditing || isStructureLocked ? (
                             <div style={{ display: 'flex', alignItems: 'center', flex: 1, paddingLeft: 10, overflow: 'hidden' }}>
@@ -461,6 +472,12 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                         {!selectedTestCase && !preventEditing && (
                             <ToolbarButton onClick={() => { onReset(); forceEditorUpdate(); }} title="Revert to Default XML">
                                 <RotateCcw size={14} /> Reset
+                            </ToolbarButton>
+                        )}
+
+                        {!selectedTestCase && (
+                            <ToolbarButton onClick={() => setShowCodeSnippet(true)} title="Generate Code">
+                                <FileCode size={14} /> Code
                             </ToolbarButton>
                         )}
 
@@ -830,7 +847,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                                         selectedRequest.requestType === 'rest' ? 'json' :
                                                             'xml'
                                     }
-                                    readOnly={isReadOnly}
+                                    readOnly={isReadOnly && activeView !== SidebarView.PROJECTS && activeView !== SidebarView.EXPLORER}
                                     onChange={(val) => onUpdateRequest({ ...selectedRequest, request: val })}
                                     onFocus={() => lastFocusedRef.current = bodyEditorRef.current}
                                     autoFoldElements={config?.ui?.autoFoldElements}

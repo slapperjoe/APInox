@@ -4,7 +4,7 @@
 
 APInox handles the messy parts of SOAP web services so you can stay clean and productive. Inspired by tools new and old like SoapUI, Bruno and Yaak but built natively for your favorite editor.
 
-![APInox Logo](logo.png)
+![APInox Logo](images/APInox_logo_dark.jpg)
 
 ## 🚀 Key Features
 
