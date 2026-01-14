@@ -8,6 +8,8 @@
 import styled, { keyframes, css } from 'styled-components';
 import { ChevronLeft } from 'lucide-react';
 
+
+
 export const Mascot = styled.img`
     position: fixed;
     top: 50%;
@@ -19,12 +21,16 @@ export const Mascot = styled.img`
     opacity: 0.15;
     pointer-events: none;
     z-index: 0;
-    mix-blend-mode: multiply;
+    mix-blend-mode: color-burn;
+    
+    &.dark-only { display: none; }
+    &.light-only { display: block; }
 
     body.vscode-dark &, body.vscode-high-contrast & {
-        filter: invert(1);
         mix-blend-mode: screen;
-        opacity: 0.1;
+        opacity: 0.08;
+        &.dark-only { display: block; }
+        &.light-only { display: none; }
     }
 `;
 
@@ -33,18 +39,22 @@ export const EmptyStateImage = styled.img`
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 100vw;
-    height: 100vh;
+    width: 60vw;
+    height: 60vh;
     object-fit: contain;
-    opacity: 0.15;
+    opacity: 0.12;
     pointer-events: none;
     z-index: 0;
-    mix-blend-mode: multiply;
+    mix-blend-mode: color-burn;
+
+    &.dark-only { display: none; }
+    &.light-only { display: block; }
 
     body.vscode-dark &, body.vscode-high-contrast & {
-        filter: invert(1);
         mix-blend-mode: screen;
-        opacity: 0.1;
+        opacity: 0.06;
+        &.dark-only { display: block; }
+        &.light-only { display: none; }
     }
 `;
 

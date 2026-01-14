@@ -311,6 +311,8 @@ export class ExecuteRequestCommand implements ICommand {
             statusCode: result.status ?? 200,
             duration: timeTaken,
             responseSize,
+            responseBody: typeof responsePayload === 'string' ? responsePayload : JSON.stringify(responsePayload ?? ''),
+            responseHeaders: result.headers,
             success: result.success,
             starred: false,
           };

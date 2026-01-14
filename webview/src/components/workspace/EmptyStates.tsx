@@ -1,50 +1,36 @@
 import React from 'react';
-import emptyServerImg from '../../assets/empty-server.png';
-import emptyWsdlImg from '../../assets/empty-wsdl.png';
-import emptyWatcherImg from '../../assets/empty-watcher.png';
-import emptyProjectImg from '../../assets/empty-project.png';
-import { EmptyStateContainer, EmptyStateTitle, EmptyStateImage } from '../../styles/WorkspaceLayout.styles';
-
-export const EmptyState: React.FC<{ title: string; message: string; icon?: React.ElementType; image?: string }> = ({ title, message, icon: Icon, image }) => (
-    <EmptyStateContainer>
-        {image ? (
-            <EmptyStateImage src={image} alt={title} />
-        ) : (
-            Icon && <Icon size={48} style={{ marginBottom: 20, opacity: 0.5 }} />
-        )}
-        <EmptyStateTitle>{title}</EmptyStateTitle>
-        <p>{message}</p>
-    </EmptyStateContainer>
-);
+import { Eye, Compass, Network, FolderOpen } from 'lucide-react';
+import { EmptyState } from '../common/EmptyState';
+export { EmptyState };
 
 export const EmptyFileWatcher: React.FC = () => (
     <EmptyState
+        icon={Eye}
         title="File Watcher"
-        message="The File Watcher monitors your project files for changes. Events will appear in the sidebar."
-        image={emptyWatcherImg}
+        description="The File Watcher monitors your project files for changes. Events will appear in the sidebar."
     />
 );
 
 export const EmptyApiExplorer: React.FC = () => (
     <EmptyState
+        icon={Compass}
         title="API Explorer"
-        message="Load a WSDL or OpenAPI file to browse its interfaces, operations, and requests."
-        image={emptyWsdlImg}
+        description="Load a WSDL or OpenAPI file to browse its interfaces, operations, and requests."
     />
 );
 
 export const EmptyServer: React.FC = () => (
     <EmptyState
+        icon={Network}
         title="APInox Server"
-        message="Configure a local proxy server to inspect traffic or mock responses."
-        image={emptyServerImg}
+        description="Configure a local proxy server to inspect traffic or mock responses."
     />
 );
 
 export const EmptyProject: React.FC = () => (
     <EmptyState
+        icon={FolderOpen}
         title="No Project Selected"
-        message="Select a project, interface, or operation to view details."
-        image={emptyProjectImg}
+        description="Select a project, interface, or operation to view details."
     />
 );

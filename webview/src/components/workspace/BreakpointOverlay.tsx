@@ -40,7 +40,8 @@ export const BreakpointOverlay: React.FC<BreakpointOverlayProps> = ({
         <Content style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             {/* Breakpoint Banner */}
             <div style={{
-                background: 'linear-gradient(90deg, #d97706 0%, #b45309 100%)',
+                background: 'var(--vscode-editor-inactiveSelectionBackground)', // Fallback / Base
+                borderTop: '2px solid var(--vscode-debugIcon-breakpointForeground)',
                 padding: '12px 20px',
                 display: 'flex',
                 alignItems: 'center',
@@ -60,7 +61,7 @@ export const BreakpointOverlay: React.FC<BreakpointOverlayProps> = ({
                     <div style={{
                         width: 120,
                         height: 6,
-                        background: 'rgba(255,255,255,0.3)',
+                        background: 'var(--vscode-toolbar-hoverBackground)',
                         borderRadius: 3,
                         overflow: 'hidden'
                     }}>
@@ -78,13 +79,13 @@ export const BreakpointOverlay: React.FC<BreakpointOverlayProps> = ({
                             const minified = content.replace(/>\s+</g, '><').trim();
                             onResolve(minified);
                         }}
-                        style={{ background: 'white', color: '#b45309', padding: '6px 12px' }}
+                        style={{ background: 'var(--vscode-button-background)', color: 'var(--vscode-button-foreground)', padding: '6px 12px' }}
                     >
                         <Play size={14} /> Continue
                     </ToolbarButton>
                     <ToolbarButton
                         onClick={() => onResolve(bp.content, true)}
-                        style={{ background: 'rgba(255,255,255,0.2)', color: 'white', padding: '6px 12px' }}
+                        style={{ background: 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-secondaryForeground)', padding: '6px 12px' }}
                     >
                         Cancel
                     </ToolbarButton>

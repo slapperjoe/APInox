@@ -3,6 +3,8 @@ import styled from 'styled-components';
 import { Play, Plus, Trash2, Settings, Clock, Repeat, Flame, Zap, GripVertical, Loader, Square, Calendar, ToggleLeft, ToggleRight, Import, Download, ChevronDown, ChevronRight, CheckCircle, XCircle, AlertTriangle, Users, Server } from 'lucide-react';
 import { PerformanceSuite, PerformanceRun, PerformanceSchedule, PerformanceRequest, CoordinatorStatus } from '@shared/models';
 import { WorkerStatusPanel } from './WorkerStatusPanel';
+import { EmptyState } from '../../components/common/EmptyState';
+
 import {
     Content,
     Toolbar,
@@ -240,7 +242,7 @@ const ResultRow = styled.div<{ $success: boolean }>`
     gap: 8px;
     padding: 4px 8px;
     margin: 2px 0;
-    background: ${props => props.$success ? 'rgba(0,200,0,0.1)' : 'rgba(255,0,0,0.1)'};
+    background: ${props => props.$success ? 'var(--vscode-diffEditor-insertedTextBackground)' : 'var(--vscode-diffEditor-removedTextBackground)'};
     border-radius: 3px;
     font-size: 0.85em;
 `;
@@ -509,24 +511,11 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
 
                 {/* Info Banner - Only shown when there are no runs */}
                 {(!history || history.length === 0) && (
-                    <div style={{
-                        padding: 15,
-                        marginBottom: 20,
-                        background: 'var(--vscode-inputValidation-infoBackground)',
-                        border: '1px solid var(--vscode-inputValidation-infoBorder)',
-                        borderRadius: 6,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 10
-                    }}>
-                        <AlertTriangle size={18} style={{ color: 'var(--vscode-inputValidation-infoForeground)' }} />
-                        <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 600, marginBottom: 4 }}>No performance runs yet</div>
-                            <div style={{ fontSize: '0.9em', opacity: 0.9 }}>
-                                Configure your test requests below and click "Run Suite" to start your first performance test.
-                            </div>
-                        </div>
-                    </div>
+                    <EmptyState
+                        icon={AlertTriangle}
+                        title="No performance runs yet"
+                        description='Configure your test requests below and click "Run Suite" to start your first performance test.'
+                    />
                 )}
 
                 {/* Run Progress - Only show when running */}
