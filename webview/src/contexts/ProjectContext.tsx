@@ -18,6 +18,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import { ApinoxProject } from '@shared/models';
+import { BackendCommand } from '@shared/messages';
 import { bridge } from '../utils/bridge';
 
 // =============================================================================
@@ -159,8 +160,31 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
     }, [projects]);
 
     // -------------------------------------------------------------------------
+    // AUTO-SAVE
+    // Watch for dirty projects and save them automatically
+    // -------------------------------------------------------------------------
+    useEffect(() => {
+        const dirtyProjects = projects.filter(p => p.dirty);
+
+        if (dirtyProjects.length > 0) {
+            const timer = setTimeout(() => {
+                dirtyProjects.forEach(p => {
+                    // bridge.sendMessage({ command: 'log', message: `[ProjectContext] Auto-saving project: ${p.name}` });
+                    // We call the internal save logic directly
+                    // Only auto-save if project is already saved to disk (has path)
+                    if ((p as any).fileName) {
+                        bridge.sendMessage({ command: 'saveProject', project: p });
+                    }
+                });
+            }, 1000); // 1s debounce
+
+            return () => clearTimeout(timer);
+        }
+    }, [projects]);
+
+    // -------------------------------------------------------------------------
     // DEBUG LOGGING
-    // Temporary logging for troubleshooting - can be removed after stabilization
+
     // -------------------------------------------------------------------------
 
     const debugLog = useCallback((action: string, data?: any) => {
@@ -247,6 +271,74 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
         debugLog('saveProject', { name: project.name });
         bridge.sendMessage({ command: 'log', message: `[ProjectContext] saveProject called for: ${project.name}` });
         bridge.sendMessage({ command: 'saveProject', project });
+    }, [debugLog]);
+    // -------------------------------------------------------------------------
+    // MESSAGE HANDLING - Decentralized
+    // -------------------------------------------------------------------------
+
+    React.useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            const message = event.data;
+            switch (message.command) {
+                // Check if the actual command string is 'projectsLoaded' or 'projectLoaded'
+                // Based on messages.ts, only ProjectLoaded exists.
+                case BackendCommand.ProjectLoaded:
+                    debugLog('Received ProjectsLoaded', { count: message.projects?.length });
+                    if (message.projects) {
+                        setProjects(message.projects);
+                        // Clear dirty flag as we just loaded fresh state
+                        setWorkspaceDirty(false);
+                    }
+                    break;
+
+                // Fallback for potentially unmapped command if 'projectsLoaded' is sent but not in enum
+                case 'projectsLoaded' as any:
+                    debugLog('Received ProjectsLoaded (literal)', { count: message.projects?.length });
+                    if (message.projects) {
+                        setProjects(message.projects);
+                        setWorkspaceDirty(false);
+                    }
+                    break;
+
+                case BackendCommand.ProjectSaved:
+                    debugLog('Received ProjectSaved', { name: message.projectName, fileName: message.fileName });
+                    if (message.projectName) {
+                        setSavedProjects(current => {
+                            const next = new Set(current);
+                            next.add(message.projectName);
+                            return next;
+                        });
+
+                        // CRITICAL: Update the project with the new fileName returned from backend
+                        // This allows auto-save to take over for future edits
+                        if (message.fileName) {
+                            setProjects(prev => prev.map(p =>
+                                p.name === message.projectName
+                                    ? { ...p, fileName: message.fileName, dirty: false }
+                                    : p
+                            ));
+                        }
+
+                        // Auto-clear success indicator after 3s
+                        setTimeout(() => {
+                            setSavedProjects(current => {
+                                const next = new Set(current);
+                                next.delete(message.projectName);
+                                return next;
+                            });
+                        }, 3000);
+                    }
+                    break;
+
+                case BackendCommand.WorkspaceSaved:
+                    debugLog('Received WorkspaceSaved');
+                    setWorkspaceDirty(false);
+                    break;
+            }
+        };
+
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
     }, [debugLog]);
 
     /**

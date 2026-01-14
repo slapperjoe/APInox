@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { SoapClient } from '../soapClient';
 import { DiagnosticService } from '../services/DiagnosticService';
-import { ProjectStorage } from '../ProjectStorage';
+import { SoapUIExporter } from '../SoapUIExporter';
 import { FolderProjectStorage } from '../FolderProjectStorage';
 import { SettingsManager } from '../utils/SettingsManager';
 import { WebviewController } from '../controllers/WebviewController';
@@ -22,7 +22,7 @@ export class WebviewPanel {
     private readonly _panel: vscode.WebviewPanel;
     private readonly _extensionUri: vscode.Uri;
     private readonly _soapClient: SoapClient;
-    private readonly _projectStorage: ProjectStorage;
+    private readonly _soapUiExporter: SoapUIExporter;
     private readonly _folderStorage: FolderProjectStorage;
     private readonly _settingsManager: SettingsManager;
     private readonly _fileWatcherService: FileWatcherService;
@@ -34,6 +34,11 @@ export class WebviewPanel {
     private _performanceService: PerformanceService;
     private _historyService: RequestHistoryService;
     private _controller: WebviewController;
+
+    public get controller(): WebviewController {
+        return this._controller;
+    }
+
     private _disposables: vscode.Disposable[] = [];
     private _autosaveTimeout: NodeJS.Timeout | undefined;
     private _outputChannel: vscode.OutputChannel;
@@ -78,7 +83,7 @@ export class WebviewPanel {
 
         this._settingsManager = new SettingsManager();
         this._soapClient = new SoapClient(this._settingsManager, this._outputChannel);
-        this._projectStorage = new ProjectStorage(this._outputChannel);
+        this._soapUiExporter = new SoapUIExporter(this._outputChannel);
         this._folderStorage = new FolderProjectStorage(this._outputChannel);
 
         this._fileWatcherService = new FileWatcherService(this._outputChannel);
@@ -163,7 +168,7 @@ export class WebviewPanel {
             this._extensionUri,
             this._soapClient,
             this._folderStorage,
-            this._projectStorage,
+            this._soapUiExporter,
             this._settingsManager,
             this._fileWatcherService,
             this._proxyService,

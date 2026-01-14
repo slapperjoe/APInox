@@ -9,6 +9,25 @@ export interface ServiceOperation {
     originalEndpoint?: string;
 }
 
+export interface WsdlDiff {
+    projectId: string;
+    interfaceId: string;
+    interfaceName: string;
+    newWsdlUrl: string;
+    addedOperations: ServiceOperation[];
+    removedOperations: ServiceOperation[];
+    // We could track modified, but for now we might just support Add/Remove
+    // or treat modified as Remove + Add? 
+    // Let's stick to Add/Remove for simplicity first, as modifying operation signatures 
+    // in-place is complex for the user to understand what broke.
+    // If we want to support modifications, we can add it later.
+    // Actually, "Modified" usually means arguments changed.
+    modifiedOperations: {
+        operation: ServiceOperation;
+        changes: string[];
+    }[];
+}
+
 export interface ApiService {
     name: string;
     ports: string[];
@@ -327,6 +346,13 @@ export interface WatcherEvent {
     requestBody?: string;
     responseBody?: string;
     formattedBody?: string;
+}
+
+export type ProxyEvent = WatcherEvent;
+
+export interface MockEvent extends WatcherEvent {
+    ruleId?: string;
+    matchedRule?: string;
 }
 
 export enum SidebarView {

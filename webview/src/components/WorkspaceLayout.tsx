@@ -6,10 +6,7 @@ import { Layout as LayoutIcon, ListOrdered, Play, Loader2, RotateCcw, WrapText, 
 // Let's remove them and add back if needed.
 import { SidebarView, RequestType, BodyType, HttpMethod } from '@shared/models';
 // ... imports
-import emptyServerImg from '../assets/empty-server.png';
-import emptyWsdlImg from '../assets/empty-wsdl.png';
-import emptyWatcherImg from '../assets/empty-watcher.png';
-import emptyProjectImg from '../assets/empty-project.png';
+
 import { MonacoRequestEditor, MonacoRequestEditorHandle } from './MonacoRequestEditor';
 import { MonacoResponseViewer } from './MonacoResponseViewer';
 import { AssertionsPanel } from './AssertionsPanel';
@@ -17,29 +14,34 @@ import { HeadersPanel } from './HeadersPanel';
 import { SecurityPanel } from './SecurityPanel';
 import { AttachmentsPanel } from './AttachmentsPanel';
 import { ExtractorsPanel } from './ExtractorsPanel';
-// ReactMarkdown moved to WelcomePanel
+
 import { MonacoSingleLineInput, MonacoSingleLineInputHandle } from './MonacoSingleLineInput';
 import { formatXml, stripCausalityData } from '@shared/utils/xmlFormatter';
 import { XPathGenerator } from '../utils/xpathGenerator';
 import { WelcomePanel, TestCaseView, EmptyTestCase } from './workspace';
 import { ApiExplorerMain } from './explorer/ApiExplorerMain';
+import { EmptyState, EmptyFileWatcher, EmptyApiExplorer, EmptyServer, EmptyProject } from './workspace/EmptyStates';
+import { ProjectSummary } from './workspace/ProjectSummary';
+import { InterfaceSummary } from './workspace/InterfaceSummary';
+import { TestSuiteSummary } from './workspace/TestSuiteSummary';
+import { OperationSummary } from './workspace/OperationSummary';
 import { PerformanceSuiteEditor } from './workspace/PerformanceSuiteEditor';
 import { RequestTypeSelector } from './workspace/RequestTypeSelector';
 import { QueryParamsPanel } from './QueryParamsPanel';
 import { RestAuthPanel } from './RestAuthPanel';
 import { GraphQLVariablesPanel } from './GraphQLVariablesPanel';
 import { ScriptEditor } from './ScriptEditor';
-import { ContextHelpButton } from './ContextHelpButton';
+
 
 // Styled components extracted to styles file
-// unused models removed
+
 import { createMockRuleFromSource } from '../utils/mockUtils';
 import { findPathToRequest } from '../utils/projectUtils';
-import styled from 'styled-components';
+
 import {
     Toolbar, InfoBarMethod, InfoBarUrl,
     ToolbarButton, MainFooter, IconButton, ToolbarSeparator,
-    Content, EmptyStateImage
+    Content
 } from '../styles/WorkspaceLayout.styles';
 
 
@@ -48,436 +50,16 @@ import {
     WorkspaceLayoutProps
 } from '../types/props';
 
-// WorkspaceBreakpointState moved to props.ts
 
 
-// Local definition removed, using imported WorkspaceLayoutProps
+
+
 
 
 // Helper Components
-const EmptyStateContainer = styled.div`
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: var(--vscode-descriptionForeground);
-    padding: 20px;
-    text-align: center;
-`;
-
-const EmptyStateTitle = styled.h2`
-    margin-bottom: 10px;
-    color: var(--vscode-foreground);
-`;
-
-const EmptyState: React.FC<{ title: string; message: string; icon?: React.ElementType; image?: string }> = ({ title, message, icon: Icon, image }) => (
-    <EmptyStateContainer>
-        {image ? (
-            <EmptyStateImage src={image} alt={title} />
-        ) : (
-            Icon && <Icon size={48} style={{ marginBottom: 20, opacity: 0.5 }} />
-        )}
-        <EmptyStateTitle>{title}</EmptyStateTitle>
-        <p>{message}</p>
-    </EmptyStateContainer>
-);
-
-const EmptyFileWatcher: React.FC = () => (
-    <EmptyState
-        title="File Watcher"
-        message="The File Watcher monitors your project files for changes. Events will appear in the sidebar."
-        image={emptyWatcherImg}
-    />
-);
-
-const EmptyApiExplorer: React.FC = () => (
-    <EmptyState
-        title="API Explorer"
-        message="Load a WSDL or OpenAPI file to browse its interfaces, operations, and requests."
-        image={emptyWsdlImg}
-    />
-);
-
-const EmptyServer: React.FC = () => (
-    <EmptyState
-        title="APInox Server"
-        message="Configure a local proxy server to inspect traffic or mock responses."
-        image={emptyServerImg}
-    />
-);
-
-const ProjectContainer = styled.div`
-    padding: 40px;
-    color: var(--vscode-foreground);
-    overflow-y: auto;
-    flex: 1;
-`;
-
-const ProjectHeader = styled.div`
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 30px;
-`;
-
-const ProjectName = styled.h1`
-    margin: 0;
-`;
-
-const ProjectDescription = styled.p`
-    font-size: 1.1em;
-    opacity: 0.8;
-    margin: 8px 0 0 0;
-`;
-
-const StatsGrid = styled.div`
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 20px;
-    margin-top: 20px;
-`;
-
-const StatCard = styled.div`
-    padding: 20px;
-    background: var(--vscode-editor-inactiveSelectionBackground);
-    border-radius: 6px;
-`;
-
-const StatLabel = styled.div`
-    font-size: 0.85em;
-    opacity: 0.7;
-    margin-bottom: 8px;
-`;
-
-const StatValue = styled.span`
-    font-size: 2em;
-    font-weight: bold;
-`;
-
-const InterfacesHeading = styled.h2`
-    margin-top: 40px;
-    border-bottom: 1px solid var(--vscode-panel-border);
-    padding-bottom: 10px;
-`;
-
-const SectionHeading = styled(InterfacesHeading)`
-    margin-top: 40px;
-`;
-
-const InterfacesList = styled.div`
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-top: 15px;
-`;
-
-const InterfaceItem = styled.div`
-    padding: 15px;
-    background: var(--vscode-list-hoverBackground);
-    border-radius: 4px;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-`;
-
-const InterfaceInfo = styled.div`
-    flex: 1;
-`;
-
-const InterfaceName = styled.span`
-    font-weight: bold;
-    font-size: 1.1em;
-`;
-
-const InterfaceOps = styled.div`
-    font-size: 0.8em;
-    opacity: 0.7;
-    margin-top: 4px;
-`;
-
-const InterfaceDef = styled.div`
-    font-size: 0.75em;
-    opacity: 0.5;
-    margin-top: 4px;
-    font-family: monospace;
-`;
-
-const InterfaceContainer = styled(ProjectContainer)``;
-
-const InfoCard = styled.div`
-    margin-top: 20px;
-    padding: 20px;
-    background: var(--vscode-editor-inactiveSelectionBackground);
-    border-radius: 6px;
-`;
-
-const InfoGrid = styled.div`
-    display: grid;
-    gap: 12px;
-`;
-
-const EndpointText = styled.span`
-    font-family: monospace;
-    font-size: 0.9em;
-    word-break: break-all;
-`;
-
-const OperationsHeading = styled.h2`
-    margin-top: 30px;
-    border-bottom: 1px solid var(--vscode-panel-border);
-    padding-bottom: 10px;
-`;
-
-const OperationsList = styled.div`
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-top: 15px;
-`;
-
-const OperationItem = styled.div`
-    padding: 15px;
-    background: var(--vscode-list-hoverBackground);
-    border-radius: 4px;
-    cursor: pointer;
-    border: 1px solid var(--vscode-panel-border);
-`;
-
-const OperationRow = styled.div`
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-`;
-
-const OperationMeta = styled.span`
-    margin-left: 8px;
-    font-size: 0.85em;
-    opacity: 0.6;
-`;
-
-const StatsGridSpaced = styled(StatsGrid)`
-    margin-top: 30px;
-`;
-
-const OperationContainer = styled(ProjectContainer)``;
-
-const RequestsHeading = styled.h2`
-    margin-top: 30px;
-    border-bottom: 1px solid var(--vscode-panel-border);
-    padding-bottom: 10px;
-`;
-
-const RequestGrid = styled.div`
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 15px;
-    margin-top: 15px;
-`;
-
-const RequestCard = styled(OperationItem)`
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-`;
-
-const LinkText = styled.a`
-    color: var(--vscode-textLink-foreground);
-`;
-
-const ChevronIcon = styled(ChevronLeft)`
-    transform: rotate(180deg);
-    opacity: 0.5;
-`;
-
-const ChevronIconFaint = styled(ChevronLeft)`
-    transform: rotate(180deg);
-    opacity: 0.3;
-`;
-
-const RequestName = styled.span`
-    font-weight: 500;
-`;
-
-const ProjectSummary: React.FC<{ project: import('@shared/models').ApinoxProject; onSelectInterface?: (i: import('@shared/models').ApiInterface) => void }> = ({ project, onSelectInterface }) => {
-    // Calculate statistics
-    const totalOperations = project.interfaces.reduce((sum, iface) => sum + iface.operations.length, 0);
-    const totalRequests = project.interfaces.reduce((sum, iface) =>
-        sum + iface.operations.reduce((opSum, op) => opSum + op.requests.length, 0), 0
-    );
-
-    return (
-        <ProjectContainer>
-            {/* Header */}
-            <ProjectHeader>
-                <div>
-                    <ProjectName>Project: {project.name}</ProjectName>
-                    {project.description && <ProjectDescription>{project.description}</ProjectDescription>}
-                </div>
-                <ContextHelpButton sectionId="workspace" />
-            </ProjectHeader>
-
-            {/* Statistics Grid */}
-            <StatsGrid>
-                <StatCard>
-                    <StatLabel>Interfaces</StatLabel>
-                    <StatValue>{project.interfaces.length}</StatValue>
-                </StatCard>
-                <StatCard>
-                    <StatLabel>Test Suites</StatLabel>
-                    <StatValue>{project.testSuites?.length || 0}</StatValue>
-                </StatCard>
-                <StatCard>
-                    <StatLabel>Operations</StatLabel>
-                    <StatValue>{totalOperations}</StatValue>
-                </StatCard>
-                <StatCard>
-                    <StatLabel>Requests</StatLabel>
-                    <StatValue>{totalRequests}</StatValue>
-                </StatCard>
-            </StatsGrid>
-
-            {/* Interfaces List */}
-            <InterfacesHeading>Interfaces</InterfacesHeading>
-            <InterfacesList>
-                {project.interfaces.map(iface => (
-                    <InterfaceItem
-                        key={iface.name}
-                        onClick={() => onSelectInterface && onSelectInterface(iface)}
-                    >
-                        <InterfaceInfo>
-                            <InterfaceName>{iface.name}</InterfaceName>
-                            <InterfaceOps>{iface.operations.length} operations</InterfaceOps>
-                            {iface.definition && (
-                                <InterfaceDef>
-                                    {iface.definition}
-                                </InterfaceDef>
-                            )}
-                        </InterfaceInfo>
-                        <ChevronIcon size={16} />
-                    </InterfaceItem>
-                ))}
-            </InterfacesList>
-        </ProjectContainer>
-    );
-};
 
 
-const InterfaceSummary: React.FC<{ interface: import('@shared/models').ApiInterface; onSelectOperation?: (o: import('@shared/models').ApiOperation) => void }> = ({ interface: iface, onSelectOperation }) => {
-    // Get endpoint from first operation if available
-    const firstEndpoint = iface.operations[0]?.requests[0]?.endpoint;
 
-    return (
-        <InterfaceContainer>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h1>Interface: {iface.name}</h1>
-                <ContextHelpButton sectionId="interface" />
-            </div>
-            <InfoCard>
-                <InfoGrid>
-                    <div><strong>WSDL:</strong> <LinkText href="#">{iface.definition}</LinkText></div>
-                    <div><strong>SOAP Version:</strong> {iface.soapVersion}</div>
-                    {iface.bindingName && <div><strong>Binding:</strong> {iface.bindingName}</div>}
-                    {firstEndpoint && <div><strong>Endpoint:</strong> <EndpointText>{firstEndpoint}</EndpointText></div>}
-                    <div><strong>Operations:</strong> {iface.operations.length}</div>
-                </InfoGrid>
-            </InfoCard>
-            <OperationsHeading>Operations</OperationsHeading>
-            <OperationsList>
-                {iface.operations.map(op => (
-                    <OperationItem
-                        key={op.name}
-                        onClick={() => onSelectOperation && onSelectOperation(op)}
-                    >
-                        <OperationRow>
-                            <div>
-                                <strong>{op.name}</strong>
-                                <OperationMeta>({op.requests.length} request{op.requests.length !== 1 ? 's' : ''})</OperationMeta>
-                            </div>
-                            <ChevronIconFaint size={14} />
-                        </OperationRow>
-                    </OperationItem>
-                ))}
-            </OperationsList>
-        </InterfaceContainer>
-    );
-};
-
-const TestSuiteSummary: React.FC<{ suite: import('@shared/models').TestSuite; onSelectTestCase?: (c: import('@shared/models').TestCase) => void }> = ({ suite, onSelectTestCase }) => {
-    // Calculate total steps
-    const totalSteps = suite.testCases.reduce((sum, tc) => sum + tc.steps.length, 0);
-
-    return (
-        <ProjectContainer>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h1>Test Suite: {suite.name}</h1>
-                <ContextHelpButton sectionId="test-suite" />
-            </div>
-
-            {/* Statistics Grid */}
-            <StatsGridSpaced>
-                <StatCard>
-                    <StatLabel>Test Cases</StatLabel>
-                    <StatValue>{suite.testCases.length}</StatValue>
-                </StatCard>
-                <StatCard>
-                    <StatLabel>Total Steps</StatLabel>
-                    <StatValue>{totalSteps}</StatValue>
-                </StatCard>
-            </StatsGridSpaced>
-
-            <SectionHeading>Test Cases</SectionHeading>
-            <OperationsList>
-                {suite.testCases.map(tc => (
-                    <OperationItem
-                        key={tc.id}
-                        onClick={() => onSelectTestCase && onSelectTestCase(tc)}
-                    >
-                        <OperationRow>
-                            <div>
-                                <span>{tc.name}</span>
-                                <OperationMeta>({tc.steps.length} step{tc.steps.length !== 1 ? 's' : ''})</OperationMeta>
-                            </div>
-                            <ChevronIconFaint size={14} />
-                        </OperationRow>
-                    </OperationItem>
-                ))}
-            </OperationsList>
-        </ProjectContainer>
-    );
-};
-
-const OperationSummary: React.FC<{ operation: import('@shared/models').ApiOperation; onSelectRequest?: (r: import('@shared/models').ApiRequest) => void }> = ({ operation, onSelectRequest }) => (
-    <OperationContainer>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h1>Operation: {operation.name}</h1>
-            <ContextHelpButton sectionId="operation" />
-        </div>
-
-        {/* Metadata */}
-        <InfoCard>
-            <InfoGrid>
-                {operation.action && <div><strong>Action:</strong> <EndpointText>{operation.action}</EndpointText></div>}
-                <div><strong>Requests:</strong> {operation.requests.length}</div>
-            </InfoGrid>
-        </InfoCard>
-
-        <RequestsHeading>Requests</RequestsHeading>
-        <RequestGrid>
-            {operation.requests.map(req => (
-                <RequestCard
-                    key={req.id}
-                    onClick={() => onSelectRequest && onSelectRequest(req)}
-                >
-                    <RequestName>{req.name}</RequestName>
-                    <ChevronIcon size={14} />
-                </RequestCard>
-            ))}
-        </RequestGrid>
-    </OperationContainer>
-);
 
 
 export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
@@ -531,6 +113,11 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         console.log('[WorkspaceLayout] onUpdateRequest called:', { requestName: updated?.name, requestId: updated?.id });
         rawOnUpdateRequest(updated);
     }, [rawOnUpdateRequest]);
+
+
+    const forceEditorUpdate = React.useCallback(() => {
+        setEditorForceUpdateKey(prev => prev + 1);
+    }, []);
     const {
         activeView, // Now available
         layoutMode, showLineNumbers, splitRatio, isResizing, onToggleLayout, onToggleLineNumbers, onStartResizing,
@@ -561,7 +148,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     const [showVariables, setShowVariables] = React.useState(false);
 
     // ... imports
-    // Breakpoint State currently unused; effects removed
+
 
     // Editor Refs for insertion
     const urlEditorRef = React.useRef<MonacoSingleLineInputHandle>(null);
@@ -569,6 +156,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     const lastFocusedRef = React.useRef<MonacoSingleLineInputHandle | MonacoRequestEditorHandle | null>(null);
     const [selection, setSelection] = React.useState<{ text: string, offset: number } | null>(null);
     const [currentXPath, setCurrentXPath] = React.useState<string | null>(null);
+    const [editorForceUpdateKey, setEditorForceUpdateKey] = React.useState<number>(0);
 
     React.useEffect(() => {
         if (selection && response?.rawResponse) {
@@ -750,7 +338,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
             if (selectedOperation) return <OperationSummary operation={selectedOperation} onSelectRequest={navigationActions?.onSelectRequest} />;
             if (selectedInterface) return <InterfaceSummary interface={selectedInterface} onSelectOperation={navigationActions?.onSelectOperation} />;
             if (selectedProject) return <ProjectSummary project={selectedProject} onSelectInterface={navigationActions?.onSelectInterface} />;
-            return <EmptyState title="No Project Selected" message="Select a project, interface, or operation to view details." image={emptyProjectImg} />;
+            return <EmptyProject />;
         }
         // If request IS selected, fall through to Request Editor
     }
@@ -871,7 +459,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
 
                         {/* Actions */}
                         {!selectedTestCase && !preventEditing && (
-                            <ToolbarButton onClick={onReset} title="Revert to Default XML">
+                            <ToolbarButton onClick={() => { onReset(); forceEditorUpdate(); }} title="Revert to Default XML">
                                 <RotateCcw size={14} /> Reset
                             </ToolbarButton>
                         )}
@@ -947,6 +535,8 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                                         const target = lastFocusedRef.current || bodyEditorRef.current; // Default to body
                                                         if (target) {
                                                             target.insertText('${#TestCase#' + v.name + '}');
+                                                            // InsertText modifies model directly, so no force update needed usually,
+                                                            // but if we updated state, we might. Here we access editor instance directly.
                                                         }
                                                         setShowVariables(false);
                                                     }}
@@ -1148,9 +738,8 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                 <IconButton onClick={() => {
                                     const newValue = !alignAttributes;
                                     setAlignAttributes(newValue);
-                                    if (selectedRequest.request) {
-                                        onUpdateRequest({ ...selectedRequest, request: formatXml(selectedRequest.request, newValue, inlineElementValues) });
-                                    }
+                                    if (selectedRequest.request) onUpdateRequest({ ...selectedRequest, request: formatXml(selectedRequest.request, newValue, inlineElementValues) });
+                                    forceEditorUpdate();
                                 }} active={alignAttributes} title="Toggle Attribute Alignment" style={{ width: 24, height: 24, padding: 2 }}>
                                     <WrapText size={14} />
                                 </IconButton>
@@ -1163,6 +752,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                             const nextVal = !inlineElementValues;
                                             if (selectedRequest.request) {
                                                 onUpdateRequest({ ...selectedRequest, request: formatXml(selectedRequest.request, alignAttributes, nextVal) });
+                                                forceEditorUpdate();
                                             }
                                         }}
                                         active={inlineElementValues}
@@ -1186,6 +776,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                     onClick={() => {
                                         const formatted = formatXml(selectedRequest.request, alignAttributes, inlineElementValues);
                                         onUpdateRequest({ ...selectedRequest, request: formatted });
+                                        forceEditorUpdate();
                                     }}
                                     style={{ width: 24, height: 24, padding: 2 }}
                                 >
@@ -1244,6 +835,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                     onFocus={() => lastFocusedRef.current = bodyEditorRef.current}
                                     autoFoldElements={config?.ui?.autoFoldElements}
                                     requestId={selectedRequest.id || selectedRequest.name}
+                                    forceUpdateKey={editorForceUpdateKey}
                                 />
                                 {/* Format Button Overlay */}
 
@@ -1382,14 +974,17 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
 
                     {/* Response Section */}
                     {(response || loading) && (
-                        <div style={{
-                            flex: 1,
-                            overflow: 'hidden',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            borderLeft: layoutMode === 'horizontal' ? '1px solid var(--vscode-panel-border)' : 'none',
-                            borderTop: layoutMode === 'vertical' ? '1px solid var(--vscode-panel-border)' : 'none',
-                        }}>
+                        <div
+                            data-testid="response-section"
+                            style={{
+                                flex: 1,
+                                overflow: 'hidden',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                borderLeft: layoutMode === 'horizontal' ? '1px solid var(--vscode-panel-border)' : 'none',
+                                borderTop: layoutMode === 'vertical' ? '1px solid var(--vscode-panel-border)' : 'none',
+                            }}
+                        >
                             <div style={{
                                 padding: '5px 10px',
                                 backgroundColor: 'var(--vscode-editor-background)',

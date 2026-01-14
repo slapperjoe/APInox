@@ -301,6 +301,9 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
     const [renameId, setRenameId] = useState<string | null>(null);
     const [renameValue, setRenameValue] = useState('');
 
+    // Delete confirmation state
+    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
     // Context Menu state
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; reqId: string; currentName: string } | null>(null);
 
@@ -664,9 +667,22 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                                         )}
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                                        {/* Inline edit removed in favor of context menu */}
+
                                         {onDeleteRequest && (
-                                            <IconButton onClick={(e) => { e.stopPropagation(); onDeleteRequest(suite.id, req.id); }} title="Remove Request">
+                                            <IconButton
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (deleteConfirmId === req.id) {
+                                                        onDeleteRequest(suite.id, req.id);
+                                                        setDeleteConfirmId(null);
+                                                    } else {
+                                                        setDeleteConfirmId(req.id);
+                                                        setTimeout(() => setDeleteConfirmId(current => current === req.id ? null : current), 3000);
+                                                    }
+                                                }}
+                                                title={deleteConfirmId === req.id ? "Click again to Confirm" : "Remove Request"}
+                                                shake={deleteConfirmId === req.id}
+                                            >
                                                 <Trash2 size={14} />
                                             </IconButton>
                                         )}
@@ -766,8 +782,18 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                                     </div>
                                 </div>
                                 <IconButton
-                                    onClick={() => onDeleteSchedule?.(schedule.id)}
-                                    title="Delete Schedule"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (deleteConfirmId === schedule.id) {
+                                            onDeleteSchedule?.(schedule.id);
+                                            setDeleteConfirmId(null);
+                                        } else {
+                                            setDeleteConfirmId(schedule.id);
+                                            setTimeout(() => setDeleteConfirmId(current => current === schedule.id ? null : current), 3000);
+                                        }
+                                    }}
+                                    title={deleteConfirmId === schedule.id ? "Click again to Confirm" : "Delete Schedule"}
+                                    shake={deleteConfirmId === schedule.id}
                                 >
                                     <Trash2 size={14} />
                                 </IconButton>

@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { SoapClient } from '../soapClient';
-import { ProjectStorage } from '../ProjectStorage';
+import { SoapUIExporter } from '../SoapUIExporter';
 import { SettingsManager } from '../utils/SettingsManager';
 
 import { FileWatcherService } from '../services/FileWatcherService';
@@ -12,6 +12,7 @@ import { TestRunnerService } from '../services/TestRunnerService';
 import { AzureDevOpsService } from '../services/AzureDevOpsService';
 import { MockService } from '../services/MockService';
 import { CoordinatorService } from '../services/CoordinatorService';
+import { RefresherService } from '../services/RefresherService';
 import { ApinoxProject } from '../../shared/src/models';
 import { FolderProjectStorage } from '../FolderProjectStorage';
 
@@ -93,13 +94,14 @@ export class WebviewController {
     private _commands: Map<string, ICommand> = new Map();
     private _diagnosticService = DiagnosticService.getInstance();
     private _coordinatorService: CoordinatorService = new CoordinatorService();
+    private _refresherService: RefresherService;
 
     constructor(
         private readonly _panel: vscode.WebviewPanel,
         private readonly _extensionUri: vscode.Uri,
         private readonly _soapClient: SoapClient,
         private readonly _folderStorage: FolderProjectStorage,
-        private _projectStorage: ProjectStorage,
+        private _soapUiExporter: SoapUIExporter,
         private _settingsManager: SettingsManager,
         private readonly _fileWatcherService: FileWatcherService,
         private readonly _proxyService: ProxyService,
@@ -113,6 +115,8 @@ export class WebviewController {
     ) {
         this._diagnosticService.log('BACKEND', 'WebviewController Initialized');
 
+        this._refresherService = new RefresherService(this._soapClient);
+
         // Initialize Commands
 
         this._commands.set(FrontendCommand.ExecuteRequest, new ExecuteRequestCommand(this._panel, this._soapClient, this._settingsManager, this._historyService));
@@ -120,14 +124,13 @@ export class WebviewController {
         this._commands.set(FrontendCommand.SaveProject, new SaveProjectCommand(
             this._panel,
             this._folderStorage,
-            this._projectStorage,
             this._loadedProjects
         ));
         this._commands.set(FrontendCommand.LoadProject, new LoadProjectCommand(
             this._panel,
             this._soapClient,
             this._folderStorage,
-            this._projectStorage,
+            this._soapUiExporter,
             this._loadedProjects
         ));
         this._commands.set('exportNative', new ExportNativeCommand(
@@ -147,7 +150,6 @@ export class WebviewController {
         this._commands.set(FrontendCommand.UpdateTestStep, new UpdateTestStepCommand(
             this._panel,
             this._loadedProjects,
-            this._projectStorage,
             this._folderStorage
         ));
 
@@ -507,6 +509,72 @@ export class WebviewController {
                 this.handleSelectAttachment();
                 break;
 
+            // Attachment Commands
+
+
+            // WSDL Refresh Commands
+            case FrontendCommand.RefreshWsdl:
+                try {
+                    const project = this._loadedProjects.get(message.projectId) || Array.from(this._loadedProjects.values()).find(p => p.id === message.projectId || p.name === message.projectId);
+                    if (project) {
+                        const diff = await this._refresherService.refreshWsdl(message.interfaceId, project);
+                        this._postMessage({ command: BackendCommand.WsdlRefreshResult, diff });
+                    } else {
+                        this._soapClient.log(`Project not found for refresh: ${message.projectId}`);
+                    }
+                } catch (e: any) {
+                    this._postMessage({ command: BackendCommand.Error, message: `Refresh failed: ${e.message}` });
+                }
+                break;
+
+            case FrontendCommand.ApplyWsdlSync:
+                try {
+                    const project = this._loadedProjects.get(message.projectId) || Array.from(this._loadedProjects.values()).find(p => p.id === message.projectId || p.name === message.projectId);
+                    if (project) {
+                        const updatedProject = this._refresherService.applyDiff(message.diff, project);
+
+                        // DEBUG: Verify removal in updatedProject
+                        const debugIface = updatedProject.interfaces.find(i => i.id === message.diff.interfaceId || i.name === message.diff.interfaceId);
+                        this._soapClient.log(`[ApplyWsdlSync] Interface op count: ${debugIface?.operations.length} (Original: ${project.interfaces.find(i => i.id === message.diff.interfaceId || i.name === message.diff.interfaceId)?.operations.length})`);
+
+                        // Save and Update
+                        // We need to update loadedProjects and send "projectLoaded" or similar to frontend
+                        // Or just save it using ProjectStorage which usually triggers reload if watched?
+                        // But we want immediate update.
+                        // Use SaveProject command logic essentially.
+                        this._loadedProjects.set(updatedProject.fileName || updatedProject.name, updatedProject);
+                        this._soapClient.log(`[ApplyWsdlSync] Updated in-memory project map for key: ${updatedProject.fileName || updatedProject.name}`);
+                        if (updatedProject.fileName) {
+                            // Check if it's a folder project
+                            let isFolder = false;
+                            try {
+                                if (fs.existsSync(updatedProject.fileName) && fs.statSync(updatedProject.fileName).isDirectory()) {
+                                    isFolder = true;
+                                }
+                            } catch (ignore) { /* ignore */ }
+
+                            if (isFolder) {
+                                await this._folderStorage.saveProject(updatedProject, updatedProject.fileName);
+                            } else {
+                                await this._soapUiExporter.exportProject(updatedProject, updatedProject.fileName);
+                            }
+                        } else {
+                            this._soapClient.log('Updated project in memory. Filename missing, skipping save to disk.');
+                        }
+
+                        // Notify Frontend
+                        this._postMessage({
+                            command: BackendCommand.ProjectLoaded,
+                            project: updatedProject,
+                            filename: updatedProject.fileName
+                        });
+                        this._soapClient.log('WSDL Sync applied successfully.');
+                    }
+                } catch (e: any) {
+                    this._postMessage({ command: BackendCommand.Error, message: `Sync failed: ${e.message}` });
+                }
+                break;
+
         }
     }
 
@@ -581,7 +649,7 @@ export class WebviewController {
                 saveLabel: 'Save Workspace'
             });
             if (uri) {
-                await this._projectStorage.saveWorkspace(message.projects, uri.fsPath);
+                await this._soapUiExporter.exportWorkspace(message.projects, uri.fsPath);
                 vscode.window.showInformationMessage(`Workspace saved to ${uri.fsPath}`);
             }
         } catch (e: any) {
@@ -600,7 +668,7 @@ export class WebviewController {
                 openLabel: 'Open Workspace'
             });
             if (uris && uris.length > 0) {
-                const projects = await this._projectStorage.loadWorkspace(uris[0].fsPath);
+                const projects = await this._soapUiExporter.importWorkspace(uris[0].fsPath);
 
                 // Clear existing projects to prevent stale entries
                 this._loadedProjects.clear();
@@ -681,6 +749,51 @@ export class WebviewController {
             }
         } catch (e) {
             console.error('Failed to read changelog', e);
+        }
+    }
+
+    public async exportToSoapUI() {
+        if (this._loadedProjects.size === 0) {
+            vscode.window.showInformationMessage('No projects loaded to export.');
+            return;
+        }
+
+        let selectedProject: ApinoxProject | undefined;
+
+        if (this._loadedProjects.size === 1) {
+            selectedProject = this._loadedProjects.values().next().value;
+        } else {
+            const items = Array.from(this._loadedProjects.values()).map(p => ({
+                label: p.name,
+                description: p.fileName,
+                project: p
+            }));
+
+            const selection = await vscode.window.showQuickPick(items, {
+                placeHolder: 'Select project to export to SoapUI XML'
+            });
+
+            if (selection) {
+                selectedProject = selection.project;
+            }
+        }
+
+        if (selectedProject) {
+            const uri = await vscode.window.showSaveDialog({
+                filters: { 'SoapUI Project': ['xml'] },
+                saveLabel: 'Export to SoapUI XML',
+                defaultUri: selectedProject.fileName ? vscode.Uri.file(selectedProject.fileName.replace(/\.xml$/, '') + '-exported.xml') : undefined
+            });
+
+            if (uri) {
+                try {
+                    await this._soapUiExporter.exportProject(selectedProject, uri.fsPath);
+                    vscode.window.showInformationMessage(`Project '${selectedProject.name}' exported to ${uri.fsPath}`);
+                } catch (e: any) {
+                    vscode.window.showErrorMessage(`Failed to export project: ${e.message}`);
+                    this._soapClient.log(`Error exporting project: ${e.message}`);
+                }
+            }
         }
     }
 

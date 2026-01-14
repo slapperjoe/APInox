@@ -12,6 +12,7 @@ interface UseExplorerParams {
     projects: ApinoxProject[];
     setProjects: React.Dispatch<React.SetStateAction<ApinoxProject[]>>;
     setWorkspaceDirty: React.Dispatch<React.SetStateAction<boolean>>;
+    saveProject: (project: ApinoxProject) => void;
 }
 
 interface UseExplorerReturn {
@@ -37,7 +38,8 @@ interface UseExplorerReturn {
 export function useExplorer({
     projects: _projects,
     setProjects,
-    setWorkspaceDirty
+    setWorkspaceDirty,
+    saveProject
 }: UseExplorerParams): UseExplorerReturn {
     // State
     const [exploredInterfaces, setExploredInterfaces] = useState<ApiInterface[]>([]);
@@ -65,13 +67,16 @@ export function useExplorer({
     const addInterfaceToNamedProject = useCallback((iface: ApiInterface, projectName: string, isNew: boolean) => {
         if (isNew) {
             // Create new project with this interface
-            setProjects(prev => [...prev, {
+            const newProject: ApinoxProject = {
                 name: projectName,
                 interfaces: [iface],
                 expanded: true,
                 dirty: true,
                 id: Date.now().toString()
-            }]);
+            };
+            setProjects(prev => [...prev, newProject]);
+            // Force immediate save for new projects created from explorer
+            saveProject(newProject);
         } else {
             // Add to existing project by name
             setProjects(prev => prev.map(p =>

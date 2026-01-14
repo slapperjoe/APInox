@@ -7,6 +7,7 @@
 
 import { useEffect, useRef } from 'react';
 import { bridge } from '../utils/bridge';
+import { getInitialXml } from '../utils/soapUtils';
 import { BackendCommand, FrontendCommand } from '@shared/messages';
 import {
     ApiInterface,
@@ -16,10 +17,9 @@ import {
     TestCase,
     WatcherEvent,
     SidebarView,
-    MockEvent,
-    MockConfig,
     RequestHistoryEntry,
-    RequestAttachment
+    RequestAttachment,
+    WsdlDiff
 } from '@shared/models';
 
 // Debug logger - sends to VS Code output and console
@@ -28,30 +28,6 @@ const debugLog = (context: string, data?: any) => {
     console.log(msg, data || '');
     // Also send to extension for VS Code output window
     bridge.sendMessage({ command: FrontendCommand.Log, message: msg, data: JSON.stringify(data || {}) });
-};
-
-// Helper function to generate initial XML from operation input schema
-const getInitialXml = (input: any): string => {
-    if (!input) return '';
-    // This is a simplified version - the full logic should be imported or passed in
-    const generateXml = (node: any, indent: string = ''): string => {
-        if (!node) return '';
-        if (typeof node === 'string') return `${indent}<!-- ${node} -->`;
-        if (Array.isArray(node)) {
-            return node.map(n => generateXml(n, indent)).join('\n');
-        }
-        if (typeof node === 'object') {
-            const entries = Object.entries(node);
-            return entries.map(([key, value]) => {
-                if (typeof value === 'object' && value !== null) {
-                    return `${indent}<${key}>\n${generateXml(value, indent + '   ')}\n${indent}</${key}>`;
-                }
-                return `${indent}<${key}>?</${key}>`;
-            }).join('\n');
-        }
-        return '';
-    };
-    return generateXml(input, '         ');
 };
 
 export interface MessageHandlerState {
@@ -71,17 +47,21 @@ export interface MessageHandlerState {
     setShowLineNumbers: React.Dispatch<React.SetStateAction<boolean>>;
     setSplitRatio: React.Dispatch<React.SetStateAction<number>> | ((ratio: number) => void);
     setInlineElementValues: React.Dispatch<React.SetStateAction<boolean>>;
+    // setActiveRunId: React.Dispatch<React.SetStateAction<string | null>>; // Moved to PerformanceContext
+    // setPerformanceProgress: React.Dispatch<React.SetStateAction<any>>; // Moved to PerformanceContext
+    // setCoordinatorStatus: React.Dispatch<React.SetStateAction<any>>; // Moved to PerformanceContext
+    configPath?: string | null;
     setConfigPath: React.Dispatch<React.SetStateAction<string | null>>;
-    setProxyConfig: React.Dispatch<React.SetStateAction<any>>;
+    // setProxyConfig: React.Dispatch<React.SetStateAction<any>>; // Moved to MockProxyContext
     setSelectedProjectName: React.Dispatch<React.SetStateAction<string | null>>;
     setWsdlUrl: React.Dispatch<React.SetStateAction<string>>;
     setWorkspaceDirty: React.Dispatch<React.SetStateAction<boolean>>;
     setSavedProjects: React.Dispatch<React.SetStateAction<Set<string>>>;
     setChangelog: React.Dispatch<React.SetStateAction<string>>;
     setWatcherHistory: React.Dispatch<React.SetStateAction<WatcherEvent[]>>;
-    setProxyHistory: React.Dispatch<React.SetStateAction<WatcherEvent[]>>;
-    setProxyRunning: React.Dispatch<React.SetStateAction<boolean>>;
-    setTestExecution: React.Dispatch<React.SetStateAction<Record<string, Record<string, any>>>>;
+    // setProxyHistory: Moved to MockProxyContext
+    // setProxyRunning: Moved to MockProxyContext
+    // setTestExecution: Moved to TestRunnerContext
     setActiveView: React.Dispatch<React.SetStateAction<SidebarView>>;
     setActiveBreakpoint: React.Dispatch<React.SetStateAction<{
         id: string;
@@ -92,19 +72,15 @@ export interface MessageHandlerState {
         timeoutMs: number;
         startTime: number;
     } | null>>;
-    setMockHistory: React.Dispatch<React.SetStateAction<MockEvent[]>>;
-    setMockRunning: React.Dispatch<React.SetStateAction<boolean>>;
-    setMockConfig: React.Dispatch<React.SetStateAction<MockConfig>>;
-    setActiveRunId: React.Dispatch<React.SetStateAction<string | undefined>>;
-    setPerformanceProgress: React.Dispatch<React.SetStateAction<{ iteration: number; total: number } | null>>;
-    setCoordinatorStatus: React.Dispatch<React.SetStateAction<{ running: boolean; port: number; workers: any[]; expectedWorkers: number }>>;
+    // setMockHistory: Moved to MockProxyContext
+    // setMockRunning: Moved to MockProxyContext
+    // setMockConfig: Moved to MockProxyContext
     setRequestHistory: React.Dispatch<React.SetStateAction<RequestHistoryEntry[]>>;
 
 
     // Current values needed for message handling
     wsdlUrl: string;
     projects: ApinoxProject[];
-    proxyConfig: any;
     config: any;
     selectedTestCase: TestCase | null;
     selectedRequest: ApiRequest | null;
@@ -113,6 +89,7 @@ export interface MessageHandlerState {
     // Callbacks
     saveProject: (project: ApinoxProject) => void;
     onAttachmentSelected?: (attachment: RequestAttachment) => void;
+    setWsdlDiff: React.Dispatch<React.SetStateAction<WsdlDiff | null>>;
 }
 
 export function useMessageHandler(state: MessageHandlerState) {
@@ -133,34 +110,38 @@ export function useMessageHandler(state: MessageHandlerState) {
         setSplitRatio,
         setInlineElementValues,
         setConfigPath,
-        setProxyConfig,
+        // setProxyConfig,
         setSelectedProjectName,
         setWsdlUrl,
         setWorkspaceDirty,
         setSavedProjects,
         setChangelog,
         setWatcherHistory,
-        setProxyHistory,
-        setProxyRunning,
-        setTestExecution,
+        // setProxyHistory,
+        // setProxyRunning,
+        // setTestExecution,
         setActiveView,
         setActiveBreakpoint,
-        setMockHistory,
-        setMockRunning,
-        setMockConfig,
-        setActiveRunId,
-        setPerformanceProgress,
+        // setMockHistory,
+        // setMockRunning,
+        // setMockConfig,
+        // setActiveRunId,
+        // setPerformanceProgress,
+        // setCoordinatorStatus,
         setRequestHistory,
         wsdlUrl,
         projects,
-        proxyConfig,
         config,
         selectedTestCase,
         selectedRequest,
         startTimeRef,
         saveProject,
-        onAttachmentSelected
+        onAttachmentSelected,
+        setWsdlDiff
     } = state;
+
+    // Silence unused variable warning until migration is complete
+    void setSavedProjects;
 
     const hasPerformedInitialLoad = useRef(false);
 
@@ -169,7 +150,6 @@ export function useMessageHandler(state: MessageHandlerState) {
     const selectedRequestRef = useRef(selectedRequest);
     const selectedTestCaseRef = useRef(selectedTestCase);
     const configRef = useRef(config);
-    const proxyConfigRef = useRef(proxyConfig);
     const wsdlUrlRef = useRef(wsdlUrl);
 
     // Keep refs up to date
@@ -177,7 +157,6 @@ export function useMessageHandler(state: MessageHandlerState) {
     useEffect(() => { selectedRequestRef.current = selectedRequest; }, [selectedRequest]);
     useEffect(() => { selectedTestCaseRef.current = selectedTestCase; }, [selectedTestCase]);
     useEffect(() => { configRef.current = config; }, [config]);
-    useEffect(() => { proxyConfigRef.current = proxyConfig; }, [proxyConfig]);
     useEffect(() => { wsdlUrlRef.current = wsdlUrl; }, [wsdlUrl]);
 
     useEffect(() => {
@@ -362,7 +341,7 @@ export function useMessageHandler(state: MessageHandlerState) {
 
                 case BackendCommand.AddStepToCase:
                     debugLog('addStepToCase', { caseId: message.caseId });
-                    // const op = message.operation; // Removed unused var, accessed inside loop
+
                     setProjects(prev => prev.map(p => {
                         if (!p.testSuites) return p;
                         const suite = p.testSuites.find(s => s.testCases?.some(tc => tc.id === message.caseId));
@@ -421,114 +400,12 @@ export function useMessageHandler(state: MessageHandlerState) {
                     // Don't change activeView - let user stay on current sidebar tab (Tests)
                     break;
 
+                case BackendCommand.PerformanceRunStarted:
+                case BackendCommand.PerformanceRunComplete:
+                case BackendCommand.PerformanceIterationComplete:
+                case BackendCommand.CoordinatorStatus:
                 case BackendCommand.AddOperationToPerformance:
-                    debugLog('addOperationToPerformance', { suiteId: message.suiteId, operation: message.operation?.name });
-                    console.log('[useMessageHandler] ADD_OP_PERF: Received message', JSON.stringify(message));
-
-                    const perfOp = message.operation;
-                    const perfReq = message.request; // From new backend command
-
-                    debugLog('addOperationToPerformance', {
-                        hasPerfOp: !!perfOp,
-                        hasPerfReq: !!perfReq,
-                        hasSuiteId: !!message.suiteId,
-                        hasConfig: !!configRef.current,
-                        hasPerformanceSuites: !!configRef.current?.performanceSuites,
-                        suitesCount: configRef.current?.performanceSuites?.length || 0
-                    });
-
-                    try {
-                        if ((perfOp || perfReq) && message.suiteId && configRef.current?.performanceSuites) {
-                            const suiteIndex = configRef.current.performanceSuites.findIndex((s: any) => s.id === message.suiteId);
-                            debugLog('addOperationToPerformance', { suiteIndex, lookingForId: message.suiteId });
-                            console.log('[useMessageHandler] ADD_OP_PERF: Found suite index', suiteIndex);
-
-                            if (suiteIndex !== -1) {
-                                // Diagnostics
-                                // Diagnostics
-                                console.log('[useMessageHandler] addOperationToPerformance', { suiteId: message.suiteId, existingRequests: configRef.current.performanceSuites[suiteIndex].requests?.length });
-
-                                const suite = { ...configRef.current.performanceSuites[suiteIndex] };
-                                let newRequest = message.request;
-
-                                // Ensure unique ID for the new request instance
-                                if (newRequest) {
-                                    newRequest = {
-                                        ...newRequest,
-                                        id: `perf-req-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-                                        method: newRequest.method || 'POST',
-                                        requestBody: newRequest.requestBody || (newRequest as any).request || '',
-                                        interfaceName: newRequest.interfaceName, // From payload
-                                        operationName: newRequest.operationName, // From payload
-                                        order: (suite.requests?.length || 0) + 1,
-                                        readOnly: false
-                                    };
-                                } else {
-                                    // Fallback construction
-                                    const perfOp = message.operation; // Assuming it might be passed if request isn't
-                                    if (perfOp) {
-                                        newRequest = {
-                                            id: `perf-req-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-                                            name: perfOp.name,
-                                            endpoint: (perfOp as any).originalEndpoint || '',
-                                            method: 'POST',
-                                            soapAction: perfOp.soapAction,
-                                            requestBody: `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="${perfOp.targetNamespace || 'http://tempuri.org/'}">
-   <soapenv:Header/>
-   <soapenv:Body>
-      <tem:${perfOp.name}>
-${getInitialXml(perfOp.input)}
-      </tem:${perfOp.name}>
-   </soapenv:Body>
-</soapenv:Envelope>`,
-                                            headers: {},
-                                            extractors: [],
-                                            slaThreshold: 200,
-                                            order: (suite.requests?.length || 0) + 1,
-                                            readOnly: false
-                                        };
-                                    }
-                                }
-
-                                if (newRequest) {
-                                    // Add to suite
-                                    const nextRequests = [...(suite.requests || []), newRequest];
-                                    const nextSuite = { ...suite, requests: nextRequests };
-
-                                    // Send FULL suite update to backend (Heavy Hammer approach like Test Suite saveProject)
-                                    // Send FULL suite update to backend (Heavy Hammer approach like Test Suite saveProject)
-                                    debugLog('addOperationToPerformance', { step: 'Sending UpdatePerformanceSuite', suiteId: nextSuite.id });
-                                    bridge.sendMessage({
-                                        command: FrontendCommand.UpdatePerformanceSuite,
-                                        suiteId: nextSuite.id,
-                                        updates: nextSuite
-                                    });
-
-                                    // Optimistic Update
-                                    setConfig((prevConfig: any) => {
-                                        const currentSuites = prevConfig.performanceSuites || [];
-                                        const idx = currentSuites.findIndex((s: any) => s.id === message.suiteId);
-                                        if (idx !== -1) {
-                                            const s = { ...currentSuites[idx] };
-                                            s.requests = [...(s.requests || []), newRequest];
-
-                                            const newSuites = [...currentSuites];
-                                            newSuites[idx] = s;
-                                            return { ...prevConfig, performanceSuites: newSuites };
-                                        }
-                                        return prevConfig;
-                                    });
-                                }
-                            } else {
-                                console.error('[useMessageHandler] Suite not found for addOperationToPerformance');
-                            }
-                        } else {
-                            debugLog('addOperationToPerformance', { error: 'Missing required data' });
-                        }
-                    } catch (error: any) {
-                        console.error('[useMessageHandler] Error in addOperationToPerformance:', error);
-                        debugLog('addOperationToPerformance error', { message: error.message, stack: error.stack });
-                    }
+                    // Handled in PerformanceContext
                     break;
 
                 case BackendCommand.ProjectLoaded:
@@ -627,13 +504,8 @@ ${getInitialXml(perfOp.input)}
                     if (message.config.lastConfigPath) {
                         setConfigPath(message.config.lastConfigPath);
                     }
-                    if (message.config.lastProxyTarget) {
-                        setProxyConfig((prev: any) => ({ ...prev, target: message.config.lastProxyTarget! }));
-                    }
-                    // Load mock server config including saved rules
-                    if (message.config.mockServer) {
-                        setMockConfig(message.config.mockServer);
-                    }
+                    // Mock/Proxy config handled in MockProxyContext
+                    break;
                     break;
 
                 case BackendCommand.RestoreAutosave:
@@ -671,7 +543,10 @@ ${getInitialXml(perfOp.input)}
                                 return merged;
                             });
                             setExploredInterfaces(savedState.exploredInterfaces || []);
-                            setExplorerExpanded(savedState.explorerExpanded ?? true);
+                            // setExplorerExpanded(savedState.explorerExpanded ?? true); // Handled in NavigationContext
+                            if (savedState.explorerExpanded !== undefined) {
+                                setExplorerExpanded(savedState.explorerExpanded);
+                            }
                             setWsdlUrl(savedState.wsdlUrl || '');
                             if (savedState.lastSelectedProject) setSelectedProjectName(savedState.lastSelectedProject);
 
@@ -695,139 +570,24 @@ ${getInitialXml(perfOp.input)}
                     setChangelog(message.content);
                     break;
 
-                case BackendCommand.ProjectSaved:
-                    debugLog('projectSaved', { projectName: message.projectName });
-                    setSavedProjects(prev => {
-                        const newSet = new Set(prev);
-                        newSet.add(message.projectName);
-                        return newSet;
-                    });
-                    setProjects(prev => prev.map(p => {
-                        if (p.name !== message.projectName) return p;
-                        const clearFoldersDirty = (folders: any[]): any[] => {
-                            return folders.map(f => ({
-                                ...f,
-                                requests: f.requests.map((r: any) => ({ ...r, dirty: false })),
-                                folders: f.folders ? clearFoldersDirty(f.folders) : undefined
-                            }));
-                        };
 
-                        return {
-                            ...p,
-                            fileName: message.fileName || p.fileName,
-                            dirty: false,
-                            interfaces: p.interfaces.map(i => ({
-                                ...i,
-                                operations: i.operations.map(o => ({
-                                    ...o,
-                                    requests: o.requests.map(r => ({ ...r, dirty: false }))
-                                }))
-                            })),
-                            folders: p.folders ? clearFoldersDirty(p.folders) : undefined
-                        };
-                    }));
-                    setTimeout(() => {
-                        setSavedProjects(prev => {
-                            const newSet = new Set(prev);
-                            newSet.delete(message.projectName);
-                            return newSet;
-                        });
-                    }, 2000);
-                    break;
-
-                case BackendCommand.WorkspaceSaved:
-                    debugLog('workspaceSaved');
-                    setWorkspaceDirty(false);
-                    break;
 
                 case BackendCommand.WatcherUpdate:
-                    debugLog('watcherUpdate', { historyLength: message.history?.length });
+                    debugLog('watcherUpdate', {
+                        historyLength: message.history?.length
+                    });
                     setWatcherHistory(message.history);
                     break;
 
+
                 case BackendCommand.ProxyLog:
-                    debugLog('proxyLog', { eventId: message.event?.id });
-                    setProxyHistory(prev => {
-                        const existingIndex = prev.findIndex(e => e.id === message.event.id);
-                        if (existingIndex !== -1) {
-                            const updated = [...prev];
-                            updated[existingIndex] = { ...updated[existingIndex], ...message.event };
-                            return updated;
-                        }
-                        return [message.event, ...prev];
-                    });
-                    break;
-
                 case BackendCommand.ProxyStatus:
-                    debugLog('proxyStatus', { running: message.running });
-                    setProxyRunning(message.running);
-                    break;
-
                 case BackendCommand.MockLog:
-                    debugLog('mockLog', { eventId: message.event?.id });
-                    setMockHistory(prev => {
-                        const existingIndex = prev.findIndex(e => e.id === message.event.id);
-                        if (existingIndex !== -1) {
-                            const updated = [...prev];
-                            updated[existingIndex] = { ...updated[existingIndex], ...message.event };
-                            return updated;
-                        }
-                        return [message.event, ...prev];
-                    });
-                    break;
-
                 case BackendCommand.MockStatus:
-                    debugLog('mockStatus', { running: message.running });
-                    setMockRunning(message.running);
-                    break;
-
                 case BackendCommand.MockRulesUpdated:
-                    if (message.rules) {
-                        setMockConfig(prev => ({ ...prev, rules: message.rules }));
-                    }
-                    break;
-
-                case BackendCommand.PerformanceRunStarted:
-                    debugLog('Performance Run Started', message.data);
-                    setActiveRunId(message.data?.runId);
-                    setPerformanceProgress({ iteration: 0, total: 0 }); // Initialize progress
-                    break;
-
-                case BackendCommand.PerformanceRunComplete:
-                    debugLog('Performance Run Complete', message.run);
-                    setActiveRunId(undefined);
-                    setPerformanceProgress(null); // Reset progress when run completes
-                    // Add the run to history immediately for UI display (dedupe by ID)
-                    if (message.run) {
-                        setConfig((prevConfig: any) => {
-                            const existingHistory = prevConfig.performanceHistory || [];
-                            // Check if this run already exists in history
-                            const alreadyExists = existingHistory.some((r: any) => r.id === message.run.id);
-                            if (alreadyExists) {
-                                return prevConfig; // Don't add duplicate
-                            }
-                            return {
-                                ...prevConfig,
-                                performanceHistory: [message.run, ...existingHistory].slice(0, 25)
-                            };
-                        });
-                    }
-                    break;
-
-                case BackendCommand.PerformanceIterationComplete:
-                    debugLog(`Iteration ${message.data.iteration}/${message.data.total}`);
-                    setPerformanceProgress({ iteration: message.data.iteration + 1, total: message.data.total });
-                    break;
-
-
                 case BackendCommand.MockHit:
-                    debugLog('mockHit', { ruleId: message.rule?.id });
-                    // Visual feedback could be added here
-                    break;
-
                 case BackendCommand.MockRecorded:
-                    debugLog('mockRecorded', { name: message.rule?.name });
-                    // Maybe a notification system later
+                case BackendCommand.UpdateProxyTarget:
                     break;
 
                 case BackendCommand.BreakpointHit:
@@ -879,53 +639,8 @@ ${getInitialXml(perfOp.input)}
                     debugLog(`${message.command} (no-op)`);
                     break;
 
-                case BackendCommand.UpdateProxyTarget:
-                    debugLog('updateProxyTarget', { target: message.target });
-                    const newConfig = { ...proxyConfigRef.current, target: message.target };
-                    setProxyConfig(newConfig);
-                    bridge.sendMessage({ command: FrontendCommand.UpdateProxyConfig, config: newConfig });
-                    break;
-
                 case BackendCommand.TestRunnerUpdate:
-                    debugLog('testRunnerUpdate', { type: message.data?.type, caseId: message.data?.caseId });
-                    setTestExecution(prev => {
-                        const { type, caseId, stepId, error } = message.data;
-                        const newState = { ...prev };
-                        if (!newState[caseId]) newState[caseId] = {};
-
-                        if (type === 'testCaseStart') {
-                            newState[caseId] = {};
-                        } else if (type === 'stepStart') {
-                            newState[caseId][stepId] = { status: 'running' };
-                        } else if (type === 'stepPass' || type === 'stepFail') {
-                            const rawRes = message.data.response;
-                            const enhancedResponse = rawRes ? {
-                                ...rawRes,
-                                lineCount: rawRes.rawResponse ? rawRes.rawResponse.split(/\r\n|\r|\n/).length : 0,
-                                duration: (rawRes.timeTaken || 0) / 1000
-                            } : null;
-
-                            newState[caseId][stepId] = {
-                                status: type === 'stepPass' ? 'pass' : 'fail',
-                                error,
-                                assertionResults: message.data.assertionResults,
-                                response: enhancedResponse
-                            };
-
-                            if (selectedTestCaseRef.current && selectedTestCaseRef.current.id === caseId) {
-                                if (selectedRequestRef.current) {
-                                    const step = selectedTestCaseRef.current.steps.find(s => s.id === stepId);
-                                    if (step && step.config.request && (step.config.request.id === selectedRequestRef.current.id)) {
-                                        setResponse({
-                                            ...enhancedResponse,
-                                            assertionResults: message.data.assertionResults
-                                        });
-                                    }
-                                }
-                            }
-                        }
-                        return newState;
-                    });
+                    // Handled in TestRunnerContext
                     break;
 
                 // Request History handlers
@@ -946,6 +661,15 @@ ${getInitialXml(perfOp.input)}
                     if (message.attachment && onAttachmentSelected) {
                         onAttachmentSelected(message.attachment);
                     }
+                    break;
+                case BackendCommand.ProjectSaved:
+                case BackendCommand.ProjectLoaded:
+                    // Handled in ProjectContext
+                    break;
+
+                case BackendCommand.WsdlRefreshResult:
+                    debugLog('wsdlRefreshResult', { hasDiff: !!message.diff });
+                    setWsdlDiff(message.diff);
                     break;
 
                 default:

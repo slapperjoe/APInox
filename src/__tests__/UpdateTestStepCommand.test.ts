@@ -1,3 +1,4 @@
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { UpdateTestStepCommand } from '../commands/UpdateTestStepCommand';
 import { ApinoxProject, TestStep } from '../../shared/src/models';
@@ -10,7 +11,7 @@ vi.mock('vscode', () => ({
 describe('UpdateTestStepCommand', () => {
     let mockPanel: any;
     let loadedProjects: Map<string, ApinoxProject>;
-    let mockProjectStorage: any;
+    // let mockProjectStorage: any; // Removed
     let mockFolderStorage: any;
     let command: UpdateTestStepCommand;
 
@@ -48,9 +49,9 @@ describe('UpdateTestStepCommand', () => {
         loadedProjects = new Map();
         loadedProjects.set('c:\\Users\\Test\\project', createMockProject());
 
-        mockProjectStorage = {
-            saveProject: vi.fn()
-        };
+        // mockProjectStorage = {
+        //     saveProject: vi.fn()
+        // };
 
         mockFolderStorage = {
             saveProject: vi.fn().mockResolvedValue(undefined)
@@ -65,7 +66,7 @@ describe('UpdateTestStepCommand', () => {
         command = new UpdateTestStepCommand(
             mockPanel,
             loadedProjects,
-            mockProjectStorage,
+            // mockProjectStorage, // Removed
             mockFolderStorage
         );
     });

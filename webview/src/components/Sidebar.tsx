@@ -88,7 +88,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         return index >= 0 ? envColors[index % envColors.length] : 'var(--vscode-charts-green)';
     };
     // Destructure for passing to legacy children (can be cleaned up later by moving groups down)
-    const { projects, savedProjects, loadProject, saveProject, onUpdateProject, closeProject, onAddProject, toggleProjectExpand, toggleInterfaceExpand, toggleOperationExpand, onDeleteInterface, onDeleteOperation, onAddFolder, onAddRequestToFolder, onDeleteFolder, onToggleFolderExpand } = projectProps;
+    const { projects, savedProjects, loadProject, saveProject, onUpdateProject, closeProject, onAddProject, toggleProjectExpand, toggleInterfaceExpand, toggleOperationExpand, onDeleteInterface, onDeleteOperation, onAddFolder, onAddRequestToFolder, onDeleteFolder, onToggleFolderExpand, onRefreshInterface } = projectProps;
     const { exploredInterfaces, addToProject, addAllToProject, clearExplorer, removeFromExplorer, toggleExploredInterface, toggleExploredOperation } = explorerProps;
     // const { inputType, setInputType, wsdlUrl, setWsdlUrl, wsdlUrlHistory, selectedFile, loadWsdl, pickLocalWsdl, downloadStatus, useProxy, setUseProxy } = wsdlProps; // Unused in Sidebar now
     const {
@@ -425,6 +425,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         onToggleFolderExpand={onToggleFolderExpand}
                         deleteConfirm={deleteConfirm}
                         setDeleteConfirm={setDeleteConfirm}
+                        onRefreshInterface={onRefreshInterface}
                     />
                 )}
 

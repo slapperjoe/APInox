@@ -3,7 +3,7 @@ import Editor, { Monaco } from '@monaco-editor/react';
 import { TestStep } from '@shared/models';
 import { bridge } from '../utils/bridge';
 import { Toolbar, ToolbarButton } from '../styles/WorkspaceLayout.styles';
-import { ChevronLeft, Save, Play } from 'lucide-react';
+import { ChevronLeft, Play } from 'lucide-react';
 import { ScriptPlaygroundModal } from './modals/ScriptPlaygroundModal';
 import { ToolbarSeparator } from '../styles/WorkspaceLayout.styles';
 
@@ -18,23 +18,69 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ step, onUpdate, isRe
     const editorRef = useRef<any>(null);
     // Initialize local state from prop
     const [scriptContent, setScriptContent] = useState(step.config.scriptContent || '');
-    const [isDirty, setIsDirty] = useState(false);
     const [showPlayground, setShowPlayground] = useState(false);
 
     // Track previous prop value to detect actual remote changes
     const prevStepContent = useRef(step.config.scriptContent);
 
-    // Update local state ONLY if prop actually changes remotely (e.g. undo/redo or initial load)
+    // Update local state and ref ONLY if prop actually changes remotely (e.g. undo/redo or initial load)
     useEffect(() => {
         if (step.config.scriptContent !== prevStepContent.current) {
-            prevStepContent.current = step.config.scriptContent;
-            // Only overwrite local if not dirty, OR if we want to force sync (optional policy)
-            // For now, respect local dirty state unless it's a new step selection (which would remount component anyway)
-            if (!isDirty) {
+            // Only update if the incoming prop is different from what we expect
+            // This prevents local typing from being overwritten by the prop update it triggered
+            if (scriptContent !== step.config.scriptContent) {
                 setScriptContent(step.config.scriptContent || '');
             }
+            prevStepContent.current = step.config.scriptContent;
         }
-    }, [step.config.scriptContent, isDirty]);
+    }, [step.config.scriptContent]); // Removed scriptContent dep to avoid loops
+
+    // Refs for flush-on-unmount pattern
+    const latestScriptContent = useRef(scriptContent);
+    const latestStep = useRef(step);
+    const onUpdateRef = useRef(onUpdate);
+
+    // Keep refs in sync
+    useEffect(() => {
+        latestScriptContent.current = scriptContent;
+        latestStep.current = step;
+        onUpdateRef.current = onUpdate;
+    }, [scriptContent, step, onUpdate]);
+
+    // Auto-save effect with debounce AND flush on unmount
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            // Debounced Save
+            if (latestScriptContent.current !== latestStep.current.config.scriptContent) {
+                bridge.sendMessage({ command: 'log', message: `[ScriptEditor] Auto-saving step (debounce): ${latestStep.current.id}` });
+                onUpdateRef.current({
+                    ...latestStep.current,
+                    config: {
+                        ...latestStep.current.config,
+                        scriptContent: latestScriptContent.current
+                    }
+                });
+                prevStepContent.current = latestScriptContent.current;
+            }
+        }, 800);
+
+        return () => {
+            clearTimeout(timer);
+            // Flush on Unmount / Cleanup
+            // If content is still different from prop, save immediately
+            if (latestScriptContent.current !== latestStep.current.config.scriptContent) {
+                bridge.sendMessage({ command: 'log', message: `[ScriptEditor] Auto-saving step (flush): ${latestStep.current.id}` });
+                onUpdateRef.current({
+                    ...latestStep.current,
+                    config: {
+                        ...latestStep.current.config,
+                        scriptContent: latestScriptContent.current
+                    }
+                });
+                prevStepContent.current = latestScriptContent.current;
+            }
+        };
+    }, [scriptContent]); // Trigger on every keystroke (for debounce reset)
 
     const handleEditorDidMount = (editor: any, monaco: Monaco) => {
         editorRef.current = editor;
@@ -82,31 +128,10 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ step, onUpdate, isRe
     const handleChange = (value: string | undefined) => {
         if (value !== undefined) {
             setScriptContent(value);
-            setIsDirty(true);
         }
-    };
-
-    const handleSave = () => {
-        bridge.sendMessage({ command: 'log', message: `[ScriptEditor] handleSave called. Content length: ${scriptContent.length}` });
-        bridge.sendMessage({ command: 'log', message: `[ScriptEditor] Calling onUpdate for step: ${step.id}` });
-        onUpdate({
-            ...step,
-            config: {
-                ...step.config,
-                scriptContent: scriptContent
-            }
-        });
-        setIsDirty(false);
     };
 
     const handleBack = () => {
-        if (isDirty) {
-            // Show confirmation dialog
-            const confirmed = window.confirm('You have unsaved changes. Do you want to save before leaving?');
-            if (confirmed) {
-                handleSave();
-            }
-        }
         if (onBack) {
             onBack();
         }
@@ -116,26 +141,20 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ step, onUpdate, isRe
         <div style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', width: '100%' }}>
             <Toolbar>
                 {onBack && (
-                    <ToolbarButton onClick={handleBack} title="Back to Test Case">
-                        <ChevronLeft size={14} /> Back
-                    </ToolbarButton>
+                    <>
+                        <ToolbarButton onClick={handleBack} title="Back to Test Case">
+                            <ChevronLeft size={14} /> Back
+                        </ToolbarButton>
+                        <ToolbarSeparator />
+                    </>
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
                     <span style={{ fontWeight: 'bold', marginLeft: 10 }}>Script: {step.name}</span>
-                    {isDirty && <span style={{ marginLeft: 5, fontSize: '0.8em', color: 'var(--vscode-descriptionForeground)' }}>(Unsaved)</span>}
                 </div>
 
                 <ToolbarButton onClick={() => setShowPlayground(true)} title="Run in Playground">
                     <Play size={14} /> Playground
                 </ToolbarButton>
-
-                <ToolbarSeparator />
-
-                {isDirty && (
-                    <ToolbarButton onClick={handleSave} title="Save Script">
-                        <Save size={14} /> Save
-                    </ToolbarButton>
-                )}
             </Toolbar>
 
             <div style={{ padding: '5px 10px', background: 'var(--vscode-editor-background)', borderBottom: '1px solid var(--vscode-panel-border)' }}>

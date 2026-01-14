@@ -49,7 +49,6 @@ export class FolderProjectStorage {
             const ifaceDir = path.join(interfacesDir, safeInterfaceName);
             if (!fs.existsSync(ifaceDir)) fs.mkdirSync(ifaceDir);
 
-            // Interface Metadata
             const ifaceMeta = {
                 name: iface.name,
                 type: iface.type,
@@ -58,6 +57,18 @@ export class FolderProjectStorage {
                 definition: iface.definition // WSDL URL
             };
             fs.writeFileSync(path.join(ifaceDir, 'interface.json'), JSON.stringify(ifaceMeta, null, 2));
+
+            // Cleanup: Delete orphan operation directories
+            const currentOpNames = new Set(iface.operations.map(op => this.sanitizeName(op.name)));
+            const existingOpDirs = fs.readdirSync(ifaceDir).filter(f =>
+                f !== 'interface.json' && fs.statSync(path.join(ifaceDir, f)).isDirectory()
+            );
+            existingOpDirs.forEach(dir => {
+                if (!currentOpNames.has(dir)) {
+                    this.log(`Removing orphaned operation: ${dir}`);
+                    fs.rmSync(path.join(ifaceDir, dir), { recursive: true });
+                }
+            });
 
             // Operations
             // Handle multiple ops with same name? SOAP allows overload? Usually unique by name+input.
@@ -70,7 +81,9 @@ export class FolderProjectStorage {
                 // Operation Metadata (if needed, Action etc)
                 const opMeta = {
                     name: op.name,
-                    action: op.action
+                    action: op.action,
+                    input: op.input, // Save input schema
+                    targetNamespace: op.targetNamespace // Save persistence logic
                 };
                 fs.writeFileSync(path.join(opDir, 'operation.json'), JSON.stringify(opMeta, null, 2));
 

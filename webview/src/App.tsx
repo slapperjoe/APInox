@@ -5,6 +5,7 @@ import { UIProvider } from './contexts/UIContext';
 import { NavigationProvider } from './contexts/NavigationContext';
 import { TestRunnerProvider } from './contexts/TestRunnerContext';
 import { PerformanceProvider } from './contexts/PerformanceContext';
+import { MockProxyProvider } from './contexts/MockProxyContext';
 import MainContent from './components/MainContent';
 
 export default function App() {
@@ -15,7 +16,9 @@ export default function App() {
                     <NavigationProvider>
                         <TestRunnerProvider>
                             <PerformanceProvider>
-                                <MainContent />
+                                <MockProxyProvider>
+                                    <MainContent />
+                                </MockProxyProvider>
                             </PerformanceProvider>
                         </TestRunnerProvider>
                     </NavigationProvider>
