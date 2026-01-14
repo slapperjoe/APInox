@@ -8,8 +8,7 @@ import { HttpClient } from "./services/HttpClient";
 import { WsdlParser } from "./WsdlParser";
 import { DiagnosticService } from "./services/DiagnosticService";
 import { SettingsManager } from "./utils/SettingsManager";
-
-import * as vscode from "vscode"; // Need to import vscode to read settings
+import { IConfigService } from "./interfaces";
 
 export class SoapClient {
   private client: soap.Client | null = null;
@@ -18,10 +17,12 @@ export class SoapClient {
   private settingsManager: SettingsManager;
   private wsdlParser: WsdlParser;
   private httpClient: HttpClient;
+  private configService?: IConfigService;
 
-  constructor(settingsManager: SettingsManager, outputChannel?: any) {
+  constructor(settingsManager: SettingsManager, outputChannel?: any, configService?: IConfigService) {
     this.outputChannel = outputChannel;
     this.settingsManager = settingsManager;
+    this.configService = configService;
     // Initial setup - settings will be refreshed on parseWsdl
     this.wsdlParser = new WsdlParser(outputChannel);
     this.httpClient = new HttpClient(settingsManager, outputChannel);
@@ -57,16 +58,18 @@ export class SoapClient {
     let proxyUrl = config.network?.proxy;
     let strictSSL = config.network?.strictSSL;
 
-    // 2. Check VS Code Config
-    const httpConfig = vscode.workspace.getConfiguration("http");
-    if (!proxyUrl) {
-      proxyUrl = httpConfig.get<string>("proxy");
+    // 2. Check platform config service (VS Code, Tauri, etc.)
+    if (!proxyUrl && this.configService) {
+      proxyUrl = this.configService.getProxyUrl();
     }
 
-    // If extension setting is undefined, fall back to vscode setting.
+    // If extension setting is undefined, fall back to platform config.
     // If that is undefined, default true.
+    if (strictSSL === undefined && this.configService) {
+      strictSSL = this.configService.getStrictSSL();
+    }
     if (strictSSL === undefined) {
-      strictSSL = httpConfig.get<boolean>("proxyStrictSSL", true);
+      strictSSL = true;
     }
 
     return { proxyUrl, strictSSL };

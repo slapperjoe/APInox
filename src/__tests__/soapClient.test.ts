@@ -99,11 +99,11 @@ describe('SoapClient', () => {
             const wsdlUrl = 'http://example.com?wsdl';
             await soapClient.parseWsdl(wsdlUrl);
 
-            // Check if WsdlParser was re-instantiated with correct options
-            // expect(WsdlParser).toHaveBeenLastCalledWith(...) - Cannot check constructor on class mock
+            // Access the new wsdlParser instance after parseWsdl re-creates it
+            const currentWsdlParser = (soapClient as any).wsdlParser;
 
             // Check delegation
-            expect(mockWsdlParser.parseWsdl).toHaveBeenCalledWith(wsdlUrl, undefined);
+            expect(currentWsdlParser.parseWsdl).toHaveBeenCalledWith(wsdlUrl, undefined);
         });
 
         it('should fallback to vscode settings if extension config is missing', async () => {
