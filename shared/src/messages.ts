@@ -30,6 +30,8 @@ export enum FrontendCommand {
     SelectLocalWsdl = 'selectLocalWsdl',
     CloseProject = 'closeProject',
     SyncProjects = 'syncProjects', // New command for strict syncing
+    RefreshWsdl = 'refreshWsdl',
+    ApplyWsdlSync = 'applyWsdlSync',
 
     // ADO
     AdoStorePat = 'adoStorePat',
@@ -144,6 +146,7 @@ export enum BackendCommand {
     EchoResponse = 'echoResponse',
     LocalWsdls = 'localWsdls',
     ConfigFileSelected = 'configFileSelected',
+    WsdlRefreshResult = 'wsdlRefreshResult',
 
     // ADO Results
     AdoHasPatResult = 'adoHasPatResult',
@@ -158,6 +161,7 @@ export enum BackendCommand {
     ConfigSwitched = 'configSwitched',
     ConfigRestored = 'configRestored',
     UpdateProxyTarget = 'updateProxyTarget',
+    ConfigUpdate = 'configUpdate',
 
     // Request History
     HistoryLoaded = 'historyLoaded',
@@ -168,4 +172,12 @@ export enum BackendCommand {
 
     // Script Playground
     PlaygroundScriptResult = 'playgroundScriptResult',
+
+    // UI/Nav
+    ToggleSidebar = 'toggleSidebar',
+    SwitchToView = 'switchToView',
+
+    // Mock/Proxy
+    MockHistoryStart = 'mockHistoryStart',
+    MockHistoryUpdate = 'mockHistoryUpdate',
 }

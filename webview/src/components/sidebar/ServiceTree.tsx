@@ -1,7 +1,7 @@
 import React from 'react';
-import { ChevronRight, ChevronDown, Plus, Trash2, Save } from 'lucide-react';
+import { ChevronRight, ChevronDown, Plus, Trash2, Code, Globe, Zap } from 'lucide-react';
 import { ApiInterface, ApiOperation, ApiRequest, ApinoxProject } from '@shared/models';
-import { HeaderButton, OperationItem, RequestItem, DirtyMarker } from './shared/SidebarStyles';
+import { HeaderButton, OperationItem, RequestItem } from './shared/SidebarStyles';
 
 export interface ServiceTreeProps {
     interfaces: ApiInterface[];
@@ -65,7 +65,6 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
     onAddRequest,
     onDeleteOperation,
     onDeleteRequest,
-    onSaveProject,
     setConfirmDeleteId,
 
     renameId,
@@ -187,6 +186,21 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
                                             onContextMenu={(e) => onContextMenu(e, 'request', req)}
                                         >
                                             <div style={{ display: 'flex', alignItems: 'center', width: '100%', overflow: 'hidden' }}>
+                                                {/* Request Icon */}
+                                                {(() => {
+                                                    const type = req.requestType || 'soap';
+                                                    const iconProps = { size: 14, style: { marginRight: 6, flexShrink: 0 } };
+                                                    switch (type) {
+                                                        case 'rest':
+                                                            return <Globe {...iconProps} style={{ ...iconProps.style, color: '#48bb78' }} />;
+                                                        case 'graphql':
+                                                            return <Zap {...iconProps} style={{ ...iconProps.style, color: '#9f7aea' }} />;
+                                                        case 'soap':
+                                                        default:
+                                                            return <Code {...iconProps} style={{ ...iconProps.style, color: '#4299e1' }} />;
+                                                    }
+                                                })()}
+
                                                 {isRenaming ? (
                                                     <input
                                                         type="text"
@@ -210,16 +224,6 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
                                                     <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{req.name}</span>
                                                 )}
 
-                                                {!isExplorer && req.dirty && <DirtyMarker>●</DirtyMarker>}
-
-                                                {req.dirty && !isExplorer && onSaveProject && !isRenaming && (
-                                                    <HeaderButton
-                                                        onClick={(e) => { e.stopPropagation(); onSaveProject(); }}
-                                                        title="Save Project"
-                                                    >
-                                                        <Save size={12} />
-                                                    </HeaderButton>
-                                                )}
                                                 {!isExplorer && onDeleteRequest && !isRenaming && (
                                                     <div style={{ marginLeft: 5 }}>
                                                         <HeaderButton

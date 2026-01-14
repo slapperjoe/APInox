@@ -4,7 +4,7 @@ import { XMLParser, XMLBuilder } from 'fast-xml-parser';
 import { ApinoxProject } from '../shared/src/models';
 import { DiagnosticService } from './services/DiagnosticService';
 
-export class ProjectStorage {
+export class SoapUIExporter {
     private outputChannel: any = null;
 
     constructor(outputChannel?: any) {
@@ -15,10 +15,10 @@ export class ProjectStorage {
         if (this.outputChannel) {
             this.outputChannel.appendLine(`[${new Date().toLocaleTimeString()}] ${message}`);
         }
-        DiagnosticService.getInstance().log('BACKEND', `[ProjectStorage] ${message}`);
+        DiagnosticService.getInstance().log('BACKEND', `[SoapUIExporter] ${message}`);
     }
 
-    public async saveProject(project: ApinoxProject, filePath: string) {
+    public async exportProject(project: ApinoxProject, filePath: string) {
         const builder = new XMLBuilder({
             ignoreAttributes: false,
             attributeNamePrefix: "@_",
@@ -48,6 +48,8 @@ export class ProjectStorage {
                         "@_receiveAuthProfile": "",
                         "@_sendsAttachments": "false",
                         "@_anonymous": "optional",
+                        "dirty:inputSchema": op.input ? JSON.stringify(op.input) : undefined, // Save schema for diffing
+                        "dirty:targetNamespace": op.targetNamespace, // Save namespace
                         "con:call": op.requests.map(req => ({
                             "@_name": req.name,
                             "con:endpoint": req.endpoint, // Save endpoint
@@ -142,7 +144,7 @@ export class ProjectStorage {
 
         const xmlContent = builder.build(soapUiObj);
         fs.writeFileSync(filePath, xmlContent);
-        this.log(`Project saved to ${filePath}`);
+        this.log(`Project exported to ${filePath}`);
     }
 
     private serializeFolder(folder: any): any {
@@ -170,8 +172,8 @@ export class ProjectStorage {
         };
     }
 
-    public async loadProject(filePath: string): Promise<ApinoxProject> {
-        this.log(`Loading project from: ${filePath}`);
+    public async importProject(filePath: string): Promise<ApinoxProject> {
+        this.log(`Importing project from: ${filePath}`);
         let xmlContent = '';
         try {
             xmlContent = fs.readFileSync(filePath, 'utf8');
@@ -227,6 +229,8 @@ export class ProjectStorage {
                 operations: iface["con:operation"] ? (Array.isArray(iface["con:operation"]) ? iface["con:operation"] : [iface["con:operation"]]).map((op: any) => ({
                     name: op["@_name"],
                     action: op["@_action"],
+                    input: op["dirty:inputSchema"] ? JSON.parse(op["dirty:inputSchema"]) : undefined, // Restore schema
+                    targetNamespace: op["dirty:targetNamespace"], // Restore namespace
                     requests: op["con:call"] ? (Array.isArray(op["con:call"]) ? op["con:call"] : [op["con:call"]]).map((req: any) => ({
                         name: req["@_name"],
                         endpoint: req["con:endpoint"], // Load endpoint
@@ -366,7 +370,7 @@ export class ProjectStorage {
         };
     }
 
-    public async saveWorkspace(projects: any[], filePath: string) {
+    public async exportWorkspace(projects: any[], filePath: string) {
         const workspaceDir = path.dirname(filePath);
 
         // 1. Ensure all projects are saved
@@ -378,7 +382,7 @@ export class ProjectStorage {
                 // Auto-save unsaved projects alongside workspace
                 const safeName = p.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
                 pPath = path.join(workspaceDir, `${safeName}.xml`);
-                await this.saveProject(p, pPath);
+                await this.exportProject(p, pPath);
             }
             const refPath = path.relative(workspaceDir, pPath);
             projectRefs.push({ name: p.name, path: refPath });
@@ -405,7 +409,7 @@ export class ProjectStorage {
         fs.writeFileSync(filePath, xmlContent);
     }
 
-    public async loadWorkspace(filePath: string): Promise<ApinoxProject[]> {
+    public async importWorkspace(filePath: string): Promise<ApinoxProject[]> {
         const xmlContent = fs.readFileSync(filePath, 'utf8');
         const parser = new XMLParser({
             ignoreAttributes: false,
@@ -441,7 +445,7 @@ export class ProjectStorage {
 
                 if (fs.existsSync(projectPath)) {
                     try {
-                        const project = await this.loadProject(projectPath);
+                        const project = await this.importProject(projectPath);
                         (project as any).fileName = projectPath;
                         projects.push(project);
                     } catch (e: any) {

@@ -89,6 +89,16 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     context.subscriptions.push(exportDiagnosticsDisposable);
+
+    // Register Export to SoapUI Command
+    const exportToSoapUIDisposable = vscode.commands.registerCommand('apinox.exportToSoapUI', async () => {
+        if (WebviewPanel.currentPanel && WebviewPanel.currentPanel.controller) {
+            await WebviewPanel.currentPanel.controller.exportToSoapUI();
+        } else {
+            vscode.window.showErrorMessage('Dirty Soap: Please open a project first by launching the APInox interface.');
+        }
+    });
+    context.subscriptions.push(exportToSoapUIDisposable);
 }
 
 export function deactivate() {

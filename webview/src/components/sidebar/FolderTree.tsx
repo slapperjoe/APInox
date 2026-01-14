@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { ChevronRight, ChevronDown, FolderPlus, Plus, Trash2, Folder, Code, Globe, Zap, Save } from 'lucide-react';
+import { ChevronRight, ChevronDown, FolderPlus, Plus, Trash2, Folder, Code, Globe, Zap } from 'lucide-react';
 import { ApinoxFolder, ApiRequest } from '@shared/models';
-import { HeaderButton, OperationItem, RequestItem, DirtyMarker } from './shared/SidebarStyles';
+import { HeaderButton, OperationItem, RequestItem } from './shared/SidebarStyles';
 
 export interface FolderTreeProps {
     folders: ApinoxFolder[];
@@ -232,17 +232,8 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
                                             </span>
                                         )}
 
-                                        {!isReqRenaming && req.dirty && <DirtyMarker>●</DirtyMarker>}
                                         {/* Action Buttons */}
                                         <div style={{ display: 'flex', gap: '4px' }}>
-                                            {req.dirty && onSaveProject && !isReqRenaming && !readOnly && (
-                                                <HeaderButton
-                                                    onClick={(e) => { e.stopPropagation(); onSaveProject(); }}
-                                                    title="Save Project"
-                                                >
-                                                    <Save size={12} />
-                                                </HeaderButton>
-                                            )}
                                             {selectedRequest?.id === req.id && onDeleteRequest && !isReqRenaming && !readOnly && (
                                                 <HeaderButton
                                                     onClick={(e) => {

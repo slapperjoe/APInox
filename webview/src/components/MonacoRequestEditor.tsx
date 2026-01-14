@@ -23,6 +23,8 @@ export interface MonacoRequestEditorProps {
     onFocus?: () => void;
     autoFoldElements?: string[];
     requestId?: string; // Used to detect when user switches to different request
+    forceUpdateKey?: number; // Used to force update when value changes externally (e.g. formatting)
+    logId?: string; // Debugging ID
 }
 
 export interface MonacoRequestEditorHandle {
@@ -36,11 +38,14 @@ export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoR
     readOnly = false,
     onFocus,
     autoFoldElements,
-    requestId
+    requestId,
+    forceUpdateKey
 }, ref) => {
     const editorRef = useRef<any>(null);
     const monacoRef = useRef<Monaco | null>(null);
     const previousRequestIdRef = useRef<string | undefined>(undefined);
+    const lastSyncedRequestIdRef = useRef<string | undefined>(undefined);
+    const lastSyncedForceUpdateKeyRef = useRef<number | undefined>(undefined);
 
     useImperativeHandle(ref, () => ({
         insertText: (text: string) => {
@@ -60,6 +65,42 @@ export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoR
 
     // Use shared hook for decorations
     useWildcardDecorations(editorRef.current, monacoRef.current, value);
+
+    // Sync value manual implementation to prevent cursor jumps
+    useEffect(() => {
+        if (editorRef.current) {
+            const editor = editorRef.current;
+            const model = editor.getModel();
+            if (!model) return;
+
+
+            const currentVal = model.getValue();
+            const isNewRequest = requestId !== lastSyncedRequestIdRef.current;
+            const isForceUpdate = forceUpdateKey !== undefined && forceUpdateKey !== lastSyncedForceUpdateKeyRef.current;
+            const isMount = lastSyncedRequestIdRef.current === undefined;
+
+            if (!isMount && (isNewRequest || isForceUpdate)) {
+                // If content is identical, avoid updating to prevent cursor jumps.
+                // This specifically handles the "ID Transition" case (Unsaved Name -> Saved ID)
+                // where isNewRequest is true but content hasn't changed.
+                if (currentVal !== value) {
+                    if (isNewRequest) {
+                        editor.setValue(value || '');
+                    } else {
+                        const pos = editor.getPosition();
+                        editor.setValue(value || '');
+                        if (pos) editor.setPosition(pos);
+                    }
+                }
+            }
+            if (forceUpdateKey !== undefined) {
+                lastSyncedForceUpdateKeyRef.current = forceUpdateKey;
+            }
+            lastSyncedRequestIdRef.current = requestId;
+        }
+        // Removed `value` from dependencies to strictly enforce Force Update pattern.
+        // We do NOT want to react to value prop changes unless it is a new request or forced.
+    }, [requestId, forceUpdateKey]);
 
     const handleEditorDidMount = (editor: any, monaco: Monaco) => {
         editorRef.current = editor;
@@ -198,6 +239,21 @@ export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoR
         };
     }, []);
 
+    const editorOptions = {
+        minimap: { enabled: false }, // Save space
+        fontSize: 14,
+        fontFamily: 'var(--vscode-editor-font-family)',
+        scrollBeyondLastLine: false,
+        readOnly: readOnly,
+        folding: true,
+        automaticLayout: true,
+        lineNumbers: 'on',
+        renderLineHighlight: 'none',
+        contextmenu: true,
+        acceptSuggestionOnEnter: 'off',
+        quickSuggestions: false,
+    };
+
     // Apply auto-folding when switching to a different request
     useEffect(() => {
         if (!editorRef.current || !autoFoldElements || autoFoldElements.length === 0 || !value) {
@@ -229,29 +285,16 @@ export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoR
     return (
         <EditorContainer>
             <style>
-                {/* Styles moved to index.css */}
+
             </style>
             <Editor
                 height="100%"
                 defaultLanguage={language}
-                value={value}
+                defaultValue={value}
                 onChange={(val) => onChange(val || '')}
                 theme="vs-dark" // Default to dark, ideally sync with VSCode theme
                 onMount={handleEditorDidMount}
-                options={{
-                    minimap: { enabled: false }, // Save space
-                    fontSize: 14,
-                    fontFamily: 'var(--vscode-editor-font-family)',
-                    scrollBeyondLastLine: false,
-                    readOnly: readOnly,
-                    folding: true,
-                    automaticLayout: true,
-                    lineNumbers: 'on',
-                    renderLineHighlight: 'none',
-                    contextmenu: true,
-                    acceptSuggestionOnEnter: 'off',
-                    quickSuggestions: false,
-                }}
+                options={editorOptions as any}
             />
         </EditorContainer>
     );

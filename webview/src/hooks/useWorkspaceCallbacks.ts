@@ -151,7 +151,7 @@ export function useWorkspaceCallbacks({
                 })
             };
             const updatedProject = { ...p, testSuites: p.testSuites!.map(s => s.id === suite.id ? updatedSuite : s), dirty: true };
-            setTimeout(() => saveProject(updatedProject), 0);
+            // setTimeout(() => saveProject(updatedProject), 0);
             return updatedProject;
         }));
 
@@ -188,7 +188,7 @@ export function useWorkspaceCallbacks({
                 })
             };
             const updatedProject = { ...p, testSuites: p.testSuites!.map(s => s.id === suite.id ? updatedSuite : s), dirty: true };
-            setTimeout(() => saveProject(updatedProject), 0);
+            // setTimeout(() => saveProject(updatedProject), 0);
             return updatedProject;
         }));
     }, [selectedTestCase, setProjects, saveProject]);
@@ -216,7 +216,7 @@ export function useWorkspaceCallbacks({
             };
 
             const updatedProject = { ...p, testSuites: p.testSuites!.map(s => s.id === suite.id ? updatedSuite : s), dirty: true };
-            setTimeout(() => saveProject(updatedProject), 0);
+            // setTimeout(() => saveProject(updatedProject), 0);
             return updatedProject;
         }));
         setSelectedStep(updatedStep);
