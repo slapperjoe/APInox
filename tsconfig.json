@@ -9,6 +9,7 @@
         "sourceMap": true,
         "strict": true,
         "skipLibCheck": true,
+        "esModuleInterop": true,
         "types": [
             "vitest/globals"
         ]

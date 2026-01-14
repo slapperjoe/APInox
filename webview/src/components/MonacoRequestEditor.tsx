@@ -29,6 +29,7 @@ export interface MonacoRequestEditorProps {
 
 export interface MonacoRequestEditorHandle {
     insertText: (text: string) => void;
+    getValue: () => string;
 }
 
 export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoRequestEditorProps>(({
@@ -60,6 +61,13 @@ export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoR
                 editor.executeEdits("my-source", [op]);
                 editor.focus();
             }
+        },
+        getValue: () => {
+            if (editorRef.current) {
+                const model = editorRef.current.getModel();
+                return model ? model.getValue() : '';
+            }
+            return '';
         }
     }));
 

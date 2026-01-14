@@ -486,7 +486,12 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                 <Loader2 size={14} className="spin" /> Cancel
                             </ToolbarButton>
                         ) : (
-                            <ToolbarButton onClick={() => onExecute(selectedRequest.request)} title="Run Request" style={{ color: 'var(--vscode-testing-iconPassed)' }}>
+                            <ToolbarButton onClick={() => {
+                                // Get current content from editor, falling back to selectedRequest.request
+                                // This allows users to edit read-only samples and test with the edited content
+                                const currentContent = bodyEditorRef.current?.getValue() ?? selectedRequest.request;
+                                onExecute(currentContent);
+                            }} title="Run Request" style={{ color: 'var(--vscode-testing-iconPassed)' }}>
                                 <Play size={14} /> Run
                             </ToolbarButton>
                         )}
