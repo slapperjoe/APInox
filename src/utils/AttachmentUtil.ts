@@ -8,7 +8,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import * as FormData from 'form-data';
+import FormData from 'form-data';
 import { RequestAttachment } from '../../shared/src/models';
 
 export class AttachmentUtil {

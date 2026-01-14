@@ -67,7 +67,10 @@
     "build-cli": "tsc -p ./ && chmod +x ./out/src/cli/index.js 2>/dev/null || true",
     "cli": "node ./out/src/cli/index.js",
     "build-binary": "npm run compile && pkg ./out/src/cli/index.js --targets node18-win-x64,node18-macos-x64,node18-linux-x64 --out-path ./bin",
-    "build-binary-win": "npm run compile && pkg ./out/src/cli/index.js --targets node18-win-x64 --out-path ./bin"
+    "build-binary-win": "npm run compile && pkg ./out/src/cli/index.js --targets node18-win-x64 --out-path ./bin",
+    "build:sidecar": "cd sidecar && npm run build",
+    "tauri:dev": "npm run build:sidecar && npx tauri dev",
+    "tauri:build": "npm run build:sidecar && npx tauri build"
   },
   "pkg": {
     "scripts": [
@@ -83,6 +86,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.57.0",
+    "@tauri-apps/cli": "^2.9.6",
     "@types/glob": "^8.1.0",
     "@types/jest": "^30.0.0",
     "@types/mocha": "^10.0.1",
@@ -109,6 +113,12 @@
   },
   "dependencies": {
     "@apidevtools/swagger-parser": "^12.1.0",
+    "@tauri-apps/api": "^2.9.1",
+    "@tauri-apps/plugin-clipboard-manager": "^2.3.2",
+    "@tauri-apps/plugin-dialog": "^2.5.0",
+    "@tauri-apps/plugin-opener": "^2.5.3",
+    "@tauri-apps/plugin-shell": "^2.3.4",
+    "@tauri-apps/plugin-store": "^2.4.2",
     "@types/node-cron": "^3.0.11",
     "axios": "^1.13.2",
     "chalk": "^4.1.2",
