@@ -207,7 +207,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                         return (
                             <div key={proj.id || pIdx}>
                                 <OperationItem
-                                    active={isProjectActive}
+                                    $active={isProjectActive}
                                     onClick={() => {
                                         // Select project, clear interface/operation/request
                                         setSelectedProjectName(proj.name);
@@ -294,7 +294,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                                             }}
                                             title={deleteConfirm === proj.name ? "Click again to Confirm Delete" : "Close Project"}
                                             style={{ color: deleteConfirm === proj.name ? 'var(--vscode-errorForeground)' : undefined }}
-                                            shake={deleteConfirm === proj.name}
+                                            $shake={deleteConfirm === proj.name}
                                         >
                                             <Trash2 size={14} />
                                         </HeaderButton>

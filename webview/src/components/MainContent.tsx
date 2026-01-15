@@ -113,12 +113,24 @@ export function MainContent() {
                     // In Tauri mode, sidecar returns samples and changelog in the response
                     if (response?.samplesProject) {
                         console.log('[MainContent] Received samples project:', response.samplesProject.name);
-                        window.postMessage({
+                        bridge.emit({
                             command: 'projectLoaded',
                             project: response.samplesProject,
                             filename: 'Samples',
                             isReadOnly: true
-                        }, '*');
+                        });
+                    }
+
+                    if (response?.projects && Array.isArray(response.projects)) {
+                        console.log(`[MainContent] Received ${response.projects.length} persisted projects`);
+                        response.projects.forEach((proj: any) => {
+                            bridge.emit({
+                                command: 'projectLoaded',
+                                project: proj,
+                                filename: proj.fileName || proj.name, // Fallback to name if fileName missing
+                                isReadOnly: false
+                            });
+                        });
                     }
 
                     if (response?.changelog) {
@@ -266,7 +278,7 @@ export function MainContent() {
     });
 
     // Log unused handlers temporarily
-    console.log(handleAddFolder, handleAddRequestToFolder, handleDeleteFolder, handleToggleFolderExpand);
+
 
     // Breakpoint State
     const [activeBreakpoint, setActiveBreakpoint] = useState<{

@@ -122,7 +122,7 @@ function mapResponseToBackendEvent(command: string, data: any): BackendMessage |
         [FrontendCommand.ExecuteRequest]: (data) => ({
             command: BackendCommand.Response,
             // Frontend expects response data in 'result' property
-            result: data
+            result: data || { rawResponse: '', headers: {}, status: 0, timeTaken: 0 }
         }),
         [FrontendCommand.GetHistory]: (data) => ({
             command: BackendCommand.HistoryLoaded,
@@ -277,6 +277,13 @@ export const bridge = {
             }
         }
         return undefined;
+    },
+
+    /**
+     * Emit a local event to all listeners (simulating a backend event)
+     */
+    emit: (message: BackendMessage): void => {
+        listeners.forEach(cb => cb(message));
     },
 
     /**

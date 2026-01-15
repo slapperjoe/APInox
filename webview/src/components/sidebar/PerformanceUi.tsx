@@ -94,12 +94,12 @@ const Actions = styled.div`
     }
 `;
 
-const DeleteButton = styled(IconButton) <{ shake?: boolean }>`
-    color: ${props => props.shake ? '#f14c4c' : 'var(--vscode-icon-foreground)'};
+const DeleteButton = styled(IconButton) <{ $shake?: boolean }>`
+    color: ${props => props.$shake ? '#f14c4c' : 'var(--vscode-icon-foreground)'};
     &:hover {
         background-color: rgba(241, 76, 76, 0.1);
     }
-    ${props => props.shake && css`
+    ${props => props.$shake && css`
         animation: ${shakeAnimation} 0.5s ease-in-out infinite;
         color: #f14c4c;
     `}
@@ -271,7 +271,7 @@ export const PerformanceUi: React.FC<SidebarPerformanceProps> = ({
                                         <Play size={14} fill="currentColor" />
                                     </IconButton>
                                     <DeleteButton
-                                        shake={deleteConfirm === suite.id}
+                                        $shake={deleteConfirm === suite.id}
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             if (deleteConfirm === suite.id) {

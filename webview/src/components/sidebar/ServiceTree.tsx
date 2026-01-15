@@ -78,7 +78,7 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
             {interfaces.map((iface, i) => (
                 <div key={i}>
                     <OperationItem
-                        active={selectedInterface?.id && iface.id ? selectedInterface.id === iface.id : selectedInterface?.name === iface.name}
+                        $active={selectedInterface?.id && iface.id ? selectedInterface.id === iface.id : selectedInterface?.name === iface.name}
                         onContextMenu={(e) => onContextMenu(e, 'interface', iface)}
                         onClick={() => onSelectInterface(iface)}
                         style={{ paddingLeft: 20 }}
@@ -117,7 +117,7 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
                                     }}
                                     title={confirmDeleteId === iface.name ? "Click again to Confirm Delete" : "Delete Interface"}
                                     style={{ color: confirmDeleteId === iface.name ? 'var(--vscode-errorForeground)' : undefined }}
-                                    shake={confirmDeleteId === iface.name}
+                                    $shake={confirmDeleteId === iface.name}
                                 >
                                     <Trash2 size={12} />
                                 </HeaderButton>
@@ -128,7 +128,7 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
                         return (
                             <div key={j} style={{ marginLeft: 15 }}>
                                 <OperationItem
-                                    active={selectedOperation?.id && op.id ? selectedOperation.id === op.id : (selectedOperation?.name === op.name && selectedInterface?.name === iface.name)}
+                                    $active={selectedOperation?.id && op.id ? selectedOperation.id === op.id : (selectedOperation?.name === op.name && selectedInterface?.name === iface.name)}
                                     onClick={() => onSelectOperation(op, iface)}
                                     onContextMenu={(e) => onContextMenu(e, 'operation', op)}
                                 >
@@ -163,7 +163,7 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
                                                     }}
                                                     title={confirmDeleteId === `op-${iface.name}-${op.name}` ? "Click to Confirm Delete" : "Delete Operation"}
                                                     style={{ color: confirmDeleteId === `op-${iface.name}-${op.name}` ? 'var(--vscode-errorForeground)' : undefined }}
-                                                    shake={confirmDeleteId === `op-${iface.name}-${op.name}`}
+                                                    $shake={confirmDeleteId === `op-${iface.name}-${op.name}`}
                                                 >
                                                     <Trash2 size={12} />
                                                 </HeaderButton>
@@ -178,7 +178,7 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
                                     return (
                                         <RequestItem
                                             key={k}
-                                            active={selectedRequest?.id === req.id}
+                                            $active={selectedRequest?.id === req.id}
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 onSelectRequest(req, op, iface);
@@ -239,7 +239,7 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
                                                             }}
                                                             title={confirmDeleteId === req.id ? "Click again to Confirm Delete" : "Delete Request"}
                                                             style={{ color: confirmDeleteId === req.id ? 'var(--vscode-errorForeground)' : undefined }}
-                                                            shake={confirmDeleteId === req.id}
+                                                            $shake={confirmDeleteId === req.id}
                                                         >
                                                             <Trash2 size={12} />
                                                         </HeaderButton>
