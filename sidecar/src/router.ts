@@ -57,7 +57,13 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
                 throw new Error('No file path provided. Please use "Save Project As" first.');
             }
             await services.folderStorage.saveProject(project, filePath);
-            return { saved: true, path: filePath };
+            return {
+                saved: true,
+                path: filePath,
+                // CRITICAL: Return these so frontend updates the project state
+                projectName: project.name,
+                fileName: filePath
+            };
         },
 
         [FrontendCommand.LoadProject]: async (payload) => {
@@ -328,9 +334,13 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
         },
 
         // ===== Workspace Commands (Tauri-specific stubs) =====
-        [FrontendCommand.SaveOpenProjects]: async () => {
-            // In Tauri, projects are auto-saved to disk
-            // This is a no-op since we use localStorage
+        [FrontendCommand.SaveOpenProjects]: async (payload) => {
+            // Save the list of open project paths to settings
+            // Payload should contain { projectPaths: string[] }
+            if (payload && payload.projectPaths) {
+                // console.log(`[Sidecar] Saving open projects list: ${payload.projectPaths.length}`);
+                services.settingsManager.updateOpenProjects(payload.projectPaths);
+            }
             return { saved: true };
         },
 
@@ -410,20 +420,10 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
         ['webviewReady']: async () => {
             console.log('[Sidecar] Webview ready - sending initialization data');
 
-            // Load and send Samples project
-            try {
-                const { SAMPLES_PROJECT } = require('./data/DefaultSamples');
-                if (SAMPLES_PROJECT && SAMPLES_PROJECT.id) {
-                    // Send ProjectLoaded message for Samples
-                    // We can't directly postMessage, so we return it and the caller handles it
-                    // Actually, we need to think about this differently...
-                    // The router doesn't have access to send messages back
-                    // We need to return the data and let the caller send it
-                    console.log('[Sidecar] Samples project ready to send');
-                }
-            } catch (e) {
-                console.error('[Sidecar] Failed to load samples:', e);
-            }
+            const result: any = {
+                acknowledged: true,
+                samplesProject: require('./data/DefaultSamples').SAMPLES_PROJECT
+            };
 
             // Load and send changelog
             try {
@@ -432,22 +432,46 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
                 // Changelog is in project root, navigate up from sidecar/dist/sidecar/src
                 const changelogPath = path.join(__dirname, '../../../../CHANGELOG.md');
                 if (fs.existsSync(changelogPath)) {
-                    const changelog = fs.readFileSync(changelogPath, 'utf8');
+                    result.changelog = fs.readFileSync(changelogPath, 'utf8');
                     console.log('[Sidecar] Changelog loaded');
-                    return {
-                        acknowledged: true,
-                        samplesProject: require('./data/DefaultSamples').SAMPLES_PROJECT,
-                        changelog
-                    };
                 }
             } catch (e) {
                 console.error('[Sidecar] Failed to load changelog:', e);
             }
 
-            return {
-                acknowledged: true,
-                samplesProject: require('./data/DefaultSamples').SAMPLES_PROJECT
-            };
+            // Load previously open projects
+            try {
+                const config = services.settingsManager.getConfig();
+
+                if (config.openProjects && config.openProjects.length > 0) {
+                    console.log(`[Sidecar] Loading ${config.openProjects.length} previously open projects...`);
+                    const loadedProjects = [];
+
+                    for (const projectPath of config.openProjects) {
+                        // Skip if it's the Samples project or read-only placeholder
+                        if (projectPath === 'Samples' || projectPath === 'samples-project-read-only') continue;
+
+                        try {
+                            console.log(`[Sidecar] Loading project from: ${projectPath}`);
+                            const project = await services.folderStorage.loadProject(projectPath);
+                            if (project) {
+                                loadedProjects.push(project);
+                            }
+                        } catch (err) {
+                            console.error(`[Sidecar] Failed to load project from ${projectPath}:`, err);
+                        }
+                    }
+
+                    if (loadedProjects.length > 0) {
+                        result.projects = loadedProjects;
+                        console.log(`[Sidecar] Successfully loaded ${loadedProjects.length} user projects`);
+                    }
+                }
+            } catch (e) {
+                console.error('[Sidecar] Error loading user projects:', e);
+            }
+
+            return result;
         },
     };
 

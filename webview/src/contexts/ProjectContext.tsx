@@ -153,6 +153,19 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
                 // debugLog('Syncing projects to backend', { count: projects.length });
                 bridge.sendMessage({ command: 'log', message: `[ProjectContext] Syncing projects. Count: ${projects.length}` });
                 bridge.sendMessage({ command: 'syncProjects', projects });
+
+                // Save the list of open project paths to settings
+                // Filter out projects that don't have a file path yet or are the Samples project
+                const openProjectPaths = projects
+                    .filter(p => (p as any).fileName && p.name !== 'Samples' && p.id !== 'samples-project-read-only')
+                    .map(p => (p as any).fileName as string);
+
+                if (openProjectPaths.length > 0) {
+                    bridge.sendMessage({
+                        command: 'saveOpenProjects',
+                        projectPaths: openProjectPaths
+                    });
+                }
             }
         }, 500);
 
@@ -164,7 +177,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
     // Watch for dirty projects and save them automatically
     // -------------------------------------------------------------------------
     useEffect(() => {
-        const dirtyProjects = projects.filter(p => p.dirty);
+        const dirtyProjects = projects.filter(p => p.dirty && !p.readOnly && p.name !== 'Samples');
 
         if (dirtyProjects.length > 0) {
             const timer = setTimeout(() => {
@@ -267,8 +280,45 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
      * The backend handles file system operations and will respond
      * with 'projectSaved' message handled by useMessageHandler.
      */
-    const saveProject = useCallback((project: ApinoxProject) => {
-        debugLog('saveProject', { name: project.name });
+    const saveProject = useCallback(async (project: ApinoxProject) => {
+        debugLog('saveProject', { name: project.name, hasPath: !!(project as any).fileName });
+
+        // If this is a new project (no file path) and we are in Tauri, prompt for location
+        if (!(project as any).fileName && bridge.isTauri()) {
+            try {
+                // Dynamically import Tauri dialog plugin
+                // Note: This requires @tauri-apps/plugin-dialog to be available in the build
+                const { save } = await import('@tauri-apps/plugin-dialog');
+
+                // Allow "Any" to simulate folder selection (since save dialog is for files)
+                // We'll strip any extension later
+                const filePath = await save({
+                    // filters: [{
+                    //     name: 'APInox Project Folder',
+                    //     extensions: ['*'] 
+                    // }],
+                    defaultPath: `${project.name}`
+                });
+
+                if (filePath) {
+                    // Strip .json if it was added by OS or user, because we save as FOLDER
+                    const cleanPath = filePath.endsWith('.json')
+                        ? filePath.slice(0, -5)
+                        : filePath;
+
+                    debugLog('saveProject: Dialog selected path', { filePath, cleanPath });
+                    bridge.sendMessage({ command: 'saveProject', project, filePath: cleanPath });
+                } else {
+                    debugLog('saveProject: Dialog cancelled');
+                }
+            } catch (e) {
+                console.error('[ProjectContext] Failed to open save dialog:', e);
+                // Fallback or alert user
+                bridge.sendMessage({ command: 'log', message: `[ProjectContext] Error opening save dialog: ${e}` });
+            }
+            return;
+        }
+
         bridge.sendMessage({ command: 'log', message: `[ProjectContext] saveProject called for: ${project.name}` });
         bridge.sendMessage({ command: 'saveProject', project });
     }, [debugLog]);
@@ -277,8 +327,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
     // -------------------------------------------------------------------------
 
     React.useEffect(() => {
-        const handleMessage = (event: MessageEvent) => {
-            const message = event.data;
+        const handleMessage = (message: any) => {
             switch (message.command) {
                 // ProjectLoaded sends a SINGLE project, not an array
                 case BackendCommand.ProjectLoaded:
@@ -315,6 +364,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
 
                 case BackendCommand.ProjectSaved:
                     debugLog('Received ProjectSaved', { name: message.projectName, fileName: message.fileName });
+
                     if (message.projectName) {
                         setSavedProjects(current => {
                             const next = new Set(current);
@@ -323,13 +373,16 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
                         });
 
                         // CRITICAL: Update the project with the new fileName returned from backend
-                        // This allows auto-save to take over for future edits
                         if (message.fileName) {
-                            setProjects(prev => prev.map(p =>
-                                p.name === message.projectName
-                                    ? { ...p, fileName: message.fileName, dirty: false }
-                                    : p
-                            ));
+                            setProjects(prev => {
+                                const updated = prev.map(p => {
+                                    if (p.name === message.projectName) {
+                                        return { ...p, fileName: message.fileName, dirty: false };
+                                    }
+                                    return p;
+                                });
+                                return updated;
+                            });
                         }
 
                         // Auto-clear success indicator after 3s
@@ -350,8 +403,8 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
             }
         };
 
-        window.addEventListener('message', handleMessage);
-        return () => window.removeEventListener('message', handleMessage);
+        const cleanup = bridge.onMessage(handleMessage);
+        return () => cleanup();
     }, [debugLog]);
 
     /**

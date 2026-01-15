@@ -243,7 +243,7 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                             <div key={suite.id}>
                                 {/* Suite Header */}
                                 <OperationItem
-                                    active={isSuiteSelected}
+                                    $active={isSuiteSelected}
                                     onClick={() => {
                                         // Toggle suite selection and notify parent
                                         if (isSuiteSelected) {
@@ -292,7 +292,7 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                                     return (
                                         <React.Fragment key={tc.id}>
                                             <RequestItem
-                                                active={isSelected}
+                                                $active={isSelected}
                                                 onClick={() => {
                                                     // Select case and notify parent
                                                     if (isSelected) {
@@ -360,7 +360,7 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                                             {tc.expanded !== false && (tc.steps || []).map(step => (
                                                 <StepItem
                                                     key={step.id}
-                                                    active={selectedStepId === step.id}
+                                                    $active={selectedStepId === step.id}
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         setSelectedStepId(step.id);

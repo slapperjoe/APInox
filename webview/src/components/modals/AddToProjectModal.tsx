@@ -72,14 +72,14 @@ const Footer = styled.div`
     border-top: 1px solid var(--vscode-panel-border);
 `;
 
-const Button = styled.button<{ primary?: boolean }>`
+const Button = styled.button<{ $primary?: boolean }>`
     padding: 8px 16px;
     border-radius: 4px;
     cursor: pointer;
     font-size: 0.9em;
     border: none;
-    background: ${props => props.primary ? 'var(--vscode-button-background)' : 'var(--vscode-button-secondaryBackground)'};
-    color: ${props => props.primary ? 'var(--vscode-button-foreground)' : 'var(--vscode-button-secondaryForeground)'};
+    background: ${props => props.$primary ? 'var(--vscode-button-background)' : 'var(--vscode-button-secondaryBackground)'};
+    color: ${props => props.$primary ? 'var(--vscode-button-foreground)' : 'var(--vscode-button-secondaryForeground)'};
     
     &:hover {
         opacity: 0.9;
@@ -277,7 +277,7 @@ export const AddToProjectModal: React.FC<AddToProjectModalProps> = ({
 
                 <Footer>
                     <Button onClick={onClose}>Cancel</Button>
-                    <Button primary onClick={handleConfirm} disabled={!isValid}>
+                    <Button $primary onClick={handleConfirm} disabled={!isValid}>
                         {mode === 'existing' ? 'Add to Project' : 'Create & Add'}
                     </Button>
                 </Footer>
