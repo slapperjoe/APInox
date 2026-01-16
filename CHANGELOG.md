@@ -1,5 +1,6 @@
 # Changelog
 
+-----
 
 ## [0.11.0] - 2026-01-15
 ### Auto-Generated Changes
