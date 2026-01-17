@@ -1,5 +1,14 @@
 # Changelog
 
+-----
+
+## [0.11.0] - 2026-01-15
+### Auto-Generated Changes
+- Tauri Fixes
+
+## [0.10.0] - 2026-01-15
+### Auto-Generated Changes
+- feat: Reintroduction of Tauri App
 
 ## [0.9.0] - 2026-01-07
 ### Auto-Generated Changes
