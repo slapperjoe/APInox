@@ -92,7 +92,7 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
                 return (
                     <div key={folder.id} style={{ marginLeft: level * 10 }}>
                         <OperationItem
-                            active={isSelected}
+                            $active={isSelected}
                             onClick={() => handleFolderClick(folder)}
                             onMouseEnter={() => setHoveredId(folder.id)}
                             onMouseLeave={() => setHoveredId(null)}
@@ -168,7 +168,7 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
                                             }}
                                             title={deleteConfirm === folder.id ? "Click again to Confirm" : "Delete Folder"}
                                             style={{ color: deleteConfirm === folder.id ? 'var(--vscode-errorForeground)' : undefined }}
-                                            shake={deleteConfirm === folder.id}
+                                            $shake={deleteConfirm === folder.id}
                                         >
                                             <Trash2 size={12} />
                                         </HeaderButton>
@@ -200,7 +200,7 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
                                 return (
                                     <RequestItem
                                         key={req.id}
-                                        active={selectedRequest?.id === req.id}
+                                        $active={selectedRequest?.id === req.id}
                                         onClick={() => handleRequestClick(req, folder)}
                                         style={{ marginLeft: 20 }}
                                         onContextMenu={(e) => !readOnly && handleContextMenu && handleContextMenu(e, 'request', req)}
@@ -248,7 +248,7 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
                                                     }}
                                                     title={deleteConfirm === req.id ? "Click again to Confirm" : "Delete Request"}
                                                     style={{ color: deleteConfirm === req.id ? 'var(--vscode-errorForeground)' : undefined }}
-                                                    shake={deleteConfirm === req.id}
+                                                    $shake={deleteConfirm === req.id}
                                                 >
                                                     <Trash2 size={12} />
                                                 </HeaderButton>
