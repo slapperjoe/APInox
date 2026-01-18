@@ -313,7 +313,7 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                                 onClick={() => setShowAddSuiteMenu(!showAddSuiteMenu)}
                                 title="Add Test Suite"
                             >
-                                <Plus size={16} />
+                                <Plus size={14} />
                             </HeaderButtonAdd>
 
                             {/* Project Selection Dropdown */}

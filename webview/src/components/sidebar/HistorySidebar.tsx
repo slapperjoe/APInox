@@ -248,7 +248,7 @@ export default function HistorySidebar({
             <Container>
                 <SidebarHeader>
                     <SidebarHeaderTitle>
-                        <Clock size={14} /> History
+                        History
                     </SidebarHeaderTitle>
                 </SidebarHeader>
                 <Content>
@@ -266,7 +266,7 @@ export default function HistorySidebar({
         <Container>
             <SidebarHeader>
                 <SidebarHeaderTitle>
-                    <Clock size={14} /> History
+                    History
                 </SidebarHeaderTitle>
             </SidebarHeader>
 
