@@ -236,11 +236,11 @@ export const PerformanceUi: React.FC<SidebarPerformanceProps> = ({
                 <SidebarHeaderTitle>Performance Suites</SidebarHeaderTitle>
                 <SidebarHeaderActions>
                     <IconButton onClick={handleCreateSuite} title="New Performance Suite">
-                        <Plus size={16} />
+                        <Plus size={14} />
                     </IconButton>
                     {isRunning && (
                         <IconButton onClick={onStopRun} title="Stop All Runs">
-                            <Square size={16} fill="currentColor" />
+                            <Square size={14} fill="currentColor" />
                         </IconButton>
                     )}
                 </SidebarHeaderActions>
