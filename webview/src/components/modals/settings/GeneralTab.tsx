@@ -4,7 +4,7 @@
  * Network and UI settings for the Settings modal.
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     ApinoxConfig,
     ScrollableForm,
@@ -17,6 +17,7 @@ import {
 } from './SettingsTypes';
 import { ProxyRulesEditor } from './ProxyRulesEditor';
 import { useTheme } from '../../../contexts/ThemeContext';
+import { bridge } from '../../../utils/bridge';
 
 interface GeneralTabProps {
     config: ApinoxConfig;
@@ -25,6 +26,61 @@ interface GeneralTabProps {
 
 export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange }) => {
     const { theme, setTheme, isTauriMode } = useTheme();
+
+    // Debug screen state
+    const [logs, setLogs] = useState<string[]>([]);
+    const [settingsDebug, setSettingsDebug] = useState<any>(null);
+    const [fetchError, setFetchError] = useState<string | null>(null);
+    const [showLogs, setShowLogs] = useState(false);
+    const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+
+    // Load logs and debug info when in Tauri mode
+    useEffect(() => {
+        if (!isTauriMode) return;
+
+        const loadLogsAndDebugInfo = async () => {
+            try {
+                setIsLoadingLogs(true);
+                
+                // Load logs
+                const logsResponse = await bridge.sendMessageAsync({ command: 'getSidecarLogs', count: 100 });
+                if (logsResponse.logs) {
+                    setLogs(logsResponse.logs);
+                }
+
+                // Load debug info
+                const debugResponse = await bridge.sendMessageAsync({ command: 'getDebugInfo' });
+                if (debugResponse.debugInfo) {
+                    setSettingsDebug(debugResponse.debugInfo);
+                }
+
+                setFetchError(null);
+            } catch (error: any) {
+                setFetchError(error.message || 'Failed to load debug information');
+                console.error('[GeneralTab] Failed to load debug info:', error);
+            } finally {
+                setIsLoadingLogs(false);
+            }
+        };
+
+        loadLogsAndDebugInfo();
+
+        // Set up polling interval for real-time updates (every 5 seconds)
+        const interval = setInterval(loadLogsAndDebugInfo, 5000);
+        return () => clearInterval(interval);
+    }, [isTauriMode]);
+
+    // Clear logs handler
+    const clearLogs = async () => {
+        try {
+            await bridge.sendMessageAsync({ command: 'clearSidecarLogs' });
+            setLogs([]);
+            setFetchError(null);
+        } catch (error: any) {
+            setFetchError(error.message || 'Failed to clear logs');
+            console.error('[GeneralTab] Failed to clear logs:', error);
+        }
+    };
 
     return (
         <ScrollableForm>
@@ -194,6 +250,138 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange }) => {
                     <ProxyRulesEditor config={config} onChange={onChange} />
                 </div>
             </div>
+
+            {/* Debug Screen Section - Only in Tauri Mode */}
+            {isTauriMode && (
+                <div style={{ marginTop: '30px', borderTop: '1px solid var(--vscode-panel-border)', paddingTop: '20px' }}>
+                    <SectionHeader>Diagnostics &amp; Debug Information</SectionHeader>
+
+                    {/* Sidecar Console Logs */}
+                    <FormGroup>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                            <Label style={{ marginBottom: 0 }}>Sidecar Console Logs</Label>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                {isLoadingLogs && (
+                                    <span style={{ fontSize: '0.85em', color: 'var(--vscode-descriptionForeground)' }}>
+                                        Loading...
+                                    </span>
+                                )}
+                                <span style={{ fontSize: '0.85em', color: 'var(--vscode-descriptionForeground)' }}>
+                                    {logs.length} {logs.length === 1 ? 'entry' : 'entries'}
+                                </span>
+                                <button
+                                    onClick={clearLogs}
+                                    disabled={logs.length === 0}
+                                    style={{
+                                        padding: '4px 12px',
+                                        fontSize: '0.9em',
+                                        cursor: logs.length === 0 ? 'not-allowed' : 'pointer',
+                                        opacity: logs.length === 0 ? 0.5 : 1,
+                                    }}
+                                >
+                                    Clear Logs
+                                </button>
+                                <button
+                                    onClick={() => setShowLogs(!showLogs)}
+                                    style={{
+                                        padding: '4px 12px',
+                                        fontSize: '0.9em',
+                                    }}
+                                >
+                                    {showLogs ? 'Hide' : 'Show'}
+                                </button>
+                            </div>
+                        </div>
+
+                        {fetchError && (
+                            <div style={{
+                                padding: '8px 12px',
+                                marginBottom: '8px',
+                                background: 'var(--vscode-inputValidation-errorBackground)',
+                                border: '1px solid var(--vscode-inputValidation-errorBorder)',
+                                color: 'var(--vscode-inputValidation-errorForeground)',
+                                borderRadius: '3px',
+                                fontSize: '0.9em',
+                            }}>
+                                ⚠️ {fetchError}
+                            </div>
+                        )}
+
+                        {showLogs && (
+                            <div style={{
+                                maxHeight: '300px',
+                                overflowY: 'auto',
+                                background: 'var(--vscode-editor-background)',
+                                border: '1px solid var(--vscode-panel-border)',
+                                padding: '8px',
+                                fontFamily: 'var(--vscode-editor-font-family, monospace)',
+                                fontSize: '0.85em',
+                                lineHeight: '1.4',
+                                borderRadius: '3px',
+                            }}>
+                                {logs.length === 0 ? (
+                                    <div style={{
+                                        color: 'var(--vscode-descriptionForeground)',
+                                        textAlign: 'center',
+                                        padding: '20px',
+                                        fontStyle: 'italic',
+                                    }}>
+                                        No logs available
+                                    </div>
+                                ) : (
+                                    logs.map((log, i) => (
+                                        <div
+                                            key={i}
+                                            style={{
+                                                marginBottom: 4,
+                                                whiteSpace: 'pre-wrap',
+                                                wordBreak: 'break-word',
+                                                color: log.includes('[ERROR]') || log.includes('Error') ? 'var(--vscode-errorForeground)' :
+                                                    log.includes('[WARN]') || log.includes('Warning') ? 'var(--vscode-editorWarning-foreground)' :
+                                                        'var(--vscode-editor-foreground)',
+                                            }}
+                                        >
+                                            {log}
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        )}
+                    </FormGroup>
+
+                    {/* Settings Debug Information */}
+                    {settingsDebug && (
+                        <details style={{ marginTop: 16 }}>
+                            <summary style={{
+                                cursor: 'pointer',
+                                fontWeight: 'bold',
+                                marginBottom: 8,
+                                padding: '8px',
+                                background: 'var(--vscode-sideBar-background)',
+                                borderRadius: '3px',
+                                userSelect: 'none',
+                            }}>
+                                System Debug Information
+                            </summary>
+                            <div style={{
+                                background: 'var(--vscode-editor-background)',
+                                border: '1px solid var(--vscode-panel-border)',
+                                padding: '12px',
+                                fontFamily: 'var(--vscode-editor-font-family, monospace)',
+                                fontSize: '0.8em',
+                                whiteSpace: 'pre-wrap',
+                                overflowX: 'auto',
+                                maxHeight: '400px',
+                                overflowY: 'auto',
+                                borderRadius: '3px',
+                                lineHeight: '1.5',
+                            }}>
+                                {JSON.stringify(settingsDebug, null, 2)}
+                            </div>
+                        </details>
+                    )}
+                </div>
+            )}
         </ScrollableForm >
     );
 };
