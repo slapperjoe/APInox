@@ -34,6 +34,9 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange }) => {
     const [sidecarPort, setSidecarPort] = useState<number | null>(null);
     const [logs, setLogs] = useState<Array<{ timestamp: string; level: string; message: string }>>([]);
     const [showLogs, setShowLogs] = useState(false);
+    const [settingsDebug, setSettingsDebug] = useState<any>(null);
+    const [fetchError, setFetchError] = useState<string | null>(null);
+    const [rawConfigPreview, setRawConfigPreview] = useState<string | null>(null);
 
     useEffect(() => {
         if (!isTauriMode) return;
@@ -55,15 +58,18 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange }) => {
     }, [isTauriMode]);
 
     useEffect(() => {
-        if (!sidecarPort) return;
-        try {
-            const response = await fetch(`http://127.0.0.1:${sidecarPort}/logs`);
-            const data = await response.json();
-            setLogs(data.logs || []);
-        } catch (e) {
-            console.error('Failed to load logs:', e);
-        }
-    };
+        const loadLogs = async () => {
+            if (!sidecarPort) return;
+            try {
+                const response = await fetch(`http://127.0.0.1:${sidecarPort}/logs`);
+                const data = await response.json();
+                setLogs(data.logs || []);
+            } catch (e) {
+                console.error('Failed to load logs:', e);
+            }
+        };
+        loadLogs();
+    }, [sidecarPort]);
 
     const clearLogs = async () => {
         if (!sidecarPort) return;
@@ -247,58 +253,60 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange }) => {
                                 )}
                                 {sidecarPort && (
                                     <div style={{ marginTop: 8 }}>
-                                        <button 
-                                            onClick={() => setShowLogs(!showLogs)}
-                                            style={{
-                                                padding: '4px 8px',
-                                                    <strong>Sidecar Console Logs ({logs.length})</strong>
-                                                    <button 
-                                                        onClick={clearLogs}
-                                                        style={{
-                                                            padding: '2px 6px',
-                                                            fontSize: '0.9em',
-                                                            cursor: 'pointer',
-                                                            background: 'var(--vscode-button-secondaryBackground)',
-                                                            color: 'var(--vscode-button-secondaryForeground)',
-                                                            border: 'none',
-                                                            borderRadius: 2
-                                                        }}
-                                                    >
-                                                        Clear
-                                                    </button>
-                                                </div>
-                                                {logs.length === 0 ? (
-                                                    <div style={{ color: 'var(--vscode-descriptionForeground)' }}>No logs</div>
-                                                ) : (
-                                                    logs.slice().reverse().map((log, i) => (
-                                                        <div key={i} style={{ 
-                                                            marginBottom: 4, 
-                                                            paddingBottom: 4, 
-                                                            borderBottom: '1px solid var(--vscode-widget-border)',
-                                                            color: log.level === 'error' ? 'var(--vscode-errorForeground)' : 
-                                                                   log.level === 'warn' ? 'var(--vscode-editorWarning-foreground)' : 
-                                                                   'var(--vscode-foreground)'
-                                                        }}>
-                                                            <span style={{ opacity: 0.6 }}>{new Date(log.timestamp).toLocaleTimeString()}</span>
-                                                            {' '}
-                                                            <span style={{ fontWeight: 'bold' }}>[{log.level.toUpperCase()}]</span>
-                                                            {' '}
-                                                            <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{log.message}</span>
-                                                        </div>
-                                                    ))
-                                                )}
-                                            </div>
-                                        )}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                                            <strong>Sidecar Console Logs ({logs.length})</strong>
+                                            <button 
+                                                onClick={clearLogs}
+                                                style={{
+                                                    padding: '2px 6px',
+                                                    fontSize: '0.9em',
+                                                    cursor: 'pointer',
+                                                    background: 'var(--vscode-button-secondaryBackground)',
+                                                    color: 'var(--vscode-button-secondaryForeground)',
+                                                    border: 'none',
+                                                    borderRadius: 2
+                                                }}
+                                            >
+                                                Clear
+                                            </button>
+                                        </div>
+                                        <div>
+                                            {logs.length === 0 ? (
+                                                <div style={{ color: 'var(--vscode-descriptionForeground)' }}>No logs</div>
+                                            ) : (
+                                                logs.slice().reverse().map((log, i) => (
+                                                    <div key={i} style={{ 
+                                                        marginBottom: 4, 
+                                                        paddingBottom: 4, 
+                                                        borderBottom: '1px solid var(--vscode-widget-border)',
+                                                        color: log.level === 'error' ? 'var(--vscode-errorForeground)' : 
+                                                               log.level === 'warn' ? 'var(--vscode-editorWarning-foreground)' : 
+                                                               'var(--vscode-foreground)'
+                                                    }}>
+                                                        <span style={{ opacity: 0.6 }}>{new Date(log.timestamp).toLocaleTimeString()}</span>
+                                                        {' '}
+                                                        <span style={{ fontWeight: 'bold' }}>[{log.level.toUpperCase()}]</span>
+                                                        {' '}
+                                                        <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{log.message}</span>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
                                     </div>
                                 )}
                                 {rawConfigPreview && (
                                     <details style={{ marginTop: 8, fontSize: '0.7em', color: 'var(--vscode-descriptionForeground)' }}>
                                         <summary style={{ cursor: 'pointer', userSelect: 'none' }}>File Content Preview (first 500 chars)</summary>
-                            Settings are stored in a single config.jsonc file within this folder.
-                            Local storage (Tauri) caches: theme (apinox-theme), UI state (apinox_state),
-                            window bounds (apinox_window_state), request history cache (apinox_history_cache),
-                            and last response per request (apinox:lastResponse:&lt;id&gt;).
-                        </div>
+                                        <div style={{ marginTop: 4 }}>
+                                            Settings are stored in a single config.jsonc file within this folder.
+                                            Local storage (Tauri) caches: theme (apinox-theme), UI state (apinox_state),
+                                            window bounds (apinox_window_state), request history cache (apinox_history_cache),
+                                            and last response per request (apinox:lastResponse:&lt;id&gt;).
+                                        </div>
+                                    </details>
+                                )}
+                            </div>
+                        )}
                     </FormGroup>
                 </div>
 
