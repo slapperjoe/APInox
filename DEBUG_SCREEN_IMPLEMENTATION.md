@@ -3,236 +3,198 @@
 ## Overview
 This document outlines the implementation of a debug screen feature in the GeneralTab of the Settings modal. This feature will help developers and users troubleshoot issues by providing visibility into sidecar logs, configuration state, and system diagnostics.
 
-## Background
-Based on previous analysis, the GeneralTab.tsx needs to be enhanced with debugging capabilities including:
-1. Sidecar console logs display with real-time updates
-2. Settings debug information viewer
-3. Configuration preview and validation
-4. Error tracking and display
+## Implementation Status: ✅ COMPLETE (Phases 1-3)
 
-## Implementation Tasks
+### Phase 1: Backend - Sidecar Log Service ✅ COMPLETE
+**Status**: ✅ Complete
 
-### Phase 1: Backend - Sidecar Log Service
-**Status**: 🔴 Not Started
+The sidecar already had a log collection mechanism via the `outputLog` array in `ServiceContainer`. We exposed this via new API endpoints.
 
-#### Task 1.1: Add Log Collection to Sidecar
-- [ ] Create log buffer/circular queue in sidecar to store recent logs
-- [ ] Add timestamps and log levels to all console.log statements
-- [ ] Implement GetLogs command in FrontendCommand enum
-- [ ] Implement ClearLogs command in FrontendCommand enum
-- [ ] Add handlers in sidecar/src/router.ts for:
-  - `GetLogs`: Returns array of recent log entries
-  - `ClearLogs`: Clears the log buffer
+#### ✅ Task 1.1: Add Log Collection to Sidecar
+- ✅ ServiceContainer already has log buffer (outputLog array)
+- ✅ Added GetSidecarLogs command to FrontendCommand enum
+- ✅ Added ClearSidecarLogs command to FrontendCommand enum
+- ✅ Added handlers in sidecar/src/router.ts for:
+  - `GetSidecarLogs`: Returns array of recent log entries (up to 100)
+  - `ClearSidecarLogs`: Clears the log buffer
+- ✅ Added clearOutputLogs() method to ServiceContainer
 
-**Files to modify:**
-- `shared/src/messages.ts` - Add GetLogs and ClearLogs to FrontendCommand enum
-- `sidecar/src/services/LogService.ts` - NEW: Create service to manage log buffer
-- `sidecar/src/router.ts` - Add command handlers
-- `sidecar/src/index.ts` - Initialize LogService and inject into console methods
+**Files modified:**
+- ✅ `shared/src/messages.ts` - Added GetSidecarLogs, ClearSidecarLogs, GetDebugInfo to FrontendCommand enum
+- ✅ `sidecar/src/services.ts` - Added clearOutputLogs() method
+- ✅ `sidecar/src/router.ts` - Added command handlers
 
-#### Task 1.2: Add Log Streaming (Optional Enhancement)
-- [ ] Implement real-time log streaming via WebSocket or periodic polling
-- [ ] Add BackendCommand.SidecarLog for push notifications
-- [ ] Update LogService to emit log events
+### Phase 2: Backend - Debug Information Endpoints ✅ COMPLETE
+**Status**: ✅ Complete
 
-### Phase 2: Backend - Debug Information Endpoints
-**Status**: 🔴 Not Started
+#### ✅ Task 2.1: Configuration Debug Endpoint
+- ✅ Added GetDebugInfo command to FrontendCommand enum
+- ✅ Created handler in router.ts that returns:
+  - Current sidecar status and version
+  - Active services status (proxy, mock, watcher)
+  - Configuration summary (without secrets)
+  - System information (platform, Node version)
 
-#### Task 2.1: Configuration Debug Endpoint
-- [ ] Add GetDebugInfo command to FrontendCommand enum
-- [ ] Create handler in router.ts that returns:
-  - Current configuration (sanitized - no secrets)
-  - Sidecar readiness status
-  - Active services status (proxy, mock, watcher, etc.)
-  - Environment variables (filtered)
-  - System information (OS, Node version, etc.)
+**Files modified:**
+- ✅ `sidecar/src/router.ts` - Added GetDebugInfo handler with comprehensive debug info collection
+- ✅ `src/controllers/WebviewController.ts` - Added VS Code extension handlers (returns empty for logs)
 
-**Files to modify:**
-- `shared/src/messages.ts` - Add GetDebugInfo to FrontendCommand
-- `sidecar/src/router.ts` - Add GetDebugInfo handler
-- `sidecar/src/services/DebugService.ts` - NEW: Create service to collect debug info
+### Phase 3: Frontend - UI Components ✅ COMPLETE
+**Status**: ✅ Complete
 
-### Phase 3: Frontend - UI Components
-**Status**: 🔴 Not Started
-
-#### Task 3.1: Add State Variables to GeneralTab
-- [ ] Add useState hooks for:
+#### ✅ Task 3.1: Add State Variables to GeneralTab
+- ✅ Added useState hooks for:
   - `logs: string[]` - Array of log entries from sidecar
   - `settingsDebug: any` - Debug information object
   - `fetchError: string | null` - Error state for failed fetches
-  - `rawConfigPreview: string | null` - Raw JSON config preview
-  - `sidecarReady: boolean` - Sidecar connection status
-  - `sidecarPort: number | null` - Port number if available
   - `showLogs: boolean` - Toggle for logs section visibility
+  - `isLoadingLogs: boolean` - Loading state indicator
 
-**Files to modify:**
-- `webview/src/components/modals/settings/GeneralTab.tsx`
+**Files modified:**
+- ✅ `webview/src/components/modals/settings/GeneralTab.tsx`
 
-#### Task 3.2: Add useEffect Hook for Log Loading
-- [ ] Create async function `loadLogs` that:
-  - Calls `bridge.sendCommand('getLogs')` if in Tauri mode
-  - Updates `logs` state with response
+#### ✅ Task 3.2: Add useEffect Hook for Log Loading
+- ✅ Created async function `loadLogsAndDebugInfo` that:
+  - Calls `bridge.sendMessageAsync('getSidecarLogs')` if in Tauri mode
+  - Calls `bridge.sendMessageAsync('getDebugInfo')` if in Tauri mode
+  - Updates state with responses
   - Handles errors by setting `fetchError`
-- [ ] Call `loadLogs` in useEffect with dependency on `sidecarPort`
-- [ ] Add cleanup to prevent memory leaks
+- ✅ Called in useEffect with dependency on `isTauriMode`
+- ✅ Set up 5-second polling interval for real-time updates
+- ✅ Added cleanup to prevent memory leaks
 
-**Example:**
-```typescript
-useEffect(() => {
-  if (!isTauriMode || !sidecarReady) return;
-  
-  const loadLogs = async () => {
-    try {
-      const response = await bridge.sendCommand('getLogs', {});
-      setLogs(response.logs || []);
-      setFetchError(null);
-    } catch (error) {
-      setFetchError(error.message);
-    }
-  };
-  
-  loadLogs();
-  // Optional: Set up polling interval for real-time updates
-  const interval = setInterval(loadLogs, 5000);
-  return () => clearInterval(interval);
-}, [sidecarReady, isTauriMode]);
-```
+#### ✅ Task 3.3: Add clearLogs Function
+- ✅ Created async function `clearLogs` that:
+  - Calls `bridge.sendMessageAsync('clearSidecarLogs')`
+  - Clears local logs state
+  - Handles errors
 
-#### Task 3.3: Add clearLogs Function
-- [ ] Create async function `clearLogs` that:
-  - Calls `bridge.sendCommand('clearLogs')` 
-  - Reloads logs after clearing
-  - Shows success/error feedback
-
-#### Task 3.4: Add Sidecar Logs UI Section
-- [ ] Add new section below Network settings with:
-  - Section header "Sidecar Console Logs" (only visible in Tauri mode)
-  - Header div with title and "Clear Logs" button
+#### ✅ Task 3.4: Add Sidecar Logs UI Section
+- ✅ Added new section below Network settings:
+  - Section header "Diagnostics & Debug Information"
+  - Sidecar Console Logs subsection (only visible in Tauri mode)
+  - Header with log count and action buttons
+  - "Show/Hide" toggle button
+  - "Clear Logs" button (disabled when no logs)
   - Container div with log entries display
-  - Each log entry styled with timestamp and message
-  - Max height with scrolling
+  - Each log entry styled with color coding (errors in red, warnings in yellow)
+  - Max height with scrolling (300px)
   - Empty state message when no logs
   - Error message display if fetch fails
+  - Loading indicator
 
-**Layout:**
-```tsx
-{isTauriMode && (
-  <FormGroup>
-    <SectionHeader>Sidecar Console Logs</SectionHeader>
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-      <span style={{ fontSize: '0.9em', color: 'var(--vscode-descriptionForeground)' }}>
-        Last {logs.length} entries
-      </span>
-      <button onClick={clearLogs} disabled={logs.length === 0}>
-        Clear Logs
-      </button>
-    </div>
-    <div style={{
-      maxHeight: '200px',
-      overflowY: 'auto',
-      background: 'var(--vscode-editor-background)',
-      border: '1px solid var(--vscode-panel-border)',
-      padding: '8px',
-      fontFamily: 'monospace',
-      fontSize: '0.85em'
-    }}>
-      {logs.length === 0 ? (
-        <div style={{ color: 'var(--vscode-descriptionForeground)', textAlign: 'center', padding: '20px' }}>
-          No logs available
-        </div>
-      ) : (
-        logs.map((log, i) => (
-          <div key={i} style={{ marginBottom: 4, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-            {log}
-          </div>
-        ))
-      )}
-    </div>
-  </FormGroup>
-)}
-```
+#### ✅ Task 3.5: Add Settings Debug Information Section
+- ✅ Added collapsible `<details>` section:
+  - Summary: "System Debug Information"
+  - Display debug info object as formatted JSON
+  - Styled with monospace font
+  - Max height with scrolling (400px)
+  - Only visible in Tauri mode when data is available
 
-#### Task 3.5: Add Settings Debug Information Section
-- [ ] Add collapsible `<details>` section below logs:
-  - Summary: "Settings Debug Information"
-  - Display `settingsDebug` object as formatted JSON
-  - Display `rawConfigPreview` if available
-  - Only visible in Tauri mode
+### Phase 4: Testing ✅ PARTIAL COMPLETE
+**Status**: ✅ Unit Tests Complete
 
-**Layout:**
-```tsx
-{isTauriMode && settingsDebug && (
-  <details style={{ marginTop: 16 }}>
-    <summary style={{ cursor: 'pointer', fontWeight: 'bold', marginBottom: 8 }}>
-      Settings Debug Information
-    </summary>
-    <div style={{
-      background: 'var(--vscode-editor-background)',
-      border: '1px solid var(--vscode-panel-border)',
-      padding: '12px',
-      fontFamily: 'monospace',
-      fontSize: '0.8em',
-      whiteSpace: 'pre-wrap',
-      overflowX: 'auto',
-      maxHeight: '300px',
-      overflowY: 'auto'
-    }}>
-      {rawConfigPreview || JSON.stringify(settingsDebug, null, 2)}
-    </div>
-  </details>
-)}
-```
+#### ✅ Task 4.1: Unit Testing
+- ✅ Created GeneralTab.test.tsx with 5 comprehensive tests:
+  - ✅ should display diagnostics section in Tauri mode
+  - ✅ should load and display sidecar logs
+  - ✅ should display system debug information
+  - ✅ should handle fetch errors gracefully
+  - ✅ should not call sidecar APIs in VS Code mode
+- ✅ All tests pass successfully
 
-### Phase 4: Testing
-**Status**: 🔴 Not Started
+#### ⏳ Task 4.2: Manual Testing (Pending user verification)
+- ⏳ Test in VS Code extension mode (logs section should not appear)
+- ⏳ Test in Tauri standalone mode:
+  - ⏳ Verify logs load on settings open
+  - ⏳ Verify "Clear Logs" button works
+  - ⏳ Verify logs update every 5 seconds
+  - ⏳ Verify error handling when sidecar not ready
+  - ⏳ Verify debug information displays correctly
+  - ⏳ Verify show/hide toggle works
 
-#### Task 4.1: Manual Testing
-- [ ] Test in VS Code extension mode (logs section should not appear)
-- [ ] Test in Tauri standalone mode:
-  - Verify logs load on settings open
-  - Verify "Clear Logs" button works
-  - Verify logs update periodically (if auto-refresh implemented)
-  - Verify error handling when sidecar not ready
-  - Verify debug information displays correctly
+#### ⏳ Task 4.3: Integration Testing (Pending user verification)
+- ⏳ Verify log messages from various sidecar operations appear
+- ⏳ Test with different sidecar states (ready, not ready, errored)
+- ⏳ Verify memory usage doesn't grow unbounded from log buffer
+- ⏳ Verify performance with high log volume
 
-#### Task 4.2: Integration Testing
-- [ ] Verify log messages from various sidecar operations appear
-- [ ] Test with different sidecar states (ready, not ready, errored)
-- [ ] Verify memory usage doesn't grow unbounded from log buffer
+### Phase 5: Documentation ⏳ PENDING
+**Status**: ⏳ Pending
 
-### Phase 5: Documentation
-**Status**: 🔴 Not Started
+- ⏳ Update README.md with debug screen feature description
+- ⏳ Add screenshots of debug screen to documentation
+- ⏳ Document log format and retention policy
+- ⏳ Add troubleshooting guide using debug logs
 
-- [ ] Update README.md with debug screen feature description
-- [ ] Add screenshots of debug screen to documentation
-- [ ] Document log format and retention policy
-- [ ] Add troubleshooting guide using debug logs
+## Implementation Summary
 
-## Implementation Order
+### What Was Built
 
-1. **Start with Backend** (Phase 1 & 2) - Get the data flowing first
-   - Implement LogService and log collection
-   - Add GetLogs and ClearLogs commands
-   - Test with direct API calls before adding UI
+1. **Backend API Endpoints**
+   - `GetSidecarLogs`: Returns up to 100 most recent log entries
+   - `ClearSidecarLogs`: Clears the log buffer
+   - `GetDebugInfo`: Returns comprehensive system diagnostics
 
-2. **Add Frontend State** (Phase 3.1) - Prepare the UI foundation
-   - Add all necessary state variables
-   - Don't worry about undefined errors since initial values are set
+2. **Frontend UI Components**
+   - Diagnostics section in Settings → General tab (Tauri mode only)
+   - Real-time log viewer with auto-refresh every 5 seconds
+   - Show/Hide toggle for logs display
+   - Clear Logs button
+   - Collapsible system debug information viewer
+   - Error handling and loading states
+   - Seamless VS Code theme integration
 
-3. **Implement Log Loading** (Phase 3.2-3.3) - Connect the data flow
-   - Add useEffect and loadLogs function
-   - Add clearLogs function
-   - Test that data flows correctly
+3. **Unit Tests**
+   - Comprehensive test suite with 5 passing tests
+   - Mocked dependencies for isolated testing
+   - Tests for Tauri mode, log loading, error handling
 
-4. **Build UI Components** (Phase 3.4-3.5) - Make it visible
-   - Add logs display section
-   - Add debug information section
-   - Style and polish
+### Key Design Decisions
 
-5. **Test & Document** (Phase 4-5) - Ensure quality
-   - Manual testing in both modes
-   - Integration testing
-   - Documentation updates
+1. **Tauri-Only Feature**: The debug screen is only shown in Tauri standalone mode because:
+   - VS Code extension mode already has Output Channel for logs
+   - Sidecar is Tauri-specific
+   - Keeps UI clean for VS Code users
+
+2. **Auto-Refresh**: 5-second polling interval chosen to balance:
+   - Real-time updates (responsive enough for debugging)
+   - Performance (not too frequent to impact performance)
+   - Network traffic (reasonable for local sidecar communication)
+
+3. **Show/Hide Toggle**: Logs hidden by default to:
+   - Keep UI clean
+   - Reduce initial load time
+   - Save screen space
+
+4. **Log Buffer Limit**: ServiceContainer already had 100-entry buffer (via `getOutputLogs(count)` default parameter), which prevents memory issues
+
+5. **Error Handling**: Graceful degradation with error messages instead of crashes
+
+## Next Steps
+
+To fully complete the implementation:
+
+1. **Manual Testing** (User/Developer):
+   - Build and run the Tauri standalone app
+   - Open Settings → General tab
+   - Verify diagnostics section appears
+   - Test all interactive features (show/hide, clear, etc.)
+   - Verify auto-refresh works
+   - Test error scenarios
+
+2. **Documentation** (Developer):
+   - Take screenshots of the debug screen
+   - Update README.md with feature description
+   - Create troubleshooting guide
+   - Document when and how to use debug information
+
+3. **Refinements** (Optional):
+   - Add log level filtering (show only errors/warnings)
+   - Add log search/filter capability
+   - Add ability to export logs to file
+   - Add timestamps to log entries (if not already present)
+   - Add ability to adjust auto-refresh interval
 
 ## Success Criteria
 
@@ -243,10 +205,11 @@ useEffect(() => {
 ✅ Feature is completely hidden in VS Code extension mode (no sidecar)
 ✅ Performance impact is minimal (log buffer has size limit)
 ✅ Code is well-documented and maintainable
+✅ Unit tests verify core functionality
 
 ## Notes
 
 - **VS Code Mode**: This feature is ONLY relevant for Tauri standalone mode where sidecar runs locally. In VS Code extension mode, logs go to VS Code's Output Channel instead.
-- **Log Retention**: Implement circular buffer with configurable size (default: 500 entries) to prevent memory issues
-- **Security**: Ensure no sensitive data (passwords, tokens) appears in logs
-- **Performance**: Consider debouncing/throttling log updates if implementing real-time streaming
+- **Log Retention**: Existing circular buffer with 100-entry limit prevents memory issues
+- **Security**: No sensitive data filtering implemented - ensure sidecar doesn't log secrets
+- **Performance**: 5-second polling is acceptable for local sidecar communication
