@@ -440,19 +440,19 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
                 },
                 services: {
                     proxy: {
-                        running: services.proxyService.isRunning(),
+                        running: services.proxyService.isActive(),
                         port: services.proxyService.getConfig().port,
                     },
                     mock: {
-                        running: services.mockService.isRunning(),
+                        running: services.mockService.isActive(),
                         port: services.mockService.getPort(),
                     },
                     watcher: {
-                        running: services.fileWatcherService.isWatching(),
+                        running: services.fileWatcherService.isActive(),
                     },
                 },
                 config: {
-                    configDir: (services.settingsManager as any).configDir || 'unknown',
+                    configDir: services.settingsManager.getConfigDir(),
                     hasOpenProjects: (config.openProjects?.length || 0) > 0,
                     projectCount: config.openProjects?.length || 0,
                     activeEnvironment: config.activeEnvironment || 'none',

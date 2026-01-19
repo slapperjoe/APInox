@@ -593,15 +593,15 @@ export class WebviewController {
                     mode: 'vscode-extension',
                     services: {
                         proxy: {
-                            running: this._proxyService.isRunning(),
+                            running: this._proxyService.isActive(),
                             port: this._proxyService.getConfig().port,
                         },
                         mock: {
-                            running: this._mockService.isRunning(),
+                            running: this._mockService.isActive(),
                             port: this._mockService.getPort(),
                         },
                         watcher: {
-                            running: this._fileWatcherService.isWatching(),
+                            running: this._fileWatcherService.isActive(),
                         },
                         coordinator: {
                             running: this._coordinatorService.isRunning(),
