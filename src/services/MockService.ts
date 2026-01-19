@@ -268,6 +268,10 @@ export class MockService extends EventEmitter {
         return this.isRunning;
     }
 
+    public getPort(): number | null {
+        return this.config.port || null;
+    }
+
     /**
      * Send a mock response for a matched rule. Used by ProxyService in 'both' mode.
      * Returns true if response was sent, false otherwise.

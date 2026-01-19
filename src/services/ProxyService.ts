@@ -566,6 +566,11 @@ export class ProxyService extends EventEmitter {
     public getCertPath() {
         return this.certPath;
     }
+
+    public isActive(): boolean {
+        return this.isRunning;
+    }
+
     private async runDiagnostics(targetUrl: string, originalConfig: AxiosRequestConfig) {
         const u = new URL(targetUrl);
         const log = (msg: string) => this.logDebug(`[Diagnostic] ${msg}`);

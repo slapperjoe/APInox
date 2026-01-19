@@ -122,6 +122,10 @@ export class FileWatcherService {
         this.log('Stopped File Watcher.');
     }
 
+    public isActive(): boolean {
+        return this.watchers.length > 0;
+    }
+
     public getHistory(): WatcherEvent[] {
         return this.history;
     }
