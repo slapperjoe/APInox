@@ -19,6 +19,7 @@ window.addEventListener('load', () => {
     debug.style.padding = '10px';
     debug.textContent = 'JS RUNNING';
     debug.id = 'debug-indicator';
+    debug.style.display = 'none'; // Hidden by default
     document.body.appendChild(debug);
 
     document.addEventListener('click', (e) => {

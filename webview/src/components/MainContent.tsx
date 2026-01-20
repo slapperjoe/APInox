@@ -17,6 +17,7 @@ import { CreateReplaceRuleModal } from './modals/CreateReplaceRuleModal';
 import { AddToDevOpsModal } from './modals/AddToDevOpsModal';
 import { AddToProjectModal } from './modals/AddToProjectModal';
 import { WsdlSyncModal } from './modals/WsdlSyncModal';
+import { DebugModal } from './modals/DebugModal';
 import { ApiRequest, TestCase, TestStep, SidebarView, ReplaceRule, RequestHistoryEntry, WsdlDiff } from '@shared/models';
 import { FrontendCommand } from '@shared/messages';
 import { useMessageHandler } from '../hooks/useMessageHandler';
@@ -161,6 +162,19 @@ export function MainContent() {
         initializeApp();
     }, []);
 
+    // Keyboard shortcut: Ctrl+Shift+D to open debug modal
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+                e.preventDefault();
+                openDebugModal();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [openDebugModal]);
+
 
 
     // ==========================================================================
@@ -220,6 +234,9 @@ export function MainContent() {
         setHelpSection,
         showDevOpsModal,
         setShowDevOpsModal,
+        showDebugModal,
+        setShowDebugModal,
+        openDebugModal,
         config,
         setConfig,
         rawConfig,
@@ -1372,6 +1389,14 @@ export function MainContent() {
                             setShowHelp(false);
                             setHelpSection(null);
                         }}
+                    />
+                )
+            }
+            {
+                showDebugModal && (
+                    <DebugModal
+                        isOpen={showDebugModal}
+                        onClose={() => setShowDebugModal(false)}
                     />
                 )
             }
