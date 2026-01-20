@@ -113,6 +113,11 @@ export enum FrontendCommand {
 
     // Script Playground
     ExecutePlaygroundScript = 'executePlaygroundScript',
+
+    // Debug/Diagnostics
+    GetSidecarLogs = 'getSidecarLogs',
+    ClearSidecarLogs = 'clearSidecarLogs',
+    GetDebugInfo = 'getDebugInfo',
 }
 
 export enum BackendCommand {

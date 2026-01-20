@@ -693,6 +693,58 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             return { echo: payload };
         },
 
+        // ===== Debug/Diagnostics =====
+        [FrontendCommand.GetSidecarLogs]: async (payload) => {
+            const count = payload?.count || 100;
+            const logs = services.getOutputLogs(count);
+            return { logs };
+        },
+
+        [FrontendCommand.ClearSidecarLogs]: async () => {
+            services.clearOutputLogs();
+            return { cleared: true };
+        },
+
+        [FrontendCommand.GetDebugInfo]: async () => {
+            const config = services.settingsManager.getConfig();
+            
+            // Collect debug information
+            const debugInfo = {
+                timestamp: new Date().toISOString(),
+                sidecar: {
+                    ready: true,
+                    version: require('../../../../package.json').version || 'unknown',
+                },
+                services: {
+                    proxy: {
+                        running: services.proxyService.isActive(),
+                        port: services.proxyService.getConfig().port,
+                    },
+                    mock: {
+                        running: services.mockService.isActive(),
+                        port: services.mockService.getPort(),
+                    },
+                    watcher: {
+                        running: services.fileWatcherService.isActive(),
+                    },
+                },
+                config: {
+                    configDir: services.settingsManager.getConfigDir(),
+                    hasOpenProjects: (config.openProjects?.length || 0) > 0,
+                    projectCount: config.openProjects?.length || 0,
+                    activeEnvironment: config.activeEnvironment || 'none',
+                    environments: Object.keys(config.environments || {}),
+                },
+                system: {
+                    platform: process.platform,
+                    nodeVersion: process.version,
+                    architecture: process.arch,
+                },
+            };
+
+            return { debugInfo };
+        },
+
         // ===== Webview Ready (initialization) =====
         ['webviewReady']: async () => {
             console.log('[Sidecar] Webview ready - sending initialization data');
