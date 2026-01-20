@@ -359,7 +359,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange }) => {
 
             {/* Debug Screen Section - Only in Tauri Mode */}
             {isTauriMode && (
-                <details open style={{ marginTop: '30px', borderTop: '1px solid var(--vscode-panel-border)', paddingTop: '20px' }}>
+                <details style={{ marginTop: '30px', borderTop: '1px solid var(--vscode-panel-border)', paddingTop: '20px' }}>
                     <summary style={{
                         cursor: 'pointer',
                         marginBottom: '16px',
