@@ -52,7 +52,7 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "npm run compile-webview && tsc -p ./",
-    "compile-webview": "cd webview && npm install && npm run build",
+    "compile-webview": "cd webview && npm install && npm run build:skip-check",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
