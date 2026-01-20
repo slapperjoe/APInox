@@ -95,6 +95,13 @@ interface UIContextValue {
     showDevOpsModal: boolean;
     setShowDevOpsModal: React.Dispatch<React.SetStateAction<boolean>>;
 
+    /** Debug modal visibility */
+    showDebugModal: boolean;
+    setShowDebugModal: React.Dispatch<React.SetStateAction<boolean>>;
+
+    /** Helper to open debug modal */
+    openDebugModal: () => void;
+
     // -------------------------------------------------------------------------
     // CONFIGURATION STATE
     // -------------------------------------------------------------------------
@@ -159,6 +166,7 @@ export function UIProvider({ children }: UIProviderProps) {
     const [showHelp, setShowHelp] = useState(false);
     const [helpSection, setHelpSection] = useState<string | null>(null);
     const [showDevOpsModal, setShowDevOpsModal] = useState(false);
+    const [showDebugModal, setShowDebugModal] = useState(false);
 
     // -------------------------------------------------------------------------
     // CONFIGURATION STATE
@@ -212,6 +220,13 @@ export function UIProvider({ children }: UIProviderProps) {
         setShowHelp(true);
     }, []);
 
+    /**
+     * Open debug modal.
+     */
+    const openDebugModal = useCallback(() => {
+        setShowDebugModal(true);
+    }, []);
+
     // -------------------------------------------------------------------------
     // CONTEXT VALUE
     // -------------------------------------------------------------------------
@@ -248,6 +263,9 @@ export function UIProvider({ children }: UIProviderProps) {
         openHelp,
         showDevOpsModal,
         setShowDevOpsModal,
+        showDebugModal,
+        setShowDebugModal,
+        openDebugModal,
 
         // Configuration State
         config,

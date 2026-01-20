@@ -121,10 +121,6 @@ export class SettingsManager {
         return this.configDir;
     }
 
-    public getConfigPath(): string {
-        return this.configPath;
-    }
-
     public getConfig(): ApinoxConfig {
         if (!fs.existsSync(this.configPath)) {
             this.saveConfig(DEFAULT_CONFIG);

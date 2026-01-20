@@ -35,3 +35,13 @@ vitest.config.js
 vitest.config.js.map
 playwright.config.js
 playwright.config.js.map
+
+# Transpiled JS files from TypeScript sources
+webview/src/**/*.js
+webview/src/**/*.js.map
+shared/src/**/*.js
+shared/src/**/*.js.map
+src/**/*.js
+src/**/*.js.map
+sidecar/src/**/*.js
+sidecar/src/**/*.js.map

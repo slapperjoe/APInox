@@ -111,4 +111,12 @@ export class ServiceContainer {
     getOutputLogs(count: number = 100): string[] {
         return this.outputLog.slice(-count);
     }
+
+    /**
+     * Clear output logs
+     */
+    clearOutputLogs(): void {
+        this.outputLog = [];
+        console.log('[Sidecar] Output logs cleared');
+    }
 }
