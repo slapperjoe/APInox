@@ -359,8 +359,20 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange }) => {
 
             {/* Debug Screen Section - Only in Tauri Mode */}
             {isTauriMode && (
-                <div style={{ marginTop: '30px', borderTop: '1px solid var(--vscode-panel-border)', paddingTop: '20px' }}>
-                    <SectionHeader>Diagnostics &amp; Debug Information</SectionHeader>
+                <details open style={{ marginTop: '30px', borderTop: '1px solid var(--vscode-panel-border)', paddingTop: '20px' }}>
+                    <summary style={{
+                        cursor: 'pointer',
+                        marginBottom: '16px',
+                        listStyle: 'none',
+                        userSelect: 'none',
+                    }}>
+                        <SectionHeader style={{ 
+                            display: 'inline-block',
+                            margin: 0,
+                        }}>
+                            Diagnostics &amp; Debug Information
+                        </SectionHeader>
+                    </summary>
 
                     {/* Debug Controls */}
                     <FormGroup>
@@ -588,18 +600,8 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange }) => {
 
                     {/* Settings Debug Information */}
                     {settingsDebug && (
-                        <details style={{ marginTop: 16 }}>
-                            <summary style={{
-                                cursor: 'pointer',
-                                fontWeight: 'bold',
-                                marginBottom: 8,
-                                padding: '8px',
-                                background: 'var(--vscode-sideBar-background)',
-                                borderRadius: '3px',
-                                userSelect: 'none',
-                            }}>
-                                System Debug Information
-                            </summary>
+                        <FormGroup style={{ marginTop: 16 }}>
+                            <Label style={{ marginBottom: 8 }}>System Debug Information</Label>
                             <div style={{
                                 background: 'var(--vscode-editor-background)',
                                 border: '1px solid var(--vscode-panel-border)',
@@ -615,9 +617,9 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange }) => {
                             }}>
                                 {JSON.stringify(settingsDebug, null, 2)}
                             </div>
-                        </details>
+                        </FormGroup>
                     )}
-                </div>
+                </details>
             )}
         </ScrollableForm >
     );
