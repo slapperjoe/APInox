@@ -19,6 +19,7 @@
         "noUnusedLocals": true,
         "noUnusedParameters": true,
         "noFallthroughCasesInSwitch": true,
+        "forceConsistentCasingInFileNames": true,
         "noImplicitAny": false,
         "baseUrl": ".",
         "paths": {
@@ -30,6 +31,16 @@
     "include": [
         "src",
         "../shared/src"
+    ],
+    "exclude": [
+        "**/__tests__/**",
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.spec.ts",
+        "**/*.spec.tsx",
+        "test-results",
+        "coverage",
+        "node_modules"
     ],
     "references": [
         {

@@ -7,7 +7,7 @@ const overlayEnter = keyframes`
   to { opacity: 1; }
 `;
 
-export const ModalOverlay = styled.div`
+const ModalOverlay = styled.div`
   position: fixed;
   top: 0;
   left: 0;
@@ -39,7 +39,7 @@ const modalEnter = keyframes`
   }
 `;
 
-export const ModalContent = styled.div<{ width?: string | number }>`
+const ModalContent = styled.div<{ width?: string | number }>`
   background-color: var(--vscode-editor-background);
   border: 1px solid var(--vscode-panel-border);
   box-shadow: 0 4px 6px var(--vscode-widget-shadow);
@@ -51,7 +51,7 @@ export const ModalContent = styled.div<{ width?: string | number }>`
   animation: ${modalEnter} 0.2s ease-out;
 `;
 
-export const ModalHeader = styled.div`
+const ModalHeader = styled.div`
     padding: 10px 15px;
     border-bottom: 1px solid var(--vscode-panel-border);
     display: flex;
@@ -59,17 +59,17 @@ export const ModalHeader = styled.div`
     align-items: center;
 `;
 
-export const ModalTitle = styled.div`
+const ModalTitle = styled.div`
     font-weight: bold;
 `;
 
-export const ModalBody = styled.div`
+const ModalBody = styled.div`
     padding: 15px;
     overflow-y: auto;
     flex: 1;
 `;
 
-export const ModalFooter = styled.div`
+const ModalFooter = styled.div`
     padding: 10px 15px;
     border-top: 1px solid var(--vscode-panel-border);
     display: flex;
@@ -92,6 +92,21 @@ export const Button = styled.button`
   }
 `;
 
+const IconButton = styled.button`
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--vscode-icon-foreground);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 4px;
+  &:hover {
+    background: var(--vscode-toolbar-hoverBackground);
+  }
+`;
+
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -111,7 +126,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
       <ModalContent width={width}>
         <ModalHeader>
           <ModalTitle>{title}</ModalTitle>
-          <Button onClick={onClose} style={{ background: 'transparent' }}><X size={16} /></Button>
+          <IconButton onClick={onClose} title="Close"><X size={16} /></IconButton>
         </ModalHeader>
         <ModalBody>
           {children}

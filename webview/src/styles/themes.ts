@@ -85,6 +85,7 @@ export const darkTheme: Theme = {
         // Activity Bar
         '--vscode-activityBar-background': '#333333',
         '--vscode-activityBar-foreground': '#ffffff',
+        '--vscode-activityBar-inactiveForeground': '#c5c5c5',
         '--vscode-activityBarBadge-background': '#007acc',
         '--vscode-activityBarBadge-foreground': '#ffffff',
 
@@ -130,6 +131,12 @@ export const darkTheme: Theme = {
 
         // Icons
         '--vscode-icon-foreground': '#c5c5c5',
+
+        // Charts
+        '--vscode-charts-green': '#89d185',
+        '--vscode-charts-blue': '#75beff',
+        '--vscode-charts-purple': '#c586c0',
+        '--vscode-charts-orange': '#d18616',
 
         // Widget (overlays, modals)
         '--vscode-widget-shadow': 'rgba(0, 0, 0, 0.36)',
@@ -225,6 +232,7 @@ export const lightTheme: Theme = {
         // Activity Bar
         '--vscode-activityBar-background': '#2c2c2c',
         '--vscode-activityBar-foreground': '#ffffff',
+        '--vscode-activityBar-inactiveForeground': '#b0b0b0',
         '--vscode-activityBarBadge-background': '#007acc',
         '--vscode-activityBarBadge-foreground': '#ffffff',
 
@@ -270,6 +278,12 @@ export const lightTheme: Theme = {
 
         // Icons
         '--vscode-icon-foreground': '#424242',
+
+        // Charts
+        '--vscode-charts-green': '#388a34',
+        '--vscode-charts-blue': '#0e639c',
+        '--vscode-charts-purple': '#6f4fa7',
+        '--vscode-charts-orange': '#ba6233',
 
         // Widget (overlays, modals)
         '--vscode-widget-shadow': 'rgba(0, 0, 0, 0.16)',
@@ -371,6 +385,7 @@ export const solarizedDarkTheme: Theme = {
         // Activity Bar
         '--vscode-activityBar-background': '#073642',
         '--vscode-activityBar-foreground': '#93a1a1',
+        '--vscode-activityBar-inactiveForeground': '#839496',
         '--vscode-activityBarBadge-background': '#268bd2',
         '--vscode-activityBarBadge-foreground': '#fdf6e3',
 
@@ -416,6 +431,12 @@ export const solarizedDarkTheme: Theme = {
 
         // Icons
         '--vscode-icon-foreground': '#93a1a1',
+
+        // Charts
+        '--vscode-charts-green': '#859900',
+        '--vscode-charts-blue': '#268bd2',
+        '--vscode-charts-purple': '#6c71c4',
+        '--vscode-charts-orange': '#a95a38',
 
         // Widget (overlays, modals)
         '--vscode-widget-shadow': 'rgba(0, 0, 0, 0.5)',
@@ -511,6 +532,7 @@ export const solarizedLightTheme: Theme = {
         // Activity Bar
         '--vscode-activityBar-background': '#eee8d5',
         '--vscode-activityBar-foreground': '#586e75',
+        '--vscode-activityBar-inactiveForeground': '#7b8790',
         '--vscode-activityBarBadge-background': '#268bd2',
         '--vscode-activityBarBadge-foreground': '#fdf6e3',
 
@@ -556,6 +578,12 @@ export const solarizedLightTheme: Theme = {
 
         // Icons
         '--vscode-icon-foreground': '#586e75',
+
+        // Charts
+        '--vscode-charts-green': '#859900',
+        '--vscode-charts-blue': '#268bd2',
+        '--vscode-charts-purple': '#6c71c4',
+        '--vscode-charts-orange': '#b15d39',
 
         // Widget (overlays, modals)
         '--vscode-widget-shadow': 'rgba(0, 0, 0, 0.16)',

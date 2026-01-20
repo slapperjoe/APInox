@@ -1,10 +1,12 @@
+/* eslint-disable react/no-inline-styles, react/jsx-no-inline-styles */
 import React, { useState } from 'react';
+import styled from 'styled-components';
 import { Play, Square, Trash2, Plus, Edit2, ToggleLeft, ToggleRight, Radio, ArrowRight, Circle } from 'lucide-react';
 import { MockConfig, MockRule, MockEvent } from '@shared/models';
-import { HeaderButton, ServiceItem } from './shared/SidebarStyles';
+import { HeaderButton, ServiceItem, SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderTitle } from './shared/SidebarStyles';
 import { MockRuleModal } from '../modals/MockRuleModal';
 
-export interface MockUiProps {
+interface MockUiProps {
     isRunning: boolean;
     config: MockConfig;
     history: MockEvent[];
@@ -22,6 +24,10 @@ export interface MockUiProps {
     onToggleRule: (id: string, enabled: boolean) => void;
     onEditRule?: (rule: MockRule) => void;
 }
+
+const Content = styled(SidebarContent)`
+    color: var(--vscode-descriptionForeground);
+`;
 
 const DEFAULT_CONFIG: MockConfig = {
     enabled: false,
@@ -68,15 +74,15 @@ export const MockUi: React.FC<MockUiProps> = ({
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <div style={{ display: 'flex', borderBottom: '1px solid var(--vscode-sideBarSectionHeader-border)', padding: '5px 10px', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <SidebarContainer>
+            <SidebarHeader>
+                <SidebarHeaderTitle>
                     <Radio size={14} />
                     Dirty Moxy
-                </div>
-            </div>
+                </SidebarHeaderTitle>
+            </SidebarHeader>
 
-            <div style={{ flex: 1, overflowY: 'auto', padding: 10, color: 'var(--vscode-descriptionForeground)' }}>
+            <Content>
                 {/* Controls */}
                 <div style={{ marginBottom: 15, padding: 10, backgroundColor: 'var(--vscode-editor-inactiveSelectionBackground)', borderRadius: 5 }}>
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 5 }}>
@@ -327,7 +333,7 @@ export const MockUi: React.FC<MockUiProps> = ({
                         ))
                     )}
                 </div>
-            </div>
+            </Content>
 
             {/* Mock Rule Modal */}
             <MockRuleModal
@@ -336,6 +342,6 @@ export const MockUi: React.FC<MockUiProps> = ({
                 onClose={() => setRuleModal({ open: false })}
                 onSave={handleSaveRule}
             />
-        </div>
+        </SidebarContainer>
     );
 };

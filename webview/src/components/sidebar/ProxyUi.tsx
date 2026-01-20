@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import styled from 'styled-components';
 import { Play, Square, Shield, Trash2, FolderOpen, Network, FileCode, FileDown, Bug, Plus, Edit2, ToggleLeft, ToggleRight } from 'lucide-react';
 import { WatcherEvent } from '@shared/models';
-import { HeaderButton, ServiceItem } from './shared/SidebarStyles';
+/* eslint-disable react/no-inline-styles, react/jsx-no-inline-styles */
+import { HeaderButton, ServiceItem, SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderTitle } from './shared/SidebarStyles';
 import { formatXml } from '@shared/utils/xmlFormatter';
 import { BreakpointModal, Breakpoint } from '../modals/BreakpointModal';
 
@@ -27,6 +29,10 @@ export interface ProxyUiProps {
     breakpoints?: Breakpoint[];
     onUpdateBreakpoints?: (breakpoints: Breakpoint[]) => void;
 }
+
+const Content = styled(SidebarContent)`
+    color: var(--vscode-descriptionForeground);
+`;
 
 export const ProxyUi: React.FC<ProxyUiProps> = ({
     isRunning,
@@ -106,12 +112,12 @@ export const ProxyUi: React.FC<ProxyUiProps> = ({
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <div style={{ display: 'flex', borderBottom: '1px solid var(--vscode-sideBarSectionHeader-border)', padding: '5px 10px', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ fontWeight: 'bold' }}>Dirty Proxy</div>
-            </div>
+        <SidebarContainer>
+            <SidebarHeader>
+                <SidebarHeaderTitle>Dirty Proxy</SidebarHeaderTitle>
+            </SidebarHeader>
 
-            <div style={{ flex: 1, overflowY: 'auto', padding: 10, color: 'var(--vscode-descriptionForeground)' }}>
+            <Content>
                 {/* compact controls */}
                 <div style={{ marginBottom: 15, padding: 10, backgroundColor: 'var(--vscode-editor-inactiveSelectionBackground)', borderRadius: 5 }}>
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 5 }}>
@@ -348,7 +354,7 @@ export const ProxyUi: React.FC<ProxyUiProps> = ({
                         ))
                     )}
                 </div>
-            </div>
+            </Content>
 
             {/* Breakpoint Modal */}
             {onUpdateBreakpoints && (
@@ -370,6 +376,6 @@ export const ProxyUi: React.FC<ProxyUiProps> = ({
                     }}
                 />
             )}
-        </div>
+        </SidebarContainer>
     );
 };

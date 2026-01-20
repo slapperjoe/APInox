@@ -22,6 +22,8 @@ export enum FrontendCommand {
     GetWatcherHistory = 'getWatcherHistory',
     ClearWatcherHistory = 'clearWatcherHistory',
     SelectConfigFile = 'selectConfigFile',
+    SelectWatcherRequestFile = 'selectWatcherRequestFile',
+    SelectWatcherResponseFile = 'selectWatcherResponseFile',
 
     // Commands
     DownloadWsdl = 'downloadWsdl',
@@ -67,6 +69,7 @@ export enum FrontendCommand {
     // Test Runner
     RunTestSuite = 'runTestSuite',
     RunTestCase = 'runTestCase',
+    GetTestRunUpdates = 'getTestRunUpdates',
     PickOperationForTestCase = 'pickOperationForTestCase',
     UpdateTestStep = 'updateTestStep',
 
@@ -82,6 +85,7 @@ export enum FrontendCommand {
     RunPerformanceSuite = 'runPerformanceSuite',
     AbortPerformanceSuite = 'abortPerformanceSuite',
     GetPerformanceHistory = 'getPerformanceHistory',
+        GetPerformanceRunUpdates = 'getPerformanceRunUpdates',
     ImportTestSuiteToPerformance = 'importTestSuiteToPerformance',
     ExportPerformanceResults = 'exportPerformanceResults',
 
