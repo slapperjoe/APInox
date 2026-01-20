@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { GeneralTab } from './GeneralTab';
 import * as bridge from '../../../utils/bridge';
 
@@ -71,23 +72,37 @@ describe('GeneralTab - Debug Screen', () => {
             <GeneralTab config={mockConfig as any} onChange={mockOnChange} />
         );
 
-        // Wait for the diagnostics section to appear
+        // Wait for the component to mount and useEffect to run
+        await waitFor(() => {
+            expect(bridge.bridge.sendMessageAsync).toHaveBeenCalled();
+        });
+
+        // The diagnostics section should be present (note: &amp; in JSX renders as & in DOM)
         await waitFor(() => {
             expect(screen.getByText('Diagnostics & Debug Information')).toBeInTheDocument();
         });
     });
 
     it('should load and display sidecar logs', async () => {
+        const user = userEvent.setup();
+        
         render(
             <GeneralTab config={mockConfig as any} onChange={mockOnChange} />
         );
 
-        // Wait for logs to load
+        // Wait for the useEffect to complete and logs to be fetched
         await waitFor(() => {
             expect(bridge.bridge.sendMessageAsync).toHaveBeenCalledWith(
                 expect.objectContaining({ command: 'getSidecarLogs' })
             );
         });
+
+        // Open the details element to access inner content
+        const detailsElement = screen.getByText('Diagnostics & Debug Information').closest('details');
+        expect(detailsElement).toBeInTheDocument();
+        if (detailsElement && !detailsElement.open) {
+            await user.click(screen.getByText('Diagnostics & Debug Information'));
+        }
 
         // Check that log count is displayed
         await waitFor(() => {
@@ -96,16 +111,25 @@ describe('GeneralTab - Debug Screen', () => {
     });
 
     it('should display system debug information', async () => {
+        const user = userEvent.setup();
+        
         render(
             <GeneralTab config={mockConfig as any} onChange={mockOnChange} />
         );
 
-        // Wait for debug info to load
+        // Wait for the useEffect to complete and debug info to be fetched
         await waitFor(() => {
             expect(bridge.bridge.sendMessageAsync).toHaveBeenCalledWith(
                 expect.objectContaining({ command: 'getDebugInfo' })
             );
         });
+
+        // Open the details element to access inner content
+        const detailsElement = screen.getByText('Diagnostics & Debug Information').closest('details');
+        expect(detailsElement).toBeInTheDocument();
+        if (detailsElement && !detailsElement.open) {
+            await user.click(screen.getByText('Diagnostics & Debug Information'));
+        }
 
         // Check that debug info section appears
         await waitFor(() => {
@@ -114,6 +138,8 @@ describe('GeneralTab - Debug Screen', () => {
     });
 
     it('should handle fetch errors gracefully', async () => {
+        const user = userEvent.setup();
+        
         // Mock error response
         vi.mocked(bridge.bridge.sendMessageAsync).mockRejectedValue(
             new Error('Sidecar not ready')
@@ -123,7 +149,19 @@ describe('GeneralTab - Debug Screen', () => {
             <GeneralTab config={mockConfig as any} onChange={mockOnChange} />
         );
 
-        // Wait for error message to appear
+        // Wait for the useEffect to complete and error to be set
+        await waitFor(() => {
+            expect(bridge.bridge.sendMessageAsync).toHaveBeenCalled();
+        });
+
+        // Open the details element to access inner content where error is displayed
+        const detailsElement = screen.getByText('Diagnostics & Debug Information').closest('details');
+        expect(detailsElement).toBeInTheDocument();
+        if (detailsElement && !detailsElement.open) {
+            await user.click(screen.getByText('Diagnostics & Debug Information'));
+        }
+
+        // Wait for error message to appear in the DOM
         await waitFor(() => {
             expect(screen.getByText(/⚠️.*Sidecar not ready/)).toBeInTheDocument();
         });
