@@ -575,6 +575,47 @@ export class WebviewController {
                 }
                 break;
 
+            // Debug/Diagnostics Commands
+            case FrontendCommand.GetSidecarLogs:
+                // VS Code mode doesn't have sidecar, return empty
+                this._postMessage({ command: 'sidecarLogsResponse', logs: [] });
+                break;
+
+            case FrontendCommand.ClearSidecarLogs:
+                // VS Code mode doesn't have sidecar, just acknowledge
+                this._postMessage({ command: 'sidecarLogsClearedResponse', cleared: true });
+                break;
+
+            case FrontendCommand.GetDebugInfo:
+                // Collect VS Code extension debug info
+                const debugInfo = {
+                    timestamp: new Date().toISOString(),
+                    mode: 'vscode-extension',
+                    services: {
+                        proxy: {
+                            running: this._proxyService.isActive(),
+                            port: this._proxyService.getConfig().port,
+                        },
+                        mock: {
+                            running: this._mockService.isActive(),
+                            port: this._mockService.getPort(),
+                        },
+                        watcher: {
+                            running: this._fileWatcherService.isActive(),
+                        },
+                        coordinator: {
+                            running: this._coordinatorService.isRunning(),
+                        },
+                    },
+                    config: {
+                        configDir: this._settingsManager.getConfigDir(),
+                        activeEnvironment: this._settingsManager.getConfig().activeEnvironment || 'none',
+                        environments: Object.keys(this._settingsManager.getConfig().environments || {}),
+                    },
+                };
+                this._postMessage({ command: 'debugInfoResponse', debugInfo });
+                break;
+
         }
     }
 
