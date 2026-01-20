@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
-import Editor from '@monaco-editor/react';
-import { X, Save, AlertTriangle, Settings, FileJson, Server, Globe, Replace, Cloud, Network } from 'lucide-react';
+import Editor, { Monaco } from '@monaco-editor/react';
+import { X, AlertTriangle, Settings, FileJson, Server, Globe, Replace, Cloud, Network } from 'lucide-react';
 import { GeneralTab, EnvironmentsTab, GlobalsTab, ReplaceRulesTab, IntegrationsTab, ServerTab, ApinoxConfig, ReplaceRuleSettings } from './settings';
-import { bridge } from '../../utils/bridge';
+import { bridge, isTauri } from '../../utils/bridge';
+import { FrontendCommand } from '@shared/messages';
 import { ServerConfig } from '@shared/models';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const ModalOverlay = styled.div`
     position: fixed;
@@ -46,14 +48,16 @@ const Title = styled.h2`
     text-transform: uppercase;
 `;
 
-const Button = styled.button`
+const IconButton = styled.button`
     background: transparent;
     border: none;
     cursor: pointer;
-    color: var(--vscode-button-foreground);
+    color: var(--vscode-icon-foreground);
     display: flex;
     align-items: center;
+    justify-content: center;
     padding: 4px;
+    border-radius: 4px;
     &:hover {
         background: var(--vscode-toolbar-hoverBackground);
     }
@@ -92,35 +96,12 @@ const ContentContainer = styled.div`
 
 
 
-const ModalFooter = styled.div`
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    padding: 10px 15px;
-    border-top: 1px solid var(--vscode-widget-border);
-    gap: 10px;
-    background: var(--vscode-editor-background);
-`;
-
-const PrimaryButton = styled.button`
-    background: var(--vscode-button-background);
-    color: var(--vscode-button-foreground);
-    border: none;
-    padding: 6px 12px;
-    cursor: pointer;
-    font-size: 12px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    &:hover {
-        background: var(--vscode-button-hoverBackground);
-    }
-`;
+// Save button removed - settings auto-save on tab changes/close
 
 // Types imported from ./settings/SettingsTypes.ts
 
 /** Enum for settings modal tab names */
-export enum SettingsTab {
+enum SettingsTab {
     GUI = 'gui',
     ENVIRONMENTS = 'environments',
     GLOBALS = 'globals',
@@ -138,12 +119,17 @@ interface SettingsEditorModalProps {
 }
 
 export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawConfig, onClose, onSave, initialTab }) => {
+    const { theme } = useTheme();
+    const monacoRef = useRef<Monaco | null>(null);
+    const lastSavedConfigRef = useRef<string>('');
+    const [editorTheme, setEditorTheme] = useState<string>('vs-dark');
     const [activeTab, setActiveTab] = useState<SettingsTab>(
         (initialTab as SettingsTab) || SettingsTab.GUI
     );
     const [jsonContent, setJsonContent] = useState(rawConfig || '{}');
     const [guiConfig, setGuiConfig] = useState<ApinoxConfig>({ version: 1 });
     const [parseError, setParseError] = useState<string | null>(null);
+    const [configLoaded, setConfigLoaded] = useState(false);
 
     // Environments State
     const [selectedEnvKey, setSelectedEnvKey] = useState<string | null>(null);
@@ -161,12 +147,51 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
         passthroughEnabled: true
     });
 
+    const applyEditorTheme = (monacoInstance: Monaco) => {
+        const root = document.documentElement;
+        const getVar = (name: string, fallback: string) => {
+            const value = getComputedStyle(root).getPropertyValue(name).trim();
+            return value || fallback;
+        };
+
+        const isLight = theme.includes('light');
+        const themeId = `apinox-${theme}`;
+
+        monacoInstance.editor.defineTheme(themeId, {
+            base: isLight ? 'vs' : 'vs-dark',
+            inherit: true,
+            rules: [],
+            colors: {
+                'editor.background': getVar('--vscode-editor-background', isLight ? '#ffffff' : '#1e1e1e'),
+                'editor.foreground': getVar('--vscode-editor-foreground', isLight ? '#000000' : '#d4d4d4'),
+                'editor.selectionBackground': getVar('--vscode-editor-selectionBackground', isLight ? '#add6ff' : '#264f78'),
+                'editor.lineHighlightBackground': getVar('--vscode-editor-lineHighlightBackground', 'transparent'),
+                'editorCursor.foreground': getVar('--vscode-editorCursor-foreground', isLight ? '#000000' : '#ffffff'),
+                'editorLineNumber.foreground': getVar('--vscode-editorLineNumber-foreground', isLight ? '#999999' : '#858585'),
+                'editorLineNumber.activeForeground': getVar('--vscode-editorLineNumber-activeForeground', isLight ? '#000000' : '#c6c6c6'),
+                'editorWhitespace.foreground': getVar('--vscode-editorWhitespace-foreground', isLight ? '#d3d3d3' : '#404040')
+            }
+        });
+
+        monacoInstance.editor.setTheme(themeId);
+        setEditorTheme(themeId);
+    };
+
+    useEffect(() => {
+        if (monacoRef.current) {
+            applyEditorTheme(monacoRef.current);
+        }
+    }, [theme]);
+
     // Initial Parse
     useEffect(() => {
         try {
             const parsed = JSON.parse(rawConfig || '{}');
             setGuiConfig(parsed);
             setJsonContent(rawConfig || '{}');
+            lastSavedConfigRef.current = JSON.stringify(parsed);
+            const rawTrimmed = (rawConfig || '').trim();
+            setConfigLoaded(rawTrimmed.length > 0 && rawTrimmed !== '{}');
             // Select active environment by default if available
             if (parsed.activeEnvironment && parsed.environments?.[parsed.activeEnvironment]) {
                 setSelectedEnvKey(parsed.activeEnvironment);
@@ -181,21 +206,67 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
         }
     }, [rawConfig]);
 
+    useEffect(() => {
+        const rawTrimmed = (rawConfig || '').trim();
+        if (!rawTrimmed || rawTrimmed === '{}') {
+            bridge.sendMessageAsync({ command: FrontendCommand.GetSettings })
+                .then((data: any) => {
+                    const raw = data?.raw;
+                    const config = data?.config ?? data;
+                    if (raw && raw.trim().length > 0) {
+                        try {
+                            const parsed = JSON.parse(raw);
+                            setGuiConfig(parsed);
+                            setJsonContent(raw);
+                            lastSavedConfigRef.current = JSON.stringify(parsed);
+                            setConfigLoaded(true);
+                            return;
+                        } catch (e) {
+                            // Fall back to config object below
+                        }
+                    }
+
+                    if (config) {
+                        setGuiConfig(config);
+                        const serialized = JSON.stringify(config, null, 2);
+                        setJsonContent(serialized);
+                        lastSavedConfigRef.current = JSON.stringify(config);
+                        setConfigLoaded(true);
+                    }
+                })
+                .catch(() => {
+                    // ignore
+                });
+        }
+    }, []);
+
     const handleTabSwitch = (tab: SettingsTab) => {
         if (tab === SettingsTab.JSON) {
+            persistGuiConfig(guiConfig);
+            setJsonContent(JSON.stringify(guiConfig, null, 2));
+            setParseError(null);
             setActiveTab(SettingsTab.JSON);
             return;
         }
 
-        // Switch to GUI or Environments: Attempt parse
-        try {
-            const parsed = JSON.parse(jsonContent);
-            setGuiConfig(parsed);
-            setParseError(null);
+        if (activeTab === SettingsTab.JSON) {
+            if (!tryPersistJson()) return;
             setActiveTab(tab);
-        } catch (e) {
-            setParseError(`Cannot switch to ${tab.toUpperCase()}: Invalid JSON syntax.`);
+            return;
         }
+
+        persistGuiConfig(guiConfig);
+        setParseError(null);
+        setActiveTab(tab);
+    };
+
+    const handleClose = () => {
+        if (activeTab === SettingsTab.JSON) {
+            if (!tryPersistJson()) return;
+        } else {
+            persistGuiConfig(guiConfig);
+        }
+        onClose();
     };
 
     const handleGuiChange = (section: keyof ApinoxConfig, key: string, value: any) => {
@@ -313,12 +384,58 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
         setGuiConfig(prev => ({ ...prev, activeEnvironment: key }));
     };
 
-    const handleSave = () => {
-        if (activeTab === 'json') {
-            onSave(jsonContent);
-        } else {
-            onSave('', guiConfig);
+    const persistGuiConfig = (config: ApinoxConfig) => {
+        if (!configLoaded) return;
+        onSave('', config);
+        lastSavedConfigRef.current = JSON.stringify(config);
+    };
+
+    const tryPersistJson = () => {
+        try {
+            const parsed = JSON.parse(jsonContent);
+            setGuiConfig(parsed);
+            setParseError(null);
+            if (!configLoaded) {
+                lastSavedConfigRef.current = JSON.stringify(parsed);
+                return true;
+            }
+            onSave('', parsed);
+            lastSavedConfigRef.current = JSON.stringify(parsed);
+            return true;
+        } catch (e) {
+            setParseError('Cannot save JSON: Invalid syntax.');
+            return false;
         }
+    };
+
+    useEffect(() => {
+        if (!configLoaded) return;
+        if (activeTab === SettingsTab.JSON) return;
+
+        const serialized = JSON.stringify(guiConfig);
+        if (serialized === lastSavedConfigRef.current) return;
+
+        const handle = setTimeout(() => {
+            persistGuiConfig(guiConfig);
+        }, 400);
+
+        return () => clearTimeout(handle);
+    }, [guiConfig, activeTab, configLoaded]);
+
+    const handleSelectConfigFile = async () => {
+        if (isTauri()) {
+            const dialog = await import('@tauri-apps/plugin-dialog');
+            const selected = await dialog.open({
+                multiple: false,
+                filters: [{ name: 'Config Files', extensions: ['config', 'xml'] }]
+            });
+            if (typeof selected === 'string') {
+                setGuiConfig(prev => ({ ...prev, lastConfigPath: selected }));
+            }
+            return;
+        }
+
+        bridge.sendMessage({ command: 'selectConfigFile' });
     };
 
     // environments and globals are managed by tab components via guiConfig prop
@@ -360,12 +477,12 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
 
     return (
         <ModalOverlay onClick={(e) => {
-            if (e.target === e.currentTarget) onClose();
+            if (e.target === e.currentTarget) handleClose();
         }}>
             <ModalContent>
                 <ModalHeader>
                     <Title>Settings</Title>
-                    <Button onClick={onClose}><X size={16} /></Button>
+                    <IconButton onClick={handleClose} title="Close"><X size={16} /></IconButton>
                 </ModalHeader>
 
                 <TabContainer>
@@ -453,7 +570,7 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
                             serverConfig={serverConfig}
                             onServerConfigChange={(updates) => setServerConfig(prev => ({ ...prev, ...updates }))}
                             configPath={guiConfig.lastConfigPath || null}
-                            onSelectConfigFile={() => bridge.sendMessage({ command: 'selectConfigFile' })}
+                            onSelectConfigFile={handleSelectConfigFile}
                             onInjectConfig={() => bridge.sendMessage({
                                 command: 'injectProxy',
                                 path: guiConfig.lastConfigPath,
@@ -477,7 +594,7 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
                             <Editor
                                 height="100%"
                                 language="json"
-                                theme="vs-dark"
+                                theme={editorTheme}
                                 value={jsonContent}
                                 onChange={(val) => setJsonContent(val || '')}
                                 options={{
@@ -486,16 +603,15 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
                                     formatOnPaste: true,
                                     formatOnType: true
                                 }}
+                                onMount={(_editor, monaco) => {
+                                    monacoRef.current = monaco;
+                                    applyEditorTheme(monaco);
+                                }}
                             />
                         </>
                     )}
                 </ContentContainer>
 
-                <ModalFooter>
-                    <PrimaryButton onClick={handleSave}>
-                        <Save size={14} /> Save Settings
-                    </PrimaryButton>
-                </ModalFooter>
             </ModalContent>
         </ModalOverlay>
     );
