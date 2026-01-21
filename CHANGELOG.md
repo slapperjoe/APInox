@@ -1,6 +1,10 @@
 # Changelog
 
 
+## [0.13.0] - 2026-01-21
+### Auto-Generated Changes
+- feat: Major fixes for prod version
+
 ## [0.12.0] - 2026-01-19
 ### Auto-Generated Changes
 - feat: add Tauri dialog plugin and enhance settings management - Added @tauri-apps/plugin-dialog dependency for file selection dialogs. - Enhanced MainContent component to support new configDir state. - Updated SettingsEditorModal to auto-save settings on tab changes and close. - Integrated file watcher configuration in IntegrationsTab with file selection capability. - Improved GeneralTab to display settings location and sidecar status. - Added sample requests for SOAP,REST,and GraphQL in the Samples folder. - Updated UI context and message handling to manage new configDir state. - Refactored various components to improve settings handling and user experience.
