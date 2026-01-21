@@ -114,3 +114,17 @@ body {
   color: var(--vscode-textLink-activeForeground, #3794ff) !important;
   font-style: italic;
 }
+
+/* Theme-specific visibility for title images */
+body.vscode-light .dark-only,
+body[data-theme="light"] .dark-only {
+  display: none !important;
+}
+
+body.vscode-dark .light-only,
+body.vscode-high-contrast .light-only,
+body.vscode-high-contrast-light .light-only,
+body[data-theme="dark"] .light-only,
+body[data-theme="high-contrast"] .light-only {
+  display: none !important;
+}

@@ -18,8 +18,6 @@ import {
 import { ProxyRulesEditor } from './ProxyRulesEditor';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { useUI } from '../../../contexts/UIContext';
-import { bridge } from '../../../utils/bridge';
-import { FrontendCommand } from '@shared/messages';
 
 interface GeneralTabProps {
     config: ApinoxConfig;

@@ -595,7 +595,7 @@ export function useMessageHandler(state: MessageHandlerState) {
                     break;
 
                 case BackendCommand.Changelog:
-                    debugLog('changelog received');
+                    debugLog('changelog received', { length: message.content?.length });
                     setChangelog(message.content);
                     break;
 

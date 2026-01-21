@@ -758,11 +758,27 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             try {
                 const fs = require('fs');
                 const path = require('path');
-                // Changelog is in project root, navigate up from sidecar/dist/sidecar/src
-                const changelogPath = path.join(__dirname, '../../../../CHANGELOG.md');
-                if (fs.existsSync(changelogPath)) {
-                    result.changelog = fs.readFileSync(changelogPath, 'utf8');
-                    console.log('[Sidecar] Changelog loaded');
+                
+                // In development: navigate up from sidecar/dist/sidecar/src
+                // In production: try multiple possible locations
+                const possiblePaths = [
+                    path.join(__dirname, '../../../../CHANGELOG.md'), // Dev mode
+                    path.join(__dirname, '../../../CHANGELOG.md'), // Bundled sidecar
+                    path.join(__dirname, '../../CHANGELOG.md'), // Alternative bundled location
+                    path.join(__dirname, 'CHANGELOG.md'), // Same directory as sidecar
+                ];
+                
+                for (const testPath of possiblePaths) {
+                    if (fs.existsSync(testPath)) {
+                        const content = fs.readFileSync(testPath, 'utf8');
+                        result.changelog = content;
+                        console.log('[Sidecar] Changelog loaded from:', testPath, 'length:', content.length);
+                        break;
+                    }
+                }
+                
+                if (!result.changelog) {
+                    console.warn('[Sidecar] Changelog file not found in any expected location');
                 }
             } catch (e) {
                 console.error('[Sidecar] Failed to load changelog:', e);

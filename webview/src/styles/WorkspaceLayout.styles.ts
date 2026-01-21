@@ -15,15 +15,12 @@ export const Mascot = styled.img`
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 100vw;
-    height: 100vh;
-    object-fit: contain;
-    opacity: 0.15;
+    max-width: 800px;
+    width: 60vw;
+    opacity: 0.08;
     pointer-events: none;
-    z-index: 0;
-    mix-blend-mode: color-burn;
-    
-    display: none !important; /* DEBUGGING: Forced hidden */
+    z-index: -1;
+    filter: grayscale(0.3);
 `;
 
 export const EmptyStateImage = styled.img`
@@ -38,8 +35,6 @@ export const EmptyStateImage = styled.img`
     pointer-events: none;
     z-index: 0;
     mix-blend-mode: color-burn;
-
-    display: none !important; /* DEBUGGING: Forced hidden */
 `;
 
 export const Content = styled.div`
