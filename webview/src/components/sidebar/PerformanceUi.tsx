@@ -178,7 +178,8 @@ export const PerformanceUi: React.FC<SidebarPerformanceProps> = ({
 
     const handleCreateSuite = () => {
         setIsAdding(true);
-        setNewSuiteName('');
+        const suggestedName = `Performance Suite ${suites.length + 1}`;
+        setNewSuiteName(suggestedName);
     };
 
     const submitCreateSuite = () => {

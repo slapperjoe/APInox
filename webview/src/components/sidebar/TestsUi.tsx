@@ -160,9 +160,24 @@ const StepName = styled.span`
     white-space: nowrap;
 `;
 
+const AddSuiteRow = styled.div`
+    padding: 8px;
+`;
+
+const AddSuiteInput = styled.input`
+    background-color: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    border: 1px solid var(--vscode-input-border);
+    padding: 4px;
+    width: 100%;
+    &:focus {
+        outline: 1px solid var(--vscode-focusBorder);
+    }
+`;
+
 export interface TestsUiProps {
     projects: ApinoxProject[];
-    onAddSuite: (projectName: string) => void;
+    onAddSuite: (projectName: string, suiteName?: string) => void;
     onDeleteSuite: (suiteId: string) => void;
     onRunSuite: (suiteId: string) => void;
     onAddTestCase: (suiteId: string) => void;
@@ -244,6 +259,11 @@ export const TestsUi: React.FC<TestsUiProps> = ({
     const [renameType, setRenameType] = useState<'case' | 'step' | 'suite' | null>(null);
     const [renameParentId, setRenameParentId] = useState<string | null>(null);
     const [renameName, setRenameName] = useState<string>('');
+    
+    // New suite creation state
+    const [isAddingSuite, setIsAddingSuite] = useState(false);
+    const [newSuiteName, setNewSuiteName] = useState('');
+    const [newSuiteProjectName, setNewSuiteProjectName] = useState('');
 
     // Context menu state
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; caseId: string; stepId?: string; name: string; type: 'case' | 'step' } | null>(null);
@@ -292,6 +312,37 @@ export const TestsUi: React.FC<TestsUiProps> = ({
         setRenameName('');
     };
 
+    // New suite creation handlers
+    const handleProjectSelect = (projectName: string) => {
+        const project = projects.find(p => p.name === projectName);
+        if (!project) return;
+        
+        const suggestedName = `TestSuite ${((project.testSuites || []).length + 1)}`;
+        setNewSuiteProjectName(projectName);
+        setNewSuiteName(suggestedName);
+        setIsAddingSuite(true);
+        setShowAddSuiteMenu(false);
+    };
+
+    const submitNewSuite = () => {
+        if (newSuiteName.trim() && newSuiteProjectName) {
+            onAddSuite(newSuiteProjectName, newSuiteName.trim());
+            setIsAddingSuite(false);
+            setNewSuiteName('');
+            setNewSuiteProjectName('');
+        } else {
+            setIsAddingSuite(false);
+            setNewSuiteName('');
+            setNewSuiteProjectName('');
+        }
+    };
+
+    const cancelNewSuite = () => {
+        setIsAddingSuite(false);
+        setNewSuiteName('');
+        setNewSuiteProjectName('');
+    };
+
     // Aggregate all test suites from all projects
     const allSuites: FlatSuite[] = projects.flatMap(p =>
         (p.testSuites || []).map(suite => ({ suite, projectName: p.name }))
@@ -332,8 +383,7 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                                                 key={p.name}
                                                 onClick={() => {
                                                     if (p.readOnly) return; // Disable for read-only projects
-                                                    onAddSuite(p.name);
-                                                    setShowAddSuiteMenu(false);
+                                                    handleProjectSelect(p.name);
                                                 }}
                                                 $disabled={p.readOnly}
                                                 title={p.readOnly ? 'Workspace is read-only; cannot add suites.' : undefined}
@@ -350,6 +400,23 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                 </SidebarHeader>
 
                 <TestsContent>
+
+                    {/* Inline Suite Name Input */}
+                    {isAddingSuite && (
+                        <AddSuiteRow>
+                            <AddSuiteInput
+                                autoFocus
+                                placeholder="Suite Name"
+                                value={newSuiteName}
+                                onChange={e => setNewSuiteName(e.target.value)}
+                                onBlur={submitNewSuite}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') submitNewSuite();
+                                    if (e.key === 'Escape') cancelNewSuite();
+                                }}
+                            />
+                        </AddSuiteRow>
+                    )}
 
                     {/* Empty State */}
                     {allSuites.length === 0 && (
