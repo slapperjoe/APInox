@@ -63,14 +63,16 @@
     "version-bump-major": "node scripts/bump.js major",
     "version-bump-minor": "node scripts/bump.js minor",
     "version-bump-patch": "node scripts/bump.js patch",
+    "sync-version": "node sync-version.js",
     "prepare": "npx simple-git-hooks",
     "build-cli": "tsc -p ./ && chmod +x ./out/src/cli/index.js 2>/dev/null || true",
     "cli": "node ./out/src/cli/index.js",
     "build-binary": "npm run compile && pkg ./out/src/cli/index.js --targets node18-win-x64,node18-macos-x64,node18-linux-x64 --out-path ./bin",
     "build-binary-win": "npm run compile && pkg ./out/src/cli/index.js --targets node18-win-x64 --out-path ./bin",
     "build:sidecar": "cd sidecar && npm run build",
+    "prepare:sidecar": "cd sidecar && npm run bundle && cd .. && node prepare-sidecar-bundle.js",
     "tauri:dev": "npm run build:sidecar && npx tauri dev",
-    "tauri:build": "npm run build:sidecar && npx tauri build"
+    "tauri:build": "npm run sync-version && npm run prepare:sidecar && npx tauri build"
   },
   "pkg": {
     "scripts": [

@@ -26,7 +26,7 @@ interface UseSidebarCallbacksParams {
 }
 
 interface UseSidebarCallbacksReturn {
-    handleAddSuite: (projName: string) => void;
+    handleAddSuite: (projName: string, suiteName?: string) => void;
     handleDeleteSuite: (suiteId: string) => void;
     handleToggleSuiteExpand: (suiteId: string) => void;
     handleToggleCaseExpand: (caseId: string) => void;
@@ -62,7 +62,7 @@ export function useSidebarCallbacks({
     config
 }: UseSidebarCallbacksParams): UseSidebarCallbacksReturn {
 
-    const handleAddSuite = useCallback((projName: string) => {
+    const handleAddSuite = useCallback((projName: string, suiteName?: string) => {
         const project = projects.find(p => p.name === projName);
         if (!project) return;
 
@@ -72,9 +72,10 @@ export function useSidebarCallbacks({
             return;
         }
 
+        const name = suiteName || `TestSuite ${((project.testSuites || []).length + 1)}`;
         const newSuite: TestSuite = {
             id: `suite-${Date.now()}`,
-            name: `TestSuite ${((project.testSuites || []).length + 1)}`,
+            name,
             testCases: [],
             expanded: true
         };

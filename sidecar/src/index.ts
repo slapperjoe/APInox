@@ -53,26 +53,57 @@ console.warn = (...args: any[]) => {
 
 // Parse command-line arguments for config dir
 const args = process.argv.slice(2);
+console.log('[Sidecar] ========== STARTUP ==========');
+console.log('[Sidecar] Node.js version:', process.version);
+console.log('[Sidecar] Platform:', process.platform);
+console.log('[Sidecar] Architecture:', process.arch);
+console.log('[Sidecar] Process ID:', process.pid);
+console.log('[Sidecar] Current working directory:', process.cwd());
+console.log('[Sidecar] Command-line arguments:', args);
+
 const configDirIndex = args.indexOf('--config-dir');
 if (configDirIndex !== -1 && args[configDirIndex + 1]) {
     const configDir = args[configDirIndex + 1];
     process.env.APINOX_CONFIG_DIR = configDir;
     console.log(`[Sidecar] Config dir from CLI arg: ${configDir}`);
 } else {
-    console.log('[Sidecar] No --config-dir argument provided');
+    console.warn('[Sidecar] WARNING: No --config-dir argument provided');
+    console.warn('[Sidecar] Checking environment variable APINOX_CONFIG_DIR...');
+    if (process.env.APINOX_CONFIG_DIR) {
+        console.log('[Sidecar] Found APINOX_CONFIG_DIR in environment:', process.env.APINOX_CONFIG_DIR);
+    } else {
+        console.error('[Sidecar] ERROR: No config directory specified!');
+    }
 }
 
 const app = express();
+
+console.log('[Sidecar] Initializing Express application...');
 
 // Middleware
 app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '50mb' }));
 
-// Initialize services
-const services = new ServiceContainer();
+console.log('[Sidecar] Middleware configured');
 
-// Create command router
-const commandRouter = createCommandRouter(services);
+// Initialize services
+console.log('[Sidecar] Initializing service container...');
+let services: ServiceContainer;
+let commandRouter: any;
+
+try {
+    services = new ServiceContainer();
+    console.log('[Sidecar] Service container initialized successfully');
+    
+    // Create command router
+    console.log('[Sidecar] Creating command router...');
+    commandRouter = createCommandRouter(services);
+    console.log('[Sidecar] Command router created');
+} catch (error: any) {
+    console.error('[Sidecar] FATAL: Failed to initialize services:', error.message);
+    console.error('[Sidecar] Stack trace:', error.stack);
+    process.exit(1);
+}
 
 // Health check
 app.get('/health', (_req: Request, res: Response) => {
@@ -83,7 +114,13 @@ app.get('/health', (_req: Request, res: Response) => {
 app.get('/debug', (_req: Request, res: Response) => {
     res.json({
         message: 'Sidecar is running',
-        configDir: services.settingsManager?.getConfigDir() || 'error'
+        configDir: services.settingsManager?.getConfigDir() || 'error',
+        nodeVersion: process.version,
+        platform: process.platform,
+        arch: process.arch,
+        pid: process.pid,
+        uptime: process.uptime(),
+        memoryUsage: process.memoryUsage()
     });
 });
 
@@ -127,13 +164,32 @@ app.post('/command', async (req: Request, res: Response) => {
 });
 
 // Start server on random available port
+console.log('[Sidecar] Starting HTTP server...');
+console.log('[Sidecar] Binding to: 127.0.0.1:0 (random port)');
+
 const server = app.listen(0, '127.0.0.1', () => {
     const address = server.address();
     const port = typeof address === 'object' ? address?.port : 0;
 
+    console.log('[Sidecar] ========================================');
+    console.log('[Sidecar] ✓ HTTP SERVER STARTED SUCCESSFULLY');
+    console.log('[Sidecar] ========================================');
+    
     // Output port for Tauri to read from stdout
     console.log(`SIDECAR_PORT:${port}`);
     console.log(`[Sidecar] APInox sidecar running on http://127.0.0.1:${port}`);
+    console.log(`[Sidecar] Health check: http://127.0.0.1:${port}/health`);
+    console.log(`[Sidecar] Debug info: http://127.0.0.1:${port}/debug`);
+    console.log(`[Sidecar] Logs: http://127.0.0.1:${port}/logs`);
+    console.log('[Sidecar] ========================================');
+});
+
+// Handle server errors
+server.on('error', (error: any) => {
+    console.error('[Sidecar] FATAL: Server error:', error.message);
+    console.error('[Sidecar] Error code:', error.code);
+    console.error('[Sidecar] Stack trace:', error.stack);
+    process.exit(1);
 });
 
 // Graceful shutdown
@@ -150,4 +206,21 @@ process.on('SIGINT', () => {
     console.log('[Sidecar] Interrupted, shutting down...');
     services.dispose();
     server.close(() => process.exit(0));
+});
+
+// Catch unhandled exceptions
+process.on('uncaughtException', (error: Error) => {
+    console.error('[Sidecar] FATAL: Uncaught exception:', error.message);
+    console.error('[Sidecar] Stack trace:', error.stack);
+    process.exit(1);
+});
+
+// Catch unhandled promise rejections
+process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
+    console.error('[Sidecar] FATAL: Unhandled promise rejection:', reason);
+    console.error('[Sidecar] Promise:', promise);
+    if (reason?.stack) {
+        console.error('[Sidecar] Stack trace:', reason.stack);
+    }
+    process.exit(1);
 });
