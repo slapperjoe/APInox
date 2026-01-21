@@ -5,6 +5,9 @@ import './index.css'
 import { ErrorBoundary } from './components/ErrorBoundary';
 import 'monaco-editor/min/vs/editor/editor.main.css';
 
+// Set document title with version
+declare const __APP_VERSION__: string;
+document.title = `APInox v${__APP_VERSION__}`;
 
 // DEBUG: verify JS execution and event blocking
 window.addEventListener('load', () => {

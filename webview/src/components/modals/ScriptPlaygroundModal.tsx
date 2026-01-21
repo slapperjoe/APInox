@@ -133,6 +133,24 @@ const RunButton = styled.button`
     &:disabled { opacity: 0.5; cursor: not-allowed; }
 `;
 
+const ApplyButton = styled.button`
+    background: var(--vscode-button-secondaryBackground, var(--vscode-button-background));
+    color: var(--vscode-button-secondaryForeground, var(--vscode-button-foreground));
+    border: 1px solid var(--vscode-button-border, transparent);
+    padding: 8px 16px;
+    border-radius: 2px;
+    cursor: pointer;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    &:hover { 
+        background: var(--vscode-button-secondaryHoverBackground, var(--vscode-button-hoverBackground)); 
+    }
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+`;
+
 const OutputConsole = styled.div`
     flex: 1;
     background: var(--vscode-terminal-background, #1e1e1e);
@@ -191,9 +209,10 @@ interface ScriptPlaygroundModalProps {
     onClose: () => void;
     initialScript: string;
     scriptType: 'assertion' | 'step';
+    onApplyScript?: (script: string) => void;
 }
 
-export const ScriptPlaygroundModal: React.FC<ScriptPlaygroundModalProps> = ({ onClose, initialScript, scriptType }) => {
+export const ScriptPlaygroundModal: React.FC<ScriptPlaygroundModalProps> = ({ onClose, initialScript, scriptType, onApplyScript }) => {
     const [script, setScript] = useState(initialScript);
     const [responseBody, setResponseBody] = useState('<root>Hello World</root>');
     const [statusCode, setStatusCode] = useState(200);
@@ -491,6 +510,17 @@ export const ScriptPlaygroundModal: React.FC<ScriptPlaygroundModalProps> = ({ on
 
                 </Content>
                 <Footer>
+                    {onApplyScript && (
+                        <ApplyButton 
+                            onClick={() => {
+                                onApplyScript(script);
+                                onClose();
+                            }}
+                            title="Copy script to original editor and close playground"
+                        >
+                            Apply to Script
+                        </ApplyButton>
+                    )}
                     <RunButton onClick={handleRun} disabled={isRunning}>
                         {isRunning ? <Loader2 className="spin" size={16} /> : <Play size={16} />}
                         Run Script

@@ -228,6 +228,9 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ step, onUpdate, isRe
                     scriptType="step"
                     initialScript={scriptContent}
                     onClose={() => setShowPlayground(false)}
+                    onApplyScript={(newScript) => {
+                        setScriptContent(newScript);
+                    }}
                 />
             )}
         </div>
