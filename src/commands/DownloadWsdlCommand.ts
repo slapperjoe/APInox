@@ -4,8 +4,9 @@ import { SoapClient } from '../soapClient';
 import * as vscode from 'vscode'; // Used for global config fallback
 import * as fs from 'fs';
 import * as path from 'path';
-import axios from 'axios';
 import { SettingsManager } from '../utils/SettingsManager';
+import * as https from 'https';
+import * as http from 'http';
 
 
 export class DownloadWsdlCommand implements ICommand {
@@ -70,32 +71,34 @@ export class DownloadWsdlCommand implements ICommand {
                 strictSSL = httpConfig.get<boolean>('proxyStrictSSL', true);
             }
 
-            const axiosConfig: any = { responseType: 'text', proxy: false };
+            const fetchOptions: RequestInit & { agent?: any } = {};
             const agentOptions = { rejectUnauthorized: strictSSL };
 
             if (proxyUrl) {
                 const { HttpsProxyAgent } = require('https-proxy-agent');
                 const { HttpProxyAgent } = require('http-proxy-agent');
 
-                // Determine agent based on Target URL protocol, but using Proxy
+                // Determine agent based on Target URL protocol
                 if (url.toLowerCase().startsWith('https')) {
                     const agent = new HttpsProxyAgent(proxyUrl, agentOptions);
-                    axiosConfig.httpsAgent = agent;
-                    axiosConfig.httpAgent = agent;
+                    (fetchOptions as any).agent = agent;
                 } else {
                     const agent = new HttpProxyAgent(proxyUrl);
-                    axiosConfig.httpAgent = agent;
-                    axiosConfig.httpsAgent = agent;
+                    (fetchOptions as any).agent = agent;
                 }
             } else {
-                if (!strictSSL) {
-                    axiosConfig.httpsAgent = new (require('https').Agent)(agentOptions);
+                if (!strictSSL && url.toLowerCase().startsWith('https')) {
+                    (fetchOptions as any).agent = new https.Agent(agentOptions);
                 }
             }
 
-            const response = await axios.get(url, axiosConfig);
+            const response = await fetch(url, fetchOptions);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
 
-            const content = response.data;
+            const content = await response.text();
             const filename = forcedFilename || path.basename(url).split('?')[0] || 'service.wsdl';
             const localPath = path.join(destDir, filename);
 

@@ -10,17 +10,17 @@ import { ChevronLeft } from 'lucide-react';
 
 
 
-export const Mascot = styled.img`
+export const Logo = styled.img`
     position: fixed;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     max-width: 800px;
     width: 60vw;
-    opacity: 0.08;
+    opacity: 0.15;
     pointer-events: none;
-    z-index: -1;
-    filter: grayscale(0.3);
+    z-index: 0;
+    filter: grayscale(0.4);
 `;
 
 export const EmptyStateImage = styled.img`

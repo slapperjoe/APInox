@@ -42,7 +42,7 @@ fn get_sidecar_diagnostics() -> serde_json::Value {
             .ok()
             .and_then(|guard| guard.as_ref().map(|_| true))
             .unwrap_or(false),
-        "nodeCheck": check_node_availability(),
+        "binaryInfo": get_sidecar_binary_info(),
         "startupError": STARTUP_ERROR.lock().ok().and_then(|err| err.clone()),
         "logFilePath": LOG_FILE_PATH.lock().ok().and_then(|path| path.clone())
     })
@@ -69,22 +69,14 @@ fn get_tauri_logs(lines: Option<usize>) -> Result<Vec<String>, String> {
     Ok(result)
 }
 
-fn check_node_availability() -> serde_json::Value {
-    match std::process::Command::new("node").arg("--version").output() {
-        Ok(output) => {
-            let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            serde_json::json!({
-                "available": true,
-                "version": version
-            })
-        }
-        Err(e) => {
-            serde_json::json!({
-                "available": false,
-                "error": e.to_string()
-            })
-        }
-    }
+fn get_sidecar_binary_info() -> serde_json::Value {
+    // Since we're using a standalone binary with embedded Node.js v18.5.0,
+    // we no longer need to check for Node.js installation
+    serde_json::json!({
+        "type": "standalone",
+        "embeddedNodeVersion": "v18.5.0",
+        "description": "Standalone binary with embedded Node.js runtime"
+    })
 }
 
 /// Spawn the Node.js sidecar process
@@ -194,6 +186,15 @@ fn spawn_sidecar(app_handle: &tauri::AppHandle) -> Result<(), String> {
             #[cfg(not(windows))]
             let binary_name = "sidecar";
             
+            // Check 1: Direct binary in current directory (Tauri bundle - externalBin places it here)
+            let direct_binary = cursor.join(binary_name);
+            log::info!("  [Depth {}] Checking direct binary: {:?}", depth, direct_binary);
+            if direct_binary.exists() {
+                log::info!("  ✓ Found direct sidecar binary (Tauri bundle) at: {:?}", direct_binary);
+                return Some((direct_binary, cursor, true)); // true = standalone binary
+            }
+            
+            // Check 2: Binary in sidecar-bundle subdirectory (pre-Tauri build)
             let bundled_binary = cursor.join("sidecar-bundle").join(binary_name);
             log::info!("  [Depth {}] Checking bundled binary: {:?}", depth, bundled_binary);
             if bundled_binary.exists() {
@@ -201,7 +202,7 @@ fn spawn_sidecar(app_handle: &tauri::AppHandle) -> Result<(), String> {
                 return Some((bundled_binary, cursor, true)); // true = standalone binary
             }
             
-            // Check for bundled JS (production - requires Node.js)
+            // Check 3: Bundled JS (production - requires Node.js)
             let bundled = cursor.join("sidecar-bundle").join("bundle.js");
             log::info!("  [Depth {}] Checking bundled JS: {:?}", depth, bundled);
             if bundled.exists() {

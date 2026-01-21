@@ -9,7 +9,7 @@
   },
   "icon": "images/APInox_logo_dark.jpg",
   "license": "MIT",
-  "version": "0.13.2",
+  "version": "0.13.3",
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -70,7 +70,7 @@
     "build-binary": "npm run compile && pkg ./out/src/cli/index.js --targets node18-win-x64,node18-macos-x64,node18-linux-x64 --out-path ./bin",
     "build-binary-win": "npm run compile && pkg ./out/src/cli/index.js --targets node18-win-x64 --out-path ./bin",
     "build:sidecar": "cd sidecar && npm run build",
-    "prepare:sidecar": "cd sidecar && npm run bundle && cd .. && node prepare-sidecar-bundle.js",
+    "prepare:sidecar": "cd sidecar && npm run binary && cd .. && node prepare-sidecar-binary.js",
     "tauri:dev": "npm run build:sidecar && npx tauri dev",
     "tauri:build": "npm run sync-version && npm run prepare:sidecar && npx tauri build"
   },
@@ -122,7 +122,6 @@
     "@tauri-apps/plugin-shell": "^2.3.4",
     "@tauri-apps/plugin-store": "^2.4.2",
     "@types/node-cron": "^3.0.11",
-    "axios": "^1.13.2",
     "chalk": "^4.1.2",
     "cli-table3": "^0.6.5",
     "commander": "^14.0.2",

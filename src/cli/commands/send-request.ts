@@ -7,7 +7,7 @@
 import * as fs from 'fs';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const chalk = require('chalk');
-import axios from 'axios';
+import * as NativeHttpClient from '../../utils/NativeHttpClient';
 
 interface SendRequestOptions {
     endpoint: string;
@@ -53,11 +53,9 @@ export async function sendRequestCommand(options: SendRequestOptions): Promise<v
 
         const startTime = Date.now();
 
-        const response = await axios.post(endpoint, requestBody, {
+        const response = await NativeHttpClient.post(endpoint, requestBody, {
             headers,
-            timeout: 30000,
-            validateStatus: () => true,
-            responseType: 'text'
+            timeout: 30000
         });
 
         const duration = Date.now() - startTime;

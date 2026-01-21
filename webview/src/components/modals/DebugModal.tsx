@@ -242,8 +242,9 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
             if (sidecarDiagnostics) {
                 lines.push('');
                 lines.push('--- Sidecar Diagnostics ---');
-                if (sidecarDiagnostics.nodeCheck) {
-                    lines.push(`Node.js: ${sidecarDiagnostics.nodeCheck.available ? `✓ ${sidecarDiagnostics.nodeCheck.version}` : `✗ Not found (${sidecarDiagnostics.nodeCheck.error})`}`);
+                if (sidecarDiagnostics.binaryInfo) {
+                    lines.push(`Binary Type: ${sidecarDiagnostics.binaryInfo.type} (${sidecarDiagnostics.binaryInfo.embeddedNodeVersion})`);
+                    lines.push(`Description: ${sidecarDiagnostics.binaryInfo.description}`);
                 }
                 if (sidecarDiagnostics.processRunning !== undefined) {
                     lines.push(`Sidecar Process: ${sidecarDiagnostics.processRunning ? '✓ Running' : '✗ Not Running'}`);
@@ -260,7 +261,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
             if (debugEndpointInfo) {
                 lines.push('');
                 lines.push('--- Sidecar Runtime Info ---');
-                if (debugEndpointInfo.nodeVersion) lines.push(`Node Version: ${debugEndpointInfo.nodeVersion}`);
+                if (debugEndpointInfo.nodeVersion) lines.push(`Embedded Node.js: ${debugEndpointInfo.nodeVersion}`);
                 if (debugEndpointInfo.platform) lines.push(`Platform: ${debugEndpointInfo.platform} (${debugEndpointInfo.arch})`);
                 if (debugEndpointInfo.pid) lines.push(`Process ID: ${debugEndpointInfo.pid}`);
                 if (debugEndpointInfo.uptime !== undefined) lines.push(`Uptime: ${Math.floor(debugEndpointInfo.uptime)}s`);
@@ -525,15 +526,12 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                             </div>
                         )}
                         
-                        {/* Node.js Check */}
-                        {sidecarDiagnostics?.nodeCheck && (
+                        {/* Standalone Binary Info */}
+                        {sidecarDiagnostics?.binaryInfo && (
                             <div>
-                                <span style={{ opacity: 0.7 }}>Node.js:</span>{' '}
-                                <span style={{ color: sidecarDiagnostics.nodeCheck.available ? 'var(--vscode-testing-iconPassed)' : 'var(--vscode-editorError-foreground)' }}>
-                                    {sidecarDiagnostics.nodeCheck.available 
-                                        ? `✓ ${sidecarDiagnostics.nodeCheck.version}`
-                                        : `✗ Not found (${sidecarDiagnostics.nodeCheck.error})`
-                                    }
+                                <span style={{ opacity: 0.7 }}>Binary Type:</span>{' '}
+                                <span style={{ color: 'var(--vscode-testing-iconPassed)' }}>
+                                    ✓ Standalone ({sidecarDiagnostics.binaryInfo.embeddedNodeVersion})
                                 </span>
                             </div>
                         )}
@@ -576,7 +574,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                                 </div>
                                 {debugEndpointInfo.nodeVersion && (
                                     <div style={{ paddingLeft: '12px' }}>
-                                        <span style={{ opacity: 0.7 }}>Node Version:</span>{' '}
+                                        <span style={{ opacity: 0.7 }}>Embedded Node.js:</span>{' '}
                                         <span>{debugEndpointInfo.nodeVersion}</span>
                                     </div>
                                 )}
@@ -621,17 +619,13 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                                 </div>
                                 <div style={{ marginBottom: '6px' }}>Possible causes:</div>
                                 <ul style={{ margin: '4px 0', paddingLeft: '20px', lineHeight: '1.6' }}>
-                                    {!sidecarDiagnostics?.nodeCheck?.available && (
-                                        <li style={{ color: 'var(--vscode-editorError-foreground)' }}>
-                                            <strong>Node.js not found</strong> - Install Node.js and ensure it's in your PATH
-                                        </li>
+                                    {!sidecarDiagnostics?.processRunning && (
+                                        <li>Standalone binary failed to start - Check logs below for errors</li>
                                     )}
-                                    {!sidecarDiagnostics?.processRunning && sidecarDiagnostics?.nodeCheck?.available && (
-                                        <li>Sidecar process failed to start - Check logs below for errors</li>
-                                    )}
-                                    <li>Sidecar not built - Run: <code style={{ background: 'var(--vscode-textCodeBlock-background)', padding: '2px 4px' }}>npm run build:sidecar</code></li>
+                                    <li>Standalone binary not built - Run: <code style={{ background: 'var(--vscode-textCodeBlock-background)', padding: '2px 4px' }}>npm run tauri:build</code></li>
                                     <li>Port conflict or firewall blocking localhost</li>
                                     <li>Permissions issue with config directory</li>
+                                    <li>Binary corrupted or wrong architecture</li>
                                 </ul>
                                 <div style={{ marginTop: '8px', fontSize: '0.95em' }}>
                                     📋 Check <strong>Sidecar Logs</strong> tab below for detailed error messages

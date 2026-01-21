@@ -5,8 +5,8 @@
  * Handles PAT storage, project listing, and work item comments.
  */
 
-import axios from 'axios';
 import { ISecretStorage } from '../interfaces';
+import * as NativeHttpClient from '../utils/NativeHttpClient';
 
 const SECRET_KEY = 'dirtysoap.azuredevops.pat';
 
@@ -80,25 +80,28 @@ export class AzureDevOpsService {
         const url = `${baseUrl}/_apis/projects?api-version=7.0`;
 
         try {
-            const response = await axios.get(url, {
+            const response = await NativeHttpClient.get(url, {
                 headers: {
                     'Authorization': this.getAuthHeader(pat),
                     'Accept': 'application/json'
                 }
             });
 
-            return (response.data.value || []).map((p: any) => ({
+            const data = JSON.parse(response.data);
+            return (data.value || []).map((p: any) => ({
                 id: p.id,
                 name: p.name,
                 description: p.description,
                 url: p.url
             }));
         } catch (error: any) {
-            if (error.response?.status === 401) {
-                throw new Error('Authentication failed. Please check your PAT.');
-            }
-            if (error.response?.status === 404) {
-                throw new Error('Organization not found. Please check the URL.');
+            if (error instanceof NativeHttpClient.HttpError) {
+                if (error.status === 401) {
+                    throw new Error('Authentication failed. Please check your PAT.');
+                }
+                if (error.status === 404) {
+                    throw new Error('Organization not found. Please check the URL.');
+                }
             }
             throw new Error(`Failed to fetch projects: ${error.message}`);
         }
@@ -140,30 +143,29 @@ export class AzureDevOpsService {
         const url = `${baseUrl}/${encodeURIComponent(project)}/_apis/wit/workItems/${workItemId}/comments?api-version=7.0-preview.3`;
 
         try {
-            await axios.post(url,
-                { text },
-                {
-                    headers: {
-                        'Authorization': this.getAuthHeader(pat),
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    }
+            await NativeHttpClient.post(url, JSON.stringify({ text }), {
+                headers: {
+                    'Authorization': this.getAuthHeader(pat),
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
                 }
-            );
+            });
 
             return {
                 success: true,
                 message: `Comment added to work item #${workItemId}`
             };
         } catch (error: any) {
-            if (error.response?.status === 401) {
-                return { success: false, message: 'Authentication failed. Please check your PAT.' };
-            }
-            if (error.response?.status === 404) {
-                return { success: false, message: `Work item #${workItemId} not found.` };
-            }
-            if (error.response?.status === 403) {
-                return { success: false, message: 'Access denied. PAT may lack Work Items (Write) permission.' };
+            if (error instanceof NativeHttpClient.HttpError) {
+                if (error.status === 401) {
+                    return { success: false, message: 'Authentication failed. Please check your PAT.' };
+                }
+                if (error.status === 404) {
+                    return { success: false, message: `Work item #${workItemId} not found.` };
+                }
+                if (error.status === 403) {
+                    return { success: false, message: 'Access denied. PAT may lack Work Items (Write) permission.' };
+                }
             }
             return { success: false, message: `Failed to add comment: ${error.message}` };
         }

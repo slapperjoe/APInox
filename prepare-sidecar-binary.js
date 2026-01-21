@@ -10,13 +10,17 @@ const platform = os.platform();
 const arch = os.arch();
 
 let binaryName;
+let tauriTriple; // Tauri target triple
+
 if (platform === 'darwin') {
-    // macOS - check architecture
-    binaryName = arch === 'arm64' ? 'sidecar-bin-macos-arm64' : 'sidecar-bin-macos-x64';
+    binaryName = 'apinox-sidecar';
+    tauriTriple = arch === 'arm64' ? 'aarch64-apple-darwin' : 'x86_64-apple-darwin';
 } else if (platform === 'win32') {
-    binaryName = 'sidecar-bin-win-x64.exe';
+    binaryName = 'apinox-sidecar.exe';
+    tauriTriple = 'x86_64-pc-windows-msvc';
 } else if (platform === 'linux') {
-    binaryName = 'sidecar-bin-linux-x64';
+    binaryName = 'apinox-sidecar';
+    tauriTriple = arch === 'arm64' ? 'aarch64-unknown-linux-gnu' : 'x86_64-unknown-linux-gnu';
 } else {
     console.error(`Unsupported platform: ${platform}`);
     process.exit(1);
@@ -24,6 +28,7 @@ if (platform === 'darwin') {
 
 console.log(`Preparing sidecar binary for ${platform} (${arch})...`);
 console.log(`Looking for binary: ${binaryName}`);
+console.log(`Tauri target triple: ${tauriTriple}`);
 
 // Clean target
 if (fs.existsSync(targetDir)) {
@@ -33,11 +38,12 @@ fs.mkdirSync(targetDir, { recursive: true });
 
 // Copy the appropriate binary
 const sourceBinary = path.join(sidecarDir, binaryName);
-const targetBinary = path.join(targetDir, 'sidecar');
+// Tauri expects binaries to be named with the target triple suffix
+const targetBinary = path.join(targetDir, `sidecar-${tauriTriple}`);
 
 if (!fs.existsSync(sourceBinary)) {
     console.error(`Binary not found: ${sourceBinary}`);
-    console.error('Please run: cd sidecar && npm run build:binary');
+    console.error('Please run: cd sidecar && npm run binary');
     process.exit(1);
 }
 
@@ -52,7 +58,9 @@ if (platform !== 'win32') {
 const binaryStats = fs.statSync(targetBinary);
 const sizeMB = (binaryStats.size / 1024 / 1024).toFixed(2);
 
-console.log(`✓ Sidecar binary prepared successfully! (${sizeMB} MB)`);
+console.log(`✓ Sidecar binary prepared successfully!`);
 console.log(`  Platform: ${platform}`);
 console.log(`  Architecture: ${arch}`);
+console.log(`  Target triple: ${tauriTriple}`);
+console.log(`  Size: ${sizeMB} MB`);
 console.log(`  Binary: ${targetBinary}`);

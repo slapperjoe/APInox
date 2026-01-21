@@ -759,20 +759,32 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
                 const fs = require('fs');
                 const path = require('path');
                 
+                // In standalone binary, __dirname is inside the pkg snapshot
+                // We need to use process.execPath to find the real executable location
+                const execDir = path.dirname(process.execPath);
+                
+                console.log('[Sidecar] Looking for changelog...');
+                console.log('[Sidecar]   __dirname:', __dirname);
+                console.log('[Sidecar]   process.execPath:', process.execPath);
+                console.log('[Sidecar]   execDir:', execDir);
+                
                 // In development: navigate up from sidecar/dist/sidecar/src
                 // In production: try multiple possible locations
                 const possiblePaths = [
                     path.join(__dirname, '../../../../CHANGELOG.md'), // Dev mode
                     path.join(__dirname, '../../../CHANGELOG.md'), // Bundled sidecar
                     path.join(__dirname, '../../CHANGELOG.md'), // Alternative bundled location
+                    path.join(__dirname, '../Resources/CHANGELOG.md'), // Tauri bundle: MacOS -> Resources (won't work with pkg)
+                    path.join(execDir, '../Resources/CHANGELOG.md'), // Tauri bundle: use execPath instead of __dirname
                     path.join(__dirname, 'CHANGELOG.md'), // Same directory as sidecar
                 ];
                 
                 for (const testPath of possiblePaths) {
+                    console.log('[Sidecar]   Trying:', testPath);
                     if (fs.existsSync(testPath)) {
                         const content = fs.readFileSync(testPath, 'utf8');
                         result.changelog = content;
-                        console.log('[Sidecar] Changelog loaded from:', testPath, 'length:', content.length);
+                        console.log('[Sidecar] ✓ Changelog loaded from:', testPath, 'length:', content.length);
                         break;
                     }
                 }
@@ -841,7 +853,11 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
                 throw new Error(`Unknown command: ${command}`);
             }
 
-            console.log(`[Router] Handling: ${command}`);
+            // Skip logging for noisy/frequent commands to reduce log clutter
+            const noisyCommands = ['log', 'autoSaveWorkspace', 'getCoordinatorStatus'];
+            if (!noisyCommands.includes(command)) {
+                console.log(`[Router] Handling: ${command}`);
+            }
             return await handler(payload);
         }
     };

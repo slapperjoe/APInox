@@ -6,7 +6,6 @@ import * as os from 'os';
 import * as dns from 'dns';
 import * as net from 'net';
 import * as tls from 'tls';
-import axios, { AxiosRequestConfig, Method } from 'axios';
 import { EventEmitter } from 'events';
 import * as selfsigned from 'selfsigned';
 import { ReplaceRuleApplier, ReplaceRule } from '../utils/ReplaceRuleApplier';
@@ -412,26 +411,6 @@ export class ProxyService extends EventEmitter {
                 delete forwardHeaders['content-length'];
                 delete forwardHeaders['host'];
 
-                const axiosConfig: AxiosRequestConfig = {
-                    method: req.method as Method,
-                    url: fullTargetUrl,
-                    headers: {
-                        ...forwardHeaders,
-                        host: new URL(this.config.targetUrl).host,
-                        // Force close to avoid NTLM connection reuse issues? 
-                        // Actually, let's let axios/agent handle it.
-                        // But WCF might send 'Expect: 100-continue'. Axios handles that?
-                        // Safe default:
-                        connection: 'keep-alive'
-                    },
-                    data: reqBody,
-                    validateStatus: () => true,
-                    httpsAgent: agent,
-                    maxBodyLength: Infinity,
-                    maxContentLength: Infinity,
-                    proxy: false // Critical: Prevent Axios from using process.env.HTTP_PROXY automatically
-                };
-
                 // Apply replace rules to request before forwarding
                 let requestData = reqBody;
                 if (this.replaceRules.length > 0) {
@@ -441,7 +420,6 @@ export class ProxyService extends EventEmitter {
                         const applicableRules = this.replaceRules.filter(r => r.enabled && (r.target === 'request' || r.target === 'both'));
                         const ruleNames = applicableRules.map(r => r.name || r.id).join(', ');
                         this.logDebug(`[Proxy] ✓ Applied replace rules to request: ${ruleNames}`);
-                        axiosConfig.data = requestData;
                     }
                 }
 
@@ -451,64 +429,83 @@ export class ProxyService extends EventEmitter {
                     const result = await this.waitForBreakpoint(eventId, 'request', requestData, req.headers as Record<string, any>, requestBreakpoint);
                     if (!result.cancelled) {
                         requestData = result.content;
-                        axiosConfig.data = requestData;
                     }
                 }
 
-                this.logDebug(`[Proxy] Sending Request to: ${axiosConfig.url}`);
-                // Ensure correct Host header and Content-Length
-                // Add User-Agent in case WAF requires it
-                const headersToSend = {
-                    ...forwardHeaders,
-                    host: new URL(this.config.targetUrl).host,
-                    'content-length': Buffer.byteLength(requestData),
-                    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    connection: 'keep-alive'
+                this.logDebug(`[Proxy] Sending Request to: ${fullTargetUrl}`);
+                
+                // Build headers as Record<string, string>
+                const requestHeaders: Record<string, string> = {};
+                for (const [key, value] of Object.entries(forwardHeaders)) {
+                    if (value) {
+                        requestHeaders[key] = Array.isArray(value) ? value[0] : String(value);
+                    }
+                }
+                requestHeaders['host'] = new URL(this.config.targetUrl).host;
+                requestHeaders['content-length'] = Buffer.byteLength(requestData).toString();
+                requestHeaders['user-agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+                requestHeaders['connection'] = 'keep-alive';
+
+                this.logDebug(`[Proxy] Outgoing Headers: ${JSON.stringify(requestHeaders)}`);
+
+                const fetchOptions: RequestInit & { agent?: any } = {
+                    method: req.method,
+                    headers: requestHeaders,
+                    body: requestData,
                 };
-                axiosConfig.headers = headersToSend;
 
-                this.logDebug(`[Proxy] Outgoing Headers: ${JSON.stringify(axiosConfig.headers)}`);
+                // Add custom agent
+                (fetchOptions as any).agent = agent;
 
-                const response = await axios(axiosConfig);
+                const response = await fetch(fullTargetUrl, fetchOptions);
                 const endTime = Date.now();
 
                 event.status = response.status;
-                event.responseHeaders = response.headers;
-                event.responseBody = typeof response.data === 'object' ? JSON.stringify(response.data) : String(response.data);
+                
+                // Convert headers to plain object
+                const responseHeaders: Record<string, any> = {};
+                response.headers.forEach((value, key) => {
+                    responseHeaders[key] = value;
+                });
+                event.responseHeaders = responseHeaders;
+                
+                const responseData = await response.text();
+                event.responseBody = responseData;
                 event.duration = (endTime - startTime) / 1000;
                 event.success = response.status >= 200 && response.status < 300;
+                
                 if (response.status === 503) {
                     this.logDebug('[Proxy] 503 Detected. Running diagnostics...');
                     // Fire and forget diagnostics
-                    this.runDiagnostics(fullTargetUrl, axiosConfig).catch(err => this.logDebug(`[Diagnostics] Error running probes: ${err}`));
+                    this.runDiagnostics(fullTargetUrl, requestHeaders, agent).catch(err => this.logDebug(`[Diagnostics] Error running probes: ${err}`));
                 }
 
                 // Apply replace rules to response before forwarding
-                let responseData = typeof response.data === 'object' ? JSON.stringify(response.data) : String(response.data);
+                let finalResponseData = responseData;
                 if (this.replaceRules.length > 0) {
-                    const originalData = responseData;
+                    const originalData = finalResponseData;
                     const applicableRules = this.replaceRules.filter(r => r.enabled && (r.target === 'response' || r.target === 'both'));
-                    responseData = ReplaceRuleApplier.apply(responseData, this.replaceRules, 'response');
-                    if (responseData !== originalData) {
+                    finalResponseData = ReplaceRuleApplier.apply(finalResponseData, this.replaceRules, 'response');
+                    if (finalResponseData !== originalData) {
                         const ruleNames = applicableRules.map(r => r.name || r.id).join(', ');
                         this.logDebug(`[Proxy] ✓ Applied replace rules: ${ruleNames}`);
                         // Update event for logging to show modified response
-                        event.responseBody = responseData;
+                        event.responseBody = finalResponseData;
                     }
                 }
 
                 // Check for RESPONSE breakpoint (before returning to client)
-                const responseBreakpoint = this.checkBreakpoints(fullTargetUrl, responseData, response.headers as Record<string, any>, 'response');
+                const responseBreakpoint = this.checkBreakpoints(fullTargetUrl, finalResponseData, responseHeaders, 'response');
                 if (responseBreakpoint) {
-                    const result = await this.waitForBreakpoint(eventId, 'response', responseData, response.headers as Record<string, any>, responseBreakpoint);
+                    const result = await this.waitForBreakpoint(eventId, 'response', finalResponseData, responseHeaders, responseBreakpoint);
                     if (!result.cancelled) {
-                        responseData = result.content;
-                        event.responseBody = responseData;
+                        finalResponseData = result.content;
+                        event.responseBody = finalResponseData;
                     }
                 }
 
-                res.writeHead(response.status, response.headers as any);
-                res.end(responseData);
+                res.writeHead(response.status, responseHeaders);
+                res.end(finalResponseData);
 
                 this.emit('log', event);
 
@@ -520,8 +517,8 @@ export class ProxyService extends EventEmitter {
                         requestHeaders: req.headers as Record<string, any>,
                         requestBody: reqBody,
                         status: response.status,
-                        responseHeaders: response.headers as Record<string, any>,
-                        responseBody: responseData
+                        responseHeaders: responseHeaders,
+                        responseBody: finalResponseData
                     });
                 }
 
@@ -530,7 +527,7 @@ export class ProxyService extends EventEmitter {
                 event.duration = (endTime - startTime) / 1000;
                 event.success = false;
                 event.error = error.message;
-                event.status = error.response?.status || 500;
+                event.status = 500;
 
                 // Capture error response body if available
                 if (error.response?.data) {
@@ -571,7 +568,7 @@ export class ProxyService extends EventEmitter {
         return this.isRunning;
     }
 
-    private async runDiagnostics(targetUrl: string, originalConfig: AxiosRequestConfig) {
+    private async runDiagnostics(targetUrl: string, requestHeaders: Record<string, string>, agent: any) {
         const u = new URL(targetUrl);
         const log = (msg: string) => this.logDebug(`[Diagnostic] ${msg}`);
 
@@ -636,13 +633,26 @@ export class ProxyService extends EventEmitter {
             // 5. HTTP Probes
             log(`Step 4: Application Layer Probes...`);
 
-            const probe = async (label: string, config: AxiosRequestConfig) => {
+            const probe = async (label: string, url: string, method: string, headers: Record<string, string>, body?: string) => {
                 try {
-                    const res = await axios({ ...config, validateStatus: () => true, timeout: 5000 });
-                    log(`${label}: ${res.status} ${res.statusText} (Type: ${typeof res.data === 'string' ? 'String' : 'Object'})`);
+                    const fetchOptions: RequestInit & { agent?: any } = {
+                        method,
+                        headers,
+                        body,
+                    };
+                    (fetchOptions as any).agent = agent;
+
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 5000);
+                    fetchOptions.signal = controller.signal;
+
+                    const res = await fetch(url, fetchOptions);
+                    clearTimeout(timeoutId);
+                    
+                    const resData = await res.text();
+                    log(`${label}: ${res.status} ${res.statusText} (Type: String)`);
                     if (res.status !== 200) {
-                        const body = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
-                        log(`  > Body Preview: ${body.slice(0, 150)}...`);
+                        log(`  > Body Preview: ${resData.slice(0, 150)}...`);
                     }
                 } catch (err: any) {
                     log(`${label}: FAILED - ${err.message}`);
@@ -650,18 +660,19 @@ export class ProxyService extends EventEmitter {
             };
 
             // Clean headers for probes
-            const { data: _data, ...baseConfig } = originalConfig;
-            void _data; // explicitly ignore original body for probe configs
-            const headers = { ...baseConfig.headers } as any;
-            delete headers['content-length'];
-            delete headers['Content-Length'];
+            const cleanHeaders: Record<string, string> = {};
+            for (const [key, value] of Object.entries(requestHeaders)) {
+                if (key.toLowerCase() !== 'content-length' && value) {
+                    cleanHeaders[key] = value;
+                }
+            }
 
-            await probe('GET Root', { ...baseConfig, method: 'GET', headers, data: undefined });
-            await probe('GET WSDL', { ...baseConfig, method: 'GET', url: `${targetUrl}?wsdl`, headers, data: undefined });
-            await probe('OPTIONS', { ...baseConfig, method: 'OPTIONS', headers, data: undefined });
+            await probe('GET Root', targetUrl, 'GET', cleanHeaders);
+            await probe('GET WSDL', `${targetUrl}?wsdl`, 'GET', cleanHeaders);
+            await probe('OPTIONS', targetUrl, 'OPTIONS', cleanHeaders);
 
             // Empty POST probe (Is it the payload?)
-            await probe('POST (Empty)', { ...baseConfig, method: 'POST', headers, data: '' });
+            await probe('POST (Empty)', targetUrl, 'POST', cleanHeaders, '');
 
         } catch (err: any) {
             log(`Diagnostics CRASHED: ${err.message}`);
