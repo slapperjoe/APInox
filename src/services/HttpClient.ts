@@ -3,13 +3,10 @@
  * Part of Apinox Phase 2: Backend Changes
  */
 
-import axios, {
-  AxiosRequestConfig,
-  AxiosResponse,
-  CancelTokenSource,
-} from "axios";
 import * as os from 'os';
 import * as path from 'path';
+import * as https from 'https';
+import * as http from 'http';
 import {
   ApiRequest,
   BodyType,
@@ -17,6 +14,7 @@ import {
   RestConfig,
 } from "../../shared/src/models";
 import { SettingsManager } from "../utils/SettingsManager";
+import * as NativeHttpClient from "../utils/NativeHttpClient";
 
 export interface HttpResponse {
   success: boolean;
@@ -35,7 +33,7 @@ export interface HttpClientOptions {
 }
 
 export class HttpClient {
-  private cancelTokenSource: CancelTokenSource | null = null;
+  private abortController: AbortController | null = null;
   private settingsManager: SettingsManager;
   private outputChannel: any;
 
@@ -188,9 +186,9 @@ export class HttpClient {
    * Cancel the current request
    */
   cancelRequest(): void {
-    if (this.cancelTokenSource) {
-      this.cancelTokenSource.cancel("Request canceled by user");
-      this.cancelTokenSource = null;
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
     }
   }
 
@@ -216,8 +214,7 @@ export class HttpClient {
       };
     }
 
-    const CancelToken = axios.CancelToken;
-    this.cancelTokenSource = CancelToken.source();
+    this.abortController = new AbortController();
 
     const { proxyUrl, strictSSL } = this.getProxySettings();
     const agents = this.createAgents(endpoint, proxyUrl, strictSSL);
@@ -240,41 +237,62 @@ export class HttpClient {
     const startTime = Date.now();
 
     try {
-      const config: AxiosRequestConfig = {
-        method: method.toLowerCase() as any,
-        url: endpoint,
+      // Use native fetch with custom agents if needed
+      const fetchOptions: RequestInit & { agent?: any } = {
+        method: method.toUpperCase(),
         headers: requestHeaders,
-        data: body,
-        httpsAgent: agents.httpsAgent,
-        httpAgent: agents.httpAgent,
-        cancelToken: this.cancelTokenSource.token,
-        timeout: options?.timeout || 30000,
-        maxRedirects: options?.followRedirects === false ? 0 : 5,
-        transformResponse: [(data: any) => data], // Keep raw response
-        validateStatus: () => true, // Don't throw on non-2xx
+        body: body,
+        signal: this.abortController.signal,
       };
 
-      const response: AxiosResponse = await axios(config);
+      // Add agents for proxy support (Node.js fetch supports agent option)
+      if (agents.httpsAgent || agents.httpAgent) {
+        (fetchOptions as any).agent = endpoint.toLowerCase().startsWith('https')
+          ? agents.httpsAgent
+          : agents.httpAgent;
+      }
+
+      const controller = new AbortController();
+      const timeout = options?.timeout || 30000;
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+      // Combine both abort signals (manual cancel + timeout)
+      const combinedSignal = this.combineAbortSignals(
+        this.abortController.signal,
+        controller.signal
+      );
+      fetchOptions.signal = combinedSignal;
+
+      const response = await fetch(endpoint, fetchOptions);
+      clearTimeout(timeoutId);
+
+      const responseData = await response.text();
       const timeTaken = Date.now() - startTime;
 
-      this.log("Response Status:", response.status);
-      this.log("Response Body:", response.data);
+      // Convert Headers to plain object
+      const responseHeaders: Record<string, any> = {};
+      response.headers.forEach((value, key) => {
+        responseHeaders[key] = value;
+      });
 
-      this.cancelTokenSource = null;
+      this.log("Response Status:", response.status);
+      this.log("Response Body:", responseData);
+
+      this.abortController = null;
 
       return {
         success: response.status >= 200 && response.status < 400,
         status: response.status,
-        headers: response.headers as Record<string, any>,
-        rawResponse: response.data,
+        headers: responseHeaders,
+        rawResponse: responseData,
         rawRequest: formattedRequestBody,
         timeTaken,
       };
     } catch (error: any) {
       const timeTaken = Date.now() - startTime;
-      this.cancelTokenSource = null;
+      this.abortController = null;
 
-      if (axios.isCancel(error)) {
+      if (error.name === 'AbortError') {
         this.log("Request canceled by user");
         return {
           success: false,
@@ -290,12 +308,28 @@ export class HttpClient {
       return {
         success: false,
         error: error.message,
-        rawResponse: error.response?.data || null,
+        rawResponse: null,
         rawRequest: formattedRequestBody,
         timeTaken,
-        status: error.response?.status,
       };
     }
+  }
+
+  /**
+   * Combine multiple AbortSignals into one
+   */
+  private combineAbortSignals(...signals: AbortSignal[]): AbortSignal {
+    const controller = new AbortController();
+    
+    for (const signal of signals) {
+      if (signal.aborted) {
+        controller.abort();
+        break;
+      }
+      signal.addEventListener('abort', () => controller.abort(), { once: true });
+    }
+    
+    return controller.signal;
   }
 
   /**

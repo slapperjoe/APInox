@@ -3,13 +3,13 @@ import * as https from 'https';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import axios, { AxiosRequestConfig, Method } from 'axios';
 import { EventEmitter } from 'events';
 import * as selfsigned from 'selfsigned';
 import { MockConfig, MockRule, MockMatchCondition } from '../../shared/src/models';
 import { DOMParser } from '@xmldom/xmldom';
 import * as xpath from 'xpath';
 import { INotificationService } from '../interfaces';
+import * as NativeHttpClient from '../utils/NativeHttpClient';
 
 export interface MockEvent {
     id: string;
@@ -520,28 +520,40 @@ export class MockService extends EventEmitter {
             delete forwardHeaders['content-length'];
             delete forwardHeaders['host'];
 
-            const axiosConfig: AxiosRequestConfig = {
-                method: req.method as Method,
-                url: fullTargetUrl,
-                headers: {
-                    ...forwardHeaders,
-                    host: new URL(targetBase).host,
-                    'content-length': Buffer.byteLength(body),
-                    connection: 'keep-alive'
-                },
-                data: body,
-                validateStatus: () => true,
-                httpsAgent: new https.Agent({ rejectUnauthorized: false }),
-                maxBodyLength: Infinity,
-                maxContentLength: Infinity,
-                proxy: false
+            // Build headers as Record<string, string>
+            const requestHeaders: Record<string, string> = {};
+            for (const [key, value] of Object.entries(forwardHeaders)) {
+                if (value) {
+                    requestHeaders[key] = Array.isArray(value) ? value[0] : String(value);
+                }
+            }
+            requestHeaders['host'] = new URL(targetBase).host;
+            requestHeaders['content-length'] = Buffer.byteLength(body).toString();
+            requestHeaders['connection'] = 'keep-alive';
+
+            const fetchOptions: RequestInit & { agent?: any } = {
+                method: req.method,
+                headers: requestHeaders,
+                body: body || undefined,
             };
 
-            const response = await axios(axiosConfig);
+            // Add agent for HTTPS
+            if (fullTargetUrl.toLowerCase().startsWith('https')) {
+                (fetchOptions as any).agent = new https.Agent({ rejectUnauthorized: false });
+            }
+
+            const response = await fetch(fullTargetUrl, fetchOptions);
+            const responseData = await response.text();
 
             event.status = response.status;
-            event.responseHeaders = response.headers as Record<string, any>;
-            event.responseBody = typeof response.data === 'object' ? JSON.stringify(response.data) : String(response.data);
+            
+            // Convert headers to plain object
+            const responseHeaders: Record<string, any> = {};
+            response.headers.forEach((value, key) => {
+                responseHeaders[key] = value;
+            });
+            event.responseHeaders = responseHeaders;
+            event.responseBody = responseData;
             event.duration = (Date.now() - startTime) / 1000;
 
             // If record mode is on, create a new mock rule from this response
@@ -549,7 +561,7 @@ export class MockService extends EventEmitter {
                 this.recordResponse(req, event);
             }
 
-            res.writeHead(response.status, response.headers as any);
+            res.writeHead(response.status, responseHeaders);
             res.end(event.responseBody);
 
             this.emit('log', event);

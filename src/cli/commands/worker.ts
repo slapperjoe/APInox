@@ -94,7 +94,7 @@ export async function workerCommand(options: WorkerOptions): Promise<void> {
 }
 
 async function executeWork(ws: WebSocket, workerId: string, work: any): Promise<void> {
-    const axios = (await import('axios')).default;
+    const NativeHttpClient = await import('../../utils/NativeHttpClient');
     const { requests, iterations, config } = work;
 
     for (let i = iterations.start; i <= iterations.end; i++) {
@@ -107,19 +107,21 @@ async function executeWork(ws: WebSocket, workerId: string, work: any): Promise<
             let error: string | undefined;
 
             try {
-                const response = await axios.post(request.endpoint, request.requestBody, {
+                const response = await NativeHttpClient.post(request.endpoint, request.requestBody, {
                     headers: {
                         'Content-Type': 'text/xml; charset=utf-8',
                         'SOAPAction': request.soapAction || '',
                         ...request.headers
                     },
-                    timeout: 30000,
-                    validateStatus: () => true
+                    timeout: 30000
                 });
 
                 status = response.status;
                 success = status >= 200 && status < 300;
             } catch (e: any) {
+                if (e instanceof NativeHttpClient.HttpError && e.status) {
+                    status = e.status;
+                }
                 error = e.message;
             }
 

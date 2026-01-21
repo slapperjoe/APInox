@@ -23009,7 +23009,7 @@ var require_package = __commonJS({
       },
       icon: "images/APInox_logo_dark.jpg",
       license: "MIT",
-      version: "0.13.1",
+      version: "0.13.2",
       engines: {
         vscode: "^1.80.0"
       },
@@ -23070,7 +23070,7 @@ var require_package = __commonJS({
         "build-binary": "npm run compile && pkg ./out/src/cli/index.js --targets node18-win-x64,node18-macos-x64,node18-linux-x64 --out-path ./bin",
         "build-binary-win": "npm run compile && pkg ./out/src/cli/index.js --targets node18-win-x64 --out-path ./bin",
         "build:sidecar": "cd sidecar && npm run build",
-        "prepare:sidecar": "cd sidecar && npm run bundle && cd .. && node prepare-sidecar-bundle.js",
+        "prepare:sidecar": "cd sidecar && npm run binary && cd .. && node prepare-sidecar-binary.js",
         "tauri:dev": "npm run build:sidecar && npx tauri dev",
         "tauri:build": "npm run sync-version && npm run prepare:sidecar && npx tauri build"
       },
@@ -23122,7 +23122,6 @@ var require_package = __commonJS({
         "@tauri-apps/plugin-shell": "^2.3.4",
         "@tauri-apps/plugin-store": "^2.4.2",
         "@types/node-cron": "^3.0.11",
-        axios: "^1.13.2",
         chalk: "^4.1.2",
         "cli-table3": "^0.6.5",
         commander: "^14.0.2",
@@ -23924,6 +23923,11 @@ var require_router2 = __commonJS({
           try {
             const fs2 = require("fs");
             const path2 = require("path");
+            const execDir = path2.dirname(process.execPath);
+            console.log("[Sidecar] Looking for changelog...");
+            console.log("[Sidecar]   __dirname:", __dirname);
+            console.log("[Sidecar]   process.execPath:", process.execPath);
+            console.log("[Sidecar]   execDir:", execDir);
             const possiblePaths = [
               path2.join(__dirname, "../../../../CHANGELOG.md"),
               // Dev mode
@@ -23931,14 +23935,19 @@ var require_router2 = __commonJS({
               // Bundled sidecar
               path2.join(__dirname, "../../CHANGELOG.md"),
               // Alternative bundled location
+              path2.join(__dirname, "../Resources/CHANGELOG.md"),
+              // Tauri bundle: MacOS -> Resources (won't work with pkg)
+              path2.join(execDir, "../Resources/CHANGELOG.md"),
+              // Tauri bundle: use execPath instead of __dirname
               path2.join(__dirname, "CHANGELOG.md")
               // Same directory as sidecar
             ];
             for (const testPath of possiblePaths) {
+              console.log("[Sidecar]   Trying:", testPath);
               if (fs2.existsSync(testPath)) {
                 const content = fs2.readFileSync(testPath, "utf8");
                 result.changelog = content;
-                console.log("[Sidecar] Changelog loaded from:", testPath, "length:", content.length);
+                console.log("[Sidecar] \u2713 Changelog loaded from:", testPath, "length:", content.length);
                 break;
               }
             }
@@ -23992,7 +24001,10 @@ var require_router2 = __commonJS({
             console.warn(`[Router] Unknown command: ${command}`);
             throw new Error(`Unknown command: ${command}`);
           }
-          console.log(`[Router] Handling: ${command}`);
+          const noisyCommands = ["log", "autoSaveWorkspace", "getCoordinatorStatus"];
+          if (!noisyCommands.includes(command)) {
+            console.log(`[Router] Handling: ${command}`);
+          }
           return await handler(payload);
         }
       };
@@ -66838,17 +66850,13 @@ var require_HttpClient = __commonJS({
         return result;
       };
     })();
-    var __importDefault14 = exports2 && exports2.__importDefault || function(mod) {
-      return mod && mod.__esModule ? mod : { "default": mod };
-    };
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.HttpClient = void 0;
-    var axios_1 = __importDefault14(require_axios());
     var os2 = __importStar13(require("os"));
     var path2 = __importStar13(require("path"));
     var HttpClient = class {
       constructor(settingsManager, outputChannel) {
-        this.cancelTokenSource = null;
+        this.abortController = null;
         this.settingsManager = settingsManager;
         this.outputChannel = outputChannel;
       }
@@ -66948,9 +66956,9 @@ Headers: ${JSON.stringify(headers)}
        * Cancel the current request
        */
       cancelRequest() {
-        if (this.cancelTokenSource) {
-          this.cancelTokenSource.cancel("Request canceled by user");
-          this.cancelTokenSource = null;
+        if (this.abortController) {
+          this.abortController.abort();
+          this.abortController = null;
         }
       }
       /**
@@ -66967,8 +66975,7 @@ Headers: ${JSON.stringify(headers)}
             timeTaken: 0
           };
         }
-        const CancelToken = axios_1.default.CancelToken;
-        this.cancelTokenSource = CancelToken.source();
+        this.abortController = new AbortController();
         const { proxyUrl, strictSSL } = this.getProxySettings();
         const agents = this.createAgents(endpoint, proxyUrl, strictSSL);
         let requestHeaders = { ...headers };
@@ -66984,38 +66991,43 @@ Headers: ${JSON.stringify(headers)}
         this.log("[HttpClient] sendRequest Headers: " + JSON.stringify(requestHeaders));
         const startTime = Date.now();
         try {
-          const config = {
-            method: method.toLowerCase(),
-            url: endpoint,
+          const fetchOptions = {
+            method: method.toUpperCase(),
             headers: requestHeaders,
-            data: body,
-            httpsAgent: agents.httpsAgent,
-            httpAgent: agents.httpAgent,
-            cancelToken: this.cancelTokenSource.token,
-            timeout: options?.timeout || 3e4,
-            maxRedirects: options?.followRedirects === false ? 0 : 5,
-            transformResponse: [(data) => data],
-            // Keep raw response
-            validateStatus: () => true
-            // Don't throw on non-2xx
+            body,
+            signal: this.abortController.signal
           };
-          const response = await (0, axios_1.default)(config);
+          if (agents.httpsAgent || agents.httpAgent) {
+            fetchOptions.agent = endpoint.toLowerCase().startsWith("https") ? agents.httpsAgent : agents.httpAgent;
+          }
+          const controller = new AbortController();
+          const timeout = options?.timeout || 3e4;
+          const timeoutId = setTimeout(() => controller.abort(), timeout);
+          const combinedSignal = this.combineAbortSignals(this.abortController.signal, controller.signal);
+          fetchOptions.signal = combinedSignal;
+          const response = await fetch(endpoint, fetchOptions);
+          clearTimeout(timeoutId);
+          const responseData = await response.text();
           const timeTaken = Date.now() - startTime;
+          const responseHeaders = {};
+          response.headers.forEach((value, key) => {
+            responseHeaders[key] = value;
+          });
           this.log("Response Status:", response.status);
-          this.log("Response Body:", response.data);
-          this.cancelTokenSource = null;
+          this.log("Response Body:", responseData);
+          this.abortController = null;
           return {
             success: response.status >= 200 && response.status < 400,
             status: response.status,
-            headers: response.headers,
-            rawResponse: response.data,
+            headers: responseHeaders,
+            rawResponse: responseData,
             rawRequest: formattedRequestBody,
             timeTaken
           };
         } catch (error) {
           const timeTaken = Date.now() - startTime;
-          this.cancelTokenSource = null;
-          if (axios_1.default.isCancel(error)) {
+          this.abortController = null;
+          if (error.name === "AbortError") {
             this.log("Request canceled by user");
             return {
               success: false,
@@ -67029,12 +67041,25 @@ Headers: ${JSON.stringify(headers)}
           return {
             success: false,
             error: error.message,
-            rawResponse: error.response?.data || null,
+            rawResponse: null,
             rawRequest: formattedRequestBody,
-            timeTaken,
-            status: error.response?.status
+            timeTaken
           };
         }
+      }
+      /**
+       * Combine multiple AbortSignals into one
+       */
+      combineAbortSignals(...signals) {
+        const controller = new AbortController();
+        for (const signal of signals) {
+          if (signal.aborted) {
+            controller.abort();
+            break;
+          }
+          signal.addEventListener("abort", () => controller.abort(), { once: true });
+        }
+        return controller.signal;
       }
       /**
        * Get proxy settings from SettingsManager
@@ -67215,19 +67240,16 @@ var require_WsdlParser = __commonJS({
           const isHttps = url.toLowerCase().startsWith("https");
           const agentOptions = { rejectUnauthorized: strictSSL };
           const agent = isHttps ? new https_proxy_agent_1.HttpsProxyAgent(proxyUrl, agentOptions) : new http_proxy_agent_1.HttpProxyAgent(proxyUrl);
-          soapOptions.request = require_axios().create({
-            httpAgent: agent,
-            httpsAgent: agent,
-            proxy: false
-            // Important: Disable axios default proxy handling
-          });
+          soapOptions.wsdl_options = {
+            agent
+          };
         } else {
           if (!strictSSL) {
             this.log(`No proxy set, but Strict SSL is DISABLED.`);
             const agent = new (require("https")).Agent({ rejectUnauthorized: false });
-            soapOptions.request = require_axios().create({
-              httpsAgent: agent
-            });
+            soapOptions.wsdl_options = {
+              agent
+            };
           }
         }
         try {
@@ -89726,9 +89748,6 @@ var require_ProxyService = __commonJS({
         return result;
       };
     })();
-    var __importDefault14 = exports2 && exports2.__importDefault || function(mod) {
-      return mod && mod.__esModule ? mod : { "default": mod };
-    };
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.ProxyService = void 0;
     var http = __importStar13(require("http"));
@@ -89739,7 +89758,6 @@ var require_ProxyService = __commonJS({
     var dns = __importStar13(require("dns"));
     var net = __importStar13(require("net"));
     var tls = __importStar13(require("tls"));
-    var axios_1 = __importDefault14(require_axios());
     var events_1 = require("events");
     var selfsigned = __importStar13(require_selfsigned());
     var ReplaceRuleApplier_1 = require_ReplaceRuleApplier();
@@ -90022,26 +90040,6 @@ var require_ProxyService = __commonJS({
             delete forwardHeaders["connection"];
             delete forwardHeaders["content-length"];
             delete forwardHeaders["host"];
-            const axiosConfig = {
-              method: req.method,
-              url: fullTargetUrl,
-              headers: {
-                ...forwardHeaders,
-                host: new URL(this.config.targetUrl).host,
-                // Force close to avoid NTLM connection reuse issues? 
-                // Actually, let's let axios/agent handle it.
-                // But WCF might send 'Expect: 100-continue'. Axios handles that?
-                // Safe default:
-                connection: "keep-alive"
-              },
-              data: reqBody,
-              validateStatus: () => true,
-              httpsAgent: agent,
-              maxBodyLength: Infinity,
-              maxContentLength: Infinity,
-              proxy: false
-              // Critical: Prevent Axios from using process.env.HTTP_PROXY automatically
-            };
             let requestData = reqBody;
             if (this.replaceRules.length > 0) {
               const originalReq = requestData;
@@ -90050,7 +90048,6 @@ var require_ProxyService = __commonJS({
                 const applicableRules = this.replaceRules.filter((r) => r.enabled && (r.target === "request" || r.target === "both"));
                 const ruleNames = applicableRules.map((r) => r.name || r.id).join(", ");
                 this.logDebug(`[Proxy] \u2713 Applied replace rules to request: ${ruleNames}`);
-                axiosConfig.data = requestData;
               }
             }
             const requestBreakpoint = this.checkBreakpoints(fullTargetUrl, requestData, req.headers, "request");
@@ -90058,51 +90055,63 @@ var require_ProxyService = __commonJS({
               const result = await this.waitForBreakpoint(eventId, "request", requestData, req.headers, requestBreakpoint);
               if (!result.cancelled) {
                 requestData = result.content;
-                axiosConfig.data = requestData;
               }
             }
-            this.logDebug(`[Proxy] Sending Request to: ${axiosConfig.url}`);
-            const headersToSend = {
-              ...forwardHeaders,
-              host: new URL(this.config.targetUrl).host,
-              "content-length": Buffer.byteLength(requestData),
-              "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-              connection: "keep-alive"
+            this.logDebug(`[Proxy] Sending Request to: ${fullTargetUrl}`);
+            const requestHeaders = {};
+            for (const [key, value] of Object.entries(forwardHeaders)) {
+              if (value) {
+                requestHeaders[key] = Array.isArray(value) ? value[0] : String(value);
+              }
+            }
+            requestHeaders["host"] = new URL(this.config.targetUrl).host;
+            requestHeaders["content-length"] = Buffer.byteLength(requestData).toString();
+            requestHeaders["user-agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+            requestHeaders["connection"] = "keep-alive";
+            this.logDebug(`[Proxy] Outgoing Headers: ${JSON.stringify(requestHeaders)}`);
+            const fetchOptions = {
+              method: req.method,
+              headers: requestHeaders,
+              body: requestData
             };
-            axiosConfig.headers = headersToSend;
-            this.logDebug(`[Proxy] Outgoing Headers: ${JSON.stringify(axiosConfig.headers)}`);
-            const response = await (0, axios_1.default)(axiosConfig);
+            fetchOptions.agent = agent;
+            const response = await fetch(fullTargetUrl, fetchOptions);
             const endTime = Date.now();
             event.status = response.status;
-            event.responseHeaders = response.headers;
-            event.responseBody = typeof response.data === "object" ? JSON.stringify(response.data) : String(response.data);
+            const responseHeaders = {};
+            response.headers.forEach((value, key) => {
+              responseHeaders[key] = value;
+            });
+            event.responseHeaders = responseHeaders;
+            const responseData = await response.text();
+            event.responseBody = responseData;
             event.duration = (endTime - startTime) / 1e3;
             event.success = response.status >= 200 && response.status < 300;
             if (response.status === 503) {
               this.logDebug("[Proxy] 503 Detected. Running diagnostics...");
-              this.runDiagnostics(fullTargetUrl, axiosConfig).catch((err) => this.logDebug(`[Diagnostics] Error running probes: ${err}`));
+              this.runDiagnostics(fullTargetUrl, requestHeaders, agent).catch((err) => this.logDebug(`[Diagnostics] Error running probes: ${err}`));
             }
-            let responseData = typeof response.data === "object" ? JSON.stringify(response.data) : String(response.data);
+            let finalResponseData = responseData;
             if (this.replaceRules.length > 0) {
-              const originalData = responseData;
+              const originalData = finalResponseData;
               const applicableRules = this.replaceRules.filter((r) => r.enabled && (r.target === "response" || r.target === "both"));
-              responseData = ReplaceRuleApplier_1.ReplaceRuleApplier.apply(responseData, this.replaceRules, "response");
-              if (responseData !== originalData) {
+              finalResponseData = ReplaceRuleApplier_1.ReplaceRuleApplier.apply(finalResponseData, this.replaceRules, "response");
+              if (finalResponseData !== originalData) {
                 const ruleNames = applicableRules.map((r) => r.name || r.id).join(", ");
                 this.logDebug(`[Proxy] \u2713 Applied replace rules: ${ruleNames}`);
-                event.responseBody = responseData;
+                event.responseBody = finalResponseData;
               }
             }
-            const responseBreakpoint = this.checkBreakpoints(fullTargetUrl, responseData, response.headers, "response");
+            const responseBreakpoint = this.checkBreakpoints(fullTargetUrl, finalResponseData, responseHeaders, "response");
             if (responseBreakpoint) {
-              const result = await this.waitForBreakpoint(eventId, "response", responseData, response.headers, responseBreakpoint);
+              const result = await this.waitForBreakpoint(eventId, "response", finalResponseData, responseHeaders, responseBreakpoint);
               if (!result.cancelled) {
-                responseData = result.content;
-                event.responseBody = responseData;
+                finalResponseData = result.content;
+                event.responseBody = finalResponseData;
               }
             }
-            res.writeHead(response.status, response.headers);
-            res.end(responseData);
+            res.writeHead(response.status, responseHeaders);
+            res.end(finalResponseData);
             this.emit("log", event);
             if (this.mockService && this.mockService.getConfig().recordMode) {
               this.mockService.recordRequest({
@@ -90111,8 +90120,8 @@ var require_ProxyService = __commonJS({
                 requestHeaders: req.headers,
                 requestBody: reqBody,
                 status: response.status,
-                responseHeaders: response.headers,
-                responseBody: responseData
+                responseHeaders,
+                responseBody: finalResponseData
               });
             }
           } catch (error) {
@@ -90120,7 +90129,7 @@ var require_ProxyService = __commonJS({
             event.duration = (endTime - startTime) / 1e3;
             event.success = false;
             event.error = error.message;
-            event.status = error.response?.status || 500;
+            event.status = 500;
             if (error.response?.data) {
               event.responseBody = typeof error.response.data === "object" ? JSON.stringify(error.response.data) : String(error.response.data);
             }
@@ -90149,7 +90158,7 @@ var require_ProxyService = __commonJS({
       isActive() {
         return this.isRunning;
       }
-      async runDiagnostics(targetUrl, originalConfig) {
+      async runDiagnostics(targetUrl, requestHeaders, agent) {
         const u = new URL(targetUrl);
         const log = (msg) => this.logDebug(`[Diagnostic] ${msg}`);
         log(`---------------------------------------------------`);
@@ -90215,27 +90224,38 @@ var require_ProxyService = __commonJS({
             }
           }
           log(`Step 4: Application Layer Probes...`);
-          const probe = async (label, config) => {
+          const probe = async (label, url, method, headers, body) => {
             try {
-              const res = await (0, axios_1.default)({ ...config, validateStatus: () => true, timeout: 5e3 });
-              log(`${label}: ${res.status} ${res.statusText} (Type: ${typeof res.data === "string" ? "String" : "Object"})`);
+              const fetchOptions = {
+                method,
+                headers,
+                body
+              };
+              fetchOptions.agent = agent;
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 5e3);
+              fetchOptions.signal = controller.signal;
+              const res = await fetch(url, fetchOptions);
+              clearTimeout(timeoutId);
+              const resData = await res.text();
+              log(`${label}: ${res.status} ${res.statusText} (Type: String)`);
               if (res.status !== 200) {
-                const body = typeof res.data === "string" ? res.data : JSON.stringify(res.data);
-                log(`  > Body Preview: ${body.slice(0, 150)}...`);
+                log(`  > Body Preview: ${resData.slice(0, 150)}...`);
               }
             } catch (err) {
               log(`${label}: FAILED - ${err.message}`);
             }
           };
-          const { data: _data, ...baseConfig } = originalConfig;
-          void _data;
-          const headers = { ...baseConfig.headers };
-          delete headers["content-length"];
-          delete headers["Content-Length"];
-          await probe("GET Root", { ...baseConfig, method: "GET", headers, data: void 0 });
-          await probe("GET WSDL", { ...baseConfig, method: "GET", url: `${targetUrl}?wsdl`, headers, data: void 0 });
-          await probe("OPTIONS", { ...baseConfig, method: "OPTIONS", headers, data: void 0 });
-          await probe("POST (Empty)", { ...baseConfig, method: "POST", headers, data: "" });
+          const cleanHeaders = {};
+          for (const [key, value] of Object.entries(requestHeaders)) {
+            if (key.toLowerCase() !== "content-length" && value) {
+              cleanHeaders[key] = value;
+            }
+          }
+          await probe("GET Root", targetUrl, "GET", cleanHeaders);
+          await probe("GET WSDL", `${targetUrl}?wsdl`, "GET", cleanHeaders);
+          await probe("OPTIONS", targetUrl, "OPTIONS", cleanHeaders);
+          await probe("POST (Empty)", targetUrl, "POST", cleanHeaders, "");
         } catch (err) {
           log(`Diagnostics CRASHED: ${err.message}`);
         }
@@ -90288,9 +90308,6 @@ var require_MockService = __commonJS({
         return result;
       };
     })();
-    var __importDefault14 = exports2 && exports2.__importDefault || function(mod) {
-      return mod && mod.__esModule ? mod : { "default": mod };
-    };
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.MockService = void 0;
     var http = __importStar13(require("http"));
@@ -90298,7 +90315,6 @@ var require_MockService = __commonJS({
     var fs2 = __importStar13(require("fs"));
     var path2 = __importStar13(require("path"));
     var os2 = __importStar13(require("os"));
-    var axios_1 = __importDefault14(require_axios());
     var events_1 = require("events");
     var selfsigned = __importStar13(require_selfsigned());
     var xmldom_1 = require_lib4();
@@ -90686,31 +90702,37 @@ var require_MockService = __commonJS({
           delete forwardHeaders["connection"];
           delete forwardHeaders["content-length"];
           delete forwardHeaders["host"];
-          const axiosConfig = {
+          const requestHeaders = {};
+          for (const [key, value] of Object.entries(forwardHeaders)) {
+            if (value) {
+              requestHeaders[key] = Array.isArray(value) ? value[0] : String(value);
+            }
+          }
+          requestHeaders["host"] = new URL(targetBase).host;
+          requestHeaders["content-length"] = Buffer.byteLength(body).toString();
+          requestHeaders["connection"] = "keep-alive";
+          const fetchOptions = {
             method: req.method,
-            url: fullTargetUrl,
-            headers: {
-              ...forwardHeaders,
-              host: new URL(targetBase).host,
-              "content-length": Buffer.byteLength(body),
-              connection: "keep-alive"
-            },
-            data: body,
-            validateStatus: () => true,
-            httpsAgent: new https.Agent({ rejectUnauthorized: false }),
-            maxBodyLength: Infinity,
-            maxContentLength: Infinity,
-            proxy: false
+            headers: requestHeaders,
+            body: body || void 0
           };
-          const response = await (0, axios_1.default)(axiosConfig);
+          if (fullTargetUrl.toLowerCase().startsWith("https")) {
+            fetchOptions.agent = new https.Agent({ rejectUnauthorized: false });
+          }
+          const response = await fetch(fullTargetUrl, fetchOptions);
+          const responseData = await response.text();
           event.status = response.status;
-          event.responseHeaders = response.headers;
-          event.responseBody = typeof response.data === "object" ? JSON.stringify(response.data) : String(response.data);
+          const responseHeaders = {};
+          response.headers.forEach((value, key) => {
+            responseHeaders[key] = value;
+          });
+          event.responseHeaders = responseHeaders;
+          event.responseBody = responseData;
           event.duration = (Date.now() - startTime) / 1e3;
           if (this.config.recordMode) {
             this.recordResponse(req, event);
           }
-          res.writeHead(response.status, response.headers);
+          res.writeHead(response.status, responseHeaders);
           res.end(event.responseBody);
           this.emit("log", event);
           this.emit("passthrough", { event });

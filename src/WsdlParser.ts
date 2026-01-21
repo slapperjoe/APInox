@@ -53,21 +53,20 @@ export class WsdlParser {
 
             const agent = isHttps
                 ? new HttpsProxyAgent(proxyUrl, agentOptions)
-                : new HttpProxyAgent(proxyUrl); // HttpProxyAgent doesn't really need rejectUnauthorized but good practice
+                : new HttpProxyAgent(proxyUrl);
 
-            soapOptions.request = require('axios').create({
-                httpAgent: agent,
-                httpsAgent: agent,
-                proxy: false // Important: Disable axios default proxy handling
-            });
+            // node-soap accepts http/https agents directly via wsdl_options
+            soapOptions.wsdl_options = {
+                agent: agent
+            };
         } else {
             // No Proxy
             if (!strictSSL) {
                 this.log(`No proxy set, but Strict SSL is DISABLED.`);
                 const agent = new (require('https').Agent)({ rejectUnauthorized: false });
-                soapOptions.request = require('axios').create({
-                    httpsAgent: agent
-                });
+                soapOptions.wsdl_options = {
+                    agent: agent
+                };
             }
         }
 
