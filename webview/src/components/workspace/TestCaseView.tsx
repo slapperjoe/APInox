@@ -99,6 +99,16 @@ const StepStatusRunning = styled.div`
     color: var(--vscode-testing-iconQueued);
     display: inline-flex;
     align-items: center;
+    
+    /* Spin animation for loader icon */
+    .spin {
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
 `;
 
 const StepStatusPass = styled.div`

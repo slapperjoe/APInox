@@ -67,6 +67,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
     const [fetchError, setFetchError] = useState<string | null>(null);
     const [showSidecarLogs, setShowSidecarLogs] = useState(false);
     const [showFrontendLogs, setShowFrontendLogs] = useState(false);
+    const [showSystemInfo, setShowSystemInfo] = useState(true); // Start expanded
     const [showDebugInfo, setShowDebugInfo] = useState(false);
     const [isLoadingLogs, setIsLoadingLogs] = useState(false);
     const [debugIndicatorVisible, setDebugIndicatorVisible] = useState(false);
@@ -315,79 +316,151 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Debug & Diagnostics" width={900}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {/* Copy All and Refresh Buttons */}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                    <button
-                        onClick={async () => {
-                            setIsLoadingLogs(true);
-                            try {
-                                const { invoke } = await import('@tauri-apps/api/core');
-                                // Always read from the actual log file for consistency with file contents
-                                const tauriLogs = await invoke<string[]>('get_tauri_logs', { lines: 100 });
-                                setSidecarLogs(tauriLogs);
-                            } catch (e) {
-                                console.error('[DebugModal] Failed to refresh logs:', e);
-                            } finally {
-                                setIsLoadingLogs(false);
-                            }
-                        }}
-                        disabled={isLoadingLogs}
-                        style={{
-                            padding: '8px 16px',
-                            background: 'var(--vscode-button-secondaryBackground)',
-                            color: 'var(--vscode-button-secondaryForeground)',
-                            border: '1px solid var(--vscode-button-border)',
-                            borderRadius: '2px',
-                            cursor: isLoadingLogs ? 'not-allowed' : 'pointer',
-                            fontSize: '0.9em',
-                            opacity: isLoadingLogs ? 0.5 : 1
-                        }}
-                    >
-                        {isLoadingLogs ? '🔄 Refreshing...' : '🔄 Refresh Logs'}
-                    </button>
-                    <button
-                        onClick={copyAllDiagnostics}
-                        style={{
-                            padding: '8px 16px',
-                            background: copyStatus ? 'var(--vscode-button-secondaryBackground)' : 'var(--vscode-button-background)',
-                            color: 'var(--vscode-button-foreground)',
-                            border: '1px solid var(--vscode-button-border)',
-                            borderRadius: '2px',
-                            cursor: 'pointer',
-                            fontSize: '0.9em',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px'
-                        }}
-                        onMouseEnter={(e) => {
-                            if (!copyStatus) {
-                                e.currentTarget.style.background = 'var(--vscode-button-hoverBackground)';
-                            }
-                        }}
-                        onMouseLeave={(e) => {
-                            if (!copyStatus) {
-                                e.currentTarget.style.background = 'var(--vscode-button-background)';
-                            }
-                        }}
-                    >
-                        {copyStatus === 'Copying...' && '⏳'}
-                        {copyStatus === '✓ Copied!' && '✓'}
-                        {copyStatus === '✗ Failed to copy' && '✗'}
-                        {!copyStatus && '📋'}
-                        {copyStatus || 'Copy All Diagnostics'}
-                    </button>
+                {/* Action Buttons */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                        <button
+                            onClick={toggleDebugIndicator}
+                            style={{
+                                padding: '8px 16px',
+                                fontSize: '0.9em',
+                                background: debugIndicatorVisible ? 'var(--vscode-button-background)' : 'var(--vscode-button-secondaryBackground)',
+                                color: debugIndicatorVisible ? 'var(--vscode-button-foreground)' : 'var(--vscode-button-secondaryForeground)',
+                                border: '1px solid var(--vscode-button-border)',
+                                cursor: 'pointer',
+                                borderRadius: '2px',
+                            }}
+                        >
+                            {debugIndicatorVisible ? '👁️ Hide' : '👁️‍🗨️ Show'} Debug Indicator
+                        </button>
+                        <button
+                            onClick={testConnection}
+                            style={{
+                                padding: '8px 16px',
+                                fontSize: '0.9em',
+                                background: 'var(--vscode-button-background)',
+                                color: 'var(--vscode-button-foreground)',
+                                border: '1px solid var(--vscode-button-border)',
+                                cursor: 'pointer',
+                                borderRadius: '2px',
+                            }}
+                            disabled={connectionTest?.status === 'testing'}
+                        >
+                            {connectionTest?.status === 'testing' ? '⏳ Testing...' : '🔌 Test Connection'}
+                        </button>
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <button
+                            onClick={async () => {
+                                setIsLoadingLogs(true);
+                                try {
+                                    const { invoke } = await import('@tauri-apps/api/core');
+                                    // Always read from the actual log file for consistency with file contents
+                                    const tauriLogs = await invoke<string[]>('get_tauri_logs', { lines: 100 });
+                                    setSidecarLogs(tauriLogs);
+                                } catch (e) {
+                                    console.error('[DebugModal] Failed to refresh logs:', e);
+                                } finally {
+                                    setIsLoadingLogs(false);
+                                }
+                            }}
+                            disabled={isLoadingLogs}
+                            style={{
+                                padding: '8px 16px',
+                                background: 'var(--vscode-button-secondaryBackground)',
+                                color: 'var(--vscode-button-secondaryForeground)',
+                                border: '1px solid var(--vscode-button-border)',
+                                borderRadius: '2px',
+                                cursor: isLoadingLogs ? 'not-allowed' : 'pointer',
+                                fontSize: '0.9em',
+                                opacity: isLoadingLogs ? 0.5 : 1
+                            }}
+                        >
+                            {isLoadingLogs ? '🔄 Refreshing...' : '🔄 Refresh Logs'}
+                        </button>
+                        <button
+                            onClick={copyAllDiagnostics}
+                            style={{
+                                padding: '8px 16px',
+                                background: copyStatus ? 'var(--vscode-button-secondaryBackground)' : 'var(--vscode-button-background)',
+                                color: 'var(--vscode-button-foreground)',
+                                border: '1px solid var(--vscode-button-border)',
+                                borderRadius: '2px',
+                                cursor: 'pointer',
+                                fontSize: '0.9em',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                            }}
+                            onMouseEnter={(e) => {
+                                if (!copyStatus) {
+                                    e.currentTarget.style.background = 'var(--vscode-button-hoverBackground)';
+                                }
+                            }}
+                            onMouseLeave={(e) => {
+                                if (!copyStatus) {
+                                    e.currentTarget.style.background = 'var(--vscode-button-background)';
+                                }
+                            }}
+                        >
+                            {copyStatus === 'Copying...' && '⏳'}
+                            {copyStatus === '✓ Copied!' && '✓'}
+                            {copyStatus === '✗ Failed to copy' && '✗'}
+                            {!copyStatus && '📋'}
+                            {copyStatus || 'Copy All Diagnostics'}
+                        </button>
+                    </div>
                 </div>
                 
+                {/* Connection Test Result */}
+                {connectionTest && (
+                    <div style={{
+                        padding: '8px 12px',
+                        background: connectionTest.status === 'success' 
+                            ? 'var(--vscode-testing-iconPassed)' 
+                            : connectionTest.status === 'error'
+                            ? 'var(--vscode-inputValidation-errorBackground)'
+                            : 'var(--vscode-badge-background)',
+                        border: '1px solid var(--vscode-panel-border)',
+                        borderRadius: '3px',
+                        fontSize: '0.9em',
+                        whiteSpace: 'pre-line',
+                        color: 'var(--vscode-editor-foreground)',
+                    }}>
+                        {connectionTest.message}
+                    </div>
+                )}
+                
                 {/* System Information */}
-                <div style={{
-                    background: 'var(--vscode-editor-background)',
-                    border: '1px solid var(--vscode-panel-border)',
-                    padding: '12px',
-                    borderRadius: '3px',
-                    fontSize: '0.9em',
-                }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>System Information</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontFamily: 'var(--vscode-editor-font-family, monospace)' }}>
+                <div>
+                    <div 
+                        onClick={() => setShowSystemInfo(!showSystemInfo)}
+                        style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '8px',
+                            cursor: 'pointer',
+                            userSelect: 'none',
+                            padding: '4px 0',
+                            marginBottom: '8px',
+                            fontWeight: 'bold',
+                        }}
+                    >
+                        <span style={{ fontSize: '0.85em', opacity: 0.7 }}>
+                            {showSystemInfo ? '▼' : '▶'}
+                        </span>
+                        System Information
+                    </div>
+                    
+                    {showSystemInfo && (
+                        <div style={{
+                            background: 'var(--vscode-editor-background)',
+                            border: '1px solid var(--vscode-panel-border)',
+                            padding: '12px',
+                            borderRadius: '3px',
+                            fontSize: '0.9em',
+                        }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontFamily: 'var(--vscode-editor-font-family, monospace)' }}>
                         {configDir && (
                             <div>
                                 <span style={{ opacity: 0.7 }}>Settings Location:</span>{' '}
@@ -401,6 +474,54 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                                     {sidecarReady ? '✓ Ready' : '✗ Not Ready'}
                                     {sidecarPort && sidecarReady && ` (port ${sidecarPort})`}
                                 </span>
+                            </div>
+                        )}
+                        
+                        {/* Available Endpoints */}
+                        {sidecarPort && sidecarReady && (
+                            <div style={{ marginTop: '8px' }}>
+                                <div style={{ opacity: 0.7, fontSize: '0.85em', marginBottom: '4px' }}>Available Endpoints:</div>
+                                <div style={{ paddingLeft: '12px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                    <a 
+                                        href={`http://127.0.0.1:${sidecarPort}/health`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ 
+                                            color: 'var(--vscode-textLink-foreground)',
+                                            textDecoration: 'none',
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                                        onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                                    >
+                                        http://127.0.0.1:{sidecarPort}/health
+                                    </a>
+                                    <a 
+                                        href={`http://127.0.0.1:${sidecarPort}/debug`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ 
+                                            color: 'var(--vscode-textLink-foreground)',
+                                            textDecoration: 'none',
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                                        onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                                    >
+                                        http://127.0.0.1:{sidecarPort}/debug
+                                    </a>
+                                    <a 
+                                        href={`http://127.0.0.1:${sidecarPort}/logs`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ 
+                                            color: 'var(--vscode-textLink-foreground)',
+                                            textDecoration: 'none',
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                                        onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                                    >
+                                        http://127.0.0.1:{sidecarPort}/logs
+                                    </a>
+                                </div>
                             </div>
                         )}
                         
@@ -517,79 +638,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                                 </div>
                             </div>
                         )}
-                        
-                        {sidecarPort && sidecarReady && (
-                            <div style={{ marginTop: '8px' }}>
-                                <span style={{ opacity: 0.7 }}>Debug Endpoint:</span>{' '}
-                                <a 
-                                    href={`http://127.0.0.1:${sidecarPort}/debug`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    style={{ 
-                                        color: 'var(--vscode-textLink-foreground)',
-                                        textDecoration: 'none',
-                                    }}
-                                    onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
-                                    onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
-                                >
-                                    http://127.0.0.1:{sidecarPort}/debug
-                                </a>
                             </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Debug Controls */}
-                <div>
-                    <div style={{ fontWeight: 'bold', marginBottom: '12px' }}>Debug Controls</div>
-                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                        <button
-                            onClick={toggleDebugIndicator}
-                            style={{
-                                padding: '6px 12px',
-                                fontSize: '0.9em',
-                                background: debugIndicatorVisible ? 'var(--vscode-button-background)' : 'var(--vscode-button-secondaryBackground)',
-                                color: debugIndicatorVisible ? 'var(--vscode-button-foreground)' : 'var(--vscode-button-secondaryForeground)',
-                                border: '1px solid var(--vscode-panel-border)',
-                                cursor: 'pointer',
-                                borderRadius: '3px',
-                            }}
-                        >
-                            {debugIndicatorVisible ? '👁️ Hide' : '👁️‍🗨️ Show'} Debug Indicator
-                        </button>
-                        <button
-                            onClick={testConnection}
-                            style={{
-                                padding: '6px 12px',
-                                fontSize: '0.9em',
-                                background: 'var(--vscode-button-background)',
-                                color: 'var(--vscode-button-foreground)',
-                                border: '1px solid var(--vscode-panel-border)',
-                                cursor: 'pointer',
-                                borderRadius: '3px',
-                            }}
-                            disabled={connectionTest?.status === 'testing'}
-                        >
-                            {connectionTest?.status === 'testing' ? '⏳ Testing...' : '🔌 Test Connection'}
-                        </button>
-                    </div>
-
-                    {connectionTest && (
-                        <div style={{
-                            marginTop: '8px',
-                            padding: '8px 12px',
-                            background: connectionTest.status === 'success' 
-                                ? 'var(--vscode-testing-iconPassed)' 
-                                : connectionTest.status === 'error'
-                                ? 'var(--vscode-inputValidation-errorBackground)'
-                                : 'var(--vscode-badge-background)',
-                            border: '1px solid var(--vscode-panel-border)',
-                            borderRadius: '3px',
-                            fontSize: '0.9em',
-                            whiteSpace: 'pre-line',
-                            color: 'var(--vscode-editor-foreground)',
-                        }}>
-                            {connectionTest.message}
                         </div>
                     )}
                 </div>
@@ -610,19 +659,34 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
 
                 {/* Sidecar Console Logs */}
                 <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        <div style={{ fontWeight: 'bold' }}>All Logs (Tauri + Sidecar)</div>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                            <span style={{ fontSize: '0.85em', color: 'var(--vscode-descriptionForeground)' }}>
-                                {sidecarLogs.length} {sidecarLogs.length === 1 ? 'entry' : 'entries'}
+                    <div 
+                        onClick={() => setShowSidecarLogs(!showSidecarLogs)}
+                        style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center', 
+                            marginBottom: 8,
+                            cursor: 'pointer',
+                            userSelect: 'none',
+                            padding: '4px 0',
+                        }}
+                    >
+                        <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '0.85em', opacity: 0.7 }}>
+                                {showSidecarLogs ? '▼' : '▶'}
                             </span>
-                            {isLoadingLogs && (
-                                <span style={{ fontSize: '0.85em', color: 'var(--vscode-descriptionForeground)' }}>
-                                    Loading...
-                                </span>
-                            )}
+                            All Logs (Tauri + Sidecar)
+                            <span style={{ fontSize: '0.85em', color: 'var(--vscode-descriptionForeground)', fontWeight: 'normal' }}>
+                                ({sidecarLogs.length} {sidecarLogs.length === 1 ? 'entry' : 'entries'})
+                                {isLoadingLogs && ' - Loading...'}
+                            </span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                             <button
-                                onClick={clearSidecarLogs}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    clearSidecarLogs();
+                                }}
                                 disabled={sidecarLogs.length === 0}
                                 style={{
                                     padding: '4px 12px',
@@ -636,20 +700,6 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                                 }}
                             >
                                 Clear
-                            </button>
-                            <button
-                                onClick={() => setShowSidecarLogs(!showSidecarLogs)}
-                                style={{
-                                    padding: '4px 12px',
-                                    fontSize: '0.9em',
-                                    background: 'var(--vscode-button-background)',
-                                    color: 'var(--vscode-button-foreground)',
-                                    border: 'none',
-                                    borderRadius: '2px',
-                                    cursor: 'pointer',
-                                }}
-                            >
-                                {showSidecarLogs ? 'Hide' : 'Show'}
                             </button>
                         </div>
                     </div>
@@ -698,14 +748,33 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
 
                 {/* Frontend Console Logs */}
                 <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        <div style={{ fontWeight: 'bold' }}>Frontend Logs (React/Browser)</div>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                            <span style={{ fontSize: '0.85em', color: 'var(--vscode-descriptionForeground)' }}>
-                                {frontendLogState.length} {frontendLogState.length === 1 ? 'entry' : 'entries'}
+                    <div 
+                        onClick={() => setShowFrontendLogs(!showFrontendLogs)}
+                        style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center', 
+                            marginBottom: 8,
+                            cursor: 'pointer',
+                            userSelect: 'none',
+                            padding: '4px 0',
+                        }}
+                    >
+                        <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '0.85em', opacity: 0.7 }}>
+                                {showFrontendLogs ? '▼' : '▶'}
                             </span>
+                            Frontend Logs (React/Browser)
+                            <span style={{ fontSize: '0.85em', color: 'var(--vscode-descriptionForeground)', fontWeight: 'normal' }}>
+                                ({frontendLogState.length} {frontendLogState.length === 1 ? 'entry' : 'entries'})
+                            </span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                             <button
-                                onClick={clearFrontendLogs}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    clearFrontendLogs();
+                                }}
                                 disabled={frontendLogState.length === 0}
                                 style={{
                                     padding: '4px 12px',
@@ -719,20 +788,6 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                                 }}
                             >
                                 Clear
-                            </button>
-                            <button
-                                onClick={() => setShowFrontendLogs(!showFrontendLogs)}
-                                style={{
-                                    padding: '4px 12px',
-                                    fontSize: '0.9em',
-                                    background: 'var(--vscode-button-background)',
-                                    color: 'var(--vscode-button-foreground)',
-                                    border: 'none',
-                                    borderRadius: '2px',
-                                    cursor: 'pointer',
-                                }}
-                            >
-                                {showFrontendLogs ? 'Hide' : 'Show'}
                             </button>
                         </div>
                     </div>
@@ -785,22 +840,23 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                 {/* Settings Debug Information */}
                 {settingsDebug && (
                     <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                            <div style={{ fontWeight: 'bold' }}>System Debug Information</div>
-                            <button
-                                onClick={() => setShowDebugInfo(!showDebugInfo)}
-                                style={{
-                                    padding: '4px 12px',
-                                    fontSize: '0.9em',
-                                    background: 'var(--vscode-button-background)',
-                                    color: 'var(--vscode-button-foreground)',
-                                    border: 'none',
-                                    borderRadius: '2px',
-                                    cursor: 'pointer',
-                                }}
-                            >
-                                {showDebugInfo ? 'Hide' : 'Show'}
-                            </button>
+                        <div 
+                            onClick={() => setShowDebugInfo(!showDebugInfo)}
+                            style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '8px',
+                                cursor: 'pointer',
+                                userSelect: 'none',
+                                padding: '4px 0',
+                                marginBottom: '8px',
+                                fontWeight: 'bold',
+                            }}
+                        >
+                            <span style={{ fontSize: '0.85em', opacity: 0.7 }}>
+                                {showDebugInfo ? '▼' : '▶'}
+                            </span>
+                            System Debug Information
                         </div>
                         
                         {showDebugInfo && (

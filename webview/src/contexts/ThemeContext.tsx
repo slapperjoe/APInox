@@ -61,6 +61,9 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
             root.style.setProperty(key, value);
         });
 
+        // Add data-theme attribute to body for CSS selectors
+        document.body.setAttribute('data-theme', theme);
+
         console.log(`[ThemeContext] Applied ${theme} theme (${Object.keys(selectedTheme.variables).length} variables)`);
 
         // Apply Monaco theme globally

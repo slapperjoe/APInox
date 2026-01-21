@@ -831,12 +831,16 @@ export class WebviewController {
     private sendChangelogToWebview() {
         try {
             const changelogPath = path.join(this._extensionUri.fsPath, 'CHANGELOG.md');
+            console.log('[WebviewController] Attempting to read changelog from:', changelogPath);
             if (fs.existsSync(changelogPath)) {
                 const content = fs.readFileSync(changelogPath, 'utf8');
+                console.log('[WebviewController] Changelog loaded, length:', content.length);
                 this._postMessage({ command: BackendCommand.Changelog, content });
+            } else {
+                console.log('[WebviewController] Changelog file not found at path');
             }
         } catch (e) {
-            console.error('Failed to read changelog', e);
+            console.error('[WebviewController] Failed to read changelog', e);
         }
     }
 

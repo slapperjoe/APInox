@@ -125,6 +125,18 @@ fn spawn_sidecar(app_handle: &tauri::AppHandle) -> Result<(), String> {
         })?;
     log::info!("Executable directory: {:?}", exe_dir);
     
+    // On macOS, resources are in ../Resources, not the MacOS directory
+    #[cfg(target_os = "macos")]
+    let resource_dir = exe_dir.parent()
+        .and_then(|p| Some(p.join("Resources")))
+        .filter(|p| p.exists());
+    #[cfg(not(target_os = "macos"))]
+    let resource_dir: Option<PathBuf> = None;
+    
+    if let Some(ref res_dir) = resource_dir {
+        log::info!("macOS Resources directory: {:?}", res_dir);
+    }
+    
     let preferred_dir = exe_dir.join(".apinox-config");
     log::info!("Preferred config directory: {:?}", preferred_dir);
 
@@ -160,18 +172,41 @@ fn spawn_sidecar(app_handle: &tauri::AppHandle) -> Result<(), String> {
     }
 
     let exe_dir_clone = exe_dir.clone();
-    let sidecar_candidates = [exe_dir.clone()];
+    
+    // Build search candidates - on macOS, prioritize Resources directory
+    let mut sidecar_candidates = Vec::new();
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(ref res_dir) = resource_dir {
+            sidecar_candidates.push(res_dir.clone());
+        }
+    }
+    sidecar_candidates.push(exe_dir.clone());
+    
     log::info!("Searching for sidecar in {} locations", sidecar_candidates.len());
 
-    let find_sidecar_script = |start: &PathBuf| -> Option<(PathBuf, PathBuf)> {
+    let find_sidecar_script = |start: &PathBuf| -> Option<(PathBuf, PathBuf, bool)> {
         let mut cursor = start.clone();
         for depth in 0..6 {
-            // Check for bundled sidecar first (production)
+            // Check for standalone binary first (production - no Node.js required)
+            #[cfg(windows)]
+            let binary_name = "sidecar.exe";
+            #[cfg(not(windows))]
+            let binary_name = "sidecar";
+            
+            let bundled_binary = cursor.join("sidecar-bundle").join(binary_name);
+            log::info!("  [Depth {}] Checking bundled binary: {:?}", depth, bundled_binary);
+            if bundled_binary.exists() {
+                log::info!("  ✓ Found bundled sidecar binary at: {:?}", bundled_binary);
+                return Some((bundled_binary, cursor, true)); // true = standalone binary
+            }
+            
+            // Check for bundled JS (production - requires Node.js)
             let bundled = cursor.join("sidecar-bundle").join("bundle.js");
-            log::info!("  [Depth {}] Checking bundled: {:?}", depth, bundled);
+            log::info!("  [Depth {}] Checking bundled JS: {:?}", depth, bundled);
             if bundled.exists() {
-                log::info!("  ✓ Found bundled sidecar at: {:?}", bundled);
-                return Some((bundled, cursor));
+                log::info!("  ✓ Found bundled sidecar JS at: {:?}", bundled);
+                return Some((bundled, cursor, false)); // false = requires Node.js
             }
             
             // Fallback to unbundled sidecar (development)
@@ -179,7 +214,7 @@ fn spawn_sidecar(app_handle: &tauri::AppHandle) -> Result<(), String> {
             log::info!("  [Depth {}] Checking dev bundle: {:?}", depth, dev_bundle);
             if dev_bundle.exists() {
                 log::info!("  ✓ Found dev bundle sidecar at: {:?}", dev_bundle);
-                return Some((dev_bundle, cursor));
+                return Some((dev_bundle, cursor, false));
             }
             
             // Fallback to fully unbundled (development without bundle)
@@ -192,7 +227,7 @@ fn spawn_sidecar(app_handle: &tauri::AppHandle) -> Result<(), String> {
             log::info!("  [Depth {}] Checking unbundled: {:?}", depth, candidate);
             if candidate.exists() {
                 log::info!("  ✓ Found unbundled sidecar at: {:?}", candidate);
-                return Some((candidate, cursor));
+                return Some((candidate, cursor, false));
             }
             if let Some(parent) = cursor.parent() {
                 cursor = parent.to_path_buf();
@@ -206,11 +241,13 @@ fn spawn_sidecar(app_handle: &tauri::AppHandle) -> Result<(), String> {
 
     let mut sidecar_script: Option<PathBuf> = None;
     let mut project_root: Option<PathBuf> = None;
+    let mut is_standalone_binary = false;
     for (idx, start) in sidecar_candidates.iter().enumerate() {
         log::info!("Search path {}: {:?}", idx + 1, start);
-        if let Some((script, root)) = find_sidecar_script(start) {
+        if let Some((script, root, is_binary)) = find_sidecar_script(start) {
             sidecar_script = Some(script);
             project_root = Some(root);
+            is_standalone_binary = is_binary;
             break;
         }
     }
@@ -219,9 +256,9 @@ fn spawn_sidecar(app_handle: &tauri::AppHandle) -> Result<(), String> {
         log::error!("Sidecar script not found in any search paths!");
         log::error!("Searched locations:");
         for (idx, start) in sidecar_candidates.iter().enumerate() {
-            log::error!("  {}: {:?}/sidecar/dist/sidecar/src/index.js", idx + 1, start);
+            log::error!("  {}: {:?}/sidecar-bundle/sidecar (binary) or bundle.js (JS)", idx + 1, start);
         }
-        "Sidecar not found. Run 'npm run build:sidecar' first.".to_string()
+        "Sidecar not found. Run 'npm run prepare:sidecar:binary' or 'npm run prepare:sidecar' first.".to_string()
     })?;
     let project_root = project_root.ok_or_else(|| "Failed to resolve project root".to_string())?;
 
@@ -229,6 +266,7 @@ fn spawn_sidecar(app_handle: &tauri::AppHandle) -> Result<(), String> {
     log::info!("Sidecar script: {:?}", sidecar_script);
     log::info!("Project root: {:?}", project_root);
     log::info!("Config directory: {}", config_dir_str);
+    log::info!("Sidecar type: {}", if is_standalone_binary { "Standalone binary (Node.js embedded)" } else { "JavaScript (requires Node.js)" });
 
     // Write config dir to a file that sidecar can read
     let config_dir_file = exe_dir_clone.join(".apinox-sidecar-config");
@@ -239,30 +277,79 @@ fn spawn_sidecar(app_handle: &tauri::AppHandle) -> Result<(), String> {
         log::info!("Successfully wrote sidecar config file");
     }
 
-    // Check if node is available - simplified to just use PATH
-    log::info!("Checking for Node.js availability...");
-    
-    let mut node_cmd = None;
-    
-    // Parse PATH manually and search for node.exe
-    if let Ok(path_var) = std::env::var("PATH") {
-        let paths: Vec<&str> = path_var.split(';').collect();
-        log::info!("Searching {} PATH entries for node.exe...", paths.len());
+    // Build sidecar command based on type
+    let mut command = if is_standalone_binary {
+        // Standalone binary - no Node.js needed!
+        log::info!("Building sidecar command for standalone binary...");
+        Command::new(&sidecar_script)
+    } else {
+        // JavaScript file - requires Node.js
+        log::info!("Checking for Node.js availability...");
         
-        for path_entry in paths {
-            if path_entry.is_empty() {
-                continue;
+        let mut node_cmd = None;
+    
+    // Common Node.js installation locations on macOS/Linux
+    #[cfg(not(windows))]
+    let common_locations = vec![
+        "/opt/homebrew/bin/node",      // Homebrew (Apple Silicon)
+        "/usr/local/bin/node",          // Homebrew (Intel) / manual install
+        "/usr/bin/node",                // System package manager
+        "/opt/local/bin/node",          // MacPorts
+    ];
+    
+    #[cfg(windows)]
+    let common_locations = vec![
+        "C:\\Program Files\\nodejs\\node.exe",
+        "C:\\Program Files (x86)\\nodejs\\node.exe",
+    ];
+    
+    // First, try common locations
+    #[cfg(not(windows))]
+    let node_filename = "node";
+    #[cfg(windows)]
+    let node_filename = "node.exe";
+    
+    log::info!("Checking {} common installation locations...", common_locations.len());
+    for location in &common_locations {
+        let node_path = PathBuf::from(location);
+        if node_path.exists() && node_path.is_file() {
+            if let Ok(output) = Command::new(&node_path).arg("--version").output() {
+                if output.status.success() {
+                    let version = String::from_utf8_lossy(&output.stdout);
+                    log::info!("✓ Found Node.js at: {:?} ({})", node_path, version.trim());
+                    node_cmd = Some(node_path.to_string_lossy().to_string());
+                    break;
+                }
             }
+        }
+    }
+    
+    // If not found in common locations, search PATH
+    if node_cmd.is_none() {
+        #[cfg(windows)]
+        let path_separator = ';';
+        #[cfg(not(windows))]
+        let path_separator = ':';
+        
+        if let Ok(path_var) = std::env::var("PATH") {
+            let paths: Vec<&str> = path_var.split(path_separator).collect();
+            log::info!("Searching {} PATH entries for {}...", paths.len(), node_filename);
             
-            let node_path = PathBuf::from(path_entry).join("node.exe");
-            if node_path.exists() {
-                // Try to execute it
-                if let Ok(output) = Command::new(&node_path).arg("--version").output() {
-                    if output.status.success() {
-                        let version = String::from_utf8_lossy(&output.stdout);
-                        log::info!("✓ Found Node.js at: {:?} ({})", node_path, version.trim());
-                        node_cmd = Some(node_path.to_string_lossy().to_string());
-                        break;
+            for path_entry in paths {
+                if path_entry.is_empty() {
+                    continue;
+                }
+                
+                let node_path = PathBuf::from(path_entry).join(node_filename);
+                if node_path.exists() {
+                    // Try to execute it
+                    if let Ok(output) = Command::new(&node_path).arg("--version").output() {
+                        if output.status.success() {
+                            let version = String::from_utf8_lossy(&output.stdout);
+                            log::info!("✓ Found Node.js at: {:?} ({})", node_path, version.trim());
+                            node_cmd = Some(node_path.to_string_lossy().to_string());
+                            break;
+                        }
                     }
                 }
             }
@@ -272,8 +359,9 @@ fn spawn_sidecar(app_handle: &tauri::AppHandle) -> Result<(), String> {
     let node_command = match node_cmd {
         Some(cmd) => cmd,
         None => {
-            log::error!("Node.js not found in PATH");
+            log::error!("Node.js not found in PATH or common locations");
             log::error!("PATH: {:?}", std::env::var("PATH").ok());
+            log::error!("Checked locations: {:?}", common_locations);
             log::error!("Please ensure Node.js is installed and in your system PATH.");
             log::error!("After installation, you may need to restart your computer for PATH changes to take effect.");
             let err = "Node.js not found in PATH. Please install Node.js and restart your computer.".to_string();
@@ -284,16 +372,30 @@ fn spawn_sidecar(app_handle: &tauri::AppHandle) -> Result<(), String> {
         }
     };
 
-    log::info!("Building sidecar command...");
-    let mut command = Command::new(&node_command);
+        log::info!("Building sidecar command for JavaScript runtime...");
+        Command::new(&node_command)
+    };
+    
+    // Configure command arguments and environment
     command
-        .arg(&sidecar_script)
-        .arg("--config-dir")
-        .arg(&config_dir_str)
         .current_dir(&project_root)
         .env("APINOX_CONFIG_DIR", &config_dir_str)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());  // Changed to piped to capture stderr
+    
+    // For JavaScript runtime, pass the script path and arguments
+    if !is_standalone_binary {
+        // Arguments order: node <script.js> --config-dir <path>
+        command
+            .arg(sidecar_script.to_string_lossy().to_string())
+            .arg("--config-dir")
+            .arg(&config_dir_str);
+    } else {
+        // For standalone binary, pass flags directly
+        command
+            .arg("--config-dir")
+            .arg(&config_dir_str);
+    }
 
     #[cfg(windows)]
     {

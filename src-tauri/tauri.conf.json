@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "APInox",
-  "version": "0.13.1",
+  "version": "0.13.2",
   "identifier": "com.apinox.app",
   "build": {
     "frontendDist": "../webview-build",
@@ -36,7 +36,8 @@
       "icons/icon.ico"
     ],
     "resources": {
-      "../sidecar-bundle": "sidecar-bundle"
+      "../sidecar-bundle": "sidecar-bundle",
+      "../CHANGELOG.md": "CHANGELOG.md"
     },
     "externalBin": []
   },
