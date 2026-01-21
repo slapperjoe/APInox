@@ -1,6 +1,10 @@
 # Changelog
 
 
+## [0.13.1] - 2026-01-21
+### Auto-Generated Changes
+- feat: enhance script playground functionality
+
 ## [0.13.0] - 2026-01-21
 ### Auto-Generated Changes
 - feat: Major fixes for prod version

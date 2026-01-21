@@ -23009,7 +23009,7 @@ var require_package = __commonJS({
       },
       icon: "images/APInox_logo_dark.jpg",
       license: "MIT",
-      version: "0.12.0",
+      version: "0.13.0",
       engines: {
         vscode: "^1.80.0"
       },

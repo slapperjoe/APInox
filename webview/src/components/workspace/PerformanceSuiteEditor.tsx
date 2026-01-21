@@ -913,7 +913,7 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                                                         {new Date(run.startTime).toLocaleString()}
                                                     </div>
                                                     <div style={{ fontSize: '0.85em', opacity: 0.7 }}>
-                                                        {stats.totalRequests} requests • {stats.successRate.toFixed(0)}% success • avg {stats.avgResponseTime.toFixed(0)}ms
+                                                        {stats.totalRequests} requests • {(stats.successRate*100).toFixed(0)}% success • avg {stats.avgResponseTime.toFixed(0)}ms
                                                     </div>
                                                 </div>
                                                 <ToolbarButton
