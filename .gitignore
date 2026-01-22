@@ -17,6 +17,9 @@ webview-build
 # Sidecar Bundle
 sidecar-bundle/
 sidecar/bundle.js
+sidecar/*.exe
+sidecar/apinox-sidecar
+sidecar/apinox-sidecar.exe
 
 # OS
 .DS_Store
