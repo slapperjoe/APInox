@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { Play, Plus, Trash2, Settings, Clock, Repeat, Flame, Zap, GripVertical, Loader, Square, Calendar, ToggleLeft, ToggleRight, Import, Download, ChevronDown, ChevronRight, CheckCircle, XCircle, AlertTriangle, Users, Server } from 'lucide-react';
+import { Play, Plus, Trash2, Settings, Clock, Repeat, Flame, Zap, GripVertical, Loader, Square, Calendar, ToggleLeft, ToggleRight, Import, Download, ChevronDown, ChevronRight, CheckCircle, XCircle, AlertTriangle, Users, Server, FileJson } from 'lucide-react';
 import { PerformanceSuite, PerformanceRun, PerformanceSchedule, PerformanceRequest, CoordinatorStatus } from '@shared/models';
 import { WorkerStatusPanel } from './WorkerStatusPanel';
 
@@ -916,28 +916,58 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                                                         {stats.totalRequests} requests • {(stats.successRate*100).toFixed(0)}% success • avg {stats.avgResponseTime.toFixed(0)}ms
                                                     </div>
                                                 </div>
-                                                <ToolbarButton
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        // Export CSV
-                                                        const csv = [
-                                                            'Request,Iteration,Duration (ms),Status,Success,SLA Breached,Timestamp',
-                                                            ...run.results.map(r =>
-                                                                `"${r.requestName}",${r.iteration},${r.duration.toFixed(2)},${r.status},${r.success},${r.slaBreached},${new Date(r.timestamp).toISOString()}`
-                                                            )
-                                                        ].join('\n');
-                                                        const blob = new Blob([csv], { type: 'text/csv' });
-                                                        const url = URL.createObjectURL(blob);
-                                                        const a = document.createElement('a');
-                                                        a.href = url;
-                                                        a.download = `performance-run-${run.id}.csv`;
-                                                        a.click();
-                                                        URL.revokeObjectURL(url);
-                                                    }}
-                                                    title="Export CSV"
-                                                >
-                                                    <Download size={14} />
-                                                </ToolbarButton>
+                                                <div style={{ display: 'flex', gap: 4 }}>
+                                                    <ToolbarButton
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            // Export CSV
+                                                            const csv = [
+                                                                'Request,Iteration,Duration (ms),Status,Success,SLA Breached,Timestamp',
+                                                                ...run.results.map(r =>
+                                                                    `"${r.requestName}",${r.iteration},${r.duration.toFixed(2)},${r.status},${r.success},${r.slaBreached},${new Date(r.timestamp).toISOString()}`
+                                                                )
+                                                            ].join('\n');
+                                                            const blob = new Blob([csv], { type: 'text/csv' });
+                                                            const url = URL.createObjectURL(blob);
+                                                            const a = document.createElement('a');
+                                                            a.href = url;
+                                                            a.download = `performance-run-${run.id}.csv`;
+                                                            a.click();
+                                                            URL.revokeObjectURL(url);
+                                                        }}
+                                                        title="Export CSV"
+                                                    >
+                                                        <Download size={14} />
+                                                    </ToolbarButton>
+                                                    <ToolbarButton
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            // Export JSON
+                                                            const exportData = {
+                                                                runId: run.id,
+                                                                suiteId: run.suiteId,
+                                                                suiteName: run.suiteName,
+                                                                startTime: run.startTime,
+                                                                endTime: run.endTime,
+                                                                status: run.status,
+                                                                environment: run.environment,
+                                                                summary: run.summary,
+                                                                results: run.results
+                                                            };
+                                                            const json = JSON.stringify(exportData, null, 2);
+                                                            const blob = new Blob([json], { type: 'application/json' });
+                                                            const url = URL.createObjectURL(blob);
+                                                            const a = document.createElement('a');
+                                                            a.href = url;
+                                                            a.download = `performance-run-${run.id}.json`;
+                                                            a.click();
+                                                            URL.revokeObjectURL(url);
+                                                        }}
+                                                        title="Export JSON"
+                                                    >
+                                                        <FileJson size={14} />
+                                                    </ToolbarButton>
+                                                </div>
                                             </RunHeader>
 
                                             {isExpanded && (
