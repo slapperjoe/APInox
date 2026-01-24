@@ -66,6 +66,27 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
 
         console.log(`[ThemeContext] Applied ${theme} theme (${Object.keys(selectedTheme.variables).length} variables)`);
 
+        // Update window border color to match theme
+        const updateBorderColor = async () => {
+            try {
+                const { invoke } = await import('@tauri-apps/api/core');
+                const { getCurrentWindow } = await import('@tauri-apps/api/window');
+                
+                // Get the editor background color
+                const editorBg = selectedTheme.variables['--vscode-editor-background'];
+                
+                await invoke('set_border_color', { 
+                    color: editorBg 
+                });
+                
+                console.log(`[ThemeContext] Updated border color to: ${editorBg}`);
+            } catch (e) {
+                console.warn('[ThemeContext] Failed to update border color:', e);
+            }
+        };
+
+        updateBorderColor();
+
         // Apply Monaco theme globally
         const applyMonacoTheme = async () => {
             try {

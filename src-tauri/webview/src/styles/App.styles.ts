@@ -24,6 +24,7 @@ export const Container = styled.div`
     color: var(--vscode-editor-foreground);
     font-family: var(--vscode-font-family);
     font-size: var(--vscode-font-size);
+    padding-top: 32px; /* Account for title bar */
 `;
 
 // =============================================================================
