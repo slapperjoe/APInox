@@ -9,6 +9,7 @@ import { PerformanceProvider } from './contexts/PerformanceContext';
 import { MockProxyProvider } from './contexts/MockProxyContext';
 import MainContent from './components/MainContent';
 import { DebugIndicator } from './components/DebugIndicator';
+import TitleBar from './components/TitleBar';
 
 export default function App() {
     return (
@@ -20,6 +21,7 @@ export default function App() {
                             <TestRunnerProvider>
                                 <PerformanceProvider>
                                     <MockProxyProvider>
+                                        <TitleBar />
                                         <DebugIndicator />
                                         <MainContent />
                                     </MockProxyProvider>

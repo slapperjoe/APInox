@@ -10,6 +10,11 @@ use tauri::Manager;
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 
+#[cfg(windows)]
+use windows::Win32::Graphics::Dwm::{DwmSetWindowAttribute, DWMWA_BORDER_COLOR};
+#[cfg(windows)]
+use windows::Win32::Foundation::HWND;
+
 // Global sidecar state
 static SIDECAR_PORT: AtomicU16 = AtomicU16::new(0);
 static SIDECAR_PROCESS: Mutex<Option<Child>> = Mutex::new(None);
@@ -32,6 +37,57 @@ fn copy_dir_recursive(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()> {
             fs::copy(&src_path, &dst_path)?;
         }
     }
+    Ok(())
+}
+
+#[tauri::command]
+fn quit_app(app: tauri::AppHandle) {
+    log::info!("Quit command received, stopping sidecar and exiting...");
+    stop_sidecar();
+    app.exit(0);
+}
+
+#[tauri::command]
+fn set_border_color(window: tauri::Window, color: String) -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+        
+        // Parse hex color string (e.g., "#1e1e1e" or "1e1e1e")
+        let color_str = color.trim_start_matches('#');
+        let rgb = u32::from_str_radix(color_str, 16)
+            .map_err(|e| format!("Invalid color format: {}", e))?;
+        
+        // Convert RGB to BGR (Windows uses BGR format)
+        let r = (rgb >> 16) & 0xFF;
+        let g = (rgb >> 8) & 0xFF;
+        let b = rgb & 0xFF;
+        let bgr = (b << 16) | (g << 8) | r;
+        
+        if let Ok(handle) = window.window_handle() {
+            if let RawWindowHandle::Win32(win32_handle) = handle.as_ref() {
+                let hwnd = HWND(win32_handle.hwnd.get() as _);
+                
+                unsafe {
+                    DwmSetWindowAttribute(
+                        hwnd,
+                        DWMWA_BORDER_COLOR,
+                        &bgr as *const _ as *const _,
+                        std::mem::size_of::<u32>() as u32,
+                    ).map_err(|e| format!("Failed to set border color: {:?}", e))?;
+                }
+                
+                log::info!("Updated window border color to: {}", color);
+                return Ok(());
+            }
+        }
+    }
+    
+    #[cfg(not(windows))]
+    {
+        let _ = (window, color);
+    }
+    
     Ok(())
 }
 
@@ -554,15 +610,48 @@ fn stop_sidecar() {
     SIDECAR_PORT.store(0, Ordering::Relaxed);
 }
 
+/// Apply custom window styling on Windows
+#[cfg(windows)]
+fn apply_window_styling(window: &tauri::WebviewWindow) {
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    
+    if let Ok(handle) = window.window_handle() {
+        if let RawWindowHandle::Win32(win32_handle) = handle.as_ref() {
+            let hwnd = HWND(win32_handle.hwnd.get() as _);
+            
+            // Set initial border color to dark theme
+            // The frontend will update this based on actual theme
+            let color: u32 = 0x001e1e1e; // Dark theme default
+            
+            unsafe {
+                let _ = DwmSetWindowAttribute(
+                    hwnd,
+                    DWMWA_BORDER_COLOR,
+                    &color as *const _ as *const _,
+                    std::mem::size_of::<u32>() as u32,
+                );
+            }
+            
+            log::info!("Applied initial window border styling (theme will update it)");
+        }
+    }
+}
+
+#[cfg(not(windows))]
+fn apply_window_styling(_window: &tauri::WebviewWindow) {
+    // No-op on non-Windows platforms
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![get_sidecar_port, is_sidecar_ready, get_config_dir, get_sidecar_diagnostics, get_tauri_logs])
+        .invoke_handler(tauri::generate_handler![quit_app, set_border_color, get_sidecar_port, is_sidecar_ready, get_config_dir, get_sidecar_diagnostics, get_tauri_logs])
         .setup(|app| {
             // Initialize logging for both debug and production
             // This helps diagnose issues on user machines
@@ -618,6 +707,14 @@ pub fn run() {
                     log::error!("==========================================");
                 }
             });
+
+            // Apply custom window styling for Windows
+            #[cfg(windows)]
+            {
+                if let Some(window) = app.get_webview_window("main") {
+                    apply_window_styling(&window);
+                }
+            }
 
             Ok(())
         })

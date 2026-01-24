@@ -1,6 +1,6 @@
 [package]
 name = "apinox"
-version = "0.15.54"
+version = "0.15.62"
 description = "APInox - API Testing & Development Tool"
 authors = ["Dev1"]
 license = "MIT"
@@ -28,4 +28,10 @@ tauri-plugin-clipboard-manager = "2"
 tauri-plugin-store = "2"
 tauri-plugin-opener = "2"
 tauri-plugin-shell = "2"
+tauri-plugin-process = "2"
+raw-window-handle = "0.6"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.58", features = ["Win32_Graphics_Dwm", "Win32_Foundation"] }
+
 
