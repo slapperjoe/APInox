@@ -33,7 +33,8 @@ export interface ApinoxConfig {
     environments?: Record<string, {
         endpoint_url?: string;
         env?: string;
-        [key: string]: string | undefined;
+        _secretFields?: string[];
+        [key: string]: string | string[] | undefined;
     }>;
     globals?: Record<string, string>;
     recentWorkspaces?: string[];
@@ -256,6 +257,49 @@ export class SettingsManager {
 
     public saveRawConfig(content: string) {
         fs.writeFileSync(this.configPath, content);
+    }
+
+    /**
+     * Set the SecretManager instance for resolving encrypted secrets
+     * Must be called from sidecar after creating SecretManager
+     */
+    private secretManager?: any; // Import would create circular dependency
+    
+    public setSecretManager(secretManager: any) {
+        this.secretManager = secretManager;
+    }
+
+    /**
+     * Get environment variables with secrets resolved
+     * @param envName - Name of the environment to resolve
+     * @returns Environment variables with secret references decrypted
+     */
+    public async getResolvedEnvironment(envName: string): Promise<Record<string, string>> {
+        const config = this.getConfig();
+        if (!config.environments || !config.environments[envName]) {
+            return {};
+        }
+
+        const env = config.environments[envName];
+        const resolved: Record<string, string> = {};
+
+        for (const [key, value] of Object.entries(env)) {
+            // Skip metadata fields
+            if (key === '_secretFields') continue;
+            
+            // Skip non-string values
+            if (typeof value !== 'string') continue;
+
+            // If secretManager is available and value is a secret reference, resolve it
+            if (this.secretManager && typeof value === 'string' && value.startsWith('__SECRET__:')) {
+                const decrypted = await this.secretManager.resolveValue(value);
+                resolved[key] = decrypted || value;
+            } else {
+                resolved[key] = value;
+            }
+        }
+
+        return resolved;
     }
 
     public getAutosave(): string | null {

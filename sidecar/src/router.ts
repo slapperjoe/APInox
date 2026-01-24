@@ -618,6 +618,25 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             };
         },
 
+        // ===== Secrets Management =====
+        ['setEnvironmentSecret']: async (payload) => {
+            const { envName, fieldName, value } = payload;
+            await services.secretManager.setEnvironmentSecret(envName, fieldName, value);
+            return { success: true };
+        },
+
+        ['getEnvironmentSecret']: async (payload) => {
+            const { envName, fieldName } = payload;
+            const value = await services.secretManager.getEnvironmentSecret(envName, fieldName);
+            return { value };
+        },
+
+        ['deleteEnvironmentSecret']: async (payload) => {
+            const { envName, fieldName } = payload;
+            await services.secretManager.deleteEnvironmentSecret(envName, fieldName);
+            return { success: true };
+        },
+
         // ===== File Watcher =====
         [FrontendCommand.StartWatcher]: async () => {
             services.fileWatcherService.start();
