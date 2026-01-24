@@ -20,6 +20,7 @@ import { SettingsManager } from '../../src/utils/SettingsManager';
 import { SidecarNotificationService } from './adapters/SidecarNotificationService';
 import { SidecarConfigService } from './adapters/SidecarConfigService';
 import { SidecarSecretStorage } from './adapters/SidecarSecretStorage';
+import { SecretManager } from './SecretManager';
 
 export class ServiceContainer {
     public readonly soapClient: SoapClient;
@@ -38,6 +39,7 @@ export class ServiceContainer {
     public readonly notificationService: SidecarNotificationService;
     public readonly configService: SidecarConfigService;
     public readonly secretStorage: SidecarSecretStorage;
+    public readonly secretManager: SecretManager;
 
     private outputLog: string[] = [];
 
@@ -45,7 +47,6 @@ export class ServiceContainer {
         // Create platform adapters
         this.notificationService = new SidecarNotificationService();
         this.configService = new SidecarConfigService();
-        this.secretStorage = new SidecarSecretStorage();
 
         // Create output channel mock
         const outputChannel = {
@@ -57,6 +58,12 @@ export class ServiceContainer {
 
         // Initialize services
         this.settingsManager = new SettingsManager();
+        this.secretStorage = new SidecarSecretStorage();
+        this.secretManager = new SecretManager(this.secretStorage);
+        
+        // Link secret manager to settings manager for variable resolution
+        this.settingsManager.setSecretManager(this.secretManager);
+        
         this.soapClient = new SoapClient(this.settingsManager, outputChannel, this.configService);
         this.folderStorage = new FolderProjectStorage(outputChannel);
         this.fileWatcherService = new FileWatcherService(outputChannel, this.settingsManager);
