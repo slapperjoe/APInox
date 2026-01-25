@@ -8,6 +8,8 @@ import {
 import { RequestHistoryEntry } from '@shared/models';
 import { EmptyState } from '../common/EmptyState';
 import { SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderTitle } from './shared/SidebarStyles';
+import { IconButton } from '../common/Button';
+import { SPACING_XS, SPACING_SM, SPACING_MD, SPACING_LG } from '../../styles/spacing';
 
 const Container = styled(SidebarContainer)`
     padding: 0;
@@ -19,7 +21,7 @@ const Content = styled(SidebarContent)`
 `;
 
 const Section = styled.div`
-    margin-bottom: 15px;
+    margin-bottom: ${SPACING_LG};
 `;
 
 const SectionTitle = styled.div`
@@ -27,7 +29,7 @@ const SectionTitle = styled.div`
     font-weight: 600;
     text-transform: uppercase;
     opacity: 0.7;
-    margin-bottom: 8px;
+    margin-bottom: ${SPACING_SM};
     letter-spacing: 0.5px;
 `;
 
@@ -40,9 +42,9 @@ const SearchBar = styled.input`
     background: var(--vscode-input-background);
     color: var(--vscode-input-foreground);
     border: 1px solid var(--vscode-input-border);
-    padding: 6px 8px;
+    padding: ${SPACING_SM};
     border-radius: 4px;
-    margin-bottom: 10px;
+    margin-bottom: ${SPACING_MD};
     &:focus {
         outline: 1px solid var(--vscode-focusBorder);
     }
@@ -51,9 +53,9 @@ const SearchBar = styled.input`
 const HistoryItem = styled.div<{ $success?: boolean }>`
     display: flex;
     align-items: flex-start;
-    gap: 8px;
-    padding: 8px;
-    margin-bottom: 4px;
+    gap: ${SPACING_SM};
+    padding: ${SPACING_SM};
+    margin-bottom: ${SPACING_XS};
     background: var(--vscode-list-inactiveSelectionBackground);
     border-radius: 4px;
     cursor: pointer;
@@ -95,30 +97,7 @@ const ItemMeta = styled.div`
     margin-top: 2px;
     display: flex;
     align-items: center;
-    gap: 8px;
-`;
-
-const IconButton = styled.button`
-    background: none;
-    border: none;
-    color: var(--vscode-foreground);
-    cursor: pointer;
-    padding: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0.6;
-    border-radius: 3px;
-
-    &:hover {
-        opacity: 1;
-        background: var(--vscode-toolbar-hoverBackground);
-    }
-
-    &.starred {
-        opacity: 1;
-        color: var(--vscode-editorWarning-foreground);
-    }
+    gap: ${SPACING_SM};
 `;
 
 
@@ -221,12 +200,15 @@ export default function HistorySidebar({
             </ItemContent>
 
             <IconButton
-                className={entry.starred ? 'starred' : ''}
                 onClick={(e) => {
                     e.stopPropagation();
                     onToggleStar?.(entry.id);
                 }}
                 title={entry.starred ? 'Remove from favorites' : 'Add to favorites'}
+                style={{ 
+                    opacity: entry.starred ? 1 : 0.6,
+                    color: entry.starred ? 'var(--vscode-editorWarning-foreground)' : undefined
+                }}
             >
                 <Star size={14} fill={entry.starred ? 'currentColor' : 'none'} />
             </IconButton>

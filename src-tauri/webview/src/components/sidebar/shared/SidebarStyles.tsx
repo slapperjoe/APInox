@@ -1,5 +1,23 @@
+/**
+ * SidebarStyles.tsx
+ * Shared styled components for sidebar UI elements.
+ * 
+ * NOTE: Some components in this file are being migrated to common components:
+ * - HeaderButton → Use components/common/Button.tsx > HeaderButton
+ * - Input → Use components/common/Form.tsx > FormInput or InlineFormInput
+ * 
+ * These sidebar-specific components remain:
+ * - Layout components (SidebarContainer, SidebarHeader, SidebarContent)
+ * - Tree item components (SectionHeader, ServiceItem, OperationItem, RequestItem)
+ * - Visual elements (DirtyMarker)
+ */
+
 import styled, { keyframes, css } from 'styled-components';
 
+/**
+ * DirtyMarker - Visual indicator for unsaved changes
+ * Used to show "*" next to modified items
+ */
 export const DirtyMarker = styled.span`
     color: var(--vscode-charts-yellow);
     margin-left: 5px;
@@ -7,6 +25,11 @@ export const DirtyMarker = styled.span`
     line-height: 0.5;
 `;
 
+/**
+ * SidebarHeader - Top section of sidebar panels
+ * Contains title and action buttons
+ * Standard padding: 4px 10px (matches SPACING_PATTERNS.sidebarHeader)
+ */
 export const SidebarHeader = styled.div`
     display: flex;
     align-items: center;
@@ -17,6 +40,10 @@ export const SidebarHeader = styled.div`
     user-select: none;
 `;
 
+/**
+ * SidebarHeaderTitle - Title text in sidebar header
+ * Uppercase, bold styling matching VS Code sidebar sections
+ */
 export const SidebarHeaderTitle = styled.div`
     font-size: 11px;
     font-weight: 700;
@@ -29,6 +56,10 @@ export const SidebarHeaderTitle = styled.div`
     gap: 6px;
 `;
 
+/**
+ * SidebarHeaderActions - Container for action buttons in header
+ * Use with HeaderButton or IconButton from common/Button.tsx
+ */
 export const SidebarHeaderActions = styled.div`
     display: flex;
     align-items: center;
@@ -36,18 +67,30 @@ export const SidebarHeaderActions = styled.div`
     color: var(--vscode-icon-foreground);
 `;
 
+/**
+ * SidebarContainer - Root container for sidebar panels
+ * Provides flex column layout filling full height
+ */
 export const SidebarContainer = styled.div`
     display: flex;
     flex-direction: column;
     height: 100%;
 `;
 
+/**
+ * SidebarContent - Scrollable content area of sidebar
+ * Standard padding: 10px (matches SPACING_PATTERNS.sidebarContent)
+ */
 export const SidebarContent = styled.div`
     flex: 1;
     overflow-y: auto;
     padding: 10px;
 `;
 
+/**
+ * SectionHeader - Collapsible section header in tree views
+ * Used for expandable sections like "Interfaces", "Suites", etc.
+ */
 export const SectionHeader = styled.div`
     padding: 5px 10px;
     font-weight: bold;
@@ -60,6 +103,10 @@ export const SectionHeader = styled.div`
     }
 `;
 
+/**
+ * SectionTitle - Text content in section headers
+ * Handles overflow with ellipsis
+ */
 export const SectionTitle = styled.div`
     flex: 1;
     overflow: hidden;
@@ -67,6 +114,10 @@ export const SectionTitle = styled.div`
     white-space: nowrap;
 `;
 
+/**
+ * ServiceItem - Top-level tree item (e.g., Interface, Suite)
+ * No indentation, used for root-level items in tree
+ */
 export const ServiceItem = styled.div`
     padding: 5px 10px;
     cursor: pointer;
@@ -77,6 +128,11 @@ export const ServiceItem = styled.div`
     }
 `;
 
+/**
+ * OperationItem - Second-level tree item (e.g., Operation, TestCase)
+ * Indentation: 20px (first level of nesting)
+ * Supports active state for selection highlighting
+ */
 export const OperationItem = styled.div<{ $active?: boolean }>`
     padding: 5px 10px;
     padding-left: 20px;
@@ -90,6 +146,11 @@ export const OperationItem = styled.div<{ $active?: boolean }>`
     }
 `;
 
+/**
+ * RequestItem - Third-level tree item (e.g., Request, TestStep)
+ * Indentation: 45px (second level of nesting)
+ * Smaller font size for visual hierarchy
+ */
 export const RequestItem = styled.div<{ $active?: boolean }>`
     padding: 5px 10px;
     padding-left: 45px;
@@ -104,6 +165,11 @@ export const RequestItem = styled.div<{ $active?: boolean }>`
     }
 `;
 
+/**
+ * Shake animation for attention-grabbing effects
+ * Used for delete confirmations and warnings
+ * NOTE: Also exported from components/common/Button.tsx
+ */
 export const shake = keyframes`
     0% { transform: translateX(0); }
     25% { transform: translateX(2px) rotate(5deg); }
@@ -112,6 +178,11 @@ export const shake = keyframes`
     100% { transform: translateX(0); }
 `;
 
+/**
+ * HeaderButton - Button for sidebar headers
+ * @deprecated Prefer using HeaderButton from components/common/Button.tsx
+ * This version remains for backward compatibility during migration.
+ */
 export const HeaderButton = styled.button<{ $shake?: boolean }>`
     background: transparent;
     border: none;
@@ -129,6 +200,14 @@ export const HeaderButton = styled.button<{ $shake?: boolean }>`
     }
 `;
 
+/**
+ * Input - Basic text input
+ * @deprecated Prefer using FormInput or InlineFormInput from components/common/Form.tsx
+ * This version remains for backward compatibility during migration.
+ * 
+ * Note: This has 4px padding vs. FormInput's 6px padding.
+ * Use InlineFormInput (2px 4px) for compact inline editing.
+ */
 export const Input = styled.input`
     background-color: var(--vscode-input-background);
     color: var(--vscode-input-foreground);

@@ -1,66 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import Editor, { Monaco } from '@monaco-editor/react';
-import { X, AlertTriangle, Settings, FileJson, Server, Globe, Replace, Cloud, Network } from 'lucide-react';
+import { AlertTriangle, Settings, FileJson, Server, Globe, Replace, Cloud, Network } from 'lucide-react';
 import { GeneralTab, EnvironmentsTab, GlobalsTab, ReplaceRulesTab, IntegrationsTab, ServerTab, ApinoxConfig, ReplaceRuleSettings } from './settings';
 import { bridge, isTauri } from '../../utils/bridge';
 import { FrontendCommand } from '@shared/messages';
 import { ServerConfig } from '@shared/models';
 import { useTheme } from '../../contexts/ThemeContext';
+import { Modal } from './Modal';
+import { SPACING_SM, SPACING_MD } from '../../styles/spacing';
 
-const ModalOverlay = styled.div`
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 2000;
-`;
-
-const ModalContent = styled.div`
-    background: var(--vscode-editor-background);
-    color: var(--vscode-editor-foreground);
-    width: 800px;
-    height: 600px;
+const ModalWrapper = styled.div`
     display: flex;
     flex-direction: column;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-    border: 1px solid var(--vscode-widget-border);
-`;
-
-const ModalHeader = styled.div`
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 15px;
-    background: var(--vscode-editor-background);
-    border-bottom: 1px solid var(--vscode-widget-border);
-`;
-
-const Title = styled.h2`
-    margin: 0;
-    font-size: 14px;
-    font-weight: 600;
-    text-transform: uppercase;
-`;
-
-const IconButton = styled.button`
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    color: var(--vscode-icon-foreground);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 4px;
-    border-radius: 4px;
-    &:hover {
-        background: var(--vscode-toolbar-hoverBackground);
-    }
+    height: calc(95vh - 120px);
+    overflow: hidden;
 `;
 
 const TabContainer = styled.div`
@@ -69,8 +23,8 @@ const TabContainer = styled.div`
     background: var(--vscode-sideBar-background);
 `;
 
-const Tab = styled.div<{ active: boolean }>`
-    padding: 8px 16px;
+const Tab = styled.div<{ $active: boolean }>`
+    padding: ${SPACING_SM} ${SPACING_MD};
     cursor: pointer;
     font-size: 12px;
     display: flex;
@@ -78,8 +32,8 @@ const Tab = styled.div<{ active: boolean }>`
     gap: 6px;
     border-top: 1px solid transparent;
     border-right: 1px solid var(--vscode-panel-border);
-    background: ${props => props.active ? 'var(--vscode-editor-background)' : 'transparent'};
-    color: ${props => props.active ? 'var(--vscode-tab-activeForeground)' : 'var(--vscode-tab-inactiveForeground)'};
+    background: ${props => props.$active ? 'var(--vscode-editor-background)' : 'transparent'};
+    color: ${props => props.$active ? 'var(--vscode-tab-activeForeground)' : 'var(--vscode-tab-inactiveForeground)'};
 
     &:hover {
         color: var(--vscode-tab-activeForeground);
@@ -476,35 +430,34 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
     };
 
     return (
-        <ModalOverlay onClick={(e) => {
-            if (e.target === e.currentTarget) handleClose();
-        }}>
-            <ModalContent>
-                <ModalHeader>
-                    <Title>Settings</Title>
-                    <IconButton onClick={handleClose} title="Close"><X size={16} /></IconButton>
-                </ModalHeader>
-
+        <Modal
+            isOpen={true}
+            onClose={handleClose}
+            title="Settings"
+            size="large"
+            showCloseButton={true}
+        >
+            <ModalWrapper>
                 <TabContainer>
-                    <Tab active={activeTab === SettingsTab.GUI} onClick={() => handleTabSwitch(SettingsTab.GUI)}>
+                    <Tab $active={activeTab === SettingsTab.GUI} onClick={() => handleTabSwitch(SettingsTab.GUI)}>
                         <Settings size={14} /> General
                     </Tab>
-                    <Tab active={activeTab === SettingsTab.ENVIRONMENTS} onClick={() => handleTabSwitch(SettingsTab.ENVIRONMENTS)}>
+                    <Tab $active={activeTab === SettingsTab.ENVIRONMENTS} onClick={() => handleTabSwitch(SettingsTab.ENVIRONMENTS)}>
                         <Server size={14} /> Environments
                     </Tab>
-                    <Tab active={activeTab === SettingsTab.GLOBALS} onClick={() => handleTabSwitch(SettingsTab.GLOBALS)}>
+                    <Tab $active={activeTab === SettingsTab.GLOBALS} onClick={() => handleTabSwitch(SettingsTab.GLOBALS)}>
                         <Globe size={14} /> Globals
                     </Tab>
-                    <Tab active={activeTab === SettingsTab.REPLACE_RULES} onClick={() => handleTabSwitch(SettingsTab.REPLACE_RULES)}>
+                    <Tab $active={activeTab === SettingsTab.REPLACE_RULES} onClick={() => handleTabSwitch(SettingsTab.REPLACE_RULES)}>
                         <Replace size={14} /> Replace Rules
                     </Tab>
-                    <Tab active={activeTab === SettingsTab.INTEGRATIONS} onClick={() => handleTabSwitch(SettingsTab.INTEGRATIONS)}>
+                    <Tab $active={activeTab === SettingsTab.INTEGRATIONS} onClick={() => handleTabSwitch(SettingsTab.INTEGRATIONS)}>
                         <Cloud size={14} /> Integrations
                     </Tab>
-                    <Tab active={activeTab === SettingsTab.SERVER} onClick={() => handleTabSwitch(SettingsTab.SERVER)}>
+                    <Tab $active={activeTab === SettingsTab.SERVER} onClick={() => handleTabSwitch(SettingsTab.SERVER)}>
                         <Network size={14} /> Server
                     </Tab>
-                    <Tab active={activeTab === SettingsTab.JSON} onClick={() => handleTabSwitch(SettingsTab.JSON)} style={{ marginLeft: 'auto', borderRight: 'none', borderLeft: '1px solid var(--vscode-panel-border)' }}>
+                    <Tab $active={activeTab === SettingsTab.JSON} onClick={() => handleTabSwitch(SettingsTab.JSON)} style={{ marginLeft: 'auto', borderRight: 'none', borderLeft: '1px solid var(--vscode-panel-border)' }}>
                         <FileJson size={14} /> JSON (Advanced)
                     </Tab>
                 </TabContainer>
@@ -612,7 +565,7 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
                     )}
                 </ContentContainer>
 
-            </ModalContent>
-        </ModalOverlay>
+            </ModalWrapper>
+        </Modal>
     );
 };

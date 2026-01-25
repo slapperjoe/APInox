@@ -4,6 +4,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { ApiInterface, ApiOperation, ApiRequest } from '@shared/models';
 import { HeaderButton, SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle } from './shared/SidebarStyles';
 import { ServiceTree } from './ServiceTree';
+import { SPACING_MD, SPACING_XL } from '../../styles/spacing';
 
 
 
@@ -32,13 +33,13 @@ export interface ApiExplorerSidebarProps {
 const ExplorerContent = styled(SidebarContent)`
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: ${SPACING_MD};
 `;
 
 const EmptyMessage = styled.div`
     text-align: center;
     color: var(--vscode-descriptionForeground);
-    padding: 20px 0;
+    padding: ${SPACING_XL} 0;
     font-size: 0.9em;
 `;
 

@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import { Play, Square, Shield, Trash2, FolderOpen, Network, FileCode, FileDown, Bug, Plus, Edit2, ToggleLeft, ToggleRight } from 'lucide-react';
 import { WatcherEvent } from '@shared/models';
-/* eslint-disable react/no-inline-styles, react/jsx-no-inline-styles */
 import { HeaderButton, ServiceItem, SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderTitle } from './shared/SidebarStyles';
 import { formatXml } from '@shared/utils/xmlFormatter';
 import { BreakpointModal, Breakpoint } from '../modals/BreakpointModal';
+import { NumberSpinner } from '../common/NumberSpinner';
+import { RunButton, StopButton } from '../common/Button';
+import { SPACING_XS, SPACING_SM, SPACING_MD, SPACING_LG } from '../../styles/spacing';
 
 export interface ProxyUiProps {
     isRunning: boolean;
@@ -32,6 +34,136 @@ export interface ProxyUiProps {
 
 const Content = styled(SidebarContent)`
     color: var(--vscode-descriptionForeground);
+`;
+
+const ConfigSection = styled.div`
+    margin-bottom: ${SPACING_LG};
+    padding: ${SPACING_MD};
+    background-color: var(--vscode-editor-inactiveSelectionBackground);
+    border-radius: 5px;
+`;
+
+const ConfigRow = styled.div`
+    display: flex;
+    gap: ${SPACING_MD};
+    align-items: center;
+    margin-bottom: ${SPACING_XS};
+`;
+
+const ConfigField = styled.div`
+    flex: 1;
+`;
+
+const FieldLabel = styled.label`
+    display: block;
+    font-size: 0.8em;
+    margin-bottom: 2px;
+`;
+
+const TextInput = styled.input`
+    width: 100%;
+    padding: ${SPACING_XS};
+    background: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    border: 1px solid var(--vscode-input-border);
+    border-radius: 2px;
+    
+    &:focus {
+        outline: 1px solid var(--vscode-focusBorder);
+    }
+`;
+
+const CheckboxRow = styled.div`
+    display: flex;
+    align-items: center;
+    margin-bottom: ${SPACING_XS};
+    gap: ${SPACING_SM};
+`;
+
+const CheckboxLabel = styled.label`
+    font-size: 0.8em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: ${SPACING_SM};
+`;
+
+const Section = styled.div`
+    border-top: 1px solid var(--vscode-panel-border);
+    padding-top: ${SPACING_MD};
+    margin-top: ${SPACING_MD};
+`;
+
+const SectionHeader = styled.div`
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: ${SPACING_SM};
+`;
+
+const SectionTitle = styled.h4<{ $clickable?: boolean }>`
+    margin: 0;
+    font-size: 0.9em;
+    cursor: ${props => props.$clickable ? 'pointer' : 'default'};
+    display: flex;
+    align-items: center;
+    gap: ${SPACING_XS};
+`;
+
+const BreakpointItem = styled.div`
+    display: flex;
+    align-items: center;
+    gap: ${SPACING_SM};
+    padding: ${SPACING_SM};
+    background: var(--vscode-editor-inactiveSelectionBackground);
+    border-radius: 3px;
+    margin-bottom: ${SPACING_XS};
+    font-size: 0.85em;
+`;
+
+const BreakpointInfo = styled.div`
+    flex: 1;
+    min-width: 0;
+`;
+
+const BreakpointLabel = styled.div`
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+`;
+
+const BreakpointDetails = styled.div`
+    font-size: 0.9em;
+    opacity: 0.7;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+`;
+
+const ButtonRow = styled.div`
+    display: flex;
+    gap: ${SPACING_XS};
+    margin-top: ${SPACING_XS};
+`;
+
+const EmptyMessage = styled.div`
+    text-align: center;
+    font-size: 0.8em;
+    opacity: 0.7;
+    padding: ${SPACING_MD} 0;
+`;
+
+const ConfigPathDisplay = styled.div`
+    flex: 1;
+    font-size: 0.8em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: ${SPACING_XS};
+    background-color: var(--vscode-editor-background);
+    border: 1px solid var(--vscode-input-border);
+    border-radius: 2px;
 `;
 
 export const ProxyUi: React.FC<ProxyUiProps> = ({
@@ -118,79 +250,61 @@ export const ProxyUi: React.FC<ProxyUiProps> = ({
             </SidebarHeader>
 
             <Content>
-                {/* compact controls */}
-                <div style={{ marginBottom: 15, padding: 10, backgroundColor: 'var(--vscode-editor-inactiveSelectionBackground)', borderRadius: 5 }}>
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 5 }}>
-                        <div style={{ flex: 1 }}>
-                            <label style={{ display: 'block', fontSize: '0.8em', marginBottom: 2 }}>Local Port</label>
-                            <div style={{ display: 'flex', alignItems: 'center', background: 'var(--vscode-input-background)', border: '1px solid var(--vscode-input-border)' }}>
-                                <div
-                                    onClick={() => onUpdateConfig({ ...config, port: Math.max(1, (config.port || 9000) - 1) })}
-                                    style={{ padding: '4px 8px', cursor: 'pointer', borderRight: '1px solid var(--vscode-input-border)', userSelect: 'none' }}
-                                >-</div>
-                                <input
-                                    type="number"
-                                    className="vscode-input"
-                                    value={config.port}
-                                    onChange={(e) => onUpdateConfig({ ...config, port: parseInt(e.target.value) || 9000 })}
-                                    style={{
-                                        flex: 1,
-                                        width: '50px',
-                                        padding: '4px',
-                                        background: 'transparent',
-                                        color: 'var(--vscode-input-foreground)',
-                                        border: 'none',
-                                        textAlign: 'center',
-                                        appearance: 'textfield', // Hide default arrows
-                                    }}
-                                />
-                                <div
-                                    onClick={() => onUpdateConfig({ ...config, port: (config.port || 9000) + 1 })}
-                                    style={{ padding: '4px 8px', cursor: 'pointer', borderLeft: '1px solid var(--vscode-input-border)', userSelect: 'none' }}
-                                >+</div>
-                            </div>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%', paddingBottom: 1 }}>
+                {/* Configuration */}
+                <ConfigSection>
+                    <ConfigRow>
+                        <ConfigField>
+                            <FieldLabel>Local Port</FieldLabel>
+                            <NumberSpinner
+                                value={config.port}
+                                onChange={(port) => onUpdateConfig({ ...config, port })}
+                                defaultValue={9000}
+                            />
+                        </ConfigField>
+                        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
                             {!isRunning ? (
-                                <HeaderButton onClick={onStart} style={{ color: 'var(--vscode-testing-iconPassed)', border: '1px solid currentColor', padding: '5px 8px', height: '28px' }} title="Start Proxy"><Play size={14} /></HeaderButton>
+                                <RunButton onClick={onStart} title="Start Proxy" style={{ padding: '5px 8px', height: '28px' }}>
+                                    <Play size={14} />
+                                </RunButton>
                             ) : (
-                                <HeaderButton onClick={onStop} style={{ color: 'var(--vscode-testing-iconFailed)', border: '1px solid currentColor', padding: '5px 8px', height: '28px' }} title="Stop Proxy"><Square size={14} /></HeaderButton>
+                                <StopButton onClick={onStop} title="Stop Proxy" style={{ padding: '5px 8px', height: '28px' }}>
+                                    <Square size={14} />
+                                </StopButton>
                             )}
                         </div>
-                    </div>
+                    </ConfigRow>
 
-                    <div style={{ marginBottom: 5 }}>
-                        <label style={{ display: 'block', fontSize: '0.8em', marginBottom: 2 }}>Target URL</label>
-                        <input
+                    <ConfigField style={{ marginBottom: SPACING_XS }}>
+                        <FieldLabel>Target URL</FieldLabel>
+                        <TextInput
                             type="text"
-                            className="vscode-input"
                             value={config.target}
                             onChange={(e) => onUpdateConfig({ ...config, target: e.target.value })}
-                            style={{ width: '100%', padding: '4px', background: 'var(--vscode-input-background)', color: 'var(--vscode-input-foreground)', border: '1px solid var(--vscode-input-border)' }}
                         />
-                    </div>
+                    </ConfigField>
 
-                    <div style={{ marginBottom: 5, display: 'flex', alignItems: 'center' }}>
+                    <CheckboxRow>
                         <input
                             type="checkbox"
                             id="chkSystemProxy"
                             checked={config.systemProxyEnabled !== false}
                             onChange={e => onUpdateConfig({ ...config, systemProxyEnabled: e.target.checked })}
                             style={{
-                                marginRight: 6,
                                 accentColor: 'var(--vscode-button-background)',
                                 width: '14px',
                                 height: '14px',
                                 cursor: 'pointer'
                             }}
                         />
-                        <label htmlFor="chkSystemProxy" style={{ fontSize: '0.8em', cursor: 'pointer', userSelect: 'none' }} title="Uncheck to bypass local corporate proxy (direct connection)">
+                        <CheckboxLabel htmlFor="chkSystemProxy" title="Uncheck to bypass local corporate proxy (direct connection)">
                             Use System Proxy
-                        </label>
-                    </div>
+                        </CheckboxLabel>
+                    </CheckboxRow>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-                        <div style={{ fontSize: '0.8em' }}>Status: {isRunning ? <span style={{ color: 'var(--vscode-testing-iconPassed)' }}>Running</span> : 'Stopped'}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: SPACING_SM }}>
+                        <div style={{ fontSize: '0.8em' }}>
+                            Status: {isRunning ? <span style={{ color: 'var(--vscode-testing-iconPassed)' }}>Running</span> : 'Stopped'}
+                        </div>
                         <div style={{ display: 'flex', alignItems: 'center' }}>
                             {isHttps && onOpenCertificate && (
                                 <HeaderButton onClick={onOpenCertificate} title="Install Certificate (Required for HTTPS)" style={{ color: 'var(--vscode-charts-yellow)' }}>
@@ -200,39 +314,30 @@ export const ProxyUi: React.FC<ProxyUiProps> = ({
                             <HeaderButton onClick={onClear} title="Clear Traffic History"><Trash2 size={14} /></HeaderButton>
                         </div>
                     </div>
-                </div>
+                </ConfigSection>
 
                 {/* Breakpoints Section */}
                 {onUpdateBreakpoints && (
-                    <div style={{ borderTop: '1px solid var(--vscode-panel-border)', paddingTop: 10, marginTop: 10 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                            <h4
-                                style={{ margin: 0, fontSize: '0.9em', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
+                    <Section>
+                        <SectionHeader>
+                            <SectionTitle
+                                $clickable
                                 onClick={() => setShowBreakpoints(!showBreakpoints)}
                             >
                                 <Bug size={14} />
                                 Breakpoints ({breakpoints.length})
-                            </h4>
+                            </SectionTitle>
                             <HeaderButton onClick={() => setBreakpointModal({ open: true })} title="Add Breakpoint">
                                 <Plus size={14} />
                             </HeaderButton>
-                        </div>
+                        </SectionHeader>
 
                         {showBreakpoints && breakpoints.length > 0 && (
                             <div style={{ fontSize: '0.85em' }}>
                                 {breakpoints.map((bp, i) => (
-                                    <div
+                                    <BreakpointItem
                                         key={bp.id}
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 6,
-                                            padding: '6px 8px',
-                                            marginBottom: 4,
-                                            backgroundColor: 'var(--vscode-list-hoverBackground)',
-                                            borderRadius: 4,
-                                            opacity: bp.enabled ? 1 : 0.5
-                                        }}
+                                        style={{ opacity: bp.enabled ? 1 : 0.5 }}
                                     >
                                         <button
                                             onClick={() => {
@@ -253,14 +358,14 @@ export const ProxyUi: React.FC<ProxyUiProps> = ({
                                         >
                                             {bp.enabled ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
                                         </button>
-                                        <div style={{ flex: 1, overflow: 'hidden' }}>
-                                            <div style={{ fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        <BreakpointInfo>
+                                            <BreakpointLabel>
                                                 {bp.name || bp.pattern}
-                                            </div>
-                                            <div style={{ fontSize: '0.8em', opacity: 0.7 }}>
+                                            </BreakpointLabel>
+                                            <BreakpointDetails>
                                                 {bp.target} • {bp.matchOn}{bp.isRegex ? ' (regex)' : ''}
-                                            </div>
-                                        </div>
+                                            </BreakpointDetails>
+                                        </BreakpointInfo>
                                         <HeaderButton
                                             onClick={() => setBreakpointModal({ open: true, bp })}
                                             title="Edit"
@@ -278,63 +383,55 @@ export const ProxyUi: React.FC<ProxyUiProps> = ({
                                         >
                                             <Trash2 size={12} />
                                         </HeaderButton>
-                                    </div>
+                                    </BreakpointItem>
                                 ))}
                             </div>
                         )}
 
                         {showBreakpoints && breakpoints.length === 0 && (
-                            <div style={{ textAlign: 'center', fontSize: '0.8em', opacity: 0.7, padding: '10px 0' }}>
+                            <EmptyMessage>
                                 No breakpoints configured.
-                            </div>
+                            </EmptyMessage>
                         )}
-                    </div>
+                    </Section>
                 )}
 
-                <div style={{ borderTop: '1px solid var(--vscode-panel-border)', paddingTop: 10, marginTop: 10 }}>
-                    <h4 style={{ margin: '0 0 8px 0', fontSize: '0.9em' }}>Config Switcher</h4>
-                    <div style={{ display: 'flex', gap: 5, alignItems: 'center', marginBottom: 5 }}>
-                        <div style={{
-                            flex: 1,
-                            fontSize: '0.8em',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            padding: '4px',
-                            backgroundColor: 'var(--vscode-editor-background)',
-                            border: '1px solid var(--vscode-input-border)',
-                            borderRadius: '2px'
-                        }} title={configPath || ''}>
+                <Section>
+                    <SectionHeader>
+                        <SectionTitle>Config Switcher</SectionTitle>
+                    </SectionHeader>
+                    <div style={{ display: 'flex', gap: SPACING_XS, alignItems: 'center', marginBottom: SPACING_XS }}>
+                        <ConfigPathDisplay title={configPath || ''}>
                             {configPath ? configPath.split(/[\\/]/).pop() : 'Select web.config...'}
-                        </div>
+                        </ConfigPathDisplay>
                         <HeaderButton onClick={onSelectConfigFile} title="Browse"><FolderOpen size={14} /></HeaderButton>
                     </div>
 
                     {configPath && (
-                        <div style={{ display: 'flex', gap: 5, marginTop: 5 }}>
+                        <ButtonRow>
                             <HeaderButton onClick={onInjectProxy} style={{ flex: 1, justifyContent: 'center', border: '1px solid var(--vscode-button-border)', background: 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-secondaryForeground)' }} title="Inject Proxy Address">
                                 <Network size={12} style={{ marginRight: 5 }} /> Inject
                             </HeaderButton>
                             <HeaderButton onClick={onRestoreProxy} style={{ flex: 1, justifyContent: 'center', border: '1px solid var(--vscode-button-border)', background: 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-secondaryForeground)' }} title="Restore Original Config">
                                 <FileCode size={12} style={{ marginRight: 5 }} /> Restore
                             </HeaderButton>
-                        </div>
+                        </ButtonRow>
                     )}
-                </div>
+                </Section>
 
-                <div style={{ marginTop: 15, borderTop: '1px solid var(--vscode-panel-border)', paddingTop: 10 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                        <h4 style={{ margin: 0, fontSize: '0.9em' }}>Traffic ({history.length})</h4>
+                <Section style={{ marginTop: SPACING_LG }}>
+                    <SectionHeader>
+                        <SectionTitle>Traffic ({history.length})</SectionTitle>
                         {history.length > 0 && (
                             <HeaderButton onClick={onClear} title="Clear Traffic History" style={{ padding: 4 }}>
                                 <Trash2 size={14} />
                             </HeaderButton>
                         )}
-                    </div>
+                    </SectionHeader>
                     {history.length === 0 ? (
-                        <div style={{ textAlign: 'center', marginTop: 10, fontSize: '0.8em', opacity: 0.7 }}>
+                        <EmptyMessage style={{ marginTop: SPACING_MD }}>
                             No events captured.
-                        </div>
+                        </EmptyMessage>
                     ) : (
                         history.map((event, i) => (
                             <ServiceItem
@@ -353,7 +450,7 @@ export const ProxyUi: React.FC<ProxyUiProps> = ({
                             </ServiceItem>
                         ))
                     )}
-                </div>
+                </Section>
             </Content>
 
             {/* Breakpoint Modal */}

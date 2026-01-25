@@ -1,57 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import Editor from '@monaco-editor/react';
-import { X, Play, Loader2, HelpCircle } from 'lucide-react';
+import { Play, Loader2, HelpCircle } from 'lucide-react';
 import { bridge, isTauri, isStandalone } from '../../utils/bridge';
 import { useTheme } from '../../contexts/ThemeContext';
-
-const Overlay = styled.div`
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(0, 0, 0, 0.75);
-    z-index: 2000;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-`;
-
-const ModalContainer = styled.div`
-    width: 95vw;
-    height: 95vh;
-    background: var(--vscode-editor-background);
-    border: 1px solid var(--vscode-panel-border);
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-`;
-
-const Header = styled.div`
-    height: 40px;
-    background: var(--vscode-editorGroupHeader-tabsBackground);
-    border-bottom: 1px solid var(--vscode-panel-border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 15px;
-    font-weight: bold;
-`;
-
-const CloseButton = styled.button`
-    background: transparent;
-    border: none;
-    color: var(--vscode-icon-foreground);
-    cursor: pointer;
-    border-radius: 4px;
-    &:hover { background: var(--vscode-toolbar-hoverBackground); }
-`;
+import { Modal } from './Modal';
+import { SPACING_XS, SPACING_SM, SPACING_MD, SPACING_LG } from '../../styles/spacing';
 
 const Content = styled.div`
     flex: 1;
     display: flex;
     overflow: hidden;
+    height: calc(95vh - 120px);
 `;
 
 const LeftPanel = styled.div`
@@ -107,14 +67,10 @@ const InputRow = styled.div`
 `;
 
 const Footer = styled.div`
-    height: 50px;
-    border-top: 1px solid var(--vscode-panel-border);
     display: flex;
     align-items: center;
-    padding: 0 20px;
     justify-content: flex-end;
-    gap: 15px;
-    background: var(--vscode-editor-background);
+    gap: ${SPACING_MD};
 `;
 
 const RunButton = styled.button`
@@ -194,15 +150,15 @@ const HelpOverlay = styled.div`
     max-width: 90%;
     background: var(--vscode-editor-background);
     border: 1px solid var(--vscode-focusBorder);
-    box-shadow: 0 8px 16px rgba(0,0,0,0.5);
-    z-index: 2001;
-    padding: 20px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    z-index: 1001;
+    padding: ${SPACING_LG};
     border-radius: 4px;
 
-    h3 { margin-top: 0; border-bottom: 1px solid var(--vscode-panel-border); padding-bottom: 10px; }
-    ul { padding-left: 20px; }
-    li { margin-bottom: 5px; }
-    code { background: var(--vscode-textCodeBlock-background); padding: 2px 4px; borderRadius: 3px; font-family: monospace; }
+    h3 { margin-top: 0; border-bottom: 1px solid var(--vscode-panel-border); padding-bottom: ${SPACING_SM}; }
+    ul { padding-left: ${SPACING_LG}; }
+    li { margin-bottom: ${SPACING_XS}; }
+    code { background: var(--vscode-textCodeBlock-background); padding: 2px 4px; border-radius: 3px; font-family: monospace; }
 `;
 
 interface ScriptPlaygroundModalProps {
@@ -378,23 +334,71 @@ export const ScriptPlaygroundModal: React.FC<ScriptPlaygroundModalProps> = ({ on
     }, []);
 
     return (
-        <Overlay onClick={(e) => e.target === e.currentTarget && onClose()}>
-            <ModalContainer>
-                <Header>
-                    <span>Script Playground ({scriptType === 'assertion' ? 'Assertion' : 'Test Step'})</span>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                        <CloseButton onClick={() => setShowHelp(!showHelp)} title="Help">
-                            <HelpCircle size={18} />
-                        </CloseButton>
-                        <CloseButton onClick={onClose}><X size={20} /></CloseButton>
-                    </div>
-                </Header>
-                <Content>
+        <Modal
+            isOpen={true}
+            onClose={onClose}
+            title={`Script Playground (${scriptType === 'assertion' ? 'Assertion' : 'Test Step'})`}
+            size="fullscreen"
+            headerExtra={
+                <button
+                    onClick={() => setShowHelp(!showHelp)}
+                    title="Help"
+                    style={{
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: 'var(--vscode-icon-foreground)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: 4,
+                        borderRadius: 4
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--vscode-toolbar-hoverBackground)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                    <HelpCircle size={18} />
+                </button>
+            }
+            footer={
+                <Footer>
+                    {onApplyScript && (
+                        <ApplyButton 
+                            onClick={() => {
+                                onApplyScript(script);
+                                onClose();
+                            }}
+                            title="Copy script to original editor and close playground"
+                        >
+                            Apply to Script
+                        </ApplyButton>
+                    )}
+                    <RunButton onClick={handleRun} disabled={isRunning}>
+                        {isRunning ? <Loader2 className="spin" size={16} /> : <Play size={16} />}
+                        Run Script
+                    </RunButton>
+                </Footer>
+            }
+        >
+            <Content>
                     {showHelp && (
                         <HelpOverlay>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                                 <h3 style={{ margin: 0, border: 'none' }}>Script Reference</h3>
-                                <CloseButton onClick={() => setShowHelp(false)}><X size={16} /></CloseButton>
+                                <button
+                                    onClick={() => setShowHelp(false)}
+                                    style={{
+                                        background: 'transparent',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        color: 'var(--vscode-icon-foreground)',
+                                        padding: 4,
+                                        borderRadius: 4,
+                                        fontSize: 20,
+                                        lineHeight: 1
+                                    }}
+                                >
+                                    ×
+                                </button>
                             </div>
 
                             <h4>Available Objects</h4>
@@ -509,24 +513,6 @@ export const ScriptPlaygroundModal: React.FC<ScriptPlaygroundModalProps> = ({ on
                     </RightPanel>
 
                 </Content>
-                <Footer>
-                    {onApplyScript && (
-                        <ApplyButton 
-                            onClick={() => {
-                                onApplyScript(script);
-                                onClose();
-                            }}
-                            title="Copy script to original editor and close playground"
-                        >
-                            Apply to Script
-                        </ApplyButton>
-                    )}
-                    <RunButton onClick={handleRun} disabled={isRunning}>
-                        {isRunning ? <Loader2 className="spin" size={16} /> : <Play size={16} />}
-                        Run Script
-                    </RunButton>
-                </Footer>
-            </ModalContainer>
-        </Overlay>
+        </Modal>
     );
 };

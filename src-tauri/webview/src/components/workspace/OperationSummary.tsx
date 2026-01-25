@@ -3,6 +3,8 @@ import styled from 'styled-components';
 import { Play, Activity, List, ChevronRight, Zap } from 'lucide-react';
 import { ContextHelpButton } from '../ContextHelpButton';
 import { OperationContainer } from '../../styles/WorkspaceLayout.styles';
+import { PrimaryButton } from '../common/Button';
+import { SPACING_XS, SPACING_SM, SPACING_MD, SPACING_XL } from '../../styles/spacing';
 
 const Header = styled.div`
     display: flex;
@@ -19,28 +21,19 @@ const TitleGroup = styled.div`
     gap: var(--space-sm);
 `;
 
+const HeaderActions = styled.div`
+    display: flex;
+    align-items: center;
+    gap: ${SPACING_MD};
+`;
+
 const Title = styled.h1`
     margin: 0;
     font-size: 1.5em;
     font-weight: 600;
 `;
 
-const ActionButton = styled.button`
-    background: var(--vscode-button-background);
-    color: var(--vscode-button-foreground);
-    border: none;
-    padding: 6px 12px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    border-radius: 2px;
-    font-size: 0.9em;
 
-    &:hover {
-        background: var(--vscode-button-hoverBackground);
-    }
-`;
 
 const StatsGrid = styled.div`
     display: grid;
@@ -59,15 +52,25 @@ const StatCard = styled.div`
 const StatLabel = styled.div`
     font-size: 0.8em;
     opacity: 0.7;
-    margin-bottom: 4px;
+    margin-bottom: ${SPACING_XS};
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: ${SPACING_XS};
 `;
 
 const StatValue = styled.div`
     font-size: 1.4em;
     font-weight: bold;
+`;
+
+const ActiveStatValue = styled(StatValue)`
+    color: var(--vscode-charts-green);
+    font-size: 1.2em;
+`;
+
+const PlaceholderStatValue = styled(StatValue)`
+    font-size: 1em;
+    opacity: 0.5;
 `;
 
 const RequestsSection = styled.div`
@@ -78,10 +81,10 @@ const SectionHeader = styled.h3`
     margin: 0 0 var(--space-md) 0;
     font-size: 1.1em;
     border-bottom: 1px solid var(--vscode-panel-border);
-    padding-bottom: 8px;
+    padding-bottom: ${SPACING_SM};
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: ${SPACING_SM};
 `;
 
 const RequestCard = styled.div`
@@ -90,7 +93,7 @@ const RequestCard = styled.div`
     padding: var(--space-sm) var(--space-md);
     border: 1px solid var(--vscode-panel-border);
     border-radius: 4px;
-    margin-bottom: 8px;
+    margin-bottom: ${SPACING_SM};
     cursor: pointer;
     background: var(--vscode-list-hoverBackground);
     transition: all 0.2s ease;
@@ -105,7 +108,7 @@ const RequestCard = styled.div`
 const MethodBadge = styled.span`
     background: var(--vscode-badge-background);
     color: var(--vscode-badge-foreground);
-    padding: 2px 6px;
+    padding: 2px ${SPACING_XS};
     border-radius: 3px;
     font-size: 0.75em;
     font-weight: bold;
@@ -125,7 +128,18 @@ const RequestName = styled.div`
 const RequestMeta = styled.div`
     font-size: 0.8em;
     opacity: 0.6;
-    margin-top: 2px;
+    margin-top: ${SPACING_XS};
+`;
+
+const RequestChevron = styled(ChevronRight)`
+    opacity: 0.5;
+`;
+
+const EmptyRequestsMessage = styled.div`
+    opacity: 0.6;
+    font-style: italic;
+    padding: ${SPACING_XL};
+    text-align: center;
 `;
 
 export const OperationSummary: React.FC<{ operation: import('@shared/models').ApiOperation; onSelectRequest?: (r: import('@shared/models').ApiRequest) => void }> = ({ operation, onSelectRequest }) => {
@@ -139,12 +153,12 @@ export const OperationSummary: React.FC<{ operation: import('@shared/models').Ap
                 <TitleGroup>
                     <Title>{operation.name}</Title>
                 </TitleGroup>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <ActionButton onClick={() => console.log('Run all requests (stub)')}>
+                <HeaderActions>
+                    <PrimaryButton onClick={() => console.log('Run all requests (stub)')}>
                         <Play size={14} /> Run All
-                    </ActionButton>
+                    </PrimaryButton>
                     <ContextHelpButton sectionId="operation" />
-                </div>
+                </HeaderActions>
             </Header>
 
             <StatsGrid>
@@ -154,12 +168,12 @@ export const OperationSummary: React.FC<{ operation: import('@shared/models').Ap
                 </StatCard>
                 <StatCard>
                     <StatLabel><Activity size={14} /> Activity Status</StatLabel>
-                    <StatValue style={{ color: 'var(--vscode-charts-green)', fontSize: '1.2em' }}>Active</StatValue>
+                    <ActiveStatValue>Active</ActiveStatValue>
                 </StatCard>
                 {/* Placeholder for future specific stats */}
                 <StatCard>
                     <StatLabel><Zap size={14} /> Performance</StatLabel>
-                    <StatValue style={{ fontSize: '1em', opacity: 0.5 }}>Not measured</StatValue>
+                    <PlaceholderStatValue>Not measured</PlaceholderStatValue>
                 </StatCard>
             </StatsGrid>
 
@@ -178,14 +192,14 @@ export const OperationSummary: React.FC<{ operation: import('@shared/models').Ap
                             <RequestName>{req.name}</RequestName>
                             <RequestMeta>{operation.action || 'No SOAP Action'}</RequestMeta>
                         </RequestInfo>
-                        <ChevronRight size={16} style={{ opacity: 0.5 }} />
+                        <RequestChevron size={16} />
                     </RequestCard>
                 ))}
 
                 {operation.requests.length === 0 && (
-                    <div style={{ opacity: 0.6, fontStyle: 'italic', padding: 20, textAlign: 'center' }}>
+                    <EmptyRequestsMessage>
                         No requests defined for this operation.
-                    </div>
+                    </EmptyRequestsMessage>
                 )}
             </RequestsSection>
         </OperationContainer>
