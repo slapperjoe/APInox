@@ -4,13 +4,14 @@ import ReactMarkdown from 'react-markdown';
 import { Logo, MarkdownContainer } from '../../styles/WorkspaceLayout.styles';
 import titleDark from '../../assets/app-title-dark.png';
 import titleLight from '../../assets/app-title-light.jpg';
+import { SPACING_XL } from '../../styles/spacing';
 
 interface WelcomePanelProps {
     changelog?: string;
 }
 
 const WelcomeContainer = styled.div`
-    padding: 20px;
+    padding: ${SPACING_XL};
     flex: 1;
     overflow: auto;
     color: var(--vscode-editor-foreground);

@@ -1,45 +1,21 @@
 import React, { useState } from 'react';
-import styled, { keyframes, css } from 'styled-components';
+import styled from 'styled-components';
 import { Play, Square, Trash2, Plus, ChevronRight, ChevronDown } from 'lucide-react';
 import { SidebarPerformanceProps } from '../../types/props';
 import { ContextMenu, ContextMenuItem } from '../../styles/App.styles';
 import { SidebarContainer, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle } from './shared/SidebarStyles';
+import { IconButton, RunButton } from '../common/Button';
+import { InlineFormInput } from '../common/Form';
+import { SPACING_XS, SPACING_SM } from '../../styles/spacing';
 
-// Shake animation for delete confirmation
-const shakeAnimation = keyframes`
-    0%, 100% { transform: translateX(0); }
-    10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
-    20%, 40%, 60%, 80% { transform: translateX(2px); }
-`;
-
-// Styled Components (borrowed from existing UI)
+// Styled Components
 const Container = styled(SidebarContainer)`
     color: var(--vscode-foreground);
     background-color: var(--vscode-sideBar-background);
 `;
 
-const IconButton = styled.button`
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    padding: 4px;
-    color: inherit;
-    border-radius: 3px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    &:hover {
-        background-color: var(--vscode-toolbar-hoverBackground);
-    }
-`;
-
 const AddSuiteRow = styled.div`
-    padding: 8px;
-`;
-
-const RunSuiteButton = styled(IconButton)`
-    color: var(--vscode-testing-iconPassed);
+    padding: ${SPACING_SM};
 `;
 
 const RequestIndent = styled.div`
@@ -62,7 +38,7 @@ const List = styled.div`
 const SuiteItem = styled.div<{ active: boolean }>`
     display: flex;
     align-items: center;
-    padding: 4px 8px;
+    padding: ${SPACING_XS} ${SPACING_SM};
     cursor: pointer;
     background-color: ${props => props.active ? 'var(--vscode-list-activeSelectionBackground)' : 'transparent'};
     color: ${props => props.active ? 'var(--vscode-list-activeSelectionForeground)' : 'var(--vscode-list-inactiveSelectionForeground)'};
@@ -73,7 +49,7 @@ const SuiteItem = styled.div<{ active: boolean }>`
 `;
 
 const SuiteIcon = styled.div`
-    margin-right: 6px;
+    margin-right: ${SPACING_XS};
     display: flex;
     align-items: center;
 `;
@@ -88,7 +64,7 @@ const SuiteLabel = styled.div`
 
 const Actions = styled.div`
     display: flex;
-    gap: 4px;
+    gap: ${SPACING_XS};
     opacity: 0;
     ${SuiteItem}:hover & {
         opacity: 1;
@@ -99,34 +75,6 @@ const Actions = styled.div`
         }
 `;
 
-const DeleteButton = styled(IconButton)<{ $shake?: boolean }>`
-    color: ${props => props.$shake ? '#f14c4c' : 'currentColor'};
-    &:hover {
-        background-color: rgba(241, 76, 76, 0.1);
-    }
-    ${props => props.$shake && css`
-        animation: ${shakeAnimation} 0.5s ease-in-out infinite;
-        color: #f14c4c;
-    `}
-`;
-
-const Input = styled.input`
-    background-color: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
-    padding: 4px;
-    width: 100%;
-    margin-top: 5px;
-    &:focus {
-        outline: 1px solid var(--vscode-focusBorder);
-    }
-`;
-
-const RequestRenameInput = styled(Input)`
-    margin: 0;
-    padding: 2px 4px;
-`;
-
 const RequestLabel = styled(SuiteLabel)`
     font-size: 12px;
 `;
@@ -134,7 +82,7 @@ const RequestLabel = styled(SuiteLabel)`
 const RequestItem = styled.div<{ active: boolean }>`
     display: flex;
     align-items: center;
-    padding: 4px 8px 4px 28px;
+    padding: ${SPACING_XS} ${SPACING_SM} ${SPACING_XS} 28px;
     cursor: pointer;
     background-color: ${props => props.active ? 'var(--vscode-list-activeSelectionBackground)' : 'transparent'};
     color: ${props => props.active ? 'var(--vscode-list-activeSelectionForeground)' : 'var(--vscode-list-inactiveSelectionForeground)'};
@@ -250,13 +198,14 @@ export const PerformanceUi: React.FC<SidebarPerformanceProps> = ({
             <List>
                 {isAdding && (
                     <AddSuiteRow>
-                        <Input
+                        <InlineFormInput
                             autoFocus
                             placeholder="Suite Name"
                             value={newSuiteName}
                             onChange={e => setNewSuiteName(e.target.value)}
                             onBlur={submitCreateSuite}
                             onKeyDown={handleKeyDown}
+                            style={{ width: '100%' }}
                         />
                     </AddSuiteRow>
                 )}
@@ -281,14 +230,15 @@ export const PerformanceUi: React.FC<SidebarPerformanceProps> = ({
                                     >
                                         <Plus size={14} />
                                     </IconButton>
-                                    <RunSuiteButton
+                                    <RunButton
                                         onClick={(e) => { e.stopPropagation(); onRunSuite(suite.id); }}
                                         title="Run Suite"
                                     >
                                         <Play size={14} fill="currentColor" />
-                                    </RunSuiteButton>
-                                    <DeleteButton
+                                    </RunButton>
+                                    <IconButton
                                         $shake={deleteConfirm === suite.id}
+                                        $danger
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             if (deleteConfirm === suite.id) {
@@ -301,7 +251,7 @@ export const PerformanceUi: React.FC<SidebarPerformanceProps> = ({
                                         title={deleteConfirm === suite.id ? "Click again to delete" : "Delete Suite"}
                                     >
                                         <Trash2 size={14} />
-                                    </DeleteButton>
+                                    </IconButton>
                                 </Actions>
                             </SuiteItem>
 
@@ -315,7 +265,7 @@ export const PerformanceUi: React.FC<SidebarPerformanceProps> = ({
                                 >
                                     <RequestIndent />
                                     {renameId === req.id ? (
-                                        <RequestRenameInput
+                                        <InlineFormInput
                                             value={renameValue}
                                             onChange={(e) => setRenameValue(e.target.value)}
                                             onBlur={submitRename}

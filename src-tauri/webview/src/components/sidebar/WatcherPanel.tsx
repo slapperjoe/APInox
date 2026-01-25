@@ -4,6 +4,7 @@ import { Clock, Play, Square, Trash2, Download } from 'lucide-react';
 import { WatcherEvent } from '@shared/models';
 import { HeaderButton, ServiceItem, SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle } from './shared/SidebarStyles';
 import { exportWatcherEvents } from '../../utils/csvExport';
+import { SPACING_XS } from '../../styles/spacing';
 
 interface WatcherPanelProps {
     history: WatcherEvent[];
@@ -34,16 +35,8 @@ const EventMeta = styled.div`
     color: var(--vscode-descriptionForeground);
 `;
 
-const ToggleButton = styled(HeaderButton)<{ $running: boolean }>`
-    color: ${props => props.$running ? 'var(--vscode-testing-iconFailed)' : 'var(--vscode-testing-iconPassed)'};
-`;
-
-const ExportButton = styled(HeaderButton)<{ $disabled: boolean }>`
-    opacity: ${props => props.$disabled ? 0.5 : 1};
-`;
-
 const EventIcon = styled(Clock)`
-    margin-right: 5px;
+    margin-right: ${SPACING_XS};
 `;
 
 export const WatcherPanel: React.FC<WatcherPanelProps> = ({
@@ -74,21 +67,21 @@ export const WatcherPanel: React.FC<WatcherPanelProps> = ({
             <SidebarHeader>
                 <SidebarHeaderTitle>File Watcher</SidebarHeaderTitle>
                 <SidebarHeaderActions>
-                    <ToggleButton
+                    <HeaderButton
                         onClick={(e) => { e.stopPropagation(); if (isRunning) onStop(); else onStart(); }}
                         title={isRunning ? "Stop Watcher" : "Start Watcher"}
-                        $running={isRunning}
+                        style={{ color: isRunning ? 'var(--vscode-testing-iconFailed)' : 'var(--vscode-testing-iconPassed)' }}
                     >
                         {isRunning ? <Square size={14} /> : <Play size={14} />}
-                    </ToggleButton>
-                    <ExportButton
+                    </HeaderButton>
+                    <HeaderButton
                         onClick={(e) => { e.stopPropagation(); handleExport(); }}
                         title="Export to CSV"
-                        $disabled={history.length === 0}
                         disabled={history.length === 0}
+                        style={{ opacity: history.length === 0 ? 0.5 : 1 }}
                     >
                         <Download size={14} />
-                    </ExportButton>
+                    </HeaderButton>
                     <HeaderButton onClick={(e) => { e.stopPropagation(); onClear(); }} title="Clear History">
                         <Trash2 size={14} />
                     </HeaderButton>

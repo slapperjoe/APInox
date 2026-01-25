@@ -5,7 +5,9 @@
  */
 
 import React from 'react';
+import styled from 'styled-components';
 import { PerformanceStats } from '@shared/models';
+import { SPACING_XS, SPACING_SM, SPACING_MD } from '../../styles/spacing';
 
 interface DataPoint {
     label: string;
@@ -22,6 +24,56 @@ interface ResponseTimeChartProps {
     title?: string;
 }
 
+// Chart dimensions constants
+const CHART_WIDTH = 300;
+const CHART_PADDING = {
+    top: 20,
+    right: 20,
+    bottom: 30,
+    left: 50
+};
+
+const ChartContainer = styled.div`
+    width: 100%;
+`;
+
+const ChartTitle = styled.div`
+    font-size: 11px;
+    font-weight: 500;
+    margin-bottom: ${SPACING_XS};
+    color: var(--vscode-foreground);
+`;
+
+const EmptyState = styled.div<{ $height: number }>`
+    height: ${props => props.$height}px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--vscode-descriptionForeground);
+    font-size: 12px;
+`;
+
+const Legend = styled.div`
+    display: flex;
+    gap: ${SPACING_MD};
+    font-size: 10px;
+    margin-top: ${SPACING_XS};
+    justify-content: center;
+`;
+
+const LegendItem = styled.div`
+    display: flex;
+    align-items: center;
+    gap: ${SPACING_XS};
+`;
+
+const LegendLine = styled.div<{ $color: string; $opacity?: number }>`
+    width: 12px;
+    height: 2px;
+    background: ${props => props.$color};
+    opacity: ${props => props.$opacity || 1};
+`;
+
 export const ResponseTimeChart: React.FC<ResponseTimeChartProps> = ({
     data,
     height = 150,
@@ -31,22 +83,17 @@ export const ResponseTimeChart: React.FC<ResponseTimeChartProps> = ({
 }) => {
     if (data.length === 0) {
         return (
-            <div style={{
-                height,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--vscode-descriptionForeground)',
-                fontSize: 12
-            }}>
-                No data to display
-            </div>
+            <ChartContainer>
+                {title && <ChartTitle>{title}</ChartTitle>}
+                <EmptyState $height={height}>
+                    No data to display
+                </EmptyState>
+            </ChartContainer>
         );
     }
 
-    const width = 300;
-    const padding = { top: 20, right: 20, bottom: 30, left: 50 };
-    const chartWidth = width - padding.left - padding.right;
+    const padding = CHART_PADDING;
+    const chartWidth = CHART_WIDTH - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
 
     // Calculate scales
@@ -79,21 +126,12 @@ export const ResponseTimeChart: React.FC<ResponseTimeChartProps> = ({
     }));
 
     return (
-        <div style={{ width: '100%' }}>
-            {title && (
-                <div style={{
-                    fontSize: 11,
-                    fontWeight: 500,
-                    marginBottom: 4,
-                    color: 'var(--vscode-foreground)'
-                }}>
-                    {title}
-                </div>
-            )}
+        <ChartContainer>
+            {title && <ChartTitle>{title}</ChartTitle>}
             <svg
                 width="100%"
                 height={height}
-                viewBox={`0 0 ${width} ${height}`}
+                viewBox={`0 0 ${CHART_WIDTH} ${height}`}
                 style={{ overflow: 'visible' }}
             >
                 {/* Grid lines */}
@@ -102,7 +140,7 @@ export const ResponseTimeChart: React.FC<ResponseTimeChartProps> = ({
                         <line
                             x1={padding.left}
                             y1={line.y}
-                            x2={width - padding.right}
+                            x2={CHART_WIDTH - padding.right}
                             y2={line.y}
                             stroke="var(--vscode-editorWidget-border)"
                             strokeWidth={0.5}
@@ -179,31 +217,25 @@ export const ResponseTimeChart: React.FC<ResponseTimeChartProps> = ({
             </svg>
 
             {/* Legend */}
-            <div style={{
-                display: 'flex',
-                gap: 12,
-                fontSize: 10,
-                marginTop: 4,
-                justifyContent: 'center'
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <div style={{ width: 12, height: 2, background: 'var(--vscode-charts-green)' }} />
+            <Legend>
+                <LegendItem>
+                    <LegendLine $color="var(--vscode-charts-green)" />
                     Avg
-                </div>
+                </LegendItem>
                 {showP95 && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <div style={{ width: 12, height: 2, background: 'var(--vscode-charts-yellow)', opacity: 0.8 }} />
+                    <LegendItem>
+                        <LegendLine $color="var(--vscode-charts-yellow)" $opacity={0.8} />
                         P95
-                    </div>
+                    </LegendItem>
                 )}
                 {showP99 && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <div style={{ width: 12, height: 2, background: 'var(--vscode-charts-red)', opacity: 0.6 }} />
+                    <LegendItem>
+                        <LegendLine $color="var(--vscode-charts-red)" $opacity={0.6} />
                         P99
-                    </div>
+                    </LegendItem>
                 )}
-            </div>
-        </div>
+            </Legend>
+        </ChartContainer>
     );
 };
 

@@ -2,8 +2,11 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import { Play, Plus, Trash2, ChevronDown, ChevronRight, FlaskConical, FolderOpen, ListChecks, Edit2, Clock, FileCode, ArrowRight, FileText } from 'lucide-react';
 import { ApinoxProject, TestSuite } from '@shared/models';
-import { HeaderButton, OperationItem, RequestItem, SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle } from './shared/SidebarStyles';
+import { OperationItem, RequestItem, SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle } from './shared/SidebarStyles';
 import { EmptyState } from '../common/EmptyState';
+import { HeaderButton, IconButton } from '../common/Button';
+import { InlineFormInput } from '../common/Form';
+import { SPACING_SM, SPACING_XS } from '../../styles/spacing';
 
 const StepItem = styled(RequestItem)`
     padding-left: 52px !important;
@@ -23,23 +26,11 @@ const HeaderActions = styled.div`
     position: relative;
 `;
 
-const HeaderButtonSmall = styled(HeaderButton)`
-    padding: 2px;
-`;
-
-const HeaderButtonAdd = styled(HeaderButton)`
-    padding: 4px;
-`;
-
-const HeaderButtonSmallDanger = styled(HeaderButtonSmall)<{ $danger?: boolean }>`
-    color: ${props => props.$danger ? 'var(--vscode-testing-iconFailed)' : 'var(--vscode-icon-foreground)'};
-`;
-
 const AddSuiteMenu = styled.div`
     position: absolute;
     top: 100%;
     right: 0;
-    margin-top: 5px;
+    margin-top: ${SPACING_XS};
     background: var(--vscode-dropdown-background);
     border: 1px solid var(--vscode-dropdown-border);
     border-radius: 4px;
@@ -49,7 +40,7 @@ const AddSuiteMenu = styled.div`
 `;
 
 const AddSuiteMenuTitle = styled.div`
-    padding: 8px 10px;
+    padding: ${SPACING_SM} 10px;
     font-size: 0.8em;
     opacity: 0.7;
     border-bottom: 1px solid var(--vscode-panel-border);
@@ -62,11 +53,11 @@ const AddSuiteMenuEmpty = styled.div`
 `;
 
 const AddSuiteMenuItem = styled.div<{ $disabled?: boolean }>`
-    padding: 8px 12px;
+    padding: ${SPACING_SM} 12px;
     cursor: ${props => props.$disabled ? 'not-allowed' : 'pointer'};
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: ${SPACING_XS};
     opacity: ${props => props.$disabled ? 0.5 : 1};
 
     &:hover {
@@ -86,21 +77,21 @@ const SuiteToggle = styled.span`
 `;
 
 const SuiteIcon = styled.span`
-    margin-left: 4px;
+    margin-left: ${SPACING_XS};
     display: flex;
     align-items: center;
 `;
 
 const SuiteName = styled.span`
     flex: 1;
-    margin-left: 6px;
+    margin-left: ${SPACING_XS};
     font-weight: bold;
 `;
 
 const SuiteCount = styled.span`
     font-size: 0.8em;
     opacity: 0.6;
-    margin-right: 6px;
+    margin-right: ${SPACING_XS};
 `;
 
 const CaseRequestItem = styled(RequestItem)`
@@ -111,18 +102,8 @@ const CaseToggle = styled.span`
     cursor: pointer;
     display: flex;
     align-items: center;
-    margin-right: 4px;
+    margin-right: ${SPACING_XS};
     width: 14px;
-`;
-
-const RenameInput = styled.input`
-    background: var(--vscode-input-background);
-    border: 1px solid var(--vscode-input-border);
-    color: var(--vscode-input-foreground);
-    padding: 2px 4px;
-    flex: 1;
-    font-size: 12px;
-    outline: none;
 `;
 
 const CaseName = styled.span`
@@ -132,24 +113,13 @@ const CaseName = styled.span`
 const CaseCount = styled.span`
     font-size: 0.75em;
     opacity: 0.6;
-    margin-right: 6px;
-`;
-
-const StepRenameInput = styled.input`
-    background: var(--vscode-input-background);
-    border: 1px solid var(--vscode-input-border);
-    color: var(--vscode-input-foreground);
-    padding: 1px 3px;
-    flex: 1;
-    font-size: 0.9em;
-    outline: none;
-    margin-left: 4px;
+    margin-right: ${SPACING_XS};
 `;
 
 const StepTypeIcon = styled.span`
     display: flex;
     align-items: center;
-    margin-right: 6px;
+    margin-right: ${SPACING_XS};
     opacity: 0.7;
 `;
 
@@ -161,18 +131,7 @@ const StepName = styled.span`
 `;
 
 const AddSuiteRow = styled.div`
-    padding: 8px;
-`;
-
-const AddSuiteInput = styled.input`
-    background-color: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
-    padding: 4px;
-    width: 100%;
-    &:focus {
-        outline: 1px solid var(--vscode-focusBorder);
-    }
+    padding: ${SPACING_SM};
 `;
 
 export interface TestsUiProps {
@@ -222,11 +181,11 @@ const ContextMenuDropdown = styled.div<{ x: number; y: number }>`
 `;
 
 const ContextMenuItem = styled.div`
-    padding: 6px 12px;
+    padding: ${SPACING_XS} 12px;
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: ${SPACING_XS};
 
     &:hover {
         background-color: var(--vscode-menu-selectionBackground);
@@ -360,12 +319,12 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                     </SidebarHeaderTitle>
                     <SidebarHeaderActions>
                         <HeaderActions>
-                            <HeaderButtonAdd
+                            <IconButton
                                 onClick={() => setShowAddSuiteMenu(!showAddSuiteMenu)}
                                 title="Add Test Suite"
                             >
                                 <Plus size={14} />
-                            </HeaderButtonAdd>
+                            </IconButton>
 
                             {/* Project Selection Dropdown */}
                             {showAddSuiteMenu && (
@@ -404,7 +363,7 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                     {/* Inline Suite Name Input */}
                     {isAddingSuite && (
                         <AddSuiteRow>
-                            <AddSuiteInput
+                            <InlineFormInput
                                 autoFocus
                                 placeholder="Suite Name"
                                 value={newSuiteName}
@@ -414,6 +373,7 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                                     if (e.key === 'Enter') submitNewSuite();
                                     if (e.key === 'Escape') cancelNewSuite();
                                 }}
+                                style={{ width: '100%' }}
                             />
                         </AddSuiteRow>
                     )}
@@ -460,19 +420,19 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                                     </SuiteCount>
                                     {isSuiteSelected && (
                                         <>
-                                            <HeaderButtonSmall onClick={(e) => { e.stopPropagation(); onRunSuite(suite.id); }} title="Run Suite">
+                                            <HeaderButton onClick={(e) => { e.stopPropagation(); onRunSuite(suite.id); }} title="Run Suite">
                                                 <Play size={12} />
-                                            </HeaderButtonSmall>
-                                            <HeaderButtonSmall onClick={(e) => { e.stopPropagation(); onAddTestCase(suite.id); }} title="Add Test Case">
+                                            </HeaderButton>
+                                            <HeaderButton onClick={(e) => { e.stopPropagation(); onAddTestCase(suite.id); }} title="Add Test Case">
                                                 <Plus size={12} />
-                                            </HeaderButtonSmall>
-                                            <HeaderButtonSmallDanger
+                                            </HeaderButton>
+                                            <HeaderButton
                                                 onClick={(e) => { e.stopPropagation(); onDeleteSuite(suite.id); }}
                                                 title={deleteConfirm === suite.id ? 'Click again to confirm' : 'Delete Suite'}
-                                                $danger={deleteConfirm === suite.id}
+                                                $shake={deleteConfirm === suite.id}
                                             >
                                                 <Trash2 size={12} />
-                                            </HeaderButtonSmallDanger>
+                                            </HeaderButton>
                                         </>
                                     )}
                                 </SuiteOperationItem>
@@ -502,7 +462,7 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                                                     {tc.expanded !== false ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                                                 </CaseToggle>
                                                 {renameId === tc.id ? (
-                                                    <RenameInput
+                                                    <InlineFormInput
                                                         type="text"
                                                         title="Rename test case"
                                                         placeholder="Rename"
@@ -524,16 +484,16 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                                                 </CaseCount>
                                                 {isSelected && (
                                                     <>
-                                                        <HeaderButtonSmall onClick={(e) => { e.stopPropagation(); onRunCase(tc.id); }} title="Run Test Case">
+                                                        <HeaderButton onClick={(e) => { e.stopPropagation(); onRunCase(tc.id); }} title="Run Test Case">
                                                             <Play size={12} />
-                                                        </HeaderButtonSmall>
-                                                        <HeaderButtonSmallDanger
+                                                        </HeaderButton>
+                                                        <HeaderButton
                                                             onClick={(e) => { e.stopPropagation(); onDeleteTestCase(tc.id); }}
                                                             title={deleteConfirm === tc.id ? 'Click again to confirm' : 'Delete Case'}
-                                                            $danger={deleteConfirm === tc.id}
+                                                            $shake={deleteConfirm === tc.id}
                                                         >
                                                             <Trash2 size={12} />
-                                                        </HeaderButtonSmallDanger>
+                                                        </HeaderButton>
                                                     </>
                                                 )}
                                             </CaseRequestItem>
@@ -553,7 +513,7 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                                                     onContextMenu={(e) => handleContextMenu(e, tc.id, step.name, 'step', step.id)}
                                                 >
                                                     {renameId === step.id ? (
-                                                        <StepRenameInput
+                                                        <InlineFormInput
                                                             type="text"
                                                             title="Rename test step"
                                                             placeholder="Rename"
@@ -566,6 +526,7 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                                                             }}
                                                             onClick={(e) => e.stopPropagation()}
                                                             autoFocus
+                                                            style={{ marginLeft: '4px', fontSize: '0.9em' }}
                                                         />
                                                     ) : (
                                                         <>

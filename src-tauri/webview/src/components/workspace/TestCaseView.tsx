@@ -5,6 +5,7 @@ import { TestCase, TestStep, TestStepType } from '@shared/models';
 import { ToolbarButton, IconButton, RunButton } from '../../styles/WorkspaceLayout.styles';
 import { ContextHelpButton } from '../ContextHelpButton';
 import { EmptyState } from '../common/EmptyState';
+import { SPACING_XS, SPACING_SM, SPACING_MD, SPACING_LG, SPACING_XL } from '../../styles/spacing';
 
 // Empty state component
 interface EmptyTestCaseProps {
@@ -19,18 +20,13 @@ const EmptyTestCaseContainer = styled.div`
 
 const EmptyHelp = styled.div`
     position: absolute;
-    top: 10px;
-    right: 10px;
+    top: ${SPACING_SM};
+    right: ${SPACING_SM};
     z-index: 1;
 `;
 
-const EmptyActionButton = styled(ToolbarButton)`
-    font-size: 1em;
-    padding: 10px 20px;
-`;
-
 const ViewContainer = styled.div`
-    padding: 20px;
+    padding: ${SPACING_XL};
     flex: 1;
     overflow: auto;
     color: var(--vscode-editor-foreground);
@@ -46,23 +42,23 @@ const HeaderRow = styled.div`
 const HeaderActions = styled.div`
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: ${SPACING_SM};
 `;
 
 const StepsToolbar = styled.div`
-    padding: 10px 0;
+    padding: ${SPACING_SM} 0;
     border-bottom: 1px solid var(--vscode-panel-border);
     display: flex;
-    gap: 10px;
+    gap: ${SPACING_SM};
 `;
 
 const StepsSection = styled.div`
-    margin-top: 20px;
+    margin-top: ${SPACING_XL};
 `;
 
 const StepsTitle = styled.h2`
     border-bottom: 1px solid var(--vscode-panel-border);
-    padding-bottom: 5px;
+    padding-bottom: ${SPACING_XS};
 `;
 
 const StepsList = styled.ul`
@@ -72,11 +68,11 @@ const StepsList = styled.ul`
 `;
 
 const StepRow = styled.li<{ $clickable: boolean }>`
-    padding: 10px;
+    padding: ${SPACING_SM};
     border-bottom: 1px solid var(--vscode-panel-border);
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: ${SPACING_SM};
     cursor: ${props => props.$clickable ? 'pointer' : 'default'};
     background-color: var(--vscode-list-hoverBackground);
 `;
@@ -84,13 +80,13 @@ const StepRow = styled.li<{ $clickable: boolean }>`
 const StepIndex = styled.div`
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: ${SPACING_XS};
     min-width: 48px;
 `;
 
 const StepIndexNumber = styled.span`
     opacity: 0.7;
-    min-width: 22px;
+    min-width: 24px;
     display: inline-flex;
     justify-content: center;
 `;
@@ -145,21 +141,21 @@ const StepActions = styled.div`
     margin-left: auto;
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: ${SPACING_XS};
     font-size: 0.8em;
     opacity: 0.9;
 `;
 
 const StepStat = styled.span`
-    margin-right: 5px;
+    margin-right: ${SPACING_XS};
 `;
 
 const StepStatWide = styled.span`
-    margin-right: 10px;
+    margin-right: ${SPACING_SM};
 `;
 
 const DeleteStepButton = styled(IconButton)`
-    margin-left: 5px;
+    margin-left: ${SPACING_XS};
 `;
 
 const EmptyTestCase: React.FC<EmptyTestCaseProps> = ({ onCreateTestSuite, projectName }) => (
@@ -173,9 +169,9 @@ const EmptyTestCase: React.FC<EmptyTestCaseProps> = ({ onCreateTestSuite, projec
             description="Select a test case from the sidebar or create a new test suite."
         >
             {onCreateTestSuite && projectName && (
-                <EmptyActionButton onClick={() => onCreateTestSuite(projectName)}>
+                <ToolbarButton onClick={() => onCreateTestSuite(projectName)}>
                     <Plus size={16} /> Create Test Suite
-                </EmptyActionButton>
+                </ToolbarButton>
             )}
         </EmptyState>
     </EmptyTestCaseContainer>

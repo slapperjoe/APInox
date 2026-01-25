@@ -3,6 +3,18 @@ import styled from 'styled-components';
 import { Users, Server, Cpu, Clock, CheckCircle, AlertCircle, Loader } from 'lucide-react';
 import { CoordinatorStatus } from '@shared/models';
 import { EmptyState } from '../common/EmptyState';
+import { SPACING_XS, SPACING_SM, SPACING_MD } from '../../styles/spacing';
+
+// Status color mapping utility
+const getStatusColor = (status: string): string => {
+    switch (status) {
+        case 'connected':
+        case 'idle': return 'var(--vscode-testing-iconPassed)';
+        case 'working': return 'var(--vscode-charts-blue)';
+        case 'disconnected': return 'var(--vscode-testing-iconFailed)';
+        default: return 'var(--vscode-badge-background)';
+    }
+};
 
 const Container = styled.div`
     /* No outer styling - panel is now embedded in a Section */
@@ -11,26 +23,18 @@ const Container = styled.div`
 const WorkerList = styled.div`
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: ${SPACING_SM};
 `;
 
 const WorkerCard = styled.div<{ status: string }>`
     display: flex;
     align-items: center;
-    padding: 10px 12px;
+    padding: ${SPACING_SM} ${SPACING_MD};
     background: var(--vscode-list-hoverBackground);
     border: 1px solid var(--vscode-panel-border);
     border-radius: 4px;
-    gap: 12px;
-    border-left: 3px solid ${props => {
-        switch (props.status) {
-            case 'connected':
-            case 'idle': return 'var(--vscode-testing-iconPassed)';
-            case 'working': return 'var(--vscode-charts-blue)';
-            case 'disconnected': return 'var(--vscode-testing-iconFailed)';
-            default: return 'var(--vscode-panel-border)';
-        }
-    }};
+    gap: ${SPACING_MD};
+    border-left: 3px solid ${props => getStatusColor(props.status)};
 `;
 
 const WorkerIcon = styled.div<{ status: string }>`
@@ -40,15 +44,7 @@ const WorkerIcon = styled.div<{ status: string }>`
     display: flex;
     align-items: center;
     justify-content: center;
-    background: ${props => {
-        switch (props.status) {
-            case 'connected':
-            case 'idle': return 'var(--vscode-testing-iconPassed)';
-            case 'working': return 'var(--vscode-charts-blue)';
-            case 'disconnected': return 'var(--vscode-testing-iconFailed)';
-            default: return 'var(--vscode-badge-background)';
-        }
-    }};
+    background: ${props => getStatusColor(props.status)};
     color: white;
 `;
 
@@ -65,31 +61,23 @@ const WorkerMeta = styled.div`
     font-size: 0.8em;
     color: var(--vscode-descriptionForeground);
     display: flex;
-    gap: 12px;
-    margin-top: 3px;
+    gap: ${SPACING_MD};
+    margin-top: ${SPACING_XS};
 `;
 
 const StatusBadge = styled.span<{ status: string }>`
-    padding: 2px 8px;
+    padding: ${SPACING_XS} ${SPACING_SM};
     border-radius: 10px;
     font-size: 0.75em;
     font-weight: 500;
     text-transform: uppercase;
-    background: ${props => {
-        switch (props.status) {
-            case 'connected':
-            case 'idle': return 'var(--vscode-testing-iconPassed)';
-            case 'working': return 'var(--vscode-charts-blue)';
-            case 'disconnected': return 'var(--vscode-testing-iconFailed)';
-            default: return 'var(--vscode-badge-background)';
-        }
-    }};
+    background: ${props => getStatusColor(props.status)};
     color: white;
 `;
 
 const EmptyCode = styled.div`
     font-size: 0.85em;
-    margin-top: 5px;
+    margin-top: ${SPACING_XS};
 `;
 
 interface WorkerStatusPanelProps {

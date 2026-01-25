@@ -9,10 +9,12 @@ import React, { useState } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { Play, Square, Trash2, Settings, ArrowRight, Plus, Edit2, ToggleLeft, ToggleRight, Radio, Bug, PlusSquare, Shield, Car } from 'lucide-react';
 import { WatcherEvent, MockEvent, ServerMode, ServerConfig, MockRule } from '@shared/models';
-import { HeaderButton, ServiceItem, SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle } from './shared/SidebarStyles';
+import { ServiceItem, SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle } from './shared/SidebarStyles';
 import { MockRuleModal } from '../modals/MockRuleModal';
 import { BreakpointModal, Breakpoint } from '../modals/BreakpointModal';
 import { createMockRuleFromSource } from '../../utils/mockUtils';
+import { IconButton, ToggleButton, RunButton, StopButton } from '../common/Button';
+import { SPACING_XS, SPACING_SM, SPACING_MD, SPACING_LG } from '../../styles/spacing';
 
 export interface ServerUiProps {
     // Server state
@@ -69,11 +71,11 @@ const NotificationToast = styled.div`
     transform: translateX(-50%);
     background: var(--vscode-notificationsInfoIcon-foreground);
     color: white;
-    padding: 8px 16px;
+    padding: ${SPACING_SM} ${SPACING_LG};
     border-radius: 4px;
     z-index: 1000;
     font-size: 0.85em;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
     animation: ${fadeIn} 0.2s ease;
 `;
 
@@ -91,42 +93,20 @@ const ModeSection = styled.div`
 
 const ModeLabel = styled.div`
     font-size: 0.8em;
-    margin-bottom: 4px;
+    margin-bottom: ${SPACING_XS};
 `;
 
 const ModeOptions = styled.div<{ $disabled: boolean }>`
     display: flex;
-    gap: 4px;
+    gap: ${SPACING_XS};
     opacity: ${props => props.$disabled ? 0.6 : 1};
-`;
-
-const ModeButton = styled.button<{ $active: boolean; $activeColor?: string; $disabled: boolean }>`
-    flex: 1;
-    padding: 6px 8px;
-    font-size: 11px;
-    border: 1px solid ${props => props.$active
-        ? (props.$activeColor || 'var(--vscode-button-background)')
-        : 'var(--vscode-input-border)'};
-    border-radius: 4px;
-    background: ${props => props.$active
-        ? (props.$activeColor || 'var(--vscode-button-background)')
-        : 'transparent'};
-    color: ${props => props.$active
-        ? 'var(--vscode-button-foreground)'
-        : 'var(--vscode-input-foreground)'};
-    font-weight: ${props => props.$active ? 600 : 500};
-    box-shadow: ${props => props.$active
-        ? 'inset 0 0 0 1px var(--vscode-focusBorder)'
-        : 'inset 0 0 0 0 transparent'};
-    cursor: ${props => props.$disabled ? 'not-allowed' : 'pointer'};
-    transition: all 0.15s ease;
 `;
 
 const StatusBar = styled.div`
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 10px;
+    padding: ${SPACING_SM} 10px;
     background: var(--vscode-editor-inactiveSelectionBackground);
     border-radius: 5px;
     font-size: 0.85em;
@@ -139,22 +119,11 @@ const StatusLabel = styled.span`
 
 const StatusArrow = styled.span`
     opacity: 0.5;
-    margin: 0 8px;
+    margin: 0 ${SPACING_SM};
 `;
 
 const StatusTarget = styled.span`
     opacity: 0.7;
-`;
-
-const StartStopButton = styled(HeaderButton)<{ $running: boolean }>`
-    color: ${props => props.$running ? 'var(--vscode-testing-iconFailed)' : 'var(--vscode-testing-iconPassed)'};
-    border: 1px solid currentColor;
-    padding: 4px 6px;
-`;
-
-const CertButton = styled(HeaderButton)`
-    color: var(--vscode-charts-yellow);
-    margin-left: 4px;
 `;
 
 const Section = styled.div`
@@ -167,7 +136,7 @@ const SectionHeader = styled.div`
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 8px;
+    margin-bottom: ${SPACING_SM};
 `;
 
 const SectionTitle = styled.h4<{ $clickable?: boolean }>`
@@ -176,7 +145,7 @@ const SectionTitle = styled.h4<{ $clickable?: boolean }>`
     cursor: ${props => props.$clickable ? 'pointer' : 'default'};
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: ${SPACING_XS};
 `;
 
 const SectionList = styled.div`
@@ -186,9 +155,9 @@ const SectionList = styled.div`
 const RuleRow = styled.div<{ $enabled: boolean }>`
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 8px;
-    margin-bottom: 4px;
+    gap: ${SPACING_XS};
+    padding: ${SPACING_XS} ${SPACING_SM};
+    margin-bottom: ${SPACING_XS};
     background-color: var(--vscode-list-hoverBackground);
     border-radius: 4px;
     opacity: ${props => props.$enabled ? 1 : 0.5};
@@ -220,14 +189,6 @@ const RuleMeta = styled.div`
     opacity: 0.7;
 `;
 
-const SmallHeaderButton = styled(HeaderButton)`
-    padding: 4px;
-`;
-
-const SmallDangerButton = styled(SmallHeaderButton)`
-    color: var(--vscode-testing-iconFailed);
-`;
-
 const EmptySection = styled.div`
     font-size: 0.8em;
     opacity: 0.7;
@@ -244,7 +205,7 @@ const TrafficHeader = styled.div`
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 5px;
+    margin-bottom: ${SPACING_XS};
 `;
 
 const TrafficTitle = styled.h4`
@@ -286,7 +247,7 @@ const TrafficMethod = styled.span`
 const TrafficMeta = styled.div`
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: ${SPACING_XS};
 `;
 
 const ProxyBadge = styled.span`
@@ -320,17 +281,6 @@ const RuleBadge = styled.div`
     font-size: 0.75em;
     opacity: 0.7;
     color: var(--vscode-charts-green);
-`;
-
-const CreateRuleButton = styled.button<{ $selected: boolean }>`
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: inherit;
-    opacity: ${props => props.$selected ? 1 : 0.5};
-    padding: 4px;
-    display: flex;
-    align-items: center;
 `;
 
 const MODE_OPTIONS: { value: ServerMode; label: string; color?: string }[] = [
@@ -438,9 +388,9 @@ export const ServerUi: React.FC<ServerUiProps> = ({
                     {isRunning && <StatusDot />}
                 </SidebarHeaderTitle>
                 <SidebarHeaderActions>
-                    <HeaderButton onClick={onOpenSettings} title="Server Settings">
+                    <IconButton onClick={onOpenSettings} title="Server Settings">
                         <Settings size={14} />
-                    </HeaderButton>
+                    </IconButton>
                 </SidebarHeaderActions>
             </SidebarHeader>
 
@@ -451,17 +401,16 @@ export const ServerUi: React.FC<ServerUiProps> = ({
                     <ModeLabel>Mode</ModeLabel>
                     <ModeOptions $disabled={isRunning}>
                         {MODE_OPTIONS.map(opt => (
-                            <ModeButton
+                            <ToggleButton
                                 key={opt.value}
                                 onClick={() => !isRunning && onModeChange(opt.value)}
                                 disabled={isRunning}
                                 title={isRunning ? "Stop the server to change modes" : opt.label}
                                 $active={serverConfig.mode === opt.value}
                                 $activeColor={opt.color}
-                                $disabled={isRunning}
                             >
                                 {opt.label}
-                            </ModeButton>
+                            </ToggleButton>
                         ))}
                     </ModeOptions>
                 </ModeSection>
@@ -484,31 +433,32 @@ export const ServerUi: React.FC<ServerUiProps> = ({
 
                     {serverConfig.mode !== 'off' && (
                         !isRunning ? (
-                            <StartStopButton
+                            <RunButton
                                 onClick={onStart}
                                 title="Start Server"
-                                $running={false}
+                                style={{ border: '1px solid currentColor', padding: '4px 6px' }}
                             >
                                 <Play size={12} />
-                            </StartStopButton>
+                            </RunButton>
                         ) : (
-                            <StartStopButton
+                            <StopButton
                                 onClick={onStop}
                                 title="Stop Server"
-                                $running={true}
+                                style={{ border: '1px solid currentColor', padding: '4px 6px' }}
                             >
                                 <Square size={12} />
-                            </StartStopButton>
+                            </StopButton>
                         )
                     )}
                     {/* Certificate button for HTTPS targets */}
                     {serverConfig.targetUrl?.toLowerCase().startsWith('https') && onOpenCertificate && (
-                        <CertButton
+                        <IconButton
                             onClick={onOpenCertificate}
                             title="Install Certificate (Required for HTTPS)"
+                            style={{ color: 'var(--vscode-charts-yellow)', marginLeft: '4px' }}
                         >
                             <Shield size={14} />
-                        </CertButton>
+                        </IconButton>
                     )}
                 </StatusBar>
 
@@ -520,9 +470,9 @@ export const ServerUi: React.FC<ServerUiProps> = ({
                                 <Radio size={14} />
                                 Mock Rules ({mockRules.length})
                             </SectionTitle>
-                            <HeaderButton onClick={() => setRuleModal({ open: true })} title="Add Mock Rule">
+                            <IconButton onClick={() => setRuleModal({ open: true })} title="Add Mock Rule">
                                 <Plus size={14} />
-                            </HeaderButton>
+                            </IconButton>
                         </SectionHeader>
 
                         {showRules && mockRules.length > 0 && (
@@ -542,18 +492,19 @@ export const ServerUi: React.FC<ServerUiProps> = ({
                                                 {rule.conditions?.length || 0} condition(s) • {rule.statusCode}
                                             </RuleMeta>
                                         </RuleInfo>
-                                        <SmallHeaderButton
+                                        <IconButton
                                             onClick={() => setRuleModal({ open: true, rule })}
                                             title="Edit"
                                         >
                                             <Edit2 size={12} />
-                                        </SmallHeaderButton>
-                                        <SmallDangerButton
+                                        </IconButton>
+                                        <IconButton
                                             onClick={() => onDeleteMockRule?.(rule.id)}
                                             title="Delete"
+                                            $danger
                                         >
                                             <Trash2 size={12} />
-                                        </SmallDangerButton>
+                                        </IconButton>
                                     </RuleRow>
                                 ))}
                             </SectionList>
@@ -575,9 +526,9 @@ export const ServerUi: React.FC<ServerUiProps> = ({
                                 <Bug size={14} />
                                 Breakpoints ({breakpoints.length})
                             </SectionTitle>
-                            <HeaderButton onClick={() => setBreakpointModal({ open: true })} title="Add Breakpoint">
+                            <IconButton onClick={() => setBreakpointModal({ open: true })} title="Add Breakpoint">
                                 <Plus size={14} />
-                            </HeaderButton>
+                            </IconButton>
                         </SectionHeader>
 
                         {showBreakpoints && breakpoints.length > 0 && (
@@ -602,21 +553,22 @@ export const ServerUi: React.FC<ServerUiProps> = ({
                                                 {bp.target} • {bp.matchOn}{bp.isRegex ? ' (regex)' : ''}
                                             </RuleMeta>
                                         </RuleInfo>
-                                        <SmallHeaderButton
+                                        <IconButton
                                             onClick={() => setBreakpointModal({ open: true, bp })}
                                             title="Edit"
                                         >
                                             <Edit2 size={12} />
-                                        </SmallHeaderButton>
-                                        <SmallDangerButton
+                                        </IconButton>
+                                        <IconButton
                                             onClick={() => {
                                                 const updated = breakpoints.filter((_, idx) => idx !== i);
                                                 onUpdateBreakpoints(updated);
                                             }}
                                             title="Delete"
+                                            $danger
                                         >
                                             <Trash2 size={12} />
-                                        </SmallDangerButton>
+                                        </IconButton>
                                     </RuleRow>
                                 ))}
                             </SectionList>
@@ -639,9 +591,9 @@ export const ServerUi: React.FC<ServerUiProps> = ({
                             Traffic ({totalEvents})
                         </TrafficTitle>
                         {totalEvents > 0 && (
-                            <SmallHeaderButton onClick={onClearHistory} title="Clear History">
+                            <IconButton onClick={onClearHistory} title="Clear History">
                                 <Trash2 size={14} />
-                            </SmallHeaderButton>
+                            </IconButton>
                         )}
                     </TrafficHeader>
 
@@ -679,13 +631,13 @@ export const ServerUi: React.FC<ServerUiProps> = ({
                                                 </TrafficUrl>
                                             </TrafficContent>
                                             {onAddMockRule && (
-                                                <CreateRuleButton
+                                                <IconButton
                                                     onClick={(e) => handleCreateMockFromEvent(e, item.event as WatcherEvent)}
                                                     title="Create Mock Rule"
-                                                    $selected={(item.event as WatcherEvent).id === selectedEventId}
+                                                    style={{ opacity: (item.event as WatcherEvent).id === selectedEventId ? 1 : 0.5 }}
                                                 >
                                                     <PlusSquare size={14} />
-                                                </CreateRuleButton>
+                                                </IconButton>
                                             )}
                                         </TrafficItem>
                                     ) : (
@@ -719,13 +671,13 @@ export const ServerUi: React.FC<ServerUiProps> = ({
                                                 )}
                                             </TrafficContent>
                                             {onAddMockRule && (
-                                                <CreateRuleButton
+                                                <IconButton
                                                     onClick={(e) => handleCreateMockFromEvent(e, item.event as MockEvent)}
                                                     title="Create Mock Rule"
-                                                    $selected={(item.event as MockEvent).id === selectedEventId}
+                                                    style={{ opacity: (item.event as MockEvent).id === selectedEventId ? 1 : 0.5 }}
                                                 >
                                                     <PlusSquare size={14} />
-                                                </CreateRuleButton>
+                                                </IconButton>
                                             )}
                                         </TrafficItem>
                                     )

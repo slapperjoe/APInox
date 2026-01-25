@@ -1,10 +1,12 @@
-/* eslint-disable react/no-inline-styles, react/jsx-no-inline-styles */
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { Play, Square, Trash2, Plus, Edit2, ToggleLeft, ToggleRight, Radio, ArrowRight, Circle } from 'lucide-react';
 import { MockConfig, MockRule, MockEvent } from '@shared/models';
 import { HeaderButton, ServiceItem, SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderTitle } from './shared/SidebarStyles';
 import { MockRuleModal } from '../modals/MockRuleModal';
+import { NumberSpinner } from '../common/NumberSpinner';
+import { RunButton, StopButton } from '../common/Button';
+import { SPACING_XS, SPACING_SM, SPACING_MD, SPACING_LG } from '../../styles/spacing';
 
 interface MockUiProps {
     isRunning: boolean;
@@ -27,6 +29,118 @@ interface MockUiProps {
 
 const Content = styled(SidebarContent)`
     color: var(--vscode-descriptionForeground);
+`;
+
+const ConfigSection = styled.div`
+    margin-bottom: ${SPACING_LG};
+    padding: ${SPACING_MD};
+    background-color: var(--vscode-editor-inactiveSelectionBackground);
+    border-radius: 5px;
+`;
+
+const ConfigRow = styled.div`
+    display: flex;
+    gap: ${SPACING_MD};
+    align-items: center;
+    margin-bottom: ${SPACING_XS};
+`;
+
+const ConfigField = styled.div`
+    flex: 1;
+`;
+
+const FieldLabel = styled.label`
+    display: block;
+    font-size: 0.8em;
+    margin-bottom: 2px;
+`;
+
+const TextInput = styled.input`
+    width: 100%;
+    padding: ${SPACING_XS};
+    background: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    border: 1px solid var(--vscode-input-border);
+    border-radius: 2px;
+    
+    &:focus {
+        outline: 1px solid var(--vscode-focusBorder);
+    }
+`;
+
+const CheckboxRow = styled.div`
+    display: flex;
+    align-items: center;
+    margin-bottom: ${SPACING_XS};
+    gap: ${SPACING_SM};
+`;
+
+const CheckboxLabel = styled.label`
+    font-size: 0.8em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: ${SPACING_SM};
+`;
+
+const Section = styled.div`
+    border-top: 1px solid var(--vscode-panel-border);
+    padding-top: ${SPACING_MD};
+    margin-top: ${SPACING_MD};
+`;
+
+const SectionHeader = styled.div`
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: ${SPACING_SM};
+`;
+
+const SectionTitle = styled.h4<{ $clickable?: boolean }>`
+    margin: 0;
+    font-size: 0.9em;
+    cursor: ${props => props.$clickable ? 'pointer' : 'default'};
+    display: flex;
+    align-items: center;
+    gap: ${SPACING_XS};
+`;
+
+const RuleItem = styled.div`
+    display: flex;
+    align-items: center;
+    gap: ${SPACING_SM};
+    padding: ${SPACING_SM};
+    background: var(--vscode-editor-inactiveSelectionBackground);
+    border-radius: 3px;
+    margin-bottom: ${SPACING_XS};
+    font-size: 0.85em;
+`;
+
+const RuleInfo = styled.div`
+    flex: 1;
+    min-width: 0;
+`;
+
+const RuleLabel = styled.div`
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+`;
+
+const RuleDetails = styled.div`
+    font-size: 0.9em;
+    opacity: 0.7;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+`;
+
+const EmptyMessage = styled.div`
+    text-align: center;
+    font-size: 0.8em;
+    opacity: 0.7;
+    padding: ${SPACING_MD} 0;
 `;
 
 const DEFAULT_CONFIG: MockConfig = {
@@ -83,77 +197,57 @@ export const MockUi: React.FC<MockUiProps> = ({
             </SidebarHeader>
 
             <Content>
-                {/* Controls */}
-                <div style={{ marginBottom: 15, padding: 10, backgroundColor: 'var(--vscode-editor-inactiveSelectionBackground)', borderRadius: 5 }}>
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 5 }}>
-                        <div style={{ flex: 1 }}>
-                            <label style={{ display: 'block', fontSize: '0.8em', marginBottom: 2 }}>Port</label>
-                            <div style={{ display: 'flex', alignItems: 'center', background: 'var(--vscode-input-background)', border: '1px solid var(--vscode-input-border)' }}>
-                                <div
-                                    onClick={() => onUpdateConfig({ port: Math.max(1, (config.port || 9001) - 1) })}
-                                    style={{ padding: '4px 8px', cursor: 'pointer', borderRight: '1px solid var(--vscode-input-border)', userSelect: 'none' }}
-                                >-</div>
-                                <input
-                                    type="number"
-                                    className="vscode-input"
-                                    value={config.port}
-                                    onChange={(e) => onUpdateConfig({ port: parseInt(e.target.value) || 9001 })}
-                                    style={{
-                                        flex: 1,
-                                        width: '50px',
-                                        padding: '4px',
-                                        background: 'transparent',
-                                        color: 'var(--vscode-input-foreground)',
-                                        border: 'none',
-                                        textAlign: 'center',
-                                        appearance: 'textfield',
-                                    }}
-                                />
-                                <div
-                                    onClick={() => onUpdateConfig({ port: (config.port || 9001) + 1 })}
-                                    style={{ padding: '4px 8px', cursor: 'pointer', borderLeft: '1px solid var(--vscode-input-border)', userSelect: 'none' }}
-                                >+</div>
-                            </div>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%', paddingBottom: 1 }}>
+                {/* Configuration */}
+                <ConfigSection>
+                    <ConfigRow>
+                        <ConfigField>
+                            <FieldLabel>Port</FieldLabel>
+                            <NumberSpinner
+                                value={config.port}
+                                onChange={(port) => onUpdateConfig({ port })}
+                                defaultValue={9001}
+                            />
+                        </ConfigField>
+                        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
                             {!isRunning ? (
-                                <HeaderButton onClick={onStart} style={{ color: 'var(--vscode-testing-iconPassed)', border: '1px solid currentColor', padding: '5px 8px', height: '28px' }} title="Start Dirty Moxy"><Play size={14} /></HeaderButton>
+                                <RunButton onClick={onStart} title="Start Dirty Moxy" style={{ padding: '5px 8px', height: '28px' }}>
+                                    <Play size={14} />
+                                </RunButton>
                             ) : (
-                                <HeaderButton onClick={onStop} style={{ color: 'var(--vscode-testing-iconFailed)', border: '1px solid currentColor', padding: '5px 8px', height: '28px' }} title="Stop Dirty Moxy"><Square size={14} /></HeaderButton>
+                                <StopButton onClick={onStop} title="Stop Dirty Moxy" style={{ padding: '5px 8px', height: '28px' }}>
+                                    <Square size={14} />
+                                </StopButton>
                             )}
                         </div>
-                    </div>
+                    </ConfigRow>
 
-                    <div style={{ marginBottom: 5 }}>
-                        <label style={{ display: 'block', fontSize: '0.8em', marginBottom: 2 }}>Target URL (Passthrough)</label>
-                        <input
+                    <ConfigField style={{ marginBottom: SPACING_XS }}>
+                        <FieldLabel>Target URL (Passthrough)</FieldLabel>
+                        <TextInput
                             type="text"
-                            className="vscode-input"
                             value={config.targetUrl}
                             onChange={(e) => onUpdateConfig({ targetUrl: e.target.value })}
                             placeholder="http://localhost:8080"
-                            style={{ width: '100%', padding: '4px', background: 'var(--vscode-input-background)', color: 'var(--vscode-input-foreground)', border: '1px solid var(--vscode-input-border)' }}
                         />
-                    </div>
+                    </ConfigField>
 
-                    <div style={{ marginBottom: 5, display: 'flex', alignItems: 'center' }}>
+                    <CheckboxRow>
                         <input
                             type="checkbox"
                             id="chkPassthrough"
                             checked={config.passthroughEnabled !== false}
                             onChange={e => onUpdateConfig({ passthroughEnabled: e.target.checked })}
                             style={{
-                                marginRight: 6,
                                 accentColor: 'var(--vscode-button-background)',
                                 width: '14px',
                                 height: '14px',
                                 cursor: 'pointer'
                             }}
                         />
-                        <label htmlFor="chkPassthrough" style={{ fontSize: '0.8em', cursor: 'pointer', userSelect: 'none' }} title="Forward unmatched requests to target URL">
+                        <CheckboxLabel htmlFor="chkPassthrough" title="Forward unmatched requests to target URL">
                             Forward unmatched requests
-                        </label>
-                    </div>
+                        </CheckboxLabel>
+                    </CheckboxRow>
 
                     {config.passthroughEnabled && (
                         <div style={{ marginBottom: 5, display: 'flex', alignItems: 'center', paddingLeft: 20 }}>
@@ -198,38 +292,29 @@ export const MockUi: React.FC<MockUiProps> = ({
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
                         <div style={{ fontSize: '0.8em' }}>Status: {isRunning ? <span style={{ color: 'var(--vscode-testing-iconPassed)' }}>Running</span> : 'Stopped'}</div>
                     </div>
-                </div>
+                    </ConfigSection>
 
                 {/* Mock Rules Section */}
-                <div style={{ borderTop: '1px solid var(--vscode-panel-border)', paddingTop: 10, marginTop: 10 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        <h4
-                            style={{ margin: 0, fontSize: '0.9em', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
+                <Section>
+                    <SectionHeader>
+                        <SectionTitle
+                            $clickable
                             onClick={() => setShowRules(!showRules)}
                         >
                             <Circle size={14} />
                             Mock Rules ({rules.length})
-                        </h4>
+                        </SectionTitle>
                         <HeaderButton onClick={handleAddRule} title="Add Mock Rule">
                             <Plus size={14} />
                         </HeaderButton>
-                    </div>
+                    </SectionHeader>
 
                     {showRules && rules.length > 0 && (
                         <div style={{ fontSize: '0.85em' }}>
                             {rules.map((rule) => (
-                                <div
+                                <RuleItem
                                     key={rule.id}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 6,
-                                        padding: '6px 8px',
-                                        marginBottom: 4,
-                                        backgroundColor: 'var(--vscode-list-hoverBackground)',
-                                        borderRadius: 4,
-                                        opacity: rule.enabled ? 1 : 0.5
-                                    }}
+                                    style={{ opacity: rule.enabled ? 1 : 0.5 }}
                                 >
                                     <button
                                         onClick={() => onToggleRule(rule.id, !rule.enabled)}
@@ -245,17 +330,17 @@ export const MockUi: React.FC<MockUiProps> = ({
                                     >
                                         {rule.enabled ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
                                     </button>
-                                    <div style={{ flex: 1, overflow: 'hidden' }}>
-                                        <div style={{ fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <RuleInfo>
+                                        <RuleLabel style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                             {rule.name}
                                             {rule.hitCount && rule.hitCount > 0 && (
                                                 <span style={{ fontSize: '0.8em', opacity: 0.7 }}>({rule.hitCount})</span>
                                             )}
-                                        </div>
-                                        <div style={{ fontSize: '0.8em', opacity: 0.7 }}>
+                                        </RuleLabel>
+                                        <RuleDetails>
                                             {rule.conditions.map(c => `${c.type}: ${c.pattern.substring(0, 20)}${c.pattern.length > 20 ? '...' : ''}`).join(' & ')}
-                                        </div>
-                                    </div>
+                                        </RuleDetails>
+                                    </RuleInfo>
                                     <HeaderButton
                                         onClick={() => handleEditRule(rule)}
                                         title="Edit"
@@ -270,36 +355,36 @@ export const MockUi: React.FC<MockUiProps> = ({
                                     >
                                         <Trash2 size={12} />
                                     </HeaderButton>
-                                </div>
+                                </RuleItem>
                             ))}
                         </div>
                     )}
 
                     {showRules && rules.length === 0 && (
-                        <div style={{ textAlign: 'center', fontSize: '0.8em', opacity: 0.7, padding: '10px 0' }}>
+                        <EmptyMessage>
                             No mock rules configured.
                             <br />
                             <span style={{ color: 'var(--vscode-textLink-foreground)', cursor: 'pointer' }} onClick={handleAddRule}>
                                 Click + to add one.
                             </span>
-                        </div>
+                        </EmptyMessage>
                     )}
-                </div>
+                </Section>
 
                 {/* Traffic Log */}
-                <div style={{ marginTop: 15, borderTop: '1px solid var(--vscode-panel-border)', paddingTop: 10 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                        <h4 style={{ margin: 0, fontSize: '0.9em' }}>Traffic ({history.length})</h4>
+                <Section style={{ marginTop: SPACING_LG }}>
+                    <SectionHeader>
+                        <SectionTitle>Traffic ({history.length})</SectionTitle>
                         {history.length > 0 && (
                             <HeaderButton onClick={onClear} title="Clear Traffic History" style={{ padding: 4 }}>
                                 <Trash2 size={14} />
                             </HeaderButton>
                         )}
-                    </div>
+                    </SectionHeader>
                     {history.length === 0 ? (
-                        <div style={{ textAlign: 'center', marginTop: 10, fontSize: '0.8em', opacity: 0.7 }}>
+                        <EmptyMessage style={{ marginTop: SPACING_MD }}>
                             No events captured.
-                        </div>
+                        </EmptyMessage>
                     ) : (
                         history.map((event, i) => (
                             <ServiceItem
@@ -332,7 +417,7 @@ export const MockUi: React.FC<MockUiProps> = ({
                             </ServiceItem>
                         ))
                     )}
-                </div>
+                </Section>
             </Content>
 
             {/* Mock Rule Modal */}

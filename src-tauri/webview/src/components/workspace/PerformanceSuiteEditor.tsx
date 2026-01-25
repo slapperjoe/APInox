@@ -12,9 +12,11 @@ import {
     RunButton
 } from '../../styles/WorkspaceLayout.styles';
 import { ContextMenu, ContextMenuItem } from '../../styles/App.styles';
+import { FormInput, FormLabel, FormGroup as SharedFormGroup } from '../common/Form';
+import { SPACING_XS, SPACING_SM, SPACING_MD, SPACING_LG, SPACING_XL, SPACING_2XL } from '../../styles/spacing';
 
 const EditorContainer = styled.div`
-    padding: 20px;
+    padding: ${SPACING_XL};
     height: 100%;
     overflow-y: auto;
     color: var(--vscode-editor-foreground);
@@ -22,7 +24,7 @@ const EditorContainer = styled.div`
 `;
 
 const Section = styled.div<{ $collapsed?: boolean }>`
-    margin-bottom: 25px;
+    margin-bottom: ${SPACING_2XL};
     background: var(--vscode-editor-inactiveSelectionBackground);
     border-radius: 6px;
     padding: 0;
@@ -32,12 +34,12 @@ const Section = styled.div<{ $collapsed?: boolean }>`
 
 const SectionHeader = styled.div<{ $clickable?: boolean }>`
     margin: 0;
-    padding: 15px;
+    padding: ${SPACING_LG};
     font-size: 1.1em;
     font-weight: 600;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: ${SPACING_SM};
     border-bottom: 1px solid var(--vscode-panel-border);
     cursor: ${props => props.$clickable ? 'pointer' : 'default'};
     user-select: none;
@@ -50,7 +52,7 @@ const SectionHeader = styled.div<{ $clickable?: boolean }>`
 
 const SectionContent = styled.div<{ $collapsed?: boolean }>`
     display: ${props => props.$collapsed ? 'none' : 'block'};
-    padding: 15px;
+    padding: ${SPACING_LG};
 `;
 
 const SectionTitle = styled.span`
@@ -60,51 +62,28 @@ const SectionTitle = styled.span`
 const Grid = styled.div`
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 15px;
+    gap: ${SPACING_LG};
 `;
 
-const FormGroup = styled.div`
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-`;
-
-const Label = styled.label`
-    font-size: 0.9em;
-    opacity: 0.8;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-`;
-
-const Input = styled.input`
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
-    padding: 6px;
-    border-radius: 4px;
-    font-family: inherit;
-    
-    &:focus {
-        outline: none;
-        border-color: var(--vscode-focusBorder);
-    }
-`;
+// Use shared FormGroup and redefine locally if needed
+const FormGroup = SharedFormGroup;
+const Label = FormLabel;
+const Input = FormInput;
 
 const RequestList = styled.div`
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: ${SPACING_SM};
 `;
 
 const RequestItem = styled.div<{ $isDragging?: boolean; $isDropTarget?: boolean }>`
     display: flex;
     align-items: center;
-    padding: 10px;
+    padding: ${SPACING_MD};
     background: ${props => props.$isDragging ? 'var(--vscode-editor-selectionBackground)' : 'var(--vscode-list-hoverBackground)'};
     border: 1px solid ${props => props.$isDropTarget ? 'var(--vscode-focusBorder)' : 'var(--vscode-panel-border)'};
     border-radius: 4px;
-    gap: 12px;
+    gap: ${SPACING_MD};
     opacity: ${props => props.$isDragging ? 0.5 : 1};
     transition: border-color 0.15s ease, background-color 0.15s ease;
 `;
@@ -127,7 +106,7 @@ const DragHandle = styled.div`
 const MethodBadge = styled.span`
     font-size: 0.8em;
     font-weight: bold;
-    padding: 2px 6px;
+    padding: 2px ${SPACING_SM};
     border-radius: 3px;
     background: var(--vscode-badge-background);
     color: var(--vscode-badge-foreground);
@@ -139,14 +118,14 @@ const MethodBadge = styled.span`
 const StatsGrid = styled.div`
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
-    gap: 10px;
-    margin-bottom: 15px;
+    gap: ${SPACING_MD};
+    margin-bottom: ${SPACING_LG};
 `;
 
 const StatCard = styled.div<{ $variant?: 'success' | 'warning' | 'error' }>`
     background: var(--vscode-input-background);
     border-radius: 6px;
-    padding: 10px;
+    padding: ${SPACING_MD};
     text-align: center;
     border: 1px solid ${props =>
         props.$variant === 'success' ? 'var(--vscode-testing-iconPassed)' :
@@ -168,7 +147,7 @@ const StatLabel = styled.div`
 
 // Progress Bar
 const ProgressContainer = styled.div`
-    margin: 10px 0;
+    margin: ${SPACING_MD} 0;
 `;
 
 const ProgressBar = styled.div`
@@ -193,8 +172,8 @@ const ChartContainer = styled.div`
     align-items: flex-end;
     gap: 2px;
     height: 80px;
-    margin: 15px 0;
-    padding: 10px;
+    margin: ${SPACING_LG} 0;
+    padding: ${SPACING_MD};
     background: var(--vscode-input-background);
     border-radius: 6px;
 `;
@@ -213,7 +192,7 @@ const ChartBar = styled.div<{ $height: number; $success: boolean }>`
 const RunItem = styled.div`
     background: var(--vscode-input-background);
     border-radius: 6px;
-    margin-bottom: 8px;
+    margin-bottom: ${SPACING_SM};
     border: 1px solid var(--vscode-widget-border);
     overflow: hidden;
 `;
@@ -221,8 +200,8 @@ const RunItem = styled.div`
 const RunHeader = styled.div`
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
+    gap: ${SPACING_MD};
+    padding: ${SPACING_MD} ${SPACING_MD};
     cursor: pointer;
     
     &:hover {
@@ -231,7 +210,7 @@ const RunHeader = styled.div`
 `;
 
 const RunDetails = styled.div`
-    padding: 12px;
+    padding: ${SPACING_MD};
     border-top: 1px solid var(--vscode-widget-border);
     background: var(--vscode-editor-background);
     max-height: 200px;
@@ -241,13 +220,13 @@ const RunDetails = styled.div`
 const InfoBanner = styled.div`
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 12px 14px;
+    gap: ${SPACING_MD};
+    padding: ${SPACING_MD} 14px;
     background: var(--vscode-editor-inactiveSelectionBackground);
     border: 1px solid var(--vscode-widget-border);
     border-radius: 6px;
     color: var(--vscode-descriptionForeground);
-    margin-bottom: 16px;
+    margin-bottom: ${SPACING_LG};
     font-size: 0.9em;
 `;
 
