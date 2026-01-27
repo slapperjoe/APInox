@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { Trash2, Pencil } from 'lucide-react';
 import { CustomXPathEvaluator } from '../utils/xpathEvaluator';
 import { RequestExtractor } from '@shared/models';
+import { SPACING_XS, SPACING_SM, SPACING_MD, SPACING_LG } from '../styles/spacing';
 
 const Container = styled.div`
     height: 100%;
@@ -14,38 +15,38 @@ const Container = styled.div`
 `;
 
 const Toolbar = styled.div`
-    padding: 10px;
+    padding: ${SPACING_SM};
     border-bottom: 1px solid var(--vscode-panel-border);
     display: flex;
     justify-content: flex-end;
-    gap: 10px;
+    gap: ${SPACING_SM};
 `;
 
 const ExtractorList = styled.div`
-    padding: 10px;
+    padding: ${SPACING_SM};
 `;
 
 const ExtractorItem = styled.div`
     display: flex;
-    padding: 8px;
+    padding: ${SPACING_SM};
     border: 1px solid var(--vscode-panel-border);
     background-color: var(--vscode-list-hoverBackground);
-    margin-bottom: 8px;
-    border-radius: 4px;
+    margin-bottom: ${SPACING_SM};
+    border-radius: ${SPACING_XS};
     align-items: flex-start;
-    gap: 15px;
+    gap: ${SPACING_MD};
 `;
 
 const ExtractorInfo = styled.div`
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: ${SPACING_XS};
 `;
 
 const InfoRow = styled.div`
     display: flex;
-    gap: 10px;
+    gap: ${SPACING_SM};
     align-items: baseline;
 `;
 
@@ -58,7 +59,7 @@ const Label = styled.span`
 
 const Value = styled.code`
     background: var(--vscode-textCodeBlock-background);
-    padding: 2px 4px;
+    padding: 2px ${SPACING_XS};
     border-radius: 3px;
     font-family: monospace;
     word-break: break-all;
@@ -70,7 +71,7 @@ const IconButton = styled.button`
     color: var(--vscode-icon-foreground);
     border: none;
     cursor: pointer;
-    padding: 4px;
+    padding: ${SPACING_XS};
     display: flex;
     align-items: center;
     justify-content: center;
@@ -86,7 +87,46 @@ const IconButton = styled.button`
 const ButtonGroup = styled.div`
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: ${SPACING_XS};
+`;
+
+const ToolbarTitle = styled.span`
+    margin-right: auto;
+    font-weight: bold;
+    font-size: 1.1em;
+`;
+
+const EmptyState = styled.div`
+    padding: ${SPACING_LG};
+    opacity: 0.7;
+    font-style: italic;
+    text-align: center;
+`;
+
+const VariableValue = styled(Value)`
+    color: var(--vscode-debugTokenExpression-name);
+`;
+
+const DefaultLabel = styled(Label)`
+    color: var(--vscode-editorInfo-foreground);
+`;
+
+const DefaultValue = styled(Value)`
+    color: var(--vscode-editorInfo-foreground);
+`;
+
+const PreviewLabel = styled(Label)`
+    color: var(--vscode-testing-iconPassed);
+`;
+
+const PreviewValue = styled(Value)`
+    border-color: var(--vscode-testing-iconPassed);
+    border: 1px solid transparent;
+    background-color: var(--vscode-editor-inactiveSelectionBackground);
+`;
+
+const DeleteButton = styled(IconButton)`
+    color: var(--vscode-errorForeground);
 `;
 
 interface ExtractorsPanelProps {
@@ -109,13 +149,13 @@ export const ExtractorsPanel: React.FC<ExtractorsPanelProps> = ({ extractors, on
     return (
         <Container>
             <Toolbar>
-                <span style={{ marginRight: 'auto', fontWeight: 'bold', fontSize: '1.1em' }}>Context Variables extracted from this Step</span>
+                <ToolbarTitle>Context Variables extracted from this Step</ToolbarTitle>
             </Toolbar>
             <ExtractorList>
                 {extractors.length === 0 ? (
-                    <div style={{ padding: 20, opacity: 0.7, fontStyle: 'italic', textAlign: 'center' }}>
+                    <EmptyState>
                         No extractors defined. Select text in the Response panel to create one.
-                    </div>
+                    </EmptyState>
                 ) : (
                     extractors.map((ex, index) => {
                         let currentValue: string | null = null;
@@ -134,7 +174,7 @@ export const ExtractorsPanel: React.FC<ExtractorsPanelProps> = ({ extractors, on
                                 <ExtractorInfo>
                                     <InfoRow>
                                         <Label>Variable:</Label>
-                                        <Value style={{ color: 'var(--vscode-debugTokenExpression-name)' }}>{ex.variable}</Value>
+                                        <VariableValue>{ex.variable}</VariableValue>
                                     </InfoRow>
                                     <InfoRow>
                                         <Label>Source:</Label>
@@ -146,16 +186,16 @@ export const ExtractorsPanel: React.FC<ExtractorsPanelProps> = ({ extractors, on
                                     </InfoRow>
                                     {ex.defaultValue && (
                                         <InfoRow>
-                                            <Label style={{ color: 'var(--vscode-editorInfo-foreground)' }}>Default:</Label>
-                                            <Value style={{ color: 'var(--vscode-editorInfo-foreground)' }}>{ex.defaultValue}</Value>
+                                            <DefaultLabel>Default:</DefaultLabel>
+                                            <DefaultValue>{ex.defaultValue}</DefaultValue>
                                         </InfoRow>
                                     )}
                                     {currentValue !== null && (
                                         <InfoRow>
-                                            <Label style={{ color: 'var(--vscode-testing-iconPassed)' }}>Preview:</Label>
-                                            <Value style={{ borderColor: 'var(--vscode-testing-iconPassed)', border: '1px solid transparent', backgroundColor: 'var(--vscode-editor-inactiveSelectionBackground)' }}>
+                                            <PreviewLabel>Preview:</PreviewLabel>
+                                            <PreviewValue>
                                                 {currentValue || "(No Match)"}
-                                            </Value>
+                                            </PreviewValue>
                                         </InfoRow>
                                     )}
                                 </ExtractorInfo>
@@ -165,9 +205,9 @@ export const ExtractorsPanel: React.FC<ExtractorsPanelProps> = ({ extractors, on
                                             <Pencil size={16} />
                                         </IconButton>
                                     )}
-                                    <IconButton onClick={() => handleDelete(index)} title="Delete Extractor" style={{ color: 'var(--vscode-errorForeground)' }}>
+                                    <DeleteButton onClick={() => handleDelete(index)} title="Delete Extractor">
                                         <Trash2 size={16} />
-                                    </IconButton>
+                                    </DeleteButton>
                                 </ButtonGroup>
                             </ExtractorItem>
                         );

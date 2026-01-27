@@ -6,6 +6,7 @@ import { bridge, isTauri, isStandalone } from '../../utils/bridge';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Modal } from './Modal';
 import { SPACING_XS, SPACING_SM, SPACING_MD, SPACING_LG } from '../../styles/spacing';
+import { STATUS_COLORS } from '../../styles/colors';
 
 const Content = styled.div`
     flex: 1;
@@ -498,7 +499,7 @@ export const ScriptPlaygroundModal: React.FC<ScriptPlaygroundModalProps> = ({ on
                             <OutputConsole>
                                 {result && (
                                     <div style={{
-                                        color: result.status === 'PASS' ? '#4caf50' : '#f44336',
+                                        color: result.status === 'PASS' ? STATUS_COLORS.SUCCESS : STATUS_COLORS.ERROR,
                                         marginBottom: '10px',
                                         fontWeight: 'bold'
                                     }}>

@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { ChevronRight, ChevronDown, FolderPlus, Plus, Trash2, Folder, Code, Globe, Zap } from 'lucide-react';
 import { ApinoxFolder, ApiRequest } from '@shared/models';
 import { HeaderButton, OperationItem, RequestItem } from './shared/SidebarStyles';
+import { ICON_COLORS } from '../../styles/colors';
 
 const FolderWrapper = styled.div<{ $level: number }>`
     margin-left: ${props => props.$level * 10}px;
@@ -64,19 +65,19 @@ const DangerButton = styled(HeaderButton)<{ $danger?: boolean }>`
 const SoapIcon = styled(Code)`
     margin-right: 6px;
     flex-shrink: 0;
-    color: #4299e1;
+    color: ${ICON_COLORS.SERVICE};
 `;
 
 const RestIcon = styled(Globe)`
     margin-right: 6px;
     flex-shrink: 0;
-    color: #48bb78;
+    color: ${ICON_COLORS.FILE};
 `;
 
 const GraphqlIcon = styled(Zap)`
     margin-right: 6px;
     flex-shrink: 0;
-    color: #9f7aea;
+    color: ${ICON_COLORS.OPERATION};
 `;
 
 interface FolderTreeProps {

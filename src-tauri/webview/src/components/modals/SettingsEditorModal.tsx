@@ -8,6 +8,7 @@ import { FrontendCommand } from '@shared/messages';
 import { ServerConfig } from '@shared/models';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Modal } from './Modal';
+import { TAG_COLORS } from '../../styles/colors';
 import { SPACING_SM, SPACING_MD } from '../../styles/spacing';
 
 const ModalWrapper = styled.div`
@@ -252,8 +253,7 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
         }
 
         // Auto-suggest a color
-        const colors = ['#58A6FF', '#7EE787', '#FF7B72', '#FFA657', '#D29922', '#F2CC60', '#3FB950', '#A371F7', '#79C0FF', '#FFA198', '#FFCB6B', '#C9D1D9'];
-        const randomColor = colors[Math.floor(Math.random() * colors.length)];
+        const randomColor = TAG_COLORS[Math.floor(Math.random() * TAG_COLORS.length)];
 
         setGuiConfig(prev => {
             const updated = { ...prev };

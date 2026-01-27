@@ -1,4 +1,18 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
+import styled from 'styled-components';
+import { SPACING_LG } from '../styles/spacing';
+
+const ErrorContainer = styled.div`
+    padding: ${SPACING_LG};
+    color: var(--vscode-errorForeground);
+    background-color: var(--vscode-editor-background);
+    height: 100%;
+    overflow: auto;
+`;
+
+const ErrorDetails = styled.details`
+    white-space: pre-wrap;
+`;
 
 interface Props {
     children?: ReactNode;
@@ -29,14 +43,14 @@ export class ErrorBoundary extends Component<Props, State> {
     public render() {
         if (this.state.hasError) {
             return (
-                <div style={{ padding: 20, color: 'var(--vscode-errorForeground)', backgroundColor: 'var(--vscode-editor-background)', height: '100%', overflow: 'auto' }}>
+                <ErrorContainer>
                     <h2>Something went wrong.</h2>
-                    <details style={{ whiteSpace: 'pre-wrap' }}>
+                    <ErrorDetails>
                         {this.state.error && this.state.error.toString()}
                         <br />
                         {this.state.errorInfo && this.state.errorInfo.componentStack}
-                    </details>
-                </div>
+                    </ErrorDetails>
+                </ErrorContainer>
             );
         }
 

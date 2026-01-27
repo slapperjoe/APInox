@@ -7,6 +7,7 @@ import React from 'react';
 import styled from 'styled-components';
 import { Plus, Trash2 } from 'lucide-react';
 import { MonacoSingleLineInput } from './MonacoSingleLineInput';
+import { SPACING_XS, SPACING_SM } from '../styles/spacing';
 
 const Container = styled.div`
     display: flex;
@@ -14,15 +15,38 @@ const Container = styled.div`
     height: 100%;
     color: var(--vscode-foreground);
     background: var(--vscode-editor-background);
-    padding: 10px;
-    gap: 10px;
+    padding: ${SPACING_SM};
+    gap: ${SPACING_SM};
     overflow-y: auto;
+`;
+
+const Header = styled.div`
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: ${SPACING_XS};
+`;
+
+const Title = styled.h3`
+    margin: 0;
 `;
 
 const ParamRow = styled.div`
     display: flex;
-    gap: 10px;
+    gap: ${SPACING_SM};
     align-items: center;
+`;
+
+const HeaderRow = styled(ParamRow)`
+    opacity: 0.7;
+`;
+
+const InputWrapper = styled.div`
+    flex: 1;
+`;
+
+const Spacer = styled.div`
+    width: 30px;
 `;
 
 const IconButton = styled.button`
@@ -30,7 +54,7 @@ const IconButton = styled.button`
     border: none;
     color: var(--vscode-icon-foreground);
     cursor: pointer;
-    padding: 4px;
+    padding: ${SPACING_XS};
     border-radius: 3px;
     display: flex;
     align-items: center;
@@ -44,7 +68,24 @@ const Label = styled.div`
     font-size: 11px;
     color: var(--vscode-descriptionForeground);
     text-transform: uppercase;
-    margin-bottom: 4px;
+    margin-bottom: ${SPACING_XS};
+`;
+
+const EmptyMessage = styled.div`
+    opacity: 0.6;
+    font-style: italic;
+    padding: ${SPACING_SM};
+    text-align: center;
+`;
+
+const PreviewBox = styled.div`
+    margin-top: ${SPACING_SM};
+    padding: ${SPACING_SM};
+    background: var(--vscode-textBlockQuote-background);
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: monospace;
+    word-break: break-all;
 `;
 
 interface QueryParamsPanelProps {
@@ -92,46 +133,46 @@ export const QueryParamsPanel: React.FC<QueryParamsPanelProps> = ({
 
     return (
         <Container>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                <h3 style={{ margin: 0 }}>{title}</h3>
+            <Header>
+                <Title>{title}</Title>
                 {!readOnly && (
                     <IconButton onClick={addParam} title={`Add ${paramLabel}`}>
                         <Plus size={16} /> Add
                     </IconButton>
                 )}
-            </div>
+            </Header>
 
             {/* Column Headers */}
-            <ParamRow style={{ opacity: 0.7 }}>
-                <div style={{ flex: 1 }}><Label>Key</Label></div>
-                <div style={{ flex: 1 }}><Label>Value</Label></div>
-                {!readOnly && <div style={{ width: 30 }}></div>}
-            </ParamRow>
+            <HeaderRow>
+                <InputWrapper><Label>Key</Label></InputWrapper>
+                <InputWrapper><Label>Value</Label></InputWrapper>
+                {!readOnly && <Spacer />}
+            </HeaderRow>
 
             {entries.length === 0 && (
-                <div style={{ opacity: 0.6, fontStyle: 'italic', padding: 10, textAlign: 'center' }}>
+                <EmptyMessage>
                     {readOnly ? `No ${title.toLowerCase()} defined.` : `No ${title.toLowerCase()} defined. Click "Add" to create one.`}
-                </div>
+                </EmptyMessage>
             )}
 
             {entries.map(([key, value], index) => (
                 <ParamRow key={index}>
-                    <div style={{ flex: 1 }}>
+                    <InputWrapper>
                         <MonacoSingleLineInput
                             value={key}
                             onChange={(newKey: string) => updateParam(key, newKey, value)}
                             placeholder="parameter_name"
                             readOnly={readOnly}
                         />
-                    </div>
-                    <div style={{ flex: 1 }}>
+                    </InputWrapper>
+                    <InputWrapper>
                         <MonacoSingleLineInput
                             value={value}
                             onChange={(newValue: string) => updateParam(key, key, newValue)}
                             placeholder="value"
                             readOnly={readOnly}
                         />
-                    </div>
+                    </InputWrapper>
                     {!readOnly && (
                         <IconButton onClick={() => removeParam(key)} title={`Delete ${paramLabel}`}>
                             <Trash2 size={14} />
@@ -141,18 +182,10 @@ export const QueryParamsPanel: React.FC<QueryParamsPanelProps> = ({
             ))}
 
             {entries.length > 0 && (
-                <div style={{
-                    marginTop: 10,
-                    padding: 8,
-                    background: 'var(--vscode-textBlockQuote-background)',
-                    borderRadius: 4,
-                    fontSize: 11,
-                    fontFamily: 'monospace',
-                    wordBreak: 'break-all'
-                }}>
+                <PreviewBox>
                     <Label>Preview</Label>
                     ?{entries.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&')}
-                </div>
+                </PreviewBox>
             )}
         </Container>
     );

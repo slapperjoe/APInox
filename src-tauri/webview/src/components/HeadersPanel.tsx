@@ -2,6 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 import { Plus, Trash2 } from 'lucide-react';
 import { MonacoSingleLineInput } from './MonacoSingleLineInput';
+import { SPACING_XS, SPACING_SM } from '../styles/spacing';
 
 const Container = styled.div`
     display: flex;
@@ -9,25 +10,59 @@ const Container = styled.div`
     height: 100%;
     color: var(--vscode-foreground);
     background: var(--vscode-editor-background);
-    padding: 10px;
-    gap: 10px;
+    padding: ${SPACING_SM};
+    gap: ${SPACING_SM};
     overflow-y: auto;
 `;
 
-const HeaderRow = styled.div`
+const HeaderRow = styled.div<{ dimmed?: boolean }>`
     display: flex;
-    gap: 10px;
+    gap: ${SPACING_SM};
     align-items: center;
+    opacity: ${props => props.dimmed ? 0.7 : 1};
 `;
 
+const HeaderTitle = styled.div`
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: ${SPACING_XS};
+`;
 
+const FlexColumn = styled.div`
+    flex: 1;
+`;
+
+const ReadOnlyField = styled.div`
+    padding: 6px ${SPACING_SM};
+    background: var(--vscode-input-background);
+    border: 1px solid var(--vscode-input-border);
+    border-radius: ${SPACING_XS};
+    color: var(--vscode-disabledForeground);
+    font-family: monospace;
+    font-size: 12px;
+`;
+
+const LockIndicator = styled.div`
+    width: 30px;
+    text-align: center;
+    font-size: 10px;
+    opacity: 0.5;
+`;
+
+const EmptyState = styled.div`
+    opacity: 0.6;
+    font-style: italic;
+    padding: ${SPACING_SM};
+    text-align: center;
+`;
 
 const IconButton = styled.button`
     background: transparent;
     border: none;
     color: var(--vscode-icon-foreground);
     cursor: pointer;
-    padding: 4px;
+    padding: ${SPACING_XS};
     border-radius: 3px;
     display: flex;
     align-items: center;
@@ -81,68 +116,52 @@ export const HeadersPanel: React.FC<HeadersPanelProps> = ({ headers, onChange, c
 
     return (
         <Container>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+            <HeaderTitle>
                 <h3>HTTP Headers</h3>
                 <IconButton onClick={addHeader} title="Add Header">
                     <Plus size={16} /> Add
                 </IconButton>
-            </div>
+            </HeaderTitle>
 
             {/* Read-only Content-Type row */}
-            <HeaderRow style={{ opacity: 0.7 }}>
-                <div style={{ flex: 1 }}>
-                    <div style={{
-                        padding: '6px 8px',
-                        background: 'var(--vscode-input-background)',
-                        border: '1px solid var(--vscode-input-border)',
-                        borderRadius: 4,
-                        color: 'var(--vscode-disabledForeground)',
-                        fontFamily: 'monospace',
-                        fontSize: 12
-                    }}>
+            <HeaderRow dimmed>
+                <FlexColumn>
+                    <ReadOnlyField>
                         Content-Type
-                    </div>
-                </div>
-                <div style={{ flex: 1 }}>
-                    <div style={{
-                        padding: '6px 8px',
-                        background: 'var(--vscode-input-background)',
-                        border: '1px solid var(--vscode-input-border)',
-                        borderRadius: 4,
-                        color: 'var(--vscode-disabledForeground)',
-                        fontFamily: 'monospace',
-                        fontSize: 12
-                    }}>
+                    </ReadOnlyField>
+                </FlexColumn>
+                <FlexColumn>
+                    <ReadOnlyField>
                         {displayContentType}
-                    </div>
-                </div>
-                <div style={{ width: 30, textAlign: 'center', fontSize: 10, opacity: 0.5 }} title="Managed by toolbar dropdown">
+                    </ReadOnlyField>
+                </FlexColumn>
+                <LockIndicator title="Managed by toolbar dropdown">
                     🔒
-                </div>
+                </LockIndicator>
             </HeaderRow>
 
             {entries.length === 0 && (
-                <div style={{ opacity: 0.6, fontStyle: 'italic', padding: 10, textAlign: 'center' }}>
+                <EmptyState>
                     No custom headers defined.
-                </div>
+                </EmptyState>
             )}
 
             {entries.map(([key, value], index) => (
                 <HeaderRow key={index}>
-                    <div style={{ flex: 1 }}>
+                    <FlexColumn>
                         <MonacoSingleLineInput
                             value={key}
                             onChange={(newKey: string) => updateHeader(key, newKey, value)}
                             placeholder="Header Name"
                         />
-                    </div>
-                    <div style={{ flex: 1 }}>
+                    </FlexColumn>
+                    <FlexColumn>
                         <MonacoSingleLineInput
                             value={value}
                             onChange={(newValue: string) => updateHeader(key, key, newValue)}
                             placeholder="Value"
                         />
-                    </div>
+                    </FlexColumn>
                     <IconButton onClick={() => removeHeader(key)} title="Delete Header">
                         <Trash2 size={14} />
                     </IconButton>

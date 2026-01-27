@@ -5,11 +5,12 @@ import { Assertion } from '@shared/models';
 import { StatusCodePicker } from './StatusCodePicker';
 import Editor from '@monaco-editor/react';
 import { ScriptPlaygroundModal } from './modals/ScriptPlaygroundModal';
+import { SPACING_XS, SPACING_SM, SPACING_MD } from '../styles/spacing';
 
 const Container = styled.div`
     display: flex;
     flex-direction: column;
-    padding: 10px;
+    padding: ${SPACING_MD};
     height: 100%;
     overflow-y: auto;
     background-color: var(--vscode-editor-background);
@@ -17,37 +18,37 @@ const Container = styled.div`
 
 const Toolbar = styled.div`
     display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
+    gap: ${SPACING_MD};
+    margin-bottom: ${SPACING_MD};
 `;
 
 const Button = styled.button`
     background: var(--vscode-button-background);
     color: var(--vscode-button-foreground);
     border: none;
-    padding: 4px 8px;
+    padding: ${SPACING_XS} ${SPACING_SM};
     border-radius: 2px;
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: ${SPACING_SM};
     &:hover { background: var(--vscode-button-hoverBackground); }
 `;
 
 const AssertionList = styled.div`
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: ${SPACING_SM};
 `;
 
 const AssertionItem = styled.div`
     display: flex;
     align-items: center;
-    padding: 8px;
+    padding: ${SPACING_SM};
     background: var(--vscode-list-hoverBackground);
     border: 1px solid var(--vscode-panel-border);
     border-radius: 4px;
-    gap: 10px;
+    gap: ${SPACING_MD};
 `;
 
 const IconWrapper = styled.div`
@@ -75,15 +76,15 @@ const Input = styled.input`
     background: var(--vscode-input-background);
     color: var(--vscode-input-foreground);
     border: 1px solid var(--vscode-input-border);
-    padding: 2px 4px;
-    margin-left: 5px;
+    padding: 2px ${SPACING_XS};
+    margin-left: ${SPACING_SM};
 `;
 
 const Select = styled.select`
     background-color: var(--vscode-dropdown-background);
     color: var(--vscode-dropdown-foreground);
     border: 1px solid var(--vscode-dropdown-border);
-    padding: 4px;
+    padding: ${SPACING_XS};
     outline: none;
     height: 26px;
     box-sizing: border-box;
@@ -91,6 +92,100 @@ const Select = styled.select`
     &:focus {
         border-color: var(--vscode-focusBorder);
     }
+`;
+
+const EmptyState = styled.div`
+    opacity: 0.5;
+    font-style: italic;
+`;
+
+const Label = styled.label`
+    margin-left: ${SPACING_MD};
+`;
+
+const FieldRow = styled.div`
+    display: flex;
+    align-items: center;
+`;
+
+const FieldColumn = styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: ${SPACING_SM};
+`;
+
+const FieldLabel = styled.span`
+    min-width: 60px;
+`;
+
+const FlexInput = styled(Input)`
+    flex: 1;
+`;
+
+const FaultCodeSection = styled.div`
+    margin-top: ${SPACING_SM};
+    display: flex;
+    align-items: center;
+`;
+
+const FaultCodeLabel = styled.span`
+    margin-right: ${SPACING_SM};
+`;
+
+const StatusCodeSection = styled.div`
+    margin-top: ${SPACING_SM};
+`;
+
+const StatusCodeLabel = styled.div`
+    margin-bottom: ${SPACING_XS};
+    font-size: 12px;
+`;
+
+const ScriptSection = styled.div`
+    margin-top: ${SPACING_SM};
+    width: 100%;
+`;
+
+const ScriptHeader = styled.div`
+    margin-bottom: ${SPACING_XS};
+    font-size: 11px;
+    opacity: 0.7;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+`;
+
+const Code = styled.code`
+    background: var(--vscode-textCodeBlock-background);
+    padding: 1px ${SPACING_XS};
+    border-radius: 2px;
+`;
+
+const ScriptEditorWrapper = styled.div`
+    border: 1px solid var(--vscode-input-border);
+    border-radius: 4px;
+    overflow: hidden;
+`;
+
+const TestButton = styled(Button)`
+    font-size: 11px;
+    padding: 2px 6px;
+    height: 20px;
+`;
+
+const SLAInput = styled(Input)`
+    width: 60px;
+`;
+
+const CheckboxLabel = styled.label`
+    display: flex;
+    align-items: center;
+    gap: ${SPACING_SM};
+`;
+
+const TransparentButton = styled(Button)`
+    background: transparent;
+    color: var(--vscode-descriptionForeground);
 `;
 
 function generateId() {
@@ -165,7 +260,7 @@ export const AssertionsPanel: React.FC<AssertionsPanelProps> = ({ assertions, on
             </Toolbar>
 
             <AssertionList>
-                {assertions.length === 0 && <div style={{ opacity: 0.5, fontStyle: 'italic' }}>No assertions defined.</div>}
+                {assertions.length === 0 && <EmptyState>No assertions defined.</EmptyState>}
 
                 {assertions.map((a, i) => {
                     const status = getStatus(a.id || '');
@@ -174,7 +269,7 @@ export const AssertionsPanel: React.FC<AssertionsPanelProps> = ({ assertions, on
                             <IconWrapper title={status || 'Not Run'}>
                                 {status === 'PASS' ? <CheckCircle2 size={18} color="var(--vscode-testing-iconPassed)" /> :
                                     status === 'FAIL' ? <XCircle size={18} color="var(--vscode-testing-iconFailed)" /> :
-                                        <Clock size={18} style={{ opacity: 0.5 }} />}
+                                        <Clock size={18} opacity={0.5} />}
                             </IconWrapper>
                             <Details>
                                 <Title>{a.name || a.type}</Title>
@@ -187,93 +282,90 @@ export const AssertionsPanel: React.FC<AssertionsPanelProps> = ({ assertions, on
                                                 onChange={(e) => updateConfig(a.id!, 'token', e.target.value)}
                                                 placeholder="Text to check"
                                             />
-                                            <label style={{ marginLeft: 10 }}>
+                                            <Label>
                                                 <input
                                                     type="checkbox"
                                                     checked={a.configuration?.ignoreCase}
                                                     onChange={(e) => updateConfig(a.id!, 'ignoreCase', e.target.checked)}
                                                 /> Ignore Case
-                                            </label>
+                                            </Label>
                                         </>
                                     )}
                                     {a.type === 'Response SLA' && (
                                         <>
                                             Limit (ms):
-                                            <Input
+                                            <SLAInput
                                                 type="number"
                                                 value={a.configuration?.sla || ''}
                                                 onChange={(e) => updateConfig(a.id!, 'sla', e.target.value)}
-                                                style={{ width: 60 }}
                                             />
                                         </>
                                     )}
                                     {a.type === 'XPath Match' && (
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                                            <div style={{ display: 'flex', alignItems: 'center' }}>
-                                                <span style={{ minWidth: 60 }}>XPath:</span>
-                                                <Input
-                                                    style={{ flex: 1 }}
+                                        <FieldColumn>
+                                            <FieldRow>
+                                                <FieldLabel>XPath:</FieldLabel>
+                                                <FlexInput
                                                     value={a.configuration?.xpath || ''}
                                                     onChange={(e) => updateConfig(a.id!, 'xpath', e.target.value)}
                                                     placeholder="//ns:Node"
                                                 />
-                                            </div>
-                                            <div style={{ display: 'flex', alignItems: 'center' }}>
-                                                <span style={{ minWidth: 60 }}>Expected:</span>
-                                                <Input
-                                                    style={{ flex: 1 }}
+                                            </FieldRow>
+                                            <FieldRow>
+                                                <FieldLabel>Expected:</FieldLabel>
+                                                <FlexInput
                                                     value={a.configuration?.expectedContent || ''}
                                                     onChange={(e) => updateConfig(a.id!, 'expectedContent', e.target.value)}
                                                     placeholder="Value"
                                                 />
-                                            </div>
-                                        </div>
+                                            </FieldRow>
+                                        </FieldColumn>
                                     )}
                                     {a.type === 'SOAP Fault' && (
                                         <>
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                            <CheckboxLabel>
                                                 <input
                                                     type="checkbox"
                                                     checked={a.configuration?.expectFault === true}
                                                     onChange={(e) => updateConfig(a.id!, 'expectFault', e.target.checked)}
                                                 />
                                                 Expect Fault
-                                            </label>
-                                            <div style={{ marginTop: 5, display: 'flex', alignItems: 'center' }}>
-                                                <span style={{ marginRight: 5 }}>Fault Code:</span>
+                                            </CheckboxLabel>
+                                            <FaultCodeSection>
+                                                <FaultCodeLabel>Fault Code:</FaultCodeLabel>
                                                 <Input
                                                     value={a.configuration?.faultCode || ''}
                                                     onChange={(e) => updateConfig(a.id!, 'faultCode', e.target.value)}
                                                     placeholder="Optional (e.g. Client)"
                                                     style={{ width: 140 }}
                                                 />
-                                            </div>
+                                            </FaultCodeSection>
                                         </>
                                     )}
                                     {a.type === 'HTTP Status' && (
-                                        <div style={{ marginTop: 5 }}>
-                                            <div style={{ marginBottom: 4, fontSize: 12 }}>Expected Codes:</div>
+                                        <StatusCodeSection>
+                                            <StatusCodeLabel>Expected Codes:</StatusCodeLabel>
                                             <StatusCodePicker
                                                 value={a.configuration?.expectedStatus || ''}
                                                 onChange={(val) => updateConfig(a.id!, 'expectedStatus', val)}
                                             />
-                                        </div>
+                                        </StatusCodeSection>
                                     )}
                                     {a.type === 'Script' && (
-                                        <div style={{ marginTop: 5, width: '100%' }}>
-                                            <div style={{ marginBottom: 4, fontSize: 11, opacity: 0.7, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <ScriptSection>
+                                            <ScriptHeader>
                                                 <span>
-                                                    Return <code style={{ background: 'var(--vscode-textCodeBlock-background)', padding: '1px 4px', borderRadius: 2 }}>true</code> to pass, <code style={{ background: 'var(--vscode-textCodeBlock-background)', padding: '1px 4px', borderRadius: 2 }}>false</code> to fail.
-                                                    Available: <code style={{ background: 'var(--vscode-textCodeBlock-background)', padding: '1px 4px', borderRadius: 2 }}>response</code>, <code style={{ background: 'var(--vscode-textCodeBlock-background)', padding: '1px 4px', borderRadius: 2 }}>statusCode</code>
+                                                    Return <Code>true</Code> to pass, <Code>false</Code> to fail.
+                                                    Available: <Code>response</Code>, <Code>statusCode</Code>
                                                 </span>
-                                                <Button onClick={() => {
+                                                <TestButton onClick={() => {
                                                     setPlaygroundScript(a.configuration?.script || '');
                                                     setPlaygroundAssertionId(a.id || null);
-                                                }} title="Test in Playground" style={{ fontSize: '11px', padding: '2px 6px', height: '20px' }}>
+                                                }} title="Test in Playground">
                                                     <Play size={10} /> Test Script
-                                                </Button>
-                                            </div>
-                                            <div style={{ border: '1px solid var(--vscode-input-border)', borderRadius: 4, overflow: 'hidden' }}>
+                                                </TestButton>
+                                            </ScriptHeader>
+                                            <ScriptEditorWrapper>
                                                 <Editor
                                                     height="100px"
                                                     defaultLanguage="javascript"
@@ -305,14 +397,14 @@ export const AssertionsPanel: React.FC<AssertionsPanelProps> = ({ assertions, on
                                                         quickSuggestions: false,
                                                     }}
                                                 />
-                                            </div>
-                                        </div>
+                                            </ScriptEditorWrapper>
+                                        </ScriptSection>
                                     )}
                                 </ConfigText>
                             </Details>
-                            <Button onClick={() => handleRemove(a.id!)} title="Delete Assertion" style={{ background: 'transparent', color: 'var(--vscode-descriptionForeground)' }}>
+                            <TransparentButton onClick={() => handleRemove(a.id!)} title="Delete Assertion">
                                 <Trash2 size={16} />
-                            </Button>
+                            </TransparentButton>
                         </AssertionItem>
                     );
                 })}

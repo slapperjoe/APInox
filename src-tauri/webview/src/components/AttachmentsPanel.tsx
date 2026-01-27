@@ -4,6 +4,7 @@ import { Paperclip, Plus, Trash2, File, FileText, Image, Film, Music } from 'luc
 import { RequestAttachment, AttachmentType } from '@shared/models';
 import { FrontendCommand } from '@shared/messages';
 import { bridge } from '../utils/bridge';
+import { SPACING_XS, SPACING_SM, SPACING_MD } from '../styles/spacing';
 
 const Container = styled.div`
     display: flex;
@@ -11,8 +12,8 @@ const Container = styled.div`
     height: 100%;
     color: var(--vscode-foreground);
     background: var(--vscode-editor-background);
-    padding: 15px;
-    gap: 15px;
+    padding: ${SPACING_MD};
+    gap: ${SPACING_MD};
     overflow-y: auto;
 `;
 
@@ -20,13 +21,13 @@ const Header = styled.div`
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
+    gap: ${SPACING_MD};
 `;
 
 const Title = styled.div`
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: ${SPACING_SM};
     font-weight: 600;
     font-size: 0.95em;
 `;
@@ -167,6 +168,27 @@ const DropZone = styled.div<{ isDragging?: boolean }>`
         border-color: var(--vscode-focusBorder);
         background: var(--vscode-list-hoverBackground);
     }
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: ${SPACING_SM};
+`;
+
+const EmptyIcon = styled(Paperclip)`
+    margin-bottom: ${SPACING_SM};
+    opacity: 0.5;
+`;
+
+const EmptySubtext = styled.div`
+    font-size: 0.85em;
+    margin-top: ${SPACING_XS};
+`;
+
+const InlineDropZone = styled(DropZone)`
+    padding: 12px;
+    font-size: 0.85em;
+    flex-direction: row;
+    gap: 6px;
 `;
 
 interface AttachmentsPanelProps {
@@ -254,11 +276,11 @@ export const AttachmentsPanel: React.FC<AttachmentsPanelProps> = ({ attachments,
                         onDragLeave={handleDragLeave}
                         onDrop={handleDrop}
                     >
-                        <Paperclip size={32} style={{ marginBottom: 8, opacity: 0.5 }} />
+                        <EmptyIcon size={32} />
                         <div>Click to add files or drag & drop here</div>
-                        <div style={{ fontSize: '0.85em', marginTop: 4 }}>
+                        <EmptySubtext>
                             Supports Base64 inline, SwA (Multipart), and MTOM
-                        </div>
+                        </EmptySubtext>
                     </DropZone>
                 </EmptyState>
             ) : (
@@ -299,17 +321,16 @@ export const AttachmentsPanel: React.FC<AttachmentsPanelProps> = ({ attachments,
                         </AttachmentCard>
                     ))}
 
-                    <DropZone
+                    <InlineDropZone
                         isDragging={isDragging}
                         onClick={handleAddClick}
                         onDragOver={handleDragOver}
                         onDragLeave={handleDragLeave}
                         onDrop={handleDrop}
-                        style={{ padding: 12, fontSize: '0.85em' }}
                     >
-                        <Plus size={16} style={{ marginRight: 6 }} />
+                        <Plus size={16} />
                         Add another file
-                    </DropZone>
+                    </InlineDropZone>
                 </AttachmentList>
             )}
         </Container>
