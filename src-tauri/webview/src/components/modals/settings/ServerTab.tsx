@@ -31,6 +31,7 @@ interface ServerTabProps {
     onSelectConfigFile: () => void;
     onInjectConfig: () => void;
     onRestoreConfig: () => void;
+    injectionStatus?: { type: 'success' | 'error'; message: string } | null;
 }
 
 const MODE_OPTIONS: { value: ServerMode; label: string; description: string }[] = [
@@ -48,6 +49,7 @@ export const ServerTab: React.FC<ServerTabProps> = ({
     onSelectConfigFile,
     onInjectConfig,
     onRestoreConfig,
+    injectionStatus,
 }) => {
     const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
     const [ruleModal, setRuleModal] = useState<{ open: boolean; rule?: MockRule | null }>({ open: false });
@@ -231,25 +233,43 @@ export const ServerTab: React.FC<ServerTabProps> = ({
                 </div>
             </FormGroup>
 
-            <div style={{ display: 'flex', gap: 10 }}>
-                <PrimaryButton
-                    onClick={onInjectConfig}
-                    disabled={!configPath && !config.lastConfigPath}
-                    style={{ opacity: (!configPath && !config.lastConfigPath) ? 0.5 : 1 }}
-                >
-                    <Power size={12} /> Inject Server URL
-                </PrimaryButton>
-                <PrimaryButton
-                    onClick={onRestoreConfig}
-                    disabled={!configPath && !config.lastConfigPath}
-                    style={{
-                        opacity: (!configPath && !config.lastConfigPath) ? 0.5 : 1,
-                        background: 'var(--vscode-button-secondaryBackground)',
-                        color: 'var(--vscode-button-secondaryForeground)'
-                    }}
-                >
-                    <RotateCcw size={12} /> Restore Original
-                </PrimaryButton>
+            <div style={{ display: 'flex', gap: 10, flexDirection: 'column' }}>
+                <div style={{ display: 'flex', gap: 10 }}>
+                    <PrimaryButton
+                        onClick={onInjectConfig}
+                        disabled={!configPath && !config.lastConfigPath}
+                        style={{ opacity: (!configPath && !config.lastConfigPath) ? 0.5 : 1 }}
+                    >
+                        <Power size={12} /> Inject Server URL
+                    </PrimaryButton>
+                    <PrimaryButton
+                        onClick={onRestoreConfig}
+                        disabled={!configPath && !config.lastConfigPath}
+                        style={{
+                            opacity: (!configPath && !config.lastConfigPath) ? 0.5 : 1,
+                            background: 'var(--vscode-button-secondaryBackground)',
+                            color: 'var(--vscode-button-secondaryForeground)'
+                        }}
+                    >
+                        <RotateCcw size={12} /> Restore Original
+                    </PrimaryButton>
+                </div>
+                
+                {/* Status message */}
+                {injectionStatus && (
+                    <div style={{
+                        padding: '8px 12px',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        background: injectionStatus.type === 'success'
+                            ? 'var(--vscode-testing-iconPassed)'
+                            : 'var(--vscode-testing-iconFailed)',
+                        color: 'var(--vscode-editor-background)',
+                        opacity: 0.9
+                    }}>
+                        {injectionStatus.type === 'success' ? '✓' : '✗'} {injectionStatus.message}
+                    </div>
+                )}
             </div>
 
             {/* Mock Options */}

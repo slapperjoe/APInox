@@ -92,6 +92,19 @@ const RequestItem = styled.div<{ active: boolean }>`
     }
 `;
 
+const RequestActions = styled.div`
+    display: flex;
+    gap: ${SPACING_XS};
+    opacity: 0;
+    ${RequestItem}:hover & {
+        opacity: 1;
+    }
+    color: var(--vscode-icon-foreground);
+    ${RequestItem}[data-active='true'] & {
+        color: var(--vscode-list-activeSelectionForeground);
+    }
+`;
+
 export const PerformanceUi: React.FC<SidebarPerformanceProps> = ({
     suites,
     onAddSuite,
@@ -260,6 +273,7 @@ export const PerformanceUi: React.FC<SidebarPerformanceProps> = ({
                                 <RequestItem
                                     key={req.id}
                                     active={false} // Currently we don't track selected request ID in sidebar explicitly? Or reuse selection context? using standard 'active' styling might be misleading if not synced
+                                    data-active={false}
                                     onClick={() => onSelectRequest?.(req)}
                                     onContextMenu={(e) => handleContextMenu(e, 'request', req.id, req.name, suite.id)}
                                 >
@@ -280,6 +294,20 @@ export const PerformanceUi: React.FC<SidebarPerformanceProps> = ({
                                     ) : (
                                         <RequestLabel>{req.name}</RequestLabel>
                                     )}
+                                    <RequestActions>
+                                        <IconButton
+                                            $danger
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (onDeleteRequest) {
+                                                    onDeleteRequest(suite.id, req.id);
+                                                }
+                                            }}
+                                            title="Delete Request"
+                                        >
+                                            <Trash2 size={14} />
+                                        </IconButton>
+                                    </RequestActions>
                                 </RequestItem>
                             ))}
                         </React.Fragment>

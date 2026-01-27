@@ -86,7 +86,7 @@ export class FolderProjectStorage {
                 const opDir = path.join(ifaceDir, safeOpName);
                 if (!fs.existsSync(opDir)) fs.mkdirSync(opDir);
 
-                // Operation Metadata (if needed, Action etc)
+                // Operations
                 const opMeta = {
                     name: op.name,
                     action: op.action,
@@ -94,6 +94,29 @@ export class FolderProjectStorage {
                     targetNamespace: op.targetNamespace // Save persistence logic
                 };
                 fs.writeFileSync(path.join(opDir, 'operation.json'), JSON.stringify(opMeta, null, 2));
+
+                // Cleanup: Delete orphan request files (from renamed/deleted requests)
+                const currentRequestNames = new Set(op.requests.map(r => this.sanitizeName(r.name)));
+                const existingFiles = fs.readdirSync(opDir).filter(f => f !== 'operation.json');
+                const existingRequestBases = new Set<string>();
+                
+                existingFiles.forEach(f => {
+                    const ext = path.extname(f).toLowerCase();
+                    if (ext === '.xml' || ext === '.json') {
+                        const base = path.basename(f, ext);
+                        existingRequestBases.add(base);
+                    }
+                });
+                
+                existingRequestBases.forEach(base => {
+                    if (!currentRequestNames.has(base)) {
+                        this.log(`Removing orphaned request files: ${base}`);
+                        const xmlFile = path.join(opDir, `${base}.xml`);
+                        const jsonFile = path.join(opDir, `${base}.json`);
+                        if (fs.existsSync(xmlFile)) fs.unlinkSync(xmlFile);
+                        if (fs.existsSync(jsonFile)) fs.unlinkSync(jsonFile);
+                    }
+                });
 
                 // Requests
                 for (const req of op.requests) {

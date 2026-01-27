@@ -21,7 +21,7 @@ import { WsdlSyncModal } from './modals/WsdlSyncModal';
 import { DebugModal } from './modals/DebugModal';
 import { PickRequestModal, PickRequestItem } from './modals/PickRequestModal';
 import { ExportWorkspaceModal } from './modals/ExportWorkspaceModal';
-import { ApiRequest, TestCase, TestStep, SidebarView, ReplaceRule, RequestHistoryEntry, WsdlDiff } from '@shared/models';
+import { ApiRequest, TestCase, TestStep, SidebarView, ReplaceRule, RequestHistoryEntry, WsdlDiff, ApiInterface } from '@shared/models';
 import { BackendCommand, FrontendCommand } from '@shared/messages';
 import { useMessageHandler } from '../hooks/useMessageHandler';
 import { useProject } from '../contexts/ProjectContext';
@@ -254,7 +254,6 @@ export function MainContent() {
     // ==========================================================================
     const {
         exploredInterfaces,
-        setExploredInterfaces,
         explorerExpanded,
         setExplorerExpanded,
         pendingAddInterface,
@@ -527,7 +526,8 @@ export function MainContent() {
         setSelectedOperation,
         setSelectedRequest,
         setSelectedTestCase,
-        setResponse
+        setResponse,
+        config
     });
 
     // ==========================================================================
@@ -886,14 +886,29 @@ export function MainContent() {
             if (!project.interfaces) return;
             project.interfaces.forEach((iface: any) => {
                 iface.operations?.forEach((op: any) => {
-                    items.push({
-                        id: `${project.id || project.name}-op-${op.name}`,
-                        label: op.name,
-                        description: `${project.name} > ${iface.name}`,
-                        detail: op.originalEndpoint || 'WSDL Operation',
-                        type: 'operation',
-                        data: op
-                    });
+                    // If operation has multiple requests, add each one separately
+                    if (op.requests && op.requests.length > 0) {
+                        op.requests.forEach((req: any, idx: number) => {
+                            items.push({
+                                id: `${project.id || project.name}-op-${op.name}-req-${idx}`,
+                                label: op.requests.length > 1 ? `${op.name} [${idx + 1}/${op.requests.length}]` : op.name,
+                                description: `${project.name} > ${iface.name}${op.requests.length > 1 ? ` > Request ${idx + 1}` : ''}`,
+                                detail: req.endpoint || op.originalEndpoint || 'WSDL Operation',
+                                type: 'request',
+                                data: req
+                            });
+                        });
+                    } else {
+                        // No requests - add operation for SOAP XML generation
+                        items.push({
+                            id: `${project.id || project.name}-op-${op.name}`,
+                            label: op.name,
+                            description: `${project.name} > ${iface.name}`,
+                            detail: op.originalEndpoint || 'WSDL Operation',
+                            type: 'operation',
+                            data: op
+                        });
+                    }
                 });
             });
         };
@@ -992,7 +1007,6 @@ export function MainContent() {
     });
     useMessageHandler({
         setProjects,
-        setExploredInterfaces,
         setExplorerExpanded, // Passed via alias
         setLoading,
         setResponse,
@@ -1038,13 +1052,11 @@ export function MainContent() {
     // ==========================================================================
     useAppLifecycle({
         projects,
-        exploredInterfaces,
         explorerExpanded,
         wsdlUrl,
         selectedProjectName,
         saveProject,
         setProjects,
-        setExploredInterfaces,
         setExplorerExpanded,
         setWsdlUrl,
         setSelectedProjectName
@@ -1357,7 +1369,24 @@ export function MainContent() {
                         }
                     },
                     // Certificate
-                    onOpenCertificate: () => bridge.sendMessage({ command: 'openCertificate' })
+                    onOpenCertificate: async () => {
+                        try {
+                            const result: any = await bridge.sendMessage({ command: 'openCertificate' });
+                            if (result?.success && result.certPath) {
+                                // Use Tauri's opener to open the certificate file
+                                if (isTauri()) {
+                                    const { openPath } = await import('@tauri-apps/plugin-opener');
+                                    await openPath(result.certPath);
+                                    // Show instructions to user
+                                    alert(result.instructions || 'Certificate opened. Please install it to your system trust store.');
+                                }
+                            } else {
+                                alert(result?.error || 'Failed to open certificate');
+                            }
+                        } catch (err: any) {
+                            alert(`Failed to open certificate: ${err.message}`);
+                        }
+                    }
                 }}
                 activeView={activeView}
                 onChangeView={handleSetActiveViewWrapper}
@@ -1827,21 +1856,24 @@ export function MainContent() {
                                     const requestSteps = (item.testCase.steps || []).filter(s => s.type === 'request');
                                     if (requestSteps.length > 0) {
                                         for (const step of requestSteps) {
-                                            const reqStep = step as any; // Request steps have additional properties
+                                            // Access request data from step.config.request
+                                            const req = step.config.request;
+                                            if (!req) continue; // Skip if no request data
+                                            
                                             bridge.sendMessage({
                                                 command: 'addPerformanceRequest',
                                                 suiteId: importToPerformanceModal.suiteId,
                                                 name: step.name || 'Imported Step',
-                                                endpoint: reqStep.endpoint || '',
-                                                method: reqStep.method || 'POST',
-                                                soapAction: reqStep.soapAction,
-                                                requestBody: reqStep.request || '',
-                                                headers: reqStep.headers || {},
-                                                extractors: reqStep.extractors || [],
-                                                requestType: reqStep.requestType,
-                                                bodyType: reqStep.bodyType,
-                                                restConfig: reqStep.restConfig,
-                                                graphqlConfig: reqStep.graphqlConfig,
+                                                endpoint: req.endpoint || '',
+                                                method: req.method || 'POST',
+                                                soapAction: req.method === 'POST' ? req.headers?.['SOAPAction'] : undefined,
+                                                requestBody: req.request || '',
+                                                headers: req.headers || {},
+                                                extractors: req.extractors || [],
+                                                requestType: req.requestType,
+                                                bodyType: req.bodyType,
+                                                restConfig: req.restConfig,
+                                                graphqlConfig: req.graphqlConfig,
                                             });
                                         }
                                     }

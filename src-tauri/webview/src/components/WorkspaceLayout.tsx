@@ -595,7 +595,11 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                     onRequestTypeChange={(type: RequestType) => onUpdateRequest({ ...selectedRequest, requestType: type })}
                                     onMethodChange={(method) => onUpdateRequest({ ...selectedRequest, method: method as string })}
                                     onBodyTypeChange={(type: BodyType) => onUpdateRequest({ ...selectedRequest, bodyType: type })}
-                                    onContentTypeChange={(ct) => onUpdateRequest({ ...selectedRequest, contentType: ct })}
+                                    onContentTypeChange={(ct) => onUpdateRequest({ 
+                                        ...selectedRequest, 
+                                        contentType: ct,
+                                        headers: { ...(selectedRequest.headers || {}), 'Content-Type': ct }
+                                    })}
                                     compact={true}
                                 />
 

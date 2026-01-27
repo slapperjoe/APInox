@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { SidebarView } from '@shared/models';
+import { SidebarView, ApiInterface } from '@shared/models';
 import { BackendCommand } from '@shared/messages';
 
 interface NavigationContextType {
@@ -8,6 +8,8 @@ interface NavigationContextType {
     sidebarExpanded: boolean;
     setSidebarExpanded: (expanded: boolean) => void;
     toggleSidebar: () => void;
+    exploredInterfaces: ApiInterface[];
+    setExploredInterfaces: React.Dispatch<React.SetStateAction<ApiInterface[]>>;
 }
 
 const NavigationContext = createContext<NavigationContextType | undefined>(undefined);
@@ -23,6 +25,7 @@ export const useNavigation = () => {
 export const NavigationProvider = ({ children }: { children: ReactNode }) => {
     const [activeView, setActiveView] = useState<SidebarView>(SidebarView.EXPLORER);
     const [sidebarExpanded, setSidebarExpanded] = useState<boolean>(true);
+    const [exploredInterfaces, setExploredInterfaces] = useState<ApiInterface[]>([]);
 
     const toggleSidebar = () => setSidebarExpanded(prev => !prev);
 
@@ -66,7 +69,9 @@ export const NavigationProvider = ({ children }: { children: ReactNode }) => {
             setActiveView,
             sidebarExpanded,
             setSidebarExpanded,
-            toggleSidebar
+            toggleSidebar,
+            exploredInterfaces,
+            setExploredInterfaces
         }}>
             {children}
         </NavigationContext.Provider>

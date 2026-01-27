@@ -43,6 +43,10 @@ interface UseRequestExecutionParams {
     selectedPerformanceSuiteId?: string | null;
     config?: any;
     setConfig?: React.Dispatch<React.SetStateAction<any>>;
+
+    // Explorer Support
+    exploredInterfaces?: ApiInterface[];
+    setExploredInterfaces?: React.Dispatch<React.SetStateAction<ApiInterface[]>>;
 }
 
 interface UseRequestExecutionReturn {
@@ -69,7 +73,9 @@ export function useRequestExecution({
     testExecution,
     selectedPerformanceSuiteId,
     config,
-    setConfig
+    setConfig,
+    exploredInterfaces,
+    setExploredInterfaces
 }: UseRequestExecutionParams): UseRequestExecutionReturn {
 
     const startTimeRef = useRef<number>(0);
@@ -289,6 +295,23 @@ export function useRequestExecution({
         projectUpdateTimer.current = setTimeout(() => {
             // bridge.sendMessage({ command: 'log', message: '[handleRequestUpdate] PROJECT PATH - Debounced update executing' });
 
+            // EXPLORER PATH: Update exploredInterfaces if viewing Explorer (no project selected)
+            if (!selectedProjectName && setExploredInterfaces && exploredInterfaces) {
+                setExploredInterfaces(prev => prev.map(i => {
+                    if (i.name !== selectedInterface?.name) return i;
+                    return {
+                        ...i,
+                        operations: i.operations.map(o => {
+                            if (o.name !== selectedOperation?.name) return o;
+                            return {
+                                ...o,
+                                requests: o.requests.map(r => r.id === updated.id ? dirtyUpdated : r)
+                            };
+                        })
+                    };
+                }));
+            }
+
             setProjects(prev => {
                 // bridge.sendMessage({ command: 'log', message: '[handleRequestUpdate] setProjects callback', data: JSON.stringify({ count: prev.length }) });
 
@@ -371,7 +394,7 @@ export function useRequestExecution({
             });
         }, 300); // 300ms debounce for tree updates
 
-    }, [selectedProjectName, selectedTestCase, selectedInterface, selectedOperation, selectedRequest, setProjects, setSelectedRequest, setWorkspaceDirty, selectedPerformanceSuiteId, config, setConfig]);
+    }, [selectedProjectName, selectedTestCase, selectedInterface, selectedOperation, selectedRequest, setProjects, setSelectedRequest, setWorkspaceDirty, selectedPerformanceSuiteId, config, setConfig, exploredInterfaces, setExploredInterfaces]);
 
     const handleResetRequest = useCallback(() => {
         if (selectedRequest && selectedOperation) {

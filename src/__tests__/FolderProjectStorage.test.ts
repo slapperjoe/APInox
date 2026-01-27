@@ -189,4 +189,118 @@ describe('FolderProjectStorage', () => {
             await expect(storage.loadProject(invalidDir)).rejects.toThrow('Invalid project folder');
         });
     });
+
+    describe('request rename cleanup', () => {
+        it('should delete old request files when a request is renamed', async () => {
+            const project: ApinoxProject = {
+                name: 'Test Project',
+                description: 'Test',
+                interfaces: [
+                    {
+                        id: 'iface-1',
+                        name: 'TestInterface',
+                        wsdlUrl: 'http://example.com/service?wsdl',
+                        binding: 'TestBinding',
+                        operations: [
+                            {
+                                id: 'op-1',
+                                name: 'TestOperation',
+                                action: 'TestAction',
+                                input: { name: 'input' },
+                                requests: [
+                                    {
+                                        id: 'req-1',
+                                        name: 'OriginalName',
+                                        request: '<soap>Original</soap>',
+                                        response: null
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                testSuites: []
+            };
+
+            const projectDir = path.join(tempDir, 'TestProject');
+            fs.mkdirSync(projectDir);
+
+            // Save with original name
+            await storage.saveProject(project, projectDir);
+
+            const opDir = path.join(projectDir, 'interfaces', 'TestInterface', 'TestOperation');
+            let files = fs.readdirSync(opDir).filter(f => f.endsWith('.xml') || f.endsWith('.json'));
+            
+            // Should have OriginalName.xml and OriginalName.json
+            expect(files).toContain('OriginalName.xml');
+            expect(files).toContain('OriginalName.json');
+            expect(files.filter(f => f !== 'operation.json').length).toBe(2);
+
+            // Rename the request
+            project.interfaces[0].operations[0].requests[0].name = 'RenamedRequest';
+            await storage.saveProject(project, projectDir);
+
+            files = fs.readdirSync(opDir).filter(f => f.endsWith('.xml') || f.endsWith('.json'));
+            
+            // Should have RenamedRequest.xml and RenamedRequest.json
+            expect(files).toContain('RenamedRequest.xml');
+            expect(files).toContain('RenamedRequest.json');
+            
+            // Old files should be deleted
+            expect(files).not.toContain('OriginalName.xml');
+            expect(files).not.toContain('OriginalName.json');
+            
+            // Should only have the renamed files (plus operation.json)
+            expect(files.filter(f => f !== 'operation.json').length).toBe(2);
+        });
+
+        it('should persist renamed request through save/load cycle', async () => {
+            const project: ApinoxProject = {
+                name: 'Test Project',
+                description: 'Test',
+                interfaces: [
+                    {
+                        id: 'iface-1',
+                        name: 'TestInterface',
+                        wsdlUrl: 'http://example.com/service?wsdl',
+                        binding: 'TestBinding',
+                        operations: [
+                            {
+                                id: 'op-1',
+                                name: 'TestOperation',
+                                action: 'TestAction',
+                                input: { name: 'input' },
+                                requests: [
+                                    {
+                                        id: 'req-1',
+                                        name: 'OriginalName',
+                                        request: '<soap>Original</soap>',
+                                        response: null
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                testSuites: []
+            };
+
+            const projectDir = path.join(tempDir, 'TestProject');
+            fs.mkdirSync(projectDir);
+
+            // Save with original name
+            await storage.saveProject(project, projectDir);
+
+            // Rename and save
+            project.interfaces[0].operations[0].requests[0].name = 'NewRequestName';
+            await storage.saveProject(project, projectDir);
+
+            // Load and verify name persisted
+            const loadedProject = await storage.loadProject(projectDir);
+            const loadedRequest = loadedProject.interfaces[0].operations[0].requests[0];
+            
+            expect(loadedRequest.name).toBe('NewRequestName');
+            expect(loadedRequest.request).toBe('<soap>Original</soap>');
+        });
+    });
 });

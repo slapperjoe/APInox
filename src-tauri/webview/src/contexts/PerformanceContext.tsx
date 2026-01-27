@@ -235,8 +235,23 @@ export const PerformanceProvider = ({ children }: { children: ReactNode }) => {
     }, []);
 
     const handleDeletePerformanceRequest = useCallback((suiteId: string, requestId: string) => {
+        // Optimistically update UI state
+        setConfig(prev => {
+            if (!prev || !prev.performanceSuites) return prev;
+            
+            return {
+                ...prev,
+                performanceSuites: prev.performanceSuites.map(suite =>
+                    suite.id === suiteId
+                        ? { ...suite, requests: suite.requests?.filter(r => r.id !== requestId) || [] }
+                        : suite
+                )
+            };
+        });
+        
+        // Send delete command to backend
         bridge.sendMessage({ command: 'deletePerformanceRequest', suiteId, requestId });
-    }, []);
+    }, [setConfig]);
 
     const handleUpdatePerformanceRequest = useCallback((suiteId: string, requestId: string, updates: Partial<PerformanceRequest>) => {
         bridge.sendMessage({ command: 'updatePerformanceRequest', suiteId, requestId, updates });

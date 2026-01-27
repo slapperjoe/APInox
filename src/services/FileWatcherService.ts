@@ -170,7 +170,7 @@ export class FileWatcherService {
             const event: WatcherEvent = {
                 id: id,
                 timestamp: now.getTime(),
-                timestampLabel: now.toLocaleTimeString(),
+                timestampLabel: now.toLocaleString(), // Include date and time
                 requestFile: this.requestPath,
                 responseFile: this.responsePath,
                 requestContent: content,

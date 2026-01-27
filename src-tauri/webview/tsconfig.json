@@ -24,13 +24,13 @@
         "baseUrl": ".",
         "paths": {
             "@shared/*": [
-                "../shared/src/*"
+                "../../shared/src/*"
             ]
         }
     },
     "include": [
         "src",
-        "../shared/src"
+        "../../shared/src"
     ],
     "exclude": [
         "**/__tests__/**",
