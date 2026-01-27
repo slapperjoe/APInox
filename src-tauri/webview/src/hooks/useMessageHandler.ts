@@ -21,6 +21,7 @@ import {
     RequestAttachment,
     WsdlDiff
 } from '@shared/models';
+import { useNavigation } from '../contexts/NavigationContext';
 
 // Debug logger - console only to prevent message flooding
 // Note: Sending log messages back to the backend on every received message
@@ -33,7 +34,6 @@ const debugLog = (context: string, data?: any) => {
 export interface MessageHandlerState {
     // Setters for state that the handler modifies
     setProjects: React.Dispatch<React.SetStateAction<ApinoxProject[]>>;
-    setExploredInterfaces: React.Dispatch<React.SetStateAction<ApiInterface[]>>;
     setExplorerExpanded: React.Dispatch<React.SetStateAction<boolean>>;
     setLoading: React.Dispatch<React.SetStateAction<boolean>>;
     setResponse: React.Dispatch<React.SetStateAction<any>>;
@@ -63,6 +63,7 @@ export interface MessageHandlerState {
     // setProxyHistory: Moved to MockProxyContext
     // setProxyRunning: Moved to MockProxyContext
     // setTestExecution: Moved to TestRunnerContext
+    // setExploredInterfaces: Moved to NavigationContext
     setActiveView: React.Dispatch<React.SetStateAction<SidebarView>>;
     setActiveBreakpoint: React.Dispatch<React.SetStateAction<{
         id: string;
@@ -96,7 +97,6 @@ export interface MessageHandlerState {
 export function useMessageHandler(state: MessageHandlerState) {
     const {
         setProjects,
-        setExploredInterfaces,
         setExplorerExpanded,
         setLoading,
         setResponse,
@@ -141,6 +141,9 @@ export function useMessageHandler(state: MessageHandlerState) {
         onAttachmentSelected,
         setWsdlDiff
     } = state;
+
+    // Get exploredInterfaces from NavigationContext
+    const { setExploredInterfaces, setActiveView: setActiveViewFromNav } = useNavigation();
 
     // Silence unused variable warning until migration is complete
     void setSavedProjects;
@@ -220,6 +223,7 @@ export function useMessageHandler(state: MessageHandlerState) {
                                             id: crypto.randomUUID(),
                                             name: 'Request 1',
                                             endpoint: op.originalEndpoint,
+                                            contentType: portName.includes('12') ? 'application/soap+xml' : 'text/xml',
                                             headers: {
                                                 'Content-Type': portName.includes('12') ? 'application/soap+xml' : 'text/xml'
                                             },

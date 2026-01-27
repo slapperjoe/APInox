@@ -14,9 +14,23 @@
   - Added `getActiveEnvironment()` and `getGlobalVariables()` helper methods to SettingsManager
   - Frontend now passes active environment to backend for proper variable substitution
   - Wildcard syntax highlighting for {{variables}} in Monaco editor
+- **Certificate Management**: Restored ability to open development certificates from the GUI
+  - Added OpenCertificate command handler in sidecar router
+  - Shield icon in Server UI opens certificate file in system file manager
+  - Certificates automatically generated when proxy/mock server starts with HTTPS target
 
 ### Fixed
 - **macOS**: Performance suites and settings now persist across reinstalls. Config directory moved from exe-relative location to stable user directory (`~/Library/Application Support/apinox/` on macOS). Automatic migration from legacy location included.
+- **Request Rename Persistence**: Renamed requests no longer revert to original names after application restart
+  - Added cleanup logic in FolderProjectStorage to delete old request files when requests are renamed
+  - Orphaned request files (.xml/.json pairs) are now properly removed during save
+  - Consistent with existing cleanup patterns for interfaces, operations, test suites, and test cases
+- **Proxy UI Target URL**: Fixed hardcoded "localhost:8080" display to show actual configured target URL
+  - Proxy/watcher status now correctly displays "9000 => {actual target URL}"
+  - Status loads from lastProxyTarget setting on component mount
+- **Performance Test UI**: Performance test request entries now show interaction icons on hover
+  - Added trash/delete icon for quick request removal
+  - Consistent with other sidebar item patterns (suites, test cases, operations)
 
 ## [0.14.0] - 2026-01-22
 ### Auto-Generated Changes

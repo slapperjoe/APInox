@@ -325,7 +325,7 @@ export class ProxyService extends EventEmitter {
             const event: ProxyEvent = {
                 id: eventId,
                 timestamp: startTime,
-                timestampLabel: new Date(startTime).toLocaleTimeString(),
+                timestampLabel: new Date(startTime).toLocaleString(), // Include date and time
                 method: req.method || 'GET',
                 url: req.url || '/',
                 requestHeaders: req.headers,

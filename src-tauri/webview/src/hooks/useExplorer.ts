@@ -7,6 +7,7 @@
 
 import { useState, useCallback } from 'react';
 import { ApiInterface, ApinoxProject } from '@shared/models';
+import { useNavigation } from '../contexts/NavigationContext';
 
 interface UseExplorerParams {
     projects: ApinoxProject[];
@@ -41,8 +42,10 @@ export function useExplorer({
     setWorkspaceDirty,
     saveProject
 }: UseExplorerParams): UseExplorerReturn {
-    // State
-    const [exploredInterfaces, setExploredInterfaces] = useState<ApiInterface[]>([]);
+    // Get exploredInterfaces from NavigationContext
+    const { exploredInterfaces, setExploredInterfaces } = useNavigation();
+    
+    // Local State
     const [explorerExpanded, setExplorerExpanded] = useState(false);
     const [pendingAddInterface, setPendingAddInterface] = useState<ApiInterface | null>(null);
 

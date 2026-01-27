@@ -6,7 +6,7 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import { WatcherEvent, ApiRequest, ApiOperation, ApiInterface, SidebarView, MockEvent, MockConfig } from '@shared/models';
+import { WatcherEvent, ApiRequest, ApiOperation, ApiInterface, SidebarView, MockEvent, MockConfig, ApinoxConfig } from '@shared/models';
 import { formatXml } from '@shared/utils/xmlFormatter';
 import { bridge, isTauri } from '../utils/bridge';
 import { FrontendCommand } from '@shared/messages';
@@ -23,6 +23,9 @@ interface UseWatcherProxyParams {
     setSelectedRequest: React.Dispatch<React.SetStateAction<ApiRequest | null>>;
     setSelectedTestCase: React.Dispatch<React.SetStateAction<any>>;
     setResponse: React.Dispatch<React.SetStateAction<any>>;
+    
+    // Config (for loading saved proxy target)
+    config: ApinoxConfig | null;
 }
 
 interface UseWatcherProxyReturn {
@@ -66,17 +69,28 @@ export function useWatcherProxy({
     setSelectedOperation,
     setSelectedRequest,
     setSelectedTestCase,
-    setResponse
+    setResponse,
+    config
 }: UseWatcherProxyParams): UseWatcherProxyReturn {
-
-    // Watcher State
-    const [watcherHistory, setWatcherHistory] = useState<WatcherEvent[]>([]);
-    const [watcherRunning, setWatcherRunning] = useState(false);
 
     // Proxy State
     const [proxyHistory, setProxyHistory] = useState<WatcherEvent[]>([]);
     const [proxyRunning, setProxyRunning] = useState(false);
-    const [proxyConfig, setProxyConfig] = useState({ port: 9000, target: 'http://localhost:8080', systemProxyEnabled: true });
+    const [proxyConfig, setProxyConfig] = useState({ port: 9000, target: '', systemProxyEnabled: true });
+
+    // Load proxy target from config when available
+    useEffect(() => {
+        if (config?.lastProxyTarget) {
+            setProxyConfig(prev => ({
+                ...prev,
+                target: config.lastProxyTarget || ''
+            }));
+        }
+    }, [config?.lastProxyTarget]);
+
+    // Watcher State
+    const [watcherHistory, setWatcherHistory] = useState<WatcherEvent[]>([]);
+    const [watcherRunning, setWatcherRunning] = useState(false);
 
     // Mock State
     const [mockHistory, setMockHistory] = useState<MockEvent[]>([]);
@@ -84,7 +98,7 @@ export function useWatcherProxy({
     const [mockConfig, setMockConfig] = useState<MockConfig>({
         enabled: false,
         port: 9001,
-        targetUrl: 'http://localhost:8080',
+        targetUrl: '',
         rules: [],
         passthroughEnabled: true,
         routeThroughProxy: false

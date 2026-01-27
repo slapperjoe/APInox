@@ -102,6 +102,9 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
         passthroughEnabled: true
     });
 
+    // Status message for inject/restore operations
+    const [injectionStatus, setInjectionStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
     const applyEditorTheme = (monacoInstance: Monaco) => {
         const root = document.documentElement;
         const getVar = (name: string, fallback: string) => {
@@ -147,6 +150,12 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
             lastSavedConfigRef.current = JSON.stringify(parsed);
             const rawTrimmed = (rawConfig || '').trim();
             setConfigLoaded(rawTrimmed.length > 0 && rawTrimmed !== '{}');
+            
+            // Initialize serverConfig from guiConfig.server
+            if (parsed.server) {
+                setServerConfig(prev => ({ ...prev, ...parsed.server }));
+            }
+            
             // Select active environment by default if available
             if (parsed.activeEnvironment && parsed.environments?.[parsed.activeEnvironment]) {
                 setSelectedEnvKey(parsed.activeEnvironment);
@@ -219,7 +228,9 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
         if (activeTab === SettingsTab.JSON) {
             if (!tryPersistJson()) return;
         } else {
-            persistGuiConfig(guiConfig);
+            // Sync serverConfig back to guiConfig.server before saving
+            const updatedConfig = { ...guiConfig, server: serverConfig };
+            persistGuiConfig(updatedConfig);
         }
         onClose();
     };
@@ -524,15 +535,53 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
                             onServerConfigChange={(updates) => setServerConfig(prev => ({ ...prev, ...updates }))}
                             configPath={guiConfig.lastConfigPath || null}
                             onSelectConfigFile={handleSelectConfigFile}
-                            onInjectConfig={() => bridge.sendMessage({
-                                command: 'injectProxy',
-                                path: guiConfig.lastConfigPath,
-                                proxyUrl: `http://localhost:${serverConfig.port || 9000}`
-                            })}
-                            onRestoreConfig={() => bridge.sendMessage({
-                                command: 'restoreProxy',
-                                path: guiConfig.lastConfigPath
-                            })}
+                            onInjectConfig={async () => {
+                                try {
+                                    const result = await bridge.sendMessageAsync({
+                                        command: 'injectProxy',
+                                        filePath: guiConfig.lastConfigPath,
+                                        proxyBaseUrl: `http://localhost:${serverConfig.port || 9000}`
+                                    });
+                                    
+                                    if (result?.success) {
+                                        setInjectionStatus({ type: 'success', message: result.message });
+                                        
+                                        // Update Target URL with the original URL from the config
+                                        if (result.originalUrl) {
+                                            setServerConfig(prev => ({ ...prev, targetUrl: result.originalUrl }));
+                                        }
+                                        
+                                        // Clear status after 5 seconds
+                                        setTimeout(() => setInjectionStatus(null), 5000);
+                                    } else {
+                                        setInjectionStatus({ type: 'error', message: result?.message || 'Injection failed' });
+                                        setTimeout(() => setInjectionStatus(null), 8000);
+                                    }
+                                } catch (error: any) {
+                                    setInjectionStatus({ type: 'error', message: error.message || 'Injection failed' });
+                                    setTimeout(() => setInjectionStatus(null), 8000);
+                                }
+                            }}
+                            onRestoreConfig={async () => {
+                                try {
+                                    const result = await bridge.sendMessageAsync({
+                                        command: 'restoreProxy',
+                                        filePath: guiConfig.lastConfigPath
+                                    });
+                                    
+                                    if (result?.success) {
+                                        setInjectionStatus({ type: 'success', message: result.message });
+                                        setTimeout(() => setInjectionStatus(null), 5000);
+                                    } else {
+                                        setInjectionStatus({ type: 'error', message: result?.message || 'Restore failed' });
+                                        setTimeout(() => setInjectionStatus(null), 8000);
+                                    }
+                                } catch (error: any) {
+                                    setInjectionStatus({ type: 'error', message: error.message || 'Restore failed' });
+                                    setTimeout(() => setInjectionStatus(null), 8000);
+                                }
+                            }}
+                            injectionStatus={injectionStatus}
                         />
                     )}
 

@@ -255,6 +255,22 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             return { set: true };
         },
 
+        [FrontendCommand.OpenCertificate]: async () => {
+            const certPath = services.proxyService.getCertPath();
+            if (!certPath) {
+                return { 
+                    success: false, 
+                    error: 'No certificate generated yet. Start the proxy with an HTTPS target first.' 
+                };
+            }
+            
+            return { 
+                success: true, 
+                certPath,
+                instructions: "To trust this proxy, install the certificate to 'Trusted Root Certification Authorities' (Windows) or your system's trusted certificate store."
+            };
+        },
+
         // ===== Mock Service =====
         [FrontendCommand.StartMockServer]: async (payload) => {
             if (payload?.config) {

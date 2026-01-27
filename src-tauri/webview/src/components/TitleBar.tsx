@@ -5,6 +5,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { useProject } from '../contexts/ProjectContext';
 import { useMockProxy } from '../contexts/MockProxyContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useUI } from '../contexts/UIContext';
 import apinoxIcon from '../assets/apinox-icon.png';
 
 const TitleBarContainer = styled.div`
@@ -38,6 +39,12 @@ const AppLogo = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  
+  &:active {
+    opacity: 0.7;
+  }
 `;
 
 const LogoIcon = styled.img`
@@ -136,6 +143,30 @@ const TitleBar: React.FC = () => {
   const [isMaximized, setIsMaximized] = useState(false);
   const { selectedProjectName, projects } = useProject();
   const { mockServerConfig, proxyConfig } = useMockProxy();
+  const { openDebugModal } = useUI();
+  const [clickCount, setClickCount] = useState(0);
+  const [clickTimer, setClickTimer] = useState<NodeJS.Timeout | null>(null);
+
+  // Handle double-click on logo to open debug modal
+  const handleLogoClick = () => {
+    setClickCount(prev => prev + 1);
+    
+    if (clickTimer) {
+      clearTimeout(clickTimer);
+      setClickTimer(null);
+    }
+
+    const timer = setTimeout(() => {
+      if (clickCount + 1 >= 2) {
+        // Double-click detected
+        openDebugModal();
+      }
+      setClickCount(0);
+      setClickTimer(null);
+    }, 300);
+    
+    setClickTimer(timer);
+  };
 
   useEffect(() => {
     const appWindow = getCurrentWindow();
@@ -187,7 +218,7 @@ const TitleBar: React.FC = () => {
   return (
     <TitleBarContainer>
       <DragRegion>
-        <AppLogo>
+        <AppLogo onClick={handleLogoClick} title="Double-click to open Debug Console">
           <LogoIcon src={apinoxIcon} alt="APInox" />
           <AppTitle>APInox</AppTitle>
         </AppLogo>

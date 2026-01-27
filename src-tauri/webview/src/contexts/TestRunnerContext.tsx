@@ -75,7 +75,7 @@ export const TestRunnerProvider = ({ children }: { children: ReactNode }) => {
 
     // Note: TestRunnerProvider must be inside UIProvider and NavigationProvider
     const { config, setConfig } = useUI();
-    const { setActiveView } = useNavigation();
+    const { setActiveView, exploredInterfaces, setExploredInterfaces } = useNavigation();
     // -------------------------------------------------------------------------
     // MESSAGE HANDLING
     // -------------------------------------------------------------------------
@@ -232,7 +232,9 @@ export const TestRunnerProvider = ({ children }: { children: ReactNode }) => {
         testExecution,
         selectedPerformanceSuiteId,
         config,
-        setConfig
+        setConfig,
+        exploredInterfaces,
+        setExploredInterfaces
     });
 
     // Correction: We need setWorkspaceDirty in ProjectContext

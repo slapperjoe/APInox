@@ -305,7 +305,7 @@ export class MockService extends EventEmitter {
             const event: MockEvent = {
                 id: eventInfo.eventId,
                 timestamp: eventInfo.startTime,
-                timestampLabel: new Date(eventInfo.startTime).toLocaleTimeString(),
+                timestampLabel: new Date(eventInfo.startTime).toLocaleString(), // Include date and time
                 method: eventInfo.method,
                 url: eventInfo.url,
                 requestHeaders: eventInfo.requestHeaders,
@@ -338,7 +338,7 @@ export class MockService extends EventEmitter {
             const event: MockEvent = {
                 id: eventId,
                 timestamp: startTime,
-                timestampLabel: new Date(startTime).toLocaleTimeString(),
+                timestampLabel: new Date(startTime).toLocaleString(), // Include date and time
                 method: req.method || 'GET',
                 url: req.url || '/',
                 requestHeaders: req.headers,

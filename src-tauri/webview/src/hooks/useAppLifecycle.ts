@@ -1,17 +1,16 @@
 import { useEffect } from 'react';
 import { bridge, isTauri } from '../utils/bridge';
 import { FrontendCommand } from '@shared/messages';
-import { ApinoxProject, ApiInterface } from '@shared/models';
+import { ApinoxProject } from '@shared/models';
+import { useNavigation } from '../contexts/NavigationContext';
 
 interface UseAppLifecycleProps {
     projects: ApinoxProject[];
-    exploredInterfaces: ApiInterface[];
     explorerExpanded: boolean;
     wsdlUrl: string;
     selectedProjectName: string | null;
     saveProject: (project: ApinoxProject) => void;
     setProjects: (projects: ApinoxProject[]) => void;
-    setExploredInterfaces: (interfaces: ApiInterface[]) => void;
     setExplorerExpanded: (expanded: boolean) => void;
     setWsdlUrl: (url: string) => void;
     setSelectedProjectName: (name: string | null) => void;
@@ -19,17 +18,18 @@ interface UseAppLifecycleProps {
 
 export const useAppLifecycle = ({
     projects,
-    exploredInterfaces,
     explorerExpanded,
     wsdlUrl,
     selectedProjectName,
     saveProject,
     setProjects,
-    setExploredInterfaces,
     setExplorerExpanded,
     setWsdlUrl,
     setSelectedProjectName
 }: UseAppLifecycleProps) => {
+
+    // Get exploredInterfaces from NavigationContext
+    const { exploredInterfaces, setExploredInterfaces } = useNavigation();
 
     // Initial Load & Backend Sync
     useEffect(() => {
