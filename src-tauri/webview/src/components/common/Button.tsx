@@ -60,7 +60,7 @@ export const IconButton = styled.button<{ $shake?: boolean; $danger?: boolean }>
     
     &:hover:not(:disabled) {
         background-color: ${props => props.$danger 
-            ? 'rgba(241, 76, 76, 0.1)' 
+            ? 'color-mix(in srgb, var(--vscode-testing-iconFailed) 10%, transparent)'
             : 'var(--vscode-toolbar-hoverBackground)'};
     }
     
@@ -154,7 +154,7 @@ export const DangerButton = styled.button<{ $shake?: boolean }>`
     font-weight: 500;
     
     &:hover:not(:disabled) {
-        background-color: rgba(241, 76, 76, 0.1);
+        background-color: color-mix(in srgb, var(--vscode-testing-iconFailed) 10%, transparent);
     }
     
     &:active:not(:disabled) {

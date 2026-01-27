@@ -2,6 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 import { Shield, Key, Clock, Hash } from 'lucide-react';
 import { WSSecurityConfig, WSSecurityType, PasswordType } from '@shared/models';
+import { SPACING_XS, SPACING_SM, SPACING_MD } from '../styles/spacing';
 
 const Container = styled.div`
     display: flex;
@@ -9,30 +10,30 @@ const Container = styled.div`
     height: 100%;
     color: var(--vscode-foreground);
     background: var(--vscode-editor-background);
-    padding: 15px;
-    gap: 15px;
+    padding: ${SPACING_MD};
+    gap: ${SPACING_MD};
     overflow-y: auto;
 `;
 
 const Section = styled.div`
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: ${SPACING_SM};
 `;
 
 const SectionHeader = styled.div`
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: ${SPACING_SM};
     font-weight: 600;
     font-size: 0.95em;
     color: var(--vscode-foreground);
-    margin-bottom: 5px;
+    margin-bottom: ${SPACING_XS};
 `;
 
 const FormRow = styled.div`
     display: flex;
-    gap: 10px;
+    gap: ${SPACING_SM};
     align-items: center;
 `;
 
@@ -80,7 +81,7 @@ const Checkbox = styled.input.attrs({ type: 'checkbox' })`
 const CheckboxLabel = styled.label`
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: ${SPACING_SM};
     cursor: pointer;
     font-size: 0.9em;
     &:hover {
@@ -92,7 +93,7 @@ const InfoText = styled.div`
     font-size: 0.85em;
     color: var(--vscode-descriptionForeground);
     font-style: italic;
-    padding: 10px;
+    padding: ${SPACING_SM};
     background: var(--vscode-textBlockQuote-background);
     border-radius: 3px;
 `;

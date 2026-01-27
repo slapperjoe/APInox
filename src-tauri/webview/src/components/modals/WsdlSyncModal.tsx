@@ -3,7 +3,8 @@ import styled from 'styled-components';
 import { Plus, Trash2, RefreshCw } from 'lucide-react';
 import { WsdlDiff } from '@shared/models';
 import { Modal, Button } from './Modal';
-import { SPACING_XS, SPACING_SM, SPACING_MD, SPACING_XL } from '../../styles/spacing';
+import { SPACING_XS, SPACING_SM, SPACING_XL } from '../../styles/spacing';
+import { CHANGE_COLORS } from '../../styles/colors';
 
 const Content = styled.div`
     display: flex;
@@ -44,17 +45,17 @@ const DiffItem = styled.div<{ $type: 'add' | 'remove' | 'modify' }>`
     padding: ${SPACING_SM};
     background-color: ${props => {
         switch (props.$type) {
-            case 'add': return 'rgba(72, 187, 120, 0.1)';
-            case 'remove': return 'rgba(245, 101, 101, 0.1)';
+            case 'add': return `color-mix(in srgb, ${CHANGE_COLORS.ADD} 10%, transparent)`;
+            case 'remove': return `color-mix(in srgb, ${CHANGE_COLORS.REMOVE} 10%, transparent)`;
             default: return 'transparent';
         }
     }};
     border-left: 3px solid ${props => {
         switch (props.$type) {
-            case 'add': return '#48bb78';
-            case 'remove': return '#f56565';
-            case 'modify': return '#ecc94b';
-            default: return '#ecc94b';
+            case 'add': return CHANGE_COLORS.ADD;
+            case 'remove': return CHANGE_COLORS.REMOVE;
+            case 'modify': return CHANGE_COLORS.MODIFY;
+            default: return CHANGE_COLORS.MODIFY;
         }
     }};
 `;
@@ -165,7 +166,7 @@ export const WsdlSyncModal: React.FC<WsdlSyncModalProps> = ({ diff, onClose, onS
 
                 {diff.addedOperations.length > 0 && (
                     <DiffSection>
-                        <SectionTitle $color="#48bb78">
+                        <SectionTitle $color={CHANGE_COLORS.ADD}>
                             New Operations ({diff.addedOperations.length})
                         </SectionTitle>
                         <OperationList>
@@ -176,7 +177,7 @@ export const WsdlSyncModal: React.FC<WsdlSyncModalProps> = ({ diff, onClose, onS
                                         checked={selectedAdds.has(op.name)}
                                         onChange={() => toggleAdd(op.name)}
                                     />
-                                    <IconWrapper $color="#48bb78">
+                                    <IconWrapper $color={CHANGE_COLORS.ADD}>
                                         <Plus size={14} />
                                     </IconWrapper>
                                     <OperationName>{op.name}</OperationName>
@@ -188,7 +189,7 @@ export const WsdlSyncModal: React.FC<WsdlSyncModalProps> = ({ diff, onClose, onS
 
                 {diff.removedOperations.length > 0 && (
                     <DiffSection>
-                        <SectionTitle $color="#f56565">
+                        <SectionTitle $color={CHANGE_COLORS.REMOVE}>
                             Removed Operations ({diff.removedOperations.length})
                         </SectionTitle>
                         <OperationList>
@@ -199,7 +200,7 @@ export const WsdlSyncModal: React.FC<WsdlSyncModalProps> = ({ diff, onClose, onS
                                         checked={selectedRemoves.has(op.name)}
                                         onChange={() => toggleRemove(op.name)}
                                     />
-                                    <IconWrapper $color="#f56565">
+                                    <IconWrapper $color={CHANGE_COLORS.REMOVE}>
                                         <Trash2 size={14} />
                                     </IconWrapper>
                                     <OperationName $strikethrough>{op.name}</OperationName>
@@ -211,7 +212,7 @@ export const WsdlSyncModal: React.FC<WsdlSyncModalProps> = ({ diff, onClose, onS
 
                 {diff.modifiedOperations.length > 0 && (
                     <DiffSection>
-                        <SectionTitle $color="#ecc94b">
+                        <SectionTitle $color={CHANGE_COLORS.MODIFY}>
                             Modified Operations ({diff.modifiedOperations.length})
                         </SectionTitle>
                         <OperationList>
@@ -222,7 +223,7 @@ export const WsdlSyncModal: React.FC<WsdlSyncModalProps> = ({ diff, onClose, onS
                                         checked={selectedMods.has(mod.operation.name)}
                                         onChange={() => toggleMod(mod.operation.name)}
                                     />
-                                    <IconWrapper $color="#ecc94b">
+                                    <IconWrapper $color={CHANGE_COLORS.MODIFY}>
                                         <RefreshCw size={14} />
                                     </IconWrapper>
                                     <OperationName>{mod.operation.name}</OperationName>

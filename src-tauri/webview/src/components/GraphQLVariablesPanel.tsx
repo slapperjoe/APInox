@@ -5,6 +5,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import Editor from '@monaco-editor/react';
+import { SPACING_XS, SPACING_SM } from '../styles/spacing';
 
 const Container = styled.div`
     display: flex;
@@ -16,7 +17,7 @@ const Container = styled.div`
 `;
 
 const Header = styled.div`
-    padding: 10px 15px;
+    padding: ${SPACING_SM}px 15px;
     border-bottom: 1px solid var(--vscode-panel-border);
     display: flex;
     justify-content: space-between;
@@ -29,7 +30,7 @@ const EditorContainer = styled.div`
 `;
 
 const Hint = styled.div`
-    padding: 8px 15px;
+    padding: ${SPACING_SM}px 15px;
     font-size: 11px;
     color: var(--vscode-descriptionForeground);
     background: var(--vscode-textBlockQuote-background);
@@ -37,11 +38,36 @@ const Hint = styled.div`
 `;
 
 const ErrorBanner = styled.div`
-    padding: 8px 15px;
+    padding: ${SPACING_SM}px 15px;
     font-size: 12px;
     color: var(--vscode-errorForeground);
     background: var(--vscode-inputValidation-errorBackground);
     border-top: 1px solid var(--vscode-inputValidation-errorBorder);
+`;
+
+const Title = styled.h3`
+    margin: 0;
+`;
+
+const OperationWrapper = styled.div`
+    display: flex;
+    align-items: center;
+    gap: ${SPACING_SM}px;
+`;
+
+const OperationLabel = styled.label`
+    font-size: 12px;
+    color: var(--vscode-descriptionForeground);
+`;
+
+const OperationInput = styled.input`
+    background: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    border: 1px solid var(--vscode-input-border);
+    padding: ${SPACING_XS}px ${SPACING_SM}px;
+    border-radius: 3px;
+    font-size: 12px;
+    width: 150px;
 `;
 
 interface GraphQLVariablesPanelProps {
@@ -89,29 +115,20 @@ export const GraphQLVariablesPanel: React.FC<GraphQLVariablesPanelProps> = ({
     return (
         <Container>
             <Header>
-                <h3 style={{ margin: 0 }}>GraphQL Variables</h3>
+                <Title>GraphQL Variables</Title>
                 {onOperationNameChange && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <label style={{ fontSize: 12, color: 'var(--vscode-descriptionForeground)' }}>
+                    <OperationWrapper>
+                        <OperationLabel>
                             Operation:
-                        </label>
-                        <input
+                        </OperationLabel>
+                        <OperationInput
                             type="text"
                             value={operationName || ''}
                             onChange={(e) => onOperationNameChange(e.target.value)}
                             placeholder="operationName"
                             disabled={readOnly}
-                            style={{
-                                background: 'var(--vscode-input-background)',
-                                color: 'var(--vscode-input-foreground)',
-                                border: '1px solid var(--vscode-input-border)',
-                                padding: '4px 8px',
-                                borderRadius: 3,
-                                fontSize: 12,
-                                width: 150
-                            }}
                         />
-                    </div>
+                    </OperationWrapper>
                 )}
             </Header>
 

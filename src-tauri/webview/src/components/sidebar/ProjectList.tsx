@@ -231,8 +231,8 @@ export const ProjectList: React.FC<ProjectListProps> = ({
             <SidebarHeader>
                 <SidebarHeaderTitle>Workspace</SidebarHeaderTitle>
                 <SidebarHeaderActions>
-                    <HeaderButton onClick={collapseAll} title="Collapse All"><ChevronsUpDown size={16} /></HeaderButton>
-                    <HeaderButton onClick={expandAll} title="Expand All"><ChevronsDownUp size={16} /></HeaderButton>
+                    <HeaderButton onClick={collapseAll} title="Collapse All"><ChevronsDownUp size={16} /></HeaderButton>
+                    <HeaderButton onClick={expandAll} title="Expand All"><ChevronsUpDown size={16} /></HeaderButton>
                     <HeaderButton onClick={onExportWorkspace} title="Export Workspace"><Download size={16} /></HeaderButton>
                     <HeaderButton onClick={onAddProject} title="New Project"><Plus size={16} /></HeaderButton>
                     <HeaderButton onClick={loadProject} title="Add Project"><FolderPlus size={16} /></HeaderButton>

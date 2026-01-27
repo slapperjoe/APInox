@@ -46,13 +46,27 @@ const MethodSelect = styled.select<{ $method: string }>`
             default: return 'var(--vscode-input-background)';
         }
     }};
-    color: var(--vscode-foreground);
+    color: ${props => {
+        // Use white/light text for colored backgrounds for better contrast
+        switch (props.$method) {
+            case 'GET':
+            case 'POST':
+            case 'PUT':
+            case 'PATCH':
+            case 'DELETE':
+                return '#ffffff';
+            default:
+                return 'var(--vscode-foreground)';
+        }
+    }};
     border: none;
-    padding: 4px 8px;
+    padding: 6px 12px;
     border-radius: 3px;
     font-size: 11px;
     font-weight: 600;
     cursor: pointer;
+    min-width: 80px;
+    text-align: center;
 
     &:focus {
         outline: 1px solid var(--vscode-focusBorder);
@@ -63,6 +77,12 @@ const MethodSelect = styled.select<{ $method: string }>`
         color: var(--vscode-button-secondaryForeground);
         border: 1px solid var(--vscode-button-secondaryHoverBackground);
         cursor: not-allowed;
+    }
+    
+    /* Style dropdown options */
+    option {
+        background: var(--vscode-dropdown-background);
+        color: var(--vscode-dropdown-foreground);
     }
 `;
 

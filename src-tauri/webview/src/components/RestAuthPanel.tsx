@@ -7,6 +7,7 @@ import React from 'react';
 import styled from 'styled-components';
 import { RestAuthConfig, RestAuthType } from '@shared/models';
 import { MonacoSingleLineInput } from './MonacoSingleLineInput';
+import { SPACING_XS, SPACING_SM, SPACING_MD } from '../styles/spacing';
 
 const Container = styled.div`
     display: flex;
@@ -29,15 +30,15 @@ const Label = styled.label`
     font-size: 12px;
     color: var(--vscode-descriptionForeground);
     display: block;
-    margin-bottom: 4px;
+    margin-bottom: ${SPACING_XS}px;
 `;
 
 const Select = styled.select`
     background: var(--vscode-input-background);
     color: var(--vscode-input-foreground);
     border: 1px solid var(--vscode-input-border);
-    padding: 8px 12px;
-    border-radius: 4px;
+    padding: ${SPACING_SM}px 12px;
+    border-radius: ${SPACING_XS}px;
     font-size: 13px;
     width: 100%;
     cursor: pointer;
@@ -49,7 +50,7 @@ const Select = styled.select`
 
 const InputRow = styled.div`
     display: flex;
-    gap: 10px;
+    gap: ${SPACING_SM}px;
     align-items: flex-start;
 `;
 
@@ -60,8 +61,21 @@ const InputGroup = styled.div`
 const Hint = styled.div`
     font-size: 11px;
     color: var(--vscode-descriptionForeground);
-    margin-top: 4px;
+    margin-top: ${SPACING_XS}px;
     opacity: 0.8;
+`;
+
+const SectionHeading = styled.h4`
+    margin: 0;
+`;
+
+const NoAuthPlaceholder = styled.div`
+    opacity: 0.6;
+    font-style: italic;
+    padding: ${SPACING_MD}px;
+    text-align: center;
+    border: 1px dashed var(--vscode-panel-border);
+    border-radius: ${SPACING_XS}px;
 `;
 
 interface RestAuthPanelProps {
@@ -108,7 +122,7 @@ export const RestAuthPanel: React.FC<RestAuthPanelProps> = ({
 
             {currentAuth.type === 'basic' && (
                 <Section>
-                    <h4 style={{ margin: 0 }}>Basic Authentication</h4>
+                    <SectionHeading>Basic Authentication</SectionHeading>
                     <InputRow>
                         <InputGroup>
                             <Label>Username</Label>
@@ -135,7 +149,7 @@ export const RestAuthPanel: React.FC<RestAuthPanelProps> = ({
 
             {currentAuth.type === 'bearer' && (
                 <Section>
-                    <h4 style={{ margin: 0 }}>Bearer Token</h4>
+                    <SectionHeading>Bearer Token</SectionHeading>
                     <div>
                         <Label>Token</Label>
                         <MonacoSingleLineInput
@@ -152,7 +166,7 @@ export const RestAuthPanel: React.FC<RestAuthPanelProps> = ({
 
             {currentAuth.type === 'apiKey' && (
                 <Section>
-                    <h4 style={{ margin: 0 }}>API Key</h4>
+                    <SectionHeading>API Key</SectionHeading>
                     <InputRow>
                         <InputGroup>
                             <Label>Key Name</Label>
@@ -192,16 +206,9 @@ export const RestAuthPanel: React.FC<RestAuthPanelProps> = ({
             )}
 
             {currentAuth.type === 'none' && (
-                <div style={{
-                    opacity: 0.6,
-                    fontStyle: 'italic',
-                    padding: 20,
-                    textAlign: 'center',
-                    border: '1px dashed var(--vscode-panel-border)',
-                    borderRadius: 4
-                }}>
+                <NoAuthPlaceholder>
                     No authentication configured for this request.
-                </div>
+                </NoAuthPlaceholder>
             )}
         </Container>
     );

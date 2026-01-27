@@ -217,7 +217,7 @@ export const MonacoSingleLineInput = forwardRef<MonacoSingleLineInputHandle, Mon
                 }
                 .wildcard-tag-text {
                     font-weight: bold;
-                    color: #ff69b4 !important;
+                    color: var(--vscode-editorBracketHighlight-foreground2, #da70d6) !important;
                     font-style: italic;
                 }
                 /* Hide cursor when not focused? No, input needs cursor. */

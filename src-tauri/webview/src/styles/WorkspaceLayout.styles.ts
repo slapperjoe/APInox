@@ -20,14 +20,35 @@ export const Logo = styled.img`
     z-index: 0;
     filter: grayscale(0.3);
     
-    /* Blend dark logo with dark theme */
+    /* Show/hide based on theme */
     &.dark-only {
-        mix-blend-mode: lighten;
+        display: block;
     }
     
-    /* Blend light logo with light theme */
     &.light-only {
-        mix-blend-mode: multiply;
+        display: none;
+    }
+    
+    /* Solarized Light and Light themes: show light logo */
+    body[data-theme="light"] &.light-only,
+    body[data-theme="solarized-light"] &.light-only {
+        display: block;
+    }
+    
+    body[data-theme="light"] &.dark-only,
+    body[data-theme="solarized-light"] &.dark-only {
+        display: none;
+    }
+    
+    /* Dark and Solarized Dark themes: show dark logo (default) */
+    body[data-theme="dark"] &.dark-only,
+    body[data-theme="solarized-dark"] &.dark-only {
+        display: block;
+    }
+    
+    body[data-theme="dark"] &.light-only,
+    body[data-theme="solarized-dark"] &.light-only {
+        display: none;
     }
 `;
 
