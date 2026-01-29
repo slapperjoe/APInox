@@ -7,6 +7,7 @@ import { ProjectList } from './sidebar/ProjectList';
 import { ApiExplorerSidebar } from './sidebar/ApiExplorerSidebar';
 import { WatcherPanel } from './sidebar/WatcherPanel';
 import { TestsUi } from './sidebar/TestsUi';
+import { WorkflowsUi } from './sidebar/WorkflowsUi';
 import { ServerUi } from './sidebar/ServerUi';
 import { PerformanceUi } from './sidebar/PerformanceUi';
 // @ts-ignore - TS export detection issue; runtime export exists.
@@ -39,6 +40,7 @@ import {
     SidebarTestRunnerProps,
     SidebarWatcherProps,
     SidebarTestsProps,
+    SidebarWorkflowsProps,
     SidebarServerProps,
     SidebarPerformanceProps,
     SidebarHistoryProps
@@ -52,6 +54,7 @@ interface SidebarProps {
     testRunnerProps: SidebarTestRunnerProps;
     watcherProps: SidebarWatcherProps;
     testsProps: SidebarTestsProps;
+    workflowsProps?: SidebarWorkflowsProps;
     serverProps?: SidebarServerProps;
     performanceProps?: SidebarPerformanceProps;
     historyProps?: SidebarHistoryProps;
@@ -83,6 +86,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     testRunnerProps: _testRunnerProps, // Legacy, tests now use testsProps
     watcherProps,
     testsProps,
+    workflowsProps,
     serverProps,
     performanceProps,
     historyProps,
@@ -164,6 +168,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         onSelectTestStep={testsProps.onSelectTestStep}
                         onRenameTestStep={testsProps.onRenameTestStep}
                         deleteConfirm={testsProps.deleteConfirm}
+                    />
+                )}
+
+                {activeView === SidebarView.WORKFLOWS && workflowsProps && (
+                    <WorkflowsUi
+                        {...workflowsProps}
                     />
                 )}
 

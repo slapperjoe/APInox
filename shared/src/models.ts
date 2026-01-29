@@ -282,7 +282,7 @@ export interface ApinoxProject {
 export type SoapUIProject = ApinoxProject;
 
 // Test Runner Types
-export type TestStepType = 'request' | 'delay' | 'transfer' | 'script';
+export type TestStepType = 'request' | 'delay' | 'transfer' | 'script' | 'workflow';
 
 export interface TestStep {
     id: string;
@@ -308,6 +308,10 @@ export interface TestStep {
         // For 'script'
         scriptName?: string;
         scriptContent?: string;
+
+        // For 'workflow' - reusable workflow execution
+        workflowId?: string; // Reference to a workflow in project.workflows
+        workflowVariables?: Record<string, string>; // Override workflow variables
     };
 }
 
@@ -365,6 +369,7 @@ export enum SidebarView {
     COLLECTIONS = 'collections', // REST/GraphQL collections
     EXPLORER = 'explorer',
     TESTS = 'tests',
+    WORKFLOWS = 'workflows', // NEW: Request chaining workflows
     WATCHER = 'watcher',
     SERVER = 'server',  // Unified server tab (replaces PROXY + MOCK)
     PERFORMANCE = 'performance',
@@ -532,7 +537,8 @@ export interface ApinoxConfig {
         endpoint_url?: string;
         env?: string;
         color?: string;
-        [key: string]: string | undefined;
+        _secretFields?: string[];
+        [key: string]: string | string[] | undefined;
     }>;
     globals?: Record<string, string>;
     recentWorkspaces?: string[];
@@ -555,6 +561,8 @@ export interface ApinoxConfig {
     performanceSchedules?: PerformanceSchedule[];
     /** Unified server configuration */
     server?: ServerConfig;
+    /** Workflows for request chaining */
+    workflows?: Workflow[];
 }
 
 // ============================================
@@ -756,4 +764,170 @@ export interface HistoryConfig {
     groupBy: 'time' | 'project' | 'flat';
     autoClear: boolean;
     clearAfterDays?: number;
+}
+
+// ============================================
+// Workflow / Request Chaining Types
+// ============================================
+
+/** Type of variable extractor */
+export type ExtractorType = 'xpath' | 'jsonpath' | 'regex' | 'header';
+
+/** Variable extractor configuration for workflow steps */
+export interface WorkflowExtractor {
+    id: string;
+    /** Variable name to store extracted value */
+    variable: string;
+    /** Extraction type */
+    type: ExtractorType;
+    /** Extraction pattern/path */
+    pattern: string;
+    /** Source to extract from */
+    source: 'body' | 'header' | 'status';
+    /** Default value if extraction fails */
+    defaultValue?: string;
+    /** For header extraction */
+    headerName?: string;
+}
+
+/** Conditional branching configuration */
+export interface WorkflowCondition {
+    id: string;
+    /** Variable or expression to evaluate */
+    expression: string;
+    /** Comparison operator */
+    operator: 'equals' | 'notEquals' | 'contains' | 'notContains' | 'greaterThan' | 'lessThan' | 'exists' | 'notExists';
+    /** Expected value (not needed for exists/notExists) */
+    expectedValue?: string;
+    /** Step to execute if condition is true */
+    trueStepId?: string;
+    /** Step to execute if condition is false */
+    falseStepId?: string;
+}
+
+/** Loop configuration */
+export interface WorkflowLoop {
+    /** Loop type */
+    type: 'count' | 'list' | 'while';
+    /** For count type: number of iterations */
+    count?: number;
+    /** For list type: variable containing array to iterate */
+    listVariable?: string;
+    /** For while type: condition to check */
+    condition?: WorkflowCondition;
+    /** Maximum iterations (safety limit) */
+    maxIterations: number;
+    /** Current iteration variable name */
+    iteratorVariable?: string;
+}
+
+/** Single step in a workflow */
+export interface WorkflowStep {
+    id: string;
+    name: string;
+    /** Step type */
+    type: 'request' | 'delay' | 'condition' | 'loop' | 'script';
+    /** Order in workflow */
+    order: number;
+    
+    // Request reference (can reference any project)
+    projectName?: string;
+    interfaceName?: string;
+    operationName?: string;
+    
+    // Legacy: Direct request reference (deprecated, use projectName/interfaceName/operationName)
+    /** @deprecated Use projectName/interfaceName/operationName instead */
+    requestId?: string;
+    /** @deprecated Use projectName/interfaceName/operationName + customization fields */
+    request?: ApiRequest;
+    
+    // Request customization (store custom body/headers for this step)
+    requestBody?: string;  // Custom XML body for this step
+    endpoint?: string;     // Override endpoint
+    headers?: Record<string, string>; // Custom headers
+    contentType?: string;  // Content type for request
+    requestType?: RequestType; // SOAP, REST, GraphQL
+    bodyType?: BodyType;   // XML, JSON, Form Data, etc.
+    httpMethod?: HttpMethod; // POST, GET, PUT, DELETE, etc.
+    method?: string;       // HTTP method (legacy compat)
+    
+    /** For delay type: milliseconds to wait */
+    delayMs?: number;
+    
+    /** For condition type: branching logic */
+    condition?: WorkflowCondition;
+    
+    /** For loop type: loop configuration */
+    loop?: WorkflowLoop;
+    /** For loop type: steps to execute in loop */
+    loopSteps?: WorkflowStep[];
+    
+    /** For script type: JavaScript code */
+    script?: string;
+    
+    /** Variable extractors for this step */
+    extractors?: WorkflowExtractor[];
+    
+    /** Whether step execution failed */
+    failed?: boolean;
+    /** Error message if failed */
+    error?: string;
+    /** Response from this step (runtime) */
+    response?: any;
+    /** Extracted variables from this step (runtime) */
+    extractedValues?: Record<string, string>;
+}
+
+/** Complete workflow definition */
+export interface Workflow {
+    id: string;
+    name: string;
+    description?: string;
+    /** Steps in this workflow */
+    steps: WorkflowStep[];
+    /** Workflow-level variables (initial values) */
+    variables?: Record<string, string>;
+    /** Created timestamp */
+    createdAt: number;
+    /** Last modified timestamp */
+    modifiedAt: number;
+    /** Expanded state in UI */
+    expanded?: boolean;
+}
+
+/** Result of a workflow execution */
+export interface WorkflowExecutionResult {
+    workflowId: string;
+    workflowName: string;
+    startTime: number;
+    endTime: number;
+    status: 'completed' | 'failed' | 'aborted';
+    /** Results for each step */
+    stepResults: WorkflowStepResult[];
+    /** Final variable state */
+    variables: Record<string, string>;
+    /** Error message if failed */
+    error?: string;
+}
+
+/** Result of a single workflow step execution */
+export interface WorkflowStepResult {
+    stepId: string;
+    stepName: string;
+    startTime: number;
+    endTime: number;
+    duration: number;
+    status: 'success' | 'failed' | 'skipped';
+    /** Response data */
+    response?: any;
+    /** Status code (for request steps) */
+    statusCode?: number;
+    /** Extracted variables */
+    extractedValues?: Record<string, string>;
+    /** Error message if failed */
+    error?: string;
+    /** For loop steps: iteration count */
+    iterations?: number;
+    /** For condition steps: which branch was taken */
+    branchTaken?: 'true' | 'false';
 }

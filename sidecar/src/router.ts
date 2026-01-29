@@ -256,19 +256,43 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
         },
 
         [FrontendCommand.OpenCertificate]: async () => {
-            const certPath = services.proxyService.getCertPath();
-            if (!certPath) {
-                return { 
-                    success: false, 
-                    error: 'No certificate generated yet. Start the proxy with an HTTPS target first.' 
+            console.log('[Router] OpenCertificate command received');
+            try {
+                console.log('[Router] Calling prepareCert...');
+                // Generate certificate if it doesn't exist
+                await services.proxyService.prepareCert();
+                console.log('[Router] prepareCert completed');
+                
+                const certPath = services.proxyService.getCertPath();
+                console.log('[Router] certPath:', certPath);
+                
+                if (!certPath) {
+                    console.error('[Router] certPath is null/undefined');
+                    return { 
+                        success: false, 
+                        error: 'Failed to generate certificate - no path returned.' 
+                    };
+                }
+                
+                const result = { 
+                    success: true, 
+                    certPath,
+                    instructions: "To trust this proxy for HTTPS interception:\n\n" +
+                        "Windows: Double-click the certificate → Install Certificate → Local Machine → " +
+                        "Place in 'Trusted Root Certification Authorities'\n\n" +
+                        "macOS: Open Keychain Access → File → Import Items → Select certificate → " +
+                        "Set to 'Always Trust'\n\n" +
+                        "Linux: Copy to /usr/local/share/ca-certificates/ and run 'sudo update-ca-certificates'"
+                };
+                console.log('[Router] Returning success result:', result);
+                return result;
+            } catch (error: any) {
+                console.error('[Router] Error in OpenCertificate:', error);
+                return {
+                    success: false,
+                    error: `Failed to generate certificate: ${error.message || error}`
                 };
             }
-            
-            return { 
-                success: true, 
-                certPath,
-                instructions: "To trust this proxy, install the certificate to 'Trusted Root Certification Authorities' (Windows) or your system's trusted certificate store."
-            };
         },
 
         // ===== Mock Service =====
@@ -991,6 +1015,127 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             }
 
             return result;
+        },
+
+        // ===== Workflows =====
+        [FrontendCommand.ExecuteWorkflow]: async (payload) => {
+            const { workflow, projectPath } = payload;
+            
+            if (!workflow) {
+                throw new Error('Workflow not provided');
+            }
+
+            const { WorkflowEngine } = require('./services/WorkflowEngine');
+            const engine = new WorkflowEngine();
+
+            // Create request execution function that uses our existing services
+            const executeRequestFn = async (request: any) => {
+                const environmentName = payload.environment || services.settingsManager.getActiveEnvironment();
+                let envVars: Record<string, string> = {};
+                if (environmentName) {
+                    try {
+                        envVars = await services.settingsManager.getResolvedEnvironment(environmentName);
+                    } catch (err: any) {
+                        console.error(`[Workflow] Failed to resolve environment:`, err);
+                    }
+                }
+
+                const globalVars = services.settingsManager.getGlobalVariables() || {};
+                
+                // Process wildcards in request body and endpoint
+                let processedBody = request.request || '';
+                let processedEndpoint = request.endpoint || '';
+                
+                if (processedBody) {
+                    const WildcardProcessor = await import('../../src/utils/WildcardProcessor').then(m => m.WildcardProcessor);
+                    processedBody = WildcardProcessor.process(processedBody, envVars, globalVars);
+                }
+                if (processedEndpoint) {
+                    const WildcardProcessor = await import('../../src/utils/WildcardProcessor').then(m => m.WildcardProcessor);
+                    processedEndpoint = WildcardProcessor.process(processedEndpoint, envVars, globalVars);
+                }
+
+                // Execute request using SOAP client
+                const requestType = request.requestType || 'soap';
+                if (requestType !== 'soap') {
+                    return await services.soapClient.executeHttpRequest({
+                        ...request,
+                        request: processedBody,
+                        endpoint: processedEndpoint
+                    });
+                } else {
+                    return await services.soapClient.executeRequest(
+                        processedEndpoint,
+                        request.operationName || request.name,
+                        processedBody,
+                        request.headers || {}
+                    );
+                }
+            };
+
+            // Execute workflow
+            const result = await engine.execute(workflow, executeRequestFn);
+            
+            return result;
+        },
+
+        [FrontendCommand.GetWorkflows]: async (payload) => {
+            // Workflows are now global, not project-specific
+            const workflows = services.settingsManager.getWorkflows();
+            return { workflows };
+        },
+
+        [FrontendCommand.SaveWorkflow]: async (payload) => {
+            const { workflow } = payload;
+            console.log('[Router] SaveWorkflow called with workflow:', workflow?.name, 'id:', workflow?.id);
+            
+            if (!workflow) {
+                throw new Error('Workflow required');
+            }
+            
+            try {
+                // Get current workflows from global config
+                const workflows = services.settingsManager.getWorkflows();
+                console.log('[Router] Current workflows count:', workflows.length);
+                
+                const existingIndex = workflows.findIndex((w: any) => w.id === workflow.id);
+                console.log('[Router] Existing workflow index:', existingIndex);
+                
+                if (existingIndex >= 0) {
+                    workflows[existingIndex] = workflow;
+                    console.log('[Router] Updated existing workflow at index:', existingIndex);
+                } else {
+                    workflows.push(workflow);
+                    console.log('[Router] Added new workflow, total count:', workflows.length);
+                }
+                
+                // Save back to global config
+                services.settingsManager.updateWorkflows(workflows);
+                console.log('[Router] Workflows saved to config');
+                
+                return { success: true, workflow };
+            } catch (err: any) {
+                console.error('[Workflow] Failed to save workflow:', err);
+                throw err;
+            }
+        },
+
+        [FrontendCommand.DeleteWorkflow]: async (payload) => {
+            const { workflowId } = payload;
+            if (!workflowId) {
+                throw new Error('Workflow ID required');
+            }
+            
+            try {
+                const workflows = services.settingsManager.getWorkflows();
+                const filtered = workflows.filter((w: any) => w.id !== workflowId);
+                services.settingsManager.updateWorkflows(filtered);
+                
+                return { success: true };
+            } catch (err: any) {
+                console.error('[Workflow] Failed to delete workflow:', err);
+                throw err;
+            }
         },
     };
 

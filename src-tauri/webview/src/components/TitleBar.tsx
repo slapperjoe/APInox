@@ -3,8 +3,6 @@ import styled from 'styled-components';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { invoke } from '@tauri-apps/api/core';
 import { useProject } from '../contexts/ProjectContext';
-import { useMockProxy } from '../contexts/MockProxyContext';
-import { useTheme } from '../contexts/ThemeContext';
 import { useUI } from '../contexts/UIContext';
 import apinoxIcon from '../assets/apinox-icon.png';
 
@@ -90,14 +88,6 @@ const InfoItem = styled.div<{ isActive?: boolean }>`
   opacity: ${props => props.isActive ? 1 : 0.7};
 `;
 
-const StatusDot = styled.div<{ color: string }>`
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: ${props => props.color};
-  box-shadow: 0 0 4px ${props => props.color};
-`;
-
 const WindowControls = styled.div`
   display: flex;
   height: 100%;
@@ -142,7 +132,6 @@ const WindowButton = styled.button<{ isClose?: boolean }>`
 const TitleBar: React.FC = () => {
   const [isMaximized, setIsMaximized] = useState(false);
   const { selectedProjectName, projects } = useProject();
-  const { mockServerConfig, proxyConfig } = useMockProxy();
   const { openDebugModal } = useUI();
   const [clickCount, setClickCount] = useState(0);
   const [clickTimer, setClickTimer] = useState<NodeJS.Timeout | null>(null);
@@ -212,9 +201,6 @@ const TitleBar: React.FC = () => {
     }
   };
 
-  const isServerActive = mockServerConfig?.enabled || proxyConfig?.enabled;
-  const serverStatus = mockServerConfig?.enabled ? 'Mock' : proxyConfig?.enabled ? 'Proxy' : null;
-
   return (
     <TitleBarContainer>
       <DragRegion>
@@ -226,12 +212,6 @@ const TitleBar: React.FC = () => {
           {selectedProjectName && (
             <InfoItem>
               📁 {selectedProjectName}
-            </InfoItem>
-          )}
-          {serverStatus && (
-            <InfoItem isActive>
-              <StatusDot color="#4ade80" />
-              {serverStatus}
             </InfoItem>
           )}
         </TitleBarInfo>

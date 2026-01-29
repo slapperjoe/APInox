@@ -117,7 +117,6 @@ export const EnvironmentsTab: React.FC<EnvironmentsTabProps> = ({
         
         const env = environments[selectedEnvKey];
         const fields: Record<string, string> = {};
-        const secretFields = env._secretFields || [];
         
         // Extract custom fields (non-standard fields)
         for (const [key, value] of Object.entries(env)) {
