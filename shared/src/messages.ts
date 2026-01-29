@@ -74,6 +74,12 @@ export enum FrontendCommand {
     PickOperationForTestCase = 'pickOperationForTestCase',
     UpdateTestStep = 'updateTestStep',
 
+    // Workflow
+    ExecuteWorkflow = 'executeWorkflow',
+    SaveWorkflow = 'saveWorkflow',
+    DeleteWorkflow = 'deleteWorkflow',
+    GetWorkflows = 'getWorkflows',
+
     // Performance
     GetPerformanceSuites = 'getPerformanceSuites',
     AddPerformanceSuite = 'addPerformanceSuite',

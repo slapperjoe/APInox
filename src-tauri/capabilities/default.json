@@ -8,6 +8,15 @@
   "permissions": [
     "core:default",
     "dialog:default",
-    "dialog:allow-save"
+    "dialog:allow-save",
+    "opener:default",
+    {
+      "identifier": "opener:allow-open-path",
+      "allow": [
+        {
+          "path": "$TEMP/**"
+        }
+      ]
+    }
   ]
 }

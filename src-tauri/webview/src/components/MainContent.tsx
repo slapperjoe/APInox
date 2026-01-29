@@ -21,7 +21,9 @@ import { WsdlSyncModal } from './modals/WsdlSyncModal';
 import { DebugModal } from './modals/DebugModal';
 import { PickRequestModal, PickRequestItem } from './modals/PickRequestModal';
 import { ExportWorkspaceModal } from './modals/ExportWorkspaceModal';
-import { ApiRequest, TestCase, TestStep, SidebarView, ReplaceRule, RequestHistoryEntry, WsdlDiff, ApiInterface } from '@shared/models';
+import { CodeSnippetModal } from './modals/CodeSnippetModal';
+import { WorkflowBuilderModal } from './modals/WorkflowBuilderModal';
+import { ApiRequest, TestCase, TestStep, SidebarView, ReplaceRule, RequestHistoryEntry, WsdlDiff, ApiInterface, Workflow, WorkflowStep } from '@shared/models';
 import { BackendCommand, FrontendCommand } from '@shared/messages';
 import { useMessageHandler } from '../hooks/useMessageHandler';
 import { useProject } from '../contexts/ProjectContext';
@@ -170,6 +172,8 @@ export function MainContent() {
         setSelectedStep,
         selectedTestCase,
         setSelectedTestCase,
+        selectedWorkflowStep,
+        setSelectedWorkflowStep,
         response,
         setResponse,
         loading,
@@ -868,6 +872,8 @@ export function MainContent() {
     const [pickRequestModal, setPickRequestModal] = React.useState<{ open: boolean, mode: 'testcase' | 'performance', caseId: string | null, suiteId: string | null }>({ open: false, mode: 'testcase', caseId: null, suiteId: null });
     const [sampleModal, setSampleModal] = React.useState<{ open: boolean, schema: any | null, operationName: string }>({ open: false, schema: null, operationName: '' });
     const [exportWorkspaceModal, setExportWorkspaceModal] = React.useState(false);
+    const [codeSnippetModal, setCodeSnippetModal] = React.useState<{ open: boolean, request: ApiRequest | null }>({ open: false, request: null });
+    const [workflowBuilderModal, setWorkflowBuilderModal] = React.useState<{ open: boolean, workflow: Workflow | null, projectPath: string | null }>({ open: false, workflow: null, projectPath: null });
 
     const handleExportWorkspace = useCallback((projectPaths: string[]) => {
         bridge.sendMessage({
@@ -878,6 +884,195 @@ export function MainContent() {
 
     const [replaceRuleModal, setReplaceRuleModal] = React.useState<{ open: boolean, xpath: string, matchText: string, target: 'request' | 'response' }>({ open: false, xpath: '', matchText: '', target: 'response' });
     const [importToPerformanceModal, setImportToPerformanceModal] = React.useState<{ open: boolean, suiteId: string | null }>({ open: false, suiteId: null });
+
+    // ==========================================================================
+    // WORKFLOW HANDLERS
+    // ==========================================================================
+    
+    const handleAddWorkflow = useCallback(() => {
+        console.log('[Workflows] handleAddWorkflow called');
+        setWorkflowBuilderModal({ open: true, workflow: null, projectPath: '' });
+    }, []);
+
+    const handleEditWorkflow = useCallback((workflow: Workflow) => {
+        console.log('[Workflows] handleEditWorkflow called with workflow:', workflow.name);
+        setWorkflowBuilderModal({ open: true, workflow, projectPath: '' });
+    }, []);
+
+    const handleSaveWorkflow = useCallback(async (workflow: Workflow) => {
+        console.log('[MainContent] handleSaveWorkflow called with:', workflow);
+        
+        try {
+            const result = await bridge.sendMessageAsync({
+                command: FrontendCommand.SaveWorkflow,
+                workflow
+            });
+
+            console.log('[MainContent] SaveWorkflow result:', result);
+
+            // Workflows are now global - reload config
+            const response = await bridge.sendMessageAsync({ command: FrontendCommand.GetSettings });
+            console.log('[MainContent] Updated config workflows:', response?.config?.workflows);
+            
+            if (response?.config) {
+                setConfig(response.config);
+            }
+
+            setWorkspaceDirty(true);
+            
+            // Close the modal
+            setWorkflowBuilderModal({ open: false, workflow: null, projectPath: '' });
+        } catch (error) {
+            console.error('[MainContent] Failed to save workflow:', error);
+        }
+    }, [setConfig, setWorkspaceDirty]);
+
+    const handleRunWorkflow = useCallback(async (workflow: Workflow) => {
+        try {
+            setLoading(true);
+            const result: any = await bridge.sendMessageAsync({
+                command: FrontendCommand.ExecuteWorkflow,
+                workflow,
+                environment: config?.activeEnvironment
+            });
+
+            console.log('[Workflow] Execution result:', result);
+            
+            // TODO: Show execution results in UI (WorkflowRunner component)
+            if (result.status === 'completed') {
+                console.log(`[Workflow] ${workflow.name} completed successfully`);
+            } else {
+                console.error(`[Workflow] ${workflow.name} failed:`, result.error);
+            }
+        } catch (error) {
+            console.error('Failed to run workflow:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, [config?.activeEnvironment, setLoading]);
+
+    const handleDeleteWorkflow = useCallback(async (workflow: Workflow) => {
+        try {
+            await bridge.sendMessageAsync({
+                command: FrontendCommand.DeleteWorkflow,
+                workflowId: workflow.id
+            });
+
+            // Reload config
+            const updatedConfig: any = await bridge.sendMessageAsync({ command: FrontendCommand.GetSettings });
+            if (updatedConfig) {
+                setConfig(updatedConfig);
+            }
+
+            setWorkspaceDirty(true);
+        } catch (error) {
+            console.error('Failed to delete workflow:', error);
+        }
+    }, [setConfig, setWorkspaceDirty]);
+
+    const handleDuplicateWorkflow = useCallback((workflow: Workflow) => {
+        const { v4: uuidv4 } = require('uuid');
+        const duplicated: Workflow = {
+            ...workflow,
+            id: uuidv4(),
+            name: `${workflow.name} (Copy)`,
+        };
+        setWorkflowBuilderModal({ open: true, workflow: duplicated, projectPath: '' });
+    }, []);
+
+    const handleSelectWorkflow = useCallback((workflow: Workflow) => {
+        console.log('[MainContent] handleSelectWorkflow called:', workflow.name);
+        console.log('[MainContent] About to set workflow step with null step');
+        
+        setSelectedRequest(null);
+        setSelectedPerformanceSuiteId(null);
+        
+        // Set workflow with a placeholder step to indicate workflow-level selection
+        // The step will be null/undefined which WorkspaceLayout will detect
+        const workflowStep = { workflow, step: null as any };
+        console.log('[MainContent] Calling setSelectedWorkflowStep with:', workflowStep);
+        setSelectedWorkflowStep(workflowStep);
+        
+        setActiveView(SidebarView.WORKFLOWS);
+        
+        console.log('[MainContent] handleSelectWorkflow complete');
+    }, [setSelectedRequest, setSelectedPerformanceSuiteId, setSelectedWorkflowStep, setActiveView]);
+
+    const handleSelectWorkflowStep = useCallback((workflow: Workflow, step: WorkflowStep) => {
+        console.log('[MainContent] handleSelectWorkflowStep called:', workflow.name, step.name);
+        console.log('[MainContent] setSelectedWorkflowStep function exists:', !!setSelectedWorkflowStep);
+        
+        setSelectedRequest(null);
+        setSelectedPerformanceSuiteId(null);
+        
+        console.log('[MainContent] About to call setSelectedWorkflowStep with:', { workflow: workflow.name, step: step.name });
+        setSelectedWorkflowStep({ workflow, step });
+        console.log('[MainContent] Called setSelectedWorkflowStep');
+        
+        setActiveView(SidebarView.WORKFLOWS);
+        console.log('[MainContent] Set activeView to WORKFLOWS');
+    }, [setSelectedRequest, setSelectedPerformanceSuiteId, setSelectedWorkflowStep, setActiveView]);
+
+    const handleUpdateWorkflowStep = useCallback(async (workflow: Workflow, updatedStep: WorkflowStep) => {
+        console.log('[MainContent] handleUpdateWorkflowStep called:', workflow.name, updatedStep.name);
+        
+        // Update the step in the workflow
+        const updatedWorkflow: Workflow = {
+            ...workflow,
+            steps: workflow.steps.map(s => s.id === updatedStep.id ? updatedStep : s)
+        };
+        
+        // Save the updated workflow
+        try {
+            await bridge.sendMessageAsync({
+                command: FrontendCommand.SaveWorkflow,
+                workflow: updatedWorkflow
+            });
+            
+            // Reload config to get updated workflows
+            const response = await bridge.sendMessageAsync({ command: FrontendCommand.GetSettings });
+            if (response?.config) {
+                setConfig(response.config);
+            }
+            
+            // Update the selected workflow step to reflect changes
+            setSelectedWorkflowStep({ workflow: updatedWorkflow, step: updatedStep });
+            
+            console.log('[MainContent] Workflow step updated successfully');
+        } catch (error) {
+            console.error('[MainContent] Failed to update workflow step:', error);
+        }
+    }, [setConfig, setSelectedWorkflowStep]);
+
+    const handleUpdateWorkflow = useCallback(async (updatedWorkflow: Workflow) => {
+        console.log('[MainContent] handleUpdateWorkflow called:', updatedWorkflow.name);
+        
+        // Save the updated workflow
+        try {
+            await bridge.sendMessageAsync({
+                command: FrontendCommand.SaveWorkflow,
+                workflow: updatedWorkflow
+            });
+            
+            // Reload config to get updated workflows
+            const response = await bridge.sendMessageAsync({ command: FrontendCommand.GetSettings });
+            if (response?.config) {
+                setConfig(response.config);
+            }
+            
+            // Update the selected workflow if we're still viewing it
+            if (selectedWorkflowStep?.workflow.id === updatedWorkflow.id) {
+                setSelectedWorkflowStep({ 
+                    workflow: updatedWorkflow, 
+                    step: selectedWorkflowStep.step 
+                });
+            }
+            
+            console.log('[MainContent] Workflow updated successfully');
+        } catch (error) {
+            console.error('[MainContent] Failed to update workflow:', error);
+        }
+    }, [setConfig, setSelectedWorkflowStep, selectedWorkflowStep]);
 
     const pickRequestItems = useMemo<PickRequestItem[]>(() => {
         const items: PickRequestItem[] = [];
@@ -1307,6 +1502,16 @@ export function MainContent() {
                     onRenameTestStep: handleRenameTestStep,
                     deleteConfirm
                 }}
+                workflowsProps={{
+                    workflows: config?.workflows || [],
+                    onAdd: handleAddWorkflow,
+                    onEdit: handleEditWorkflow,
+                    onRun: handleRunWorkflow,
+                    onDelete: handleDeleteWorkflow,
+                    onDuplicate: handleDuplicateWorkflow,
+                    onSelect: handleSelectWorkflow,
+                    onSelectStep: handleSelectWorkflowStep
+                }}
                 performanceProps={{
                     ...sidebarPerformanceProps,
                     onAddRequest: handleAddPerformanceRequestForUi,
@@ -1325,10 +1530,11 @@ export function MainContent() {
                 serverProps={{
                     serverConfig: {
                         mode: serverMode,  // Use dedicated state instead of deriving from running
-                        port: proxyConfig.port || 9000,
-                        targetUrl: proxyConfig.target || '',
-                        mockRules: mockConfig.rules || [],
-                        passthroughEnabled: mockConfig.passthroughEnabled ?? true
+                        port: config?.server?.port || proxyConfig.port || 9000,
+                        targetUrl: config?.server?.targetUrl || proxyConfig.target || '',
+                        mockRules: config?.server?.mockRules || mockConfig.rules || [],
+                        passthroughEnabled: config?.server?.passthroughEnabled ?? mockConfig.passthroughEnabled ?? true,
+                        useSystemProxy: config?.server?.useSystemProxy ?? proxyConfig.systemProxyEnabled ?? true
                     },
                     isRunning: _proxyRunning,
                     onModeChange: (mode) => {
@@ -1371,8 +1577,14 @@ export function MainContent() {
                     // Certificate
                     onOpenCertificate: async () => {
                         try {
-                            const result: any = await bridge.sendMessage({ command: 'openCertificate' });
+                            console.log('[MainContent] Sending openCertificate command...');
+                            const result: any = await bridge.sendMessageAsync({ command: 'openCertificate' });
+                            console.log('[MainContent] Received result:', result);
+                            console.log('[MainContent] result.success:', result?.success);
+                            console.log('[MainContent] result.certPath:', result?.certPath);
+                            
                             if (result?.success && result.certPath) {
+                                console.log('[MainContent] Opening certificate file...');
                                 // Use Tauri's opener to open the certificate file
                                 if (isTauri()) {
                                     const { openPath } = await import('@tauri-apps/plugin-opener');
@@ -1381,9 +1593,11 @@ export function MainContent() {
                                     alert(result.instructions || 'Certificate opened. Please install it to your system trust store.');
                                 }
                             } else {
+                                console.error('[MainContent] Failed - no success or certPath:', result);
                                 alert(result?.error || 'Failed to open certificate');
                             }
                         } catch (err: any) {
+                            console.error('[MainContent] Exception:', err);
                             alert(`Failed to open certificate: ${err.message}`);
                         }
                     }
@@ -1413,7 +1627,17 @@ export function MainContent() {
                     testCase: selectedTestCase,
                     testSuite: selectedTestSuite,
                     testStep: selectedStep,
-                    performanceSuite: selectedPerformanceSuite
+                    performanceSuite: selectedPerformanceSuite,
+                    workflowStep: (() => {
+                        console.log('[MainContent] Passing workflowStep to WorkspaceLayout:', !!selectedWorkflowStep);
+                        if (selectedWorkflowStep) {
+                            console.log('[MainContent] WorkflowStep details:', {
+                                workflow: selectedWorkflowStep.workflow.name,
+                                step: selectedWorkflowStep.step?.name || 'null'
+                            });
+                        }
+                        return selectedWorkflowStep;
+                    })()
                 }}
                 navigationActions={{
                     onSelectProject: (p) => {
@@ -1451,7 +1675,12 @@ export function MainContent() {
                         handleSelectTestCase(tc.id);
                         setSelectedPerformanceSuiteId(null); // Clear performance state
                         setActiveView(SidebarView.TESTS);
-                    }
+                    },
+                    onSelectWorkflowStep: handleSelectWorkflowStep,
+                    onUpdateWorkflowStep: handleUpdateWorkflowStep,
+                    onUpdateWorkflow: handleUpdateWorkflow,
+                    onRunWorkflow: handleRunWorkflow,
+                    onEditWorkflow: handleEditWorkflow
                 }}
                 requestActions={{
                     onExecute: executeRequest,
@@ -1497,7 +1726,8 @@ export function MainContent() {
                     onAddExistenceAssertion: handleAddExistenceAssertion,
                     onAddReplaceRule: (data) => setReplaceRuleModal({ open: true, ...data }),
                     onAddMockRule: (rule) => bridge.sendMessage({ command: 'addMockRule', rule }),
-                    onOpenDevOps: () => setShowDevOpsModal(true)
+                    onOpenDevOps: () => setShowDevOpsModal(true),
+                    onOpenCodeSnippet: (request) => setCodeSnippetModal({ open: true, request })
                 }}
                 onUpdateSuite={handleUpdatePerformanceSuite}
                 onAddPerformanceRequest={handleAddPerformanceRequestForUi}
@@ -1638,6 +1868,32 @@ export function MainContent() {
                 )
             }
             {
+                codeSnippetModal.open && codeSnippetModal.request && (
+                    <CodeSnippetModal
+                        isOpen={codeSnippetModal.open}
+                        onClose={() => setCodeSnippetModal({ open: false, request: null })}
+                        request={codeSnippetModal.request}
+                        environment={config?.activeEnvironment && config?.environments 
+                            ? config.environments[config.activeEnvironment] 
+                            : undefined}
+                    />
+                )
+            }
+            {
+                workflowBuilderModal.open && (
+                    <WorkflowBuilderModal
+                        isOpen={workflowBuilderModal.open}
+                        onClose={() => {
+                            console.log('[Workflows] Closing modal');
+                            setWorkflowBuilderModal({ open: false, workflow: null, projectPath: null });
+                        }}
+                        workflow={workflowBuilderModal.workflow || undefined}
+                        onSave={handleSaveWorkflow}
+                        projects={projects}
+                    />
+                )
+            }
+            {
                 contextMenu && (
                     <ContextMenu top={contextMenu.y} left={contextMenu.x}>
                         {(contextMenu.type === 'request' || contextMenu.type === 'project' || contextMenu.type === 'folder') && (
@@ -1649,6 +1905,12 @@ export function MainContent() {
                         {!contextMenu.isExplorer && contextMenu.type === 'request' && (
                             <>
                                 <ContextMenuItem onClick={handleCloneRequest}>Clone Request</ContextMenuItem>
+                                <ContextMenuItem onClick={() => {
+                                    if (contextMenu) {
+                                        setCodeSnippetModal({ open: true, request: contextMenu.data as ApiRequest });
+                                        closeContextMenu();
+                                    }
+                                }}>Copy as Code...</ContextMenuItem>
                                 <ContextMenuItem onClick={() => {
                                     if (contextMenu) {
                                         setAddToTestCaseModal({ open: true, request: contextMenu.data as ApiRequest });

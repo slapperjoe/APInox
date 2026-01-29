@@ -81,6 +81,61 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
     const [sidecarDiagnostics, setSidecarDiagnostics] = useState<any>(null);
     const [debugEndpointInfo, setDebugEndpointInfo] = useState<any>(null);
 
+    // Refs for auto-scrolling log containers
+    const sidecarLogsRef = React.useRef<HTMLDivElement>(null);
+    const frontendLogsRef = React.useRef<HTMLDivElement>(null);
+
+    // Helper function to close all accordions
+    const closeAllAccordions = () => {
+        setShowSidecarLogs(false);
+        setShowFrontendLogs(false);
+        setShowSystemInfo(false);
+        setShowDebugInfo(false);
+    };
+
+    // Helper function to toggle accordion (closes others)
+    const toggleAccordion = (section: 'sidecar' | 'frontend' | 'system' | 'debug') => {
+        if (section === 'sidecar') {
+            const wasOpen = showSidecarLogs;
+            closeAllAccordions();
+            setShowSidecarLogs(!wasOpen);
+        } else if (section === 'frontend') {
+            const wasOpen = showFrontendLogs;
+            closeAllAccordions();
+            setShowFrontendLogs(!wasOpen);
+        } else if (section === 'system') {
+            const wasOpen = showSystemInfo;
+            closeAllAccordions();
+            setShowSystemInfo(!wasOpen);
+        } else if (section === 'debug') {
+            const wasOpen = showDebugInfo;
+            closeAllAccordions();
+            setShowDebugInfo(!wasOpen);
+        }
+    };
+
+    // Auto-scroll sidecar logs to bottom when opened
+    React.useEffect(() => {
+        if (showSidecarLogs && sidecarLogsRef.current) {
+            setTimeout(() => {
+                if (sidecarLogsRef.current) {
+                    sidecarLogsRef.current.scrollTop = sidecarLogsRef.current.scrollHeight;
+                }
+            }, 0);
+        }
+    }, [showSidecarLogs]);
+
+    // Auto-scroll frontend logs to bottom when opened
+    React.useEffect(() => {
+        if (showFrontendLogs && frontendLogsRef.current) {
+            setTimeout(() => {
+                if (frontendLogsRef.current) {
+                    frontendLogsRef.current.scrollTop = frontendLogsRef.current.scrollHeight;
+                }
+            }, 0);
+        }
+    }, [showFrontendLogs]);
+
     // Load logs and debug info when modal opens in Tauri mode
     useEffect(() => {
         if (!isOpen || !isTauriMode) return;
@@ -435,7 +490,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                 {/* System Information */}
                 <div>
                     <div 
-                        onClick={() => setShowSystemInfo(!showSystemInfo)}
+                        onClick={() => toggleAccordion('system')}
                         style={{ 
                             display: 'flex', 
                             alignItems: 'center', 
@@ -669,7 +724,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                 {/* Sidecar Console Logs */}
                 <div>
                     <div 
-                        onClick={() => setShowSidecarLogs(!showSidecarLogs)}
+                        onClick={() => toggleAccordion('sidecar')}
                         style={{ 
                             display: 'flex', 
                             justifyContent: 'space-between', 
@@ -714,7 +769,9 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                     </div>
 
                     {showSidecarLogs && (
-                        <div style={{
+                        <div 
+                            ref={sidecarLogsRef}
+                            style={{
                             maxHeight: '300px',
                             overflowY: 'auto',
                             background: 'var(--vscode-editor-background)',
@@ -758,7 +815,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                 {/* Frontend Console Logs */}
                 <div>
                     <div 
-                        onClick={() => setShowFrontendLogs(!showFrontendLogs)}
+                        onClick={() => toggleAccordion('frontend')}
                         style={{ 
                             display: 'flex', 
                             justifyContent: 'space-between', 
@@ -802,7 +859,9 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                     </div>
 
                     {showFrontendLogs && (
-                        <div style={{
+                        <div 
+                            ref={frontendLogsRef}
+                            style={{
                             maxHeight: '300px',
                             overflowY: 'auto',
                             background: 'var(--vscode-editor-background)',
@@ -850,7 +909,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                 {settingsDebug && (
                     <div>
                         <div 
-                            onClick={() => setShowDebugInfo(!showDebugInfo)}
+                            onClick={() => toggleAccordion('debug')}
                             style={{ 
                                 display: 'flex', 
                                 alignItems: 'center', 

@@ -7,7 +7,7 @@ import * as dns from 'dns';
 import * as net from 'net';
 import * as tls from 'tls';
 import { EventEmitter } from 'events';
-import * as selfsigned from 'selfsigned';
+import * as forge from 'node-forge';
 import { ReplaceRuleApplier, ReplaceRule } from '../utils/ReplaceRuleApplier';
 import type { MockService } from './MockService';
 import { ProxyRule } from '../../shared/src/models';
@@ -244,23 +244,59 @@ export class ProxyService extends EventEmitter {
             }
         }
 
-        const attrs = [{ name: 'commonName', value: 'localhost' }];
-        const opts = { days: 365, keySize: 2048, extensions: [{ name: 'basicConstraints', cA: true }] };
-
-        this.logDebug('[ProxyService] Generating new certificate (this may take a moment)...');
+        this.logDebug('[ProxyService] Generating new certificate using node-forge...');
         try {
-            // Version 5+ of selfsigned uses async/await
-            const pems = await (selfsigned as any).generate(attrs, opts);
+            // Generate a key pair
+            const keys = forge.pki.rsa.generateKeyPair(2048);
+            
+            // Create a certificate
+            const cert = forge.pki.createCertificate();
+            cert.publicKey = keys.publicKey;
+            cert.serialNumber = '01';
+            cert.validity.notBefore = new Date();
+            cert.validity.notAfter = new Date();
+            cert.validity.notAfter.setFullYear(cert.validity.notBefore.getFullYear() + 1);
+            
+            const attrs = [{
+                name: 'commonName',
+                value: 'localhost'
+            }, {
+                name: 'organizationName',
+                value: 'APInox Proxy'
+            }];
+            
+            cert.setSubject(attrs);
+            cert.setIssuer(attrs);
+            cert.setExtensions([{
+                name: 'basicConstraints',
+                cA: true
+            }, {
+                name: 'subjectAltName',
+                altNames: [{
+                    type: 2, // DNS
+                    value: 'localhost'
+                }, {
+                    type: 7, // IP
+                    ip: '127.0.0.1'
+                }]
+            }]);
+            
+            // Self-sign certificate
+            cert.sign(keys.privateKey, forge.md.sha256.create());
+            
+            // Convert to PEM format
+            const pemCert = forge.pki.certificateToPem(cert);
+            const pemKey = forge.pki.privateKeyToPem(keys.privateKey);
 
             this.logDebug('[ProxyService] Certificate generation successful. Writing files...');
             if (this.certPath && this.keyPath) {
-                fs.writeFileSync(this.certPath, pems.cert);
-                fs.writeFileSync(this.keyPath, pems.private);
+                fs.writeFileSync(this.certPath, pemCert);
+                fs.writeFileSync(this.keyPath, pemKey);
             }
             this.logDebug(`[ProxyService] Wrote cert to: ${this.certPath}`);
-            return { key: pems.private, cert: pems.cert };
+            return { key: pemKey, cert: pemCert };
         } catch (err: any) {
-            this.logDebug('[ProxyService] selfsigned.generate threw: ' + err.message);
+            this.logDebug('[ProxyService] Certificate generation threw: ' + err.message);
             throw err;
         }
     }

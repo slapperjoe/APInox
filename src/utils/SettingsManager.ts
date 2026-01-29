@@ -50,6 +50,8 @@ export interface ApinoxConfig {
     performanceHistory?: PerformanceRun[];
     /** Scheduled performance runs */
     performanceSchedules?: PerformanceSchedule[];
+    /** Global workflows (can chain requests across projects) */
+    workflows?: any[]; // Will be Workflow[] type from shared
 }
 
 const DEFAULT_CONFIG: ApinoxConfig = {
@@ -257,6 +259,18 @@ export class SettingsManager {
 
     public updatePerformanceSchedules(schedules: import('../../shared/src/models').PerformanceSchedule[]) {
         this.updateConfigPath(['performanceSchedules'], schedules);
+    }
+
+    public updateWorkflows(workflows: any[]) {
+        console.log('[SettingsManager] updateWorkflows called with:', workflows.length, 'workflows');
+        this.updateConfigPath(['workflows'], workflows);
+        console.log('[SettingsManager] Workflows updated in config');
+    }
+
+    public getWorkflows(): any[] {
+        const workflows = this.getConfig().workflows || [];
+        console.log('[SettingsManager] getWorkflows returning:', workflows.length, 'workflows');
+        return workflows;
     }
 
     public updateFileWatcherConfig(config: { requestPath?: string; responsePath?: string }) {

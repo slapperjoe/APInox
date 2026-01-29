@@ -107,6 +107,22 @@ export function useWatcherProxy({
     // Unified Server Mode (controlled by UI, not derived from running states)
     const [serverMode, setServerMode] = useState<'off' | 'proxy' | 'mock' | 'both'>('off');
 
+    // Initialize serverMode and proxyConfig from config.server when available
+    useEffect(() => {
+        if (config?.server) {
+            if (config.server.mode) {
+                setServerMode(config.server.mode);
+            }
+            if (config.server.targetUrl || config.server.port !== undefined) {
+                setProxyConfig(prev => ({
+                    ...prev,
+                    port: config.server?.port || prev.port,
+                    target: config.server?.targetUrl || prev.target
+                }));
+            }
+        }
+    }, [config?.server]);
+
     useEffect(() => {
         if (!isTauri()) return;
 
