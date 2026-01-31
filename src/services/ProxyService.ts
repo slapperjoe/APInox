@@ -252,10 +252,10 @@ export class ProxyService extends EventEmitter {
             // Create a certificate
             const cert = forge.pki.createCertificate();
             cert.publicKey = keys.publicKey;
-            cert.serialNumber = '01';
+            cert.serialNumber = '01' + Date.now().toString(16); // Unique serial
             cert.validity.notBefore = new Date();
             cert.validity.notAfter = new Date();
-            cert.validity.notAfter.setFullYear(cert.validity.notBefore.getFullYear() + 1);
+            cert.validity.notAfter.setFullYear(cert.validity.notBefore.getFullYear() + 10);
             
             const attrs = [{
                 name: 'commonName',
@@ -269,7 +269,18 @@ export class ProxyService extends EventEmitter {
             cert.setIssuer(attrs);
             cert.setExtensions([{
                 name: 'basicConstraints',
-                cA: true
+                cA: false // Server certificate, NOT a CA
+            }, {
+                name: 'keyUsage',
+                keyCertSign: false,
+                digitalSignature: true,
+                nonRepudiation: true,
+                keyEncipherment: true,
+                dataEncipherment: true
+            }, {
+                name: 'extKeyUsage',
+                serverAuth: true,
+                clientAuth: true
             }, {
                 name: 'subjectAltName',
                 altNames: [{
@@ -278,20 +289,36 @@ export class ProxyService extends EventEmitter {
                 }, {
                     type: 7, // IP
                     ip: '127.0.0.1'
+                }, {
+                    type: 2, // DNS wildcard
+                    value: '*.localhost'
                 }]
             }]);
             
-            // Self-sign certificate
+            // Self-sign certificate with SHA-256
             cert.sign(keys.privateKey, forge.md.sha256.create());
             
             // Convert to PEM format
             const pemCert = forge.pki.certificateToPem(cert);
             const pemKey = forge.pki.privateKeyToPem(keys.privateKey);
 
+            // Validate PEM format before saving
+            if (!pemCert.includes('BEGIN CERTIFICATE') || !pemKey.includes('BEGIN RSA PRIVATE KEY')) {
+                throw new Error('Generated PEM is invalid');
+            }
+
             this.logDebug('[ProxyService] Certificate generation successful. Writing files...');
             if (this.certPath && this.keyPath) {
-                fs.writeFileSync(this.certPath, pemCert);
-                fs.writeFileSync(this.keyPath, pemKey);
+                fs.writeFileSync(this.certPath, pemCert, 'utf8');
+                fs.writeFileSync(this.keyPath, pemKey, 'utf8');
+                
+                // Verify files were written correctly
+                const readCert = fs.readFileSync(this.certPath, 'utf8');
+                const readKey = fs.readFileSync(this.keyPath, 'utf8');
+                
+                if (!readCert.includes('BEGIN CERTIFICATE') || !readKey.includes('BEGIN RSA PRIVATE KEY')) {
+                    throw new Error('Saved certificate files are corrupted');
+                }
             }
             this.logDebug(`[ProxyService] Wrote cert to: ${this.certPath}`);
             return { key: pemKey, cert: pemCert };
@@ -320,15 +347,103 @@ export class ProxyService extends EventEmitter {
         if (this.isRunning) return;
 
         try {
+            // Log SSL configuration at startup
+            const strictSSL = this.configService?.getStrictSSL() ?? true;
+            this.logDebug(`[ProxyService] ========================================`);
+            this.logDebug(`[ProxyService] Starting Proxy Server`);
+            this.logDebug(`[ProxyService] Target: ${this.config.targetUrl}`);
+            this.logDebug(`[ProxyService] Port: ${this.config.port}`);
+            this.logDebug(`[ProxyService] Strict SSL: ${strictSSL ? 'ENABLED (validates certificates)' : 'DISABLED (accepts self-signed)'}`);
+            this.logDebug(`[ProxyService] ========================================`);
+            
             const isHttpsTarget = this.config.targetUrl.trim().toLowerCase().startsWith('https');
-            this.logDebug(`[ProxyService] Starting... Target: ${this.config.targetUrl}, isHttpsTarget: ${isHttpsTarget}`);
 
             if (isHttpsTarget) {
+                this.logDebug('[ProxyService] Target is HTTPS - proxy will use HTTPS');
                 this.logDebug('[ProxyService] Waiting for certs...');
-                const pems = await this.ensureCert();
-                this.logDebug('[ProxyService] Certs loaded. Creating HTTPS server.');
-                this.server = https.createServer({ key: pems.key, cert: pems.cert }, this.handleRequest.bind(this));
+                
+                let pems;
+                try {
+                    pems = await this.ensureCert();
+                    this.logDebug('[ProxyService] ✓ Certs loaded successfully.');
+                } catch (certErr: any) {
+                    console.error('[ProxyService] ❌ Failed to load/generate certificates:', certErr);
+                    this.logDebug(`[ProxyService] Certificate error: ${certErr.message}`);
+                    this.logDebug('[ProxyService] FALLING BACK TO HTTP SERVER - CLIENTS WILL FAIL!');
+                    
+                    // Show prominent error
+                    this.notificationService?.showError(
+                        `Proxy certificate error: ${certErr.message}\n\n` +
+                        `Proxy is starting as HTTP but target is HTTPS!\n` +
+                        `Your HTTPS clients will fail with "wrong version number".\n\n` +
+                        `Fix: Regenerate certificate in Debug Modal (Ctrl+Shift+D)`
+                    );
+                    
+                    // Create HTTP server as fallback (will cause client errors but at least proxy starts)
+                    this.server = http.createServer(this.handleRequest.bind(this));
+                    this.logDebug('[ProxyService] WARNING: HTTP server created for HTTPS target!');
+                    
+                    this.server.listen(this.config.port, () => {
+                        console.error(`[ProxyService] ⚠️ Proxy listening on port ${this.config.port} as HTTP (should be HTTPS!)`);
+                        this.logDebug(`⚠️ APInox Proxy listening on port ${this.config.port} (HTTP - WRONG FOR HTTPS TARGET!)`);
+                        this.isRunning = true;
+                        this.emit('status', true);
+                    });
+                    
+                    this.server.on('error', (err: any) => {
+                        console.error('APInox Proxy Server Error:', err);
+                        this.notificationService?.showError(`APInox Proxy Error: ${err.message}`);
+                        this.stop();
+                    });
+                    
+                    return; // Exit early - don't continue with HTTPS setup
+                }
+                
+                this.logDebug('[ProxyService] Creating HTTPS server with TLS options...');
+                
+                // Create HTTPS server with enhanced TLS options
+                this.server = https.createServer({
+                    key: pems.key,
+                    cert: pems.cert,
+                    // Enable older TLS versions for compatibility with .NET WCF
+                    minVersion: 'TLSv1.2',
+                    maxVersion: 'TLSv1.3',
+                    // Allow legacy cipher suites for .NET compatibility
+                    ciphers: [
+                        'ECDHE-RSA-AES256-GCM-SHA384',
+                        'ECDHE-RSA-AES128-GCM-SHA256',
+                        'ECDHE-RSA-AES256-SHA384',
+                        'ECDHE-RSA-AES128-SHA256',
+                        'AES256-GCM-SHA384',
+                        'AES128-GCM-SHA256',
+                        'AES256-SHA256',
+                        'AES128-SHA256',
+                        'AES256-SHA',
+                        'AES128-SHA'
+                    ].join(':'),
+                    honorCipherOrder: true,
+                    requestCert: false,
+                    rejectUnauthorized: false
+                }, this.handleRequest.bind(this));
+                
+                this.logDebug('[ProxyService] ✓ HTTPS server created');
+
+                // Add TLS error handling
+                this.server.on('tlsClientError', (err: any, socket: any) => {
+                    console.error('[ProxyService] TLS Client Error:', {
+                        error: err.message,
+                        code: err.code,
+                        remoteAddress: socket.remoteAddress,
+                        remotePort: socket.remotePort
+                    });
+                    this.logDebug(`[ProxyService] TLS Error: ${err.code} - ${err.message}`);
+                });
+
+                this.server.on('secureConnection', (tlsSocket: any) => {
+                    this.logDebug(`[ProxyService] Secure connection established: Protocol=${tlsSocket.getProtocol()}, Cipher=${tlsSocket.getCipher()?.name}`);
+                });
             } else {
+                this.logDebug('[ProxyService] Target is HTTP - proxy will use HTTP');
                 this.server = http.createServer(this.handleRequest.bind(this));
             }
 
@@ -406,7 +521,19 @@ export class ProxyService extends EventEmitter {
 
                 // Detect Proxy Settings (via IConfigService or environment)
                 const proxyUrl = this.configService?.getProxyUrl() || process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
-                const strictSSL = this.configService?.getStrictSSL() ?? false;
+                // Default to true (strict SSL) to match UI default - only disable if explicitly set to false
+                const strictSSL = this.configService?.getStrictSSL() ?? true;
+                this.logDebug(`[Proxy] Request Settings - strictSSL=${strictSSL}, systemProxy=${proxyUrl || 'none'}`);
+
+                // Apply global Node.js TLS setting when strictSSL is disabled
+                // This ensures HttpsProxyAgent and all TLS connections respect the setting
+                if (!strictSSL && process.env.NODE_TLS_REJECT_UNAUTHORIZED !== '0') {
+                    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+                    this.logDebug('[Proxy] ✓ Disabled certificate validation (NODE_TLS_REJECT_UNAUTHORIZED=0)');
+                } else if (strictSSL && process.env.NODE_TLS_REJECT_UNAUTHORIZED === '0') {
+                    delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
+                    this.logDebug('[Proxy] ✓ Enabled certificate validation (strict SSL)');
+                }
 
                 let agent: any;
 
@@ -428,8 +555,20 @@ export class ProxyService extends EventEmitter {
                 if (proxyUrl && useSystemProxy) {
                     this.logDebug(`[Proxy] Using System Proxy: ${proxyUrl}`);
                     const { HttpsProxyAgent } = require('https-proxy-agent');
-                    // Enable support for self-signed certs in corporate proxies
-                    agent = new HttpsProxyAgent(proxyUrl, { rejectUnauthorized: strictSSL });
+                    // Configure agent to match strictSSL setting
+                    // HttpsProxyAgent options apply to the connection through the proxy to the target
+                    agent = new HttpsProxyAgent(proxyUrl, { 
+                        // rejectUnauthorized controls validation of the TARGET server's cert (after proxy)
+                        rejectUnauthorized: strictSSL,
+                        // Additional options for maximum compatibility
+                        requestCert: false,
+                        secureOptions: 0,
+                        // These control the proxy connection itself
+                        proxy: {
+                            rejectUnauthorized: strictSSL  // Also don't validate proxy's cert when strictSSL=false
+                        }
+                    });
+                    this.logDebug(`[Proxy] Agent configured with rejectUnauthorized=${strictSSL}`);
                 } else {
                     if (proxyUrl) {
                         this.logDebug(`[Proxy] IGNORING System Proxy (${proxyUrl}) - Direct Connection requested.`);
@@ -478,46 +617,42 @@ export class ProxyService extends EventEmitter {
                     }
                 }
                 requestHeaders['host'] = new URL(this.config.targetUrl).host;
-                requestHeaders['content-length'] = Buffer.byteLength(requestData).toString();
                 requestHeaders['user-agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
                 requestHeaders['connection'] = 'keep-alive';
 
+                // Only set content-length for methods that support body
+                const method = (req.method || 'GET').toUpperCase();
+                if (method !== 'GET' && method !== 'HEAD') {
+                    requestHeaders['content-length'] = Buffer.byteLength(requestData).toString();
+                }
+
                 this.logDebug(`[Proxy] Outgoing Headers: ${JSON.stringify(requestHeaders)}`);
 
-                const fetchOptions: RequestInit & { agent?: any } = {
-                    method: req.method,
+                // Use native http/https module for proper agent support (fetch doesn't support custom agents properly)
+                const response = await this.makeHttpRequest(fullTargetUrl, {
+                    method: req.method || 'GET',
                     headers: requestHeaders,
-                    body: requestData,
-                };
+                    body: (method !== 'GET' && method !== 'HEAD') ? requestData : undefined,
+                    agent: agent,
+                    rejectUnauthorized: strictSSL
+                });
 
-                // Add custom agent
-                (fetchOptions as any).agent = agent;
-
-                const response = await fetch(fullTargetUrl, fetchOptions);
                 const endTime = Date.now();
 
-                event.status = response.status;
-                
-                // Convert headers to plain object
-                const responseHeaders: Record<string, any> = {};
-                response.headers.forEach((value, key) => {
-                    responseHeaders[key] = value;
-                });
-                event.responseHeaders = responseHeaders;
-                
-                const responseData = await response.text();
-                event.responseBody = responseData;
+                event.status = response.statusCode;
+                event.responseHeaders = response.headers;
+                event.responseBody = response.body;
                 event.duration = (endTime - startTime) / 1000;
-                event.success = response.status >= 200 && response.status < 300;
+                event.success = response.statusCode >= 200 && response.statusCode < 300;
                 
-                if (response.status === 503) {
+                if (response.statusCode === 503) {
                     this.logDebug('[Proxy] 503 Detected. Running diagnostics...');
                     // Fire and forget diagnostics
                     this.runDiagnostics(fullTargetUrl, requestHeaders, agent).catch(err => this.logDebug(`[Diagnostics] Error running probes: ${err}`));
                 }
 
                 // Apply replace rules to response before forwarding
-                let finalResponseData = responseData;
+                let finalResponseData = response.body;
                 if (this.replaceRules.length > 0) {
                     const originalData = finalResponseData;
                     const applicableRules = this.replaceRules.filter(r => r.enabled && (r.target === 'response' || r.target === 'both'));
@@ -531,16 +666,16 @@ export class ProxyService extends EventEmitter {
                 }
 
                 // Check for RESPONSE breakpoint (before returning to client)
-                const responseBreakpoint = this.checkBreakpoints(fullTargetUrl, finalResponseData, responseHeaders, 'response');
+                const responseBreakpoint = this.checkBreakpoints(fullTargetUrl, finalResponseData, response.headers, 'response');
                 if (responseBreakpoint) {
-                    const result = await this.waitForBreakpoint(eventId, 'response', finalResponseData, responseHeaders, responseBreakpoint);
+                    const result = await this.waitForBreakpoint(eventId, 'response', finalResponseData, response.headers, responseBreakpoint);
                     if (!result.cancelled) {
                         finalResponseData = result.content;
                         event.responseBody = finalResponseData;
                     }
                 }
 
-                res.writeHead(response.status, responseHeaders);
+                res.writeHead(response.statusCode, response.headers);
                 res.end(finalResponseData);
 
                 this.emit('log', event);
@@ -552,8 +687,8 @@ export class ProxyService extends EventEmitter {
                         url: req.url || '/',
                         requestHeaders: req.headers as Record<string, any>,
                         requestBody: reqBody,
-                        status: response.status,
-                        responseHeaders: responseHeaders,
+                        status: response.statusCode,
+                        responseHeaders: response.headers,
                         responseBody: finalResponseData
                     });
                 }
@@ -573,14 +708,147 @@ export class ProxyService extends EventEmitter {
                 }
 
                 if (!res.headersSent) {
-                    res.writeHead(event.status || 500, { 'Content-Type': 'text/plain' });
-                    // Forward backend error if available, else generic
-                    res.end(event.responseBody || `APInox Proxy Error: ${error.message}`);
+                    // Determine if this looks like a SOAP request based on content-type or SOAPAction header
+                    const contentType = req.headers['content-type'] || '';
+                    const isSoapRequest = 
+                        contentType.includes('soap') ||
+                        req.headers['soapaction'] !== undefined;
+
+                    if (isSoapRequest) {
+                        // Detect SOAP version from content-type
+                        // SOAP 1.2: application/soap+xml
+                        // SOAP 1.1: text/xml
+                        const isSoap12 = contentType.includes('application/soap+xml');
+                        
+                        // Return a proper SOAP fault for SOAP requests
+                        const soapFault = this.createSoapFault(error.message, isSoap12);
+                        const faultContentType = isSoap12 
+                            ? 'application/soap+xml; charset=utf-8'
+                            : 'text/xml; charset=utf-8';
+                        
+                        res.writeHead(500, { 
+                            'Content-Type': faultContentType,
+                            'Content-Length': Buffer.byteLength(soapFault).toString()
+                        });
+                        res.end(soapFault);
+                        event.responseBody = soapFault;
+                    } else {
+                        // Return plain text for non-SOAP requests
+                        res.writeHead(event.status || 500, { 'Content-Type': 'text/plain' });
+                        res.end(event.responseBody || `APInox Proxy Error: ${error.message}`);
+                    }
                 }
 
                 this.emit('log', event);
             }
         });
+    }
+
+    /**
+     * Make an HTTP/HTTPS request using native Node.js modules for proper agent support
+     */
+    private makeHttpRequest(url: string, options: {
+        method: string;
+        headers: Record<string, string>;
+        body?: string;
+        agent?: any;
+        rejectUnauthorized?: boolean;
+    }): Promise<{ statusCode: number; headers: Record<string, any>; body: string }> {
+        return new Promise((resolve, reject) => {
+            const parsedUrl = new URL(url);
+            const isHttps = parsedUrl.protocol === 'https:';
+            const httpModule = isHttps ? https : http;
+
+            const requestOptions: http.RequestOptions | https.RequestOptions = {
+                hostname: parsedUrl.hostname,
+                port: parsedUrl.port || (isHttps ? 443 : 80),
+                path: parsedUrl.pathname + parsedUrl.search,
+                method: options.method,
+                headers: options.headers,
+                agent: options.agent
+            };
+
+            // For HTTPS, add TLS options
+            if (isHttps) {
+                (requestOptions as https.RequestOptions).rejectUnauthorized = 
+                    options.rejectUnauthorized !== undefined ? options.rejectUnauthorized : false;
+            }
+
+            const req = httpModule.request(requestOptions, (res) => {
+                let body = '';
+                res.on('data', (chunk) => body += chunk);
+                res.on('end', () => {
+                    resolve({
+                        statusCode: res.statusCode || 500,
+                        headers: res.headers as Record<string, any>,
+                        body: body
+                    });
+                });
+            });
+
+            req.on('error', (error: any) => {
+                this.logDebug(`[Proxy] HTTP Request Error: ${error.message}`);
+                this.logDebug(`[Proxy] Error Details - Code: ${error.code}, Stack: ${error.stack?.split('\n')[0]}`);
+                reject(error);
+            });
+
+            if (options.body) {
+                req.write(options.body);
+            }
+            req.end();
+        });
+    }
+
+    /**
+     * Create a SOAP fault message for error responses (supports SOAP 1.1 and 1.2)
+     */
+    private createSoapFault(errorMessage: string, isSoap12: boolean = false): string {
+        const escapedMessage = errorMessage
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&apos;');
+
+        if (isSoap12) {
+            // SOAP 1.2 Fault (wsHttpBinding, ws2007HttpBinding)
+            return `<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope">
+  <soap:Body>
+    <soap:Fault>
+      <soap:Code>
+        <soap:Value>soap:Receiver</soap:Value>
+      </soap:Code>
+      <soap:Reason>
+        <soap:Text xml:lang="en">APInox Proxy Error</soap:Text>
+      </soap:Reason>
+      <soap:Detail>
+        <Error xmlns="http://apinox.dev/error">
+          <Message>${escapedMessage}</Message>
+          <Source>APInox Proxy</Source>
+        </Error>
+      </soap:Detail>
+    </soap:Fault>
+  </soap:Body>
+</soap:Envelope>`;
+        } else {
+            // SOAP 1.1 Fault (basicHttpBinding)
+            return `<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <soap:Body>
+    <soap:Fault>
+      <faultcode>soap:Server</faultcode>
+      <faultstring>APInox Proxy Error</faultstring>
+      <detail>
+        <Error xmlns="http://apinox.dev/error">
+          <Message>${escapedMessage}</Message>
+          <Source>APInox Proxy</Source>
+        </Error>
+      </detail>
+    </soap:Fault>
+  </soap:Body>
+</soap:Envelope>`;
+        }
     }
 
     public stop() {
@@ -593,7 +861,11 @@ export class ProxyService extends EventEmitter {
     }
 
     public getConfig() {
-        return this.config;
+        return {
+            ...this.config,
+            actualProtocol: this.server instanceof https.Server ? 'HTTPS' : 'HTTP',
+            expectedProtocol: this.config.targetUrl?.toLowerCase().startsWith('https') ? 'HTTPS' : 'HTTP'
+        };
     }
 
     public getCertPath() {

@@ -23,6 +23,10 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ serverConfig }) 
     const [proxyResults, setProxyResults] = useState<DiagnosticResult[]>([]);
     const [isRunning, setIsRunning] = useState(false);
     const [activeTest, setActiveTest] = useState<string | null>(null);
+    const [certThumbprint, setCertThumbprint] = useState<string | null>(null);
+    const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
+    const [showResetConfirm, setShowResetConfirm] = useState(false);
+    const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
     const getStatusIcon = (status: DiagnosticResult['status']) => {
         switch (status) {
@@ -52,6 +56,9 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ serverConfig }) 
                     details: `Path: ${certCheck.certPath}`
                 });
                 
+                // Store thumbprint for later use
+                setCertThumbprint(certCheck.thumbprint);
+                
                 // Check if cert is in LocalMachine store
                 results.push({ status: 'info', message: 'Checking certificate store location...' });
                 const storeCheck = await bridge.sendMessageAsync({ 
@@ -79,15 +86,15 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ serverConfig }) 
                     });
                 }
                 
-                // Test HTTPS server
-                results.push({ status: 'info', message: 'Testing HTTPS server...' });
+                // Test HTTPS server creation
+                results.push({ status: 'info', message: 'Testing HTTPS server creation...' });
                 const httpsTest = await bridge.sendMessageAsync({ command: 'testHttpsServer' });
                 
                 if (httpsTest.success) {
                     results.push({
                         status: 'success',
                         message: 'HTTPS server test passed',
-                        details: 'Certificate and key are valid'
+                        details: 'Certificate and key are valid for Node.js'
                     });
                 } else {
                     results.push({
@@ -95,6 +102,27 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ serverConfig }) 
                         message: 'HTTPS server test failed',
                         details: httpsTest.error || 'Certificate/key may be malformed'
                     });
+                }
+
+                // Test actual proxy connection (if running)
+                const proxyStatus = await bridge.sendMessageAsync({ command: 'getProxyStatus' });
+                if (proxyStatus.running) {
+                    results.push({ status: 'info', message: 'Testing connection to running proxy...' });
+                    const connTest = await bridge.sendMessageAsync({ command: 'testProxyConnection' });
+                    
+                    if (connTest.success) {
+                        results.push({
+                            status: 'success',
+                            message: 'Proxy connection successful',
+                            details: `Protocol: ${connTest.protocol}, Cipher: ${connTest.cipher}`
+                        });
+                    } else {
+                        results.push({
+                            status: 'error',
+                            message: 'Proxy connection failed',
+                            details: `${connTest.code || 'Error'}: ${connTest.error}. This is the same error your .NET client sees.`
+                        });
+                    }
                 }
             } else {
                 results.push({
@@ -124,30 +152,41 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ serverConfig }) 
         const results: DiagnosticResult[] = [];
 
         try {
-            // Check proxy configuration
-            const targetUrl = serverConfig?.targetUrl || '';
-            const clientPort = serverConfig?.port || 9000;
+            // Get actual proxy status from backend
+            const proxyStatus = await bridge.sendMessageAsync({ command: 'getProxyStatus' });
             
-            const targetIsHttps = targetUrl.toLowerCase().startsWith('https');
+            const targetUrl = proxyStatus?.config?.targetUrl || '';
+            const clientPort = proxyStatus?.config?.port || 9000;
+            const isRunning = proxyStatus?.running || false;
+            const actualProtocol = proxyStatus?.config?.actualProtocol || 'Unknown';
+            const expectedProtocol = proxyStatus?.config?.expectedProtocol || 'Unknown';
+            
+            const protocolMismatch = isRunning && actualProtocol !== expectedProtocol;
             
             results.push({
-                status: 'info',
+                status: protocolMismatch ? 'error' : 'info',
                 message: 'Proxy Configuration',
-                details: `Target: ${targetUrl}\nPort: ${clientPort}\nProtocol: ${targetIsHttps ? 'HTTPS' : 'HTTP'}`
+                details: `Target: ${targetUrl || '(Not configured)'}\nPort: ${clientPort}\nStatus: ${isRunning ? 'Running' : 'Stopped'}\nExpected Protocol: ${expectedProtocol}\nActual Protocol: ${actualProtocol}${protocolMismatch ? '\n\n❌ PROTOCOL MISMATCH! Certificate generation likely failed.' : ''}`
             });
             
             // Check protocol consistency
-            if (targetIsHttps) {
+            if (protocolMismatch) {
+                results.push({
+                    status: 'error',
+                    message: '❌ CRITICAL: Protocol Mismatch Detected!',
+                    details: `Target requires ${expectedProtocol} but proxy is serving ${actualProtocol}.\n\nThis causes "wrong version number" or "EPROTO" errors.\n\nFIX:\n1. Check certificate diagnostics above\n2. Regenerate certificate if needed\n3. Install certificate to LocalMachine\\Root\n4. Restart proxy`
+                });
+            } else if (expectedProtocol === 'HTTPS') {
                 results.push({
                     status: 'warning',
-                    message: 'HTTPS target detected',
-                    details: `Your client must connect to https://localhost:${clientPort} (not http://)`
+                    message: '⚠️ HTTPS Target - Protocol Match Required!',
+                    details: `Your .NET client MUST use: https://localhost:${clientPort}\n\nCommon Error: Using http:// causes "wrong version number" or "EPROTO" errors.\n\nFix in your .NET code:\nvar endpoint = new EndpointAddress("https://localhost:${clientPort}/YourService");`
                 });
             } else if (targetUrl) {
                 results.push({
                     status: 'info',
                     message: 'HTTP target detected',
-                    details: `Client can connect to http://localhost:${clientPort}`
+                    details: `Client should connect to: http://localhost:${clientPort}`
                 });
             }
             
@@ -181,53 +220,207 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ serverConfig }) 
     };
 
     const installCertificate = async () => {
+        setActionMessage(null);
         try {
             const result = await bridge.sendMessageAsync({ command: 'installCertificateToLocalMachine' });
             if (result.success) {
-                alert('Certificate installed successfully!\n\nRun diagnostics again to verify.');
-                runCertificateDiagnostics();
+                setActionMessage({ type: 'success', text: 'Certificate installed successfully! Running diagnostics...' });
+                setTimeout(() => runCertificateDiagnostics(), 1000);
             } else {
-                alert(`Failed to install certificate:\n${result.error}`);
+                setActionMessage({ type: 'error', text: `Failed to install certificate: ${result.error}` });
             }
         } catch (error: any) {
-            alert(`Error: ${error.message}`);
+            setActionMessage({ type: 'error', text: `Error: ${error.message}` });
         }
     };
 
     const fixCertificateLocation = async () => {
-        try {
-            const result = await bridge.sendMessageAsync({ command: 'moveCertificateToLocalMachine' });
-            if (result.success) {
-                alert('Certificate moved to LocalMachine store successfully!\n\nRun diagnostics again to verify.');
-                runCertificateDiagnostics();
-            } else {
-                alert(`Failed to move certificate:\n${result.error}`);
-            }
-        } catch (error: any) {
-            alert(`Error: ${error.message}`);
-        }
-    };
-
-    const regenerateCertificate = async () => {
-        if (!confirm('This will delete the old certificate and generate a new one. Continue?')) {
+        setActionMessage(null);
+        if (!certThumbprint) {
+            setActionMessage({ type: 'error', text: 'Please run certificate diagnostics first to get the thumbprint.' });
             return;
         }
         
         try {
-            const result = await bridge.sendMessageAsync({ command: 'regenerateCertificate' });
+            const result = await bridge.sendMessageAsync({ 
+                command: 'moveCertificateToLocalMachine',
+                thumbprint: certThumbprint
+            });
             if (result.success) {
-                alert('Certificate regenerated successfully!\n\nYou may need to restart the proxy.');
-                runCertificateDiagnostics();
+                setActionMessage({ type: 'success', text: 'Certificate moved to LocalMachine store successfully! Running diagnostics...' });
+                setTimeout(() => runCertificateDiagnostics(), 1000);
             } else {
-                alert(`Failed to regenerate certificate:\n${result.error}`);
+                setActionMessage({ type: 'error', text: `Failed to move certificate: ${result.error}` });
             }
         } catch (error: any) {
-            alert(`Error: ${error.message}`);
+            setActionMessage({ type: 'error', text: `Error: ${error.message}` });
         }
+    };
+
+    const regenerateCertificate = async () => {
+        setActionMessage(null);
+        try {
+            const result = await bridge.sendMessageAsync({ command: 'regenerateCertificate' });
+            if (result.success) {
+                setCertThumbprint(null);
+                setActionMessage({ type: 'success', text: 'Certificate regenerated successfully! Run diagnostics again and install to LocalMachine.' });
+            } else {
+                setActionMessage({ type: 'error', text: `Failed to regenerate certificate: ${result.error}` });
+            }
+        } catch (error: any) {
+            setActionMessage({ type: 'error', text: `Error: ${error.message}` });
+        }
+        setShowRegenerateConfirm(false);
+    };
+
+    const resetCertificates = async () => {
+        setActionMessage(null);
+        try {
+            const result = await bridge.sendMessageAsync({ command: 'resetCertificates' });
+            if (result.success) {
+                setCertThumbprint(null);
+                setActionMessage({ 
+                    type: 'success', 
+                    text: `Certificates reset successfully! ${result.details || 'Now regenerate and install certificate.'}`
+                });
+            } else {
+                setActionMessage({ type: 'error', text: `Failed to reset certificates: ${result.error}` });
+            }
+        } catch (error: any) {
+            setActionMessage({ type: 'error', text: `Error: ${error.message}` });
+        }
+        setShowResetConfirm(false);
     };
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Action Message */}
+            {actionMessage && (
+                <div style={{
+                    padding: '12px 16px',
+                    background: actionMessage.type === 'success' 
+                        ? 'var(--vscode-testing-iconPassed)' 
+                        : 'var(--vscode-inputValidation-errorBackground)',
+                    border: `1px solid ${actionMessage.type === 'success' ? 'var(--vscode-testing-iconPassed)' : 'var(--vscode-inputValidation-errorBorder)'}`,
+                    borderRadius: '4px',
+                    color: 'var(--vscode-editor-foreground)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                }}>
+                    {actionMessage.type === 'success' ? <CheckCircle size={16} /> : <XCircle size={16} />}
+                    <span>{actionMessage.text}</span>
+                    <button
+                        onClick={() => setActionMessage(null)}
+                        style={{
+                            marginLeft: 'auto',
+                            background: 'transparent',
+                            border: 'none',
+                            color: 'var(--vscode-editor-foreground)',
+                            cursor: 'pointer',
+                            padding: '4px',
+                            fontSize: '16px'
+                        }}
+                    >×</button>
+                </div>
+            )}
+
+            {/* Regenerate Confirmation Dialog */}
+            {showRegenerateConfirm && (
+                <div style={{
+                    padding: '16px',
+                    background: 'var(--vscode-notifications-background)',
+                    border: '1px solid var(--vscode-notifications-border)',
+                    borderRadius: '4px'
+                }}>
+                    <div style={{ marginBottom: '12px', fontWeight: 600 }}>
+                        ⚠️ Regenerate Certificate?
+                    </div>
+                    <div style={{ marginBottom: '16px', fontSize: '0.9em', opacity: 0.9 }}>
+                        This will delete the old certificate and generate a new one. You'll need to install the new certificate afterwards.
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                            onClick={regenerateCertificate}
+                            style={{
+                                padding: '6px 16px',
+                                background: 'var(--vscode-button-background)',
+                                color: 'var(--vscode-button-foreground)',
+                                border: '1px solid var(--vscode-button-border)',
+                                borderRadius: '2px',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Continue
+                        </button>
+                        <button
+                            onClick={() => setShowRegenerateConfirm(false)}
+                            style={{
+                                padding: '6px 16px',
+                                background: 'var(--vscode-button-secondaryBackground)',
+                                color: 'var(--vscode-button-secondaryForeground)',
+                                border: '1px solid var(--vscode-button-border)',
+                                borderRadius: '2px',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Reset Confirmation Dialog */}
+            {showResetConfirm && (
+                <div style={{
+                    padding: '16px',
+                    background: 'var(--vscode-notifications-background)',
+                    border: '1px solid var(--vscode-notifications-border)',
+                    borderRadius: '4px'
+                }}>
+                    <div style={{ marginBottom: '12px', fontWeight: 600, color: 'var(--vscode-charts-red)' }}>
+                        ⚠️ Reset All Certificates?
+                    </div>
+                    <div style={{ marginBottom: '16px', fontSize: '0.9em', opacity: 0.9 }}>
+                        This will:
+                        <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
+                            <li>Remove all APInox certificates from LocalMachine\Root</li>
+                            <li>Remove all APInox certificates from CurrentUser\Root</li>
+                            <li>Delete certificate files from TEMP folder</li>
+                        </ul>
+                        You'll need to regenerate and install a new certificate afterwards.
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                            onClick={resetCertificates}
+                            style={{
+                                padding: '6px 16px',
+                                background: 'var(--vscode-inputValidation-errorBackground)',
+                                color: 'var(--vscode-button-foreground)',
+                                border: '1px solid var(--vscode-inputValidation-errorBorder)',
+                                borderRadius: '2px',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Reset All
+                        </button>
+                        <button
+                            onClick={() => setShowResetConfirm(false)}
+                            style={{
+                                padding: '6px 16px',
+                                background: 'var(--vscode-button-secondaryBackground)',
+                                color: 'var(--vscode-button-secondaryForeground)',
+                                border: '1px solid var(--vscode-button-border)',
+                                borderRadius: '2px',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Certificate Diagnostics */}
             <div>
                 <div style={{ 
@@ -340,7 +533,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ serverConfig }) 
                         Fix Certificate Location
                     </button>
                     <button
-                        onClick={regenerateCertificate}
+                        onClick={() => setShowRegenerateConfirm(true)}
                         style={{
                             padding: '8px 14px',
                             fontSize: '0.85em',
@@ -352,6 +545,20 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ serverConfig }) 
                         }}
                     >
                         Regenerate Certificate
+                    </button>
+                    <button
+                        onClick={() => setShowResetConfirm(true)}
+                        style={{
+                            padding: '8px 14px',
+                            fontSize: '0.85em',
+                            background: 'var(--vscode-inputValidation-errorBackground)',
+                            color: 'var(--vscode-button-foreground)',
+                            border: '1px solid var(--vscode-inputValidation-errorBorder)',
+                            cursor: 'pointer',
+                            borderRadius: '2px'
+                        }}
+                    >
+                        Reset All Certificates
                     </button>
                 </div>
             </div>

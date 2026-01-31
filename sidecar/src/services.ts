@@ -42,6 +42,8 @@ export class ServiceContainer {
     public readonly secretManager: SecretManager;
 
     private outputLog: string[] = [];
+    private trafficEventBuffer: any[] = [];
+    private readonly MAX_TRAFFIC_EVENTS = 100;
 
     constructor() {
         // Create platform adapters
@@ -68,8 +70,10 @@ export class ServiceContainer {
         this.folderStorage = new FolderProjectStorage(outputChannel);
         this.fileWatcherService = new FileWatcherService(outputChannel, this.settingsManager);
 
+        // Load saved proxy target from settings
+        const savedProxyTarget = this.settingsManager.getConfig()?.lastProxyTarget || 'http://localhost:8080';
         this.proxyService = new ProxyService(
-            { port: 9000, targetUrl: 'http://localhost:8080', systemProxyEnabled: true },
+            { port: 9000, targetUrl: savedProxyTarget, systemProxyEnabled: true },
             this.notificationService,
             this.configService
         );
@@ -81,6 +85,9 @@ export class ServiceContainer {
 
         // Link mock service to proxy for 'both' mode
         this.proxyService.setMockService(this.mockService);
+
+        // Set up event listeners for traffic logging
+        this.setupTrafficEventListeners();
 
         this.configSwitcherService = new ConfigSwitcherService();
         this.testRunnerService = new TestRunnerService(this.soapClient, outputChannel);
@@ -100,6 +107,41 @@ export class ServiceContainer {
         this.historyService = new RequestHistoryService(configDir);
 
         console.log('[Sidecar] All services initialized');
+    }
+
+    /**
+     * Set up event listeners to capture traffic events from proxy and mock services
+     */
+    private setupTrafficEventListeners(): void {
+        // Listen for proxy traffic events
+        this.proxyService.on('log', (event: any) => {
+            this.trafficEventBuffer.push({
+                type: 'proxyLog',
+                event,
+                timestamp: Date.now()
+            });
+            
+            // Keep buffer size limited
+            if (this.trafficEventBuffer.length > this.MAX_TRAFFIC_EVENTS) {
+                this.trafficEventBuffer.shift();
+            }
+        });
+
+        // Listen for mock traffic events
+        this.mockService.on('log', (event: any) => {
+            this.trafficEventBuffer.push({
+                type: 'mockHistoryUpdate',
+                event,
+                timestamp: Date.now()
+            });
+            
+            // Keep buffer size limited
+            if (this.trafficEventBuffer.length > this.MAX_TRAFFIC_EVENTS) {
+                this.trafficEventBuffer.shift();
+            }
+        });
+
+        console.log('[Sidecar] Traffic event listeners configured');
     }
 
     /**
@@ -125,5 +167,23 @@ export class ServiceContainer {
     clearOutputLogs(): void {
         this.outputLog = [];
         console.log('[Sidecar] Output logs cleared');
+    }
+
+    /**
+     * Get traffic events since the last poll
+     * Returns all buffered events and clears the buffer
+     */
+    getTrafficEvents(): any[] {
+        const events = [...this.trafficEventBuffer];
+        this.trafficEventBuffer = [];
+        return events;
+    }
+
+    /**
+     * Clear traffic event buffer
+     */
+    clearTrafficEvents(): void {
+        this.trafficEventBuffer = [];
+        console.log('[Sidecar] Traffic events cleared');
     }
 }
