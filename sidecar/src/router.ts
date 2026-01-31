@@ -228,7 +228,12 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
         // ===== Proxy Service =====
         [FrontendCommand.StartProxy]: async (payload) => {
             if (payload?.config) {
-                services.proxyService.updateConfig(payload.config);
+                // Map 'target' to 'targetUrl' for ProxyService
+                const configData = payload.config;
+                const proxyConfig = configData.target 
+                    ? { ...configData, targetUrl: configData.target } 
+                    : configData;
+                services.proxyService.updateConfig(proxyConfig);
             }
             await services.proxyService.start();
             return { started: true, port: services.proxyService.getConfig().port };
@@ -240,7 +245,22 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
         },
 
         [FrontendCommand.UpdateProxyConfig]: async (payload) => {
-            services.proxyService.updateConfig(payload);
+            // Payload comes as { config: { port, target, ... } }
+            const configData = payload.config || payload;
+            
+            // Map 'target' to 'targetUrl' for ProxyService
+            const proxyConfig = configData.target 
+                ? { ...configData, targetUrl: configData.target } 
+                : configData;
+            
+            services.proxyService.updateConfig(proxyConfig);
+            
+            // Persist target URL to settings
+            const targetUrl = proxyConfig.targetUrl || configData.target;
+            if (targetUrl) {
+                services.settingsManager.updateLastProxyTarget(targetUrl);
+            }
+            
             return { updated: true };
         },
 
@@ -928,6 +948,528 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
                     }
                 });
             });
+        },
+
+        // ===== Certificate & Proxy Diagnostics =====
+        [FrontendCommand.CheckCertificate]: async () => {
+            const fs = require('fs');
+            const path = require('path');
+            const os = require('os');
+            
+            const certPath = path.join(os.tmpdir(), 'apinox-proxy.cer');
+            const keyPath = path.join(os.tmpdir(), 'apinox-proxy.key');
+            
+            const exists = fs.existsSync(certPath) && fs.existsSync(keyPath);
+            let thumbprint = null;
+            
+            if (exists && process.platform === 'win32') {
+                // Use PowerShell to get thumbprint (more reliable than certutil)
+                try {
+                    const { execSync } = require('child_process');
+                    const script = `$cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2('${certPath.replace(/\\/g, '\\\\')}'); Write-Output $cert.Thumbprint`;
+                    const result = execSync(`powershell -Command "${script}"`, { encoding: 'utf8' });
+                    thumbprint = result.trim().toUpperCase();
+                    console.log('[Diagnostics] Certificate thumbprint:', thumbprint);
+                } catch (e: any) {
+                    console.warn('[Diagnostics] Failed to get thumbprint:', e.message);
+                }
+            }
+            
+            return { 
+                exists, 
+                certPath: exists ? certPath : null,
+                keyPath: exists ? keyPath : null,
+                thumbprint 
+            };
+        },
+
+        [FrontendCommand.CheckCertificateStore]: async (payload) => {
+            if (process.platform !== 'win32') {
+                return { inLocalMachine: false, inCurrentUser: false, unsupported: true };
+            }
+            
+            const { thumbprint } = payload;
+            if (!thumbprint) {
+                throw new Error('Thumbprint is required');
+            }
+            
+            console.log('[Diagnostics] Checking certificate stores for thumbprint:', thumbprint);
+            
+            const { execSync } = require('child_process');
+            let inLocalMachine = false;
+            let inCurrentUser = false;
+            
+            try {
+                // Check LocalMachine\Root
+                const script = `$certs = Get-ChildItem -Path Cert:\\LocalMachine\\Root -ErrorAction SilentlyContinue | Where-Object { $_.Thumbprint -eq '${thumbprint}' }; if ($certs) { Write-Output 'FOUND' } else { Write-Output 'NOT_FOUND' }`;
+                const localMachineResult = execSync(
+                    `powershell -Command "${script}"`,
+                    { encoding: 'utf8' }
+                );
+                inLocalMachine = localMachineResult.trim() === 'FOUND';
+                console.log('[Diagnostics] LocalMachine\\Root:', inLocalMachine ? 'FOUND' : 'NOT FOUND');
+            } catch (e: any) {
+                console.warn('[Diagnostics] Error checking LocalMachine store:', e.message);
+            }
+            
+            try {
+                // Check CurrentUser\Root
+                const script = `$certs = Get-ChildItem -Path Cert:\\CurrentUser\\Root -ErrorAction SilentlyContinue | Where-Object { $_.Thumbprint -eq '${thumbprint}' }; if ($certs) { Write-Output 'FOUND' } else { Write-Output 'NOT_FOUND' }`;
+                const currentUserResult = execSync(
+                    `powershell -Command "${script}"`,
+                    { encoding: 'utf8' }
+                );
+                inCurrentUser = currentUserResult.trim() === 'FOUND';
+                console.log('[Diagnostics] CurrentUser\\Root:', inCurrentUser ? 'FOUND' : 'NOT FOUND');
+            } catch (e: any) {
+                console.warn('[Diagnostics] Error checking CurrentUser store:', e.message);
+            }
+            
+            return { inLocalMachine, inCurrentUser };
+        },
+
+        [FrontendCommand.TestHttpsServer]: async () => {
+            const https = require('https');
+            const fs = require('fs');
+            const path = require('path');
+            const os = require('os');
+            
+            const certPath = path.join(os.tmpdir(), 'apinox-proxy.cer');
+            const keyPath = path.join(os.tmpdir(), 'apinox-proxy.key');
+            
+            if (!fs.existsSync(certPath) || !fs.existsSync(keyPath)) {
+                return { success: false, error: 'Certificate files not found' };
+            }
+            
+            try {
+                const cert = fs.readFileSync(certPath, 'utf8');
+                const key = fs.readFileSync(keyPath, 'utf8');
+                
+                // Try to create HTTPS server with the certificate
+                const testServer = https.createServer({ cert, key }, (req: any, res: any) => {
+                    res.writeHead(200);
+                    res.end('OK');
+                });
+                
+                // Try to bind to a random port
+                await new Promise<void>((resolve, reject) => {
+                    testServer.listen(0, '127.0.0.1', () => {
+                        testServer.close(() => resolve());
+                    });
+                    testServer.on('error', reject);
+                });
+                
+                return { success: true };
+            } catch (error: any) {
+                return { success: false, error: error.message };
+            }
+        },
+
+        [FrontendCommand.TestProxyConnection]: async () => {
+            const https = require('https');
+            
+            // Check if proxy is running
+            if (!services.proxyService.isActive()) {
+                return { success: false, error: 'Proxy is not running' };
+            }
+            
+            const config = services.proxyService.getConfig();
+            const proxyUrl = `https://localhost:${config.port}`;
+            
+            return new Promise((resolve) => {
+                const options = {
+                    hostname: 'localhost',
+                    port: config.port,
+                    path: '/',
+                    method: 'GET',
+                    rejectUnauthorized: false, // Accept self-signed cert
+                    requestCert: false,
+                    agent: false
+                };
+                
+                console.log('[Diagnostics] Testing connection to proxy:', proxyUrl);
+                
+                const req = https.request(options, (res: any) => {
+                    console.log('[Diagnostics] Connection successful! Status:', res.statusCode);
+                    console.log('[Diagnostics] TLS Protocol:', res.socket.getProtocol());
+                    console.log('[Diagnostics] Cipher:', res.socket.getCipher());
+                    
+                    let data = '';
+                    res.on('data', (chunk: any) => { data += chunk; });
+                    res.on('end', () => {
+                        resolve({
+                            success: true,
+                            protocol: res.socket.getProtocol(),
+                            cipher: res.socket.getCipher()?.name,
+                            statusCode: res.statusCode
+                        });
+                    });
+                });
+                
+                req.on('error', (error: any) => {
+                    console.error('[Diagnostics] Connection failed:', error);
+                    resolve({
+                        success: false,
+                        error: error.message,
+                        code: error.code
+                    });
+                });
+                
+                req.setTimeout(5000, () => {
+                    req.destroy();
+                    resolve({ success: false, error: 'Connection timeout' });
+                });
+                
+                req.end();
+            });
+        },
+
+        [FrontendCommand.InstallCertificateToLocalMachine]: async () => {
+            if (process.platform !== 'win32') {
+                return { success: false, error: 'Only supported on Windows' };
+            }
+            
+            const fs = require('fs');
+            const path = require('path');
+            const os = require('os');
+            const { execSync } = require('child_process');
+            
+            const certPath = path.join(os.tmpdir(), 'apinox-proxy.cer');
+            
+            if (!fs.existsSync(certPath)) {
+                return { success: false, error: 'Certificate file not found' };
+            }
+            
+            try {
+                console.log('[Diagnostics] Installing certificate to LocalMachine\\Root...');
+                console.log('[Diagnostics] Certificate path:', certPath);
+                
+                // Escape backslashes in path for PowerShell
+                const escapedPath = certPath.replace(/\\/g, '\\\\');
+                
+                // Install certificate with detailed error handling
+                const script = `
+                    try {
+                        $certPath = '${escapedPath}'
+                        $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($certPath)
+                        Write-Output "Certificate loaded: $($cert.Thumbprint)"
+                        
+                        $store = New-Object System.Security.Cryptography.X509Certificates.X509Store('Root', 'LocalMachine')
+                        $store.Open('ReadWrite')
+                        
+                        # Check if already exists
+                        $existing = $store.Certificates | Where-Object { $_.Thumbprint -eq $cert.Thumbprint }
+                        if ($existing) {
+                            Write-Output "Certificate already installed"
+                            $store.Close()
+                            exit 0
+                        }
+                        
+                        $store.Add($cert)
+                        $store.Close()
+                        Write-Output "Certificate installed successfully"
+                        
+                        # Verify installation
+                        $verifyStore = New-Object System.Security.Cryptography.X509Certificates.X509Store('Root', 'LocalMachine')
+                        $verifyStore.Open('ReadOnly')
+                        $verified = $verifyStore.Certificates | Where-Object { $_.Thumbprint -eq $cert.Thumbprint }
+                        $verifyStore.Close()
+                        
+                        if ($verified) {
+                            Write-Output "Installation verified"
+                        } else {
+                            throw "Installation verification failed"
+                        }
+                    } catch {
+                        Write-Error $_.Exception.Message
+                        exit 1
+                    }
+                `;
+                
+                const result = execSync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${script}"`, { encoding: 'utf8' });
+                console.log('[Diagnostics] Installation result:', result);
+                
+                return { success: true, message: result.trim() };
+            } catch (error: any) {
+                console.error('[Diagnostics] Installation failed:', error.message);
+                
+                // Check if it's a permissions error
+                if (error.message.includes('Access is denied') || error.message.includes('UnauthorizedAccessException')) {
+                    return { 
+                        success: false, 
+                        error: 'Access denied. APInox needs to run as Administrator to install certificates to LocalMachine store.\n\nAlternatively, run this PowerShell command as Administrator:\nImport-Certificate -FilePath "' + certPath + '" -CertStoreLocation Cert:\\LocalMachine\\Root'
+                    };
+                }
+                
+                return { success: false, error: error.message };
+            }
+        },
+
+        [FrontendCommand.MoveCertificateToLocalMachine]: async (payload) => {
+            if (process.platform !== 'win32') {
+                return { success: false, error: 'Only supported on Windows' };
+            }
+            
+            const { thumbprint } = payload;
+            if (!thumbprint) {
+                throw new Error('Thumbprint is required');
+            }
+            
+            const { execSync } = require('child_process');
+            
+            try {
+                // PowerShell script to move certificate from CurrentUser to LocalMachine
+                const script = `
+                    $thumbprint = '${thumbprint}'
+                    $currentUserStore = New-Object System.Security.Cryptography.X509Certificates.X509Store('Root', 'CurrentUser')
+                    $currentUserStore.Open('ReadWrite')
+                    $cert = $currentUserStore.Certificates | Where-Object { $_.Thumbprint -eq $thumbprint } | Select-Object -First 1
+                    
+                    if ($cert) {
+                        $localMachineStore = New-Object System.Security.Cryptography.X509Certificates.X509Store('Root', 'LocalMachine')
+                        $localMachineStore.Open('ReadWrite')
+                        $localMachineStore.Add($cert)
+                        $localMachineStore.Close()
+                        
+                        $currentUserStore.Remove($cert)
+                        $currentUserStore.Close()
+                        Write-Output 'Success'
+                    } else {
+                        $currentUserStore.Close()
+                        throw 'Certificate not found in CurrentUser store'
+                    }
+                `;
+                
+                execSync(`powershell -Command "${script.replace(/"/g, '\\"')}"`, { encoding: 'utf8' });
+                return { success: true };
+            } catch (error: any) {
+                return { success: false, error: error.message };
+            }
+        },
+
+        [FrontendCommand.RegenerateCertificate]: async () => {
+            const fs = require('fs');
+            const path = require('path');
+            const os = require('os');
+            
+            const certPath = path.join(os.tmpdir(), 'apinox-proxy.cer');
+            const keyPath = path.join(os.tmpdir(), 'apinox-proxy.key');
+            
+            try {
+                console.log('[Diagnostics] Starting certificate regeneration...');
+                
+                // Delete existing certificate files
+                if (fs.existsSync(certPath)) {
+                    fs.unlinkSync(certPath);
+                    console.log('[Diagnostics] Deleted old certificate');
+                }
+                if (fs.existsSync(keyPath)) {
+                    fs.unlinkSync(keyPath);
+                    console.log('[Diagnostics] Deleted old key');
+                }
+                
+                // Import node-forge to regenerate certificate
+                const forge = require('node-forge');
+                const pki = forge.pki;
+                
+                // Generate a key pair
+                console.log('[Diagnostics] Generating new RSA key pair (2048-bit)...');
+                const keys = pki.rsa.generateKeyPair(2048);
+                console.log('[Diagnostics] Key pair generated');
+                
+                // Create a certificate
+                console.log('[Diagnostics] Creating certificate...');
+                const cert = pki.createCertificate();
+                cert.publicKey = keys.publicKey;
+                
+                // Serial number
+                cert.serialNumber = '01' + Date.now().toString(16);
+                
+                // Validity period
+                cert.validity.notBefore = new Date();
+                cert.validity.notAfter = new Date();
+                cert.validity.notAfter.setFullYear(cert.validity.notBefore.getFullYear() + 10);
+                
+                const attrs = [{
+                    name: 'commonName',
+                    value: 'localhost'
+                }, {
+                    name: 'organizationName',
+                    value: 'APInox Proxy'
+                }];
+                
+                cert.setSubject(attrs);
+                cert.setIssuer(attrs);
+                
+                cert.setExtensions([{
+                    name: 'basicConstraints',
+                    cA: false // Server certificate, not CA
+                }, {
+                    name: 'keyUsage',
+                    keyCertSign: false,
+                    digitalSignature: true,
+                    nonRepudiation: true,
+                    keyEncipherment: true,
+                    dataEncipherment: true
+                }, {
+                    name: 'extKeyUsage',
+                    serverAuth: true,
+                    clientAuth: true
+                }, {
+                    name: 'subjectAltName',
+                    altNames: [{
+                        type: 2, // DNS
+                        value: 'localhost'
+                    }, {
+                        type: 7, // IP
+                        ip: '127.0.0.1'
+                    }, {
+                        type: 2, // DNS
+                        value: '*.localhost'
+                    }]
+                }]);
+                
+                // Self-sign certificate
+                console.log('[Diagnostics] Signing certificate...');
+                cert.sign(keys.privateKey, forge.md.sha256.create());
+                console.log('[Diagnostics] Certificate signed');
+                
+                // Convert to PEM
+                const certPem = pki.certificateToPem(cert);
+                const keyPem = pki.privateKeyToPem(keys.privateKey);
+                
+                // Validate PEM format
+                if (!certPem.includes('BEGIN CERTIFICATE') || !keyPem.includes('BEGIN RSA PRIVATE KEY')) {
+                    throw new Error('Generated PEM files are invalid');
+                }
+                
+                // Save to temp directory
+                fs.writeFileSync(certPath, certPem, 'utf8');
+                fs.writeFileSync(keyPath, keyPem, 'utf8');
+                
+                console.log('[Diagnostics] Certificate files saved');
+                console.log('[Diagnostics] Cert:', certPath);
+                console.log('[Diagnostics] Key:', keyPath);
+                
+                // Verify files can be read back
+                const certTest = fs.readFileSync(certPath, 'utf8');
+                const keyTest = fs.readFileSync(keyPath, 'utf8');
+                
+                if (!certTest.includes('BEGIN CERTIFICATE') || !keyTest.includes('BEGIN RSA PRIVATE KEY')) {
+                    throw new Error('Saved certificate files are corrupted');
+                }
+                
+                // Test that certificate and key match by creating a test server
+                console.log('[Diagnostics] Validating certificate/key pair...');
+                const https = require('https');
+                const testServer = https.createServer({ cert: certPem, key: keyPem });
+                
+                await new Promise<void>((resolve, reject) => {
+                    testServer.listen(0, '127.0.0.1', () => {
+                        console.log('[Diagnostics] ✓ Certificate/key pair validated');
+                        testServer.close(() => resolve());
+                    });
+                    testServer.on('error', (err: any) => {
+                        reject(new Error(`Certificate/key validation failed: ${err.message}`));
+                    });
+                    setTimeout(() => {
+                        testServer.close();
+                        reject(new Error('Certificate validation timeout'));
+                    }, 5000);
+                });
+                
+                console.log('[Diagnostics] Certificate regenerated successfully');
+                
+                return { success: true, certPath, keyPath };
+            } catch (error: any) {
+                console.error('[Diagnostics] Failed to regenerate certificate:', error);
+                
+                // Clean up partial files on error
+                try {
+                    if (fs.existsSync(certPath)) fs.unlinkSync(certPath);
+                    if (fs.existsSync(keyPath)) fs.unlinkSync(keyPath);
+                } catch (e) {
+                    // Ignore cleanup errors
+                }
+                
+                return { success: false, error: error.message };
+            }
+        },
+
+        [FrontendCommand.GetProxyStatus]: async () => {
+            return { 
+                running: services.proxyService.isActive(),
+                config: services.proxyService.getConfig()
+            };
+        },
+
+        [FrontendCommand.ResetCertificates]: async () => {
+            const fs = require('fs');
+            const path = require('path');
+            const os = require('os');
+            const { execSync } = require('child_process');
+            
+            const certPath = path.join(os.tmpdir(), 'apinox-proxy.cer');
+            const keyPath = path.join(os.tmpdir(), 'apinox-proxy.key');
+
+            try {
+                // Step 1: Remove certificates from stores
+                const psScript = `
+                    $results = @()
+                    
+                    # Remove from LocalMachine\\Root
+                    try {
+                        $lmCerts = Get-ChildItem -Path Cert:\\LocalMachine\\Root -ErrorAction SilentlyContinue | Where-Object { $_.Subject -like "*APInox*" }
+                        $lmCount = ($lmCerts | Measure-Object).Count
+                        $lmCerts | Remove-Item -ErrorAction SilentlyContinue
+                        $results += "Removed $lmCount certificate(s) from LocalMachine\\Root"
+                    } catch {
+                        $results += "Failed to clean LocalMachine\\Root: $($_.Exception.Message)"
+                    }
+                    
+                    # Remove from CurrentUser\\Root
+                    try {
+                        $cuCerts = Get-ChildItem -Path Cert:\\CurrentUser\\Root -ErrorAction SilentlyContinue | Where-Object { $_.Subject -like "*APInox*" }
+                        $cuCount = ($cuCerts | Measure-Object).Count
+                        $cuCerts | Remove-Item -ErrorAction SilentlyContinue
+                        $results += "Removed $cuCount certificate(s) from CurrentUser\\Root"
+                    } catch {
+                        $results += "Failed to clean CurrentUser\\Root: $($_.Exception.Message)"
+                    }
+                    
+                    $results -join "\\n"
+                `;
+
+                const storeCleanup = execSync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${psScript.replace(/"/g, '\\"').replace(/\n/g, ' ')}"`, {
+                    encoding: 'utf-8',
+                    timeout: 10000
+                }).trim();
+
+                // Step 2: Delete certificate files
+                let filesDeleted = 0;
+                if (fs.existsSync(certPath)) {
+                    fs.unlinkSync(certPath);
+                    filesDeleted++;
+                }
+                if (fs.existsSync(keyPath)) {
+                    fs.unlinkSync(keyPath);
+                    filesDeleted++;
+                }
+
+                console.log('[ResetCertificates] Reset complete');
+                return {
+                    success: true,
+                    message: 'Certificates reset successfully',
+                    details: `${storeCleanup}\nDeleted ${filesDeleted} file(s) from TEMP folder\n\nNow regenerate certificate and install to LocalMachine\\Root`
+                };
+
+            } catch (error) {
+                console.error(`[ResetCertificates] Failed: ${error}`);
+                return {
+                    success: false,
+                    error: `Failed to reset certificates: ${error instanceof Error ? error.message : String(error)}`
+                };
+            }
         },
 
         // ===== Webview Ready (initialization) =====

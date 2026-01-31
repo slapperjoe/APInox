@@ -126,6 +126,15 @@ export enum FrontendCommand {
     ClearSidecarLogs = 'clearSidecarLogs',
     GetDebugInfo = 'getDebugInfo',
     OpenFile = 'openFile',
+    CheckCertificate = 'checkCertificate',
+    CheckCertificateStore = 'checkCertificateStore',
+    TestHttpsServer = 'testHttpsServer',
+    TestProxyConnection = 'testProxyConnection',
+    InstallCertificateToLocalMachine = 'installCertificateToLocalMachine',
+    MoveCertificateToLocalMachine = 'moveCertificateToLocalMachine',
+    RegenerateCertificate = 'regenerateCertificate',
+    ResetCertificates = 'resetCertificates',
+    GetProxyStatus = 'getProxyStatus',
 
     // Workspace Export
     ExportWorkspace = 'exportWorkspace',

@@ -139,6 +139,28 @@ app.post('/logs/clear', (_req: Request, res: Response) => {
     res.json({ success: true, message: 'Logs cleared' });
 });
 
+// Traffic events polling endpoint
+app.get('/events/traffic', (_req: Request, res: Response) => {
+    try {
+        const events = services.getTrafficEvents();
+        res.json({ success: true, events });
+    } catch (error: any) {
+        console.error('[Sidecar] Error fetching traffic events:', error.message);
+        res.json({ success: false, error: error.message, events: [] });
+    }
+});
+
+// Clear traffic events endpoint
+app.post('/events/traffic/clear', (_req: Request, res: Response) => {
+    try {
+        services.clearTrafficEvents();
+        res.json({ success: true, message: 'Traffic events cleared' });
+    } catch (error: any) {
+        console.error('[Sidecar] Error clearing traffic events:', error.message);
+        res.json({ success: false, error: error.message });
+    }
+});
+
 // Main command endpoint
 app.post('/command', async (req: Request, res: Response) => {
     const { command, payload } = req.body;

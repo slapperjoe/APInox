@@ -257,9 +257,10 @@ export function useSidebarCallbacks({
 
     // Proxy handlers
     const handleStartProxy = useCallback(() => {
-        bridge.sendMessage({ command: 'startProxy' });
+        // Send current proxy config to ensure backend has the latest target URL
+        bridge.sendMessage({ command: 'startProxy', config: proxyConfig });
         setProxyRunning(true);
-    }, [setProxyRunning]);
+    }, [setProxyRunning, proxyConfig]);
 
     const handleStopProxy = useCallback(() => {
         bridge.sendMessage({ command: 'stopProxy' });

@@ -118,8 +118,8 @@ export const MockProxyProvider = ({ children }: { children: ReactNode }) => {
                     break;
                 case BackendCommand.UpdateProxyTarget:
                     if (message.target) {
-                        // Update local config
-                        const newConfig = { ...proxyConfig, target: message.target };
+                        // Update local config (normalize to targetUrl)
+                        const newConfig = { ...proxyConfig, targetUrl: message.target, target: message.target };
                         setProxyConfig(newConfig);
                     }
                     break;
@@ -129,7 +129,7 @@ export const MockProxyProvider = ({ children }: { children: ReactNode }) => {
                             setMockConfig(message.config.mockServer);
                         }
                         if (message.config.lastProxyTarget) {
-                            setProxyConfig((prev: any) => ({ ...prev, target: message.config.lastProxyTarget }));
+                            setProxyConfig((prev: any) => ({ ...prev, targetUrl: message.config.lastProxyTarget, target: message.config.lastProxyTarget }));
                         }
                     }
                     break;
@@ -139,6 +139,60 @@ export const MockProxyProvider = ({ children }: { children: ReactNode }) => {
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
     }, [proxyConfig]); // Dep on proxyConfig for UpdateProxyTarget spread?
+
+    // Traffic event polling for Tauri (sidecar doesn't push events, we need to poll)
+    useEffect(() => {
+        // Only poll in Tauri mode
+        const isTauri = typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_INTERNALS__' in window);
+        if (!isTauri) return;
+
+        let intervalId: NodeJS.Timeout;
+        let isPolling = false;
+
+        const pollTrafficEvents = async () => {
+            if (isPolling) return; // Prevent concurrent polls
+            isPolling = true;
+
+            try {
+                // Get sidecar port
+                const { invoke } = await import('@tauri-apps/api/core');
+                const sidecarPort = await invoke<number>('get_sidecar_port');
+
+                if (sidecarPort) {
+                    const response = await fetch(`http://127.0.0.1:${sidecarPort}/events/traffic`);
+                    const result = await response.json();
+
+                    if (result.success && result.events && Array.isArray(result.events)) {
+                        // Process each event
+                        result.events.forEach((eventWrapper: any) => {
+                            if (eventWrapper.type === 'proxyLog' && eventWrapper.event) {
+                                setProxyHistory(prev => [eventWrapper.event, ...prev].slice(0, 50));
+                            } else if (eventWrapper.type === 'mockHistoryUpdate' && eventWrapper.event) {
+                                setMockHistory(prev => [eventWrapper.event, ...prev].slice(0, 50));
+                            }
+                        });
+                    }
+                }
+            } catch (error) {
+                // Silently fail - sidecar might not be ready yet
+                console.debug('[MockProxyContext] Traffic polling error:', error);
+            } finally {
+                isPolling = false;
+            }
+        };
+
+        // Poll every 1 second when proxy or mock is running
+        if (proxyRunning || mockRunning) {
+            intervalId = setInterval(pollTrafficEvents, 1000);
+            pollTrafficEvents(); // Poll immediately
+        }
+
+        return () => {
+            if (intervalId) {
+                clearInterval(intervalId);
+            }
+        };
+    }, [proxyRunning, mockRunning]);
 
     return (
         <MockProxyContext.Provider value={{
