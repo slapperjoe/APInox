@@ -196,6 +196,9 @@ export interface TestCaseViewProps {
     onDeleteStep?: (stepId: string) => void;
     /** @deprecated Use onSelectStep */
     onOpenStepRequest?: (request: any) => void;
+    // Optional: For displaying workflow/request names
+    workflows?: Array<{ id: string; name: string }>;
+    projects?: Array<any>;
 }
 
 /**
@@ -209,7 +212,9 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
     onSelectStep,
     onMoveStep,
     onDeleteStep,
-    onOpenStepRequest
+    onOpenStepRequest,
+    workflows,
+    projects
 }) => {
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
@@ -236,6 +241,9 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
                     <ToolbarButton onClick={() => onAddStep(testCase.id, 'script')}>
                         <FileCode size={14} /> Add Script
                     </ToolbarButton>
+                    <ToolbarButton onClick={() => onAddStep(testCase.id, 'workflow')}>
+                        <ListChecks size={14} /> Add Workflow
+                    </ToolbarButton>
                 </StepsToolbar>
             )}
 
@@ -248,7 +256,7 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
                         return (
                             <StepRow
                                 key={step.id}
-                                $clickable={step.type === 'request' || step.type === 'delay' || step.type === 'script'}
+                                $clickable={step.type === 'request' || step.type === 'delay' || step.type === 'script' || step.type === 'workflow'}
                                 onClick={() => {
                                     if (onSelectStep) {
                                         onSelectStep(step);
@@ -271,13 +279,18 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
                                     <strong>{step.name}</strong> <StepType>({step.type})</StepType>
                                     {step.type === 'request' && step.config.request && (
                                         <StepMeta>
-                                            {step.config.request.method || 'POST'} {step.config.request.endpoint || 'No Endpoint'}
+                                            {step.config.request.name || `${step.config.request.method || 'POST'} ${step.config.request.endpoint || 'No Endpoint'}`}
                                         </StepMeta>
                                     )}
                                     {step.type === 'delay' && (
                                         <DelayMeta>
                                             Delay: {step.config.delayMs || 0} ms
                                         </DelayMeta>
+                                    )}
+                                    {step.type === 'workflow' && (
+                                        <StepMeta>
+                                            Workflow: {workflows?.find(w => w.id === step.config.workflowId)?.name || step.config.workflowId || 'Not configured'}
+                                        </StepMeta>
                                     )}
                                     {status?.error && (
                                         <ErrorText>Error: {status.error}</ErrorText>

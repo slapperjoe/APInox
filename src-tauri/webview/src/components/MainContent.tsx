@@ -832,6 +832,7 @@ export function MainContent() {
         handleSelectStep,
         handleDeleteStep,
         handleMoveStep,
+        handleUpdateStep,
         handleAddStep,
         handleToggleLayout,
         handleToggleLineNumbers,
@@ -1730,10 +1731,7 @@ See PROXY_CERTIFICATE_SETUP.md for detailed instructions.`;
                     onBackToCase: () => { setSelectedStep(null); setSelectedRequest(null); },
                     onAddStep: handleAddStep,
                     testExecution,
-                    onUpdateStep: (step) => {
-                        console.log('[App] Sending updateTestStep with content:', step.config.scriptContent);
-                        bridge.sendMessage({ command: 'updateTestStep', step });
-                    },
+                    onUpdateStep: handleUpdateStep,
                     onSelectStep: handleSelectStep,
                     onDeleteStep: handleDeleteStep,
                     onMoveStep: handleMoveStep

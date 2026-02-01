@@ -174,13 +174,23 @@ const TitleBar: React.FC = () => {
   }, []);
 
   const handleMinimize = async () => {
-    const appWindow = getCurrentWindow();
-    await appWindow.minimize();
+    try {
+      const appWindow = getCurrentWindow();
+      await appWindow.minimize();
+      console.log('[TitleBar] Window minimized');
+    } catch (error) {
+      console.error('[TitleBar] Failed to minimize window:', error);
+    }
   };
 
   const handleMaximize = async () => {
-    const appWindow = getCurrentWindow();
-    await appWindow.toggleMaximize();
+    try {
+      const appWindow = getCurrentWindow();
+      await appWindow.toggleMaximize();
+      console.log('[TitleBar] Window maximize toggled');
+    } catch (error) {
+      console.error('[TitleBar] Failed to toggle maximize:', error);
+    }
   };
 
   const handleClose = async () => {

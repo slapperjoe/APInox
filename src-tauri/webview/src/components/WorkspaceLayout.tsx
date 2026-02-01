@@ -474,6 +474,87 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
             return <TestSuiteSummary suite={selectedTestSuite} onSelectTestCase={navigationActions?.onSelectTestCase} />;
         }
 
+        if (selectedStep && selectedStep.type === 'workflow' && !isReadOnly && onUpdateStep) {
+            // Load workflows from config
+            const workflows = config?.workflows || [];
+            
+            return (
+                <Content>
+                    <Toolbar>
+                        {onBackToCase && (
+                            <ToolbarButton onClick={onBackToCase} title="Back to Test Case">
+                                <ChevronLeft size={14} /> Back
+                            </ToolbarButton>
+                        )}
+                        <DelayTitle>Workflow Configuration</DelayTitle>
+                    </Toolbar>
+                    <DelayContent>
+                        <h2>Step: {selectedStep.name}</h2>
+                        <DelayField>
+                            <DelayLabel>Workflow:</DelayLabel>
+                            <select
+                                value={selectedStep.config.workflowId || ''}
+                                onChange={(e) => {
+                                    onUpdateStep({
+                                        ...selectedStep,
+                                        config: { ...selectedStep.config, workflowId: e.target.value }
+                                    });
+                                }}
+                                style={{
+                                    background: 'var(--vscode-input-background)',
+                                    color: 'var(--vscode-input-foreground)',
+                                    border: '1px solid var(--vscode-input-border)',
+                                    padding: '6px',
+                                    borderRadius: '2px',
+                                    fontSize: '13px'
+                                }}
+                            >
+                                <option value="">Select a workflow...</option>
+                                {workflows.map((wf: any) => (
+                                    <option key={wf.id} value={wf.id}>
+                                        {wf.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </DelayField>
+                        <DelayField style={{ marginTop: '20px' }}>
+                            <DelayLabel>Override Variables (JSON):</DelayLabel>
+                            <textarea
+                                value={JSON.stringify(selectedStep.config.workflowVariables || {}, null, 2)}
+                                onChange={(e) => {
+                                    try {
+                                        const vars = JSON.parse(e.target.value);
+                                        onUpdateStep({
+                                            ...selectedStep,
+                                            config: { ...selectedStep.config, workflowVariables: vars }
+                                        });
+                                    } catch (err) {
+                                        // Invalid JSON - don't update
+                                        console.error('Invalid JSON for workflow variables:', err);
+                                    }
+                                }}
+                                rows={8}
+                                placeholder='{"variable1": "value1", "variable2": "value2"}'
+                                style={{
+                                    background: 'var(--vscode-input-background)',
+                                    color: 'var(--vscode-input-foreground)',
+                                    border: '1px solid var(--vscode-input-border)',
+                                    padding: '8px',
+                                    borderRadius: '2px',
+                                    fontFamily: 'monospace',
+                                    fontSize: '12px',
+                                    width: '100%'
+                                }}
+                            />
+                            <div style={{ fontSize: '11px', color: 'var(--vscode-descriptionForeground)', marginTop: '8px' }}>
+                                Variables defined here will override workflow defaults. Test case context variables are also available.
+                            </div>
+                        </DelayField>
+                    </DelayContent>
+                </Content>
+            );
+        }
+
         if (selectedStep && selectedStep.type === 'delay' && !isReadOnly && onUpdateStep) {
             return (
                 <Content>
@@ -514,6 +595,8 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                     onMoveStep={onMoveStep}
                     onDeleteStep={onDeleteStep}
                     onOpenStepRequest={onOpenStepRequest}
+                    workflows={configState.config?.workflows}
+                    projects={projects}
                 />
             );
         }

@@ -90,7 +90,7 @@ export class ServiceContainer {
         this.setupTrafficEventListeners();
 
         this.configSwitcherService = new ConfigSwitcherService();
-        this.testRunnerService = new TestRunnerService(this.soapClient, outputChannel);
+        this.testRunnerService = new TestRunnerService(this.soapClient, outputChannel, this.settingsManager);
 
         this.performanceService = new PerformanceService(this.soapClient);
         this.performanceService.setLogger(msg => outputChannel.appendLine(msg));
