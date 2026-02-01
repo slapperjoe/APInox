@@ -1,18 +1,21 @@
 import * as vm from 'vm';
-import { TestCase, TestStep } from '../../shared/src/models';
+import { TestCase, TestStep, Workflow, ApiRequest } from '../../shared/src/models';
 import { SoapClient } from "../soapClient";
 import { AssertionRunner } from "../utils/AssertionRunner";
 import { BackendXPathEvaluator } from "../utils/BackendXPathEvaluator";
 import { WildcardProcessor } from "../utils/WildcardProcessor";
+import { WorkflowEngine } from "../../sidecar/src/services/WorkflowEngine";
 
 export class TestRunnerService {
     private soapClient: SoapClient;
     private outputChannel: any;
     private updateCallback?: (data: any) => void;
+    private settingsManager: any; // SettingsManager from src/utils/SettingsManager
 
-    constructor(soapClient: SoapClient, outputChannel: any) {
+    constructor(soapClient: SoapClient, outputChannel: any, settingsManager: any) {
         this.soapClient = soapClient;
         this.outputChannel = outputChannel;
+        this.settingsManager = settingsManager;
     }
 
     public setCallback(cb: (data: any) => void) {
@@ -119,6 +122,9 @@ export class TestRunnerService {
                 else if (step.type === 'transfer') {
                     this.log('Property Transfer not yet implemented');
                     this.notifyUi('stepPass', { caseId: testCase.id, stepId: step.id });
+                }
+                else if (step.type === 'workflow') {
+                    await this.runWorkflowStep(step, context, testCase.id);
                 }
                 else {
                     this.log(`Unknown step type: ${step.type}`);
@@ -243,5 +249,68 @@ export class TestRunnerService {
                 });
             }
         }
+    }
+
+    /**
+     * Execute a workflow step
+     */
+    private async runWorkflowStep(step: TestStep, context: Record<string, any>, testCaseId: string): Promise<void> {
+        const workflowId = step.config.workflowId;
+        if (!workflowId) {
+            throw new Error('Workflow step missing workflowId');
+        }
+
+        this.log(`Loading workflow: ${workflowId}`);
+
+        // Get workflow from SettingsManager
+        const config = this.settingsManager.getConfig();
+        const workflow = config.workflows?.find((w: Workflow) => w.id === workflowId);
+
+        if (!workflow) {
+            throw new Error(`Workflow not found: ${workflowId}`);
+        }
+
+        this.log(`Executing workflow: ${workflow.name}`);
+
+        // Merge workflow variables with step overrides and test context
+        const mergedVariables = {
+            ...workflow.variables,
+            ...step.config.workflowVariables,
+            ...context  // Include test case context variables
+        };
+
+        this.log(`Workflow variables: ${JSON.stringify(mergedVariables)}`);
+
+        // Execute workflow using WorkflowEngine
+        const workflowWithVars: Workflow = { ...workflow, variables: mergedVariables };
+        const engine = new WorkflowEngine();
+
+        // Create executeRequestFn that uses SoapClient
+        const executeRequestFn = async (req: ApiRequest) => {
+            this.log(`Workflow executing request: ${req.name}`);
+            return await this.soapClient.executeHttpRequest(req);
+        };
+
+        const result = await engine.execute(workflowWithVars, executeRequestFn);
+
+        this.log(`Workflow completed with status: ${result.status}`);
+
+        // Store workflow results in context for later steps
+        context[`${step.name}_result`] = result;
+        context[`${step.name}_variables`] = result.variables;
+
+        // Merge extracted variables back into test context
+        Object.assign(context, result.variables);
+        this.log(`Merged ${Object.keys(result.variables).length} variables into test context`);
+
+        if (result.status === 'failed') {
+            throw new Error(`Workflow failed: ${result.error}`);
+        }
+
+        this.notifyUi('stepPass', {
+            caseId: testCaseId,
+            stepId: step.id,
+            workflowResult: result
+        });
     }
 }

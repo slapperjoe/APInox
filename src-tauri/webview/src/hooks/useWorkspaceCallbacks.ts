@@ -196,7 +196,7 @@ export function useWorkspaceCallbacks({
     }, [selectedTestCase, setProjects, saveProject]);
 
     const handleUpdateStep = useCallback((updatedStep: TestStep) => {
-        bridge.sendMessage({ command: 'log', message: `[handleUpdateStep] Called with: ${updatedStep.id} Script len: ${updatedStep.config.scriptContent?.length}` });
+        bridge.sendMessage({ command: 'log', message: `[handleUpdateStep] Called with: ${updatedStep.id}` });
         if (!selectedTestCase) {
             bridge.sendMessage({ command: 'log', message: '[handleUpdateStep] No selectedTestCase!' });
             return;
@@ -209,7 +209,6 @@ export function useWorkspaceCallbacks({
                 ...suite,
                 testCases: suite.testCases?.map(tc => {
                     if (tc.id !== selectedTestCase.id) return tc;
-                    bridge.sendMessage({ command: 'log', message: `[handleUpdateStep] Updating step in TC: ${tc.id}` });
                     return {
                         ...tc,
                         steps: tc.steps.map(s => s.id === updatedStep.id ? updatedStep : s)
@@ -218,7 +217,7 @@ export function useWorkspaceCallbacks({
             };
 
             const updatedProject = { ...p, testSuites: p.testSuites!.map(s => s.id === suite.id ? updatedSuite : s), dirty: true };
-            // setTimeout(() => saveProject(updatedProject), 0);
+            setTimeout(() => saveProject(updatedProject), 0);
             return updatedProject;
         }));
         setSelectedStep(updatedStep);
@@ -279,6 +278,32 @@ export function useWorkspaceCallbacks({
                 setTimeout(() => saveProject(updatedProject), 0);
                 return updatedProject;
             }));
+        } else if (type === 'workflow') {
+            setProjects(prev => prev.map(p => {
+                const suite = p.testSuites?.find(s => s.testCases?.some(tc => tc.id === caseId));
+                if (!suite) return p;
+
+                const updatedSuite = {
+                    ...suite,
+                    testCases: suite.testCases?.map(tc => {
+                        if (tc.id !== caseId) return tc;
+                        const newStep: TestStep = {
+                            id: `step-${Date.now()}`,
+                            name: 'Workflow Step',
+                            type: 'workflow',
+                            config: {
+                                workflowId: '',
+                                workflowVariables: {}
+                            }
+                        };
+                        return { ...tc, steps: [...tc.steps, newStep] };
+                    }) || []
+                };
+
+                const updatedProject = { ...p, testSuites: p.testSuites!.map(s => s.id === suite.id ? updatedSuite : s), dirty: true };
+                setTimeout(() => saveProject(updatedProject), 0);
+                return updatedProject;
+            }));
         } else if (type === 'request') {
             if (isVsCode()) {
                 bridge.sendMessage({ command: 'pickOperationForTestCase', caseId });
@@ -286,7 +311,7 @@ export function useWorkspaceCallbacks({
                 onPickRequestForTestCase?.(caseId);
             }
         }
-    }, [setProjects, saveProject]);
+    }, [setProjects, saveProject, onPickRequestForTestCase]);
 
     const handleToggleLayout = useCallback(() => {
         const newMode = layoutMode === 'vertical' ? 'horizontal' : 'vertical';

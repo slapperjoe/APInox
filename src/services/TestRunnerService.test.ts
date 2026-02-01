@@ -6,12 +6,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 describe('TestRunnerService Scripting', () => {
     let soapClient: SoapClient;
     let outputChannel: any;
+    let settingsManager: any;
     let service: TestRunnerService;
 
     beforeEach(() => {
         soapClient = { executeRequest: vi.fn(), log: vi.fn() } as any;
         outputChannel = { appendLine: vi.fn() };
-        service = new TestRunnerService(soapClient, outputChannel);
+        settingsManager = { getConfig: vi.fn().mockReturnValue({ workflows: [] }) };
+        service = new TestRunnerService(soapClient, outputChannel, settingsManager);
     });
 
     it('should execute scripts and share context', async () => {
