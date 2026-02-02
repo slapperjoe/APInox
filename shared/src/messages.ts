@@ -35,6 +35,7 @@ export enum FrontendCommand {
     SyncProjects = 'syncProjects', // New command for strict syncing
     RefreshWsdl = 'refreshWsdl',
     ApplyWsdlSync = 'applyWsdlSync',
+    BulkImportWsdls = 'bulkImportWsdls',
 
     // ADO
     AdoStorePat = 'adoStorePat',
@@ -177,6 +178,8 @@ export enum BackendCommand {
     LocalWsdls = 'localWsdls',
     ConfigFileSelected = 'configFileSelected',
     WsdlRefreshResult = 'wsdlRefreshResult',
+    BulkImportProgress = 'bulkImportProgress',
+    BulkImportComplete = 'bulkImportComplete',
 
     // ADO Results
     AdoHasPatResult = 'adoHasPatResult',

@@ -185,7 +185,7 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
                 </button>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-                    <h2 style={{ margin: 0, fontSize: 18, fontWeight: 500 }}>{selectedInterface.name}</h2>
+                    <h2 style={{ margin: 0, fontSize: 18, fontWeight: 500 }}>{(selectedInterface as any).displayName || selectedInterface.name}</h2>
                 </div>
 
                 <div style={{

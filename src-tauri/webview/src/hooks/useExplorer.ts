@@ -44,7 +44,7 @@ export function useExplorer({
 }: UseExplorerParams): UseExplorerReturn {
     // Get exploredInterfaces from NavigationContext
     const { exploredInterfaces, setExploredInterfaces } = useNavigation();
-    
+
     // Local State
     const [explorerExpanded, setExplorerExpanded] = useState(false);
     const [pendingAddInterface, setPendingAddInterface] = useState<ApiInterface | null>(null);
@@ -68,11 +68,21 @@ export function useExplorer({
 
     // Add interface to a specific named project (new or existing)
     const addInterfaceToNamedProject = useCallback((iface: ApiInterface, projectName: string, isNew: boolean) => {
+        // Ensure interface and operations have expanded property initialized
+        const normalizedIface = {
+            ...iface,
+            expanded: false,
+            operations: (iface.operations || []).map(op => ({
+                ...op,
+                expanded: false
+            }))
+        };
+        
         if (isNew) {
             // Create new project with this interface
             const newProject: ApinoxProject = {
                 name: projectName,
-                interfaces: [iface],
+                interfaces: [normalizedIface],
                 expanded: true,
                 dirty: true,
                 id: Date.now().toString()
@@ -84,13 +94,13 @@ export function useExplorer({
             // Add to existing project by name
             setProjects(prev => prev.map(p =>
                 p.name === projectName
-                    ? { ...p, interfaces: [...p.interfaces, iface], dirty: true }
+                    ? { ...p, interfaces: [...(p.interfaces || []), normalizedIface], dirty: true }
                     : p
             ));
         }
         setWorkspaceDirty(true);
         removeInterfaceFromExplorer(iface.name);
-    }, [setProjects, setWorkspaceDirty, removeInterfaceFromExplorer]);
+    }, [setProjects, setWorkspaceDirty, removeInterfaceFromExplorer, saveProject]);
 
     const addToProject = useCallback((iface: ApiInterface) => {
         // Set pending interface to trigger modal

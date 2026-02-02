@@ -49,7 +49,7 @@ export class WsdlParser {
             process.env.HTTP_PROXY || process.env.http_proxy;
 
         let agent: any = undefined;
-        
+
         if (proxyUrl) {
             this.log(`Using proxy: ${proxyUrl}`);
             this.log(`Strict SSL: ${strictSSL}`);
@@ -79,7 +79,7 @@ export class WsdlParser {
         // If localWsdlDir is provided, override import locations to use local files
         if (localWsdlDir && fs.existsSync(localWsdlDir)) {
             this.log(`Setting up local file interceptor for directory: ${localWsdlDir}`);
-            
+
             // Build a namespace cache from local XSD files
             const namespaceCache = new Map<string, string>();
             try {
@@ -104,13 +104,13 @@ export class WsdlParser {
             if (!soapOptions.wsdl_options) {
                 soapOptions.wsdl_options = {};
             }
-            
+
             // Store original agent if it exists
             const originalAgent = soapOptions.wsdl_options.agent;
-            
+
             soapOptions.wsdl_options.overrideImportLocation = (includePath: string, _currentWsdl: string, originalLocation: string) => {
                 this.log(`Import request: ${originalLocation}`);
-                
+
                 // If it's a remote URL (starts with http/https), redirect to local directory
                 if (originalLocation && /^https?:\/\//i.test(originalLocation)) {
                     // Check if we have any local XSD files
@@ -119,7 +119,7 @@ export class WsdlParser {
                         // node-soap will load it and use namespace matching to resolve imports
                         const firstFile = Array.from(namespaceCache.values())[0];
                         this.log(`  -> Redirecting to local directory: ${path.dirname(firstFile)}`);
-                        
+
                         // Return a placeholder file in the local directory
                         // node-soap will scan the directory and match by namespace
                         return firstFile;
@@ -130,11 +130,11 @@ export class WsdlParser {
                         return '';
                     }
                 }
-                
+
                 // For non-remote imports, use the default includePath
                 return includePath;
             };
-            
+
             // Restore agent if it was set
             if (originalAgent) {
                 soapOptions.wsdl_options.agent = originalAgent;
@@ -224,7 +224,7 @@ export class WsdlParser {
                     for (const opName in port) {
                         // Get the full schema for this operation
                         const fullSchema = this.getOperationSchema(opName, portName);
-                        
+
                         operations.push({
                             name: opName,
                             input: port[opName].input,
@@ -253,10 +253,10 @@ export class WsdlParser {
             // Suppress verbose axios error logging (config, request objects, etc.)
             // Only log essential error information
             this.log('CRITICAL ERROR parsing WSDL:', error.message || error);
-            
+
             // Check if this looks like a JSON/OpenAPI file being parsed as XML (fallback detection)
             const errorMessage = error.message || String(error);
-            if (errorMessage.includes('Text data outside of root node') || 
+            if (errorMessage.includes('Text data outside of root node') ||
                 errorMessage.includes('Unexpected token')) {
                 // Check if URL suggests it might be an OpenAPI spec
                 if (url.toLowerCase().match(/\.(json|yaml|yml)$/)) {
@@ -268,7 +268,7 @@ export class WsdlParser {
                     throw enhancedError;
                 }
             }
-            
+
             // If it's an axios error, log only the essential details
             if (error.code) {
                 this.log(`Error Code: ${error.code}`);
@@ -280,12 +280,12 @@ export class WsdlParser {
                 this.log('HTTP Status:', error.response.status || 'N/A');
                 this.log('Response Body:', error.response.data || 'N/A');
             }
-            
+
             // Log stack trace for debugging (but not the full axios config)
             if (error.stack && !error.config) {
                 this.log('Stack Trace:', error.stack);
             }
-            
+
             throw error;
         }
     }
@@ -327,11 +327,11 @@ export class WsdlParser {
         }
 
         this.log(`[getOperationSchema] Operation: ${operationName}, Input message: ${inputMessageName}`);
-        
+
         // Now resolve the message to find the actual element
         const messages = definitions.messages;
         let inputElementName = inputMessageName;
-        
+
         // Debug: Log the messages structure
         this.log(`[getOperationSchema] DEBUG: messages object exists: ${!!messages}`);
         if (messages) {
@@ -340,27 +340,27 @@ export class WsdlParser {
                 this.log(`[getOperationSchema] DEBUG: Found message, structure: ${JSON.stringify(Object.keys(messages[inputMessageName]))}`);
             }
         }
-        
+
         // CRITICAL: Extract element name from message
         this.log(`[getOperationSchema] TRACE: Starting message resolution for: ${inputMessageName}`);
         this.log(`[getOperationSchema] TRACE: messages type: ${typeof messages}, exists: ${!!messages}`);
         this.log(`[getOperationSchema] TRACE: messages[inputMessageName] type: ${typeof messages?.[inputMessageName]}, exists: ${!!messages?.[inputMessageName]}`);
-        
+
         if (messages && messages[inputMessageName]) {
             const message = messages[inputMessageName];
             this.log(`[getOperationSchema] TRACE: message object retrieved, keys: ${JSON.stringify(Object.keys(message))}`);
-            
+
             // Log the full message structure (shallow)
             this.log(`[getOperationSchema] DEBUG: message content: ${JSON.stringify(message, (key, value) => {
                 if (typeof value === 'function') return '[Function]';
                 if (typeof value === 'object' && value !== null && key !== '') return '[Object]';
                 return value;
             })}`);
-            
+
             // Messages have parts that reference elements
             const parts = message.parts;
             this.log(`[getOperationSchema] DEBUG: parts object exists: ${!!parts}, type: ${typeof parts}`);
-            
+
             if (parts) {
                 this.log(`[getOperationSchema] DEBUG: parts keys: ${Object.keys(parts).join(', ')}`);
                 // CRITICAL FIX: Filter out undefined/null part keys
@@ -370,7 +370,7 @@ export class WsdlParser {
                     const firstPart = parts[firstPartKey];
                     this.log(`[getOperationSchema] DEBUG: firstPart keys: ${JSON.stringify(Object.keys(firstPart))}`);
                     this.log(`[getOperationSchema] DEBUG: firstPart.element: ${firstPart.element}, firstPart.$element: ${firstPart.$element}`);
-                    
+
                     const elementRef = firstPart.element || firstPart.$element;
                     if (elementRef) {
                         // Remove namespace prefix if present (e.g., "tns:GetOrganisationRequest" -> "GetOrganisationRequest")
@@ -387,7 +387,7 @@ export class WsdlParser {
                 }
             } else {
                 this.log(`[getOperationSchema] DEBUG: No parts found, message might be document/literal wrapped`);
-                
+
                 // Try to use the element directly from the message if it exists
                 const elementRef = message.element || message.$element;
                 if (elementRef) {
@@ -402,7 +402,7 @@ export class WsdlParser {
                         if (typeof value === 'object' && value !== null && key !== '') return '[Object]';
                         return value;
                     })}`);
-                    
+
                     const childRef = message.children[0].$element || message.children[0].element;
                     if (childRef) {
                         inputElementName = childRef.split(':').pop() || childRef;
@@ -417,9 +417,9 @@ export class WsdlParser {
         } else {
             this.log(`[getOperationSchema]   WARNING: Message not found in definitions.messages, using name as-is`);
         }
-        
+
         this.log(`[getOperationSchema] TRACE: Final inputElementName: ${inputElementName}`);
-        
+
         // Log all available schemas
         this.log(`[getOperationSchema] TRACE: Available schemas: ${Object.keys(schemas).join(', ')}`);
         Object.keys(schemas).forEach(sKey => {
@@ -437,7 +437,7 @@ export class WsdlParser {
         const findDefinition = (qname: string, kind: 'element' | 'type') => {
             const localName = qname.split(':').pop() || qname;
             this.log(`[findDefinition] Looking for ${kind} '${qname}' (localName: '${localName}')`);
-            
+
             for (const sKey in schemas) {
                 const s = schemas[sKey];
                 if (kind === 'element' && s.elements && s.elements[localName]) {
@@ -457,11 +457,41 @@ export class WsdlParser {
             return null;
         };
 
-        // Recursive Build
-        const buildNode = (name: string, typeOrElementName: string, doc = '', minOccurs = '1', isElement = false, depth = 0): SchemaNode => {
+        // Recursive Build with circular reference detection
+        const MAX_DEPTH = 50; // Safety limit to prevent runaway recursion
+        const buildNode = (name: string, typeOrElementName: string, doc = '', minOccurs = '1', isElement = false, depth = 0, visitedTypes: Set<string> = new Set()): SchemaNode => {
             const indent = '  '.repeat(depth);
-            this.log(`${indent}[buildNode] name=${name}, type=${typeOrElementName}, isElement=${isElement}`);
-            
+            this.log(`${indent}[buildNode] name=${name}, type=${typeOrElementName}, isElement=${isElement}, depth=${depth}`);
+
+            // Safety check: Maximum depth
+            if (depth > MAX_DEPTH) {
+                this.log(`${indent}[buildNode] WARNING: Maximum depth (${MAX_DEPTH}) exceeded, truncating`);
+                return {
+                    name,
+                    type: typeOrElementName,
+                    kind: 'simple' as const,
+                    minOccurs,
+                    documentation: doc + ' [TRUNCATED: max depth exceeded]'
+                };
+            }
+
+            // Circular reference detection
+            const typeKey = typeOrElementName.split(':').pop() || typeOrElementName;
+            if (visitedTypes.has(typeKey)) {
+                this.log(`${indent}[buildNode] CIRCULAR REFERENCE DETECTED: ${typeKey} already in path, stopping recursion`);
+                return {
+                    name,
+                    type: typeOrElementName + ' [CIRCULAR REF]',
+                    kind: 'simple' as const,
+                    minOccurs,
+                    documentation: doc + ' [Circular reference to ' + typeKey + ']'
+                };
+            }
+
+            // Add current type to visited set for this recursion path
+            const newVisitedTypes = new Set(visitedTypes);
+            newVisitedTypes.add(typeKey);
+
             const node: SchemaNode = {
                 name,
                 type: typeOrElementName,
@@ -473,7 +503,7 @@ export class WsdlParser {
             // First check if this is an element reference
             let typeDef = null;
             let actualTypeName = typeOrElementName;
-            
+
             if (isElement) {
                 const elementDef = findDefinition(typeOrElementName, 'element');
                 this.log(`${indent}[buildNode] Looking for element '${typeOrElementName}': ${elementDef ? 'FOUND' : 'NOT FOUND'}`);
@@ -485,23 +515,23 @@ export class WsdlParser {
                     node.type = actualTypeName;
                 }
             }
-            
+
             // Now look up the type definition
             typeDef = findDefinition(actualTypeName, 'type');
             this.log(`${indent}[buildNode] Looking for type '${actualTypeName}': ${typeDef ? 'FOUND' : 'NOT FOUND'}`);
-            
+
             if (typeDef) {
                 node.kind = 'complex';
                 node.documentation = typeDef.annotation?.documentation || node.documentation;
 
                 const children: SchemaNode[] = [];
-                
+
                 // node-soap structure can be complex:
                 // - typeDef.sequence: array of elements (standard XSD structure)
                 // - typeDef.all: array of elements (XSD all group)
                 // - typeDef.children: array that may contain a sequence/all/choice/complexContent wrapper
                 let sequence: any[] | null = null;
-                
+
                 if (typeDef.sequence && Array.isArray(typeDef.sequence)) {
                     sequence = typeDef.sequence;
                     this.log(`${indent}[buildNode] Using typeDef.sequence with ${sequence?.length ?? 0} elements`);
@@ -511,31 +541,31 @@ export class WsdlParser {
                 } else if (typeDef.children && Array.isArray(typeDef.children)) {
                     // node-soap may wrap the sequence in a children array
                     // Check if children[0] is a sequence/all/choice/complexContent wrapper
-                    if (typeDef.children.length === 1 && 
-                        typeDef.children[0].name === 'sequence' && 
-                        typeDef.children[0].children && 
+                    if (typeDef.children.length === 1 &&
+                        typeDef.children[0].name === 'sequence' &&
+                        typeDef.children[0].children &&
                         Array.isArray(typeDef.children[0].children)) {
                         sequence = typeDef.children[0].children;
                         this.log(`${indent}[buildNode] Unwrapped sequence from typeDef.children[0], found ${sequence?.length ?? 0} elements`);
-                    } else if (typeDef.children.length === 1 && 
-                               typeDef.children[0].name === 'all' && 
-                               typeDef.children[0].children && 
-                               Array.isArray(typeDef.children[0].children)) {
+                    } else if (typeDef.children.length === 1 &&
+                        typeDef.children[0].name === 'all' &&
+                        typeDef.children[0].children &&
+                        Array.isArray(typeDef.children[0].children)) {
                         sequence = typeDef.children[0].children;
                         this.log(`${indent}[buildNode] Unwrapped all from typeDef.children[0], found ${sequence?.length ?? 0} elements`);
-                    } else if (typeDef.children.length === 1 && 
-                               typeDef.children[0].name === 'complexContent' && 
-                               typeDef.children[0].children && 
-                               Array.isArray(typeDef.children[0].children)) {
+                    } else if (typeDef.children.length === 1 &&
+                        typeDef.children[0].name === 'complexContent' &&
+                        typeDef.children[0].children &&
+                        Array.isArray(typeDef.children[0].children)) {
                         // complexContent contains extension or restriction
                         const complexContent = typeDef.children[0];
-                        if (complexContent.children.length === 1 && 
+                        if (complexContent.children.length === 1 &&
                             (complexContent.children[0].name === 'extension' || complexContent.children[0].name === 'restriction') &&
-                            complexContent.children[0].children && 
+                            complexContent.children[0].children &&
                             Array.isArray(complexContent.children[0].children)) {
                             // extension/restriction contains sequence
                             const extOrRestr = complexContent.children[0];
-                            if (extOrRestr.children.length === 1 && 
+                            if (extOrRestr.children.length === 1 &&
                                 extOrRestr.children[0].name === 'sequence' &&
                                 extOrRestr.children[0].children &&
                                 Array.isArray(extOrRestr.children[0].children)) {
@@ -559,9 +589,9 @@ export class WsdlParser {
                         const childRef = child.$ref || child.ref;
                         const childMinOccurs = child.$minOccurs || child.minOccurs || '1';
                         const childDoc = child.annotation?.documentation || '';
-                        
+
                         this.log(`${indent}[buildNode]   [${index}] child: name=${childName}, type=${childType}, ref=${childRef}`);
-                        
+
                         // Handle choice elements - unwrap and add all alternatives
                         if (childName === 'choice' && child.children && Array.isArray(child.children)) {
                             choiceGroupCounter++;
@@ -573,9 +603,9 @@ export class WsdlParser {
                                 const choiceRef = choiceChild.$ref || choiceChild.ref;
                                 const choiceMinOccurs = choiceChild.$minOccurs || choiceChild.minOccurs || '0';
                                 const choiceDoc = choiceChild.annotation?.documentation || '';
-                                
+
                                 this.log(`${indent}[buildNode]     [choice ${choiceIndex}]: name=${choiceName}, type=${choiceType}`);
-                                
+
                                 if (choiceRef) {
                                     const refLocalName = choiceRef.split(':').pop() || choiceRef;
                                     const choiceNode = buildNode(
@@ -584,7 +614,8 @@ export class WsdlParser {
                                         choiceDoc,
                                         choiceMinOccurs,
                                         true,
-                                        depth + 1
+                                        depth + 1,
+                                        newVisitedTypes
                                     );
                                     choiceNode.isChoice = true;
                                     choiceNode.choiceGroup = currentChoiceGroup;
@@ -596,7 +627,8 @@ export class WsdlParser {
                                         choiceDoc,
                                         choiceMinOccurs,
                                         false,
-                                        depth + 1
+                                        depth + 1,
+                                        newVisitedTypes
                                     );
                                     choiceNode.isChoice = true;
                                     choiceNode.choiceGroup = currentChoiceGroup;
@@ -613,7 +645,8 @@ export class WsdlParser {
                                 childDoc,
                                 childMinOccurs,
                                 true, // This is an element reference
-                                depth + 1
+                                depth + 1,
+                                newVisitedTypes
                             ));
                         } else if (childName && childType) {
                             children.push(buildNode(
@@ -622,7 +655,8 @@ export class WsdlParser {
                                 childDoc,
                                 childMinOccurs,
                                 false,
-                                depth + 1
+                                depth + 1,
+                                newVisitedTypes
                             ));
                         } else {
                             this.log(`${indent}[buildNode]   WARNING: Child has no name/type/ref, skipping`);
@@ -631,7 +665,7 @@ export class WsdlParser {
                 } else {
                     this.log(`${indent}[buildNode] WARNING: No sequence/all/children found in complexType or empty`);
                 }
-                
+
                 if (children.length > 0) {
                     node.children = children;
                     this.log(`${indent}[buildNode] Added ${children.length} children to node`);
@@ -646,7 +680,7 @@ export class WsdlParser {
         // Check if we have a message with parts (RPC/literal style)
         const message = messages && messages[inputMessageName];
         let result: SchemaNode;
-        
+
         // CRITICAL FIX: node-soap sometimes populates message.parts with the element's children
         // instead of the actual WSDL message parts. We need to detect this and use element-based
         // building instead.
@@ -664,20 +698,20 @@ export class WsdlParser {
             });
             this.log(`[getOperationSchema] DEBUG: hasRealParts check: ${hasRealParts}, partKeys: ${partKeys.join(', ')}`);
         }
-        
+
         if (message && message.parts && hasRealParts) {
             // RPC/literal: Build from parts
             this.log(`[getOperationSchema] Building from message parts (RPC/literal style)`);
             const parts = message.parts;
             const partKeys = Object.keys(parts).filter(key => key !== 'undefined' && key !== 'null' && parts[key] != null);
-            
+
             if (partKeys.length === 1) {
                 // Single part - build directly from that part
                 const partName = partKeys[0];
                 const part = parts[partName];
                 const elementRef = part.element || part.$element;
                 const typeRef = part.type || part.$type;
-                
+
                 if (elementRef) {
                     const elemName = elementRef.split(':').pop() || elementRef;
                     result = buildNode(elemName, elemName, '', '1', true);
@@ -698,7 +732,7 @@ export class WsdlParser {
                         const part = parts[partName];
                         const elementRef = part.element || part.$element;
                         const typeRef = part.type || part.$type;
-                        
+
                         if (elementRef) {
                             const elemName = elementRef.split(':').pop() || elementRef;
                             return buildNode(partName, elemName, '', '1', true);
@@ -716,7 +750,7 @@ export class WsdlParser {
             this.log(`[getOperationSchema] Building from single element (document/literal style)`);
             result = buildNode(inputElementName, inputElementName, '', '1', true);
         }
-        
+
         // Log the result
         const countNodes = (node: SchemaNode): number => {
             let count = 1;
@@ -725,7 +759,7 @@ export class WsdlParser {
             }
             return count;
         };
-        
+
         const totalNodes = countNodes(result);
         this.log(`[getOperationSchema] Built schema tree: ${totalNodes} nodes (root: ${result.name}, kind: ${result.kind})`);
         if (result.children) {
@@ -733,7 +767,7 @@ export class WsdlParser {
         } else {
             this.log(`[getOperationSchema] WARNING: Root has no children - schema may be incomplete!`);
         }
-        
+
         return result;
     }
 }

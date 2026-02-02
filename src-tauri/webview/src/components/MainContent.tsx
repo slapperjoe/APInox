@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { Container, ContextMenu, ContextMenuItem } from '../styles/App.styles';
 import { bridge, isVsCode, isTauri } from '../utils/bridge';
 import { updateProjectWithRename } from '../utils/projectUtils';
+import { generateInitialXmlForOperation } from '../utils/soapUtils';
 import { Sidebar } from './Sidebar';
 import { WorkspaceLayout } from './WorkspaceLayout';
 import { HelpModal } from './HelpModal';
@@ -23,6 +24,7 @@ import { PickRequestModal, PickRequestItem } from './modals/PickRequestModal';
 import { ExportWorkspaceModal } from './modals/ExportWorkspaceModal';
 import { CodeSnippetModal } from './modals/CodeSnippetModal';
 import { WorkflowBuilderModal } from './modals/WorkflowBuilderModal';
+import { BulkImportModal, BulkImportResult } from './modals/BulkImportModal';
 import { ApiRequest, TestCase, TestStep, SidebarView, ReplaceRule, RequestHistoryEntry, WsdlDiff, ApiInterface, Workflow, WorkflowStep } from '@shared/models';
 import { BackendCommand, FrontendCommand } from '@shared/messages';
 import { useMessageHandler } from '../hooks/useMessageHandler';
@@ -145,6 +147,8 @@ export function MainContent() {
         setWorkspaceDirty,
         savedProjects,
         setSavedProjects,
+        saveErrors,
+        setSaveErrors,
         deleteConfirm,
         setDeleteConfirm,
         addProject,
@@ -155,7 +159,8 @@ export function MainContent() {
         toggleInterfaceExpand,
         toggleOperationExpand,
         expandAll,
-        collapseAll
+        collapseAll,
+        reorderItems
     } = useProject();
 
     // ==========================================================================
@@ -398,6 +403,9 @@ export function MainContent() {
         timeoutMs: number;
         startTime: number;
     } | null>(null);
+
+    // Bulk Import Modal State
+    const [showBulkImportModal, setShowBulkImportModal] = useState(false);
 
 
 
@@ -889,7 +897,7 @@ export function MainContent() {
     // ==========================================================================
     // WORKFLOW HANDLERS
     // ==========================================================================
-    
+
     const handleAddWorkflow = useCallback(() => {
         console.log('[Workflows] handleAddWorkflow called');
         setWorkflowBuilderModal({ open: true, workflow: null, projectPath: '' });
@@ -902,7 +910,7 @@ export function MainContent() {
 
     const handleSaveWorkflow = useCallback(async (workflow: Workflow) => {
         console.log('[MainContent] handleSaveWorkflow called with:', workflow);
-        
+
         try {
             const result = await bridge.sendMessageAsync({
                 command: FrontendCommand.SaveWorkflow,
@@ -914,13 +922,13 @@ export function MainContent() {
             // Workflows are now global - reload config
             const response = await bridge.sendMessageAsync({ command: FrontendCommand.GetSettings });
             console.log('[MainContent] Updated config workflows:', response?.config?.workflows);
-            
+
             if (response?.config) {
                 setConfig(response.config);
             }
 
             setWorkspaceDirty(true);
-            
+
             // Close the modal
             setWorkflowBuilderModal({ open: false, workflow: null, projectPath: '' });
         } catch (error) {
@@ -938,7 +946,7 @@ export function MainContent() {
             });
 
             console.log('[Workflow] Execution result:', result);
-            
+
             // TODO: Show execution results in UI (WorkflowRunner component)
             if (result.status === 'completed') {
                 console.log(`[Workflow] ${workflow.name} completed successfully`);
@@ -984,61 +992,61 @@ export function MainContent() {
     const handleSelectWorkflow = useCallback((workflow: Workflow) => {
         console.log('[MainContent] handleSelectWorkflow called:', workflow.name);
         console.log('[MainContent] About to set workflow step with null step');
-        
+
         setSelectedRequest(null);
         setSelectedPerformanceSuiteId(null);
-        
+
         // Set workflow with a placeholder step to indicate workflow-level selection
         // The step will be null/undefined which WorkspaceLayout will detect
         const workflowStep = { workflow, step: null as any };
         console.log('[MainContent] Calling setSelectedWorkflowStep with:', workflowStep);
         setSelectedWorkflowStep(workflowStep);
-        
+
         setActiveView(SidebarView.WORKFLOWS);
-        
+
         console.log('[MainContent] handleSelectWorkflow complete');
     }, [setSelectedRequest, setSelectedPerformanceSuiteId, setSelectedWorkflowStep, setActiveView]);
 
     const handleSelectWorkflowStep = useCallback((workflow: Workflow, step: WorkflowStep) => {
         console.log('[MainContent] handleSelectWorkflowStep called:', workflow.name, step.name);
         console.log('[MainContent] setSelectedWorkflowStep function exists:', !!setSelectedWorkflowStep);
-        
+
         setSelectedRequest(null);
         setSelectedPerformanceSuiteId(null);
-        
+
         console.log('[MainContent] About to call setSelectedWorkflowStep with:', { workflow: workflow.name, step: step.name });
         setSelectedWorkflowStep({ workflow, step });
         console.log('[MainContent] Called setSelectedWorkflowStep');
-        
+
         setActiveView(SidebarView.WORKFLOWS);
         console.log('[MainContent] Set activeView to WORKFLOWS');
     }, [setSelectedRequest, setSelectedPerformanceSuiteId, setSelectedWorkflowStep, setActiveView]);
 
     const handleUpdateWorkflowStep = useCallback(async (workflow: Workflow, updatedStep: WorkflowStep) => {
         console.log('[MainContent] handleUpdateWorkflowStep called:', workflow.name, updatedStep.name);
-        
+
         // Update the step in the workflow
         const updatedWorkflow: Workflow = {
             ...workflow,
             steps: workflow.steps.map(s => s.id === updatedStep.id ? updatedStep : s)
         };
-        
+
         // Save the updated workflow
         try {
             await bridge.sendMessageAsync({
                 command: FrontendCommand.SaveWorkflow,
                 workflow: updatedWorkflow
             });
-            
+
             // Reload config to get updated workflows
             const response = await bridge.sendMessageAsync({ command: FrontendCommand.GetSettings });
             if (response?.config) {
                 setConfig(response.config);
             }
-            
+
             // Update the selected workflow step to reflect changes
             setSelectedWorkflowStep({ workflow: updatedWorkflow, step: updatedStep });
-            
+
             console.log('[MainContent] Workflow step updated successfully');
         } catch (error) {
             console.error('[MainContent] Failed to update workflow step:', error);
@@ -1047,28 +1055,28 @@ export function MainContent() {
 
     const handleUpdateWorkflow = useCallback(async (updatedWorkflow: Workflow) => {
         console.log('[MainContent] handleUpdateWorkflow called:', updatedWorkflow.name);
-        
+
         // Save the updated workflow
         try {
             await bridge.sendMessageAsync({
                 command: FrontendCommand.SaveWorkflow,
                 workflow: updatedWorkflow
             });
-            
+
             // Reload config to get updated workflows
             const response = await bridge.sendMessageAsync({ command: FrontendCommand.GetSettings });
             if (response?.config) {
                 setConfig(response.config);
             }
-            
+
             // Update the selected workflow if we're still viewing it
             if (selectedWorkflowStep?.workflow.id === updatedWorkflow.id) {
-                setSelectedWorkflowStep({ 
-                    workflow: updatedWorkflow, 
-                    step: selectedWorkflowStep.step 
+                setSelectedWorkflowStep({
+                    workflow: updatedWorkflow,
+                    step: selectedWorkflowStep.step
                 });
             }
-            
+
             console.log('[MainContent] Workflow updated successfully');
         } catch (error) {
             console.error('[MainContent] Failed to update workflow:', error);
@@ -1087,8 +1095,8 @@ export function MainContent() {
                         op.requests.forEach((req: any, idx: number) => {
                             items.push({
                                 id: `${project.id || project.name}-op-${op.name}-req-${idx}`,
-                                label: op.requests.length > 1 ? `${op.name} [${idx + 1}/${op.requests.length}]` : op.name,
-                                description: `${project.name} > ${iface.name}${op.requests.length > 1 ? ` > Request ${idx + 1}` : ''}`,
+                                label: op.requests.length > 1 ? `${(op as any).displayName || op.name} [${idx + 1}/${op.requests.length}]` : ((op as any).displayName || op.name),
+                                description: `${project.name} > ${(iface as any).displayName || iface.name}${op.requests.length > 1 ? ` > Request ${idx + 1}` : ''}`,
                                 detail: req.endpoint || op.originalEndpoint || 'WSDL Operation',
                                 type: 'request',
                                 data: req
@@ -1098,8 +1106,8 @@ export function MainContent() {
                         // No requests - add operation for SOAP XML generation
                         items.push({
                             id: `${project.id || project.name}-op-${op.name}`,
-                            label: op.name,
-                            description: `${project.name} > ${iface.name}`,
+                            label: (op as any).displayName || op.name,
+                            description: `${project.name} > ${(iface as any).displayName || iface.name}`,
                             detail: op.originalEndpoint || 'WSDL Operation',
                             type: 'operation',
                             data: op
@@ -1223,6 +1231,7 @@ export function MainContent() {
         setWsdlUrl,
         setWorkspaceDirty,
         setSavedProjects,
+        setSaveErrors,
         setChangelog,
         setWatcherHistory,
         // Mock/Proxy setters moved to MockProxyContext but kept for useSidebarCallbacks via MainContent state
@@ -1397,6 +1406,8 @@ export function MainContent() {
                 projectProps={{
                     projects,
                     savedProjects,
+                    saveErrors,
+                    setSaveErrors,
                     loadProject: () => loadProject(),
                     saveProject,
                     onUpdateProject: handleUpdateProject,
@@ -1407,6 +1418,7 @@ export function MainContent() {
                     toggleOperationExpand,
                     expandAll,
                     collapseAll,
+                    reorderItems,
                     onDeleteInterface: handleDeleteInterface,
                     onDeleteOperation: handleDeleteOperation,
                     onAddFolder: handleAddFolder,
@@ -1414,7 +1426,8 @@ export function MainContent() {
                     onDeleteFolder: handleDeleteFolder,
                     onToggleFolderExpand: handleToggleFolderExpand,
                     onRefreshInterface: handleRefreshWsdl,
-                    onExportWorkspace: () => setExportWorkspaceModal(true)
+                    onExportWorkspace: () => setExportWorkspaceModal(true),
+                    onBulkImport: () => setShowBulkImportModal(true)
                 }}
                 explorerProps={{
                     exploredInterfaces,
@@ -1583,14 +1596,14 @@ export function MainContent() {
                             console.log('[MainContent] Received result:', result);
                             console.log('[MainContent] result.success:', result?.success);
                             console.log('[MainContent] result.certPath:', result?.certPath);
-                            
+
                             if (result?.success && result.certPath) {
                                 console.log('[MainContent] Opening certificate file...');
                                 // Use Tauri's opener to open the certificate file
                                 if (isTauri()) {
                                     const { openPath } = await import('@tauri-apps/plugin-opener');
                                     await openPath(result.certPath);
-                                    
+
                                     // Show comprehensive instructions to user
                                     const instructions = `Certificate file opened: ${result.certPath}
 
@@ -1609,7 +1622,7 @@ MANUAL INSTALLATION:
 6. Restart your application
 
 See PROXY_CERTIFICATE_SETUP.md for detailed instructions.`;
-                                    
+
                                     alert(instructions);
                                 }
                             } else {
@@ -1775,7 +1788,7 @@ See PROXY_CERTIFICATE_SETUP.md for detailed instructions.`;
                     loadWsdl: async (url, type) => {
                         // Set loading status immediately
                         setDownloadStatus(['Loading...']);
-                        
+
                         // Ensure state is updated (react batches updates, so we might need to rely on the args or just assume state sync)
                         // But since existing loadWsdl uses state, we should probably update state and call it.
                         // However, calling setWsdlUrl here might not update state immediately for loadWsdl to see it if called synchronously.
@@ -1890,8 +1903,8 @@ See PROXY_CERTIFICATE_SETUP.md for detailed instructions.`;
                         isOpen={codeSnippetModal.open}
                         onClose={() => setCodeSnippetModal({ open: false, request: null })}
                         request={codeSnippetModal.request}
-                        environment={config?.activeEnvironment && config?.environments 
-                            ? config.environments[config.activeEnvironment] 
+                        environment={config?.activeEnvironment && config?.environments
+                            ? config.environments[config.activeEnvironment]
                             : undefined}
                     />
                 )
@@ -2016,8 +2029,8 @@ See PROXY_CERTIFICATE_SETUP.md for detailed instructions.`;
                                 name: req.name,
                                 type: 'request',
                                 config: {
-                                    request: { 
-                                        ...req, 
+                                    request: {
+                                        ...req,
                                         id: `req - ${Date.now()} `,
                                         // Explicitly preserve requestType and bodyType to prevent defaulting to soap
                                         requestType: req.requestType || 'soap',
@@ -2138,7 +2151,7 @@ See PROXY_CERTIFICATE_SETUP.md for detailed instructions.`;
                                             // Access request data from step.config.request
                                             const req = step.config.request;
                                             if (!req) continue; // Skip if no request data
-                                            
+
                                             bridge.sendMessage({
                                                 command: 'addPerformanceRequest',
                                                 suiteId: importToPerformanceModal.suiteId,
@@ -2245,6 +2258,96 @@ See PROXY_CERTIFICATE_SETUP.md for detailed instructions.`;
                         // Switch to workspace tab after adding
                         setActiveView(SidebarView.PROJECTS);
                     }
+                }}
+            />
+
+            {/* Bulk Import Modal */}
+            <BulkImportModal
+                open={showBulkImportModal}
+                onClose={() => setShowBulkImportModal(false)}
+                existingProjects={projects.filter(p => !p.readOnly).map(p => p.name)}
+                onImportComplete={(results: BulkImportResult[], projectName: string, isNew: boolean) => {
+                    // Collect all successful interfaces
+                    const successfulInterfaces = results
+                        .filter(r => r.success && r.interfaces)
+                        .flatMap(r => r.interfaces || []);
+
+                    if (successfulInterfaces.length === 0) return;
+
+                    // Add all interfaces to the project
+                    successfulInterfaces.forEach((iface, i) => {
+                        addInterfaceToNamedProject(iface, projectName, isNew && i === 0);
+                    });
+
+                    // Switch to workspace view
+                    setActiveView(SidebarView.PROJECTS);
+                }}
+                onParseUrl={async (url: string) => {
+                    const response = await bridge.sendMessageAsync({
+                        command: FrontendCommand.LoadWsdl,
+                        url
+                    });
+
+                    // Convert ApiService[] to ApiInterface[] (same logic as useMessageHandler.ts)
+                    const data = response as any[];
+                    const newInterfaces: ApiInterface[] = [];
+
+                    if (Array.isArray(data)) {
+                        // WSDL Handling: Convert SoapService[] to ApiInterface[]
+                        data.forEach((svc: any) => {
+                            // Group operations by Port
+                            const operationsByPort = new Map<string, any[]>();
+                            (svc.operations || []).forEach((op: any) => {
+                                const port = op.portName || 'Default';
+                                if (!operationsByPort.has(port)) {
+                                    operationsByPort.set(port, []);
+                                }
+                                operationsByPort.get(port)!.push(op);
+                            });
+
+                            // Create an Interface for each Port
+                            operationsByPort.forEach((ops, portName) => {
+                                const interfaceName = portName === 'Default' ? svc.name : portName;
+
+                                newInterfaces.push({
+                                    id: crypto.randomUUID(),
+                                    name: interfaceName,
+                                    type: 'wsdl',
+                                    bindingName: portName,
+                                    soapVersion: portName.includes('12') ? '1.2' : '1.1',
+                                    definition: url,
+                                    expanded: false,
+                                    operations: ops.map((op: any) => ({
+                                        id: crypto.randomUUID(),
+                                        name: op.name,
+                                        action: '',
+                                        input: op.input,
+                                        fullSchema: op.fullSchema,
+                                        targetNamespace: op.targetNamespace || svc.targetNamespace,
+                                        originalEndpoint: op.originalEndpoint,
+                                        expanded: false,
+                                        requests: [{
+                                            id: crypto.randomUUID(),
+                                            name: 'Sample',
+                                            endpoint: op.originalEndpoint,
+                                            contentType: portName.includes('12') ? 'application/soap+xml' : 'text/xml',
+                                            headers: {
+                                                'Content-Type': portName.includes('12') ? 'application/soap+xml' : 'text/xml'
+                                            },
+                                            request: generateInitialXmlForOperation(op),
+                                            requestType: 'soap' as const,
+                                            bodyType: 'xml' as const
+                                        }]
+                                    }))
+                                });
+                            });
+                        });
+                    } else if (data && (data as any).interfaces) {
+                        // OpenAPI Handling: Already correctly formatted
+                        newInterfaces.push(...(data as any).interfaces);
+                    }
+
+                    return newInterfaces;
                 }}
             />
 

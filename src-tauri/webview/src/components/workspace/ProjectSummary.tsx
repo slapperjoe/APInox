@@ -54,7 +54,7 @@ export const ProjectSummary: React.FC<{ project: import('@shared/models').Apinox
                         onClick={() => onSelectInterface && onSelectInterface(iface)}
                     >
                         <InterfaceInfo>
-                            <InterfaceName>{iface.name}</InterfaceName>
+                            <InterfaceName>{(iface as any).displayName || iface.name}</InterfaceName>
                             <InterfaceOps>{iface.operations.length} operations</InterfaceOps>
                             {iface.definition && (
                                 <InterfaceDef>

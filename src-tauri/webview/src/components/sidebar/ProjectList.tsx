@@ -1,16 +1,20 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { Plus, FolderPlus, ChevronDown, ChevronRight, Trash2, Lock, Save, ChevronsDownUp, ChevronsUpDown, Download } from 'lucide-react';
+import { Plus, FolderPlus, ChevronDown, ChevronRight, Trash2, Lock, Save, ChevronsDownUp, ChevronsUpDown, Download, Upload, GripVertical } from 'lucide-react';
 import { ApinoxProject, ApiInterface, ApiOperation, ApiRequest } from '@shared/models';
 import { HeaderButton, OperationItem, SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle } from './shared/SidebarStyles';
 import { ServiceTree } from './ServiceTree';
 import { FolderTree } from './FolderTree';
 import { ContextMenu, ContextMenuItem } from '../../styles/App.styles';
 import { updateProjectWithRename } from '../../utils/projectUtils';
+import { SaveErrorDialog } from '../SaveErrorDialog';
+import { useDragAndDrop } from '../../hooks/useDragAndDrop';
 
 interface ProjectListProps {
     projects: ApinoxProject[];
     savedProjects: Set<string>;
+    saveErrors: Map<string, string>;
+    setSaveErrors: React.Dispatch<React.SetStateAction<Map<string, string>>>;
     workspaceDirty?: boolean;
     onAddProject: () => void;
     loadProject: () => void;
@@ -24,6 +28,7 @@ interface ProjectListProps {
     toggleOperationExpand: (projName: string, ifaceName: string, opName: string) => void;
     expandAll: () => void;
     collapseAll: () => void;
+    reorderItems: (itemId: string, targetId: string, position: 'before' | 'after', itemType: 'project' | 'folder' | 'interface', projectName?: string) => void;
 
     // Selection
     selectedProjectName: string | null;
@@ -52,6 +57,7 @@ interface ProjectListProps {
     deleteConfirm: string | null;
     setDeleteConfirm: (id: string | null) => void;
     onRefreshInterface?: (projectName: string, iface: ApiInterface) => void;
+    onBulkImport?: () => void;
 }
 
 const ProjectContainer = styled(SidebarContainer)`
@@ -62,9 +68,59 @@ const ProjectContent = styled(SidebarContent)`
     overflow-y: auto;
 `;
 
-const ProjectRow = styled(OperationItem)`
+const ProjectRow = styled(OperationItem)<{ $isDragging?: boolean; $dropPosition?: 'before' | 'after' | null }>`
     font-weight: bold;
     padding-left: 5px;
+    cursor: pointer;
+    opacity: ${props => props.$isDragging ? 0.5 : 1};
+    position: relative;
+    
+    ${props => props.$dropPosition === 'before' && `
+        &::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--vscode-focusBorder, #007ACC);
+        }
+    `}
+    
+    ${props => props.$dropPosition === 'after' && `
+        &::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--vscode-focusBorder, #007ACC);
+        }
+    `}
+`;
+
+const DragHandle = styled.div<{ $visible: boolean }>`
+    display: ${props => props.$visible ? 'flex' : 'none'};
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    color: var(--vscode-foreground);
+    opacity: 0.5;
+    position: absolute;
+    left: -18px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 100%;
+    
+    &:hover {
+        opacity: 0.8;
+    }
+    
+    &:active {
+        cursor: grabbing;
+    }
 `;
 
 const ProjectToggle = styled.span`
@@ -89,8 +145,10 @@ const ProjectName = styled.span`
     margin-left: 5px;
 `;
 
-const SaveButton = styled(HeaderButton)`
-    color: var(--vscode-charts-orange);
+const SaveButton = styled(HeaderButton)<{ $hasError?: boolean }>`
+    color: ${props => props.$hasError 
+        ? 'var(--vscode-errorForeground)' 
+        : 'var(--vscode-charts-orange)'};
 `;
 
 const ReadOnlyIcon = styled(Lock)`
@@ -107,6 +165,8 @@ const MenuSeparator = styled.div`
 export const ProjectList: React.FC<ProjectListProps> = ({
     projects,
     savedProjects,
+    saveErrors,
+    setSaveErrors,
 
     onAddProject,
     loadProject,
@@ -118,6 +178,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     toggleOperationExpand,
     expandAll,
     collapseAll,
+    reorderItems,
     setSelectedProjectName,
     selectedProjectName,
     setSelectedInterface,
@@ -139,18 +200,39 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     deleteConfirm, // Global delete confirm from Sidebar parent
     setDeleteConfirm,
     onRefreshInterface,
-    onExportWorkspace
+    onExportWorkspace,
+    onBulkImport
 }) => {
     // Local state for folder selection
     const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
 
+    // Save Error Dialog State
+    const [errorDialogProject, setErrorDialogProject] = useState<string | null>(null);
+
+    // Drag and Drop State
+    const { dragState, handleDragStart, handleDragOver, handleDragLeave, handleDrop, handleDragEnd } = useDragAndDrop({
+        onReorder: reorderItems
+    });
+
     // Inline Rename State
     const [renameId, setRenameId] = useState<string | null>(null);
-    const [renameType, setRenameType] = useState<'project' | 'folder' | 'request' | null>(null);
+    const [renameType, setRenameType] = useState<'project' | 'folder' | 'request' | 'interface' | 'operation' | null>(null);
     const [renameName, setRenameName] = useState<string>('');
 
     // Local Context Menu State
     const [localContextMenu, setLocalContextMenu] = useState<{ x: number; y: number; type: string; data: any } | null>(null);
+
+    // Show error dialog when a save error occurs
+    React.useEffect(() => {
+        // Find the first project with an error that doesn't already have a dialog open
+        const projectWithError = Array.from(saveErrors.keys()).find(name => 
+            saveErrors.has(name) && name !== errorDialogProject
+        );
+        
+        if (projectWithError && !errorDialogProject) {
+            setErrorDialogProject(projectWithError);
+        }
+    }, [saveErrors, errorDialogProject]);
 
     const handleLocalContextMenu = (e: React.MouseEvent, type: string, data: any, _isExplorer?: boolean) => {
         // Prevent default and stop propagation to avoid global menu
@@ -175,7 +257,13 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     const closeLocalContextMenu = () => setLocalContextMenu(null);
 
     const handleRenameStart = () => {
+        console.log('[ProjectList] handleRenameStart triggered', localContextMenu);
         if (localContextMenu) {
+            console.log('[ProjectList] Starting rename for:', {
+                type: localContextMenu.type,
+                id: localContextMenu.data.id || localContextMenu.data.name,
+                name: localContextMenu.data.name
+            });
             setRenameId(localContextMenu.data.id || localContextMenu.data.name); // Prefer ID, fallback to name for projects
             setRenameType(localContextMenu.type as any);
             setRenameName(localContextMenu.data.name);
@@ -185,6 +273,8 @@ export const ProjectList: React.FC<ProjectListProps> = ({
 
     const submitRename = () => {
         if (renameId && renameName.trim() && renameType) {
+            console.log('[ProjectList] submitRename', { renameId, renameName: renameName.trim(), renameType });
+            
             // Update projects
             const updatedProjects = updateProjectWithRename(projects, renameId, renameType, renameName.trim(), localContextMenu?.data);
 
@@ -201,9 +291,17 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                 // Deep search for children?
                 (renameType !== 'project' && (
                     p.folders?.some(f => f.id === renameId || f.requests.some(r => r.id === renameId)) ||
-                    p.interfaces?.some(i => i.operations.some(o => o.requests.some(r => r.id === renameId)))
+                    p.interfaces?.some(i => 
+                        (i.id === renameId || i.name === renameId) || // Check interface itself
+                        i.operations.some(o => 
+                            (o.id === renameId || o.name === renameId) || // Check operation itself
+                            o.requests.some(r => r.id === renameId) // Check requests
+                        )
+                    )
                 ))
             );
+
+            console.log('[ProjectList] originalProject found:', originalProject?.name);
 
             if (originalProject) {
                 // Name might have changed!
@@ -211,19 +309,65 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                 // Since updateProjectWithRename maps the array, the index is preserved.
                 const index = projects.indexOf(originalProject);
                 if (index !== -1 && updatedProjects[index]) {
+                    console.log('[ProjectList] Calling onUpdateProject for:', updatedProjects[index].name);
                     // Pass both old and new to parent to update state and save
                     if (onUpdateProject) {
                         onUpdateProject(originalProject, updatedProjects[index]);
                     } else {
                         // Fallback (e.g., if prop missing, but it shouldn't be)
+                        console.log('[ProjectList] onUpdateProject not available, using saveProject');
                         saveProject(updatedProjects[index]);
                     }
                 }
+            } else {
+                console.warn('[ProjectList] Could not find project containing renamed item:', { renameId, renameType });
             }
         }
         setRenameId(null);
         setRenameType(null);
         setRenameName('');
+    };
+
+    // Save Error Dialog Handlers
+    const handleRetrySave = () => {
+        if (errorDialogProject) {
+            const proj = projects.find(p => p.name === errorDialogProject);
+            if (proj) {
+                saveProject(proj);
+            }
+            // Clear the error so dialog doesn't reopen
+            setSaveErrors(current => {
+                const next = new Map(current);
+                next.delete(errorDialogProject);
+                return next;
+            });
+            setErrorDialogProject(null);
+        }
+    };
+
+    const handleDeleteProject = () => {
+        if (errorDialogProject) {
+            closeProject(errorDialogProject);
+            // Clear the error
+            setSaveErrors(current => {
+                const next = new Map(current);
+                next.delete(errorDialogProject);
+                return next;
+            });
+            setErrorDialogProject(null);
+        }
+    };
+
+    const handleKeepProject = () => {
+        if (errorDialogProject) {
+            // Clear the error so dialog doesn't reopen
+            setSaveErrors(current => {
+                const next = new Map(current);
+                next.delete(errorDialogProject);
+                return next;
+            });
+            setErrorDialogProject(null);
+        }
     };
 
     return (
@@ -233,7 +377,8 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                 <SidebarHeaderActions>
                     <HeaderButton onClick={collapseAll} title="Collapse All"><ChevronsDownUp size={16} /></HeaderButton>
                     <HeaderButton onClick={expandAll} title="Expand All"><ChevronsUpDown size={16} /></HeaderButton>
-                    <HeaderButton onClick={onExportWorkspace} title="Export Workspace"><Download size={16} /></HeaderButton>
+                    <HeaderButton onClick={onExportWorkspace} title="Export Workspace"><Upload size={16} /></HeaderButton>
+                    <HeaderButton onClick={onBulkImport} title="Bulk Import"><Download size={16} /></HeaderButton>
                     <HeaderButton onClick={onAddProject} title="New Project"><Plus size={16} /></HeaderButton>
                     <HeaderButton onClick={loadProject} title="Add Project"><FolderPlus size={16} /></HeaderButton>
                 </SidebarHeaderActions>
@@ -253,11 +398,22 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                         const isProjectActive = isProjectSelected && selectedInterface === null;
                         const isRenaming = renameId === (proj.id || proj.name) && renameType === 'project';
                         const isReadOnly = !!proj.readOnly;
+                        const projId = proj.id || proj.name;
+                        
+                        // Drag state for this project
+                        const isDragging = dragState.draggedItemId === projId;
+                        const isDropTarget = dragState.dropTargetId === projId;
+                        const dropPosition = isDropTarget ? dragState.dropPosition : null;
 
                         return (
                             <div key={proj.id || pIdx}>
                                 <ProjectRow
                                     $active={isProjectActive}
+                                    $isDragging={isDragging}
+                                    $dropPosition={dropPosition}
+                                    onDragOver={(e) => handleDragOver(e, projId, 'project')}
+                                    onDragLeave={handleDragLeave}
+                                    onDrop={(e) => handleDrop(e, projId, 'project')}
                                     onClick={() => {
                                         // Select project, clear interface/operation/request
                                         setSelectedProjectName(proj.name);
@@ -267,6 +423,21 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                                     }}
                                     onContextMenu={(e) => handleLocalContextMenu(e, 'project', proj)}
                                 >
+                                    {!isReadOnly && !isRenaming && isProjectActive && (
+                                        <DragHandle
+                                            $visible={true}
+                                            draggable
+                                            onDragStart={(e) => {
+                                                e.stopPropagation();
+                                                handleDragStart(e, projId, 'project');
+                                            }}
+                                            onDragEnd={handleDragEnd}
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            <GripVertical size={14} />
+                                        </DragHandle>
+                                    )}
+                                    
                                     <ProjectToggle
                                         onClick={(e) => { e.stopPropagation(); toggleProjectExpand(proj.name); }}
                                     >
@@ -301,8 +472,11 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                                     {/* Unsaved Project: Show Manual Save Button (Required for first save) */}
                                     {(!(proj as any).fileName) && !isRenaming && !isReadOnly && (
                                         <SaveButton
+                                            $hasError={saveErrors.has(proj.name)}
                                             onClick={(e) => { e.stopPropagation(); saveProject(proj); }}
-                                            title="Save Project (Required for Auto-Save)"
+                                            title={saveErrors.has(proj.name) 
+                                                ? `Save Failed: ${saveErrors.get(proj.name)}` 
+                                                : "Save Project (Required for Auto-Save)"}
                                         >
                                             <Save size={14} />
                                         </SaveButton>
@@ -389,6 +563,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
 
                                             // Inline Rename Props
                                             renameId={renameId}
+                                            renameType={renameType as 'interface' | 'operation' | 'request' | null}
                                             renameValue={renameName}
                                             onRenameChange={setRenameName}
                                             onRenameSubmit={submitRename}
@@ -397,6 +572,15 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                                                 setRenameType(null);
                                                 setRenameName('');
                                             }}
+                                            
+                                            // Drag and drop props
+                                            projectName={proj.name}
+                                            dragState={dragState}
+                                            onDragStart={handleDragStart}
+                                            onDragOver={handleDragOver}
+                                            onDragLeave={handleDragLeave}
+                                            onDrop={(e, itemId, itemType) => handleDrop(e, itemId, itemType, proj.name)}
+                                            onDragEnd={handleDragEnd}
                                         />
 
                                         {/* Folders */}
@@ -422,6 +606,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
 
                                                 // Inline Rename Props
                                                 renameId={renameId}
+                                                renameType={renameType}
                                                 renameValue={renameName}
                                                 onRenameChange={setRenameName}
                                                 onRenameSubmit={submitRename}
@@ -444,8 +629,15 @@ export const ProjectList: React.FC<ProjectListProps> = ({
             {/* Local Context Menu */}
             {localContextMenu && (
                 <ContextMenu top={localContextMenu.y} left={localContextMenu.x}>
-                    {(localContextMenu.type === 'project' || localContextMenu.type === 'folder' || localContextMenu.type === 'request') && (
-                        <ContextMenuItem onClick={handleRenameStart}>Rename</ContextMenuItem>
+                    {(localContextMenu.type === 'project' || 
+                      localContextMenu.type === 'folder' || 
+                      localContextMenu.type === 'request' ||
+                      localContextMenu.type === 'interface' ||
+                      localContextMenu.type === 'operation') && (
+                        <ContextMenuItem onClick={() => {
+                            console.log('Clicked: Rename');
+                            handleRenameStart();
+                        }}>Rename</ContextMenuItem>
                     )}
 
                     {/* Replica of Global Menu Items for Fallback */}
@@ -484,6 +676,17 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                            Or simpler: we just handle Rename here and forward others? NO, standard context menu implies replacing it.
                         */}
                 </ContextMenu>
+            )}
+
+            {/* Save Error Dialog */}
+            {errorDialogProject && saveErrors.has(errorDialogProject) && (
+                <SaveErrorDialog
+                    projectName={errorDialogProject}
+                    errorMessage={saveErrors.get(errorDialogProject) || 'Unknown error'}
+                    onRetry={handleRetrySave}
+                    onDelete={handleDeleteProject}
+                    onKeep={handleKeepProject}
+                />
             )}
         </ProjectContainer>
     );

@@ -21,12 +21,12 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
         // ===== WSDL/SOAP Operations =====
         [FrontendCommand.LoadWsdl]: async (payload) => {
             const { url, localWsdlDir } = payload;
-            
+
             // Detection logic: Check if it's OpenAPI/Swagger by file extension
-            const isJson = url.toLowerCase().endsWith('.json') || 
-                          url.toLowerCase().endsWith('.yaml') || 
-                          url.toLowerCase().endsWith('.yml');
-            
+            const isJson = url.toLowerCase().endsWith('.json') ||
+                url.toLowerCase().endsWith('.yaml') ||
+                url.toLowerCase().endsWith('.yml');
+
             if (isJson) {
                 services.soapClient.log('Detected OpenAPI/Swagger format (JSON/YAML)...');
                 const { OpenApiParser } = require('../../src/OpenApiParser');
@@ -37,6 +37,43 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
                 services.soapClient.log('Using WSDL parser...');
                 return await services.soapClient.parseWsdl(url, localWsdlDir);
             }
+        },
+
+        [FrontendCommand.BulkImportWsdls]: async (payload) => {
+            const { urls } = payload;
+            const results: Array<{ url: string; success: boolean; interfaces?: any[]; error?: string }> = [];
+
+            services.soapClient.log(`Starting bulk import of ${urls?.length || 0} URLs...`);
+
+            for (const url of urls || []) {
+                try {
+                    services.soapClient.log(`Bulk import: parsing ${url}...`);
+
+                    // Detection logic: Check if it's OpenAPI/Swagger by file extension
+                    const isJson = url.toLowerCase().endsWith('.json') ||
+                        url.toLowerCase().endsWith('.yaml') ||
+                        url.toLowerCase().endsWith('.yml');
+
+                    let interfaces: any[];
+                    if (isJson) {
+                        const { OpenApiParser } = require('../../src/OpenApiParser');
+                        const parser = new OpenApiParser(services.soapClient.getOutputChannel());
+                        interfaces = await parser.parse(url);
+                    } else {
+                        interfaces = await services.soapClient.parseWsdl(url);
+                    }
+
+                    results.push({ url, success: true, interfaces });
+                    services.soapClient.log(`Bulk import: successfully parsed ${url} (${interfaces.length} interfaces)`);
+                } catch (error: any) {
+                    const errorMessage = error?.message || String(error);
+                    results.push({ url, success: false, error: errorMessage });
+                    services.soapClient.log(`Bulk import: failed to parse ${url}: ${errorMessage}`);
+                }
+            }
+
+            services.soapClient.log(`Bulk import complete: ${results.filter(r => r.success).length}/${results.length} successful`);
+            return { results };
         },
 
         [FrontendCommand.ExecuteRequest]: async (payload) => {
@@ -230,8 +267,8 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             if (payload?.config) {
                 // Map 'target' to 'targetUrl' for ProxyService
                 const configData = payload.config;
-                const proxyConfig = configData.target 
-                    ? { ...configData, targetUrl: configData.target } 
+                const proxyConfig = configData.target
+                    ? { ...configData, targetUrl: configData.target }
                     : configData;
                 services.proxyService.updateConfig(proxyConfig);
             }
@@ -247,20 +284,20 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
         [FrontendCommand.UpdateProxyConfig]: async (payload) => {
             // Payload comes as { config: { port, target, ... } }
             const configData = payload.config || payload;
-            
+
             // Map 'target' to 'targetUrl' for ProxyService
-            const proxyConfig = configData.target 
-                ? { ...configData, targetUrl: configData.target } 
+            const proxyConfig = configData.target
+                ? { ...configData, targetUrl: configData.target }
                 : configData;
-            
+
             services.proxyService.updateConfig(proxyConfig);
-            
+
             // Persist target URL to settings
             const targetUrl = proxyConfig.targetUrl || configData.target;
             if (targetUrl) {
                 services.settingsManager.updateLastProxyTarget(targetUrl);
             }
-            
+
             return { updated: true };
         },
 
@@ -282,20 +319,20 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
                 // Generate certificate if it doesn't exist
                 await services.proxyService.prepareCert();
                 console.log('[Router] prepareCert completed');
-                
+
                 const certPath = services.proxyService.getCertPath();
                 console.log('[Router] certPath:', certPath);
-                
+
                 if (!certPath) {
                     console.error('[Router] certPath is null/undefined');
-                    return { 
-                        success: false, 
-                        error: 'Failed to generate certificate - no path returned.' 
+                    return {
+                        success: false,
+                        error: 'Failed to generate certificate - no path returned.'
                     };
                 }
-                
-                const result = { 
-                    success: true, 
+
+                const result = {
+                    success: true,
                     certPath,
                     instructions: "To trust this proxy for HTTPS interception:\n\n" +
                         "Windows: Double-click the certificate → Install Certificate → Local Machine → " +
@@ -585,7 +622,7 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             const { suiteId, requestId, updates } = payload;
             const suite = services.performanceService.getSuite(suiteId);
             if (suite) {
-                const updatedRequests = suite.requests.map(r => 
+                const updatedRequests = suite.requests.map(r =>
                     r.id === requestId ? { ...r, ...updates } : r
                 );
                 services.performanceService.updateSuite(suiteId, { requests: updatedRequests });
@@ -661,11 +698,11 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
         [FrontendCommand.GetSettings]: async () => {
             const configPath = services.settingsManager.getConfigPath();
             const configDir = services.settingsManager.getConfigDir();
-            
+
             let raw = '';
             let readError: string | null = null;
             let exists = false;
-            
+
             try {
                 const fs = await import('fs');
                 exists = fs.existsSync(configPath);
@@ -697,12 +734,12 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             services.performanceService.setSuites(updatedConfig.performanceSuites || []);
             services.performanceService.setHistory(updatedConfig.performanceHistory || []);
             services.scheduleService.loadSchedules(updatedConfig.performanceSchedules || []);
-            
+
             // Sync proxy-related rules to ProxyService if running
             services.proxyService.setProxyRules(updatedConfig.network?.proxyRules || []);
             services.proxyService.setReplaceRules(updatedConfig.replaceRules || []);
             services.proxyService.setBreakpoints(updatedConfig.breakpoints || []);
-            
+
             return {
                 success: true
             };
@@ -889,7 +926,7 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
 
         [FrontendCommand.GetDebugInfo]: async () => {
             const config = services.settingsManager.getConfig();
-            
+
             // Collect debug information
             const debugInfo = {
                 timestamp: new Date().toISOString(),
@@ -935,7 +972,7 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             const { exec } = require('child_process');
             const platform = process.platform;
             let command: string;
-            
+
             if (platform === 'win32') {
                 command = `start "" "${message.filePath}"`;
             } else if (platform === 'darwin') {
@@ -943,7 +980,7 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             } else {
                 command = `xdg-open "${message.filePath}"`;
             }
-            
+
             return new Promise((resolve, reject) => {
                 exec(command, (error: any) => {
                     if (error) {
@@ -961,13 +998,13 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             const fs = require('fs');
             const path = require('path');
             const os = require('os');
-            
+
             const certPath = path.join(os.tmpdir(), 'apinox-proxy.cer');
             const keyPath = path.join(os.tmpdir(), 'apinox-proxy.key');
-            
+
             const exists = fs.existsSync(certPath) && fs.existsSync(keyPath);
             let thumbprint = null;
-            
+
             if (exists && process.platform === 'win32') {
                 // Use PowerShell to get thumbprint (more reliable than certutil)
                 try {
@@ -980,12 +1017,12 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
                     console.warn('[Diagnostics] Failed to get thumbprint:', e.message);
                 }
             }
-            
-            return { 
-                exists, 
+
+            return {
+                exists,
                 certPath: exists ? certPath : null,
                 keyPath: exists ? keyPath : null,
-                thumbprint 
+                thumbprint
             };
         },
 
@@ -993,18 +1030,18 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             if (process.platform !== 'win32') {
                 return { inLocalMachine: false, inCurrentUser: false, unsupported: true };
             }
-            
+
             const { thumbprint } = payload;
             if (!thumbprint) {
                 throw new Error('Thumbprint is required');
             }
-            
+
             console.log('[Diagnostics] Checking certificate stores for thumbprint:', thumbprint);
-            
+
             const { execSync } = require('child_process');
             let inLocalMachine = false;
             let inCurrentUser = false;
-            
+
             try {
                 // Check LocalMachine\Root
                 const script = `$certs = Get-ChildItem -Path Cert:\\LocalMachine\\Root -ErrorAction SilentlyContinue | Where-Object { $_.Thumbprint -eq '${thumbprint}' }; if ($certs) { Write-Output 'FOUND' } else { Write-Output 'NOT_FOUND' }`;
@@ -1017,7 +1054,7 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             } catch (e: any) {
                 console.warn('[Diagnostics] Error checking LocalMachine store:', e.message);
             }
-            
+
             try {
                 // Check CurrentUser\Root
                 const script = `$certs = Get-ChildItem -Path Cert:\\CurrentUser\\Root -ErrorAction SilentlyContinue | Where-Object { $_.Thumbprint -eq '${thumbprint}' }; if ($certs) { Write-Output 'FOUND' } else { Write-Output 'NOT_FOUND' }`;
@@ -1030,7 +1067,7 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             } catch (e: any) {
                 console.warn('[Diagnostics] Error checking CurrentUser store:', e.message);
             }
-            
+
             return { inLocalMachine, inCurrentUser };
         },
 
@@ -1039,24 +1076,24 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             const fs = require('fs');
             const path = require('path');
             const os = require('os');
-            
+
             const certPath = path.join(os.tmpdir(), 'apinox-proxy.cer');
             const keyPath = path.join(os.tmpdir(), 'apinox-proxy.key');
-            
+
             if (!fs.existsSync(certPath) || !fs.existsSync(keyPath)) {
                 return { success: false, error: 'Certificate files not found' };
             }
-            
+
             try {
                 const cert = fs.readFileSync(certPath, 'utf8');
                 const key = fs.readFileSync(keyPath, 'utf8');
-                
+
                 // Try to create HTTPS server with the certificate
                 const testServer = https.createServer({ cert, key }, (req: any, res: any) => {
                     res.writeHead(200);
                     res.end('OK');
                 });
-                
+
                 // Try to bind to a random port
                 await new Promise<void>((resolve, reject) => {
                     testServer.listen(0, '127.0.0.1', () => {
@@ -1064,7 +1101,7 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
                     });
                     testServer.on('error', reject);
                 });
-                
+
                 return { success: true };
             } catch (error: any) {
                 return { success: false, error: error.message };
@@ -1073,15 +1110,15 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
 
         [FrontendCommand.TestProxyConnection]: async () => {
             const https = require('https');
-            
+
             // Check if proxy is running
             if (!services.proxyService.isActive()) {
                 return { success: false, error: 'Proxy is not running' };
             }
-            
+
             const config = services.proxyService.getConfig();
             const proxyUrl = `https://localhost:${config.port}`;
-            
+
             return new Promise((resolve) => {
                 const options = {
                     hostname: 'localhost',
@@ -1092,14 +1129,14 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
                     requestCert: false,
                     agent: false
                 };
-                
+
                 console.log('[Diagnostics] Testing connection to proxy:', proxyUrl);
-                
+
                 const req = https.request(options, (res: any) => {
                     console.log('[Diagnostics] Connection successful! Status:', res.statusCode);
                     console.log('[Diagnostics] TLS Protocol:', res.socket.getProtocol());
                     console.log('[Diagnostics] Cipher:', res.socket.getCipher());
-                    
+
                     let data = '';
                     res.on('data', (chunk: any) => { data += chunk; });
                     res.on('end', () => {
@@ -1111,7 +1148,7 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
                         });
                     });
                 });
-                
+
                 req.on('error', (error: any) => {
                     console.error('[Diagnostics] Connection failed:', error);
                     resolve({
@@ -1120,12 +1157,12 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
                         code: error.code
                     });
                 });
-                
+
                 req.setTimeout(5000, () => {
                     req.destroy();
                     resolve({ success: false, error: 'Connection timeout' });
                 });
-                
+
                 req.end();
             });
         },
@@ -1134,25 +1171,25 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             if (process.platform !== 'win32') {
                 return { success: false, error: 'Only supported on Windows' };
             }
-            
+
             const fs = require('fs');
             const path = require('path');
             const os = require('os');
             const { execSync } = require('child_process');
-            
+
             const certPath = path.join(os.tmpdir(), 'apinox-proxy.cer');
-            
+
             if (!fs.existsSync(certPath)) {
                 return { success: false, error: 'Certificate file not found' };
             }
-            
+
             try {
                 console.log('[Diagnostics] Installing certificate to LocalMachine\\Root...');
                 console.log('[Diagnostics] Certificate path:', certPath);
-                
+
                 // Escape backslashes in path for PowerShell
                 const escapedPath = certPath.replace(/\\/g, '\\\\');
-                
+
                 // Install certificate with detailed error handling
                 const script = `
                     try {
@@ -1191,22 +1228,22 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
                         exit 1
                     }
                 `;
-                
+
                 const result = execSync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${script}"`, { encoding: 'utf8' });
                 console.log('[Diagnostics] Installation result:', result);
-                
+
                 return { success: true, message: result.trim() };
             } catch (error: any) {
                 console.error('[Diagnostics] Installation failed:', error.message);
-                
+
                 // Check if it's a permissions error
                 if (error.message.includes('Access is denied') || error.message.includes('UnauthorizedAccessException')) {
-                    return { 
-                        success: false, 
+                    return {
+                        success: false,
                         error: 'Access denied. APInox needs to run as Administrator to install certificates to LocalMachine store.\n\nAlternatively, run this PowerShell command as Administrator:\nImport-Certificate -FilePath "' + certPath + '" -CertStoreLocation Cert:\\LocalMachine\\Root'
                     };
                 }
-                
+
                 return { success: false, error: error.message };
             }
         },
@@ -1215,14 +1252,14 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             if (process.platform !== 'win32') {
                 return { success: false, error: 'Only supported on Windows' };
             }
-            
+
             const { thumbprint } = payload;
             if (!thumbprint) {
                 throw new Error('Thumbprint is required');
             }
-            
+
             const { execSync } = require('child_process');
-            
+
             try {
                 // PowerShell script to move certificate from CurrentUser to LocalMachine
                 const script = `
@@ -1245,7 +1282,7 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
                         throw 'Certificate not found in CurrentUser store'
                     }
                 `;
-                
+
                 execSync(`powershell -Command "${script.replace(/"/g, '\\"')}"`, { encoding: 'utf8' });
                 return { success: true };
             } catch (error: any) {
@@ -1257,13 +1294,13 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             const fs = require('fs');
             const path = require('path');
             const os = require('os');
-            
+
             const certPath = path.join(os.tmpdir(), 'apinox-proxy.cer');
             const keyPath = path.join(os.tmpdir(), 'apinox-proxy.key');
-            
+
             try {
                 console.log('[Diagnostics] Starting certificate regeneration...');
-                
+
                 // Delete existing certificate files
                 if (fs.existsSync(certPath)) {
                     fs.unlinkSync(certPath);
@@ -1273,29 +1310,29 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
                     fs.unlinkSync(keyPath);
                     console.log('[Diagnostics] Deleted old key');
                 }
-                
+
                 // Import node-forge to regenerate certificate
                 const forge = require('node-forge');
                 const pki = forge.pki;
-                
+
                 // Generate a key pair
                 console.log('[Diagnostics] Generating new RSA key pair (2048-bit)...');
                 const keys = pki.rsa.generateKeyPair(2048);
                 console.log('[Diagnostics] Key pair generated');
-                
+
                 // Create a certificate
                 console.log('[Diagnostics] Creating certificate...');
                 const cert = pki.createCertificate();
                 cert.publicKey = keys.publicKey;
-                
+
                 // Serial number
                 cert.serialNumber = '01' + Date.now().toString(16);
-                
+
                 // Validity period
                 cert.validity.notBefore = new Date();
                 cert.validity.notAfter = new Date();
                 cert.validity.notAfter.setFullYear(cert.validity.notBefore.getFullYear() + 10);
-                
+
                 const attrs = [{
                     name: 'commonName',
                     value: 'localhost'
@@ -1303,10 +1340,10 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
                     name: 'organizationName',
                     value: 'APInox Proxy'
                 }];
-                
+
                 cert.setSubject(attrs);
                 cert.setIssuer(attrs);
-                
+
                 cert.setExtensions([{
                     name: 'basicConstraints',
                     cA: false // Server certificate, not CA
@@ -1334,42 +1371,42 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
                         value: '*.localhost'
                     }]
                 }]);
-                
+
                 // Self-sign certificate
                 console.log('[Diagnostics] Signing certificate...');
                 cert.sign(keys.privateKey, forge.md.sha256.create());
                 console.log('[Diagnostics] Certificate signed');
-                
+
                 // Convert to PEM
                 const certPem = pki.certificateToPem(cert);
                 const keyPem = pki.privateKeyToPem(keys.privateKey);
-                
+
                 // Validate PEM format
                 if (!certPem.includes('BEGIN CERTIFICATE') || !keyPem.includes('BEGIN RSA PRIVATE KEY')) {
                     throw new Error('Generated PEM files are invalid');
                 }
-                
+
                 // Save to temp directory
                 fs.writeFileSync(certPath, certPem, 'utf8');
                 fs.writeFileSync(keyPath, keyPem, 'utf8');
-                
+
                 console.log('[Diagnostics] Certificate files saved');
                 console.log('[Diagnostics] Cert:', certPath);
                 console.log('[Diagnostics] Key:', keyPath);
-                
+
                 // Verify files can be read back
                 const certTest = fs.readFileSync(certPath, 'utf8');
                 const keyTest = fs.readFileSync(keyPath, 'utf8');
-                
+
                 if (!certTest.includes('BEGIN CERTIFICATE') || !keyTest.includes('BEGIN RSA PRIVATE KEY')) {
                     throw new Error('Saved certificate files are corrupted');
                 }
-                
+
                 // Test that certificate and key match by creating a test server
                 console.log('[Diagnostics] Validating certificate/key pair...');
                 const https = require('https');
                 const testServer = https.createServer({ cert: certPem, key: keyPem });
-                
+
                 await new Promise<void>((resolve, reject) => {
                     testServer.listen(0, '127.0.0.1', () => {
                         console.log('[Diagnostics] ✓ Certificate/key pair validated');
@@ -1383,13 +1420,13 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
                         reject(new Error('Certificate validation timeout'));
                     }, 5000);
                 });
-                
+
                 console.log('[Diagnostics] Certificate regenerated successfully');
-                
+
                 return { success: true, certPath, keyPath };
             } catch (error: any) {
                 console.error('[Diagnostics] Failed to regenerate certificate:', error);
-                
+
                 // Clean up partial files on error
                 try {
                     if (fs.existsSync(certPath)) fs.unlinkSync(certPath);
@@ -1397,13 +1434,13 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
                 } catch (e) {
                     // Ignore cleanup errors
                 }
-                
+
                 return { success: false, error: error.message };
             }
         },
 
         [FrontendCommand.GetProxyStatus]: async () => {
-            return { 
+            return {
                 running: services.proxyService.isActive(),
                 config: services.proxyService.getConfig()
             };
@@ -1414,7 +1451,7 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             const path = require('path');
             const os = require('os');
             const { execSync } = require('child_process');
-            
+
             const certPath = path.join(os.tmpdir(), 'apinox-proxy.cer');
             const keyPath = path.join(os.tmpdir(), 'apinox-proxy.key');
 
@@ -1491,16 +1528,16 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             try {
                 const fs = require('fs');
                 const path = require('path');
-                
+
                 // In standalone binary, __dirname is inside the pkg snapshot
                 // We need to use process.execPath to find the real executable location
                 const execDir = path.dirname(process.execPath);
-                
+
                 console.log('[Sidecar] Looking for changelog...');
                 console.log('[Sidecar]   __dirname:', __dirname);
                 console.log('[Sidecar]   process.execPath:', process.execPath);
                 console.log('[Sidecar]   execDir:', execDir);
-                
+
                 // In development: navigate up from sidecar/dist/sidecar/src
                 // In production: try multiple possible locations
                 const possiblePaths = [
@@ -1512,7 +1549,7 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
                     path.join(execDir, '../Resources/CHANGELOG.md'), // Tauri bundle: use execPath instead of __dirname
                     path.join(__dirname, 'CHANGELOG.md'), // Same directory as sidecar
                 ];
-                
+
                 for (const testPath of possiblePaths) {
                     console.log('[Sidecar]   Trying:', testPath);
                     if (fs.existsSync(testPath)) {
@@ -1522,7 +1559,7 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
                         break;
                     }
                 }
-                
+
                 if (!result.changelog) {
                     console.warn('[Sidecar] Changelog file not found in any expected location');
                 }
@@ -1568,7 +1605,7 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
         // ===== Workflows =====
         [FrontendCommand.ExecuteWorkflow]: async (payload) => {
             const { workflow, projectPath } = payload;
-            
+
             if (!workflow) {
                 throw new Error('Workflow not provided');
             }
@@ -1589,11 +1626,11 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
                 }
 
                 const globalVars = services.settingsManager.getGlobalVariables() || {};
-                
+
                 // Process wildcards in request body and endpoint
                 let processedBody = request.request || '';
                 let processedEndpoint = request.endpoint || '';
-                
+
                 if (processedBody) {
                     const WildcardProcessor = await import('../../src/utils/WildcardProcessor').then(m => m.WildcardProcessor);
                     processedBody = WildcardProcessor.process(processedBody, envVars, globalVars);
@@ -1623,7 +1660,7 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
 
             // Execute workflow
             const result = await engine.execute(workflow, executeRequestFn);
-            
+
             return result;
         },
 
@@ -1636,19 +1673,19 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
         [FrontendCommand.SaveWorkflow]: async (payload) => {
             const { workflow } = payload;
             console.log('[Router] SaveWorkflow called with workflow:', workflow?.name, 'id:', workflow?.id);
-            
+
             if (!workflow) {
                 throw new Error('Workflow required');
             }
-            
+
             try {
                 // Get current workflows from global config
                 const workflows = services.settingsManager.getWorkflows();
                 console.log('[Router] Current workflows count:', workflows.length);
-                
+
                 const existingIndex = workflows.findIndex((w: any) => w.id === workflow.id);
                 console.log('[Router] Existing workflow index:', existingIndex);
-                
+
                 if (existingIndex >= 0) {
                     workflows[existingIndex] = workflow;
                     console.log('[Router] Updated existing workflow at index:', existingIndex);
@@ -1656,11 +1693,11 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
                     workflows.push(workflow);
                     console.log('[Router] Added new workflow, total count:', workflows.length);
                 }
-                
+
                 // Save back to global config
                 services.settingsManager.updateWorkflows(workflows);
                 console.log('[Router] Workflows saved to config');
-                
+
                 return { success: true, workflow };
             } catch (err: any) {
                 console.error('[Workflow] Failed to save workflow:', err);
@@ -1673,12 +1710,12 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             if (!workflowId) {
                 throw new Error('Workflow ID required');
             }
-            
+
             try {
                 const workflows = services.settingsManager.getWorkflows();
                 const filtered = workflows.filter((w: any) => w.id !== workflowId);
                 services.settingsManager.updateWorkflows(filtered);
-                
+
                 return { success: true };
             } catch (err: any) {
                 console.error('[Workflow] Failed to delete workflow:', err);
@@ -1690,13 +1727,13 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
     return {
         async handle(command: string, payload: any): Promise<any> {
             let handler = handlers[command];
-            
+
             // Fallback: Try case-insensitive or enum value lookup
             if (!handler) {
                 // Try lowercase first letter (GetSettings -> getSettings)
                 const lowerCaseCommand = command.charAt(0).toLowerCase() + command.slice(1);
                 const fallbackHandler = handlers[lowerCaseCommand];
-                
+
                 if (fallbackHandler) {
                     console.log(`[Router] Command '${command}' not found, using '${lowerCaseCommand}' instead`);
                     handler = fallbackHandler;

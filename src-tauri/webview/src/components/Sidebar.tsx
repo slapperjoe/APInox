@@ -101,7 +101,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     onChangeEnvironment
 }) => {
     // Destructure for passing to legacy children (can be cleaned up later by moving groups down)
-    const { projects, savedProjects, loadProject, saveProject, onUpdateProject, closeProject, onAddProject, toggleProjectExpand, toggleInterfaceExpand, toggleOperationExpand, expandAll, collapseAll, onDeleteInterface, onDeleteOperation, onAddFolder, onAddRequestToFolder, onDeleteFolder, onToggleFolderExpand, onRefreshInterface, onExportWorkspace } = projectProps;
+    const { projects, savedProjects, loadProject, saveProject, onUpdateProject, closeProject, onAddProject, toggleProjectExpand, toggleInterfaceExpand, toggleOperationExpand, expandAll, collapseAll, reorderItems, onDeleteInterface, onDeleteOperation, onAddFolder, onAddRequestToFolder, onDeleteFolder, onToggleFolderExpand, onRefreshInterface, onExportWorkspace, onBulkImport } = projectProps;
     const { exploredInterfaces, addToProject, addAllToProject, clearExplorer, removeFromExplorer, toggleExploredInterface, toggleExploredOperation } = explorerProps;
 
     const {
@@ -184,7 +184,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 )}
 
                 {activeView === SidebarView.HISTORY && historyProps && (
-                        <HistorySidebar
+                    <HistorySidebar
                         {...historyProps}
                     />
                 )}
@@ -216,6 +216,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <ProjectList
                         projects={projects}
                         savedProjects={savedProjects}
+                        saveErrors={projectProps.saveErrors}
+                        setSaveErrors={projectProps.setSaveErrors}
                         workspaceDirty={workspaceDirty}
                         onAddProject={onAddProject}
                         loadProject={loadProject}
@@ -227,6 +229,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         toggleOperationExpand={toggleOperationExpand}
                         expandAll={expandAll}
                         collapseAll={collapseAll}
+                        reorderItems={reorderItems}
 
                         selectedProjectName={selectedProjectName}
                         setSelectedProjectName={setSelectedProjectName}
@@ -251,6 +254,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         setDeleteConfirm={setDeleteConfirm}
                         onRefreshInterface={onRefreshInterface}
                         onExportWorkspace={onExportWorkspace}
+                        onBulkImport={onBulkImport}
                     />
                 )}
 
