@@ -119,10 +119,11 @@ export const SectionTitle = styled.div`
  * No indentation, used for root-level items in tree
  */
 export const ServiceItem = styled.div`
-    padding: 5px 10px;
+    padding: 3px 8px;
     cursor: pointer;
     display: flex;
     align-items: center;
+    font-size: 0.9em;
     &:hover {
         background-color: var(--vscode-list-hoverBackground);
     }
@@ -134,9 +135,10 @@ export const ServiceItem = styled.div`
  * Supports active state for selection highlighting
  */
 export const OperationItem = styled.div<{ $active?: boolean }>`
-    padding: 5px 10px;
+    padding: 3px 8px;
     padding-left: 20px;
     cursor: pointer;
+    font-size: 0.9em;
     background-color: ${props => props.$active ? 'var(--vscode-list-activeSelectionBackground)' : 'transparent'};
     color: ${props => props.$active ? 'var(--vscode-list-activeSelectionForeground)' : 'inherit'};
     display: flex;
@@ -152,10 +154,10 @@ export const OperationItem = styled.div<{ $active?: boolean }>`
  * Smaller font size for visual hierarchy
  */
 export const RequestItem = styled.div<{ $active?: boolean }>`
-    padding: 5px 10px;
+    padding: 3px 8px;
     padding-left: 45px;
     cursor: pointer;
-    font-size: 0.9em;
+    font-size: 0.85em;
     background-color: ${props => props.$active ? 'var(--vscode-list-activeSelectionBackground)' : 'transparent'};
     color: ${props => props.$active ? 'var(--vscode-list-activeSelectionForeground)' : 'inherit'};
     display: flex;

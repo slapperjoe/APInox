@@ -61,7 +61,7 @@ const renameInFolders = (
 export const updateProjectWithRename = (
     projects: ApinoxProject[],
     targetId: string, // ID or Name depending on what's available context
-    targetType: 'folder' | 'request' | 'project',
+    targetType: 'folder' | 'request' | 'project' | 'interface' | 'operation',
     newName: string,
     targetData?: any // Fallback if we need to match by reference
 ): ApinoxProject[] => {
@@ -80,7 +80,36 @@ export const updateProjectWithRename = (
         let newInterfaces = p.interfaces;
         let newFolders = p.folders;
 
-        // 1. Handle Requests in Interfaces (legacy/flat structure)
+        // 1. Handle Interface Rename (display only)
+        if (targetType === 'interface') {
+            newInterfaces = p.interfaces.map(i => {
+                const isMatch = (i.id && i.id === targetId) || i.name === targetId || (targetData && i === targetData);
+                if (isMatch) {
+                    console.log('[updateProjectWithRename] Renaming interface:', i.name, 'to displayName:', newName);
+                    projectDirty = true;
+                    return { ...i, displayName: newName };
+                }
+                return i;
+            });
+        }
+
+        // 2. Handle Operation Rename (display only)
+        if (targetType === 'operation') {
+            newInterfaces = p.interfaces.map(i => ({
+                ...i,
+                operations: i.operations.map(o => {
+                    const isMatch = (o.id && o.id === targetId) || o.name === targetId || (targetData && o === targetData);
+                    if (isMatch) {
+                        console.log('[updateProjectWithRename] Renaming operation:', o.name, 'to displayName:', newName);
+                        projectDirty = true;
+                        return { ...o, displayName: newName };
+                    }
+                    return o;
+                })
+            }));
+        }
+
+        // 3. Handle Requests in Interfaces (legacy/flat structure)
         if (targetType === 'request') {
             newInterfaces = p.interfaces.map(i => ({
                 ...i,
@@ -100,10 +129,8 @@ export const updateProjectWithRename = (
             }));
         }
 
-        // 2. Handle Folders and Requests in Folders
-        if (p.folders && p.folders.length > 0) {
-            // targetType here is guaranteed to be 'folder' | 'request' due to early return above (if flow analysis works)
-            // or we just cast it to be sure.
+        // 4. Handle Folders and Requests in Folders
+        if (p.folders && p.folders.length > 0 && (targetType === 'folder' || targetType === 'request')) {
             const nextType = targetType as 'folder' | 'request';
             const folderResult = renameInFolders(p.folders, targetId, nextType, newName);
             if (folderResult.updated) {

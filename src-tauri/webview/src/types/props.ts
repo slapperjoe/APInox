@@ -24,6 +24,8 @@ import {
 export interface SidebarProjectProps {
     projects: ApinoxProject[];
     savedProjects: Set<string>;
+    saveErrors: Map<string, string>;
+    setSaveErrors: React.Dispatch<React.SetStateAction<Map<string, string>>>;
     loadProject: () => void;
     saveProject: (project: ApinoxProject) => void;
     onUpdateProject: (oldProject: ApinoxProject, newProject: ApinoxProject) => void;
@@ -34,6 +36,7 @@ export interface SidebarProjectProps {
     toggleOperationExpand: (projName: string, ifaceName: string, opName: string) => void;
     expandAll: () => void;
     collapseAll: () => void;
+    reorderItems: (itemId: string, targetId: string, position: 'before' | 'after', itemType: 'project' | 'folder' | 'interface', projectName?: string) => void;
     onDeleteInterface?: (iface: ApiInterface) => void;
     onDeleteOperation?: (op: ApiOperation, iface: ApiInterface) => void;
     // Folder handlers
@@ -43,6 +46,7 @@ export interface SidebarProjectProps {
     onToggleFolderExpand?: (projectName: string, folderId: string) => void;
     onRefreshInterface?: (projectName: string, iface: ApiInterface) => void;
     onExportWorkspace?: () => void;
+    onBulkImport?: () => void;
 }
 
 export interface SidebarExplorerProps {

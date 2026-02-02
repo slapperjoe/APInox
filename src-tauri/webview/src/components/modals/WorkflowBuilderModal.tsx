@@ -306,8 +306,8 @@ export const WorkflowBuilderModal: React.FC<WorkflowBuilderModalProps> = ({
                         op.requests.forEach((req, idx) => {
                             items.push({
                                 id: `${project.name}-${iface.name}-${op.name}-${idx}`,
-                                label: op.requests.length > 1 ? `${op.name} [${idx + 1}/${op.requests.length}]` : op.name,
-                                description: `${project.name} > ${iface.name}${op.requests.length > 1 ? ` > Request ${idx + 1}` : ''}`,
+                                label: op.requests.length > 1 ? `${(op as any).displayName || op.name} [${idx + 1}/${op.requests.length}]` : ((op as any).displayName || op.name),
+                                description: `${project.name} > ${(iface as any).displayName || iface.name}${op.requests.length > 1 ? ` > Request ${idx + 1}` : ''}`,
                                 detail: req.endpoint || op.originalEndpoint || 'WSDL Operation',
                                 type: 'request',
                                 data: {
@@ -323,8 +323,8 @@ export const WorkflowBuilderModal: React.FC<WorkflowBuilderModalProps> = ({
                         // Operation with no saved requests - use default
                         items.push({
                             id: `${project.name}-${iface.name}-${op.name}-default`,
-                            label: op.name,
-                            description: `${project.name} > ${iface.name}`,
+                            label: (op as any).displayName || op.name,
+                            description: `${project.name} > ${(iface as any).displayName || iface.name}`,
                             detail: op.originalEndpoint || 'WSDL Operation',
                             type: 'request',
                             data: {

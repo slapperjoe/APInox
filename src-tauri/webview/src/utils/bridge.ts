@@ -266,7 +266,9 @@ export const bridge = {
                     listeners.forEach(cb => cb({
                         command: BackendCommand.Error,
                         error: e.message,
-                        originalCommand: message.command
+                        originalCommand: message.command,
+                        // Include project info for save errors
+                        projectName: message.command === FrontendCommand.SaveProject ? message.project?.name : undefined
                     }));
                 });
         } else {

@@ -13,7 +13,7 @@ export const InterfaceSummary: React.FC<{ interface: import('@shared/models').Ap
     return (
         <InterfaceContainer>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <InterfaceTitle>Interface: {iface.name}</InterfaceTitle>
+                <InterfaceTitle>Interface: {(iface as any).displayName || iface.name}</InterfaceTitle>
                 <ContextHelpButton sectionId="interface" />
             </div>
             <InfoCard>
@@ -34,7 +34,7 @@ export const InterfaceSummary: React.FC<{ interface: import('@shared/models').Ap
                     >
                         <OperationRow>
                             <div>
-                                <strong>{op.name}</strong>
+                                <strong>{(op as any).displayName || op.name}</strong>
                                 <OperationMeta>({op.requests.length} request{op.requests.length !== 1 ? 's' : ''})</OperationMeta>
                             </div>
                             <ChevronIconFaint size={14} />

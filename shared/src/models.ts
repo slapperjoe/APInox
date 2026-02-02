@@ -211,6 +211,7 @@ export interface ApiOperation {
     originalEndpoint?: string;
     id?: string;
     fullSchema?: SchemaNode | null; // Deep complex type tree for XML generation
+    displayName?: string; // For display-only renaming in UI (preserves original name for WSDL binding)
 }
 
 export interface ApiInterface {
@@ -222,6 +223,7 @@ export interface ApiInterface {
     operations: ApiOperation[];
     expanded?: boolean;
     id?: string;
+    displayName?: string; // For display-only renaming in UI (preserves original name for WSDL binding)
 }
 
 // ============================================================================

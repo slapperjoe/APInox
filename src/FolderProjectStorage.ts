@@ -62,7 +62,8 @@ export class FolderProjectStorage {
                 type: iface.type,
                 bindingName: iface.bindingName,
                 soapVersion: iface.soapVersion,
-                definition: iface.definition // WSDL URL
+                definition: iface.definition, // WSDL URL
+                displayName: (iface as any).displayName // Display-only rename
             };
             fs.writeFileSync(path.join(ifaceDir, 'interface.json'), JSON.stringify(ifaceMeta, null, 2));
 
@@ -91,7 +92,8 @@ export class FolderProjectStorage {
                     name: op.name,
                     action: op.action,
                     input: op.input, // Save input schema
-                    targetNamespace: op.targetNamespace // Save persistence logic
+                    targetNamespace: op.targetNamespace, // Save persistence logic
+                    displayName: (op as any).displayName // Display-only rename
                 };
                 fs.writeFileSync(path.join(opDir, 'operation.json'), JSON.stringify(opMeta, null, 2));
 

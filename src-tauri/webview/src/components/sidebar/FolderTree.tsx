@@ -108,6 +108,7 @@ interface FolderTreeProps {
 
     // Inline Rename Props
     renameId?: string | null;
+    renameType?: 'folder' | 'request' | null;
     renameValue?: string;
     onRenameChange?: (val: string) => void;
     onRenameSubmit?: () => void;
@@ -137,6 +138,7 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
     handleContextMenu,
 
     renameId,
+    renameType,
     renameValue,
     onRenameChange,
     onRenameSubmit,
@@ -164,7 +166,7 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
             {folders.map((folder) => {
                 const isSelected = selectedFolderId === folder.id;
                 const isExpanded = folder.expanded !== false;
-                const isRenaming = renameId === folder.id;
+                const isRenaming = renameId === folder.id && renameType === 'folder';
 
                 return (
                     <FolderWrapper key={folder.id} $level={level}>
@@ -250,7 +252,7 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
                         {/* Render requests when expanded */}
                         {
                             isExpanded && folder.requests.map((req) => {
-                                const isReqRenaming = renameId === req.id;
+                                const isReqRenaming = renameId === req.id && renameType === 'request';
                                 // Determine icon and color based on request type
                                 const getRequestIcon = () => {
                                     const type = req.requestType || 'soap';
@@ -344,6 +346,7 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
                                     handleContextMenu={handleContextMenu}
 
                                     renameId={renameId}
+                                    renameType={renameType}
                                     renameValue={renameValue}
                                     onRenameChange={onRenameChange}
                                     onRenameSubmit={onRenameSubmit}

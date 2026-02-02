@@ -1,8 +1,79 @@
 import React from 'react';
-import { ChevronRight, ChevronDown, Plus, Trash2, Code, Globe, Zap } from 'lucide-react';
+import styled from 'styled-components';
+import { ChevronRight, ChevronDown, Plus, Trash2, Code, Globe, Zap, GripVertical } from 'lucide-react';
 import { ApiInterface, ApiOperation, ApiRequest, ApinoxProject } from '@shared/models';
 import { HeaderButton, OperationItem, RequestItem } from './shared/SidebarStyles';
 import { ICON_COLORS } from '../../styles/colors';
+
+const InterfaceRow = styled(OperationItem)<{ $isDragging?: boolean; $dropPosition?: 'before' | 'after' | null }>`
+    cursor: pointer;
+    opacity: ${props => props.$isDragging ? 0.5 : 1};
+    position: relative;
+    padding-left: 20px;
+    
+    ${props => props.$dropPosition === 'before' && `
+        &::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--vscode-focusBorder, #007ACC);
+        }
+    `}
+    
+    ${props => props.$dropPosition === 'after' && `
+        &::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--vscode-focusBorder, #007ACC);
+        }
+    `}
+`;
+
+const DragHandle = styled.div<{ $visible: boolean }>`
+    display: ${props => props.$visible ? 'flex' : 'none'};
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    color: var(--vscode-foreground);
+    opacity: 0.5;
+    position: absolute;
+    left: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 100%;
+    
+    &:hover {
+        opacity: 0.8;
+    }
+    
+    &:active {
+        cursor: grabbing;
+    }
+`;
+
+const RenameInput = styled.input`
+    background: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    border: 1px solid var(--vscode-input-border);
+    padding: 2px 4px;
+    flex: 1;
+    font-size: inherit;
+`;
+
+interface DragState {
+    draggedItemId: string | null;
+    draggedItemType: 'project' | 'folder' | 'interface' | null;
+    dropTargetId: string | null;
+    dropPosition: 'before' | 'after' | null;
+}
 
 interface ServiceTreeProps {
     interfaces: ApiInterface[];
@@ -40,10 +111,20 @@ interface ServiceTreeProps {
 
     // Inline Rename Props
     renameId?: string | null;
+    renameType?: 'interface' | 'operation' | 'request' | null;
     renameValue?: string;
     onRenameChange?: (val: string) => void;
     onRenameSubmit?: () => void;
     onRenameCancel?: () => void;
+    
+    // Drag and drop props
+    projectName?: string;
+    dragState?: DragState;
+    onDragStart?: (e: React.DragEvent, itemId: string, itemType: 'interface') => void;
+    onDragOver?: (e: React.DragEvent, itemId: string, itemType: 'interface') => void;
+    onDragLeave?: (e: React.DragEvent) => void;
+    onDrop?: (e: React.DragEvent, itemId: string, itemType: 'interface') => void;
+    onDragEnd?: () => void;
 }
 
 export const ServiceTree: React.FC<ServiceTreeProps> = ({
@@ -69,30 +150,81 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
     setConfirmDeleteId,
 
     renameId,
+    renameType,
     renameValue,
     onRenameChange,
     onRenameSubmit,
-    onRenameCancel
+    onRenameCancel,
+    
+    projectName,
+    dragState,
+    onDragStart,
+    onDragOver,
+    onDragLeave,
+    onDrop,
+    onDragEnd
 }) => {
     return (
         <>
-            {interfaces.map((iface, i) => (
+            {interfaces.map((iface, i) => {
+                const ifaceId = iface.id || iface.name;
+                const isDragging = dragState?.draggedItemId === ifaceId;
+                const isDropTarget = dragState?.dropTargetId === ifaceId;
+                const dropPosition = isDropTarget ? dragState?.dropPosition : null;
+                const isRenaming = renameId === ifaceId && renameType === 'interface';
+                const isSelected = selectedInterface?.id && iface.id ? selectedInterface.id === iface.id : selectedInterface?.name === iface.name;
+                const showHandle = !isExplorer && !isRenaming && isSelected;
+                
+                return (
                 <div key={i}>
-                    <OperationItem
-                        $active={selectedInterface?.id && iface.id ? selectedInterface.id === iface.id : selectedInterface?.name === iface.name}
+                    <InterfaceRow
+                        $active={isSelected}
+                        $isDragging={isDragging}
+                        $dropPosition={dropPosition}
                         onContextMenu={(e) => onContextMenu(e, 'interface', iface)}
                         onClick={() => onSelectInterface(iface)}
-                        style={{ paddingLeft: 20 }}
+                        onDragOver={onDragOver && !isExplorer ? (e) => onDragOver(e, ifaceId, 'interface') : undefined}
+                        onDragLeave={onDragLeave}
+                        onDrop={onDrop && !isExplorer ? (e) => onDrop(e, ifaceId, 'interface') : undefined}
                     >
+                        {showHandle && onDragStart && onDragEnd && (
+                            <DragHandle
+                                $visible={true}
+                                draggable
+                                onDragStart={(e) => {
+                                    e.stopPropagation();
+                                    onDragStart(e, ifaceId, 'interface');
+                                }}
+                                onDragEnd={onDragEnd}
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <GripVertical size={14} />
+                            </DragHandle>
+                        )}
                         <span
                             onClick={(e) => { e.stopPropagation(); onToggleInterface(iface); }}
                             style={{ marginRight: 5, display: 'flex', cursor: 'pointer' }}
                         >
                             {(iface as any).expanded !== false ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                         </span>
-                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {iface.name} {isExplorer ? '(Preview)' : ''}
-                        </span>
+                        {isRenaming ? (
+                            <RenameInput
+                                type="text"
+                                value={renameValue}
+                                onChange={(e) => onRenameChange?.(e.target.value)}
+                                onBlur={onRenameSubmit}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') onRenameSubmit?.();
+                                    if (e.key === 'Escape') onRenameCancel?.();
+                                }}
+                                autoFocus
+                                onClick={(e) => e.stopPropagation()}
+                            />
+                        ) : (
+                            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {(iface as any).displayName || iface.name} {isExplorer ? '(Preview)' : ''}
+                            </span>
+                        )}
                         {isExplorer && selectedInterface?.name === iface.name && onAddToProject && onRemoveFromExplorer && (
                             <div style={{ display: 'flex', alignItems: 'center' }}>
                                 <HeaderButton onClick={(e) => { e.stopPropagation(); onAddToProject(iface); }} title="Add to Project">
@@ -124,8 +256,11 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
                                 </HeaderButton>
                             </div>
                         )}
-                    </OperationItem>
-                    {(iface as any).expanded !== false && iface.operations.map((op: any, j: number) => {
+                    </InterfaceRow>
+                    {(iface as any).expanded !== false && (iface.operations || []).map((op: any, j: number) => {
+                        const opId = op.id || op.name;
+                        const isOpRenaming = renameId === opId && renameType === 'operation';
+                        
                         return (
                             <div key={j} style={{ marginLeft: 15 }}>
                                 <OperationItem
@@ -138,7 +273,22 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
                                             {op.expanded !== false ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                                         </div>
                                     </span>
-                                    {op.name}
+                                    {isOpRenaming ? (
+                                        <RenameInput
+                                            type="text"
+                                            value={renameValue}
+                                            onChange={(e) => onRenameChange?.(e.target.value)}
+                                            onBlur={onRenameSubmit}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') onRenameSubmit?.();
+                                                if (e.key === 'Escape') onRenameCancel?.();
+                                            }}
+                                            autoFocus
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                    ) : (
+                                        <span style={{ flex: 1 }}>{op.displayName || op.name}</span>
+                                    )}
                                     {!isExplorer && selectedOperation?.name === op.name && (
                                         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>
                                             {onAddRequest && (
@@ -174,7 +324,7 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
                                 </OperationItem>
 
                                 {/* Always render request children */}
-                                {op.expanded !== false && op.requests.map((req: any, k: number) => {
+                                {op.expanded !== false && (op.requests || []).map((req: any, k: number) => {
                                     const isRenaming = renameId === req.id;
                                     return (
                                         <RequestItem
@@ -254,7 +404,8 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
                         );
                     })}
                 </div>
-            ))}
+                );
+            })}
         </>
     );
 };

@@ -46,6 +46,9 @@ interface ProjectContextValue {
     /** Set of project names with pending save indicators */
     savedProjects: Set<string>;
 
+    /** Map of project names to save error messages */
+    saveErrors: Map<string, string>;
+
     /** ID of item awaiting delete confirmation (shared state for delete confirm pattern) */
     deleteConfirm: string | null;
 
@@ -57,6 +60,7 @@ interface ProjectContextValue {
     setSelectedProjectName: React.Dispatch<React.SetStateAction<string | null>>;
     setWorkspaceDirty: React.Dispatch<React.SetStateAction<boolean>>;
     setSavedProjects: React.Dispatch<React.SetStateAction<Set<string>>>;
+    setSaveErrors: React.Dispatch<React.SetStateAction<Map<string, string>>>;
     setDeleteConfirm: React.Dispatch<React.SetStateAction<string | null>>;
 
     // -------------------------------------------------------------------------
@@ -92,6 +96,9 @@ interface ProjectContextValue {
 
     /** Collapses all projects, interfaces, and operations in the sidebar */
     collapseAll: () => void;
+
+    /** Reorders items within their parent context */
+    reorderItems: (itemId: string, targetId: string, position: 'before' | 'after', itemType: 'project' | 'folder' | 'interface', projectName?: string) => void;
 
     // -------------------------------------------------------------------------
     // UTILITIES
@@ -149,6 +156,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
     const [selectedProjectName, setSelectedProjectName] = useState<string | null>(null);
     const [workspaceDirty, setWorkspaceDirty] = useState(false);
     const [savedProjects, setSavedProjects] = useState<Set<string>>(new Set());
+    const [saveErrors, setSaveErrors] = useState<Map<string, string>>(new Map());
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
     // Sync projects to backend when they change
@@ -326,6 +334,16 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
         }
 
         bridge.sendMessage({ command: 'log', message: `[ProjectContext] saveProject called for: ${project.name}` });
+        
+        // Log interface displayNames for debugging
+        const interfacesWithDisplayNames = project.interfaces.filter(i => (i as any).displayName);
+        if (interfacesWithDisplayNames.length > 0) {
+            console.log('[ProjectContext] Saving interfaces with displayNames:', interfacesWithDisplayNames.map(i => ({
+                name: i.name,
+                displayName: (i as any).displayName
+            })));
+        }
+        
         bridge.sendMessage({ command: 'saveProject', project });
     }, [debugLog]);
     // -------------------------------------------------------------------------
@@ -339,6 +357,17 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
                 case BackendCommand.ProjectLoaded:
                     debugLog('Received ProjectLoaded', { name: message.project?.name, isReadOnly: message.isReadOnly });
                     if (message.project) {
+                        // Log interface displayNames for debugging
+                        const interfacesWithDisplayNames = message.project.interfaces?.filter((i: any) => i.displayName) || [];
+                        if (interfacesWithDisplayNames.length > 0) {
+                            console.log('[ProjectContext] Loaded interfaces with displayNames:', interfacesWithDisplayNames.map((i: any) => ({
+                                name: i.name,
+                                displayName: i.displayName
+                            })));
+                        } else if (message.project.interfaces?.length > 0) {
+                            console.log('[ProjectContext] Loaded project but NO interfaces have displayName');
+                        }
+                        
                         // Add or update the single project in our list
                         setProjects(prev => {
                             const existingIndex = prev.findIndex(p =>
@@ -372,6 +401,13 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
                     debugLog('Received ProjectSaved', { name: message.projectName, fileName: message.fileName });
 
                     if (message.projectName) {
+                        // Clear any save error for this project
+                        setSaveErrors(current => {
+                            const next = new Map(current);
+                            next.delete(message.projectName);
+                            return next;
+                        });
+
                         setSavedProjects(current => {
                             const next = new Set(current);
                             next.add(message.projectName);
@@ -514,6 +550,67 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
     }, []);
 
     /**
+     * Reorders items within their parent context (same parent only)
+     */
+    const reorderItems = useCallback((
+        itemId: string, 
+        targetId: string, 
+        position: 'before' | 'after', 
+        itemType: 'project' | 'folder' | 'interface',
+        projectName?: string
+    ) => {
+        if (itemType === 'project') {
+            // Reorder projects
+            setProjects(prev => {
+                const arr = [...prev];
+                const draggedIndex = arr.findIndex(p => p.id === itemId || p.name === itemId);
+                const targetIndex = arr.findIndex(p => p.id === targetId || p.name === targetId);
+                
+                if (draggedIndex === -1 || targetIndex === -1) return prev;
+                
+                const [draggedItem] = arr.splice(draggedIndex, 1);
+                const newTargetIndex = draggedIndex < targetIndex ? targetIndex : targetIndex + (position === 'after' ? 1 : 0);
+                arr.splice(newTargetIndex, 0, draggedItem);
+                
+                return arr;
+            });
+            setWorkspaceDirty(true);
+        } else if (itemType === 'folder' && projectName) {
+            // Reorder folders within a project
+            updateProject(projectName, project => {
+                if (!project.folders) return project;
+                
+                const arr = [...project.folders];
+                const draggedIndex = arr.findIndex(f => f.id === itemId);
+                const targetIndex = arr.findIndex(f => f.id === targetId);
+                
+                if (draggedIndex === -1 || targetIndex === -1) return project;
+                
+                const [draggedItem] = arr.splice(draggedIndex, 1);
+                const newTargetIndex = draggedIndex < targetIndex ? targetIndex : targetIndex + (position === 'after' ? 1 : 0);
+                arr.splice(newTargetIndex, 0, draggedItem);
+                
+                return { ...project, folders: arr };
+            });
+        } else if (itemType === 'interface' && projectName) {
+            // Reorder interfaces within a project
+            updateProject(projectName, project => {
+                const arr = [...project.interfaces];
+                const draggedIndex = arr.findIndex(i => i.id === itemId || i.name === itemId);
+                const targetIndex = arr.findIndex(i => i.id === targetId || i.name === targetId);
+                
+                if (draggedIndex === -1 || targetIndex === -1) return project;
+                
+                const [draggedItem] = arr.splice(draggedIndex, 1);
+                const newTargetIndex = draggedIndex < targetIndex ? targetIndex : targetIndex + (position === 'after' ? 1 : 0);
+                arr.splice(newTargetIndex, 0, draggedItem);
+                
+                return { ...project, interfaces: arr };
+            });
+        }
+    }, [updateProject]);
+
+    /**
      * Finds a project by name.
      */
     const findProjectByName = useCallback((name: string): ApinoxProject | undefined => {
@@ -530,6 +627,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
         selectedProjectName,
         workspaceDirty,
         savedProjects,
+        saveErrors,
         deleteConfirm,
 
         // Setters (exposed for complex handlers)
@@ -537,6 +635,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
         setSelectedProjectName,
         setWorkspaceDirty,
         setSavedProjects,
+        setSaveErrors,
         setDeleteConfirm,
 
         // Actions
@@ -549,6 +648,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
         toggleOperationExpand,
         expandAll,
         collapseAll,
+        reorderItems,
 
         // Utilities
         updateProject,

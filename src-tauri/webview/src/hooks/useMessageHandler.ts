@@ -59,6 +59,7 @@ export interface MessageHandlerState {
     setWsdlUrl: React.Dispatch<React.SetStateAction<string>>;
     setWorkspaceDirty: React.Dispatch<React.SetStateAction<boolean>>;
     setSavedProjects: React.Dispatch<React.SetStateAction<Set<string>>>;
+    setSaveErrors: React.Dispatch<React.SetStateAction<Map<string, string>>>;
     setChangelog: React.Dispatch<React.SetStateAction<string>>;
     setWatcherHistory: React.Dispatch<React.SetStateAction<WatcherEvent[]>>;
     // setProxyHistory: Moved to MockProxyContext
@@ -118,6 +119,7 @@ export function useMessageHandler(state: MessageHandlerState) {
         setWsdlUrl,
         setWorkspaceDirty,
         setSavedProjects,
+        setSaveErrors,
         setChangelog,
         setWatcherHistory,
         // setProxyHistory,
@@ -215,6 +217,7 @@ export function useMessageHandler(state: MessageHandlerState) {
                                     bindingName: portName,
                                     soapVersion: portName.includes('12') ? '1.2' : '1.1',
                                     definition: wsdlUrlRef.current,
+                                    expanded: false,
                                     operations: ops.map((op: any) => ({
                                         id: crypto.randomUUID(),
                                         name: op.name,
@@ -223,9 +226,10 @@ export function useMessageHandler(state: MessageHandlerState) {
                                         fullSchema: op.fullSchema, // Pass through the full schema
                                         targetNamespace: op.targetNamespace || svc.targetNamespace,
                                         originalEndpoint: op.originalEndpoint,
+                                        expanded: false,
                                         requests: [{
                                             id: crypto.randomUUID(),
-                                            name: 'Request 1',
+                                            name: 'Sample',
                                             endpoint: op.originalEndpoint,
                                             contentType: portName.includes('12') ? 'application/soap+xml' : 'text/xml',
                                             headers: {
@@ -335,11 +339,24 @@ export function useMessageHandler(state: MessageHandlerState) {
                     break;
 
                 case BackendCommand.Error:
-                    debugLog('error', { message: message.message });
+                    debugLog('error', { message: message.message, originalCommand: message.originalCommand });
                     setLoading(false);
                     setDownloadStatus(null); // Clear loading status on any error
+                    
+                    // Handle SaveProject errors specially
+                    if (message.originalCommand === FrontendCommand.SaveProject && message.projectName) {
+                        debugLog('saveProject error', { projectName: message.projectName, error: message.error });
+                        // Track the error
+                        setSaveErrors(current => {
+                            const next = new Map(current);
+                            next.set(message.projectName, message.error || 'Failed to save project');
+                            return next;
+                        });
+                        // Don't update response panel for save errors
+                        break;
+                    }
+                    
                     if (
-                        message.originalCommand === FrontendCommand.SaveProject ||
                         message.originalCommand === FrontendCommand.SyncProjects ||
                         message.originalCommand === FrontendCommand.SaveOpenProjects ||
                         message.originalCommand === FrontendCommand.AutoSaveWorkspace ||
