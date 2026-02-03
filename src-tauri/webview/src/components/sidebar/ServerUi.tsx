@@ -50,7 +50,7 @@ export interface ServerUiProps {
 }
 
 const Content = styled(SidebarContent)`
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
 `;
 
 const fadeIn = keyframes`
@@ -69,7 +69,7 @@ const NotificationToast = styled.div`
     top: 60px;
     left: 50%;
     transform: translateX(-50%);
-    background: var(--vscode-notificationsInfoIcon-foreground);
+    background: var(--apinox-notificationsInfoIcon-foreground);
     color: white;
     padding: ${SPACING_SM} ${SPACING_LG};
     border-radius: 4px;
@@ -83,7 +83,7 @@ const StatusDot = styled.span`
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: var(--vscode-testing-iconPassed);
+    background: var(--apinox-testing-iconPassed);
     animation: ${pulse} 2s infinite;
 `;
 
@@ -107,7 +107,7 @@ const StatusBar = styled.div`
     justify-content: space-between;
     align-items: center;
     padding: ${SPACING_SM} 10px;
-    background: var(--vscode-editor-inactiveSelectionBackground);
+    background: var(--apinox-editor-inactiveSelectionBackground);
     border-radius: 5px;
     font-size: 0.85em;
     margin-bottom: 10px;
@@ -127,7 +127,7 @@ const StatusTarget = styled.span`
 `;
 
 const Section = styled.div`
-    border-top: 1px solid var(--vscode-panel-border);
+    border-top: 1px solid var(--apinox-panel-border);
     padding-top: 10px;
     margin-bottom: 10px;
 `;
@@ -158,7 +158,7 @@ const RuleRow = styled.div<{ $enabled: boolean }>`
     gap: ${SPACING_XS};
     padding: ${SPACING_XS} ${SPACING_SM};
     margin-bottom: ${SPACING_XS};
-    background-color: var(--vscode-list-hoverBackground);
+    background-color: var(--apinox-list-hoverBackground);
     border-radius: 4px;
     opacity: ${props => props.$enabled ? 1 : 0.5};
 `;
@@ -167,7 +167,7 @@ const RuleToggle = styled.button<{ $enabled: boolean }>`
     background: none;
     border: none;
     cursor: pointer;
-    color: ${props => props.$enabled ? 'var(--vscode-testing-iconPassed)' : 'var(--vscode-disabledForeground)'};
+    color: ${props => props.$enabled ? 'var(--apinox-testing-iconPassed)' : 'var(--apinox-disabledForeground)'};
     padding: 2px;
     display: flex;
 `;
@@ -197,7 +197,7 @@ const EmptySection = styled.div`
 `;
 
 const TrafficSection = styled.div`
-    border-top: 1px solid var(--vscode-panel-border);
+    border-top: 1px solid var(--apinox-panel-border);
     padding-top: 10px;
 `;
 
@@ -218,14 +218,14 @@ const EmptyTraffic = styled.div`
     margin-top: 20px;
     font-size: 0.8em;
     opacity: 0.7;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
 `;
 
 const TrafficItem = styled(ServiceItem)<{ $selected: boolean }>`
     padding-left: 5px;
     padding-right: 5px;
-    background-color: ${props => props.$selected ? 'var(--vscode-list-activeSelectionBackground)' : 'transparent'};
-    color: ${props => props.$selected ? 'var(--vscode-list-activeSelectionForeground)' : 'inherit'};
+    background-color: ${props => props.$selected ? 'var(--apinox-list-activeSelectionBackground)' : 'transparent'};
+    color: ${props => props.$selected ? 'var(--apinox-list-activeSelectionForeground)' : 'inherit'};
 `;
 
 const TrafficContent = styled.div`
@@ -251,17 +251,17 @@ const TrafficMeta = styled.div`
 `;
 
 const ProxyBadge = styled.span`
-    color: var(--vscode-charts-blue);
+    color: var(--apinox-charts-blue);
     font-size: 0.8em;
 `;
 
 const MoxyBadge = styled.span`
-    color: var(--vscode-charts-green);
+    color: var(--apinox-charts-green);
     font-size: 0.8em;
 `;
 
 const ForwardBadge = styled.span`
-    color: var(--vscode-charts-blue);
+    color: var(--apinox-charts-blue);
     font-size: 0.8em;
     display: flex;
     align-items: center;
@@ -280,14 +280,14 @@ const TrafficUrl = styled.div`
 const RuleBadge = styled.div`
     font-size: 0.75em;
     opacity: 0.7;
-    color: var(--vscode-charts-green);
+    color: var(--apinox-charts-green);
 `;
 
 const MODE_OPTIONS: { value: ServerMode; label: string; color?: string }[] = [
     { value: 'off', label: 'Off' },
-    { value: 'mock', label: 'Moxy', color: 'var(--vscode-charts-green, var(--vscode-button-background))' },
-    { value: 'proxy', label: 'Proxy', color: 'var(--vscode-charts-orange, var(--vscode-button-background))' },
-    { value: 'both', label: 'Both', color: 'var(--vscode-charts-purple, var(--vscode-button-background))' },
+    { value: 'mock', label: 'Moxy', color: 'var(--apinox-charts-green, var(--apinox-button-background))' },
+    { value: 'proxy', label: 'Proxy', color: 'var(--apinox-charts-orange, var(--apinox-button-background))' },
+    { value: 'both', label: 'Both', color: 'var(--apinox-charts-purple, var(--apinox-button-background))' },
 ];
 
 export const ServerUi: React.FC<ServerUiProps> = ({
@@ -455,7 +455,7 @@ export const ServerUi: React.FC<ServerUiProps> = ({
                         <IconButton
                             onClick={onOpenCertificate}
                             title="Install Certificate (Required for HTTPS)"
-                            style={{ color: 'var(--vscode-charts-yellow)', marginLeft: '4px' }}
+                            style={{ color: 'var(--apinox-charts-yellow)', marginLeft: '4px' }}
                         >
                             <Shield size={14} />
                         </IconButton>

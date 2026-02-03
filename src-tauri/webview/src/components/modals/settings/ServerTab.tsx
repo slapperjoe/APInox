@@ -151,12 +151,12 @@ export const ServerTab: React.FC<ServerTabProps> = ({
                                 borderRadius: 4,
                                 cursor: 'pointer',
                                 background: serverConfig.mode === opt.value
-                                    ? 'var(--vscode-button-background)'
-                                    : 'var(--vscode-input-background)',
+                                    ? 'var(--apinox-button-background)'
+                                    : 'var(--apinox-input-background)',
                                 color: serverConfig.mode === opt.value
-                                    ? 'var(--vscode-button-foreground)'
-                                    : 'var(--vscode-input-foreground)',
-                                border: '1px solid var(--vscode-input-border)',
+                                    ? 'var(--apinox-button-foreground)'
+                                    : 'var(--apinox-input-foreground)',
+                                border: '1px solid var(--apinox-input-border)',
                                 fontSize: 12,
                             }}
                         >
@@ -172,7 +172,7 @@ export const ServerTab: React.FC<ServerTabProps> = ({
                         </label>
                     ))}
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--vscode-descriptionForeground)', marginTop: 6 }}>
+                <div style={{ fontSize: 11, color: 'var(--apinox-descriptionForeground)', marginTop: 6 }}>
                     {MODE_OPTIONS.find(o => o.value === serverConfig.mode)?.description}
                 </div>
             </FormGroup>
@@ -247,8 +247,8 @@ export const ServerTab: React.FC<ServerTabProps> = ({
                         disabled={!configPath && !config.lastConfigPath}
                         style={{
                             opacity: (!configPath && !config.lastConfigPath) ? 0.5 : 1,
-                            background: 'var(--vscode-button-secondaryBackground)',
-                            color: 'var(--vscode-button-secondaryForeground)'
+                            background: 'var(--apinox-button-secondaryBackground)',
+                            color: 'var(--apinox-button-secondaryForeground)'
                         }}
                     >
                         <RotateCcw size={12} /> Restore Original
@@ -262,9 +262,9 @@ export const ServerTab: React.FC<ServerTabProps> = ({
                         borderRadius: '4px',
                         fontSize: '12px',
                         background: injectionStatus.type === 'success'
-                            ? 'var(--vscode-testing-iconPassed)'
-                            : 'var(--vscode-testing-iconFailed)',
-                        color: 'var(--vscode-editor-background)',
+                            ? 'var(--apinox-testing-iconPassed)'
+                            : 'var(--apinox-testing-iconFailed)',
+                        color: 'var(--apinox-editor-background)',
                         opacity: 0.9
                     }}>
                         {injectionStatus.type === 'success' ? '✓' : '✗'} {injectionStatus.message}
@@ -294,7 +294,7 @@ export const ServerTab: React.FC<ServerTabProps> = ({
                             checked={serverConfig.recordMode ?? false}
                             onChange={e => onServerConfigChange({ recordMode: e.target.checked })}
                         />
-                        <span style={{ color: serverConfig.recordMode ? 'var(--vscode-charts-yellow)' : undefined }}>
+                        <span style={{ color: serverConfig.recordMode ? 'var(--apinox-charts-yellow)' : undefined }}>
                             🔴 Record Mode (auto-capture responses as mocks)
                         </span>
                     </CheckboxLabel>
@@ -313,15 +313,15 @@ export const ServerTab: React.FC<ServerTabProps> = ({
                         <div style={{
                             padding: 20,
                             textAlign: 'center',
-                            color: 'var(--vscode-descriptionForeground)',
-                            background: 'var(--vscode-input-background)',
+                            color: 'var(--apinox-descriptionForeground)',
+                            background: 'var(--apinox-input-background)',
                             borderRadius: 4,
                             fontSize: 12
                         }}>
                             No mock rules configured.
                             <br />
                             <span
-                                style={{ color: 'var(--vscode-textLink-foreground)', cursor: 'pointer' }}
+                                style={{ color: 'var(--apinox-textLink-foreground)', cursor: 'pointer' }}
                                 onClick={handleAddRule}
                             >
                                 Click to add your first rule.
@@ -329,7 +329,7 @@ export const ServerTab: React.FC<ServerTabProps> = ({
                         </div>
                     ) : (
                         <div style={{
-                            border: '1px solid var(--vscode-input-border)',
+                            border: '1px solid var(--apinox-input-border)',
                             borderRadius: 4,
                             overflow: 'hidden'
                         }}>
@@ -348,18 +348,18 @@ export const ServerTab: React.FC<ServerTabProps> = ({
                                         gap: 8,
                                         padding: '8px 12px',
                                         background: draggedId === rule.id
-                                            ? 'var(--vscode-editor-selectionBackground)'
+                                            ? 'var(--apinox-editor-selectionBackground)'
                                             : dropTargetId === rule.id
-                                                ? 'var(--vscode-list-hoverBackground)'
+                                                ? 'var(--apinox-list-hoverBackground)'
                                                 : selectedRuleId === rule.id
-                                                    ? 'var(--vscode-list-activeSelectionBackground)'
+                                                    ? 'var(--apinox-list-activeSelectionBackground)'
                                                     : index % 2 === 0
-                                                        ? 'var(--vscode-input-background)'
+                                                        ? 'var(--apinox-input-background)'
                                                         : 'transparent',
-                                        borderBottom: index < rules.length - 1 ? '1px solid var(--vscode-input-border)' : 'none',
+                                        borderBottom: index < rules.length - 1 ? '1px solid var(--apinox-input-border)' : 'none',
                                         cursor: 'grab',
                                         opacity: draggedId === rule.id ? 0.5 : rule.enabled ? 1 : 0.5,
-                                        borderTop: dropTargetId === rule.id ? '2px solid var(--vscode-focusBorder)' : 'none'
+                                        borderTop: dropTargetId === rule.id ? '2px solid var(--apinox-focusBorder)' : 'none'
                                     }}
                                     onClick={() => setSelectedRuleId(rule.id)}
                                 >
@@ -375,7 +375,7 @@ export const ServerTab: React.FC<ServerTabProps> = ({
                                     />
                                     <div style={{ flex: 1, overflow: 'hidden' }}>
                                         <div style={{ fontWeight: 500, fontSize: 12 }}>{rule.name}</div>
-                                        <div style={{ fontSize: 10, color: 'var(--vscode-descriptionForeground)' }}>
+                                        <div style={{ fontSize: 10, color: 'var(--apinox-descriptionForeground)' }}>
                                             {rule.conditions.map(c => `${c.type}: ${c.pattern.substring(0, 25)}${c.pattern.length > 25 ? '...' : ''}`).join(' & ')}
                                         </div>
                                     </div>
@@ -388,7 +388,7 @@ export const ServerTab: React.FC<ServerTabProps> = ({
                                     <IconButton
                                         onClick={(e) => { e.stopPropagation(); handleDeleteRule(rule.id); }}
                                         title="Delete"
-                                        style={{ color: 'var(--vscode-testing-iconFailed)' }}
+                                        style={{ color: 'var(--apinox-testing-iconFailed)' }}
                                     >
                                         <Trash2 size={12} />
                                     </IconButton>

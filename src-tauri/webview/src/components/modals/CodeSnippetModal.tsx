@@ -8,8 +8,8 @@ import { PrimaryButton, SecondaryButton } from '../common/Button';
 
 const TabContainer = styled.div`
     display: flex;
-    border-bottom: 1px solid var(--vscode-panel-border);
-    background: var(--vscode-sideBar-background);
+    border-bottom: 1px solid var(--apinox-panel-border);
+    background: var(--apinox-sideBar-background);
     overflow-x: auto;
 `;
 
@@ -21,13 +21,13 @@ const Tab = styled.div<{ active: boolean }>`
     align-items: center;
     gap: 6px;
     border-top: 1px solid transparent;
-    border-right: 1px solid var(--vscode-panel-border);
-    background: ${props => props.active ? 'var(--vscode-editor-background)' : 'transparent'};
-    color: ${props => props.active ? 'var(--vscode-tab-activeForeground)' : 'var(--vscode-tab-inactiveForeground)'};
+    border-right: 1px solid var(--apinox-panel-border);
+    background: ${props => props.active ? 'var(--apinox-editor-background)' : 'transparent'};
+    color: ${props => props.active ? 'var(--apinox-tab-activeForeground)' : 'var(--apinox-tab-inactiveForeground)'};
     white-space: nowrap;
 
     &:hover {
-        color: var(--vscode-tab-activeForeground);
+        color: var(--apinox-tab-activeForeground);
     }
 `;
 
@@ -131,7 +131,7 @@ export const CodeSnippetModal: React.FC<CodeSnippetModalProps> = ({ isOpen, onCl
                     </Tab>
                 </TabContainer>
 
-                <div style={{ position: 'relative', flex: 1, border: '1px solid var(--vscode-panel-border)', borderTop: 'none' }}>
+                <div style={{ position: 'relative', flex: 1, border: '1px solid var(--apinox-panel-border)', borderTop: 'none' }}>
                     <MonacoResponseViewer
                         value={code}
                         language={getMonacoLanguage(language)}

@@ -5,10 +5,23 @@
  * and can be forwarded to the frontend via events.
  */
 
-import { INotificationService } from '../../../src/interfaces/INotificationService';
+import { INotificationService } from '../interfaces/INotificationService';
 
 export class SidecarNotificationService implements INotificationService {
     private listeners: ((type: string, message: string) => void)[] = [];
+
+    showInformationMessage(message: string): void {
+        this.showInfo(message);
+    }
+
+    showWarningMessage(message: string): void {
+        console.warn(`[WARN] ${message}`);
+        this.emit('warning', message);
+    }
+
+    showErrorMessage(message: string): void {
+        this.showError(message);
+    }
 
     showError(message: string): void {
         console.error(`[ERROR] ${message}`);

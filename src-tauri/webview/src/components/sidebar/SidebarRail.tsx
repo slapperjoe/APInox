@@ -21,9 +21,9 @@ const NavItem = ({ icon: Icon, active, onClick, title }: any) => (
             cursor: 'pointer',
             display: 'flex',
             justifyContent: 'center',
-            color: active ? 'var(--vscode-activityBar-foreground)' : 'var(--vscode-activityBar-inactiveForeground)',
-            borderLeft: active ? '2px solid var(--vscode-activityBar-activeBorder)' : '2px solid transparent',
-            backgroundColor: active ? 'var(--vscode-list-activeSelectionBackground)' : 'transparent'
+            color: active ? 'var(--apinox-activityBar-foreground)' : 'var(--apinox-activityBar-inactiveForeground)',
+            borderLeft: active ? '2px solid var(--apinox-activityBar-activeBorder)' : '2px solid transparent',
+            backgroundColor: active ? 'var(--apinox-list-activeSelectionBackground)' : 'transparent'
         }}
         title={title}
     >
@@ -43,8 +43,8 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
     return (
         <div style={{
             width: 50,
-            backgroundColor: 'var(--vscode-activityBar-background)',
-            borderRight: '1px solid var(--vscode-activityBar-border)',
+            backgroundColor: 'var(--apinox-activityBar-background)',
+            borderRight: '1px solid var(--apinox-activityBar-border)',
             display: 'flex',
             flexDirection: 'column',
             paddingTop: 10,

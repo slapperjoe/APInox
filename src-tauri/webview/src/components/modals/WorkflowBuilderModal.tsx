@@ -28,7 +28,7 @@ const RightPanel = styled.div`
     display: flex;
     flex-direction: column;
     gap: ${SPACING_MD};
-    border-left: 1px solid var(--vscode-panel-border);
+    border-left: 1px solid var(--apinox-panel-border);
     padding-left: ${SPACING_MD};
     min-width: 300px;
 `;
@@ -47,24 +47,24 @@ const SectionTitle = styled.div`
 `;
 
 const Input = styled.input`
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     padding: ${SPACING_SM};
     font-size: 13px;
     width: 100%;
 
     &:focus {
         outline: none;
-        border-color: var(--vscode-focusBorder);
+        border-color: var(--apinox-focusBorder);
     }
 `;
 
 const StepsList = styled.div`
     flex: 1;
     overflow-y: auto;
-    border: 1px solid var(--vscode-panel-border);
-    background: var(--vscode-editor-background);
+    border: 1px solid var(--apinox-panel-border);
+    background: var(--apinox-editor-background);
 `;
 
 const StepItem = styled.div<{ $isDragging?: boolean; $isNested?: boolean }>`
@@ -72,20 +72,20 @@ const StepItem = styled.div<{ $isDragging?: boolean; $isNested?: boolean }>`
     align-items: center;
     padding: ${SPACING_SM};
     gap: ${SPACING_SM};
-    border-bottom: 1px solid var(--vscode-panel-border);
-    background: ${props => props.$isDragging ? 'var(--vscode-list-hoverBackground)' : 'transparent'};
+    border-bottom: 1px solid var(--apinox-panel-border);
+    background: ${props => props.$isDragging ? 'var(--apinox-list-hoverBackground)' : 'transparent'};
     cursor: pointer;
     margin-left: ${props => props.$isNested ? '24px' : '0'};
-    border-left: ${props => props.$isNested ? '2px solid var(--vscode-charts-blue)' : 'none'};
+    border-left: ${props => props.$isNested ? '2px solid var(--apinox-charts-blue)' : 'none'};
 
     &:hover {
-        background: var(--vscode-list-hoverBackground);
+        background: var(--apinox-list-hoverBackground);
     }
 `;
 
 const DragHandle = styled.div`
     cursor: grab;
-    color: var(--vscode-icon-foreground);
+    color: var(--apinox-icon-foreground);
     opacity: 0.5;
 
     &:hover {
@@ -134,14 +134,14 @@ const AddStepButton = styled.button`
     justify-content: center;
     gap: ${SPACING_SM};
     padding: ${SPACING_SM};
-    background: var(--vscode-button-secondaryBackground);
-    color: var(--vscode-button-secondaryForeground);
-    border: 1px dashed var(--vscode-panel-border);
+    background: var(--apinox-button-secondaryBackground);
+    color: var(--apinox-button-secondaryForeground);
+    border: 1px dashed var(--apinox-panel-border);
     cursor: pointer;
     font-size: 13px;
 
     &:hover {
-        background: var(--vscode-button-secondaryHoverBackground);
+        background: var(--apinox-button-secondaryHoverBackground);
     }
 `;
 
@@ -152,8 +152,8 @@ const AddNestedStepButton = styled.button`
     padding: 4px 8px;
     margin-left: 48px;
     background: transparent;
-    color: var(--vscode-textLink-foreground);
-    border: 1px dashed var(--vscode-textLink-foreground);
+    color: var(--apinox-textLink-foreground);
+    border: 1px dashed var(--apinox-textLink-foreground);
     cursor: pointer;
     font-size: 11px;
     opacity: 0.7;
@@ -162,7 +162,7 @@ const AddNestedStepButton = styled.button`
 
     &:hover {
         opacity: 1;
-        background: var(--vscode-list-hoverBackground);
+        background: var(--apinox-list-hoverBackground);
     }
 `;
 
@@ -179,8 +179,8 @@ const DropdownButton = styled.button`
     gap: 4px;
     padding: 4px 8px;
     background: transparent;
-    color: var(--vscode-textLink-foreground);
-    border: 1px dashed var(--vscode-textLink-foreground);
+    color: var(--apinox-textLink-foreground);
+    border: 1px dashed var(--apinox-textLink-foreground);
     cursor: pointer;
     font-size: 11px;
     opacity: 0.7;
@@ -189,7 +189,7 @@ const DropdownButton = styled.button`
 
     &:hover {
         opacity: 1;
-        background: var(--vscode-list-hoverBackground);
+        background: var(--apinox-list-hoverBackground);
     }
 `;
 
@@ -198,8 +198,8 @@ const DropdownMenu = styled.div`
     top: 100%;
     left: 0;
     right: 0;
-    background: var(--vscode-dropdown-background);
-    border: 1px solid var(--vscode-dropdown-border);
+    background: var(--apinox-dropdown-background);
+    border: 1px solid var(--apinox-dropdown-border);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     z-index: 1000;
     margin-top: 2px;
@@ -212,10 +212,10 @@ const DropdownItem = styled.div`
     display: flex;
     align-items: center;
     gap: 6px;
-    color: var(--vscode-dropdown-foreground);
+    color: var(--apinox-dropdown-foreground);
 
     &:hover {
-        background: var(--vscode-list-hoverBackground);
+        background: var(--apinox-list-hoverBackground);
     }
 `;
 
@@ -223,7 +223,7 @@ const ExpandCollapseIcon = styled.div`
     cursor: pointer;
     display: flex;
     align-items: center;
-    color: var(--vscode-icon-foreground);
+    color: var(--apinox-icon-foreground);
     opacity: 0.6;
     
     &:hover {
@@ -232,16 +232,16 @@ const ExpandCollapseIcon = styled.div`
 `;
 
 const StepTypeSelector = styled.select`
-    background: var(--vscode-dropdown-background);
-    color: var(--vscode-dropdown-foreground);
-    border: 1px solid var(--vscode-dropdown-border);
+    background: var(--apinox-dropdown-background);
+    color: var(--apinox-dropdown-foreground);
+    border: 1px solid var(--apinox-dropdown-border);
     padding: ${SPACING_SM};
     font-size: 13px;
     cursor: pointer;
 
     &:focus {
         outline: none;
-        border-color: var(--vscode-focusBorder);
+        border-color: var(--apinox-focusBorder);
     }
 `;
 
@@ -260,8 +260,8 @@ const InfoBox = styled.div`
     display: flex;
     gap: ${SPACING_SM};
     padding: ${SPACING_SM};
-    background: var(--vscode-textCodeBlock-background);
-    border: 1px solid var(--vscode-panel-border);
+    background: var(--apinox-textCodeBlock-background);
+    border: 1px solid var(--apinox-panel-border);
     border-radius: 4px;
     font-size: 12px;
 `;
@@ -307,7 +307,7 @@ export const WorkflowBuilderModal: React.FC<WorkflowBuilderModalProps> = ({
                             items.push({
                                 id: `${project.name}-${iface.name}-${op.name}-${idx}`,
                                 label: op.requests.length > 1 ? `${(op as any).displayName || op.name} [${idx + 1}/${op.requests.length}]` : ((op as any).displayName || op.name),
-                                description: `${project.name} > ${(iface as any).displayName || iface.name}${op.requests.length > 1 ? ` > Request ${idx + 1}` : ''}`,
+                                description: `${project.name} > ${(iface as any).displayName || iface.name} > ${req.name}`,
                                 detail: req.endpoint || op.originalEndpoint || 'WSDL Operation',
                                 type: 'request',
                                 data: {
@@ -332,7 +332,8 @@ export const WorkflowBuilderModal: React.FC<WorkflowBuilderModalProps> = ({
                                 interfaceName: iface.name,
                                 operationName: op.name,
                                 requestIndex: 0
-                            }
+                            },
+                            warning: true
                         });
                     }
                 });
@@ -636,7 +637,7 @@ export const WorkflowBuilderModal: React.FC<WorkflowBuilderModalProps> = ({
                                                 onDragEnd={handleDragEnd}
                                                 onClick={() => setSelectedStepIndex(index)}
                                                 style={{
-                                                    background: selectedStepIndex === index ? 'var(--vscode-list-activeSelectionBackground)' : undefined
+                                                    background: selectedStepIndex === index ? 'var(--apinox-list-activeSelectionBackground)' : undefined
                                                 }}
                                             >
                                                 {step.type === 'loop' && hasChildren && (
@@ -686,7 +687,7 @@ export const WorkflowBuilderModal: React.FC<WorkflowBuilderModalProps> = ({
                                                     style={{
                                                         cursor: 'pointer',
                                                         background: selectedNestedStep?.parentIndex === index && selectedNestedStep?.nestedIndex === nestedIndex 
-                                                            ? 'var(--vscode-list-activeSelectionBackground)' 
+                                                            ? 'var(--apinox-list-activeSelectionBackground)' 
                                                             : undefined
                                                     }}
                                                 >
@@ -888,9 +889,9 @@ export const WorkflowBuilderModal: React.FC<WorkflowBuilderModalProps> = ({
                                                 style={{
                                                     width: '100%',
                                                     padding: '6px 8px',
-                                                    background: 'var(--vscode-input-background)',
-                                                    border: '1px solid var(--vscode-input-border)',
-                                                    color: 'var(--vscode-input-foreground)',
+                                                    background: 'var(--apinox-input-background)',
+                                                    border: '1px solid var(--apinox-input-border)',
+                                                    color: 'var(--apinox-input-foreground)',
                                                     borderRadius: '4px',
                                                     fontSize: '13px'
                                                 }}
@@ -917,7 +918,7 @@ export const WorkflowBuilderModal: React.FC<WorkflowBuilderModalProps> = ({
                                                 })}
                                             />
                                         </div>
-                                        <div style={{ fontSize: '11px', opacity: 0.6, marginTop: '4px', padding: SPACING_SM, background: 'var(--vscode-textCodeBlock-background)', borderRadius: '4px' }}>
+                                        <div style={{ fontSize: '11px', opacity: 0.6, marginTop: '4px', padding: SPACING_SM, background: 'var(--apinox-textCodeBlock-background)', borderRadius: '4px' }}>
                                             Note: Branching to specific steps not yet implemented. Condition will skip remaining steps if false.
                                         </div>
                                     </div>
@@ -937,9 +938,9 @@ export const WorkflowBuilderModal: React.FC<WorkflowBuilderModalProps> = ({
                                                 style={{
                                                     width: '100%',
                                                     padding: '6px 8px',
-                                                    background: 'var(--vscode-input-background)',
-                                                    border: '1px solid var(--vscode-input-border)',
-                                                    color: 'var(--vscode-input-foreground)',
+                                                    background: 'var(--apinox-input-background)',
+                                                    border: '1px solid var(--apinox-input-border)',
+                                                    color: 'var(--apinox-input-foreground)',
                                                     borderRadius: '4px',
                                                     fontSize: '13px'
                                                 }}
@@ -1003,7 +1004,7 @@ export const WorkflowBuilderModal: React.FC<WorkflowBuilderModalProps> = ({
                                                 })}
                                             />
                                         </div>
-                                        <div style={{ fontSize: '11px', opacity: 0.6, marginTop: '4px', padding: SPACING_SM, background: 'var(--vscode-textCodeBlock-background)', borderRadius: '4px' }}>
+                                        <div style={{ fontSize: '11px', opacity: 0.6, marginTop: '4px', padding: SPACING_SM, background: 'var(--apinox-textCodeBlock-background)', borderRadius: '4px' }}>
                                             Note: Loop steps must be defined separately. This creates the loop structure.
                                         </div>
                                     </div>
@@ -1015,7 +1016,7 @@ export const WorkflowBuilderModal: React.FC<WorkflowBuilderModalProps> = ({
                                             JavaScript Code
                                         </label>
                                         <div style={{ 
-                                            border: '1px solid var(--vscode-panel-border)',
+                                            border: '1px solid var(--apinox-panel-border)',
                                             borderRadius: '4px',
                                             overflow: 'hidden',
                                             height: '300px'
@@ -1035,7 +1036,7 @@ export const WorkflowBuilderModal: React.FC<WorkflowBuilderModalProps> = ({
                                                 }}
                                             />
                                         </div>
-                                        <div style={{ fontSize: '11px', opacity: 0.6, marginTop: '8px', padding: SPACING_SM, background: 'var(--vscode-textCodeBlock-background)', borderRadius: '4px' }}>
+                                        <div style={{ fontSize: '11px', opacity: 0.6, marginTop: '8px', padding: SPACING_SM, background: 'var(--apinox-textCodeBlock-background)', borderRadius: '4px' }}>
                                             Available: <code>variables</code> (read/write workflow variables), <code>console.log</code> (output to logs)
                                         </div>
                                     </div>
@@ -1050,8 +1051,8 @@ export const WorkflowBuilderModal: React.FC<WorkflowBuilderModalProps> = ({
                                             <div>
                                                 <div style={{ 
                                                     padding: SPACING_SM, 
-                                                    background: 'var(--vscode-textCodeBlock-background)',
-                                                    border: '1px solid var(--vscode-panel-border)',
+                                                    background: 'var(--apinox-textCodeBlock-background)',
+                                                    border: '1px solid var(--apinox-panel-border)',
                                                     borderRadius: '4px',
                                                     marginBottom: SPACING_SM,
                                                     fontSize: '12px'
@@ -1082,7 +1083,7 @@ export const WorkflowBuilderModal: React.FC<WorkflowBuilderModalProps> = ({
                                                     Request Body (use {`{{varName}}`} for variables)
                                                 </label>
                                                 <div style={{ 
-                                                    border: '1px solid var(--vscode-panel-border)',
+                                                    border: '1px solid var(--apinox-panel-border)',
                                                     borderRadius: '4px',
                                                     overflow: 'hidden',
                                                     height: '300px'

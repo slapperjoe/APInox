@@ -33,13 +33,13 @@ export interface ProxyUiProps {
 }
 
 const Content = styled(SidebarContent)`
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
 `;
 
 const ConfigSection = styled.div`
     margin-bottom: ${SPACING_LG};
     padding: ${SPACING_MD};
-    background-color: var(--vscode-editor-inactiveSelectionBackground);
+    background-color: var(--apinox-editor-inactiveSelectionBackground);
     border-radius: 5px;
 `;
 
@@ -63,13 +63,13 @@ const FieldLabel = styled.label`
 const TextInput = styled.input`
     width: 100%;
     padding: ${SPACING_XS};
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     border-radius: 2px;
     
     &:focus {
-        outline: 1px solid var(--vscode-focusBorder);
+        outline: 1px solid var(--apinox-focusBorder);
     }
 `;
 
@@ -89,7 +89,7 @@ const CheckboxLabel = styled.label`
 `;
 
 const Section = styled.div`
-    border-top: 1px solid var(--vscode-panel-border);
+    border-top: 1px solid var(--apinox-panel-border);
     padding-top: ${SPACING_MD};
     margin-top: ${SPACING_MD};
 `;
@@ -115,7 +115,7 @@ const BreakpointItem = styled.div`
     align-items: center;
     gap: ${SPACING_SM};
     padding: ${SPACING_SM};
-    background: var(--vscode-editor-inactiveSelectionBackground);
+    background: var(--apinox-editor-inactiveSelectionBackground);
     border-radius: 3px;
     margin-bottom: ${SPACING_XS};
     font-size: 0.85em;
@@ -161,8 +161,8 @@ const ConfigPathDisplay = styled.div`
     overflow: hidden;
     text-overflow: ellipsis;
     padding: ${SPACING_XS};
-    background-color: var(--vscode-editor-background);
-    border: 1px solid var(--vscode-input-border);
+    background-color: var(--apinox-editor-background);
+    border: 1px solid var(--apinox-input-border);
     border-radius: 2px;
 `;
 
@@ -290,7 +290,7 @@ export const ProxyUi: React.FC<ProxyUiProps> = ({
                             checked={config.systemProxyEnabled !== false}
                             onChange={e => onUpdateConfig({ ...config, systemProxyEnabled: e.target.checked })}
                             style={{
-                                accentColor: 'var(--vscode-button-background)',
+                                accentColor: 'var(--apinox-button-background)',
                                 width: '14px',
                                 height: '14px',
                                 cursor: 'pointer'
@@ -303,11 +303,11 @@ export const ProxyUi: React.FC<ProxyUiProps> = ({
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: SPACING_SM }}>
                         <div style={{ fontSize: '0.8em' }}>
-                            Status: {isRunning ? <span style={{ color: 'var(--vscode-testing-iconPassed)' }}>Running</span> : 'Stopped'}
+                            Status: {isRunning ? <span style={{ color: 'var(--apinox-testing-iconPassed)' }}>Running</span> : 'Stopped'}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center' }}>
                             {isHttps && onOpenCertificate && (
-                                <HeaderButton onClick={onOpenCertificate} title="Install Certificate (Required for HTTPS)" style={{ color: 'var(--vscode-charts-yellow)' }}>
+                                <HeaderButton onClick={onOpenCertificate} title="Install Certificate (Required for HTTPS)" style={{ color: 'var(--apinox-charts-yellow)' }}>
                                     <Shield size={14} />
                                 </HeaderButton>
                             )}
@@ -350,7 +350,7 @@ export const ProxyUi: React.FC<ProxyUiProps> = ({
                                                 background: 'none',
                                                 border: 'none',
                                                 cursor: 'pointer',
-                                                color: bp.enabled ? 'var(--vscode-testing-iconPassed)' : 'var(--vscode-disabledForeground)',
+                                                color: bp.enabled ? 'var(--apinox-testing-iconPassed)' : 'var(--apinox-disabledForeground)',
                                                 padding: 2,
                                                 display: 'flex'
                                             }}
@@ -379,7 +379,7 @@ export const ProxyUi: React.FC<ProxyUiProps> = ({
                                                 onUpdateBreakpoints(updated);
                                             }}
                                             title="Delete"
-                                            style={{ padding: 4, color: 'var(--vscode-testing-iconFailed)' }}
+                                            style={{ padding: 4, color: 'var(--apinox-testing-iconFailed)' }}
                                         >
                                             <Trash2 size={12} />
                                         </HeaderButton>
@@ -409,10 +409,10 @@ export const ProxyUi: React.FC<ProxyUiProps> = ({
 
                     {configPath && (
                         <ButtonRow>
-                            <HeaderButton onClick={onInjectProxy} style={{ flex: 1, justifyContent: 'center', border: '1px solid var(--vscode-button-border)', background: 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-secondaryForeground)' }} title="Inject Proxy Address">
+                            <HeaderButton onClick={onInjectProxy} style={{ flex: 1, justifyContent: 'center', border: '1px solid var(--apinox-button-border)', background: 'var(--apinox-button-secondaryBackground)', color: 'var(--apinox-button-secondaryForeground)' }} title="Inject Proxy Address">
                                 <Network size={12} style={{ marginRight: 5 }} /> Inject
                             </HeaderButton>
-                            <HeaderButton onClick={onRestoreProxy} style={{ flex: 1, justifyContent: 'center', border: '1px solid var(--vscode-button-border)', background: 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-secondaryForeground)' }} title="Restore Original Config">
+                            <HeaderButton onClick={onRestoreProxy} style={{ flex: 1, justifyContent: 'center', border: '1px solid var(--apinox-button-border)', background: 'var(--apinox-button-secondaryBackground)', color: 'var(--apinox-button-secondaryForeground)' }} title="Restore Original Config">
                                 <FileCode size={12} style={{ marginRight: 5 }} /> Restore
                             </HeaderButton>
                         </ButtonRow>

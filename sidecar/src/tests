@@ -1,4 +1,4 @@
-import { WSSecurityUtil } from '../../src/utils/WSSecurityUtil';
+import { WSSecurityUtil } from './utils/WSSecurityUtil';
 import { WSSecurityType, PasswordType, WSSecurityConfig } from '../../shared/src/models';
 
 describe('WSSecurityUtil', () => {

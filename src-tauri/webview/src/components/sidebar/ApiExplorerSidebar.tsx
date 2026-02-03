@@ -38,7 +38,7 @@ const ExplorerContent = styled(SidebarContent)`
 
 const EmptyMessage = styled.div`
     text-align: center;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
     padding: ${SPACING_XL} 0;
     font-size: 0.9em;
 `;

@@ -18,64 +18,64 @@ const Label = styled.label`
     display: block;
     margin-bottom: 5px;
     font-size: 12px;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
 `;
 
 const Input = styled.input`
     width: 100%;
     padding: 6px 8px;
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     border-radius: 2px;
     outline: none;
     box-sizing: border-box;
 
     &:focus {
-        border-color: var(--vscode-focusBorder);
+        border-color: var(--apinox-focusBorder);
     }
 `;
 
 const TextArea = styled.textarea`
     width: 100%;
     padding: 6px 8px;
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     border-radius: 2px;
     outline: none;
     box-sizing: border-box;
-    font-family: var(--vscode-editor-font-family);
+    font-family: var(--apinox-editor-font-family);
     font-size: 12px;
     resize: vertical;
     min-height: 60px;
 
     &:focus {
-        border-color: var(--vscode-focusBorder);
+        border-color: var(--apinox-focusBorder);
     }
 `;
 
 const XPathDisplay = styled.code`
     display: block;
     padding: 8px;
-    background: var(--vscode-textCodeBlock-background);
+    background: var(--apinox-textCodeBlock-background);
     border-radius: 3px;
-    font-family: var(--vscode-editor-font-family);
+    font-family: var(--apinox-editor-font-family);
     font-size: 11px;
     word-break: break-all;
-    color: var(--vscode-textLink-foreground);
+    color: var(--apinox-textLink-foreground);
 `;
 
 const TargetSelect = styled.select`
     padding: 6px 8px;
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     border-radius: 2px;
     outline: none;
 
     &:focus {
-        border-color: var(--vscode-focusBorder);
+        border-color: var(--apinox-focusBorder);
     }
 `;
 
@@ -131,7 +131,7 @@ export const CreateReplaceRuleModal: React.FC<CreateReplaceRuleModalProps> = ({
             title="Create Replace Rule"
             footer={
                 <>
-                    <Button onClick={onCancel} style={{ marginRight: 8, background: 'transparent', border: '1px solid var(--vscode-button-border)' }}>
+                    <Button onClick={onCancel} style={{ marginRight: 8, background: 'transparent', border: '1px solid var(--apinox-button-border)' }}>
                         Cancel
                     </Button>
                     <Button onClick={handleSave}>
@@ -160,7 +160,7 @@ export const CreateReplaceRuleModal: React.FC<CreateReplaceRuleModalProps> = ({
                 <TextArea
                     value={matchText}
                     readOnly
-                    style={{ background: 'var(--vscode-textCodeBlock-background)' }}
+                    style={{ background: 'var(--apinox-textCodeBlock-background)' }}
                 />
             </FormGroup>
 

@@ -1,4 +1,5 @@
-import { ApinoxProject } from '../../../shared/src/models';
+
+import { ApinoxProject } from '../../shared/src/models';
 
 export const SAMPLES_PROJECT: ApinoxProject = {
     id: 'samples-project-read-only',
@@ -20,6 +21,7 @@ export const SAMPLES_PROJECT: ApinoxProject = {
                     requestType: 'soap',
                     contentType: 'text/xml; charset=utf-8',
                     headers: {
+                        // Explicit Content-Type to avoid webview defaulting to SOAP 1.2
                         'Content-Type': 'text/xml; charset=utf-8',
                         'SOAPAction': 'http://tempuri.org/Add'
                     },

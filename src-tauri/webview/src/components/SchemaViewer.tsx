@@ -13,19 +13,19 @@ const ItemHeader = styled.div`
   cursor: pointer;
   padding: 2px 0;
   &:hover {
-    background-color: var(--vscode-list-hoverBackground);
+    background-color: var(--apinox-list-hoverBackground);
   }
 `;
 
 const Label = styled.span`
   margin-left: 5px;
-  font-family: var(--vscode-editor-font-family);
-  font-size: var(--vscode-editor-font-size);
+  font-family: var(--apinox-editor-font-family);
+  font-size: var(--apinox-editor-font-size);
 `;
 
 const TypeLabel = styled.span`
   margin-left: 8px;
-  color: var(--vscode-descriptionForeground);
+  color: var(--apinox-descriptionForeground);
   font-size: 0.9em;
   opacity: 0.8;
 `;
@@ -41,7 +41,7 @@ const NodeName = styled.span<{ $isComplex?: boolean }>`
 `;
 
 const OptionalMark = styled.span`
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
     margin-left: 4px;
 `;
 
@@ -53,7 +53,7 @@ const ViewerContainer = styled.div`
 `;
 
 const NodeIcon = ({ kind }: { kind: string }) => {
-    return kind === 'complex' ? <Box size={14} color="var(--vscode-symbolIcon-classForeground)" /> : <FileType size={14} color="var(--vscode-symbolIcon-variableForeground)" />;
+    return kind === 'complex' ? <Box size={14} color="var(--apinox-symbolIcon-classForeground)" /> : <FileType size={14} color="var(--apinox-symbolIcon-variableForeground)" />;
 };
 
 const SchemaNodeItem: React.FC<{ node: SchemaNode }> = ({ node }) => {

@@ -4,7 +4,7 @@ import { SoapClient } from "../soapClient";
 import { AssertionRunner } from "../utils/AssertionRunner";
 import { BackendXPathEvaluator } from "../utils/BackendXPathEvaluator";
 import { WildcardProcessor } from "../utils/WildcardProcessor";
-import { WorkflowEngine } from "../../sidecar/src/services/WorkflowEngine";
+import { WorkflowEngine } from './WorkflowEngine';
 
 export class TestRunnerService {
     private soapClient: SoapClient;

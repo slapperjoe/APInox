@@ -9,21 +9,21 @@
  * Icon colors for different item types (folders, files, operations, etc.)
  */
 export const ICON_COLORS = {
-    FOLDER: 'var(--vscode-icon-foreground, #4299e1)',
-    FILE: 'var(--vscode-charts-green, #48bb78)',
-    INTERFACE: 'var(--vscode-charts-blue, #4299e1)',
-    OPERATION: 'var(--vscode-charts-purple, #9f7aea)',
-    SERVICE: 'var(--vscode-charts-blue, #4299e1)',
+    FOLDER: 'var(--apinox-icon-foreground, #4299e1)',
+    FILE: 'var(--apinox-charts-green, #48bb78)',
+    INTERFACE: 'var(--apinox-charts-blue, #4299e1)',
+    OPERATION: 'var(--apinox-charts-purple, #9f7aea)',
+    SERVICE: 'var(--apinox-charts-blue, #4299e1)',
 } as const;
 
 /**
  * Status/test result colors using VS Code testing theme
  */
 export const STATUS_COLORS = {
-    SUCCESS: 'var(--vscode-testing-iconPassed, #73c991)',
-    ERROR: 'var(--vscode-testing-iconFailed, #f48771)',
-    WARNING: 'var(--vscode-testing-iconQueued, #cca700)',
-    INFO: 'var(--vscode-charts-blue, #75beff)',
+    SUCCESS: 'var(--apinox-testing-iconPassed, #73c991)',
+    ERROR: 'var(--apinox-testing-iconFailed, #f48771)',
+    WARNING: 'var(--apinox-testing-iconQueued, #cca700)',
+    INFO: 'var(--apinox-charts-blue, #75beff)',
 } as const;
 
 /**
@@ -40,14 +40,14 @@ export const CHANGE_COLORS = {
  * Uses VS Code's chart colors for consistency
  */
 export const TAG_COLORS = [
-    'var(--vscode-charts-blue, #58A6FF)',
-    'var(--vscode-charts-green, #7EE787)',
-    'var(--vscode-testing-iconFailed, #FF7B72)',
-    'var(--vscode-charts-orange, #FFA657)',
-    'var(--vscode-testing-iconQueued, #D29922)',
+    'var(--apinox-charts-blue, #58A6FF)',
+    'var(--apinox-charts-green, #7EE787)',
+    'var(--apinox-testing-iconFailed, #FF7B72)',
+    'var(--apinox-charts-orange, #FFA657)',
+    'var(--apinox-testing-iconQueued, #D29922)',
     '#F2CC60', // Yellow
-    'var(--vscode-testing-iconPassed, #3FB950)',
-    'var(--vscode-charts-purple, #A371F7)',
+    'var(--apinox-testing-iconPassed, #3FB950)',
+    'var(--apinox-charts-purple, #A371F7)',
     '#79C0FF', // Light blue
     '#FFA198', // Light red
     '#FFCB6B', // Amber

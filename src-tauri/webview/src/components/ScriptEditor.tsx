@@ -101,14 +101,14 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ step, onUpdate, isRe
             inherit: true,
             rules: [],
             colors: {
-                'editor.background': getVar('--vscode-editor-background', isLight ? '#ffffff' : '#1e1e1e'),
-                'editor.foreground': getVar('--vscode-editor-foreground', isLight ? '#000000' : '#d4d4d4'),
-                'editor.selectionBackground': getVar('--vscode-editor-selectionBackground', isLight ? '#add6ff' : '#264f78'),
-                'editor.lineHighlightBackground': getVar('--vscode-editor-lineHighlightBackground', 'transparent'),
-                'editorCursor.foreground': getVar('--vscode-editorCursor-foreground', isLight ? '#000000' : '#ffffff'),
-                'editorLineNumber.foreground': getVar('--vscode-editorLineNumber-foreground', isLight ? '#999999' : '#858585'),
-                'editorLineNumber.activeForeground': getVar('--vscode-editorLineNumber-activeForeground', isLight ? '#000000' : '#c6c6c6'),
-                'editorWhitespace.foreground': getVar('--vscode-editorWhitespace-foreground', isLight ? '#d3d3d3' : '#404040')
+                'editor.background': getVar('--apinox-editor-background', isLight ? '#ffffff' : '#1e1e1e'),
+                'editor.foreground': getVar('--apinox-editor-foreground', isLight ? '#000000' : '#d4d4d4'),
+                'editor.selectionBackground': getVar('--apinox-editor-selectionBackground', isLight ? '#add6ff' : '#264f78'),
+                'editor.lineHighlightBackground': getVar('--apinox-editor-lineHighlightBackground', 'transparent'),
+                'editorCursor.foreground': getVar('--apinox-editorCursor-foreground', isLight ? '#000000' : '#ffffff'),
+                'editorLineNumber.foreground': getVar('--apinox-editorLineNumber-foreground', isLight ? '#999999' : '#858585'),
+                'editorLineNumber.activeForeground': getVar('--apinox-editorLineNumber-activeForeground', isLight ? '#000000' : '#c6c6c6'),
+                'editorWhitespace.foreground': getVar('--apinox-editorWhitespace-foreground', isLight ? '#d3d3d3' : '#404040')
             }
         });
 
@@ -199,8 +199,8 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ step, onUpdate, isRe
                 </ToolbarButton>
             </Toolbar>
 
-            <div style={{ padding: '5px 10px', background: 'var(--vscode-editor-background)', borderBottom: '1px solid var(--vscode-panel-border)' }}>
-                <span style={{ fontSize: '0.8em', color: 'var(--vscode-descriptionForeground)' }}>
+            <div style={{ padding: '5px 10px', background: 'var(--apinox-editor-background)', borderBottom: '1px solid var(--apinox-panel-border)' }}>
+                <span style={{ fontSize: '0.8em', color: 'var(--apinox-descriptionForeground)' }}>
                     API: <code>log(msg)</code>, <code>context</code>, <code>goto(step)</code>, <code>delay(ms)</code>.
                 </span>
             </div>

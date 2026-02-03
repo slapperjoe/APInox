@@ -7,7 +7,7 @@ import { useUI } from '../contexts/UIContext';
 const StyledHelpButton = styled.button`
     background: transparent;
     border: none;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -17,8 +17,8 @@ const StyledHelpButton = styled.button`
     transition: color 0.1s;
 
     &:hover {
-        color: var(--vscode-foreground);
-        background-color: var(--vscode-toolbar-hoverBackground);
+        color: var(--apinox-foreground);
+        background-color: var(--apinox-toolbar-hoverBackground);
     }
 `;
 

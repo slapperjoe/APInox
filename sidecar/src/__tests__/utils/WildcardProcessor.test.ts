@@ -88,6 +88,12 @@ describe('WildcardProcessor', () => {
             expect(result).toBe('id: 12345');
         });
 
+        it('should replace context variables in simple format', () => {
+            const contextVariables = { 'OrderId': '12345', 'isocode': 'AU' };
+            const result = WildcardProcessor.process('id: ${OrderId}, code: ${isocode}', {}, {}, undefined, contextVariables);
+            expect(result).toBe('id: 12345, code: AU');
+        });
+
         it('should handle date math {{now+1d}}', () => {
             const result = WildcardProcessor.process('{{now+1d}}', {}, {});
             expect(result).toMatch(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);

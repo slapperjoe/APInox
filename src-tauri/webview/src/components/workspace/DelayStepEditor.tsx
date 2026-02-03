@@ -21,18 +21,18 @@ const Header = styled.div`
     gap: ${SPACING_SM};
     margin-bottom: ${SPACING_LG};
     padding-bottom: ${SPACING_MD};
-    border-bottom: 1px solid var(--vscode-panel-border);
+    border-bottom: 1px solid var(--apinox-panel-border);
 `;
 
 const Icon = styled.div`
     display: flex;
     align-items: center;
-    color: var(--vscode-symbolIcon-variableForeground);
+    color: var(--apinox-symbolIcon-variableForeground);
 `;
 
 const Title = styled.h2`
     margin: 0;
-    color: var(--vscode-foreground);
+    color: var(--apinox-foreground);
     font-size: 18px;
     font-weight: 600;
 `;
@@ -44,7 +44,7 @@ const Section = styled.div`
 const Label = styled.label`
     display: block;
     margin-bottom: ${SPACING_SM};
-    color: var(--vscode-foreground);
+    color: var(--apinox-foreground);
     font-size: 13px;
     font-weight: 500;
 `;
@@ -52,16 +52,16 @@ const Label = styled.label`
 const Input = styled.input`
     width: 100%;
     padding: ${SPACING_SM};
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     border-radius: 2px;
     font-size: 13px;
     font-family: inherit;
 
     &:focus {
         outline: none;
-        border-color: var(--vscode-focusBorder);
+        border-color: var(--apinox-focusBorder);
     }
 
     &:disabled {
@@ -73,7 +73,7 @@ const Input = styled.input`
 const Description = styled.div`
     margin-top: 4px;
     font-size: 11px;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
 `;
 
 const Actions = styled.div`
@@ -81,16 +81,16 @@ const Actions = styled.div`
     gap: ${SPACING_SM};
     justify-content: flex-end;
     padding-top: ${SPACING_MD};
-    border-top: 1px solid var(--vscode-panel-border);
+    border-top: 1px solid var(--apinox-panel-border);
 `;
 
 const PreviewBox = styled.div`
     padding: ${SPACING_MD};
-    background: var(--vscode-textCodeBlock-background);
-    border: 1px solid var(--vscode-panel-border);
+    background: var(--apinox-textCodeBlock-background);
+    border: 1px solid var(--apinox-panel-border);
     border-radius: 4px;
     font-size: 12px;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
     margin-top: ${SPACING_SM};
 `;
 

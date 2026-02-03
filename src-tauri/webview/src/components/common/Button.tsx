@@ -36,7 +36,7 @@ const baseButtonStyles = css`
     cursor: pointer;
     border: none;
     outline: none;
-    font-family: var(--vscode-font-family);
+    font-family: var(--apinox-font-family);
     font-size: 13px;
     transition: background-color 0.1s ease, opacity 0.1s ease;
     
@@ -54,14 +54,14 @@ const baseButtonStyles = css`
 export const IconButton = styled.button<{ $shake?: boolean; $danger?: boolean }>`
     ${baseButtonStyles}
     background: transparent;
-    color: ${props => props.$danger ? 'var(--vscode-testing-iconFailed)' : 'var(--vscode-icon-foreground)'};
+    color: ${props => props.$danger ? 'var(--apinox-testing-iconFailed)' : 'var(--apinox-icon-foreground)'};
     padding: 4px;
     border-radius: 3px;
     
     &:hover:not(:disabled) {
         background-color: ${props => props.$danger 
-            ? 'color-mix(in srgb, var(--vscode-testing-iconFailed) 10%, transparent)'
-            : 'var(--vscode-toolbar-hoverBackground)'};
+            ? 'color-mix(in srgb, var(--apinox-testing-iconFailed) 10%, transparent)'
+            : 'var(--apinox-toolbar-hoverBackground)'};
     }
     
     &:active:not(:disabled) {
@@ -70,7 +70,7 @@ export const IconButton = styled.button<{ $shake?: boolean; $danger?: boolean }>
     
     ${props => props.$shake && css`
         animation: ${shake} 0.5s ease-in-out;
-        color: var(--vscode-testing-iconFailed);
+        color: var(--apinox-testing-iconFailed);
     `}
 `;
 
@@ -88,7 +88,7 @@ export const HeaderButton = styled.button<{ $shake?: boolean }>`
     border-radius: 3px;
     
     &:hover:not(:disabled) {
-        background-color: var(--vscode-toolbar-hoverBackground);
+        background-color: var(--apinox-toolbar-hoverBackground);
     }
     
     ${props => props.$shake && css`
@@ -102,15 +102,15 @@ export const HeaderButton = styled.button<{ $shake?: boolean }>`
  */
 export const PrimaryButton = styled.button`
     ${baseButtonStyles}
-    background-color: var(--vscode-button-background);
-    color: var(--vscode-button-foreground);
+    background-color: var(--apinox-button-background);
+    color: var(--apinox-button-foreground);
     border: 1px solid transparent;
     padding: 6px 14px;
     border-radius: 2px;
     font-weight: 500;
     
     &:hover:not(:disabled) {
-        background-color: var(--vscode-button-hoverBackground);
+        background-color: var(--apinox-button-hoverBackground);
     }
     
     &:active:not(:disabled) {
@@ -124,15 +124,15 @@ export const PrimaryButton = styled.button`
  */
 export const SecondaryButton = styled.button`
     ${baseButtonStyles}
-    background-color: var(--vscode-button-secondaryBackground);
-    color: var(--vscode-button-secondaryForeground);
-    border: 1px solid var(--vscode-button-border, transparent);
+    background-color: var(--apinox-button-secondaryBackground);
+    color: var(--apinox-button-secondaryForeground);
+    border: 1px solid var(--apinox-button-border, transparent);
     padding: 6px 14px;
     border-radius: 2px;
     font-weight: 400;
     
     &:hover:not(:disabled) {
-        background-color: var(--vscode-button-secondaryHoverBackground);
+        background-color: var(--apinox-button-secondaryHoverBackground);
     }
     
     &:active:not(:disabled) {
@@ -147,14 +147,14 @@ export const SecondaryButton = styled.button`
 export const DangerButton = styled.button<{ $shake?: boolean }>`
     ${baseButtonStyles}
     background-color: transparent;
-    color: var(--vscode-testing-iconFailed);
-    border: 1px solid var(--vscode-testing-iconFailed);
+    color: var(--apinox-testing-iconFailed);
+    border: 1px solid var(--apinox-testing-iconFailed);
     padding: 6px 14px;
     border-radius: 2px;
     font-weight: 500;
     
     &:hover:not(:disabled) {
-        background-color: color-mix(in srgb, var(--vscode-testing-iconFailed) 10%, transparent);
+        background-color: color-mix(in srgb, var(--apinox-testing-iconFailed) 10%, transparent);
     }
     
     &:active:not(:disabled) {
@@ -173,13 +173,13 @@ export const DangerButton = styled.button<{ $shake?: boolean }>`
 export const TextButton = styled.button`
     ${baseButtonStyles}
     background: transparent;
-    color: var(--vscode-textLink-foreground);
+    color: var(--apinox-textLink-foreground);
     border: none;
     padding: 2px 6px;
     text-decoration: underline;
     
     &:hover:not(:disabled) {
-        color: var(--vscode-textLink-activeForeground);
+        color: var(--apinox-textLink-activeForeground);
     }
 `;
 
@@ -193,21 +193,21 @@ export const ToggleButton = styled.button<{ $active: boolean; $activeColor?: str
     padding: 6px 8px;
     font-size: 11px;
     border: 1px solid ${props => props.$active
-        ? (props.$activeColor || 'var(--vscode-button-background)')
-        : 'var(--vscode-input-border)'};
+        ? (props.$activeColor || 'var(--apinox-button-background)')
+        : 'var(--apinox-input-border)'};
     border-radius: 4px;
     background: ${props => props.$active
-        ? (props.$activeColor || 'var(--vscode-button-background)')
+        ? (props.$activeColor || 'var(--apinox-button-background)')
         : 'transparent'};
     color: ${props => props.$active
-        ? 'var(--vscode-button-foreground)'
-        : 'var(--vscode-input-foreground)'};
+        ? 'var(--apinox-button-foreground)'
+        : 'var(--apinox-input-foreground)'};
     font-weight: ${props => props.$active ? 600 : 500};
     
     &:hover:not(:disabled) {
         background: ${props => props.$active
-            ? (props.$activeColor || 'var(--vscode-button-background)')
-            : 'var(--vscode-list-hoverBackground)'};
+            ? (props.$activeColor || 'var(--apinox-button-background)')
+            : 'var(--apinox-list-hoverBackground)'};
     }
 `;
 
@@ -218,13 +218,13 @@ export const ToggleButton = styled.button<{ $active: boolean; $activeColor?: str
 export const RunButton = styled.button`
     ${baseButtonStyles}
     background: transparent;
-    color: var(--vscode-testing-iconPassed);
+    color: var(--apinox-testing-iconPassed);
     border: none;
     padding: 4px;
     border-radius: 3px;
     
     &:hover:not(:disabled) {
-        background-color: var(--vscode-toolbar-hoverBackground);
+        background-color: var(--apinox-toolbar-hoverBackground);
     }
 `;
 
@@ -235,12 +235,12 @@ export const RunButton = styled.button`
 export const StopButton = styled.button`
     ${baseButtonStyles}
     background: transparent;
-    color: var(--vscode-testing-iconFailed);
+    color: var(--apinox-testing-iconFailed);
     border: none;
     padding: 4px;
     border-radius: 3px;
     
     &:hover:not(:disabled) {
-        background-color: var(--vscode-toolbar-hoverBackground);
+        background-color: var(--apinox-toolbar-hoverBackground);
     }
 `;

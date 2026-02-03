@@ -19,7 +19,7 @@ const InterfaceRow = styled(OperationItem)<{ $isDragging?: boolean; $dropPositio
             left: 0;
             right: 0;
             height: 2px;
-            background: var(--vscode-focusBorder, #007ACC);
+            background: var(--apinox-focusBorder, #007ACC);
         }
     `}
     
@@ -31,7 +31,7 @@ const InterfaceRow = styled(OperationItem)<{ $isDragging?: boolean; $dropPositio
             left: 0;
             right: 0;
             height: 2px;
-            background: var(--vscode-focusBorder, #007ACC);
+            background: var(--apinox-focusBorder, #007ACC);
         }
     `}
 `;
@@ -41,7 +41,7 @@ const DragHandle = styled.div<{ $visible: boolean }>`
     align-items: center;
     justify-content: center;
     cursor: grab;
-    color: var(--vscode-foreground);
+    color: var(--apinox-foreground);
     opacity: 0.5;
     position: absolute;
     left: 2px;
@@ -60,9 +60,9 @@ const DragHandle = styled.div<{ $visible: boolean }>`
 `;
 
 const RenameInput = styled.input`
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     padding: 2px 4px;
     flex: 1;
     font-size: inherit;
@@ -250,7 +250,7 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
                                         }
                                     }}
                                     title={confirmDeleteId === iface.name ? "Click again to Confirm Delete" : "Delete Interface"}
-                                    style={{ color: confirmDeleteId === iface.name ? 'var(--vscode-errorForeground)' : undefined }}
+                                    style={{ color: confirmDeleteId === iface.name ? 'var(--apinox-errorForeground)' : undefined }}
                                     $shake={confirmDeleteId === iface.name}
                                 >
                                     <Trash2 size={12} />
@@ -317,7 +317,7 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
                                                         }
                                                     }}
                                                     title={confirmDeleteId === `op-${iface.name}-${op.name}` ? "Click to Confirm Delete" : "Delete Operation"}
-                                                    style={{ color: confirmDeleteId === `op-${iface.name}-${op.name}` ? 'var(--vscode-errorForeground)' : undefined }}
+                                                    style={{ color: confirmDeleteId === `op-${iface.name}-${op.name}` ? 'var(--apinox-errorForeground)' : undefined }}
                                                     $shake={confirmDeleteId === `op-${iface.name}-${op.name}`}
                                                 >
                                                     <Trash2 size={12} />
@@ -369,9 +369,9 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
                                                         autoFocus
                                                         onClick={(e) => e.stopPropagation()}
                                                         style={{
-                                                            background: 'var(--vscode-input-background)',
-                                                            color: 'var(--vscode-input-foreground)',
-                                                            border: '1px solid var(--vscode-input-border)',
+                                                            background: 'var(--apinox-input-background)',
+                                                            color: 'var(--apinox-input-foreground)',
+                                                            border: '1px solid var(--apinox-input-border)',
                                                             width: '100%'
                                                         }}
                                                     />
@@ -393,7 +393,7 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
                                                                 }
                                                             }}
                                                             title={confirmDeleteId === req.id ? "Click again to Confirm Delete" : "Delete Request"}
-                                                            style={{ color: confirmDeleteId === req.id ? 'var(--vscode-errorForeground)' : undefined }}
+                                                            style={{ color: confirmDeleteId === req.id ? 'var(--apinox-errorForeground)' : undefined }}
                                                             $shake={confirmDeleteId === req.id}
                                                         >
                                                             <Trash2 size={12} />

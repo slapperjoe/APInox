@@ -30,7 +30,7 @@ const shakeAnimation = keyframes`
 `;
 
 const DeleteButton = styled(IconButton) <{ confirming?: boolean }>`
-    color: ${props => props.confirming ? 'var(--vscode-errorForeground)' : 'var(--vscode-foreground)'};
+    color: ${props => props.confirming ? 'var(--apinox-errorForeground)' : 'var(--apinox-foreground)'};
     ${props => props.confirming && css`
         animation: ${shakeAnimation} 0.5s ease-in-out infinite;
     `}
@@ -77,7 +77,7 @@ export const ReplaceRulesTab: React.FC<ReplaceRulesTabProps> = ({
     return (
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
             <EnvList>
-                <div style={{ padding: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--vscode-panel-border)' }}>
+                <div style={{ padding: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--apinox-panel-border)' }}>
                     <span style={{ fontSize: '12px', fontWeight: 600 }}>Rules</span>
                     <IconButton onClick={onAddRule} title="Add Rule">
                         <Plus size={14} />
@@ -104,7 +104,7 @@ export const ReplaceRulesTab: React.FC<ReplaceRulesTabProps> = ({
                     </EnvItem>
                 ))}
                 {rules.length === 0 && (
-                    <div style={{ padding: '15px', textAlign: 'center', color: 'var(--vscode-disabledForeground)', fontSize: 12 }}>
+                    <div style={{ padding: '15px', textAlign: 'center', color: 'var(--apinox-disabledForeground)', fontSize: 12 }}>
                         No rules yet.<br />Create one from Proxy view.
                     </div>
                 )}
@@ -181,7 +181,7 @@ export const ReplaceRulesTab: React.FC<ReplaceRulesTabProps> = ({
                         </FormGroup>
                     </>
                 ) : (
-                    <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', color: 'var(--vscode-disabledForeground)' }}>
+                    <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', color: 'var(--apinox-disabledForeground)' }}>
                         Select a rule to edit
                     </div>
                 )}

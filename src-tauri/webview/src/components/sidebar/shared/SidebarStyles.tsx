@@ -19,7 +19,7 @@ import styled, { keyframes, css } from 'styled-components';
  * Used to show "*" next to modified items
  */
 export const DirtyMarker = styled.span`
-    color: var(--vscode-charts-yellow);
+    color: var(--apinox-charts-yellow);
     margin-left: 5px;
     font-size: 1.2em;
     line-height: 0.5;
@@ -36,7 +36,7 @@ export const SidebarHeader = styled.div`
     justify-content: space-between;
     padding: 4px 10px;
     min-height: 28px;
-    border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border);
+    border-bottom: 1px solid var(--apinox-sideBarSectionHeader-border);
     user-select: none;
 `;
 
@@ -48,7 +48,7 @@ export const SidebarHeaderTitle = styled.div`
     font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
-    color: var(--vscode-sideBarTitle-foreground);
+    color: var(--apinox-sideBarTitle-foreground);
     letter-spacing: 0.3px;
     flex: 1;
     display: flex;
@@ -64,7 +64,7 @@ export const SidebarHeaderActions = styled.div`
     display: flex;
     align-items: center;
     gap: 4px;
-    color: var(--vscode-icon-foreground);
+    color: var(--apinox-icon-foreground);
 `;
 
 /**
@@ -99,7 +99,7 @@ export const SectionHeader = styled.div`
     align-items: center;
     user-select: none;
     &:hover {
-        background-color: var(--vscode-list-hoverBackground);
+        background-color: var(--apinox-list-hoverBackground);
     }
 `;
 
@@ -126,7 +126,7 @@ export const ServiceItem = styled.div`
     font-size: 0.95em;
     font-weight: 500;
     &:hover {
-        background-color: var(--vscode-list-hoverBackground);
+        background-color: var(--apinox-list-hoverBackground);
     }
 `;
 
@@ -140,12 +140,12 @@ export const OperationItem = styled.div<{ $active?: boolean }>`
     padding-left: 20px;
     cursor: pointer;
     font-size: 0.88em;
-    background-color: ${props => props.$active ? 'var(--vscode-list-activeSelectionBackground)' : 'transparent'};
-    color: ${props => props.$active ? 'var(--vscode-list-activeSelectionForeground)' : 'inherit'};
+    background-color: ${props => props.$active ? 'var(--apinox-list-activeSelectionBackground)' : 'transparent'};
+    color: ${props => props.$active ? 'var(--apinox-list-activeSelectionForeground)' : 'inherit'};
     display: flex;
     align-items: center;
     &:hover {
-        background-color: ${props => props.$active ? 'var(--vscode-list-activeSelectionBackground)' : 'var(--vscode-list-hoverBackground)'};
+        background-color: ${props => props.$active ? 'var(--apinox-list-activeSelectionBackground)' : 'var(--apinox-list-hoverBackground)'};
     }
 `;
 
@@ -159,12 +159,12 @@ export const RequestItem = styled.div<{ $active?: boolean }>`
     padding-left: 45px;
     cursor: pointer;
     font-size: 0.82em;
-    background-color: ${props => props.$active ? 'var(--vscode-list-activeSelectionBackground)' : 'transparent'};
-    color: ${props => props.$active ? 'var(--vscode-list-activeSelectionForeground)' : 'inherit'};
+    background-color: ${props => props.$active ? 'var(--apinox-list-activeSelectionBackground)' : 'transparent'};
+    color: ${props => props.$active ? 'var(--apinox-list-activeSelectionForeground)' : 'inherit'};
     display: flex;
     align-items: center;
     &:hover {
-        background-color: ${props => props.$active ? 'var(--vscode-list-activeSelectionBackground)' : 'var(--vscode-list-hoverBackground)'};
+        background-color: ${props => props.$active ? 'var(--apinox-list-activeSelectionBackground)' : 'var(--apinox-list-hoverBackground)'};
     }
 `;
 
@@ -198,7 +198,7 @@ export const HeaderButton = styled.button<{ $shake?: boolean }>`
     justify-content: center;
     ${props => props.$shake && css`animation: ${shake} 0.5s ease-in-out;`}
     &:hover {
-        background-color: var(--vscode-toolbar-hoverBackground);
+        background-color: var(--apinox-toolbar-hoverBackground);
         border-radius: 3px;
     }
 `;
@@ -212,13 +212,13 @@ export const HeaderButton = styled.button<{ $shake?: boolean }>`
  * Use InlineFormInput (2px 4px) for compact inline editing.
  */
 export const Input = styled.input`
-    background-color: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background-color: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     padding: 4px;
     flex: 1;
     outline: none;
     &:focus {
-        border-color: var(--vscode-focusBorder);
+        border-color: var(--apinox-focusBorder);
     }
 `;

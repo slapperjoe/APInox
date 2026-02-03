@@ -22,11 +22,11 @@ const Header = styled.div`
     align-items: center;
     gap: ${SPACING_SM};
     padding-bottom: ${SPACING_SM};
-    border-bottom: 1px solid var(--vscode-panel-border);
+    border-bottom: 1px solid var(--apinox-panel-border);
 `;
 
 const IconContainer = styled.div`
-    color: var(--vscode-charts-green);
+    color: var(--apinox-charts-green);
 `;
 
 const Title = styled.h2`
@@ -54,24 +54,24 @@ const Label = styled.label`
 `;
 
 const Input = styled.input`
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     padding: 6px 8px;
     border-radius: 4px;
     font-size: 13px;
-    font-family: var(--vscode-font-family);
+    font-family: var(--apinox-font-family);
     width: 100%;
     
     &:focus {
-        outline: 1px solid var(--vscode-focusBorder);
+        outline: 1px solid var(--apinox-focusBorder);
     }
 `;
 
 const InfoBox = styled.div`
     padding: ${SPACING_SM};
-    background: var(--vscode-textCodeBlock-background);
-    border: 1px solid var(--vscode-panel-border);
+    background: var(--apinox-textCodeBlock-background);
+    border: 1px solid var(--apinox-panel-border);
     border-radius: 4px;
     font-size: 11px;
     opacity: 0.8;
@@ -83,8 +83,8 @@ const InfoBox = styled.div`
 
 const RequestDetails = styled.div`
     padding: ${SPACING_SM};
-    background: var(--vscode-textCodeBlock-background);
-    border: 1px solid var(--vscode-panel-border);
+    background: var(--apinox-textCodeBlock-background);
+    border: 1px solid var(--apinox-panel-border);
     border-radius: 4px;
     font-size: 12px;
     
@@ -98,7 +98,7 @@ const RequestDetails = styled.div`
 `;
 
 const EditorContainer = styled.div`
-    border: 1px solid var(--vscode-panel-border);
+    border: 1px solid var(--apinox-panel-border);
     border-radius: 4px;
     overflow: hidden;
     flex: 1;

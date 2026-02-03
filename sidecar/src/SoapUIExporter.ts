@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { XMLParser, XMLBuilder } from 'fast-xml-parser';
-import { ApinoxProject } from '../shared/src/models';
+import { ApinoxProject } from '../../shared/src/models';
 import { DiagnosticService } from './services/DiagnosticService';
 
 export class SoapUIExporter {

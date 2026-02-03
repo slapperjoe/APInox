@@ -9,14 +9,14 @@ const Container = styled.div`
     height: 100%;
     overflow: auto;
     padding: 0;
-    font-family: var(--vscode-font-family);
-    color: var(--vscode-foreground);
-    background-color: var(--vscode-editor-background);
+    font-family: var(--apinox-font-family);
+    color: var(--apinox-foreground);
+    background-color: var(--apinox-editor-background);
 `;
 
 const Toolbar = styled.div`
     padding: ${SPACING_SM};
-    border-bottom: 1px solid var(--vscode-panel-border);
+    border-bottom: 1px solid var(--apinox-panel-border);
     display: flex;
     justify-content: flex-end;
     gap: ${SPACING_SM};
@@ -29,8 +29,8 @@ const ExtractorList = styled.div`
 const ExtractorItem = styled.div`
     display: flex;
     padding: ${SPACING_SM};
-    border: 1px solid var(--vscode-panel-border);
-    background-color: var(--vscode-list-hoverBackground);
+    border: 1px solid var(--apinox-panel-border);
+    background-color: var(--apinox-list-hoverBackground);
     margin-bottom: ${SPACING_SM};
     border-radius: ${SPACING_XS};
     align-items: flex-start;
@@ -52,13 +52,13 @@ const InfoRow = styled.div`
 
 const Label = styled.span`
     font-weight: bold;
-    color: var(--vscode-textLink-foreground);
+    color: var(--apinox-textLink-foreground);
     min-width: 80px;
     font-size: 0.9em;
 `;
 
 const Value = styled.code`
-    background: var(--vscode-textCodeBlock-background);
+    background: var(--apinox-textCodeBlock-background);
     padding: 2px ${SPACING_XS};
     border-radius: 3px;
     font-family: monospace;
@@ -68,7 +68,7 @@ const Value = styled.code`
 
 const IconButton = styled.button`
     background: transparent;
-    color: var(--vscode-icon-foreground);
+    color: var(--apinox-icon-foreground);
     border: none;
     cursor: pointer;
     padding: ${SPACING_XS};
@@ -79,7 +79,7 @@ const IconButton = styled.button`
 
     &:hover {
         opacity: 1;
-        background-color: var(--vscode-toolbar-hoverBackground);
+        background-color: var(--apinox-toolbar-hoverBackground);
         border-radius: 3px;
     }
 `;
@@ -104,29 +104,29 @@ const EmptyState = styled.div`
 `;
 
 const VariableValue = styled(Value)`
-    color: var(--vscode-debugTokenExpression-name);
+    color: var(--apinox-debugTokenExpression-name);
 `;
 
 const DefaultLabel = styled(Label)`
-    color: var(--vscode-editorInfo-foreground);
+    color: var(--apinox-editorInfo-foreground);
 `;
 
 const DefaultValue = styled(Value)`
-    color: var(--vscode-editorInfo-foreground);
+    color: var(--apinox-editorInfo-foreground);
 `;
 
 const PreviewLabel = styled(Label)`
-    color: var(--vscode-testing-iconPassed);
+    color: var(--apinox-testing-iconPassed);
 `;
 
 const PreviewValue = styled(Value)`
-    border-color: var(--vscode-testing-iconPassed);
+    border-color: var(--apinox-testing-iconPassed);
     border: 1px solid transparent;
-    background-color: var(--vscode-editor-inactiveSelectionBackground);
+    background-color: var(--apinox-editor-inactiveSelectionBackground);
 `;
 
 const DeleteButton = styled(IconButton)`
-    color: var(--vscode-errorForeground);
+    color: var(--apinox-errorForeground);
 `;
 
 interface ExtractorsPanelProps {

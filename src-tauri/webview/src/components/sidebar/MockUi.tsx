@@ -28,13 +28,13 @@ interface MockUiProps {
 }
 
 const Content = styled(SidebarContent)`
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
 `;
 
 const ConfigSection = styled.div`
     margin-bottom: ${SPACING_LG};
     padding: ${SPACING_MD};
-    background-color: var(--vscode-editor-inactiveSelectionBackground);
+    background-color: var(--apinox-editor-inactiveSelectionBackground);
     border-radius: 5px;
 `;
 
@@ -58,13 +58,13 @@ const FieldLabel = styled.label`
 const TextInput = styled.input`
     width: 100%;
     padding: ${SPACING_XS};
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     border-radius: 2px;
     
     &:focus {
-        outline: 1px solid var(--vscode-focusBorder);
+        outline: 1px solid var(--apinox-focusBorder);
     }
 `;
 
@@ -84,7 +84,7 @@ const CheckboxLabel = styled.label`
 `;
 
 const Section = styled.div`
-    border-top: 1px solid var(--vscode-panel-border);
+    border-top: 1px solid var(--apinox-panel-border);
     padding-top: ${SPACING_MD};
     margin-top: ${SPACING_MD};
 `;
@@ -110,7 +110,7 @@ const RuleItem = styled.div`
     align-items: center;
     gap: ${SPACING_SM};
     padding: ${SPACING_SM};
-    background: var(--vscode-editor-inactiveSelectionBackground);
+    background: var(--apinox-editor-inactiveSelectionBackground);
     border-radius: 3px;
     margin-bottom: ${SPACING_XS};
     font-size: 0.85em;
@@ -238,7 +238,7 @@ export const MockUi: React.FC<MockUiProps> = ({
                             checked={config.passthroughEnabled !== false}
                             onChange={e => onUpdateConfig({ passthroughEnabled: e.target.checked })}
                             style={{
-                                accentColor: 'var(--vscode-button-background)',
+                                accentColor: 'var(--apinox-button-background)',
                                 width: '14px',
                                 height: '14px',
                                 cursor: 'pointer'
@@ -258,7 +258,7 @@ export const MockUi: React.FC<MockUiProps> = ({
                                 onChange={e => onUpdateConfig({ routeThroughProxy: e.target.checked })}
                                 style={{
                                     marginRight: 6,
-                                    accentColor: 'var(--vscode-button-background)',
+                                    accentColor: 'var(--apinox-button-background)',
                                     width: '14px',
                                     height: '14px',
                                     cursor: 'pointer'
@@ -278,19 +278,19 @@ export const MockUi: React.FC<MockUiProps> = ({
                             onChange={e => onUpdateConfig({ recordMode: e.target.checked })}
                             style={{
                                 marginRight: 6,
-                                accentColor: 'var(--vscode-charts-yellow)',
+                                accentColor: 'var(--apinox-charts-yellow)',
                                 width: '14px',
                                 height: '14px',
                                 cursor: 'pointer'
                             }}
                         />
-                        <label htmlFor="chkRecordMode" style={{ fontSize: '0.8em', cursor: 'pointer', userSelect: 'none', color: config.recordMode ? 'var(--vscode-charts-yellow)' : undefined }} title="Auto-capture real responses as mock rules">
+                        <label htmlFor="chkRecordMode" style={{ fontSize: '0.8em', cursor: 'pointer', userSelect: 'none', color: config.recordMode ? 'var(--apinox-charts-yellow)' : undefined }} title="Auto-capture real responses as mock rules">
                             🔴 Record Mode
                         </label>
                     </div>
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-                        <div style={{ fontSize: '0.8em' }}>Status: {isRunning ? <span style={{ color: 'var(--vscode-testing-iconPassed)' }}>Running</span> : 'Stopped'}</div>
+                        <div style={{ fontSize: '0.8em' }}>Status: {isRunning ? <span style={{ color: 'var(--apinox-testing-iconPassed)' }}>Running</span> : 'Stopped'}</div>
                     </div>
                     </ConfigSection>
 
@@ -322,7 +322,7 @@ export const MockUi: React.FC<MockUiProps> = ({
                                             background: 'none',
                                             border: 'none',
                                             cursor: 'pointer',
-                                            color: rule.enabled ? 'var(--vscode-testing-iconPassed)' : 'var(--vscode-disabledForeground)',
+                                            color: rule.enabled ? 'var(--apinox-testing-iconPassed)' : 'var(--apinox-disabledForeground)',
                                             padding: 2,
                                             display: 'flex'
                                         }}
@@ -351,7 +351,7 @@ export const MockUi: React.FC<MockUiProps> = ({
                                     <HeaderButton
                                         onClick={() => onDeleteRule(rule.id)}
                                         title="Delete"
-                                        style={{ padding: 4, color: 'var(--vscode-testing-iconFailed)' }}
+                                        style={{ padding: 4, color: 'var(--apinox-testing-iconFailed)' }}
                                     >
                                         <Trash2 size={12} />
                                     </HeaderButton>
@@ -364,7 +364,7 @@ export const MockUi: React.FC<MockUiProps> = ({
                         <EmptyMessage>
                             No mock rules configured.
                             <br />
-                            <span style={{ color: 'var(--vscode-textLink-foreground)', cursor: 'pointer' }} onClick={handleAddRule}>
+                            <span style={{ color: 'var(--apinox-textLink-foreground)', cursor: 'pointer' }} onClick={handleAddRule}>
                                 Click + to add one.
                             </span>
                         </EmptyMessage>
@@ -397,10 +397,10 @@ export const MockUi: React.FC<MockUiProps> = ({
                                         <span style={{ fontWeight: 'bold' }}>{event.method}</span>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                             {event.matchedRule && (
-                                                <span style={{ color: 'var(--vscode-charts-green)', fontSize: '0.8em' }}>MOXY</span>
+                                                <span style={{ color: 'var(--apinox-charts-green)', fontSize: '0.8em' }}>MOXY</span>
                                             )}
                                             {event.passthrough && (
-                                                <span style={{ color: 'var(--vscode-charts-blue)', fontSize: '0.8em', display: 'flex', alignItems: 'center' }}>
+                                                <span style={{ color: 'var(--apinox-charts-blue)', fontSize: '0.8em', display: 'flex', alignItems: 'center' }}>
                                                     <ArrowRight size={10} /> FWD
                                                 </span>
                                             )}
@@ -409,7 +409,7 @@ export const MockUi: React.FC<MockUiProps> = ({
                                     </div>
                                     <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={event.url}>{event.url}</div>
                                     {event.matchedRule && (
-                                        <div style={{ fontSize: '0.75em', opacity: 0.7, color: 'var(--vscode-charts-green)' }}>
+                                        <div style={{ fontSize: '0.75em', opacity: 0.7, color: 'var(--apinox-charts-green)' }}>
                                             Rule: {event.matchedRule}
                                         </div>
                                     )}

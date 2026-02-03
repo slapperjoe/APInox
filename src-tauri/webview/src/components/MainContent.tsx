@@ -63,8 +63,8 @@ const ImportModalOverlay = styled.div`
 `;
 
 const ImportModalContainer = styled.div`
-    background: var(--vscode-editor-background);
-    border: 1px solid var(--vscode-widget-border);
+    background: var(--apinox-editor-background);
+    border: 1px solid var(--apinox-widget-border);
     border-radius: 6px;
     padding: 20px;
     min-width: 400px;
@@ -93,9 +93,9 @@ const ImportModalItem = styled.div`
     padding: 10px;
     margin-bottom: 5px;
     border-radius: 4px;
-    background: var(--vscode-list-hoverBackground);
+    background: var(--apinox-list-hoverBackground);
     cursor: pointer;
-    border: 1px solid var(--vscode-widget-border);
+    border: 1px solid var(--apinox-widget-border);
 `;
 
 const ImportModalItemTitle = styled.div`
@@ -119,8 +119,8 @@ const ImportModalEmpty = styled.div`
 `;
 
 const ImportModalCancel = styled.button`
-    background: var(--vscode-button-secondaryBackground);
-    color: var(--vscode-button-secondaryForeground);
+    background: var(--apinox-button-secondaryBackground);
+    color: var(--apinox-button-secondaryForeground);
     border: none;
     padding: 8px 16px;
     border-radius: 4px;
@@ -128,7 +128,7 @@ const ImportModalCancel = styled.button`
 `;
 
 const DangerMenuItem = styled(ContextMenuItem)`
-    color: var(--vscode-errorForeground);
+    color: var(--apinox-errorForeground);
 `;
 
 
@@ -1096,7 +1096,7 @@ export function MainContent() {
                             items.push({
                                 id: `${project.id || project.name}-op-${op.name}-req-${idx}`,
                                 label: op.requests.length > 1 ? `${(op as any).displayName || op.name} [${idx + 1}/${op.requests.length}]` : ((op as any).displayName || op.name),
-                                description: `${project.name} > ${(iface as any).displayName || iface.name}${op.requests.length > 1 ? ` > Request ${idx + 1}` : ''}`,
+                                description: `${project.name} > ${(iface as any).displayName || iface.name} > ${req.name}`,
                                 detail: req.endpoint || op.originalEndpoint || 'WSDL Operation',
                                 type: 'request',
                                 data: req
@@ -1110,7 +1110,8 @@ export function MainContent() {
                             description: `${project.name} > ${(iface as any).displayName || iface.name}`,
                             detail: op.originalEndpoint || 'WSDL Operation',
                             type: 'operation',
-                            data: op
+                            data: op,
+                            warning: true
                         });
                     }
                 });

@@ -20,8 +20,8 @@ const ModalWrapper = styled.div`
 
 const TabContainer = styled.div`
     display: flex;
-    border-bottom: 1px solid var(--vscode-panel-border);
-    background: var(--vscode-sideBar-background);
+    border-bottom: 1px solid var(--apinox-panel-border);
+    background: var(--apinox-sideBar-background);
 `;
 
 const Tab = styled.div<{ $active: boolean }>`
@@ -32,12 +32,12 @@ const Tab = styled.div<{ $active: boolean }>`
     align-items: center;
     gap: 6px;
     border-top: 1px solid transparent;
-    border-right: 1px solid var(--vscode-panel-border);
-    background: ${props => props.$active ? 'var(--vscode-editor-background)' : 'transparent'};
-    color: ${props => props.$active ? 'var(--vscode-tab-activeForeground)' : 'var(--vscode-tab-inactiveForeground)'};
+    border-right: 1px solid var(--apinox-panel-border);
+    background: ${props => props.$active ? 'var(--apinox-editor-background)' : 'transparent'};
+    color: ${props => props.$active ? 'var(--apinox-tab-activeForeground)' : 'var(--apinox-tab-inactiveForeground)'};
 
     &:hover {
-        color: var(--vscode-tab-activeForeground);
+        color: var(--apinox-tab-activeForeground);
     }
 `;
 
@@ -120,14 +120,14 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
             inherit: true,
             rules: [],
             colors: {
-                'editor.background': getVar('--vscode-editor-background', isLight ? '#ffffff' : '#1e1e1e'),
-                'editor.foreground': getVar('--vscode-editor-foreground', isLight ? '#000000' : '#d4d4d4'),
-                'editor.selectionBackground': getVar('--vscode-editor-selectionBackground', isLight ? '#add6ff' : '#264f78'),
-                'editor.lineHighlightBackground': getVar('--vscode-editor-lineHighlightBackground', 'transparent'),
-                'editorCursor.foreground': getVar('--vscode-editorCursor-foreground', isLight ? '#000000' : '#ffffff'),
-                'editorLineNumber.foreground': getVar('--vscode-editorLineNumber-foreground', isLight ? '#999999' : '#858585'),
-                'editorLineNumber.activeForeground': getVar('--vscode-editorLineNumber-activeForeground', isLight ? '#000000' : '#c6c6c6'),
-                'editorWhitespace.foreground': getVar('--vscode-editorWhitespace-foreground', isLight ? '#d3d3d3' : '#404040')
+                'editor.background': getVar('--apinox-editor-background', isLight ? '#ffffff' : '#1e1e1e'),
+                'editor.foreground': getVar('--apinox-editor-foreground', isLight ? '#000000' : '#d4d4d4'),
+                'editor.selectionBackground': getVar('--apinox-editor-selectionBackground', isLight ? '#add6ff' : '#264f78'),
+                'editor.lineHighlightBackground': getVar('--apinox-editor-lineHighlightBackground', 'transparent'),
+                'editorCursor.foreground': getVar('--apinox-editorCursor-foreground', isLight ? '#000000' : '#ffffff'),
+                'editorLineNumber.foreground': getVar('--apinox-editorLineNumber-foreground', isLight ? '#999999' : '#858585'),
+                'editorLineNumber.activeForeground': getVar('--apinox-editorLineNumber-activeForeground', isLight ? '#000000' : '#c6c6c6'),
+                'editorWhitespace.foreground': getVar('--apinox-editorWhitespace-foreground', isLight ? '#d3d3d3' : '#404040')
             }
         });
 
@@ -468,7 +468,7 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
                     <Tab $active={activeTab === SettingsTab.SERVER} onClick={() => handleTabSwitch(SettingsTab.SERVER)}>
                         <Network size={14} /> Server
                     </Tab>
-                    <Tab $active={activeTab === SettingsTab.JSON} onClick={() => handleTabSwitch(SettingsTab.JSON)} style={{ marginLeft: 'auto', borderRight: 'none', borderLeft: '1px solid var(--vscode-panel-border)' }}>
+                    <Tab $active={activeTab === SettingsTab.JSON} onClick={() => handleTabSwitch(SettingsTab.JSON)} style={{ marginLeft: 'auto', borderRight: 'none', borderLeft: '1px solid var(--apinox-panel-border)' }}>
                         <FileJson size={14} /> JSON (Advanced)
                     </Tab>
                 </TabContainer>
@@ -588,7 +588,7 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
                     {activeTab === SettingsTab.JSON && (
                         <>
                             {parseError && (
-                                <div style={{ padding: '8px', background: 'var(--vscode-inputValidation-errorBackground)', color: 'var(--vscode-inputValidation-errorForeground)' }}>
+                                <div style={{ padding: '8px', background: 'var(--apinox-inputValidation-errorBackground)', color: 'var(--apinox-inputValidation-errorForeground)' }}>
                                     <AlertTriangle size={14} style={{ verticalAlign: 'middle', marginRight: '6px' }} />
                                     {parseError}
                                 </div>

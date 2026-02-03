@@ -21,7 +21,7 @@ const Content = styled.div`
 
 const Description = styled.p`
     margin: 0;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
     font-size: 0.9em;
     line-height: 1.5;
 `;
@@ -30,21 +30,21 @@ const TextArea = styled.textarea`
     width: 100%;
     min-height: 200px;
     padding: ${SPACING_MD};
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     border-radius: 4px;
-    font-family: var(--vscode-editor-font-family, monospace);
+    font-family: var(--apinox-editor-font-family, monospace);
     font-size: 0.9em;
     resize: vertical;
     
     &:focus {
         outline: none;
-        border-color: var(--vscode-focusBorder);
+        border-color: var(--apinox-focusBorder);
     }
     
     &::placeholder {
-        color: var(--vscode-input-placeholderForeground);
+        color: var(--apinox-input-placeholderForeground);
     }
 `;
 
@@ -70,14 +70,14 @@ const RadioOption = styled.label<{ $selected: boolean }>`
     align-items: center;
     gap: ${SPACING_SM};
     padding: ${SPACING_SM} ${SPACING_MD};
-    border: 1px solid ${props => props.$selected ? 'var(--vscode-focusBorder)' : 'var(--vscode-input-border)'};
+    border: 1px solid ${props => props.$selected ? 'var(--apinox-focusBorder)' : 'var(--apinox-input-border)'};
     border-radius: 4px;
     cursor: pointer;
-    background: ${props => props.$selected ? 'var(--vscode-list-hoverBackground)' : 'transparent'};
+    background: ${props => props.$selected ? 'var(--apinox-list-hoverBackground)' : 'transparent'};
     transition: all 0.15s ease;
     
     &:hover {
-        background: var(--vscode-list-hoverBackground);
+        background: var(--apinox-list-hoverBackground);
     }
     
     input[type="radio"] {
@@ -88,32 +88,32 @@ const RadioOption = styled.label<{ $selected: boolean }>`
 const Input = styled.input`
     width: 100%;
     padding: ${SPACING_SM} ${SPACING_MD};
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     border-radius: 4px;
     font-size: 0.95em;
     margin-top: ${SPACING_XS};
     
     &:focus {
         outline: none;
-        border-color: var(--vscode-focusBorder);
+        border-color: var(--apinox-focusBorder);
     }
 `;
 
 const Select = styled.select`
     width: 100%;
     padding: ${SPACING_SM} ${SPACING_MD};
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     border-radius: 4px;
     font-size: 0.95em;
     margin-top: ${SPACING_XS};
     
     &:focus {
         outline: none;
-        border-color: var(--vscode-focusBorder);
+        border-color: var(--apinox-focusBorder);
     }
 `;
 
@@ -134,7 +134,7 @@ const ProgressHeader = styled.div`
 const ProgressBar = styled.div`
     width: 100%;
     height: 8px;
-    background: var(--vscode-progressBar-background);
+    background: var(--apinox-progressBar-background);
     border-radius: 4px;
     overflow: hidden;
 `;
@@ -142,7 +142,7 @@ const ProgressBar = styled.div`
 const ProgressFill = styled.div<{ $progress: number }>`
     height: 100%;
     width: ${props => props.$progress}%;
-    background: var(--vscode-progressBar-background, #0078d4);
+    background: var(--apinox-progressBar-background, #0078d4);
     transition: width 0.3s ease;
 `;
 
@@ -159,7 +159,7 @@ const ResultItem = styled.div<{ $status: 'pending' | 'processing' | 'success' | 
     align-items: center;
     gap: ${SPACING_SM};
     padding: ${SPACING_SM} ${SPACING_MD};
-    background: var(--vscode-list-hoverBackground);
+    background: var(--apinox-list-hoverBackground);
     border-radius: 4px;
     font-size: 0.85em;
     
@@ -168,23 +168,23 @@ const ResultItem = styled.div<{ $status: 'pending' | 'processing' | 'success' | 
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        font-family: var(--vscode-editor-font-family, monospace);
+        font-family: var(--apinox-editor-font-family, monospace);
     }
     
     .status-icon {
         flex-shrink: 0;
         color: ${props => {
         switch (props.$status) {
-            case 'success': return 'var(--vscode-testing-iconPassed, #4caf50)';
-            case 'error': return 'var(--vscode-testing-iconFailed, #f44336)';
-            case 'processing': return 'var(--vscode-progressBar-background, #0078d4)';
-            default: return 'var(--vscode-descriptionForeground)';
+            case 'success': return 'var(--apinox-testing-iconPassed, #4caf50)';
+            case 'error': return 'var(--apinox-testing-iconFailed, #f44336)';
+            case 'processing': return 'var(--apinox-progressBar-background, #0078d4)';
+            default: return 'var(--apinox-descriptionForeground)';
         }
     }};
     }
     
     .error-msg {
-        color: var(--vscode-errorForeground);
+        color: var(--apinox-errorForeground);
         font-size: 0.9em;
         margin-top: ${SPACING_XS};
     }
@@ -194,7 +194,7 @@ const SummaryBox = styled.div`
     display: flex;
     gap: ${SPACING_LG};
     padding: ${SPACING_MD};
-    background: var(--vscode-textBlockQuote-background);
+    background: var(--apinox-textBlockQuote-background);
     border-radius: 4px;
     
     .stat {
@@ -210,17 +210,17 @@ const SummaryBox = styled.div`
         
         .label {
             font-size: 0.8em;
-            color: var(--vscode-descriptionForeground);
+            color: var(--apinox-descriptionForeground);
         }
     }
     
-    .success { color: var(--vscode-testing-iconPassed, #4caf50); }
-    .error { color: var(--vscode-testing-iconFailed, #f44336); }
+    .success { color: var(--apinox-testing-iconPassed, #4caf50); }
+    .error { color: var(--apinox-testing-iconFailed, #f44336); }
 `;
 
 const SecondaryButton = styled(Button)`
-    background: var(--vscode-button-secondaryBackground);
-    color: var(--vscode-button-secondaryForeground);
+    background: var(--apinox-button-secondaryBackground);
+    color: var(--apinox-button-secondaryForeground);
 `;
 
 // Types
@@ -424,7 +424,7 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
                     </>
                 ) : (
                     <>
-                        <CheckCircle size={16} style={{ color: 'var(--vscode-testing-iconPassed)' }} />
+                        <CheckCircle size={16} style={{ color: 'var(--apinox-testing-iconPassed)' }} />
                         Import Complete
                     </>
                 )}

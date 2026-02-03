@@ -9,10 +9,10 @@ import { SPACING_XS, SPACING_SM, SPACING_MD } from '../../styles/spacing';
 const getStatusColor = (status: string): string => {
     switch (status) {
         case 'connected':
-        case 'idle': return 'var(--vscode-testing-iconPassed)';
-        case 'working': return 'var(--vscode-charts-blue)';
-        case 'disconnected': return 'var(--vscode-testing-iconFailed)';
-        default: return 'var(--vscode-badge-background)';
+        case 'idle': return 'var(--apinox-testing-iconPassed)';
+        case 'working': return 'var(--apinox-charts-blue)';
+        case 'disconnected': return 'var(--apinox-testing-iconFailed)';
+        default: return 'var(--apinox-badge-background)';
     }
 };
 
@@ -30,8 +30,8 @@ const WorkerCard = styled.div<{ status: string }>`
     display: flex;
     align-items: center;
     padding: ${SPACING_SM} ${SPACING_MD};
-    background: var(--vscode-list-hoverBackground);
-    border: 1px solid var(--vscode-panel-border);
+    background: var(--apinox-list-hoverBackground);
+    border: 1px solid var(--apinox-panel-border);
     border-radius: 4px;
     gap: ${SPACING_MD};
     border-left: 3px solid ${props => getStatusColor(props.status)};
@@ -59,7 +59,7 @@ const WorkerName = styled.div`
 
 const WorkerMeta = styled.div`
     font-size: 0.8em;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
     display: flex;
     gap: ${SPACING_MD};
     margin-top: ${SPACING_XS};

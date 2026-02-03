@@ -162,7 +162,7 @@ export function useContextMenu({
     const handleAddRequest = useCallback((targetOp?: ApiOperation) => {
         const op = targetOp || (contextMenu?.type === 'operation' ? contextMenu.data as ApiOperation : null);
         if (op) {
-            const newReqName = `Request ${op.requests.length + 1}`;
+            const newReqName = `${op.name} ${op.requests.length + 1}`;
 
             // Try to clone first request or create from schema
             let newReqContent = '';

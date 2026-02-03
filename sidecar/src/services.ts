@@ -5,17 +5,17 @@
  * but without VS Code dependencies.
  */
 
-import { SoapClient } from '../../src/soapClient';
-import { ProxyService } from '../../src/services/ProxyService';
-import { MockService } from '../../src/services/MockService';
-import { TestRunnerService } from '../../src/services/TestRunnerService';
-import { PerformanceService } from '../../src/services/PerformanceService';
-import { ScheduleService } from '../../src/services/ScheduleService';
-import { ConfigSwitcherService } from '../../src/services/ConfigSwitcherService';
-import { FileWatcherService } from '../../src/services/FileWatcherService';
-import { RequestHistoryService } from '../../src/services/RequestHistoryService';
-import { FolderProjectStorage } from '../../src/FolderProjectStorage';
-import { SettingsManager } from '../../src/utils/SettingsManager';
+import { SoapClient } from './soapClient';
+import { ProxyService } from './services/ProxyService';
+import { MockService } from './services/MockService';
+import { TestRunnerService } from './services/TestRunnerService';
+import { PerformanceService } from './services/PerformanceService';
+import { ScheduleService } from './services/ScheduleService';
+import { ConfigSwitcherService } from './services/ConfigSwitcherService';
+import { FileWatcherService } from './services/FileWatcherService';
+import { RequestHistoryService } from './services/RequestHistoryService';
+import { FolderProjectStorage } from './FolderProjectStorage';
+import { SettingsManager } from './utils/SettingsManager';
 
 import { SidecarNotificationService } from './adapters/SidecarNotificationService';
 import { SidecarConfigService } from './adapters/SidecarConfigService';

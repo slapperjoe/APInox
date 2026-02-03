@@ -13,11 +13,13 @@ export class WildcardProcessor {
         // 0. Context Variables (SoapUI Style: ${#TestCase#VarName})
         if (contextVariables) {
             for (const [key, value] of Object.entries(contextVariables)) {
-                // Determine scope if needed, but for now map key directly (assuming key is just the name)
-                const regex = new RegExp(`\\$\\{#TestCase#${key}\\}`, 'g');
-                processed = processed.replace(regex, value);
+                // Support SoapUI-style: ${#TestCase#VarName}
+                const soapUIRegex = new RegExp(`\\$\\{#TestCase#${key}\\}`, 'g');
+                processed = processed.replace(soapUIRegex, value);
 
-                // Also support generic ${key} if desired? For now stick to strict SoapUI style requested.
+                // Also support simple style: ${VarName}
+                const simpleRegex = new RegExp(`\\$\\{${key}\\}`, 'g');
+                processed = processed.replace(simpleRegex, value);
             }
         }
 

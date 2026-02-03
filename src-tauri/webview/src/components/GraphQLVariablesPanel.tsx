@@ -11,14 +11,14 @@ const Container = styled.div`
     display: flex;
     flex-direction: column;
     height: 100%;
-    color: var(--vscode-foreground);
-    background: var(--vscode-editor-background);
+    color: var(--apinox-foreground);
+    background: var(--apinox-editor-background);
     overflow: hidden;
 `;
 
 const Header = styled.div`
     padding: ${SPACING_SM}px 15px;
-    border-bottom: 1px solid var(--vscode-panel-border);
+    border-bottom: 1px solid var(--apinox-panel-border);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -32,17 +32,17 @@ const EditorContainer = styled.div`
 const Hint = styled.div`
     padding: ${SPACING_SM}px 15px;
     font-size: 11px;
-    color: var(--vscode-descriptionForeground);
-    background: var(--vscode-textBlockQuote-background);
-    border-top: 1px solid var(--vscode-panel-border);
+    color: var(--apinox-descriptionForeground);
+    background: var(--apinox-textBlockQuote-background);
+    border-top: 1px solid var(--apinox-panel-border);
 `;
 
 const ErrorBanner = styled.div`
     padding: ${SPACING_SM}px 15px;
     font-size: 12px;
-    color: var(--vscode-errorForeground);
-    background: var(--vscode-inputValidation-errorBackground);
-    border-top: 1px solid var(--vscode-inputValidation-errorBorder);
+    color: var(--apinox-errorForeground);
+    background: var(--apinox-inputValidation-errorBackground);
+    border-top: 1px solid var(--apinox-inputValidation-errorBorder);
 `;
 
 const Title = styled.h3`
@@ -57,13 +57,13 @@ const OperationWrapper = styled.div`
 
 const OperationLabel = styled.label`
     font-size: 12px;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
 `;
 
 const OperationInput = styled.input`
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     padding: ${SPACING_XS}px ${SPACING_SM}px;
     border-radius: 3px;
     font-size: 12px;

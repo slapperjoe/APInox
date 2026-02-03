@@ -10,8 +10,8 @@ import { SPACING_XS, SPACING_SM } from '../../styles/spacing';
 
 // Styled Components
 const Container = styled(SidebarContainer)`
-    color: var(--vscode-foreground);
-    background-color: var(--vscode-sideBar-background);
+    color: var(--apinox-foreground);
+    background-color: var(--apinox-sideBar-background);
 `;
 
 const AddSuiteRow = styled.div`
@@ -25,7 +25,7 @@ const RequestIndent = styled.div`
 const EmptyMessage = styled.div`
     padding: 20px;
     text-align: center;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
     font-size: 13px;
 `;
 
@@ -40,11 +40,11 @@ const SuiteItem = styled.div<{ active: boolean }>`
     align-items: center;
     padding: ${SPACING_XS} ${SPACING_SM};
     cursor: pointer;
-    background-color: ${props => props.active ? 'var(--vscode-list-activeSelectionBackground)' : 'transparent'};
-    color: ${props => props.active ? 'var(--vscode-list-activeSelectionForeground)' : 'var(--vscode-list-inactiveSelectionForeground)'};
+    background-color: ${props => props.active ? 'var(--apinox-list-activeSelectionBackground)' : 'transparent'};
+    color: ${props => props.active ? 'var(--apinox-list-activeSelectionForeground)' : 'var(--apinox-list-inactiveSelectionForeground)'};
 
     &:hover {
-        background-color: ${props => props.active ? 'var(--vscode-list-activeSelectionBackground)' : 'var(--vscode-list-hoverBackground)'};
+        background-color: ${props => props.active ? 'var(--apinox-list-activeSelectionBackground)' : 'var(--apinox-list-hoverBackground)'};
     }
 `;
 
@@ -69,9 +69,9 @@ const Actions = styled.div`
     ${SuiteItem}:hover & {
         opacity: 1;
     }
-        color: var(--vscode-icon-foreground);
+        color: var(--apinox-icon-foreground);
         ${SuiteItem}[data-active='true'] & {
-            color: var(--vscode-list-activeSelectionForeground);
+            color: var(--apinox-list-activeSelectionForeground);
         }
 `;
 
@@ -84,11 +84,11 @@ const RequestItem = styled.div<{ active: boolean }>`
     align-items: center;
     padding: ${SPACING_XS} ${SPACING_SM} ${SPACING_XS} 28px;
     cursor: pointer;
-    background-color: ${props => props.active ? 'var(--vscode-list-activeSelectionBackground)' : 'transparent'};
-    color: ${props => props.active ? 'var(--vscode-list-activeSelectionForeground)' : 'var(--vscode-list-inactiveSelectionForeground)'};
+    background-color: ${props => props.active ? 'var(--apinox-list-activeSelectionBackground)' : 'transparent'};
+    color: ${props => props.active ? 'var(--apinox-list-activeSelectionForeground)' : 'var(--apinox-list-inactiveSelectionForeground)'};
 
     &:hover {
-        background-color: ${props => props.active ? 'var(--vscode-list-activeSelectionBackground)' : 'var(--vscode-list-hoverBackground)'};
+        background-color: ${props => props.active ? 'var(--apinox-list-activeSelectionBackground)' : 'var(--apinox-list-hoverBackground)'};
     }
 `;
 
@@ -99,9 +99,9 @@ const RequestActions = styled.div`
     ${RequestItem}:hover & {
         opacity: 1;
     }
-    color: var(--vscode-icon-foreground);
+    color: var(--apinox-icon-foreground);
     ${RequestItem}[data-active='true'] & {
-        color: var(--vscode-list-activeSelectionForeground);
+        color: var(--apinox-list-activeSelectionForeground);
     }
 `;
 

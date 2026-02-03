@@ -29,7 +29,7 @@ const SectionTitle = styled.h3<{ $color: string }>`
     text-transform: uppercase;
     color: ${props => props.$color};
     margin: 0 0 ${SPACING_SM} 0;
-    border-bottom: 1px solid var(--vscode-panel-border);
+    border-bottom: 1px solid var(--apinox-panel-border);
     padding-bottom: ${SPACING_XS};
 `;
 
@@ -62,8 +62,8 @@ const DiffItem = styled.div<{ $type: 'add' | 'remove' | 'modify' }>`
 
 const ChangeLabel = styled.span`
     font-size: 0.8em;
-    background-color: var(--vscode-badge-background);
-    color: var(--vscode-badge-foreground);
+    background-color: var(--apinox-badge-background);
+    color: var(--apinox-badge-foreground);
     padding: ${SPACING_XS} ${SPACING_XS};
     border-radius: 4px;
     margin-left: ${SPACING_SM};
@@ -86,10 +86,10 @@ const OperationName = styled.span<{ $strikethrough?: boolean }>`
 
 const SecondaryButton = styled(Button)`
     background-color: transparent;
-    border: 1px solid var(--vscode-button-secondaryHoverBackground);
+    border: 1px solid var(--apinox-button-secondaryHoverBackground);
     
     &:hover {
-        background-color: var(--vscode-toolbar-hoverBackground);
+        background-color: var(--apinox-toolbar-hoverBackground);
     }
 `;
 

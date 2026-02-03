@@ -8,8 +8,8 @@ const Container = styled.div`
     display: flex;
     flex-direction: column;
     height: 100%;
-    color: var(--vscode-foreground);
-    background: var(--vscode-editor-background);
+    color: var(--apinox-foreground);
+    background: var(--apinox-editor-background);
     padding: ${SPACING_SM};
     gap: ${SPACING_SM};
     overflow-y: auto;
@@ -35,10 +35,10 @@ const FlexColumn = styled.div`
 
 const ReadOnlyField = styled.div`
     padding: 6px ${SPACING_SM};
-    background: var(--vscode-input-background);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    border: 1px solid var(--apinox-input-border);
     border-radius: ${SPACING_XS};
-    color: var(--vscode-disabledForeground);
+    color: var(--apinox-disabledForeground);
     font-family: monospace;
     font-size: 12px;
 `;
@@ -60,15 +60,15 @@ const EmptyState = styled.div`
 const IconButton = styled.button`
     background: transparent;
     border: none;
-    color: var(--vscode-icon-foreground);
+    color: var(--apinox-icon-foreground);
     cursor: pointer;
     padding: ${SPACING_XS};
     border-radius: 3px;
     display: flex;
     align-items: center;
     &:hover {
-        background: var(--vscode-toolbar-hoverBackground);
-        color: var(--vscode-foreground);
+        background: var(--apinox-toolbar-hoverBackground);
+        color: var(--apinox-foreground);
     }
 `;
 

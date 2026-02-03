@@ -3,7 +3,7 @@ import {
   ApiService,
   SchemaNode,
   ApiRequest,
-} from "../shared/src/models";
+} from "../../shared/src/models";
 import { HttpClient } from "./services/HttpClient";
 import { WsdlParser } from "./WsdlParser";
 import { DiagnosticService } from "./services/DiagnosticService";

@@ -7,8 +7,8 @@ const ErrorContainer = styled.div`
     display: flex;
     flex-direction: column;
     height: 100vh;
-    color: var(--vscode-errorForeground);
-    background-color: var(--vscode-editor-background);
+    color: var(--apinox-errorForeground);
+    background-color: var(--apinox-editor-background);
 `;
 
 const ErrorContent = styled.div`
@@ -33,15 +33,15 @@ const CopyButton = styled.button`
     align-items: center;
     gap: 6px;
     padding: 6px 12px;
-    background: var(--vscode-button-background);
-    color: var(--vscode-button-foreground);
+    background: var(--apinox-button-background);
+    color: var(--apinox-button-foreground);
     border: none;
     border-radius: 4px;
     cursor: pointer;
     font-size: 13px;
 
     &:hover {
-        background: var(--vscode-button-hoverBackground);
+        background: var(--apinox-button-hoverBackground);
     }
 
     &:active {
@@ -111,7 +111,7 @@ export class ErrorBoundary extends Component<Props, State> {
                         // Fallback title bar if TitleBar component can't load
                         <div style={{
                             height: '30px',
-                            background: 'var(--vscode-titleBar-activeBackground, #3c3c3c)',
+                            background: 'var(--apinox-titleBar-activeBackground, #3c3c3c)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',

@@ -27,14 +27,14 @@ const RadioOption = styled.label<{ selected: boolean }>`
     align-items: center;
     gap: ${SPACING_SM};
     padding: ${SPACING_MD} ${SPACING_MD};
-    border: 1px solid ${props => props.selected ? 'var(--vscode-focusBorder)' : 'var(--vscode-input-border)'};
+    border: 1px solid ${props => props.selected ? 'var(--apinox-focusBorder)' : 'var(--apinox-input-border)'};
     border-radius: 6px;
     cursor: pointer;
-    background: ${props => props.selected ? 'var(--vscode-list-hoverBackground)' : 'transparent'};
+    background: ${props => props.selected ? 'var(--apinox-list-hoverBackground)' : 'transparent'};
     transition: all 0.15s ease;
     
     &:hover {
-        background: var(--vscode-list-hoverBackground);
+        background: var(--apinox-list-hoverBackground);
     }
     
     input[type="radio"] {
@@ -45,32 +45,32 @@ const RadioOption = styled.label<{ selected: boolean }>`
 const Select = styled.select`
     width: 100%;
     padding: ${SPACING_SM} ${SPACING_MD};
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     border-radius: 4px;
     font-size: 0.95em;
     margin-top: ${SPACING_SM};
     
     &:focus {
         outline: none;
-        border-color: var(--vscode-focusBorder);
+        border-color: var(--apinox-focusBorder);
     }
 `;
 
 const Input = styled.input`
     width: 100%;
     padding: ${SPACING_SM} ${SPACING_MD};
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     border-radius: 4px;
     font-size: 0.95em;
     margin-top: ${SPACING_SM};
     
     &:focus {
         outline: none;
-        border-color: var(--vscode-focusBorder);
+        border-color: var(--apinox-focusBorder);
     }
 `;
 
@@ -89,8 +89,8 @@ const OptionContent = styled.div`
 `;
 
 const SecondaryButton = styled(Button)`
-    background: var(--vscode-button-secondaryBackground);
-    color: var(--vscode-button-secondaryForeground);
+    background: var(--apinox-button-secondaryBackground);
+    color: var(--apinox-button-secondaryForeground);
 `;
 
 interface AddToProjectModalProps {

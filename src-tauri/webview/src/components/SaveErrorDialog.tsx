@@ -25,25 +25,25 @@ const Overlay = styled.div`
 `;
 
 const Dialog = styled.div`
-    background: var(--vscode-editorWidget-background, var(--vscode-editor-background, #1e1e1e));
-    border: 1px solid var(--vscode-editorWidget-border, var(--vscode-panel-border, #454545));
+    background: var(--apinox-editorWidget-background, var(--apinox-editor-background, #1e1e1e));
+    border: 1px solid var(--apinox-editorWidget-border, var(--apinox-panel-border, #454545));
     border-radius: 4px;
     width: 500px;
     max-width: 90vw;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-    color: var(--vscode-foreground, #cccccc);
+    color: var(--apinox-foreground, #cccccc);
 `;
 
 const Header = styled.div`
     display: flex;
     align-items: center;
     padding: 16px;
-    border-bottom: 1px solid var(--vscode-editorWidget-border);
+    border-bottom: 1px solid var(--apinox-editorWidget-border);
     gap: 8px;
 `;
 
 const IconWrapper = styled.div`
-    color: var(--vscode-editorWarning-foreground);
+    color: var(--apinox-editorWarning-foreground);
     display: flex;
     align-items: center;
 `;
@@ -53,13 +53,13 @@ const Title = styled.h2`
     font-size: 16px;
     font-weight: 600;
     flex: 1;
-    color: var(--vscode-editorWidget-foreground);
+    color: var(--apinox-editorWidget-foreground);
 `;
 
 const CloseButton = styled.button`
     background: transparent;
     border: none;
-    color: var(--vscode-icon-foreground);
+    color: var(--apinox-icon-foreground);
     cursor: pointer;
     padding: 4px;
     display: flex;
@@ -67,7 +67,7 @@ const CloseButton = styled.button`
     border-radius: 4px;
 
     &:hover {
-        background: var(--vscode-toolbar-hoverBackground);
+        background: var(--apinox-toolbar-hoverBackground);
     }
 `;
 
@@ -78,17 +78,17 @@ const Content = styled.div`
 const ProjectName = styled.div`
     font-weight: 600;
     margin-bottom: 8px;
-    color: var(--vscode-editorWidget-foreground);
+    color: var(--apinox-editorWidget-foreground);
 `;
 
 const ErrorMessage = styled.div`
-    color: var(--vscode-errorForeground);
+    color: var(--apinox-errorForeground);
     padding: 12px;
-    background: var(--vscode-inputValidation-errorBackground);
-    border: 1px solid var(--vscode-inputValidation-errorBorder);
+    background: var(--apinox-inputValidation-errorBackground);
+    border: 1px solid var(--apinox-inputValidation-errorBorder);
     border-radius: 4px;
     margin-bottom: 16px;
-    font-family: var(--vscode-editor-font-family);
+    font-family: var(--apinox-editor-font-family);
     font-size: 13px;
     line-height: 1.5;
 `;
@@ -96,7 +96,7 @@ const ErrorMessage = styled.div`
 const Message = styled.p`
     margin: 0 0 16px 0;
     line-height: 1.5;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
 `;
 
 const ButtonGroup = styled.div`
@@ -104,7 +104,7 @@ const ButtonGroup = styled.div`
     gap: 8px;
     justify-content: flex-end;
     padding: 16px;
-    border-top: 1px solid var(--vscode-editorWidget-border);
+    border-top: 1px solid var(--apinox-editorWidget-border);
 `;
 
 const Button = styled.button<{ $variant?: 'primary' | 'danger' | 'secondary' }>`
@@ -121,15 +121,15 @@ const Button = styled.button<{ $variant?: 'primary' | 'danger' | 'secondary' }>`
     ${props => {
         if (props.$variant === 'primary') {
             return `
-                background: var(--vscode-button-background);
-                color: var(--vscode-button-foreground);
+                background: var(--apinox-button-background);
+                color: var(--apinox-button-foreground);
                 &:hover {
-                    background: var(--vscode-button-hoverBackground);
+                    background: var(--apinox-button-hoverBackground);
                 }
             `;
         } else if (props.$variant === 'danger') {
             return `
-                background: var(--vscode-errorForeground);
+                background: var(--apinox-errorForeground);
                 color: white;
                 &:hover {
                     opacity: 0.9;
@@ -137,10 +137,10 @@ const Button = styled.button<{ $variant?: 'primary' | 'danger' | 'secondary' }>`
             `;
         } else {
             return `
-                background: var(--vscode-button-secondaryBackground);
-                color: var(--vscode-button-secondaryForeground);
+                background: var(--apinox-button-secondaryBackground);
+                color: var(--apinox-button-secondaryForeground);
                 &:hover {
-                    background: var(--vscode-button-secondaryHoverBackground);
+                    background: var(--apinox-button-secondaryHoverBackground);
                 }
             `;
         }

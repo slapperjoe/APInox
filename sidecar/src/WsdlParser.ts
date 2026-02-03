@@ -1,5 +1,5 @@
 import * as soap from 'soap';
-import { ApiService, ServiceOperation, SchemaNode } from '../shared/src/models';
+import { ApiService, ServiceOperation, SchemaNode } from '../../shared/src/models';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import * as fs from 'fs';
 import * as path from 'path';

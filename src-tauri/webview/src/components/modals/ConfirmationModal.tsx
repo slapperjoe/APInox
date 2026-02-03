@@ -17,8 +17,8 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
             title={title}
             footer={
                 <>
-                    <Button onClick={onCancel} style={{ background: 'transparent', border: '1px solid var(--vscode-button-secondaryForeground)', color: 'var(--vscode-button-secondaryForeground)' }}>Cancel</Button>
-                    <Button onClick={onConfirm} style={{ background: 'var(--vscode-errorForeground)', color: 'white' }}>Delete</Button>
+                    <Button onClick={onCancel} style={{ background: 'transparent', border: '1px solid var(--apinox-button-secondaryForeground)', color: 'var(--apinox-button-secondaryForeground)' }}>Cancel</Button>
+                    <Button onClick={onConfirm} style={{ background: 'var(--apinox-errorForeground)', color: 'white' }}>Delete</Button>
                 </>
             }
         >

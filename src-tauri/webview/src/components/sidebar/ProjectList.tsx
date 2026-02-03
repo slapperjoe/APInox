@@ -86,7 +86,7 @@ const ProjectRow = styled(OperationItem)<{ $isDragging?: boolean; $dropPosition?
             left: 0;
             right: 0;
             height: 2px;
-            background: var(--vscode-focusBorder, #007ACC);
+            background: var(--apinox-focusBorder, #007ACC);
         }
     `}
     
@@ -98,7 +98,7 @@ const ProjectRow = styled(OperationItem)<{ $isDragging?: boolean; $dropPosition?
             left: 0;
             right: 0;
             height: 2px;
-            background: var(--vscode-focusBorder, #007ACC);
+            background: var(--apinox-focusBorder, #007ACC);
         }
     `}
 `;
@@ -108,7 +108,7 @@ const DragHandle = styled.div<{ $visible: boolean }>`
     align-items: center;
     justify-content: center;
     cursor: grab;
-    color: var(--vscode-foreground);
+    color: var(--apinox-foreground);
     opacity: 0.5;
     position: absolute;
     left: -18px;
@@ -133,9 +133,9 @@ const ProjectToggle = styled.span`
 `;
 
 const RenameInput = styled.input`
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     margin-left: 5px;
     flex: 1;
 `;
@@ -150,8 +150,8 @@ const ProjectName = styled.span`
 
 const SaveButton = styled(HeaderButton)<{ $hasError?: boolean }>`
     color: ${props => props.$hasError 
-        ? 'var(--vscode-errorForeground)' 
-        : 'var(--vscode-charts-orange)'};
+        ? 'var(--apinox-errorForeground)' 
+        : 'var(--apinox-charts-orange)'};
 `;
 
 const ReadOnlyIcon = styled(Lock)`
@@ -161,7 +161,7 @@ const ReadOnlyIcon = styled(Lock)`
 
 const MenuSeparator = styled.div`
     height: 1px;
-    background-color: var(--vscode-menu-separatorBackground);
+    background-color: var(--apinox-menu-separatorBackground);
     margin: 4px 0;
 `;
 
@@ -512,7 +512,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                                                 }
                                             }}
                                             title={deleteConfirm === proj.name ? "Click again to Confirm Delete" : "Close Project"}
-                                            style={{ color: deleteConfirm === proj.name ? 'var(--vscode-errorForeground)' : undefined }}
+                                            style={{ color: deleteConfirm === proj.name ? 'var(--apinox-errorForeground)' : undefined }}
                                             $shake={deleteConfirm === proj.name}
                                         >
                                             <Trash2 size={14} />

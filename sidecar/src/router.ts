@@ -107,11 +107,11 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
 
             // Process wildcards in request body and endpoint
             if (args && typeof args === 'string') {
-                const WildcardProcessor = await import('../../src/utils/WildcardProcessor').then(m => m.WildcardProcessor);
+                const WildcardProcessor = await import('./utils/WildcardProcessor').then(m => m.WildcardProcessor);
                 args = WildcardProcessor.process(args, envVars, globalVars, undefined, contextVars);
             }
             if (endpoint) {
-                const WildcardProcessor = await import('../../src/utils/WildcardProcessor').then(m => m.WildcardProcessor);
+                const WildcardProcessor = await import('./utils/WildcardProcessor').then(m => m.WildcardProcessor);
                 endpoint = WildcardProcessor.process(endpoint, envVars, globalVars, undefined, contextVars);
             }
 
@@ -1659,11 +1659,11 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
                 let processedEndpoint = request.endpoint || '';
 
                 if (processedBody) {
-                    const WildcardProcessor = await import('../../src/utils/WildcardProcessor').then(m => m.WildcardProcessor);
+                    const WildcardProcessor = await import('./utils/WildcardProcessor').then(m => m.WildcardProcessor);
                     processedBody = WildcardProcessor.process(processedBody, envVars, globalVars);
                 }
                 if (processedEndpoint) {
-                    const WildcardProcessor = await import('../../src/utils/WildcardProcessor').then(m => m.WildcardProcessor);
+                    const WildcardProcessor = await import('./utils/WildcardProcessor').then(m => m.WildcardProcessor);
                     processedEndpoint = WildcardProcessor.process(processedEndpoint, envVars, globalVars);
                 }
 

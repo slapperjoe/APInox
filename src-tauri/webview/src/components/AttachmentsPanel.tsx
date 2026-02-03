@@ -10,8 +10,8 @@ const Container = styled.div`
     display: flex;
     flex-direction: column;
     height: 100%;
-    color: var(--vscode-foreground);
-    background: var(--vscode-editor-background);
+    color: var(--apinox-foreground);
+    background: var(--apinox-editor-background);
     padding: ${SPACING_MD};
     gap: ${SPACING_MD};
     overflow-y: auto;
@@ -37,14 +37,14 @@ const AddButton = styled.button`
     align-items: center;
     gap: 6px;
     padding: 6px 12px;
-    background: var(--vscode-button-background);
-    color: var(--vscode-button-foreground);
+    background: var(--apinox-button-background);
+    color: var(--apinox-button-foreground);
     border: none;
     border-radius: 3px;
     cursor: pointer;
     font-size: 0.85em;
     &:hover {
-        background: var(--vscode-button-hoverBackground);
+        background: var(--apinox-button-hoverBackground);
     }
 `;
 
@@ -59,8 +59,8 @@ const AttachmentCard = styled.div`
     align-items: center;
     gap: 12px;
     padding: 10px 12px;
-    background: var(--vscode-input-background);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    border: 1px solid var(--apinox-input-border);
     border-radius: 4px;
 `;
 
@@ -70,9 +70,9 @@ const FileIcon = styled.div`
     justify-content: center;
     width: 36px;
     height: 36px;
-    background: var(--vscode-badge-background);
+    background: var(--apinox-badge-background);
     border-radius: 4px;
-    color: var(--vscode-badge-foreground);
+    color: var(--apinox-badge-foreground);
 `;
 
 const FileInfo = styled.div`
@@ -93,7 +93,7 @@ const FileName = styled.div`
 
 const FileMeta = styled.div`
     font-size: 0.8em;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
     display: flex;
     gap: 8px;
 `;
@@ -101,25 +101,25 @@ const FileMeta = styled.div`
 const ContentIdInput = styled.input`
     width: 100px;
     padding: 4px 8px;
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     border-radius: 3px;
     font-size: 0.85em;
     &:focus {
-        outline: 1px solid var(--vscode-focusBorder);
+        outline: 1px solid var(--apinox-focusBorder);
     }
 `;
 
 const TypeSelect = styled.select`
     padding: 4px 8px;
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     border-radius: 3px;
     font-size: 0.85em;
     &:focus {
-        outline: 1px solid var(--vscode-focusBorder);
+        outline: 1px solid var(--apinox-focusBorder);
     }
 `;
 
@@ -133,10 +133,10 @@ const DeleteButton = styled.button`
     border: none;
     border-radius: 3px;
     cursor: pointer;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
     &:hover {
-        background: var(--vscode-toolbar-hoverBackground);
-        color: var(--vscode-errorForeground);
+        background: var(--apinox-toolbar-hoverBackground);
+        color: var(--apinox-errorForeground);
     }
 `;
 
@@ -147,26 +147,26 @@ const EmptyState = styled.div`
     justify-content: center;
     padding: 40px 20px;
     text-align: center;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
     gap: 12px;
 `;
 
 const DropZone = styled.div<{ isDragging?: boolean }>`
     border: 2px dashed ${props => props.isDragging
-        ? 'var(--vscode-focusBorder)'
-        : 'var(--vscode-input-border)'};
+        ? 'var(--apinox-focusBorder)'
+        : 'var(--apinox-input-border)'};
     border-radius: 8px;
     padding: 20px;
     text-align: center;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
     background: ${props => props.isDragging
-        ? 'var(--vscode-list-hoverBackground)'
+        ? 'var(--apinox-list-hoverBackground)'
         : 'transparent'};
     transition: all 0.2s ease;
     cursor: pointer;
     &:hover {
-        border-color: var(--vscode-focusBorder);
-        background: var(--vscode-list-hoverBackground);
+        border-color: var(--apinox-focusBorder);
+        background: var(--apinox-list-hoverBackground);
     }
     display: flex;
     flex-direction: column;

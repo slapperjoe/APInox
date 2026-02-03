@@ -29,8 +29,8 @@ const ViewContainer = styled.div`
     padding: ${SPACING_XL};
     flex: 1;
     overflow: auto;
-    color: var(--vscode-editor-foreground);
-    font-family: var(--vscode-font-family);
+    color: var(--apinox-editor-foreground);
+    font-family: var(--apinox-font-family);
 `;
 
 const HeaderRow = styled.div`
@@ -47,7 +47,7 @@ const HeaderActions = styled.div`
 
 const StepsToolbar = styled.div`
     padding: ${SPACING_SM} 0;
-    border-bottom: 1px solid var(--vscode-panel-border);
+    border-bottom: 1px solid var(--apinox-panel-border);
     display: flex;
     gap: ${SPACING_SM};
 `;
@@ -57,7 +57,7 @@ const StepsSection = styled.div`
 `;
 
 const StepsTitle = styled.h2`
-    border-bottom: 1px solid var(--vscode-panel-border);
+    border-bottom: 1px solid var(--apinox-panel-border);
     padding-bottom: ${SPACING_XS};
 `;
 
@@ -69,12 +69,12 @@ const StepsList = styled.ul`
 
 const StepRow = styled.li<{ $clickable: boolean }>`
     padding: ${SPACING_SM};
-    border-bottom: 1px solid var(--vscode-panel-border);
+    border-bottom: 1px solid var(--apinox-panel-border);
     display: flex;
     align-items: center;
     gap: ${SPACING_SM};
     cursor: ${props => props.$clickable ? 'pointer' : 'default'};
-    background-color: var(--vscode-list-hoverBackground);
+    background-color: var(--apinox-list-hoverBackground);
 `;
 
 const StepIndex = styled.div`
@@ -92,7 +92,7 @@ const StepIndexNumber = styled.span`
 `;
 
 const StepStatusRunning = styled.div`
-    color: var(--vscode-testing-iconQueued);
+    color: var(--apinox-testing-iconQueued);
     display: inline-flex;
     align-items: center;
     
@@ -108,11 +108,11 @@ const StepStatusRunning = styled.div`
 `;
 
 const StepStatusPass = styled.div`
-    color: var(--vscode-testing-iconPassed);
+    color: var(--apinox-testing-iconPassed);
 `;
 
 const StepStatusFail = styled.div`
-    color: var(--vscode-testing-iconFailed);
+    color: var(--apinox-testing-iconFailed);
 `;
 
 const StepContent = styled.div`
@@ -129,11 +129,11 @@ const StepMeta = styled.div`
 `;
 
 const DelayMeta = styled(StepMeta)`
-    color: var(--vscode-textLink-foreground);
+    color: var(--apinox-textLink-foreground);
 `;
 
 const ErrorText = styled.div`
-    color: var(--vscode-errorForeground);
+    color: var(--apinox-errorForeground);
     font-size: 0.8em;
 `;
 

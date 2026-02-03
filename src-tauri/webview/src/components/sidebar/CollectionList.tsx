@@ -47,14 +47,14 @@ const CollectionContent = styled(SidebarContent)`
 const RequestRow = styled(OperationItem)<{ $isDeleting: boolean; $isSelected: boolean }>`
     padding-left: 28px;
     background-color: ${props => props.$isDeleting
-        ? 'var(--vscode-inputValidation-errorBackground)'
+        ? 'var(--apinox-inputValidation-errorBackground)'
         : props.$isSelected
-            ? 'var(--vscode-list-activeSelectionBackground)'
+            ? 'var(--apinox-list-activeSelectionBackground)'
             : 'transparent'};
     color: ${props => props.$isDeleting
-        ? 'var(--vscode-errorForeground)'
+        ? 'var(--apinox-errorForeground)'
         : props.$isSelected
-            ? 'var(--vscode-list-activeSelectionForeground)'
+            ? 'var(--apinox-list-activeSelectionForeground)'
             : 'inherit'};
     ${props => props.$isDeleting && css`animation: ${shake} 0.3s ease-in-out;`}
 `;
@@ -112,11 +112,11 @@ const EmptyCollections = styled.div`
 const CollectionRow = styled(OperationItem)<{ $isDeleting: boolean; $isSelected: boolean }>`
     font-weight: bold;
     background-color: ${props => props.$isDeleting
-        ? 'var(--vscode-inputValidation-errorBackground)'
+        ? 'var(--apinox-inputValidation-errorBackground)'
         : props.$isSelected
-            ? 'var(--vscode-list-activeSelectionBackground)'
+            ? 'var(--apinox-list-activeSelectionBackground)'
             : 'transparent'};
-    color: ${props => props.$isDeleting ? 'var(--vscode-errorForeground)' : 'inherit'};
+    color: ${props => props.$isDeleting ? 'var(--apinox-errorForeground)' : 'inherit'};
     ${props => props.$isDeleting && css`animation: ${shake} 0.3s ease-in-out;`}
 `;
 
@@ -162,11 +162,11 @@ const RequestItem: React.FC<{
     setDeleteConfirm: (id: string | null) => void;
 }> = ({ request, isSelected, onClick, onDelete, deleteConfirm, setDeleteConfirm }) => {
     const methodColors: Record<string, string> = {
-        'GET': 'var(--vscode-charts-green)',
-        'POST': 'var(--vscode-charts-blue)',
-        'PUT': 'var(--vscode-charts-orange)',
-        'PATCH': 'var(--vscode-charts-yellow)',
-        'DELETE': 'var(--vscode-charts-red)',
+        'GET': 'var(--apinox-charts-green)',
+        'POST': 'var(--apinox-charts-blue)',
+        'PUT': 'var(--apinox-charts-orange)',
+        'PATCH': 'var(--apinox-charts-yellow)',
+        'DELETE': 'var(--apinox-charts-red)',
     };
 
     const method = request.method || 'GET';
@@ -182,7 +182,7 @@ const RequestItem: React.FC<{
             } : onClick}
         >
             <RequestIcon size={14} />
-            <MethodBadge $color={methodColors[method] || 'var(--vscode-foreground)'}>
+            <MethodBadge $color={methodColors[method] || 'var(--apinox-foreground)'}>
                 {method}
             </MethodBadge>
             <RequestName>{request.name}</RequestName>

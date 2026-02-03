@@ -16,7 +16,7 @@ interface WatcherPanelProps {
 }
 
 const EmptyMessage = styled.div`
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
     text-align: center;
     margin-top: 20px;
 `;
@@ -32,7 +32,7 @@ const EventTitle = styled.div`
 
 const EventMeta = styled.div`
     font-size: 0.8em;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
 `;
 
 const EventIcon = styled(Clock)`
@@ -70,7 +70,7 @@ export const WatcherPanel: React.FC<WatcherPanelProps> = ({
                     <HeaderButton
                         onClick={(e) => { e.stopPropagation(); if (isRunning) onStop(); else onStart(); }}
                         title={isRunning ? "Stop Watcher" : "Start Watcher"}
-                        style={{ color: isRunning ? 'var(--vscode-testing-iconFailed)' : 'var(--vscode-testing-iconPassed)' }}
+                        style={{ color: isRunning ? 'var(--apinox-testing-iconFailed)' : 'var(--apinox-testing-iconPassed)' }}
                     >
                         {isRunning ? <Square size={14} /> : <Play size={14} />}
                     </HeaderButton>

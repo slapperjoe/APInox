@@ -40,11 +40,11 @@ export const Label = styled.label`
 export const Input = styled.input`
     width: 100%;
     padding: 6px;
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     &:focus {
-        border-color: var(--vscode-focusBorder);
+        border-color: var(--apinox-focusBorder);
         outline: none;
     }
 `;
@@ -52,11 +52,11 @@ export const Input = styled.input`
 export const Select = styled.select`
     width: 100%;
     padding: 6px;
-    background: var(--vscode-dropdown-background);
-    color: var(--vscode-dropdown-foreground);
-    border: 1px solid var(--vscode-dropdown-border);
+    background: var(--apinox-dropdown-background);
+    color: var(--apinox-dropdown-foreground);
+    border: 1px solid var(--apinox-dropdown-border);
     &:focus {
-        border-color: var(--vscode-focusBorder);
+        border-color: var(--apinox-focusBorder);
         outline: none;
     }
 `;
@@ -71,9 +71,9 @@ export const CheckboxLabel = styled.label`
 
 export const SectionHeader = styled.h3`
     font-size: 12px;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
     text-transform: uppercase;
-    border-bottom: 1px solid var(--vscode-panel-border);
+    border-bottom: 1px solid var(--apinox-panel-border);
     padding-bottom: 4px;
     margin-bottom: 12px;
     margin-top: 20px;
@@ -83,9 +83,9 @@ export const EnvList = styled.div`
     display: flex;
     flex-direction: column;
     width: 200px;
-    border-right: 1px solid var(--vscode-panel-border);
+    border-right: 1px solid var(--apinox-panel-border);
     overflow-y: auto;
-    background: var(--vscode-sideBar-background);
+    background: var(--apinox-sideBar-background);
 `;
 
 export const EnvItem = styled.div<{ active: boolean, selected: boolean }>`
@@ -94,10 +94,10 @@ export const EnvItem = styled.div<{ active: boolean, selected: boolean }>`
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: ${props => props.selected ? 'var(--vscode-list-activeSelectionBackground)' : 'transparent'};
-    color: ${props => props.selected ? 'var(--vscode-list-activeSelectionForeground)' : 'var(--vscode-foreground)'};
+    background: ${props => props.selected ? 'var(--apinox-list-activeSelectionBackground)' : 'transparent'};
+    color: ${props => props.selected ? 'var(--apinox-list-activeSelectionForeground)' : 'var(--apinox-foreground)'};
     &:hover {
-        background: ${props => props.selected ? 'var(--vscode-list-activeSelectionBackground)' : 'var(--vscode-list-hoverBackground)'};
+        background: ${props => props.selected ? 'var(--apinox-list-activeSelectionBackground)' : 'var(--apinox-list-hoverBackground)'};
     }
 `;
 
@@ -114,15 +114,15 @@ export const Badge = styled.span`
     font-size: 10px;
     padding: 2px 6px;
     border-radius: 3px;
-    background: var(--vscode-badge-background);
-    color: var(--vscode-badge-foreground);
+    background: var(--apinox-badge-background);
+    color: var(--apinox-badge-foreground);
     margin-left: 8px;
 `;
 
 export const IconButton = styled.button`
     background: transparent;
     border: none;
-    color: var(--vscode-foreground);
+    color: var(--apinox-foreground);
     cursor: pointer;
     padding: 4px;
     display: flex;
@@ -130,13 +130,13 @@ export const IconButton = styled.button`
     justify-content: center;
     border-radius: 3px;
     &:hover {
-        background: var(--vscode-list-hoverBackground);
+        background: var(--apinox-list-hoverBackground);
     }
 `;
 
 export const PrimaryButton = styled.button`
-    background: var(--vscode-button-background);
-    color: var(--vscode-button-foreground);
+    background: var(--apinox-button-background);
+    color: var(--apinox-button-foreground);
     border: none;
     padding: 6px 12px;
     cursor: pointer;
@@ -145,6 +145,6 @@ export const PrimaryButton = styled.button`
     align-items: center;
     gap: 6px;
     &:hover {
-        background: var(--vscode-button-hoverBackground);
+        background: var(--apinox-button-hoverBackground);
     }
 `;

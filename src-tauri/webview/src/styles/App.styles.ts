@@ -20,10 +20,10 @@ export const Container = styled.div`
     height: 100vh;
     width: 100vw;
     overflow: hidden;
-    background-color: var(--vscode-editor-background);
-    color: var(--vscode-editor-foreground);
-    font-family: var(--vscode-font-family);
-    font-size: var(--vscode-font-size);
+    background-color: var(--apinox-editor-background);
+    color: var(--apinox-editor-foreground);
+    font-family: var(--apinox-font-family);
+    font-size: var(--apinox-font-size);
     padding-top: 32px; /* Account for title bar */
 `;
 
@@ -39,10 +39,10 @@ export const ContextMenu = styled.div<{ top: number, left: number }>`
     position: fixed;
     top: ${props => props.top}px;
     left: ${props => props.left}px;
-    background-color: var(--vscode-menu-background);
-    color: var(--vscode-menu-foreground);
-    border: 1px solid var(--vscode-menu-border);
-    box-shadow: 0 2px 8px var(--vscode-widget-shadow);
+    background-color: var(--apinox-menu-background);
+    color: var(--apinox-menu-foreground);
+    border: 1px solid var(--apinox-menu-border);
+    box-shadow: 0 2px 8px var(--apinox-widget-shadow);
     z-index: 2000;
     min-width: 150px;
     padding: 4px 0;
@@ -56,7 +56,7 @@ export const ContextMenuItem = styled.div`
     padding: 6px 12px;
     cursor: pointer;
     &:hover {
-        background-color: var(--vscode-menu-selectionBackground);
-        color: var(--vscode-menu-selectionForeground);
+        background-color: var(--apinox-menu-selectionBackground);
+        color: var(--apinox-menu-selectionForeground);
     }
 `;

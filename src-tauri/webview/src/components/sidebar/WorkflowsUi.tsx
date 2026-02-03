@@ -16,20 +16,20 @@ const WorkflowItem = styled.div<{ $active?: boolean }>`
     align-items: center;
     padding: ${SPACING_SM} 12px;
     cursor: pointer;
-    background-color: ${props => props.$active ? 'var(--vscode-list-activeSelectionBackground)' : 'transparent'};
-    color: ${props => props.$active ? 'var(--vscode-list-activeSelectionForeground)' : 'var(--vscode-foreground)'};
+    background-color: ${props => props.$active ? 'var(--apinox-list-activeSelectionBackground)' : 'transparent'};
+    color: ${props => props.$active ? 'var(--apinox-list-activeSelectionForeground)' : 'var(--apinox-foreground)'};
     gap: ${SPACING_XS};
-    border-bottom: 1px solid var(--vscode-panel-border);
+    border-bottom: 1px solid var(--apinox-panel-border);
 
     &:hover {
-        background-color: ${props => props.$active ? 'var(--vscode-list-activeSelectionBackground)' : 'var(--vscode-list-hoverBackground)'};
+        background-color: ${props => props.$active ? 'var(--apinox-list-activeSelectionBackground)' : 'var(--apinox-list-hoverBackground)'};
     }
 `;
 
 const WorkflowIcon = styled.div`
     display: flex;
     align-items: center;
-    color: var(--vscode-symbolIcon-variableForeground)`;
+    color: var(--apinox-symbolIcon-variableForeground)`;
 
 const WorkflowName = styled.div`
     flex: 1;
@@ -61,7 +61,7 @@ const StepItem = styled.div`
     padding: ${SPACING_SM} 12px ${SPACING_SM} 40px;
     font-size: 12px;
     opacity: 0.8;
-    border-bottom: 1px solid var(--vscode-panel-border);
+    border-bottom: 1px solid var(--apinox-panel-border);
     gap: ${SPACING_XS};
 `;
 
@@ -204,7 +204,7 @@ export const WorkflowsUi: React.FC<WorkflowsUiProps> = ({
                                             }}
                                             title={deleteConfirm === workflow.id ? "Click again to confirm" : "Delete Workflow"}
                                             style={{
-                                                color: deleteConfirm === workflow.id ? 'var(--vscode-errorForeground)' : undefined
+                                                color: deleteConfirm === workflow.id ? 'var(--apinox-errorForeground)' : undefined
                                             }}
                                         >
                                             <Trash2 size={14} />

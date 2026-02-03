@@ -110,35 +110,35 @@ export const tauriToastStyles = `
     gap: 8px;
     padding: 12px 16px;
     border-radius: 8px;
-    box-shadow: 0 4px 12px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.15));
+    box-shadow: 0 4px 12px var(--apinox-widget-shadow, rgba(0, 0, 0, 0.15));
     cursor: pointer;
     animation: slideIn 0.3s ease-out;
     font-size: 14px;
 }
 
 .tauri-toast-error {
-    background: var(--vscode-inputValidation-errorBackground, #fce8e8);
-    border: 1px solid var(--vscode-inputValidation-errorBorder, #f5c6c6);
-    color: var(--vscode-errorForeground, #c62828);
+    background: var(--apinox-inputValidation-errorBackground, #fce8e8);
+    border: 1px solid var(--apinox-inputValidation-errorBorder, #f5c6c6);
+    color: var(--apinox-errorForeground, #c62828);
 }
 
 .tauri-toast-warning {
-    background: var(--vscode-inputValidation-warningBackground, #fff8e1);
-    border: 1px solid var(--vscode-inputValidation-warningBorder, #ffe082);
-    color: var(--vscode-editorWarning-foreground, #f57c00);
+    background: var(--apinox-inputValidation-warningBackground, #fff8e1);
+    border: 1px solid var(--apinox-inputValidation-warningBorder, #ffe082);
+    color: var(--apinox-editorWarning-foreground, #f57c00);
 }
 
 .tauri-toast-info {
-    background: var(--vscode-inputValidation-infoBackground, #e3f2fd);
-    border: 1px solid var(--vscode-inputValidation-infoBorder, #90caf9);
-    color: var(--vscode-editorInfo-foreground, #1565c0);
+    background: var(--apinox-inputValidation-infoBackground, #e3f2fd);
+    border: 1px solid var(--apinox-inputValidation-infoBorder, #90caf9);
+    color: var(--apinox-editorInfo-foreground, #1565c0);
 }
 
 .tauri-toast-success {
-    background: var(--vscode-testing-iconPassed, #48bb78);
-    background: color-mix(in srgb, var(--vscode-testing-iconPassed, #4caf50) 15%, var(--vscode-editor-background));
-    border: 1px solid var(--vscode-testing-iconPassed, #4caf50);
-    color: var(--vscode-testing-iconPassed, #2e7d32);
+    background: var(--apinox-testing-iconPassed, #48bb78);
+    background: color-mix(in srgb, var(--apinox-testing-iconPassed, #4caf50) 15%, var(--apinox-editor-background));
+    border: 1px solid var(--apinox-testing-iconPassed, #4caf50);
+    color: var(--apinox-testing-iconPassed, #2e7d32);
 }
 
 .tauri-toast-icon {

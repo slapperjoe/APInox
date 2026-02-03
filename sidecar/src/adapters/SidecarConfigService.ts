@@ -9,7 +9,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import * as jsonc from 'jsonc-parser';
-import { IConfigService } from '../../../src/interfaces/IConfigService';
+import { IConfigService } from '../interfaces/IConfigService';
 
 export class SidecarConfigService implements IConfigService {
     private config: Record<string, any> = {};
@@ -120,5 +120,14 @@ export class SidecarConfigService implements IConfigService {
         // Default to true (strict SSL validation enabled)
         console.log('[SidecarConfig] strictSSL = true (default)');
         return true;
+    }
+
+    async set(key: string, value: any): Promise<void> {
+        // Not implemented for sidecar config (read-only)
+        console.warn(`[SidecarConfig] set() not implemented: ${key}`);
+    }
+
+    has(key: string): boolean {
+        return key in this.config;
     }
 }

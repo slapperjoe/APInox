@@ -30,14 +30,14 @@ const Item = styled.div<{ $active?: boolean; $depth: number }>`
     padding: ${SPACING_XS};
     padding-left: ${props => props.$depth * 20 + 5}px;
     cursor: pointer;
-    background: ${props => props.$active ? 'var(--vscode-list-activeSelectionBackground)' : 'transparent'};
-    color: ${props => props.$active ? 'var(--vscode-list-activeSelectionForeground)' : 'inherit'};
+    background: ${props => props.$active ? 'var(--apinox-list-activeSelectionBackground)' : 'transparent'};
+    color: ${props => props.$active ? 'var(--apinox-list-activeSelectionForeground)' : 'inherit'};
     display: flex;
     align-items: center;
     gap: ${SPACING_XS};
     
     &:hover {
-        background: ${props => props.$active ? 'var(--vscode-list-activeSelectionBackground)' : 'var(--vscode-list-hoverBackground)'};
+        background: ${props => props.$active ? 'var(--apinox-list-activeSelectionBackground)' : 'var(--apinox-list-hoverBackground)'};
     }
 `;
 
@@ -49,7 +49,7 @@ const EmptyMessage = styled.div`
 
 const SecondaryButton = styled(Button)`
     background: transparent;
-    border: 1px solid var(--vscode-button-background);
+    border: 1px solid var(--apinox-button-background);
 `;
 
 interface AddToTestCaseModalProps {

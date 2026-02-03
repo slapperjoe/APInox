@@ -19,16 +19,16 @@ const EditorContainer = styled.div`
     padding: ${SPACING_XL};
     height: 100%;
     overflow-y: auto;
-    color: var(--vscode-editor-foreground);
-    font-family: var(--vscode-font-family);
+    color: var(--apinox-editor-foreground);
+    font-family: var(--apinox-font-family);
 `;
 
 const Section = styled.div<{ $collapsed?: boolean }>`
     margin-bottom: ${SPACING_2XL};
-    background: var(--vscode-editor-inactiveSelectionBackground);
+    background: var(--apinox-editor-inactiveSelectionBackground);
     border-radius: 6px;
     padding: 0;
-    border: 1px solid var(--vscode-widget-border);
+    border: 1px solid var(--apinox-widget-border);
     overflow: hidden;
 `;
 
@@ -40,13 +40,13 @@ const SectionHeader = styled.div<{ $clickable?: boolean }>`
     display: flex;
     align-items: center;
     gap: ${SPACING_SM};
-    border-bottom: 1px solid var(--vscode-panel-border);
+    border-bottom: 1px solid var(--apinox-panel-border);
     cursor: ${props => props.$clickable ? 'pointer' : 'default'};
     user-select: none;
     transition: background 0.15s ease;
     
     &:hover {
-        background: ${props => props.$clickable ? 'var(--vscode-list-hoverBackground)' : 'transparent'};
+        background: ${props => props.$clickable ? 'var(--apinox-list-hoverBackground)' : 'transparent'};
     }
 `;
 
@@ -80,8 +80,8 @@ const RequestItem = styled.div<{ $isDragging?: boolean; $isDropTarget?: boolean 
     display: flex;
     align-items: center;
     padding: ${SPACING_MD};
-    background: ${props => props.$isDragging ? 'var(--vscode-editor-selectionBackground)' : 'var(--vscode-list-hoverBackground)'};
-    border: 1px solid ${props => props.$isDropTarget ? 'var(--vscode-focusBorder)' : 'var(--vscode-panel-border)'};
+    background: ${props => props.$isDragging ? 'var(--apinox-editor-selectionBackground)' : 'var(--apinox-list-hoverBackground)'};
+    border: 1px solid ${props => props.$isDropTarget ? 'var(--apinox-focusBorder)' : 'var(--apinox-panel-border)'};
     border-radius: 4px;
     gap: ${SPACING_MD};
     opacity: ${props => props.$isDragging ? 0.5 : 1};
@@ -108,8 +108,8 @@ const MethodBadge = styled.span`
     font-weight: bold;
     padding: 2px ${SPACING_SM};
     border-radius: 3px;
-    background: var(--vscode-badge-background);
-    color: var(--vscode-badge-foreground);
+    background: var(--apinox-badge-background);
+    color: var(--apinox-badge-foreground);
     min-width: 45px;
     text-align: center;
 `;
@@ -123,15 +123,15 @@ const StatsGrid = styled.div`
 `;
 
 const StatCard = styled.div<{ $variant?: 'success' | 'warning' | 'error' }>`
-    background: var(--vscode-input-background);
+    background: var(--apinox-input-background);
     border-radius: 6px;
     padding: ${SPACING_MD};
     text-align: center;
     border: 1px solid ${props =>
-        props.$variant === 'success' ? 'var(--vscode-testing-iconPassed)' :
-            props.$variant === 'warning' ? 'var(--vscode-editorWarning-foreground)' :
-                props.$variant === 'error' ? 'var(--vscode-testing-iconFailed)' :
-                    'var(--vscode-widget-border)'};
+        props.$variant === 'success' ? 'var(--apinox-testing-iconPassed)' :
+            props.$variant === 'warning' ? 'var(--apinox-editorWarning-foreground)' :
+                props.$variant === 'error' ? 'var(--apinox-testing-iconFailed)' :
+                    'var(--apinox-widget-border)'};
 `;
 
 const StatValue = styled.div`
@@ -152,16 +152,16 @@ const ProgressContainer = styled.div`
 
 const ProgressBar = styled.div`
     height: 8px;
-    background: var(--vscode-editorWidget-background);
+    background: var(--apinox-editorWidget-background);
     border-radius: 4px;
     overflow: hidden;
-    border: 1px solid var(--vscode-widget-border);
+    border: 1px solid var(--apinox-widget-border);
 `;
 
 const ProgressFill = styled.div<{ $percent: number }>`
     height: 100%;
     width: ${props => props.$percent}%;
-    background: var(--vscode-progressBar-background, var(--vscode-testing-iconPassed));
+    background: var(--apinox-progressBar-background, var(--apinox-testing-iconPassed));
     transition: width 0.3s ease;
     min-width: ${props => (props.$percent > 0 ? '4px' : '0')};
 `;
@@ -174,7 +174,7 @@ const ChartContainer = styled.div`
     height: 80px;
     margin: ${SPACING_LG} 0;
     padding: ${SPACING_MD};
-    background: var(--vscode-input-background);
+    background: var(--apinox-input-background);
     border-radius: 6px;
 `;
 
@@ -183,17 +183,17 @@ const ChartBar = styled.div<{ $height: number; $success: boolean }>`
     min-width: 4px;
     max-width: 16px;
     height: ${props => props.$height}%;
-    background: ${props => props.$success ? 'var(--vscode-testing-iconPassed)' : 'var(--vscode-testing-iconFailed)'};
+    background: ${props => props.$success ? 'var(--apinox-testing-iconPassed)' : 'var(--apinox-testing-iconFailed)'};
     border-radius: 2px 2px 0 0;
     transition: height 0.3s ease;
 `;
 
 // Run History Item
 const RunItem = styled.div`
-    background: var(--vscode-input-background);
+    background: var(--apinox-input-background);
     border-radius: 6px;
     margin-bottom: ${SPACING_SM};
-    border: 1px solid var(--vscode-widget-border);
+    border: 1px solid var(--apinox-widget-border);
     overflow: hidden;
 `;
 
@@ -205,14 +205,14 @@ const RunHeader = styled.div`
     cursor: pointer;
     
     &:hover {
-        background: var(--vscode-list-hoverBackground);
+        background: var(--apinox-list-hoverBackground);
     }
 `;
 
 const RunDetails = styled.div`
     padding: ${SPACING_MD};
-    border-top: 1px solid var(--vscode-widget-border);
-    background: var(--vscode-editor-background);
+    border-top: 1px solid var(--apinox-widget-border);
+    background: var(--apinox-editor-background);
     max-height: 200px;
     overflow-y: auto;
 `;
@@ -222,17 +222,17 @@ const InfoBanner = styled.div`
     align-items: center;
     gap: ${SPACING_MD};
     padding: ${SPACING_MD} 14px;
-    background: var(--vscode-editor-inactiveSelectionBackground);
-    border: 1px solid var(--vscode-widget-border);
+    background: var(--apinox-editor-inactiveSelectionBackground);
+    border: 1px solid var(--apinox-widget-border);
     border-radius: 6px;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
     margin-bottom: ${SPACING_LG};
     font-size: 0.9em;
 `;
 
 const InfoBannerTitle = styled.div`
     font-weight: 600;
-    color: var(--vscode-foreground);
+    color: var(--apinox-foreground);
 `;
 
 const ResultRow = styled.div<{ $success: boolean }>`
@@ -241,7 +241,7 @@ const ResultRow = styled.div<{ $success: boolean }>`
     gap: 8px;
     padding: 4px 8px;
     margin: 2px 0;
-    background: ${props => props.$success ? 'var(--vscode-diffEditor-insertedTextBackground)' : 'var(--vscode-diffEditor-removedTextBackground)'};
+    background: ${props => props.$success ? 'var(--apinox-diffEditor-insertedTextBackground)' : 'var(--apinox-diffEditor-removedTextBackground)'};
     border-radius: 3px;
     font-size: 0.85em;
 `;
@@ -435,7 +435,7 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                 <div style={{ flex: 1 }} />
 
                 {isRunning ? (
-                    <ToolbarButton onClick={onStop} style={{ backgroundColor: 'var(--vscode-errorForeground)', color: 'white' }}>
+                    <ToolbarButton onClick={onStop} style={{ backgroundColor: 'var(--apinox-errorForeground)', color: 'white' }}>
                         <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} />
                         <Square size={10} /> Stop
                     </ToolbarButton>
@@ -456,10 +456,10 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
             <EditorContainer>
                 {/* Summary Card - Only shown when there's run history */}
                 {sortedHistory.length > 0 && (
-                    <Section style={{ marginBottom: 20, background: 'var(--vscode-editor-background)', borderColor: 'var(--vscode-testing-iconPassed)' }}>
+                    <Section style={{ marginBottom: 20, background: 'var(--apinox-editor-background)', borderColor: 'var(--apinox-testing-iconPassed)' }}>
                         <SectionHeader>
                             <SectionTitle style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <CheckCircle size={16} style={{ color: 'var(--vscode-testing-iconPassed)' }} />
+                                <CheckCircle size={16} style={{ color: 'var(--apinox-testing-iconPassed)' }} />
                                 Performance Summary
                             </SectionTitle>
                         </SectionHeader>
@@ -473,9 +473,9 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                                     <div style={{ fontSize: '0.85em', opacity: 0.7, marginBottom: 4 }}>Last Run</div>
                                     <div style={{ fontSize: '1.5em', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 6 }}>
                                         {sortedHistory[0].status === 'completed' ? (
-                                            <CheckCircle size={18} style={{ color: 'var(--vscode-testing-iconPassed)' }} />
+                                            <CheckCircle size={18} style={{ color: 'var(--apinox-testing-iconPassed)' }} />
                                         ) : (
-                                            <XCircle size={18} style={{ color: 'var(--vscode-testing-iconFailed)' }} />
+                                            <XCircle size={18} style={{ color: 'var(--apinox-testing-iconFailed)' }} />
                                         )}
                                         <span style={{ fontSize: '0.7em' }}>{new Date(sortedHistory[0].startTime).toLocaleString()}</span>
                                     </div>
@@ -733,7 +733,7 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                                             setShowScheduleInput(false);
                                         }
                                     }}
-                                    style={{ color: 'var(--vscode-testing-iconPassed)' }}
+                                    style={{ color: 'var(--apinox-testing-iconPassed)' }}
                                 >
                                     <Plus size={14} /> Add
                                 </ToolbarButton>
@@ -754,8 +754,8 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                                             border: 'none',
                                             cursor: 'pointer',
                                             color: schedule.enabled
-                                                ? 'var(--vscode-testing-iconPassed)'
-                                                : 'var(--vscode-disabledForeground)',
+                                                ? 'var(--apinox-testing-iconPassed)'
+                                                : 'var(--apinox-disabledForeground)',
                                             padding: 0
                                         }}
                                         title={schedule.enabled ? 'Disable' : 'Enable'}
@@ -833,20 +833,20 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                                                     style={{ width: 40, padding: 2 }}
                                                 />
                                             </div>
-                                            <ToolbarButton onClick={() => onStartCoordinator(coordPort, coordExpected)} title="Start Coordinator" style={{ color: 'var(--vscode-testing-iconPassed)' }}>
+                                            <ToolbarButton onClick={() => onStartCoordinator(coordPort, coordExpected)} title="Start Coordinator" style={{ color: 'var(--apinox-testing-iconPassed)' }}>
                                                 <Play size={14} /> Start
                                             </ToolbarButton>
                                         </>
                                     ) : (
                                         <>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.85em' }} title="Coordinator running">
-                                                <Server size={14} style={{ color: 'var(--vscode-testing-iconPassed)' }} />
+                                                <Server size={14} style={{ color: 'var(--apinox-testing-iconPassed)' }} />
                                                 <span>Port {coordinatorStatus.port}</span>
                                             </div>
                                             <div style={{ fontSize: '0.85em', opacity: 0.7 }}>
                                                 {coordinatorStatus.workers.length}/{coordinatorStatus.expectedWorkers} connected
                                             </div>
-                                            <ToolbarButton onClick={onStopCoordinator} title="Stop Coordinator" style={{ color: 'var(--vscode-errorForeground)' }}>
+                                            <ToolbarButton onClick={onStopCoordinator} title="Stop Coordinator" style={{ color: 'var(--apinox-errorForeground)' }}>
                                                 <Square size={14} /> Stop
                                             </ToolbarButton>
                                         </>
@@ -881,11 +881,11 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                                             <RunHeader onClick={() => setExpandedRunId(isExpanded ? null : run.id)}>
                                                 {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                                                 {run.status === 'completed' ? (
-                                                    <CheckCircle size={16} style={{ color: 'var(--vscode-testing-iconPassed)' }} />
+                                                    <CheckCircle size={16} style={{ color: 'var(--apinox-testing-iconPassed)' }} />
                                                 ) : run.status === 'aborted' ? (
-                                                    <AlertTriangle size={16} style={{ color: 'var(--vscode-editorWarning-foreground)' }} />
+                                                    <AlertTriangle size={16} style={{ color: 'var(--apinox-editorWarning-foreground)' }} />
                                                 ) : (
-                                                    <XCircle size={16} style={{ color: 'var(--vscode-testing-iconFailed)' }} />
+                                                    <XCircle size={16} style={{ color: 'var(--apinox-testing-iconFailed)' }} />
                                                 )}
                                                 <div style={{ flex: 1 }}>
                                                     <div style={{ fontWeight: 500 }}>
@@ -1005,16 +1005,16 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                                                     {run.results.slice(0, 20).map((result, idx) => (
                                                         <ResultRow key={idx} $success={result.success}>
                                                             {result.success ? (
-                                                                <CheckCircle size={12} style={{ color: 'var(--vscode-testing-iconPassed)' }} />
+                                                                <CheckCircle size={12} style={{ color: 'var(--apinox-testing-iconPassed)' }} />
                                                             ) : (
-                                                                <XCircle size={12} style={{ color: 'var(--vscode-testing-iconFailed)' }} />
+                                                                <XCircle size={12} style={{ color: 'var(--apinox-testing-iconFailed)' }} />
                                                             )}
                                                             <span style={{ flex: 1 }}>{result.requestName}</span>
                                                             <span style={{ opacity: 0.7 }}>#{result.iteration + 1}</span>
                                                             <span style={{ fontWeight: 500 }}>{result.duration.toFixed(0)}ms</span>
                                                             {result.slaBreached && (
                                                                 <span title="SLA Breached">
-                                                                    <AlertTriangle size={12} style={{ color: 'var(--vscode-editorWarning-foreground)' }} />
+                                                                    <AlertTriangle size={12} style={{ color: 'var(--apinox-editorWarning-foreground)' }} />
                                                                 </span>
                                                             )}
                                                         </ResultRow>

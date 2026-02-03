@@ -8,8 +8,8 @@ const Container = styled.div`
     display: flex;
     flex-direction: column;
     height: 100%;
-    color: var(--vscode-foreground);
-    background: var(--vscode-editor-background);
+    color: var(--apinox-foreground);
+    background: var(--apinox-editor-background);
     padding: ${SPACING_MD};
     gap: ${SPACING_MD};
     overflow-y: auto;
@@ -27,7 +27,7 @@ const SectionHeader = styled.div`
     gap: ${SPACING_SM};
     font-weight: 600;
     font-size: 0.95em;
-    color: var(--vscode-foreground);
+    color: var(--apinox-foreground);
     margin-bottom: ${SPACING_XS};
 `;
 
@@ -40,35 +40,35 @@ const FormRow = styled.div`
 const Label = styled.label`
     min-width: 120px;
     font-size: 0.9em;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
 `;
 
 const Select = styled.select`
     flex: 1;
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     padding: 6px 10px;
     border-radius: 3px;
     font-size: 0.9em;
     &:focus {
-        outline: 1px solid var(--vscode-focusBorder);
+        outline: 1px solid var(--apinox-focusBorder);
     }
 `;
 
 const Input = styled.input`
     flex: 1;
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     padding: 6px 10px;
     border-radius: 3px;
     font-size: 0.9em;
     &:focus {
-        outline: 1px solid var(--vscode-focusBorder);
+        outline: 1px solid var(--apinox-focusBorder);
     }
     &::placeholder {
-        color: var(--vscode-input-placeholderForeground);
+        color: var(--apinox-input-placeholderForeground);
     }
 `;
 
@@ -85,16 +85,16 @@ const CheckboxLabel = styled.label`
     cursor: pointer;
     font-size: 0.9em;
     &:hover {
-        color: var(--vscode-textLink-foreground);
+        color: var(--apinox-textLink-foreground);
     }
 `;
 
 const InfoText = styled.div`
     font-size: 0.85em;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
     font-style: italic;
     padding: ${SPACING_SM};
-    background: var(--vscode-textBlockQuote-background);
+    background: var(--apinox-textBlockQuote-background);
     border-radius: 3px;
 `;
 

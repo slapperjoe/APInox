@@ -36,18 +36,18 @@ const StatusMessage = styled.div<{ success?: boolean }>`
     padding: 8px 12px;
     margin-top: 10px;
     background: ${props => props.success
-        ? 'var(--vscode-inputValidation-infoBackground)'
-        : 'var(--vscode-inputValidation-errorBackground)'};
+        ? 'var(--apinox-inputValidation-infoBackground)'
+        : 'var(--apinox-inputValidation-errorBackground)'};
     color: ${props => props.success
-        ? 'var(--vscode-inputValidation-infoForeground)'
-        : 'var(--vscode-inputValidation-errorForeground)'};
+        ? 'var(--apinox-inputValidation-infoForeground)'
+        : 'var(--apinox-inputValidation-errorForeground)'};
     border-radius: 4px;
     font-size: 12px;
 `;
 
 const HelpText = styled.div`
     font-size: 11px;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
     margin-top: 4px;
 `;
 
@@ -59,8 +59,8 @@ const PickerRow = styled.div`
 
 const IconButton = styled.button`
     background: transparent;
-    border: 1px solid var(--vscode-input-border);
-    color: var(--vscode-icon-foreground);
+    border: 1px solid var(--apinox-input-border);
+    color: var(--apinox-icon-foreground);
     cursor: pointer;
     padding: 6px 8px;
     border-radius: 4px;
@@ -68,7 +68,7 @@ const IconButton = styled.button`
     align-items: center;
     justify-content: center;
     &:hover {
-        background: var(--vscode-toolbar-hoverBackground);
+        background: var(--apinox-toolbar-hoverBackground);
     }
 `;
 
@@ -253,7 +253,7 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
                         />
                         <PrimaryButton
                             onClick={handleDeletePat}
-                            style={{ background: 'var(--vscode-button-secondaryBackground)' }}
+                            style={{ background: 'var(--apinox-button-secondaryBackground)' }}
                         >
                             Remove
                         </PrimaryButton>
@@ -276,7 +276,7 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
                     Create a PAT with "Work Items (Read & Write)" scope.{' '}
                     <a
                         href="https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate"
-                        style={{ color: 'var(--vscode-textLink-foreground)' }}
+                        style={{ color: 'var(--apinox-textLink-foreground)' }}
                     >
                         Learn more <ExternalLink size={10} style={{ verticalAlign: 'middle' }} />
                     </a>
@@ -301,7 +301,7 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
                         <PrimaryButton
                             onClick={fetchProjects}
                             disabled={loading}
-                            style={{ background: 'var(--vscode-button-secondaryBackground)' }}
+                            style={{ background: 'var(--apinox-button-secondaryBackground)' }}
                         >
                             {loading ? <Spinner size={14} /> : 'Refresh'}
                         </PrimaryButton>
@@ -329,8 +329,8 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
             <div style={{
                 marginTop: 20,
                 padding: 12,
-                background: 'var(--vscode-textBlockQuote-background)',
-                borderLeft: '3px solid var(--vscode-textBlockQuote-border)',
+                background: 'var(--apinox-textBlockQuote-background)',
+                borderLeft: '3px solid var(--apinox-textBlockQuote-border)',
                 fontSize: 12
             }}>
                 <strong>How it works:</strong>

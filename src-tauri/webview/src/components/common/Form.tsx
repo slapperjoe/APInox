@@ -22,16 +22,16 @@ import styled, { css } from 'styled-components';
 
 // Base form element styles
 const baseInputStyles = css`
-    font-family: var(--vscode-font-family);
+    font-family: var(--apinox-font-family);
     font-size: 13px;
-    background-color: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background-color: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     outline: none;
     transition: border-color 0.1s ease;
     
     &:focus {
-        border-color: var(--vscode-focusBorder);
+        border-color: var(--apinox-focusBorder);
     }
     
     &:disabled {
@@ -40,7 +40,7 @@ const baseInputStyles = css`
     }
     
     &::placeholder {
-        color: var(--vscode-input-placeholderForeground);
+        color: var(--apinox-input-placeholderForeground);
         opacity: 0.6;
     }
 `;
@@ -56,8 +56,8 @@ export const FormInput = styled.input<{ $error?: boolean; $fullWidth?: boolean }
     width: ${props => props.$fullWidth ? '100%' : 'auto'};
     
     ${props => props.$error && css`
-        border-color: var(--vscode-inputValidation-errorBorder);
-        background-color: var(--vscode-inputValidation-errorBackground);
+        border-color: var(--apinox-inputValidation-errorBorder);
+        background-color: var(--apinox-inputValidation-errorBackground);
     `}
 `;
 
@@ -72,11 +72,11 @@ export const FormTextArea = styled.textarea<{ $error?: boolean; $fullWidth?: boo
     width: ${props => props.$fullWidth ? '100%' : 'auto'};
     min-height: 60px;
     resize: vertical;
-    font-family: var(--vscode-editor-font-family, monospace);
+    font-family: var(--apinox-editor-font-family, monospace);
     
     ${props => props.$error && css`
-        border-color: var(--vscode-inputValidation-errorBorder);
-        background-color: var(--vscode-inputValidation-errorBackground);
+        border-color: var(--apinox-inputValidation-errorBorder);
+        background-color: var(--apinox-inputValidation-errorBackground);
     `}
 `;
 
@@ -92,8 +92,8 @@ export const FormSelect = styled.select<{ $error?: boolean; $fullWidth?: boolean
     cursor: pointer;
     
     ${props => props.$error && css`
-        border-color: var(--vscode-inputValidation-errorBorder);
-        background-color: var(--vscode-inputValidation-errorBackground);
+        border-color: var(--apinox-inputValidation-errorBorder);
+        background-color: var(--apinox-inputValidation-errorBackground);
     `}
 `;
 
@@ -119,13 +119,13 @@ export const FormLabel = styled.label<{ $required?: boolean }>`
     display: block;
     font-size: 13px;
     font-weight: 500;
-    color: var(--vscode-foreground);
+    color: var(--apinox-foreground);
     margin-bottom: 4px;
     
     ${props => props.$required && css`
         &::after {
             content: ' *';
-            color: var(--vscode-testing-iconFailed);
+            color: var(--apinox-testing-iconFailed);
         }
     `}
 `;
@@ -166,10 +166,10 @@ export const FormRow = styled.div<{ $gap?: string }>`
  */
 export const FormSection = styled.div`
     padding: 16px;
-    border: 1px solid var(--vscode-panel-border);
+    border: 1px solid var(--apinox-panel-border);
     border-radius: 4px;
     margin-bottom: 16px;
-    background-color: var(--vscode-editor-background);
+    background-color: var(--apinox-editor-background);
 `;
 
 /**
@@ -179,8 +179,8 @@ export const FormSectionTitle = styled.h3`
     margin: 0 0 12px 0;
     font-size: 14px;
     font-weight: 600;
-    color: var(--vscode-foreground);
-    border-bottom: 1px solid var(--vscode-panel-border);
+    color: var(--apinox-foreground);
+    border-bottom: 1px solid var(--apinox-panel-border);
     padding-bottom: 6px;
 `;
 
@@ -191,8 +191,8 @@ export const FormHelperText = styled.div<{ $error?: boolean }>`
     font-size: 11px;
     margin-top: 4px;
     color: ${props => props.$error 
-        ? 'var(--vscode-inputValidation-errorForeground)' 
-        : 'var(--vscode-descriptionForeground)'};
+        ? 'var(--apinox-inputValidation-errorForeground)' 
+        : 'var(--apinox-descriptionForeground)'};
     opacity: ${props => props.$error ? 1 : 0.8};
 `;
 
@@ -208,7 +208,7 @@ export const FormActions = styled.div<{ $align?: 'left' | 'center' | 'right' }>`
         'flex-end'};
     margin-top: 20px;
     padding-top: 12px;
-    border-top: 1px solid var(--vscode-panel-border);
+    border-top: 1px solid var(--apinox-panel-border);
 `;
 
 /**
