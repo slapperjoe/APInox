@@ -5,6 +5,7 @@ import { ContextHelpButton } from '../ContextHelpButton';
 import { OperationContainer } from '../../styles/WorkspaceLayout.styles';
 import { PrimaryButton } from '../common/Button';
 import { SPACING_XS, SPACING_SM, SPACING_MD, SPACING_XL } from '../../styles/spacing';
+import { SampleRequestPanel } from './SampleRequestPanel';
 
 const Header = styled.div`
     display: flex;
@@ -142,7 +143,16 @@ const EmptyRequestsMessage = styled.div`
     text-align: center;
 `;
 
-export const OperationSummary: React.FC<{ operation: import('@shared/models').ApiOperation; onSelectRequest?: (r: import('@shared/models').ApiRequest) => void }> = ({ operation, onSelectRequest }) => {
+export const OperationSummary: React.FC<{ 
+    operation: import('@shared/models').ApiOperation; 
+    onSelectRequest?: (r: import('@shared/models').ApiRequest) => void;
+    onCreateRequestFromSample?: (sampleXml: string, metadata: {
+        endpoint?: string;
+        soapAction?: string;
+        contentType?: string;
+        targetNamespace?: string;
+    }) => void;
+}> = ({ operation, onSelectRequest, onCreateRequestFromSample }) => {
 
     // Derived stats
     const totalRequests = operation.requests.length;
@@ -176,6 +186,12 @@ export const OperationSummary: React.FC<{ operation: import('@shared/models').Ap
                     <PlaceholderStatValue>Not measured</PlaceholderStatValue>
                 </StatCard>
             </StatsGrid>
+
+            {/* Sample Request Panel */}
+            <SampleRequestPanel 
+                operation={operation}
+                onCreateRequest={onCreateRequestFromSample}
+            />
 
             <RequestsSection>
                 <SectionHeader>

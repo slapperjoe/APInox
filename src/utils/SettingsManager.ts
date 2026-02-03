@@ -27,6 +27,8 @@ export interface ApinoxConfig {
         showDebugIndicator?: boolean;
         splitRatio?: number;
         autoFoldElements?: string[];
+        editorFontSize?: number;
+        editorFontFamily?: string;
     };
     activeEnvironment?: string;
     lastConfigPath?: string;
@@ -382,9 +384,18 @@ export class SettingsManager {
     }
 
     private updateConfigPath(jsonPath: (string | number)[], value: any) {
+        console.log('[SettingsManager] updateConfigPath called:', { 
+            path: jsonPath, 
+            value: typeof value === 'object' ? JSON.stringify(value).substring(0, 200) : value,
+            configPath: this.configPath 
+        });
+        
         let content = "{}";
         if (fs.existsSync(this.configPath)) {
             content = fs.readFileSync(this.configPath, 'utf8');
+            console.log('[SettingsManager] Current config file length:', content.length);
+        } else {
+            console.log('[SettingsManager] Config file does not exist, creating new');
         }
 
         const template = `{
@@ -423,11 +434,14 @@ export class SettingsManager {
 
         // If content is empty or corrupt, use template
         if (!content || content.trim().length === 0 || content === "{}") {
+            console.log('[SettingsManager] Using template for empty/corrupt config');
             content = template;
         }
 
         const edits = modify(content, jsonPath, value, { formattingOptions: { tabSize: 2, insertSpaces: true } });
         const newContent = applyEdits(content, edits);
+        console.log('[SettingsManager] Writing updated config, new length:', newContent.length);
         fs.writeFileSync(this.configPath, newContent);
+        console.log('[SettingsManager] Config file written successfully');
     }
 }

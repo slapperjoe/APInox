@@ -178,7 +178,13 @@ export function useContextMenu({
                 request: newReqContent,
                 id: crypto.randomUUID(),
                 dirty: true,
-                endpoint: op.requests[0]?.endpoint || ''
+                endpoint: op.originalEndpoint || op.requests[0]?.endpoint || '',
+                contentType: op.requests[0]?.contentType || 'text/xml; charset=utf-8',
+                headers: op.requests[0]?.headers || {
+                    'Content-Type': 'text/xml; charset=utf-8'
+                },
+                requestType: 'soap',
+                bodyType: 'xml'
             };
 
             setProjects(prev => prev.map(p => {

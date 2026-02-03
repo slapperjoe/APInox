@@ -1652,6 +1652,7 @@ See PROXY_CERTIFICATE_SETUP.md for detailed instructions.`;
             {/* WorkspaceLayout with consolidated props */}
             <WorkspaceLayout
                 projects={projects}
+                setProjects={setProjects}
                 selectionState={{
                     project: projects.find(p => p.name === selectedProjectName) || null,
                     interface: selectedInterface,

@@ -201,6 +201,14 @@ export interface ApiRequest {
     readOnly?: boolean;
 }
 
+export interface SampleRequestMetadata {
+    endpoint?: string;
+    soapAction?: string;
+    contentType?: string;
+    targetNamespace?: string;
+    sampleXml?: string;
+}
+
 export interface ApiOperation {
     name: string;
     action: string;
@@ -212,6 +220,7 @@ export interface ApiOperation {
     id?: string;
     fullSchema?: SchemaNode | null; // Deep complex type tree for XML generation
     displayName?: string; // For display-only renaming in UI (preserves original name for WSDL binding)
+    sampleMetadata?: SampleRequestMetadata;
 }
 
 export interface ApiInterface {
@@ -530,6 +539,7 @@ export interface ApinoxConfig {
         showDebugIndicator?: boolean;
         splitRatio?: number;
         autoFoldElements?: string[];
+        editorFontSize?: number;
     };
     activeEnvironment?: string;
     lastConfigPath?: string;

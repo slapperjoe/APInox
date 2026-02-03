@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-import { ChevronRight, ChevronDown, Plus, Trash2, Code, Globe, Zap, GripVertical } from 'lucide-react';
+import { ChevronRight, ChevronDown, Plus, Trash2, Code, Globe, Zap, GripVertical, Network } from 'lucide-react';
 import { ApiInterface, ApiOperation, ApiRequest, ApinoxProject } from '@shared/models';
 import { HeaderButton, OperationItem, RequestItem } from './shared/SidebarStyles';
 import { ICON_COLORS } from '../../styles/colors';
@@ -207,6 +207,7 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
                         >
                             {(iface as any).expanded !== false ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                         </span>
+                        <Network size={14} style={{ marginRight: 6, flexShrink: 0, color: ICON_COLORS.INTERFACE }} />
                         {isRenaming ? (
                             <RenameInput
                                 type="text"
@@ -269,10 +270,13 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
                                     onContextMenu={(e) => onContextMenu(e, 'operation', op)}
                                 >
                                     <span style={{ marginRight: 5, display: 'flex', alignItems: 'center', width: 14 }}>
-                                        <div onClick={(e) => { e.stopPropagation(); onToggleOperation(op, iface); }} style={{ display: 'flex' }}>
-                                            {op.expanded !== false ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                                        </div>
+                                        {op.requests && op.requests.length > 0 && (
+                                            <div onClick={(e) => { e.stopPropagation(); onToggleOperation(op, iface); }} style={{ display: 'flex' }}>
+                                                {op.expanded !== false ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                            </div>
+                                        )}
                                     </span>
+                                    <Zap size={12} style={{ marginRight: 6, flexShrink: 0, color: ICON_COLORS.OPERATION }} />
                                     {isOpRenaming ? (
                                         <RenameInput
                                             type="text"

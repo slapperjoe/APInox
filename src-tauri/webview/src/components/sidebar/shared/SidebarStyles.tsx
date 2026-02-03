@@ -92,7 +92,7 @@ export const SidebarContent = styled.div`
  * Used for expandable sections like "Interfaces", "Suites", etc.
  */
 export const SectionHeader = styled.div`
-    padding: 5px 10px;
+    padding: 3px 8px;
     font-weight: bold;
     cursor: pointer;
     display: flex;
@@ -115,30 +115,31 @@ export const SectionTitle = styled.div`
 `;
 
 /**
- * ServiceItem - Top-level tree item (e.g., Interface, Suite)
- * No indentation, used for root-level items in tree
+ * ServiceItem - Top-level tree item (Interface, Folder at root level)
+ * No indentation, larger font for visual hierarchy
  */
 export const ServiceItem = styled.div`
-    padding: 3px 8px;
+    padding: 2px 8px;
     cursor: pointer;
     display: flex;
     align-items: center;
-    font-size: 0.9em;
+    font-size: 0.95em;
+    font-weight: 500;
     &:hover {
         background-color: var(--vscode-list-hoverBackground);
     }
 `;
 
 /**
- * OperationItem - Second-level tree item (e.g., Operation, TestCase)
+ * OperationItem - Second-level tree item (Operation, TestCase)
  * Indentation: 20px (first level of nesting)
  * Supports active state for selection highlighting
  */
 export const OperationItem = styled.div<{ $active?: boolean }>`
-    padding: 3px 8px;
+    padding: 2px 8px;
     padding-left: 20px;
     cursor: pointer;
-    font-size: 0.9em;
+    font-size: 0.88em;
     background-color: ${props => props.$active ? 'var(--vscode-list-activeSelectionBackground)' : 'transparent'};
     color: ${props => props.$active ? 'var(--vscode-list-activeSelectionForeground)' : 'inherit'};
     display: flex;
@@ -149,15 +150,15 @@ export const OperationItem = styled.div<{ $active?: boolean }>`
 `;
 
 /**
- * RequestItem - Third-level tree item (e.g., Request, TestStep)
+ * RequestItem - Third-level tree item (Request, TestStep)
  * Indentation: 45px (second level of nesting)
  * Smaller font size for visual hierarchy
  */
 export const RequestItem = styled.div<{ $active?: boolean }>`
-    padding: 3px 8px;
+    padding: 2px 8px;
     padding-left: 45px;
     cursor: pointer;
-    font-size: 0.85em;
+    font-size: 0.82em;
     background-color: ${props => props.$active ? 'var(--vscode-list-activeSelectionBackground)' : 'transparent'};
     color: ${props => props.$active ? 'var(--vscode-list-activeSelectionForeground)' : 'inherit'};
     display: flex;

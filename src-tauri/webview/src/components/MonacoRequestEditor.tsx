@@ -27,6 +27,8 @@ interface MonacoRequestEditorProps {
     requestId?: string; // Used to detect when user switches to different request
     forceUpdateKey?: number; // Used to force update when value changes externally (e.g. formatting)
     logId?: string; // Debugging ID
+    fontSize?: number; // Font size for editor (default: 14)
+    fontFamily?: string; // Font family for editor (default: Consolas)
 }
 
 export interface MonacoRequestEditorHandle {
@@ -43,7 +45,9 @@ export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoR
     autoFoldElements,
     showLineNumbers = true,
     requestId,
-    forceUpdateKey
+    forceUpdateKey,
+    fontSize = 14,
+    fontFamily = 'Consolas, "Courier New", monospace'
 }, ref) => {
     const editorRef = useRef<any>(null);
     const monacoRef = useRef<Monaco | null>(null);
@@ -293,8 +297,8 @@ export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoR
 
     const editorOptions = {
         minimap: { enabled: false }, // Save space
-        fontSize: 14,
-        fontFamily: 'var(--vscode-editor-font-family)',
+        fontSize: fontSize,
+        fontFamily: fontFamily,
         scrollBeyondLastLine: false,
         readOnly: readOnly,
         folding: true,

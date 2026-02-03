@@ -268,3 +268,28 @@ export const generateInitialXmlForOperation = (operation: any): string => {
    </soapenv:Body>
 </soapenv:Envelope>`;
 };
+
+/**
+ * Generates initial XML and metadata for an operation.
+ * Returns both the XML string and associated metadata like endpoint, SOAPAction, etc.
+ * 
+ * @param operation - The operation with name, input, fullSchema, targetNamespace, action, originalEndpoint
+ * @returns Object containing sampleXml and metadata
+ */
+export const generateSampleWithMetadata = (operation: any): {
+    sampleXml: string;
+    endpoint?: string;
+    soapAction?: string;
+    contentType?: string;
+    targetNamespace?: string;
+} => {
+    const sampleXml = generateInitialXmlForOperation(operation);
+    
+    return {
+        sampleXml,
+        endpoint: operation.originalEndpoint,
+        soapAction: operation.action,
+        contentType: 'text/xml; charset=utf-8',
+        targetNamespace: operation.targetNamespace || 'http://tempuri.org/'
+    };
+};
