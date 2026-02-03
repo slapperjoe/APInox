@@ -123,6 +123,8 @@ export class SoapClient {
     operation: string,
     args: any,
     headers?: any,
+    wsSecurity?: any,
+    attachments?: any,
   ): Promise<any> {
     const isRawMode = typeof args === "string" && args.trim().startsWith("<");
 
@@ -142,7 +144,7 @@ export class SoapClient {
           )
           : JSON.stringify(args);
 
-    return this.executeRawRequest(operation, xmlPayload, headers, url);
+    return this.executeRawRequest(operation, xmlPayload, headers, url, wsSecurity, attachments);
   }
 
   public async executeHttpRequest(request: ApiRequest): Promise<any> {
@@ -154,6 +156,8 @@ export class SoapClient {
     xml: string,
     headers: any,
     endpointOverride?: string,
+    wsSecurity?: any,
+    attachments?: any,
   ): Promise<any> {
     let endpoint = endpointOverride || "";
     let soapAction = "";
@@ -199,6 +203,16 @@ export class SoapClient {
       };
     }
 
+    // Apply WS-Security if configured
+    if (wsSecurity && wsSecurity.type !== 'none') {
+      xml = this.applyWSSecurity(xml, wsSecurity);
+    }
+
+    // Apply attachments if configured
+    if (attachments && attachments.length > 0) {
+      return this.executeWithAttachments(endpoint, operation, xml, attachments, headers, soapAction);
+    }
+
     // 3. Prepare Headers
     const requestHeaders: any = {
       "Content-Type": "text/xml;charset=UTF-8",
@@ -222,6 +236,191 @@ export class SoapClient {
     } as ApiRequest);
 
     return response;
+  }
+
+  /**
+   * Apply WS-Security header to SOAP envelope
+   */
+  private applyWSSecurity(xml: string, wsSecurityConfig: any): string {
+    try {
+      if (wsSecurityConfig.type === 'usernameToken') {
+        const { username, password, passwordType, hasNonce, hasCreated } = wsSecurityConfig;
+        
+        if (!username || !password) {
+          this.log('[WS-Security] Username or password missing, skipping security header');
+          return xml;
+        }
+
+        // Create WSSecurity instance from soap package
+        const wsSecurity = new soap.WSSecurity(username, password, {
+          hasNonce: hasNonce !== false,
+          hasTimeStamp: hasCreated !== false,
+          passwordType: passwordType || 'PasswordDigest',
+        });
+
+        // Generate the security header XML
+        const securityHeaderXml = (wsSecurity as any).toXML();
+        
+        // Inject into SOAP envelope
+        xml = this.injectSecurityHeader(xml, securityHeaderXml);
+        
+        this.log('[WS-Security] Applied UsernameToken security header');
+      } else if (wsSecurityConfig.type === 'certificate') {
+        this.log('[WS-Security] Certificate-based security not yet implemented');
+        // Future: Implement WSSecurityCert
+      }
+    } catch (error) {
+      this.log('[WS-Security] Error applying security:', error);
+    }
+
+    return xml;
+  }
+
+  /**
+   * Inject WS-Security header into SOAP envelope
+   */
+  private injectSecurityHeader(soapXml: string, securityHeaderXml: string): string {
+    // Check if soap:Header already exists
+    const headerRegex = /<(soap|SOAP-ENV|soapenv|s):Header[^>]*>/i;
+    const headerMatch = soapXml.match(headerRegex);
+
+    if (headerMatch) {
+      // Insert security header inside existing soap:Header
+      const insertPosition = headerMatch.index! + headerMatch[0].length;
+      return (
+        soapXml.slice(0, insertPosition) +
+        '\n' + securityHeaderXml +
+        soapXml.slice(insertPosition)
+      );
+    } else {
+      // Create new soap:Header after soap:Envelope opening tag
+      const envelopeRegex = /<(soap|SOAP-ENV|soapenv|s):Envelope[^>]*>/i;
+      const envelopeMatch = soapXml.match(envelopeRegex);
+
+      if (envelopeMatch) {
+        const prefix = envelopeMatch[1];
+        const insertPosition = envelopeMatch.index! + envelopeMatch[0].length;
+        const headerXml = `\n<${prefix}:Header>\n${securityHeaderXml}\n</${prefix}:Header>`;
+        return (
+          soapXml.slice(0, insertPosition) +
+          headerXml +
+          soapXml.slice(insertPosition)
+        );
+      }
+    }
+
+    // Fallback: couldn't parse envelope structure
+    this.log('[WS-Security] Warning: Could not parse SOAP envelope structure');
+    return soapXml;
+  }
+
+  /**
+   * Execute SOAP request with attachments (Base64 inline, SwA, or MTOM)
+   */
+  private async executeWithAttachments(
+    endpoint: string,
+    operation: string,
+    xml: string,
+    attachments: any[],
+    headers: any,
+    soapAction: string,
+  ): Promise<any> {
+    const fs = require('fs');
+    const FormData = require('form-data');
+
+    // Separate attachments by type
+    const base64Attachments = attachments.filter((a: any) => a.type === 'Base64');
+    const multipartAttachments = attachments.filter((a: any) => a.type === 'SwA' || a.type === 'MTOM');
+
+    // Apply Base64 inline encoding
+    let processedXml = xml;
+    for (const attachment of base64Attachments) {
+      try {
+        if (fs.existsSync(attachment.fsPath)) {
+          const fileBuffer = fs.readFileSync(attachment.fsPath);
+          const base64Content = fileBuffer.toString('base64');
+          // Replace cid: references with base64 content
+          processedXml = processedXml.replace(
+            new RegExp(`cid:${attachment.contentId}`, 'g'),
+            base64Content
+          );
+          this.log(`[Attachments] Inlined Base64: ${attachment.name} (${attachment.contentId})`);
+        } else {
+          this.log(`[Attachments] Warning: File not found: ${attachment.fsPath}`);
+        }
+      } catch (error) {
+        this.log(`[Attachments] Error reading file ${attachment.name}:`, error);
+      }
+    }
+
+    // If no multipart attachments, use regular request
+    if (multipartAttachments.length === 0) {
+      const requestHeaders: any = {
+        "Content-Type": "text/xml;charset=UTF-8",
+        ...headers,
+      };
+      if (soapAction) {
+        requestHeaders["SOAPAction"] = soapAction;
+      }
+
+      return this.httpClient.execute({
+        name: operation,
+        request: processedXml,
+        endpoint,
+        headers: requestHeaders,
+        requestType: "soap",
+        contentType: requestHeaders["Content-Type"],
+      } as ApiRequest);
+    }
+
+    // Build multipart request for SwA/MTOM
+    const form = new FormData();
+
+    // Add SOAP envelope as first part
+    form.append('soap-envelope', processedXml, {
+      contentType: 'text/xml; charset=utf-8',
+      filename: 'envelope.xml',
+    });
+
+    // Add binary attachments
+    for (const attachment of multipartAttachments) {
+      try {
+        if (fs.existsSync(attachment.fsPath)) {
+          const fileStream = fs.createReadStream(attachment.fsPath);
+          form.append(attachment.contentId, fileStream, {
+            filename: attachment.name,
+            contentType: attachment.contentType || 'application/octet-stream',
+          });
+          this.log(`[Attachments] Added multipart: ${attachment.name} (${attachment.contentId})`);
+        } else {
+          this.log(`[Attachments] Warning: File not found: ${attachment.fsPath}`);
+        }
+      } catch (error) {
+        this.log(`[Attachments] Error attaching file ${attachment.name}:`, error);
+      }
+    }
+
+    // Prepare multipart headers
+    const multipartHeaders: any = {
+      ...headers,
+      ...form.getHeaders(),
+    };
+    if (soapAction) {
+      multipartHeaders["SOAPAction"] = soapAction;
+    }
+
+    this.log(`[Attachments] Sending multipart request with ${multipartAttachments.length} attachments`);
+    this.log("Multipart Headers:", multipartHeaders);
+
+    // Use HttpClient with FormData body
+    return this.httpClient.execute({
+      name: operation,
+      request: form,
+      endpoint,
+      headers: multipartHeaders,
+      requestType: "soap",
+      contentType: multipartHeaders["content-type"],
+    } as any);
   }
 
   /**

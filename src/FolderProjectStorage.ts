@@ -93,8 +93,14 @@ export class FolderProjectStorage {
                     action: op.action,
                     input: op.input, // Save input schema
                     targetNamespace: op.targetNamespace, // Save persistence logic
+                    originalEndpoint: op.originalEndpoint, // Save endpoint URL
+                    fullSchema: op.fullSchema, // Save deep schema for XML generation
                     displayName: (op as any).displayName // Display-only rename
                 };
+                
+                // Debug logging
+                this.log(`Saving operation ${op.name}: originalEndpoint=${op.originalEndpoint}, has fullSchema=${!!op.fullSchema}`);
+                
                 fs.writeFileSync(path.join(opDir, 'operation.json'), JSON.stringify(opMeta, null, 2));
 
                 // Cleanup: Delete orphan request files (from renamed/deleted requests)

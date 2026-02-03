@@ -1,6 +1,6 @@
 {
   "name": "apinox-sidecar",
-  "version": "0.15.101",
+  "version": "0.15.102",
   "description": "APInox Node.js sidecar for Tauri desktop application",
   "main": "dist/index.js",
   "scripts": {

@@ -199,8 +199,11 @@ describe('FolderProjectStorage', () => {
                     {
                         id: 'iface-1',
                         name: 'TestInterface',
-                        wsdlUrl: 'http://example.com/service?wsdl',
-                        binding: 'TestBinding',
+                        type: 'soap',
+                        bindingName: 'TestBinding',
+                        soapVersion: '1.1',
+                        definition: 'http://example.com/service?wsdl',
+                        
                         operations: [
                             {
                                 id: 'op-1',
@@ -211,8 +214,7 @@ describe('FolderProjectStorage', () => {
                                     {
                                         id: 'req-1',
                                         name: 'OriginalName',
-                                        request: '<soap>Original</soap>',
-                                        response: null
+                                        request: '<soap>Original</soap>'
                                     }
                                 ]
                             }
@@ -262,8 +264,11 @@ describe('FolderProjectStorage', () => {
                     {
                         id: 'iface-1',
                         name: 'TestInterface',
-                        wsdlUrl: 'http://example.com/service?wsdl',
-                        binding: 'TestBinding',
+                        type: 'soap',
+                        bindingName: 'TestBinding',
+                        soapVersion: '1.1',
+                        definition: 'http://example.com/service?wsdl',
+                        
                         operations: [
                             {
                                 id: 'op-1',
@@ -274,8 +279,7 @@ describe('FolderProjectStorage', () => {
                                     {
                                         id: 'req-1',
                                         name: 'OriginalName',
-                                        request: '<soap>Original</soap>',
-                                        response: null
+                                        request: '<soap>Original</soap>'
                                     }
                                 ]
                             }
@@ -301,6 +305,132 @@ describe('FolderProjectStorage', () => {
             
             expect(loadedRequest.name).toBe('NewRequestName');
             expect(loadedRequest.request).toBe('<soap>Original</soap>');
+        });
+    });
+
+    describe('operation endpoint persistence', () => {
+        it('should save and load originalEndpoint field on operations', async () => {
+            const testEndpoint = 'http://example.com/calculator.asmx';
+            const project: ApinoxProject = {
+                name: 'Test Project',
+                description: 'Test',
+                interfaces: [
+                    {
+                        id: 'iface-1',
+                        name: 'CalculatorService',
+                        type: 'soap',
+                        bindingName: 'CalculatorSoap',
+                        soapVersion: '1.1',
+                        definition: 'http://example.com/calculator.asmx?wsdl',
+                        operations: [
+                            {
+                                id: 'op-1',
+                                name: 'Add',
+                                action: 'http://example.com/Add',
+                                input: { a: 'xsd:int', b: 'xsd:int' },
+                                targetNamespace: 'http://example.com/',
+                                originalEndpoint: testEndpoint,
+                                fullSchema: null,
+                                requests: []
+                            },
+                            {
+                                id: 'op-2',
+                                name: 'Subtract',
+                                action: 'http://example.com/Subtract',
+                                input: { a: 'xsd:int', b: 'xsd:int' },
+                                targetNamespace: 'http://example.com/',
+                                originalEndpoint: testEndpoint,
+                                fullSchema: null,
+                                requests: []
+                            }
+                        ]
+                    }
+                ],
+                testSuites: []
+            };
+
+            const projectDir = path.join(tempDir, 'TestProject');
+            fs.mkdirSync(projectDir);
+
+            // Save project
+            await storage.saveProject(project, projectDir);
+
+            // Verify operation.json files exist and have originalEndpoint
+            const addOpJsonPath = path.join(projectDir, 'interfaces', 'CalculatorService', 'Add', 'operation.json');
+            const subtractOpJsonPath = path.join(projectDir, 'interfaces', 'CalculatorService', 'Subtract', 'operation.json');
+
+            expect(fs.existsSync(addOpJsonPath)).toBe(true);
+            expect(fs.existsSync(subtractOpJsonPath)).toBe(true);
+
+            const addOpJson = JSON.parse(fs.readFileSync(addOpJsonPath, 'utf8'));
+            const subtractOpJson = JSON.parse(fs.readFileSync(subtractOpJsonPath, 'utf8'));
+
+            // CRITICAL: Verify originalEndpoint is saved
+            expect(addOpJson.originalEndpoint).toBe(testEndpoint);
+            expect(subtractOpJson.originalEndpoint).toBe(testEndpoint);
+
+            // Also verify fullSchema is saved (even if null)
+            expect(addOpJson).toHaveProperty('fullSchema');
+            expect(subtractOpJson).toHaveProperty('fullSchema');
+
+            // Load project and verify fields are restored
+            const loadedProject = await storage.loadProject(projectDir);
+            
+            expect(loadedProject.interfaces.length).toBe(1);
+            expect(loadedProject.interfaces[0].operations.length).toBe(2);
+            
+            const loadedAdd = loadedProject.interfaces[0].operations[0];
+            const loadedSubtract = loadedProject.interfaces[0].operations[1];
+
+            // CRITICAL: Verify originalEndpoint is loaded back
+            expect(loadedAdd.originalEndpoint).toBe(testEndpoint);
+            expect(loadedSubtract.originalEndpoint).toBe(testEndpoint);
+            expect(loadedAdd.fullSchema).toBe(null);
+            expect(loadedSubtract.fullSchema).toBe(null);
+        });
+
+        it('should handle empty string originalEndpoint', async () => {
+            const project: ApinoxProject = {
+                name: 'Test Project',
+                description: 'Test',
+                interfaces: [
+                    {
+                        id: 'iface-1',
+                        name: 'TestService',
+                        type: 'soap',
+                        bindingName: 'TestSoap',
+                        soapVersion: '1.1',
+                        definition: 'http://example.com/test.wsdl',
+                        operations: [
+                            {
+                                id: 'op-1',
+                                name: 'TestOp',
+                                action: '',
+                                input: {},
+                                targetNamespace: 'http://example.com/',
+                                originalEndpoint: '', // Empty string
+                                fullSchema: null,
+                                requests: []
+                            }
+                        ]
+                    }
+                ],
+                testSuites: []
+            };
+
+            const projectDir = path.join(tempDir, 'TestProject');
+            fs.mkdirSync(projectDir);
+
+            await storage.saveProject(project, projectDir);
+
+            const opJsonPath = path.join(projectDir, 'interfaces', 'TestService', 'TestOp', 'operation.json');
+            const opJson = JSON.parse(fs.readFileSync(opJsonPath, 'utf8'));
+
+            // Empty string should be saved
+            expect(opJson.originalEndpoint).toBe('');
+
+            const loadedProject = await storage.loadProject(projectDir);
+            expect(loadedProject.interfaces[0].operations[0].originalEndpoint).toBe('');
         });
     });
 });

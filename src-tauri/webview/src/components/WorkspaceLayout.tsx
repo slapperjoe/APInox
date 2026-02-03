@@ -1,11 +1,12 @@
 import React from 'react';
-import { Layout as LayoutIcon, ListOrdered, Play, Loader2, RotateCcw, WrapText, Bug, AlignLeft, Braces, ChevronLeft, ChevronRight, ListChecks, Replace, Cloud, PlusSquare, FileCode, Clock, AlertCircle, Repeat, Code, GitBranch, Type, Minus, Plus, Settings, MoreVertical } from 'lucide-react';
+import { Layout as LayoutIcon, ListOrdered, Play, Loader2, RotateCcw, WrapText, Bug, AlignLeft, Braces, ChevronLeft, ChevronRight, ListChecks, Replace, Cloud, PlusSquare, FileCode, Clock, AlertCircle, Repeat, Code, GitBranch, Type, Minus, Plus, Settings, MoreVertical, Variable } from 'lucide-react';
 // Models imported via props.ts indirections, specific enums kept if needed locally (TestStepType is used in code?)
 // Checking code: TestStepType is used in props interface but not local var?
 // Actually TestStepType is used in onAddStep signature but onAddStep comes from props.
 // Let's remove them and add back if needed.
 import { SidebarView, RequestType, BodyType, HttpMethod, WorkflowStep, ApiRequest } from '@shared/models';
 import { bridge } from '../utils/bridge';
+import { CustomXPathEvaluator } from '../utils/xpathEvaluator';
 // ... imports
 
 import { MonacoRequestEditor, MonacoRequestEditorHandle } from './MonacoRequestEditor';
@@ -15,6 +16,7 @@ import { HeadersPanel } from './HeadersPanel';
 import { SecurityPanel } from './SecurityPanel';
 import { AttachmentsPanel } from './AttachmentsPanel';
 import { ExtractorsPanel } from './ExtractorsPanel';
+import { VariablesPanel } from './VariablesPanel';
 
 import { MonacoSingleLineInput, MonacoSingleLineInputHandle } from './MonacoSingleLineInput';
 import { formatXml, stripCausalityData } from '@shared/utils/xmlFormatter';
@@ -265,10 +267,73 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
 
     // Performance Actions extracted in props destructuring above
 
+    // Calculate available variables for autocomplete (only in test step context)
+    // MUST be after testExecution is destructured from stepActions
+    const availableVariables = React.useMemo(() => {
+        // Early return with empty array if not in correct context
+        if (activeView !== SidebarView.TESTS) return [];
+        if (!selectedTestCase || !selectedStep) return [];
+        if (!selectedStep.id || selectedStep.type !== 'request') return [];
+        
+        try {
+            const currentIndex = selectedTestCase.steps?.findIndex(s => s.id === selectedStep.id) ?? -1;
+            if (currentIndex <= 0) return [];
+            
+            const priorSteps = selectedTestCase.steps.slice(0, currentIndex);
+            const vars: Array<{ name: string; value: string | null; source: string }> = [];
+            
+            priorSteps.forEach(step => {
+                if (step.type === 'request' && step.config?.request?.extractors) {
+                    step.config.request.extractors.forEach(ext => {
+                        try {
+                            const stepExec = testExecution?.[selectedTestCase.id]?.[step.id];
+                            let value: string | null = null;
+                            
+                            if (stepExec?.response) {
+                                const rawResp = stepExec.response.rawResponse || 
+                                    (typeof stepExec.response.result === 'string'
+                                        ? stepExec.response.result
+                                        : JSON.stringify(stepExec.response.result));
+                                
+                                if (rawResp && ext.source === 'body') {
+                                    try {
+                                        value = CustomXPathEvaluator.evaluate(rawResp, ext.path);
+                                        if (!value && ext.defaultValue) {
+                                            value = ext.defaultValue;
+                                        }
+                                    } catch (e) {
+                                        if (ext.defaultValue) {
+                                            value = ext.defaultValue;
+                                        }
+                                    }
+                                }
+                            } else if (ext.defaultValue) {
+                                value = ext.defaultValue;
+                            }
+                            
+                            vars.push({
+                                name: ext.variable,
+                                value,
+                                source: step.name
+                            });
+                        } catch (extError) {
+                            console.error('[WorkspaceLayout] Error processing extractor:', extError);
+                        }
+                    });
+                }
+            });
+            
+            return vars;
+        } catch (error) {
+            console.error('[WorkspaceLayout] Error in availableVariables:', error);
+            return [];
+        }
+    }, [activeView, selectedTestCase, selectedStep, testExecution]);
+
 
 
     const [alignAttributes, setAlignAttributes] = React.useState(false);
-    const [activeTab, setActiveTab] = React.useState<'request' | 'headers' | 'params' | 'assertions' | 'auth' | 'extractors' | 'attachments' | 'variables'>('request');
+    const [activeTab, setActiveTab] = React.useState<'request' | 'headers' | 'params' | 'assertions' | 'auth' | 'extractors' | 'attachments' | 'variables' | 'chainvars'>('request');
     const [showVariables, setShowVariables] = React.useState(false);
     const [showCodeSnippet, setShowCodeSnippet] = React.useState(false);
     const [editorFontSize, setEditorFontSize] = React.useState(14);
@@ -1154,9 +1219,17 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                         )}
                                     </TabButton>
                                     <TabButton $active={activeTab === 'extractors'} onClick={() => setActiveTab('extractors')}>
+                                        <Code size={14} />
                                         Extractors
                                         {activeRequest.extractors && activeRequest.extractors.length > 0 && ` (${activeRequest.extractors.length})`}
                                     </TabButton>
+                                    {/* Request Chaining Variables - show in test context only */}
+                                    {activeView === SidebarView.TESTS && selectedTestCase && (
+                                        <TabButton $active={activeTab === 'chainvars'} onClick={() => setActiveTab('chainvars')}>
+                                            <Variable size={14} />
+                                            Chain Vars
+                                        </TabButton>
+                                    )}
                                 </>
                             )}
                             <TabButton $active={activeTab === 'auth'} onClick={() => setActiveTab('auth')}>
@@ -1377,6 +1450,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                     forceUpdateKey={editorForceUpdateKey}
                                     fontSize={editorFontSize}
                                     fontFamily={editorFontFamily}
+                                    availableVariables={availableVariables}
                                 />
                                 {/* Format Button Overlay */}
                             </RequestEditorWrapper>
@@ -1463,6 +1537,13 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                 onChange={(newExtractors) => onUpdateRequest({ ...activeRequest, extractors: newExtractors })}
                                 onEdit={onEditExtractor}
                                 rawResponse={response?.rawResponse}
+                            />
+                        )}
+                        {activeTab === 'chainvars' && (
+                            <VariablesPanel
+                                testCase={selectedTestCase}
+                                currentStepId={selectedStep?.id || null}
+                                testExecution={testExecution}
                             />
                         )}
                         {activeTab === 'auth' && (

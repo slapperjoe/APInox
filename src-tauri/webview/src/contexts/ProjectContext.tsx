@@ -321,6 +321,13 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
                         : filePath;
 
                     debugLog('saveProject: Dialog selected path', { filePath, cleanPath });
+                    console.log('[ProjectContext] NEW PROJECT - Checking originalEndpoint before save:');
+                    project.interfaces.forEach(iface => {
+                        iface.operations.forEach(op => {
+                            console.log(`  ${iface.name}.${op.name}: originalEndpoint=${op.originalEndpoint}`);
+                        });
+                    });
+                    
                     bridge.sendMessage({ command: 'saveProject', project, filePath: cleanPath });
                 } else {
                     debugLog('saveProject: Dialog cancelled');
