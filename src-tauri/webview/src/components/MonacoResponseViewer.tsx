@@ -19,6 +19,8 @@ interface MonacoResponseViewerProps {
     showLineNumbers?: boolean;
     onSelectionChange?: (data: { text: string, offset: number } | null) => void;
     autoFoldElements?: string[];
+    fontSize?: number; // Font size for viewer (default: 14)
+    fontFamily?: string; // Font family for viewer (default: Consolas)
 }
 
 export const MonacoResponseViewer: React.FC<MonacoResponseViewerProps> = ({
@@ -26,7 +28,9 @@ export const MonacoResponseViewer: React.FC<MonacoResponseViewerProps> = ({
     language = 'xml',
     showLineNumbers = true,
     onSelectionChange,
-    autoFoldElements
+    autoFoldElements,
+    fontSize = 14,
+    fontFamily = 'Consolas, "Courier New", monospace'
 }) => {
     const editorRef = useRef<any>(null);
     const monacoRef = useRef<Monaco | null>(null);
@@ -101,8 +105,8 @@ export const MonacoResponseViewer: React.FC<MonacoResponseViewerProps> = ({
                 theme={viewerTheme}
                 options={{
                     minimap: { enabled: false },
-                    fontSize: 14,
-                    fontFamily: 'var(--vscode-editor-font-family)',
+                    fontSize: fontSize,
+                    fontFamily: fontFamily,
                     scrollBeyondLastLine: false,
                     readOnly: true,
                     folding: true,

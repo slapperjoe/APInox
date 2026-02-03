@@ -214,6 +214,14 @@ export const bridge = {
      * Responses are converted to backend messages for listeners
      */
     sendMessage: (message: BridgeMessage): void => {
+        // Log saveSettings commands for debugging
+        if (message.command === 'saveSettings') {
+            console.log('[Bridge] Sending saveSettings command:', {
+                hasConfig: !!message.config,
+                uiConfig: message.config?.ui
+            });
+        }
+        
         // Pre-process loadWsdl command for local XSD resolution
         if (message.command === 'loadWsdl' && message.isLocal && message.url) {
             const lastSlash = Math.max(message.url.lastIndexOf('/'), message.url.lastIndexOf('\\'));
@@ -258,6 +266,12 @@ export const bridge = {
                     // Map command responses to backend events
                     const backendEvent = mapResponseToBackendEvent(message.command, data);
                     if (backendEvent) {
+                        if (message.command === 'saveSettings') {
+                            console.log('[Bridge] Emitting SettingsUpdate event from saveSettings response:', {
+                                hasConfig: !!backendEvent.config,
+                                uiConfig: backendEvent.config?.ui
+                            });
+                        }
                         listeners.forEach(cb => cb(backendEvent));
                     }
                 })

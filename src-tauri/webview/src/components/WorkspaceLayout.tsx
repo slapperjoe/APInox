@@ -1,10 +1,11 @@
 import React from 'react';
-import { Layout as LayoutIcon, ListOrdered, Play, Loader2, RotateCcw, WrapText, Bug, AlignLeft, Braces, ChevronLeft, ChevronRight, ListChecks, Replace, Cloud, PlusSquare, FileCode, Clock, AlertCircle, Repeat, Code, GitBranch } from 'lucide-react';
+import { Layout as LayoutIcon, ListOrdered, Play, Loader2, RotateCcw, WrapText, Bug, AlignLeft, Braces, ChevronLeft, ChevronRight, ListChecks, Replace, Cloud, PlusSquare, FileCode, Clock, AlertCircle, Repeat, Code, GitBranch, Type, Minus, Plus, Settings, MoreVertical } from 'lucide-react';
 // Models imported via props.ts indirections, specific enums kept if needed locally (TestStepType is used in code?)
 // Checking code: TestStepType is used in props interface but not local var?
 // Actually TestStepType is used in onAddStep signature but onAddStep comes from props.
 // Let's remove them and add back if needed.
-import { SidebarView, RequestType, BodyType, HttpMethod, WorkflowStep } from '@shared/models';
+import { SidebarView, RequestType, BodyType, HttpMethod, WorkflowStep, ApiRequest } from '@shared/models';
+import { bridge } from '../utils/bridge';
 // ... imports
 
 import { MonacoRequestEditor, MonacoRequestEditorHandle } from './MonacoRequestEditor';
@@ -99,7 +100,16 @@ import {
     ResponseContentType,
     ResponseStatus,
     MiniToolbarButton,
-    MiniButtonIcon
+    MiniButtonIcon,
+    EditorSettingsMenu,
+    MenuSection,
+    MenuSectionTitle,
+    MenuRow,
+    MenuLabel,
+    MenuControls,
+    FontSizeDisplay,
+    MenuIconButton,
+    SettingsMenuWrapper
 } from '../styles/WorkspaceLayout.styles';
 
 
@@ -122,6 +132,7 @@ import {
 
 export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     projects,
+    setProjects,
     selectionState,
     requestActions,
     viewState,
@@ -260,6 +271,11 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     const [activeTab, setActiveTab] = React.useState<'request' | 'headers' | 'params' | 'assertions' | 'auth' | 'extractors' | 'attachments' | 'variables'>('request');
     const [showVariables, setShowVariables] = React.useState(false);
     const [showCodeSnippet, setShowCodeSnippet] = React.useState(false);
+    const [editorFontSize, setEditorFontSize] = React.useState(14);
+    const [editorFontFamily, setEditorFontFamily] = React.useState<string>('Consolas, "Courier New", monospace');
+    const [showEditorSettings, setShowEditorSettings] = React.useState(false);
+    
+    console.log('[WorkspaceLayout] Component rendered, editorFontSize:', editorFontSize, 'config exists:', !!config);
 
     // ... imports
 
@@ -274,12 +290,90 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     const prevAlignAttributesRef = React.useRef<boolean>(alignAttributes);
     const lastAlignedRequestIdRef = React.useRef<string | null>(null);
     const lastFormattedRequestIdRef = React.useRef<string | null>(null);
+    const settingsMenuRef = React.useRef<HTMLDivElement>(null);
+
+    // Close editor settings menu when clicking outside
+    React.useEffect(() => {
+        if (!showEditorSettings) return;
+        
+        const handleClickOutside = (event: MouseEvent) => {
+            if (settingsMenuRef.current && !settingsMenuRef.current.contains(event.target as Node)) {
+                setShowEditorSettings(false);
+            }
+        };
+        
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showEditorSettings]);
 
     React.useEffect(() => {
         if (config?.ui?.alignAttributes !== undefined) {
             setAlignAttributes(config.ui.alignAttributes);
         }
     }, [config?.ui?.alignAttributes]);
+
+    // Load editor font size from config
+    React.useEffect(() => {
+        if (config?.ui?.editorFontSize !== undefined) {
+            setEditorFontSize(config.ui.editorFontSize);
+        }
+    }, [config?.ui?.editorFontSize]);
+
+    // Load editor font family from config
+    React.useEffect(() => {
+        if (config?.ui?.editorFontFamily !== undefined) {
+            setEditorFontFamily(config.ui.editorFontFamily);
+        }
+    }, [config?.ui?.editorFontFamily]);
+
+    // Save editor font size to config when changed
+    const handleFontSizeChange = React.useCallback((newSize: number) => {
+        console.log('[WorkspaceLayout] Font size change requested:', newSize);
+        console.log('[WorkspaceLayout] Config available?', !!config, 'config:', config);
+        setEditorFontSize(newSize);
+        
+        // Update config and save immediately
+        if (config) {
+            const updatedConfig = {
+                ...config,
+                ui: {
+                    ...config.ui,
+                    editorFontSize: newSize
+                }
+            };
+            console.log('[WorkspaceLayout] Sending saveSettings with fontSize:', newSize, 'config.ui:', updatedConfig.ui);
+            bridge.sendMessage({ 
+                command: 'saveSettings', 
+                config: updatedConfig 
+            });
+        } else {
+            console.warn('[WorkspaceLayout] No config available, cannot save font size');
+        }
+    }, [config]);
+
+    // Save editor font family to config when changed
+    const handleFontFamilyChange = React.useCallback((newFamily: string) => {
+        console.log('[WorkspaceLayout] Font family change requested:', newFamily);
+        setEditorFontFamily(newFamily);
+        
+        // Update config and save immediately
+        if (config) {
+            const updatedConfig = {
+                ...config,
+                ui: {
+                    ...config.ui,
+                    editorFontFamily: newFamily
+                }
+            };
+            console.log('[WorkspaceLayout] Sending saveSettings with fontFamily:', newFamily);
+            bridge.sendMessage({ 
+                command: 'saveSettings', 
+                config: updatedConfig 
+            });
+        } else {
+            console.warn('[WorkspaceLayout] No config available, cannot save font family');
+        }
+    }, [config]);
 
     React.useEffect(() => {
         if (prevAlignAttributesRef.current === alignAttributes) return;
@@ -689,7 +783,61 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     // PROJECTS VIEW
     if (activeView === SidebarView.PROJECTS) {
         if (!activeRequest) {
-            if (selectedOperation) return <OperationSummary operation={selectedOperation} onSelectRequest={navigationActions?.onSelectRequest} />;
+            if (selectedOperation) {
+                const handleCreateRequestFromSample = setProjects ? (sampleXml: string, metadata: {
+                    endpoint?: string;
+                    soapAction?: string;
+                    contentType?: string;
+                    targetNamespace?: string;
+                }) => {
+                    // Create new request from sample
+                    const newReqName = `Request ${selectedOperation.requests.length + 1}`;
+                    const newRequest: ApiRequest = {
+                        name: newReqName,
+                        request: sampleXml,
+                        id: crypto.randomUUID(),
+                        dirty: true,
+                        endpoint: metadata.endpoint || selectedOperation.originalEndpoint || '',
+                        contentType: metadata.contentType || 'text/xml; charset=utf-8',
+                        headers: {
+                            'Content-Type': metadata.contentType || 'text/xml; charset=utf-8'
+                        },
+                        requestType: 'soap',
+                        bodyType: 'xml'
+                    };
+
+                    // Add to operation
+                    setProjects(prev => prev.map(p => {
+                        let found = false;
+                        const newInterfaces = p.interfaces.map(i => {
+                            const newOps = i.operations.map(o => {
+                                if (o.name === selectedOperation.name) {
+                                    found = true;
+                                    return { ...o, requests: [...o.requests, newRequest], expanded: true };
+                                }
+                                return o;
+                            });
+                            return { ...i, operations: newOps };
+                        });
+
+                        if (found) {
+                            return { ...p, interfaces: newInterfaces, dirty: true };
+                        }
+                        return p;
+                    }));
+
+                    // Auto-select the new request
+                    if (navigationActions?.onSelectRequest) {
+                        navigationActions.onSelectRequest(newRequest);
+                    }
+                } : undefined;
+                
+                return <OperationSummary 
+                    operation={selectedOperation} 
+                    onSelectRequest={navigationActions?.onSelectRequest}
+                    onCreateRequestFromSample={handleCreateRequestFromSample}
+                />;
+            }
             if (selectedInterface) return <InterfaceSummary interface={selectedInterface} onSelectOperation={navigationActions?.onSelectOperation} />;
             if (selectedProject) return <ProjectSummary project={selectedProject} onSelectInterface={navigationActions?.onSelectInterface} />;
             return <EmptyProject />;
@@ -1021,43 +1169,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                             </TabButton>
 
                             <TabsRight>
-                                {/* Formatting Toggles */}
-                                <IconButton onClick={() => {
-                                    const newValue = !alignAttributes;
-                                    setAlignAttributes(newValue);
-                                    if (activeRequest.request) onUpdateRequest({ ...activeRequest, request: formatXml(activeRequest.request, newValue, inlineElementValues) });
-                                    forceEditorUpdate();
-                                }} active={alignAttributes} title="Toggle Attribute Alignment" as={CompactIconButton}>
-                                    <WrapText size={14} />
-                                </IconButton>
-
-                                {onToggleInlineElementValues && (
-                                    <IconButton
-                                        title={inlineElementValues ? "Format: Inline Values (Compact)" : "Format: Block Values (Expanded)"}
-                                        onClick={() => {
-                                            if (onToggleInlineElementValues) onToggleInlineElementValues();
-                                            const nextVal = !inlineElementValues;
-                                            if (activeRequest.request) {
-                                                onUpdateRequest({ ...activeRequest, request: formatXml(activeRequest.request, alignAttributes, nextVal) });
-                                                forceEditorUpdate();
-                                            }
-                                        }}
-                                        active={inlineElementValues}
-                                        as={CompactIconButton}
-                                    >
-                                        <AlignLeft size={14} />
-                                    </IconButton>
-                                )}
-                                {onToggleHideCausalityData && (
-                                    <IconButton
-                                        title={hideCausalityData ? "Show Debugger Causality Data" : "Hide Debugger Causality Data"}
-                                        onClick={onToggleHideCausalityData}
-                                        active={hideCausalityData}
-                                        as={CompactIconButton}
-                                    >
-                                        <Bug size={14} />
-                                    </IconButton>
-                                )}
+                                {/* Quick Format Actions - Keep These Visible */}
                                 <IconButton
                                     title="Format XML Now"
                                     onClick={() => {
@@ -1091,6 +1203,152 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
 
                                 <Divider />
 
+                                {/* Editor Settings Menu */}
+                                <SettingsMenuWrapper ref={settingsMenuRef}>
+                                    <IconButton
+                                        title="Editor Settings"
+                                        onClick={() => setShowEditorSettings(!showEditorSettings)}
+                                        active={showEditorSettings}
+                                        as={CompactIconButton}
+                                    >
+                                        <Settings size={14} />
+                                    </IconButton>
+                                    
+                                    {showEditorSettings && (
+                                        <EditorSettingsMenu>
+                                            <MenuSection>
+                                                <MenuSectionTitle>Font Settings</MenuSectionTitle>
+                                                <MenuRow>
+                                                    <MenuLabel>
+                                                        <Type size={14} />
+                                                        Font Size
+                                                    </MenuLabel>
+                                                    <MenuControls>
+                                                        <MenuIconButton
+                                                            onClick={() => {
+                                                                console.log('[Button] Minus clicked, current:', editorFontSize);
+                                                                handleFontSizeChange(Math.max(8, editorFontSize - 1));
+                                                            }}
+                                                            disabled={editorFontSize <= 8}
+                                                            title="Decrease"
+                                                        >
+                                                            <Minus size={12} />
+                                                        </MenuIconButton>
+                                                        <FontSizeDisplay>{editorFontSize}px</FontSizeDisplay>
+                                                        <MenuIconButton
+                                                            onClick={() => {
+                                                                console.log('[Button] Plus clicked, current:', editorFontSize);
+                                                                handleFontSizeChange(Math.min(24, editorFontSize + 1));
+                                                            }}
+                                                            disabled={editorFontSize >= 24}
+                                                            title="Increase"
+                                                        >
+                                                            <Plus size={12} />
+                                                        </MenuIconButton>
+                                                    </MenuControls>
+                                                </MenuRow>
+                                                <MenuRow>
+                                                    <MenuLabel>
+                                                        <Type size={14} />
+                                                        Font Family
+                                                    </MenuLabel>
+                                                    <select
+                                                        value={editorFontFamily}
+                                                        onChange={(e) => handleFontFamilyChange(e.target.value)}
+                                                        style={{
+                                                            background: 'var(--vscode-dropdown-background)',
+                                                            color: 'var(--vscode-dropdown-foreground)',
+                                                            border: '1px solid var(--vscode-dropdown-border)',
+                                                            padding: '4px 8px',
+                                                            borderRadius: '2px',
+                                                            fontSize: '12px',
+                                                            fontFamily: 'var(--vscode-font-family)',
+                                                            cursor: 'pointer',
+                                                            minWidth: '200px'
+                                                        }}
+                                                    >
+                                                        <option value='Consolas, "Courier New", monospace'>Consolas</option>
+                                                        <option value='"Courier New", Courier, monospace'>Courier New</option>
+                                                        <option value='"Fira Code", monospace'>Fira Code</option>
+                                                        <option value='"JetBrains Mono", monospace'>JetBrains Mono</option>
+                                                        <option value='"Source Code Pro", monospace'>Source Code Pro</option>
+                                                        <option value='Monaco, monospace'>Monaco</option>
+                                                        <option value='Menlo, Monaco, monospace'>Menlo</option>
+                                                        <option value='"Cascadia Code", monospace'>Cascadia Code</option>
+                                                        <option value='"SF Mono", Monaco, monospace'>SF Mono</option>
+                                                        <option value='"Roboto Mono", monospace'>Roboto Mono</option>
+                                                        <option value='"Ubuntu Mono", monospace'>Ubuntu Mono</option>
+                                                        <option value='"Lucida Console", Monaco, monospace'>Lucida Console</option>
+                                                    </select>
+                                                </MenuRow>
+                                            </MenuSection>
+
+                                            <MenuSection>
+                                                <MenuSectionTitle>Formatting Options</MenuSectionTitle>
+                                                <MenuRow>
+                                                    <MenuLabel>
+                                                        <WrapText size={14} />
+                                                        Align Attributes
+                                                    </MenuLabel>
+                                                    <MenuIconButton
+                                                        onClick={() => {
+                                                            const newValue = !alignAttributes;
+                                                            setAlignAttributes(newValue);
+                                                            if (activeRequest.request) onUpdateRequest({ ...activeRequest, request: formatXml(activeRequest.request, newValue, inlineElementValues) });
+                                                            forceEditorUpdate();
+                                                        }}
+                                                        className={alignAttributes ? 'active' : ''}
+                                                        title={alignAttributes ? 'On' : 'Off'}
+                                                    >
+                                                        {alignAttributes ? 'On' : 'Off'}
+                                                    </MenuIconButton>
+                                                </MenuRow>
+
+                                                {onToggleInlineElementValues && (
+                                                    <MenuRow>
+                                                        <MenuLabel>
+                                                            <AlignLeft size={14} />
+                                                            Inline Values
+                                                        </MenuLabel>
+                                                        <MenuIconButton
+                                                            onClick={() => {
+                                                                if (onToggleInlineElementValues) onToggleInlineElementValues();
+                                                                const nextVal = !inlineElementValues;
+                                                                if (activeRequest.request) {
+                                                                    onUpdateRequest({ ...activeRequest, request: formatXml(activeRequest.request, alignAttributes, nextVal) });
+                                                                    forceEditorUpdate();
+                                                                }
+                                                            }}
+                                                            className={inlineElementValues ? 'active' : ''}
+                                                            title={inlineElementValues ? 'Compact' : 'Expanded'}
+                                                        >
+                                                            {inlineElementValues ? 'On' : 'Off'}
+                                                        </MenuIconButton>
+                                                    </MenuRow>
+                                                )}
+
+                                                {onToggleHideCausalityData && (
+                                                    <MenuRow>
+                                                        <MenuLabel>
+                                                            <Bug size={14} />
+                                                            Hide Causality Data
+                                                        </MenuLabel>
+                                                        <MenuIconButton
+                                                            onClick={onToggleHideCausalityData}
+                                                            className={hideCausalityData ? 'active' : ''}
+                                                            title={hideCausalityData ? 'Hidden' : 'Shown'}
+                                                        >
+                                                            {hideCausalityData ? 'On' : 'Off'}
+                                                        </MenuIconButton>
+                                                    </MenuRow>
+                                                )}
+                                            </MenuSection>
+                                        </EditorSettingsMenu>
+                                    )}
+                                </SettingsMenuWrapper>
+
+                                <Divider />
+
                                 <StatText>Lines: {typeof activeRequest.request === 'string' ? activeRequest.request.split('\n').length : 0}</StatText>
                                 <StatText>Size: {typeof activeRequest.request === 'string' ? (activeRequest.request.length / 1024).toFixed(2) : 0} KB</StatText>
                             </TabsRight>
@@ -1117,6 +1375,8 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                     showLineNumbers={showLineNumbers}
                                     requestId={activeRequest.id || activeRequest.name}
                                     forceUpdateKey={editorForceUpdateKey}
+                                    fontSize={editorFontSize}
+                                    fontFamily={editorFontFamily}
                                 />
                                 {/* Format Button Overlay */}
                             </RequestEditorWrapper>
@@ -1311,6 +1571,8 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                 showLineNumbers={showLineNumbers}
                                 onSelectionChange={setSelection}
                                 autoFoldElements={config?.ui?.autoFoldElements}
+                                fontSize={editorFontSize}
+                                fontFamily={editorFontFamily}
                             />
                         </ResponseSection>
                     )}

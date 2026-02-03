@@ -88,6 +88,14 @@ const InfoItem = styled.div<{ isActive?: boolean }>`
   opacity: ${props => props.isActive ? 1 : 0.7};
 `;
 
+const VersionLabel = styled.div`
+  font-size: 10px;
+  color: var(--vscode-descriptionForeground);
+  opacity: 0.6;
+  padding: 0 8px;
+  -webkit-app-region: no-drag;
+`;
+
 const WindowControls = styled.div`
   display: flex;
   height: 100%;
@@ -131,6 +139,7 @@ const WindowButton = styled.button<{ isClose?: boolean }>`
 
 const TitleBar: React.FC = () => {
   const [isMaximized, setIsMaximized] = useState(false);
+  const [version, setVersion] = useState<string>('');
   const { selectedProjectName, projects } = useProject();
   const { openDebugModal } = useUI();
   const [clickCount, setClickCount] = useState(0);
@@ -166,6 +175,11 @@ const TitleBar: React.FC = () => {
     // Listen for resize events
     const unlisten = appWindow.onResized(() => {
       appWindow.isMaximized().then(setIsMaximized);
+    });
+
+    // Get app version
+    invoke<string>('get_app_version').then(setVersion).catch(err => {
+      console.error('Failed to get app version:', err);
     });
 
     return () => {
@@ -226,6 +240,7 @@ const TitleBar: React.FC = () => {
           )}
         </TitleBarInfo>
       </DragRegion>
+      {version && <VersionLabel>v{version}</VersionLabel>}
       <WindowControls>
         <WindowButton onClick={handleMinimize} title="Minimize">
           <svg viewBox="0 0 10 1" fill="currentColor">

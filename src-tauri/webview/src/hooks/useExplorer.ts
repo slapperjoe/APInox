@@ -69,12 +69,15 @@ export function useExplorer({
     // Add interface to a specific named project (new or existing)
     const addInterfaceToNamedProject = useCallback((iface: ApiInterface, projectName: string, isNew: boolean) => {
         // Ensure interface and operations have expanded property initialized
+        // Filter out 'Sample' requests when adding to project
         const normalizedIface = {
             ...iface,
             expanded: false,
             operations: (iface.operations || []).map(op => ({
                 ...op,
-                expanded: false
+                expanded: false,
+                // Remove sample requests (those named 'Sample')
+                requests: op.requests.filter(req => req.name !== 'Sample')
             }))
         };
         

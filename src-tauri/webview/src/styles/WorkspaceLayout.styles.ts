@@ -657,6 +657,100 @@ export const InterfaceName = styled.span`
     font-size: 1.1em;
 `;
 
+// Editor Settings Menu
+export const EditorSettingsMenu = styled.div`
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 5px;
+    background: var(--vscode-editor-background);
+    border: 1px solid var(--vscode-dropdown-border);
+    border-radius: 3px;
+    z-index: 100;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    min-width: 280px;
+    max-width: 320px;
+    padding: 8px 0;
+`;
+
+export const MenuSection = styled.div`
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--vscode-dropdown-border);
+    
+    &:last-child {
+        border-bottom: none;
+    }
+`;
+
+export const MenuSectionTitle = styled.div`
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--vscode-descriptionForeground);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+`;
+
+export const MenuRow = styled.div`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+    gap: 12px;
+`;
+
+export const MenuLabel = styled.div`
+    font-size: 13px;
+    color: var(--vscode-foreground);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+`;
+
+export const MenuControls = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 6px;
+`;
+
+export const FontSizeDisplay = styled.div`
+    font-size: 12px;
+    color: var(--vscode-descriptionForeground);
+    min-width: 35px;
+    text-align: center;
+    font-family: var(--vscode-editor-font-family);
+`;
+
+export const MenuIconButton = styled.button`
+    background: transparent;
+    border: 1px solid var(--vscode-button-border);
+    color: var(--vscode-foreground);
+    padding: 4px 6px;
+    cursor: pointer;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    &:hover:not(:disabled) {
+        background: var(--vscode-button-hoverBackground);
+    }
+    
+    &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+    
+    &.active {
+        background: var(--vscode-button-background);
+        border-color: var(--vscode-button-background);
+    }
+`;
+
+export const SettingsMenuWrapper = styled.div`
+    position: relative;
+`;
+
 export const InterfaceOps = styled.div`
     font-size: 0.8em;
     opacity: 0.7;

@@ -69,8 +69,11 @@ const ProjectContent = styled(SidebarContent)`
 `;
 
 const ProjectRow = styled(OperationItem)<{ $isDragging?: boolean; $dropPosition?: 'before' | 'after' | null }>`
-    font-weight: bold;
+    font-weight: 600;
+    font-size: 0.98em;
     padding-left: 5px;
+    padding-top: 3px;
+    padding-bottom: 3px;
     cursor: pointer;
     opacity: ${props => props.$isDragging ? 0.5 : 1};
     position: relative;

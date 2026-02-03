@@ -92,6 +92,11 @@ fn set_border_color(window: tauri::Window, color: String) -> Result<(), String> 
 }
 
 #[tauri::command]
+fn get_app_version() -> String {
+    env!("CARGO_PKG_VERSION").to_string()
+}
+
+#[tauri::command]
 fn get_sidecar_port() -> u16 {
     SIDECAR_PORT.load(Ordering::Relaxed)
 }
@@ -651,7 +656,7 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![quit_app, set_border_color, get_sidecar_port, is_sidecar_ready, get_config_dir, get_sidecar_diagnostics, get_tauri_logs])
+        .invoke_handler(tauri::generate_handler![quit_app, set_border_color, get_app_version, get_sidecar_port, is_sidecar_ready, get_config_dir, get_sidecar_diagnostics, get_tauri_logs])
         .setup(|app| {
             // Initialize logging for both debug and production
             // This helps diagnose issues on user machines

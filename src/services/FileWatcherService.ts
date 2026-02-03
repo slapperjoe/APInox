@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { watch as chokidarWatch, FSWatcher as ChokidarFSWatcher } from 'chokidar';
 import { SettingsManager } from '../utils/SettingsManager';
 
 
@@ -16,22 +17,44 @@ export interface WatcherEvent {
     responseOperation?: string;
 }
 
+interface PendingRequest {
+    id: string;
+    timestamp: number;
+    event: WatcherEvent;
+}
+
 export class FileWatcherService {
     private outputChannel: any;
     private requestPath: string;
     private responsePath: string;
     private history: WatcherEvent[] = [];
     private onUpdateCallback: ((history: WatcherEvent[]) => void) | undefined;
-    private watchers: fs.FSWatcher[] = [];
+    private watchers: any[] = [];
 
     // Debounce timers
     private requestTimer: NodeJS.Timeout | undefined;
     private responseTimer: NodeJS.Timeout | undefined;
 
-    // Correlation tracking
-    private pendingRequestId: string | null = null;
+    // Queue-based correlation tracking
+    private pendingRequests: PendingRequest[] = [];
+    private readonly REQUEST_TIMEOUT = 30000; // 30 seconds
+    
+    // Adaptive debounce
+    private readonly BASE_DEBOUNCE = 200;
+    private readonly MAX_DEBOUNCE = 2000;
+    private consecutiveRequestChanges = 0;
+    private consecutiveResponseChanges = 0;
 
     private settingsManager: SettingsManager;
+    
+    // Metrics
+    private metrics = {
+        totalRequests: 0,
+        totalResponses: 0,
+        matchedPairs: 0,
+        orphanedResponses: 0,
+        avgMatchTime: 0
+    };
 
     constructor(outputChannel: any, settingsManager: SettingsManager) {
         this.outputChannel = outputChannel;
@@ -92,6 +115,72 @@ export class FileWatcherService {
         }
     }
 
+    private validateXmlContent(content: string): boolean {
+        try {
+            // Basic checks before full parse
+            if (!content || content.trim().length === 0) {
+                return false;
+            }
+            
+            // Check for common incomplete XML indicators
+            const trimmed = content.trim();
+            if (!trimmed.endsWith('>')) {
+                return false;
+            }
+            
+            // Check for balanced tags (rough heuristic)
+            const openTags = (content.match(/<[^\/][^>]*[^\/]>/g) || []).length;
+            const closeTags = (content.match(/<\/[^>]+>/g) || []).length;
+            const selfClosing = (content.match(/<[^>]*\/>/g) || []).length;
+            
+            // Allow some tolerance for wrapped CDATA, comments, etc.
+            if (Math.abs(openTags - (closeTags + selfClosing)) > 2) {
+                return false;
+            }
+            
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    private async readFileWithRetry(filePath: string, maxRetries: number = 3): Promise<string> {
+        let lastError: Error | undefined;
+        
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                // Check if file exists and is accessible
+                const stats = fs.statSync(filePath);
+                if (stats.size === 0) {
+                    throw new Error('File is empty');
+                }
+                
+                const content = fs.readFileSync(filePath, 'utf8');
+                
+                // Validate content
+                if (!this.validateXmlContent(content)) {
+                    throw new Error('Content validation failed');
+                }
+                
+                return content;
+            } catch (e: any) {
+                lastError = e;
+                
+                if (attempt < maxRetries - 1) {
+                    const delay = Math.pow(2, attempt) * 100; // 100ms, 200ms, 400ms
+                    this.log(`Read attempt ${attempt + 1} failed, retrying in ${delay}ms: ${e.message}`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+        }
+        
+        throw lastError || new Error('Failed to read file after retries');
+    }
+
+    public getMetrics() {
+        return { ...this.metrics };
+    }
+
     public start() {
         this.stop(); // Clear existing
 
@@ -139,11 +228,23 @@ export class FileWatcherService {
     private watchFile(filePath: string, type: 'request' | 'response') {
         try {
             this.log(`Watching ${filePath}`);
-            const watcher = fs.watch(filePath, (eventType, _filename) => {
-                if (eventType === 'change') {
-                    this.handleFileChange(type);
-                }
+            const watcher = (chokidarWatch(filePath, {
+                persistent: true,
+                ignoreInitial: true,
+                awaitWriteFinish: {
+                    stabilityThreshold: 200,  // Wait 200ms after last change
+                    pollInterval: 50
+                },
+                usePolling: false,  // Use native fs events (faster)
+                alwaysStat: true    // Ensure we get proper file stats
+            }) as any)
+            .on('change', (changedPath: string) => {
+                this.handleFileChange(type);
+            })
+            .on('error', (error: Error) => {
+                this.log(`Watcher error for ${filePath}: ${error.message}`);
             });
+            
             this.watchers.push(watcher);
         } catch (e: any) {
             this.log(`Failed to watch ${filePath}: ${e.message}`);
@@ -152,78 +253,156 @@ export class FileWatcherService {
 
     private handleFileChange(type: 'request' | 'response') {
         if (type === 'request') {
+            this.consecutiveRequestChanges++;
+            
             if (this.requestTimer) clearTimeout(this.requestTimer);
-            this.requestTimer = setTimeout(() => this.processRequestChange(), 100);
+            
+            // Adaptive debounce for rapid changes
+            const debounceMs = Math.min(
+                this.BASE_DEBOUNCE * Math.pow(1.5, this.consecutiveRequestChanges - 1),
+                this.MAX_DEBOUNCE
+            );
+            
+            this.requestTimer = setTimeout(() => {
+                this.processRequestChange();
+                this.consecutiveRequestChanges = 0; // Reset after processing
+            }, debounceMs);
         } else {
+            this.consecutiveResponseChanges++;
+            
             if (this.responseTimer) clearTimeout(this.responseTimer);
-            this.responseTimer = setTimeout(() => this.processResponseChange(), 100);
+            
+            const debounceMs = Math.min(
+                this.BASE_DEBOUNCE * Math.pow(1.5, this.consecutiveResponseChanges - 1),
+                this.MAX_DEBOUNCE
+            );
+            
+            this.responseTimer = setTimeout(() => {
+                this.processResponseChange();
+                this.consecutiveResponseChanges = 0;
+            }, debounceMs);
         }
     }
 
     private processRequestChange() {
-        try {
-            const content = fs.readFileSync(this.requestPath, 'utf8');
-            const now = new Date();
-            const id = now.getTime().toString();
-            const opName = this.extractOperationName(content);
+        this.readFileWithRetry(this.requestPath)
+            .then(content => {
+                const now = Date.now();
+                const id = now.toString();
+                const opName = this.extractOperationName(content);
 
-            const event: WatcherEvent = {
-                id: id,
-                timestamp: now.getTime(),
-                timestampLabel: now.toLocaleString(), // Include date and time
-                requestFile: this.requestPath,
-                responseFile: this.responsePath,
-                requestContent: content,
-                responseContent: undefined, // Waiting for response
-                requestOperation: opName
-            };
+                const event: WatcherEvent = {
+                    id: id,
+                    timestamp: now,
+                    timestampLabel: new Date(now).toLocaleString(),
+                    requestFile: this.requestPath,
+                    responseFile: this.responsePath,
+                    requestContent: content,
+                    responseContent: undefined,
+                    requestOperation: opName
+                };
 
-            this.history.unshift(event); // Add to top
-            this.pendingRequestId = id; // Mark as pending for response
+                this.history.unshift(event);
+                
+                // Add to pending queue
+                this.pendingRequests.unshift({
+                    id,
+                    timestamp: now,
+                    event
+                });
 
-            // Limit history size
-            if (this.history.length > 50) {
-                this.history.pop();
-            }
+                // Clean up old pending requests (timeout after 30s)
+                this.pendingRequests = this.pendingRequests.filter(
+                    p => now - p.timestamp < this.REQUEST_TIMEOUT
+                );
 
-            this.emitUpdate();
-            this.log(`Captured Request Change (${id}) - ${opName || 'Unknown Op'}`);
-        } catch (e: any) {
-            this.log(`Error reading request file: ${e.message}`);
-        }
+                // Limit history size
+                if (this.history.length > 50) {
+                    this.history.pop();
+                }
+
+                this.metrics.totalRequests++;
+                this.emitUpdate();
+                this.log(`Captured Request (${id}) - ${opName || 'Unknown Op'} [Pending: ${this.pendingRequests.length}]`);
+            })
+            .catch((e: any) => {
+                this.log(`Error reading request file: ${e.message}`);
+            });
     }
 
     private processResponseChange() {
-        try {
-            const content = fs.readFileSync(this.responsePath, 'utf8');
+        const matchStartTime = Date.now();
+        
+        this.readFileWithRetry(this.responsePath)
+            .then(content => {
+                const responseOp = this.extractOperationName(content);
+                const now = Date.now();
 
-            // Try to find the pending request, or the latest one
-            let targetEvent: WatcherEvent | undefined;
+                // Try to match by operation name first (most accurate)
+                let matchedPending = this.pendingRequests.find(p => {
+                    const reqOpBase = (p.event.requestOperation || '').replace(/Request$/, '');
+                    const resOpBase = (responseOp || '').replace(/Response$/, '');
+                    return reqOpBase && resOpBase && reqOpBase === resOpBase;
+                });
 
-            if (this.pendingRequestId) {
-                targetEvent = this.history.find(h => h.id === this.pendingRequestId);
-            }
+                // Fallback: use most recent pending request within time window
+                if (!matchedPending && this.pendingRequests.length > 0) {
+                    const RESPONSE_WINDOW_MS = 5000; // 5 seconds
+                    const recentPending = this.pendingRequests.filter(
+                        p => now - p.timestamp < RESPONSE_WINDOW_MS
+                    );
+                    
+                    if (recentPending.length > 0) {
+                        matchedPending = recentPending[0];
+                        this.log(`Response matched by time window (fallback)`);
+                    }
+                }
 
-            // If no specific pending request, valid assumption is the most recent one 
-            // if it happened recently (e.g. within last few seconds)
-            if (!targetEvent && this.history.length > 0) {
-                targetEvent = this.history[0];
-            }
+                this.metrics.totalResponses++;
 
-            if (targetEvent) {
-                targetEvent.responseContent = content;
-                targetEvent.responseOperation = this.extractOperationName(content);
-                this.pendingRequestId = null; // Clear pending
-                this.emitUpdate();
-                this.log(`Captured Response Change for ${targetEvent.id} - ${targetEvent.responseOperation || 'Unknown'}`);
-            } else {
-                // Orphan response? Create a new event just for it?
-                // For now, let's ignore or log orphan
-                this.log('Captured Response but no matching Request found in recent history.');
-            }
-        } catch (e: any) {
-            this.log(`Error reading response file: ${e.message}`);
-        }
+                if (matchedPending) {
+                    matchedPending.event.responseContent = content;
+                    matchedPending.event.responseOperation = responseOp;
+                    
+                    // Remove from pending
+                    this.pendingRequests = this.pendingRequests.filter(
+                        p => p.id !== matchedPending!.id
+                    );
+                    
+                    // Update metrics
+                    this.metrics.matchedPairs++;
+                    const matchTime = Date.now() - matchStartTime;
+                    this.metrics.avgMatchTime = 
+                        (this.metrics.avgMatchTime * (this.metrics.matchedPairs - 1) + matchTime) 
+                        / this.metrics.matchedPairs;
+                    
+                    this.emitUpdate();
+                    this.log(`Captured Response for ${matchedPending.id} - ${responseOp || 'Unknown'} (${matchTime}ms) [Pending: ${this.pendingRequests.length}]`);
+                } else {
+                    // Create standalone response event
+                    const event: WatcherEvent = {
+                        id: now.toString(),
+                        timestamp: now,
+                        timestampLabel: new Date(now).toLocaleString(),
+                        requestFile: this.requestPath,
+                        responseFile: this.responsePath,
+                        responseContent: content,
+                        responseOperation: responseOp
+                    };
+                    
+                    this.history.unshift(event);
+                    if (this.history.length > 50) {
+                        this.history.pop();
+                    }
+                    
+                    this.metrics.orphanedResponses++;
+                    this.emitUpdate();
+                    this.log(`Captured orphaned Response - no matching Request [Pending: ${this.pendingRequests.length}]`);
+                }
+            })
+            .catch((e: any) => {
+                this.log(`Error reading response file: ${e.message}`);
+            });
     }
 
     private emitUpdate() {

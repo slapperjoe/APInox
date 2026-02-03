@@ -722,14 +722,23 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
         },
 
         [FrontendCommand.SaveSettings]: async (payload) => {
+            console.log('[Router] SaveSettings received:', {
+                hasRaw: !!payload?.raw,
+                hasConfig: !!payload?.config,
+                hasContent: !!payload?.content,
+                uiConfig: payload?.config?.ui
+            });
+            
             if (payload?.raw) {
                 services.settingsManager.saveRawConfig(payload.content || '');
             } else if (payload?.config) {
+                console.log('[Router] Updating config with editorFontSize:', payload.config?.ui?.editorFontSize);
                 services.settingsManager.updateConfigFromObject(payload.config);
             } else if (payload?.content) {
                 services.settingsManager.saveRawConfig(payload.content);
             }
             const updatedConfig = services.settingsManager.getConfig();
+            console.log('[Router] Updated config retrieved, editorFontSize:', updatedConfig?.ui?.editorFontSize);
             services.fileWatcherService.reloadConfiguration();
             services.performanceService.setSuites(updatedConfig.performanceSuites || []);
             services.performanceService.setHistory(updatedConfig.performanceHistory || []);
@@ -740,8 +749,17 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             services.proxyService.setReplaceRules(updatedConfig.replaceRules || []);
             services.proxyService.setBreakpoints(updatedConfig.breakpoints || []);
 
+            // Return config data for bridge to emit SettingsUpdate event
+            const configPath = services.settingsManager.getConfigPath();
+            const configDir = services.settingsManager.getConfigDir();
+            const raw = services.settingsManager.getRawConfig();
+
             return {
-                success: true
+                success: true,
+                config: updatedConfig,
+                raw,
+                configDir,
+                configPath
             };
         },
 

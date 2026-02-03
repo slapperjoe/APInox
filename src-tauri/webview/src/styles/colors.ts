@@ -11,6 +11,7 @@
 export const ICON_COLORS = {
     FOLDER: 'var(--vscode-icon-foreground, #4299e1)',
     FILE: 'var(--vscode-charts-green, #48bb78)',
+    INTERFACE: 'var(--vscode-charts-blue, #4299e1)',
     OPERATION: 'var(--vscode-charts-purple, #9f7aea)',
     SERVICE: 'var(--vscode-charts-blue, #4299e1)',
 } as const;

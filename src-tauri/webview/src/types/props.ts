@@ -380,4 +380,5 @@ export interface WorkspaceLayoutProps extends WorkspacePerformanceActions {
     onStopCoordinator?: () => void;
     // For breadcrumb resolution
     projects?: import('@shared/models').ApinoxProject[];
+    setProjects?: React.Dispatch<React.SetStateAction<import('@shared/models').ApinoxProject[]>>;
 }
