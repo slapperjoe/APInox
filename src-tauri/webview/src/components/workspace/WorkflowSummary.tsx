@@ -17,12 +17,12 @@ const Header = styled.div`
     align-items: flex-start;
     margin-bottom: ${SPACING_LG};
     padding-bottom: ${SPACING_MD};
-    border-bottom: 1px solid var(--vscode-panel-border);
+    border-bottom: 1px solid var(--apinox-panel-border);
 `;
 
 const Title = styled.h2`
     margin: 0 0 ${SPACING_SM} 0;
-    color: var(--vscode-foreground);
+    color: var(--apinox-foreground);
     display: flex;
     align-items: center;
     gap: ${SPACING_SM};
@@ -30,7 +30,7 @@ const Title = styled.h2`
 
 const Description = styled.p`
     margin: 0;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
     font-size: 13px;
 `;
 
@@ -48,14 +48,14 @@ const StatsGrid = styled.div`
 
 const StatCard = styled.div`
     padding: ${SPACING_MD};
-    background: var(--vscode-editor-background);
-    border: 1px solid var(--vscode-panel-border);
+    background: var(--apinox-editor-background);
+    border: 1px solid var(--apinox-panel-border);
     border-radius: 4px;
 `;
 
 const StatLabel = styled.div`
     font-size: 11px;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
     text-transform: uppercase;
     margin-bottom: 4px;
 `;
@@ -63,12 +63,12 @@ const StatLabel = styled.div`
 const StatValue = styled.div`
     font-size: 24px;
     font-weight: 600;
-    color: var(--vscode-foreground);
+    color: var(--apinox-foreground);
 `;
 
 const StepsHeading = styled.h3`
     margin: ${SPACING_LG} 0 ${SPACING_MD} 0;
-    color: var(--vscode-foreground);
+    color: var(--apinox-foreground);
     font-size: 14px;
     font-weight: 600;
 `;
@@ -81,8 +81,8 @@ const StepsList = styled.div`
 
 const StepItem = styled.div`
     padding: ${SPACING_MD};
-    background: var(--vscode-editor-background);
-    border: 1px solid var(--vscode-panel-border);
+    background: var(--apinox-editor-background);
+    border: 1px solid var(--apinox-panel-border);
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.2s;
@@ -91,8 +91,8 @@ const StepItem = styled.div`
     gap: ${SPACING_MD};
 
     &:hover {
-        background: var(--vscode-list-hoverBackground);
-        border-color: var(--vscode-focusBorder);
+        background: var(--apinox-list-hoverBackground);
+        border-color: var(--apinox-focusBorder);
     }
 `;
 
@@ -103,8 +103,8 @@ const StepNumber = styled.div`
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: var(--vscode-badge-background);
-    color: var(--vscode-badge-foreground);
+    background: var(--apinox-badge-background);
+    color: var(--apinox-badge-foreground);
     font-weight: 600;
     font-size: 12px;
     flex-shrink: 0;
@@ -113,7 +113,7 @@ const StepNumber = styled.div`
 const StepIcon = styled.div`
     display: flex;
     align-items: center;
-    color: var(--vscode-symbolIcon-variableForeground);
+    color: var(--apinox-symbolIcon-variableForeground);
     flex-shrink: 0;
 `;
 
@@ -125,13 +125,13 @@ const StepInfo = styled.div`
 const StepName = styled.div`
     font-size: 13px;
     font-weight: 500;
-    color: var(--vscode-foreground);
+    color: var(--apinox-foreground);
     margin-bottom: 4px;
 `;
 
 const StepDetails = styled.div`
     font-size: 11px;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -140,7 +140,7 @@ const StepDetails = styled.div`
 const EmptyState = styled.div`
     padding: ${SPACING_LG};
     text-align: center;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
 `;
 
 interface WorkflowSummaryProps {

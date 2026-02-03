@@ -28,7 +28,7 @@ const SidebarContent = styled.div<{ $hidden: boolean }>`
     display: ${props => props.$hidden ? 'none' : 'flex'};
     flex-direction: column;
     overflow: hidden;
-    background-color: var(--vscode-sideBar-background);
+    background-color: var(--apinox-sideBar-background);
 `;
 
 // Prop Groups

@@ -10,7 +10,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import * as crypto from 'crypto';
-import { ISecretStorage } from '../../../src/interfaces/ISecretStorage';
+import { ISecretStorage } from '../interfaces/ISecretStorage';
 
 const ENCRYPTION_KEY_ENV = 'APINOX_SECRET_KEY';
 const ALGORITHM = 'aes-256-gcm';

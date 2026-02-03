@@ -25,7 +25,7 @@ export const MODAL_DEFAULTS = {
     BUTTON_GAP: '10px',
     
     /** Standard box shadow for modals */
-    BOX_SHADOW: '0 4px 6px var(--vscode-widget-shadow)',
+    BOX_SHADOW: '0 4px 6px var(--apinox-widget-shadow)',
     
     /** Animation duration for modal transitions */
     ANIMATION_DURATION: '0.2s',

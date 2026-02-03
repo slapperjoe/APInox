@@ -4,31 +4,31 @@ import { SPACING_XS } from '../../styles/spacing';
 const SpinnerContainer = styled.div`
     display: flex;
     align-items: center;
-    background: var(--vscode-input-background);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    border: 1px solid var(--apinox-input-border);
     border-radius: 2px;
 `;
 
 const SpinnerButton = styled.div`
     padding: ${SPACING_XS} 8px;
     cursor: pointer;
-    border-color: var(--vscode-input-border);
+    border-color: var(--apinox-input-border);
     user-select: none;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--vscode-foreground);
+    color: var(--apinox-foreground);
     
     &:hover {
-        background: var(--vscode-toolbar-hoverBackground);
+        background: var(--apinox-toolbar-hoverBackground);
     }
     
     &.decrement {
-        border-right: 1px solid var(--vscode-input-border);
+        border-right: 1px solid var(--apinox-input-border);
     }
     
     &.increment {
-        border-left: 1px solid var(--vscode-input-border);
+        border-left: 1px solid var(--apinox-input-border);
     }
 `;
 
@@ -37,7 +37,7 @@ const SpinnerInput = styled.input`
     width: 60px;
     padding: ${SPACING_XS};
     background: transparent;
-    color: var(--vscode-input-foreground);
+    color: var(--apinox-input-foreground);
     border: none;
     text-align: center;
     appearance: textfield;

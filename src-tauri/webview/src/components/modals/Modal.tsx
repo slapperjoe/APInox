@@ -36,8 +36,8 @@ const modalEnter = keyframes`
 `;
 
 const ModalContent = styled.div<{ $width?: string | number; $size?: ModalSize }>`
-  background-color: var(--vscode-editor-background);
-  border: 1px solid var(--vscode-panel-border);
+  background-color: var(--apinox-editor-background);
+  border: 1px solid var(--apinox-panel-border);
   box-shadow: ${MODAL_DEFAULTS.BOX_SHADOW};
   width: ${props => {
     if (props.$size) return MODAL_SIZES[props.$size];
@@ -53,7 +53,7 @@ const ModalContent = styled.div<{ $width?: string | number; $size?: ModalSize }>
 
 const ModalHeader = styled.div`
     padding: ${MODAL_DEFAULTS.HEADER_PADDING};
-    border-bottom: 1px solid var(--vscode-panel-border);
+    border-bottom: 1px solid var(--apinox-panel-border);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -77,7 +77,7 @@ const ModalBody = styled.div`
 
 const ModalFooter = styled.div<{ $align?: 'left' | 'center' | 'right' }>`
     padding: ${MODAL_DEFAULTS.FOOTER_PADDING};
-    border-top: 1px solid var(--vscode-panel-border);
+    border-top: 1px solid var(--apinox-panel-border);
     display: flex;
     justify-content: ${props => {
         switch (props.$align) {
@@ -91,15 +91,15 @@ const ModalFooter = styled.div<{ $align?: 'left' | 'center' | 'right' }>`
 `;
 
 export const Button = styled.button`
-  background: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
+  background: var(--apinox-button-background);
+  color: var(--apinox-button-foreground);
   border: none;
   padding: ${SPACING_XS} ${SPACING_MD};
   cursor: pointer;
   border-radius: 2px;
   
   &:hover {
-    background: var(--vscode-button-hoverBackground);
+    background: var(--apinox-button-hoverBackground);
   }
   
   &:disabled {
@@ -112,7 +112,7 @@ const CloseButton = styled.button`
   background: transparent;
   border: none;
   cursor: pointer;
-  color: var(--vscode-icon-foreground);
+  color: var(--apinox-icon-foreground);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -120,7 +120,7 @@ const CloseButton = styled.button`
   border-radius: 4px;
   
   &:hover {
-    background: var(--vscode-toolbar-hoverBackground);
+    background: var(--apinox-toolbar-hoverBackground);
   }
 `;
 

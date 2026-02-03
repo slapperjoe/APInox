@@ -13,8 +13,8 @@ const Container = styled.div`
     display: flex;
     flex-direction: column;
     height: 100%;
-    color: var(--vscode-foreground);
-    background: var(--vscode-editor-background);
+    color: var(--apinox-foreground);
+    background: var(--apinox-editor-background);
     padding: ${SPACING_SM};
     gap: ${SPACING_SM};
     overflow-y: auto;
@@ -52,21 +52,21 @@ const Spacer = styled.div`
 const IconButton = styled.button`
     background: transparent;
     border: none;
-    color: var(--vscode-icon-foreground);
+    color: var(--apinox-icon-foreground);
     cursor: pointer;
     padding: ${SPACING_XS};
     border-radius: 3px;
     display: flex;
     align-items: center;
     &:hover {
-        background: var(--vscode-toolbar-hoverBackground);
-        color: var(--vscode-foreground);
+        background: var(--apinox-toolbar-hoverBackground);
+        color: var(--apinox-foreground);
     }
 `;
 
 const Label = styled.div`
     font-size: 11px;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
     text-transform: uppercase;
     margin-bottom: ${SPACING_XS};
 `;
@@ -81,7 +81,7 @@ const EmptyMessage = styled.div`
 const PreviewBox = styled.div`
     margin-top: ${SPACING_SM};
     padding: ${SPACING_SM};
-    background: var(--vscode-textBlockQuote-background);
+    background: var(--apinox-textBlockQuote-background);
     border-radius: 4px;
     font-size: 11px;
     font-family: monospace;

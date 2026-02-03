@@ -16,11 +16,11 @@ const ProjectItem = styled.label`
   align-items: center;
   gap: 10px;
   padding: 8px;
-  border: 1px solid var(--vscode-panel-border);
+  border: 1px solid var(--apinox-panel-border);
   border-radius: 4px;
   cursor: pointer;
   &:hover {
-    background: var(--vscode-list-hoverBackground);
+    background: var(--apinox-list-hoverBackground);
   }
 `;
 
@@ -37,12 +37,12 @@ const ProjectInfo = styled.div`
 
 const ProjectName = styled.div`
   font-weight: 500;
-  color: var(--vscode-foreground);
+  color: var(--apinox-foreground);
 `;
 
 const ProjectPath = styled.div`
   font-size: 0.85em;
-  color: var(--vscode-descriptionForeground);
+  color: var(--apinox-descriptionForeground);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -57,20 +57,20 @@ const SelectionControls = styled.div`
 const LinkButton = styled.button`
   background: transparent;
   border: none;
-  color: var(--vscode-textLink-foreground);
+  color: var(--apinox-textLink-foreground);
   cursor: pointer;
   text-decoration: underline;
   padding: 0;
   font-size: 0.9em;
   &:hover {
-    color: var(--vscode-textLink-activeForeground);
+    color: var(--apinox-textLink-activeForeground);
   }
 `;
 
 const EmptyMessage = styled.div`
   text-align: center;
   padding: 20px;
-  color: var(--vscode-descriptionForeground);
+  color: var(--apinox-descriptionForeground);
 `;
 
 interface ExportWorkspaceModalProps {
@@ -135,8 +135,8 @@ export const ExportWorkspaceModal: React.FC<ExportWorkspaceModalProps> = ({
             onClick={handleCancel}
             style={{
               background: 'transparent',
-              border: '1px solid var(--vscode-button-secondaryForeground)',
-              color: 'var(--vscode-button-secondaryForeground)'
+              border: '1px solid var(--apinox-button-secondaryForeground)',
+              color: 'var(--apinox-button-secondaryForeground)'
             }}
           >
             Cancel

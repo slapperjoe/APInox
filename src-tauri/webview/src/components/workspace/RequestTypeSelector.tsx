@@ -8,29 +8,29 @@ import styled from 'styled-components';
 import { RequestType, BodyType, HttpMethod } from '@shared/models';
 
 const Select = styled.select`
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     padding: 4px 8px;
     border-radius: 3px;
     font-size: 12px;
     cursor: pointer;
 
     &:focus {
-        outline: 1px solid var(--vscode-focusBorder);
+        outline: 1px solid var(--apinox-focusBorder);
     }
 
     &:disabled {
-        background: var(--vscode-button-secondaryBackground);
-        color: var(--vscode-button-secondaryForeground);
-        border-color: var(--vscode-button-secondaryHoverBackground);
+        background: var(--apinox-button-secondaryBackground);
+        color: var(--apinox-button-secondaryForeground);
+        border-color: var(--apinox-button-secondaryHoverBackground);
         cursor: not-allowed;
     }
 `;
 
 const Label = styled.span`
     font-size: 10px;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
     text-transform: uppercase;
     font-weight: 500;
 `;
@@ -38,12 +38,12 @@ const Label = styled.span`
 const MethodSelect = styled.select<{ $method: string }>`
     background: ${props => {
         switch (props.$method) {
-            case 'GET': return 'var(--vscode-charts-green)';
-            case 'POST': return 'var(--vscode-charts-blue)';
-            case 'PUT': return 'var(--vscode-charts-orange)';
-            case 'PATCH': return 'var(--vscode-charts-yellow)';
-            case 'DELETE': return 'var(--vscode-charts-red)';
-            default: return 'var(--vscode-input-background)';
+            case 'GET': return 'var(--apinox-charts-green)';
+            case 'POST': return 'var(--apinox-charts-blue)';
+            case 'PUT': return 'var(--apinox-charts-orange)';
+            case 'PATCH': return 'var(--apinox-charts-yellow)';
+            case 'DELETE': return 'var(--apinox-charts-red)';
+            default: return 'var(--apinox-input-background)';
         }
     }};
     color: ${props => {
@@ -56,7 +56,7 @@ const MethodSelect = styled.select<{ $method: string }>`
             case 'DELETE':
                 return '#ffffff';
             default:
-                return 'var(--vscode-foreground)';
+                return 'var(--apinox-foreground)';
         }
     }};
     border: none;
@@ -69,20 +69,20 @@ const MethodSelect = styled.select<{ $method: string }>`
     text-align: center;
 
     &:focus {
-        outline: 1px solid var(--vscode-focusBorder);
+        outline: 1px solid var(--apinox-focusBorder);
     }
 
     &:disabled {
-        background: var(--vscode-button-secondaryBackground);
-        color: var(--vscode-button-secondaryForeground);
-        border: 1px solid var(--vscode-button-secondaryHoverBackground);
+        background: var(--apinox-button-secondaryBackground);
+        color: var(--apinox-button-secondaryForeground);
+        border: 1px solid var(--apinox-button-secondaryHoverBackground);
         cursor: not-allowed;
     }
     
     /* Style dropdown options */
     option {
-        background: var(--vscode-dropdown-background);
-        color: var(--vscode-dropdown-foreground);
+        background: var(--apinox-dropdown-background);
+        color: var(--apinox-dropdown-foreground);
     }
 `;
 

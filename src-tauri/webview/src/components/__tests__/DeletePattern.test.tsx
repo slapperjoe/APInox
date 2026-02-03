@@ -58,7 +58,7 @@ describe('Delete Pattern - Sidebar', () => {
         rerender(<ProjectList {...defaultProps} deleteConfirm="Test Project" setDeleteConfirm={setDeleteConfirm} />);
 
         const shakingButton = screen.getByTitle('Click again to Confirm Delete');
-        expect(shakingButton).toHaveStyle('color: var(--vscode-errorForeground)');
+        expect(shakingButton).toHaveStyle('color: var(--apinox-errorForeground)');
         // Checking for animation is harder in JSDOM, but we can check the prop if we exposed it or just trust the style
     });
 

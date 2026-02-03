@@ -31,7 +31,7 @@ const shakeAnimation = keyframes`
 `;
 
 const DeleteButton = styled(IconButton) <{ confirming?: boolean }>`
-    color: ${props => props.confirming ? 'var(--vscode-errorForeground)' : 'var(--vscode-foreground)'};
+    color: ${props => props.confirming ? 'var(--apinox-errorForeground)' : 'var(--apinox-foreground)'};
     ${props => props.confirming && css`
         animation: ${shakeAnimation} 0.5s ease-in-out infinite;
     `}
@@ -39,7 +39,7 @@ const DeleteButton = styled(IconButton) <{ confirming?: boolean }>`
 
 const CustomFieldsSection = styled.div`
     margin-top: 20px;
-    border-top: 1px solid var(--vscode-panel-border);
+    border-top: 1px solid var(--apinox-panel-border);
     padding-top: 15px;
 `;
 
@@ -52,9 +52,9 @@ const CustomFieldRow = styled.div`
 `;
 
 const SecretToggle = styled.button<{ $active: boolean }>`
-    background: ${props => props.$active ? 'var(--vscode-button-background)' : 'transparent'};
-    border: 1px solid var(--vscode-input-border);
-    color: ${props => props.$active ? 'var(--vscode-button-foreground)' : 'var(--vscode-foreground)'};
+    background: ${props => props.$active ? 'var(--apinox-button-background)' : 'transparent'};
+    border: 1px solid var(--apinox-input-border);
+    color: ${props => props.$active ? 'var(--apinox-button-foreground)' : 'var(--apinox-foreground)'};
     padding: 4px 8px;
     border-radius: 3px;
     cursor: pointer;
@@ -64,7 +64,7 @@ const SecretToggle = styled.button<{ $active: boolean }>`
     font-size: 11px;
 
     &:hover {
-        background: ${props => props.$active ? 'var(--vscode-button-hoverBackground)' : 'var(--vscode-toolbar-hoverBackground)'};
+        background: ${props => props.$active ? 'var(--apinox-button-hoverBackground)' : 'var(--apinox-toolbar-hoverBackground)'};
     }
 `;
 
@@ -353,7 +353,7 @@ export const EnvironmentsTab: React.FC<EnvironmentsTabProps> = ({
     return (
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
             <EnvList>
-                <div style={{ padding: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--vscode-panel-border)' }}>
+                <div style={{ padding: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--apinox-panel-border)' }}>
                     <span style={{ fontSize: '12px', fontWeight: 600 }}>Profiles</span>
                     <div style={{ display: 'flex', gap: 4 }}>
                         <IconButton onClick={handleExport} title="Export Environments">
@@ -395,7 +395,7 @@ export const EnvironmentsTab: React.FC<EnvironmentsTabProps> = ({
                             <h3 style={{ margin: 0, textTransform: 'uppercase', fontSize: 12 }}>{selectedEnvKey}</h3>
                             <div style={{ display: 'flex', gap: 8 }}>
                                 {config.activeEnvironment !== selectedEnvKey && (
-                                    <PrimaryButton onClick={() => onSetActive(selectedEnvKey)} style={{ height: '20px', background: 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-secondaryForeground)' }}>
+                                    <PrimaryButton onClick={() => onSetActive(selectedEnvKey)} style={{ height: '20px', background: 'var(--apinox-button-secondaryBackground)', color: 'var(--apinox-button-secondaryForeground)' }}>
                                         <Check size={14} /> Set Active
                                     </PrimaryButton>
                                 )}
@@ -435,7 +435,7 @@ export const EnvironmentsTab: React.FC<EnvironmentsTabProps> = ({
                                     onChange={e => onEnvChange(selectedEnvKey, 'color', e.target.value)}
                                     style={{ width: '50px', padding: '2px', height: '30px' }}
                                 />
-                                <span style={{ fontSize: '12px', color: 'var(--vscode-descriptionForeground)' }}>
+                                <span style={{ fontSize: '12px', color: 'var(--apinox-descriptionForeground)' }}>
                                     {environments[selectedEnvKey].color ?? '#58A6FF'}
                                 </span>
                             </div>
@@ -460,7 +460,7 @@ export const EnvironmentsTab: React.FC<EnvironmentsTabProps> = ({
                                             type="text"
                                             value={fieldName}
                                             readOnly
-                                            style={{ background: 'var(--vscode-input-background)', opacity: 0.7 }}
+                                            style={{ background: 'var(--apinox-input-background)', opacity: 0.7 }}
                                         />
                                         <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                                             <MaskedInput
@@ -523,7 +523,7 @@ export const EnvironmentsTab: React.FC<EnvironmentsTabProps> = ({
                             </CustomFieldRow>
                         </CustomFieldsSection>
                         
-                        <div style={{ fontSize: 12, color: 'var(--vscode-descriptionForeground)', padding: '10px', background: 'var(--vscode-textBlockQuote-background)', borderLeft: '3px solid var(--vscode-textBlockQuote-border)', marginTop: 15 }}>
+                        <div style={{ fontSize: 12, color: 'var(--apinox-descriptionForeground)', padding: '10px', background: 'var(--apinox-textBlockQuote-background)', borderLeft: '3px solid var(--apinox-textBlockQuote-border)', marginTop: 15 }}>
                             <p style={{ margin: 0 }}>
                                 Use <code>{'{{url}}'}</code> in your requests to reference the Endpoint URL.<br />
                                 Use <code>{'{{env}}'}</code> to reference the Short Code.<br />
@@ -533,7 +533,7 @@ export const EnvironmentsTab: React.FC<EnvironmentsTabProps> = ({
                         </div>
                     </>
                 ) : (
-                    <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', color: 'var(--vscode-disabledForeground)' }}>
+                    <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', color: 'var(--apinox-disabledForeground)' }}>
                         Select an environment to edit
                     </div>
                 )}

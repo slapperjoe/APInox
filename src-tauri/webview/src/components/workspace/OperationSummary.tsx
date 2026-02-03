@@ -12,7 +12,7 @@ const Header = styled.div`
     justify-content: space-between;
     align-items: center;
     margin-bottom: var(--space-lg);
-    border-bottom: 1px solid var(--vscode-panel-border);
+    border-bottom: 1px solid var(--apinox-panel-border);
     padding-bottom: var(--space-md);
 `;
 
@@ -44,10 +44,10 @@ const StatsGrid = styled.div`
 `;
 
 const StatCard = styled.div`
-    background: var(--vscode-editor-inactiveSelectionBackground);
+    background: var(--apinox-editor-inactiveSelectionBackground);
     padding: var(--space-md);
     border-radius: 4px;
-    border: 1px solid var(--vscode-widget-border);
+    border: 1px solid var(--apinox-widget-border);
 `;
 
 const StatLabel = styled.div`
@@ -65,7 +65,7 @@ const StatValue = styled.div`
 `;
 
 const ActiveStatValue = styled(StatValue)`
-    color: var(--vscode-charts-green);
+    color: var(--apinox-charts-green);
     font-size: 1.2em;
 `;
 
@@ -81,7 +81,7 @@ const RequestsSection = styled.div`
 const SectionHeader = styled.h3`
     margin: 0 0 var(--space-md) 0;
     font-size: 1.1em;
-    border-bottom: 1px solid var(--vscode-panel-border);
+    border-bottom: 1px solid var(--apinox-panel-border);
     padding-bottom: ${SPACING_SM};
     display: flex;
     align-items: center;
@@ -92,23 +92,23 @@ const RequestCard = styled.div`
     display: flex;
     align-items: center;
     padding: var(--space-sm) var(--space-md);
-    border: 1px solid var(--vscode-panel-border);
+    border: 1px solid var(--apinox-panel-border);
     border-radius: 4px;
     margin-bottom: ${SPACING_SM};
     cursor: pointer;
-    background: var(--vscode-list-hoverBackground);
+    background: var(--apinox-list-hoverBackground);
     transition: all 0.2s ease;
 
     &:hover {
-        background: var(--vscode-list-activeSelectionBackground);
-        border-color: var(--vscode-focusBorder);
+        background: var(--apinox-list-activeSelectionBackground);
+        border-color: var(--apinox-focusBorder);
         transform: translateX(2px);
     }
 `;
 
 const MethodBadge = styled.span`
-    background: var(--vscode-badge-background);
-    color: var(--vscode-badge-foreground);
+    background: var(--apinox-badge-background);
+    color: var(--apinox-badge-foreground);
     padding: 2px ${SPACING_XS};
     border-radius: 3px;
     font-size: 0.75em;

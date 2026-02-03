@@ -13,8 +13,8 @@ const Container = styled.div`
     display: flex;
     flex-direction: column;
     height: 100%;
-    color: var(--vscode-foreground);
-    background: var(--vscode-editor-background);
+    color: var(--apinox-foreground);
+    background: var(--apinox-editor-background);
     padding: 15px;
     gap: 15px;
     overflow-y: auto;
@@ -28,15 +28,15 @@ const Section = styled.div`
 
 const Label = styled.label`
     font-size: 12px;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
     display: block;
     margin-bottom: ${SPACING_XS}px;
 `;
 
 const Select = styled.select`
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     padding: ${SPACING_SM}px 12px;
     border-radius: ${SPACING_XS}px;
     font-size: 13px;
@@ -44,7 +44,7 @@ const Select = styled.select`
     cursor: pointer;
 
     &:focus {
-        outline: 1px solid var(--vscode-focusBorder);
+        outline: 1px solid var(--apinox-focusBorder);
     }
 `;
 
@@ -60,7 +60,7 @@ const InputGroup = styled.div`
 
 const Hint = styled.div`
     font-size: 11px;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
     margin-top: ${SPACING_XS}px;
     opacity: 0.8;
 `;
@@ -74,7 +74,7 @@ const NoAuthPlaceholder = styled.div`
     font-style: italic;
     padding: ${SPACING_MD}px;
     text-align: center;
-    border: 1px dashed var(--vscode-panel-border);
+    border: 1px dashed var(--apinox-panel-border);
     border-radius: ${SPACING_XS}px;
 `;
 

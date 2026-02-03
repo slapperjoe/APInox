@@ -12,14 +12,14 @@ const TitleBarContainer = styled.div`
   left: 0;
   right: 0;
   height: 32px;
-  background: var(--vscode-titleBar-activeBackground);
-  color: var(--vscode-titleBar-activeForeground);
+  background: var(--apinox-titleBar-activeBackground);
+  color: var(--apinox-titleBar-activeForeground);
   display: flex;
   align-items: center;
   justify-content: space-between;
   user-select: none;
   z-index: 999;
-  border-bottom: 1px solid var(--vscode-titleBar-border, transparent);
+  border-bottom: 1px solid var(--apinox-titleBar-border, transparent);
 `;
 
 const DragRegion = styled.div`
@@ -78,11 +78,11 @@ const InfoItem = styled.div<{ isActive?: boolean }>`
   padding: 4px 10px;
   border-radius: 3px;
   background: ${props => props.isActive 
-    ? 'var(--vscode-badge-background)' 
+    ? 'var(--apinox-badge-background)' 
     : 'transparent'};
   color: ${props => props.isActive 
-    ? 'var(--vscode-badge-foreground)' 
-    : 'var(--vscode-descriptionForeground)'};
+    ? 'var(--apinox-badge-foreground)' 
+    : 'var(--apinox-descriptionForeground)'};
   font-size: 11px;
   font-weight: 500;
   opacity: ${props => props.isActive ? 1 : 0.7};
@@ -90,7 +90,7 @@ const InfoItem = styled.div<{ isActive?: boolean }>`
 
 const VersionLabel = styled.div`
   font-size: 10px;
-  color: var(--vscode-descriptionForeground);
+  color: var(--apinox-descriptionForeground);
   opacity: 0.6;
   padding: 0 8px;
   -webkit-app-region: no-drag;
@@ -107,7 +107,7 @@ const WindowButton = styled.button<{ isClose?: boolean }>`
   height: 100%;
   border: none;
   background: transparent;
-  color: var(--vscode-titleBar-activeForeground);
+  color: var(--apinox-titleBar-activeForeground);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -118,7 +118,7 @@ const WindowButton = styled.button<{ isClose?: boolean }>`
     background: ${props => 
       props.isClose 
         ? '#e81123' 
-        : 'var(--vscode-toolbar-hoverBackground)'
+        : 'var(--apinox-toolbar-hoverBackground)'
     };
     color: ${props => props.isClose ? '#fff' : 'inherit'};
   }
@@ -127,7 +127,7 @@ const WindowButton = styled.button<{ isClose?: boolean }>`
     background: ${props => 
       props.isClose 
         ? '#c50e1f' 
-        : 'var(--vscode-toolbar-activeBackground, rgba(128, 128, 128, 0.3))'
+        : 'var(--apinox-toolbar-activeBackground, rgba(128, 128, 128, 0.3))'
     };
   }
 

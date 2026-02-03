@@ -30,9 +30,9 @@ const FolderName = styled.span`
 `;
 
 const RenameInput = styled.input`
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     flex: 1;
 `;
 
@@ -59,7 +59,7 @@ const RequestActions = styled.div`
 `;
 
 const DangerButton = styled(HeaderButton)<{ $danger?: boolean }>`
-    color: ${props => props.$danger ? 'var(--vscode-errorForeground)' : 'var(--vscode-icon-foreground)'};
+    color: ${props => props.$danger ? 'var(--apinox-errorForeground)' : 'var(--apinox-icon-foreground)'};
 `;
 
 const SoapIcon = styled(Code)`

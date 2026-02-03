@@ -28,7 +28,7 @@ const shakeAnimation = keyframes`
 `;
 
 const DeleteButton = styled(IconButton) <{ confirming?: boolean }>`
-    color: ${props => props.confirming ? 'var(--vscode-errorForeground)' : 'var(--vscode-foreground)'};
+    color: ${props => props.confirming ? 'var(--apinox-errorForeground)' : 'var(--apinox-foreground)'};
     ${props => props.confirming && css`
         animation: ${shakeAnimation} 0.5s ease-in-out infinite;
     `}
@@ -78,7 +78,7 @@ export const GlobalsTab: React.FC<GlobalsTabProps> = ({
     return (
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
             <EnvList>
-                <div style={{ padding: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--vscode-panel-border)' }}>
+                <div style={{ padding: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--apinox-panel-border)' }}>
                     <span style={{ fontSize: '12px', fontWeight: 600 }}>Globals</span>
                     <IconButton onClick={onAddGlobal} title="Add Variable">
                         <Plus size={14} />
@@ -126,24 +126,24 @@ export const GlobalsTab: React.FC<GlobalsTabProps> = ({
                                 onChange={e => onGlobalValueChange(selectedGlobalKey, e.target.value)}
                             />
                         </FormGroup>
-                        <div style={{ fontSize: 12, color: 'var(--vscode-descriptionForeground)', padding: '10px', background: 'var(--vscode-textBlockQuote-background)', borderLeft: '3px solid var(--vscode-textBlockQuote-border)' }}>
+                        <div style={{ fontSize: 12, color: 'var(--apinox-descriptionForeground)', padding: '10px', background: 'var(--apinox-textBlockQuote-background)', borderLeft: '3px solid var(--apinox-textBlockQuote-border)' }}>
                             <p style={{ margin: 0 }}>
                                 Use <code>{'{{' + selectedGlobalKey + '}}'}</code> in your requests to insert this value.
                             </p>
                         </div>
                     </>
                 ) : (
-                    <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', color: 'var(--vscode-disabledForeground)' }}>
+                    <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', color: 'var(--apinox-disabledForeground)' }}>
                         Select a global variable to edit
                     </div>
                 )}
 
                 {/* Predefined Variables Reference Panel */}
-                <div style={{ marginTop: 20, borderTop: '1px solid var(--vscode-panel-border)', paddingTop: 15 }}>
-                    <h4 style={{ margin: '0 0 10px 0', fontSize: 11, textTransform: 'uppercase', color: 'var(--vscode-sideBarTitle-foreground)' }}>
+                <div style={{ marginTop: 20, borderTop: '1px solid var(--apinox-panel-border)', paddingTop: 15 }}>
+                    <h4 style={{ margin: '0 0 10px 0', fontSize: 11, textTransform: 'uppercase', color: 'var(--apinox-sideBarTitle-foreground)' }}>
                         Predefined Variables
                     </h4>
-                    <div style={{ fontSize: 11, color: 'var(--vscode-descriptionForeground)', lineHeight: 1.6 }}>
+                    <div style={{ fontSize: 11, color: 'var(--apinox-descriptionForeground)', lineHeight: 1.6 }}>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 15px' }}>
                             <code>{'{{uuid}}'}</code><span>Random UUID</span>
                             <code>{'{{now}}'}</code><span>ISO timestamp</span>

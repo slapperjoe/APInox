@@ -12,15 +12,15 @@ const InputContainer = styled.div`
   height: 26px; /* Matches standard VS Code input height approx */
   width: 100%;
   overflow: hidden;
-  border: 1px solid var(--vscode-input-border);
-  background-color: var(--vscode-input-background);
-  color: var(--vscode-input-foreground);
+  border: 1px solid var(--apinox-input-border);
+  background-color: var(--apinox-input-background);
+  color: var(--apinox-input-foreground);
   display: flex;
   align-items: center;
   position: relative;
   
   &:focus-within {
-      border-color: var(--vscode-focusBorder);
+      border-color: var(--apinox-focusBorder);
   }
 `;
 
@@ -210,14 +210,14 @@ export const MonacoSingleLineInput = forwardRef<MonacoSingleLineInputHandle, Mon
                 {`
                 .wildcard-tag-decoration {
                     background-color: rgba(255, 105, 180, 0.2);
-                    border: 1px solid var(--vscode-editorBracketHighlight-foreground4);
+                    border: 1px solid var(--apinox-editorBracketHighlight-foreground4);
                     border-radius: 12px;
                     margin-left: 2px;
                     margin-right: 2px;
                 }
                 .wildcard-tag-text {
                     font-weight: bold;
-                    color: var(--vscode-editorBracketHighlight-foreground2, #da70d6) !important;
+                    color: var(--apinox-editorBracketHighlight-foreground2, #da70d6) !important;
                     font-style: italic;
                 }
                 /* Hide cursor when not focused? No, input needs cursor. */
@@ -244,7 +244,7 @@ export const MonacoSingleLineInput = forwardRef<MonacoSingleLineInputHandle, Mon
                     scrollBeyondLastLine: false,
                     automaticLayout: true,
                     contextmenu: true,
-                    fontFamily: 'var(--vscode-font-family)',
+                    fontFamily: 'var(--apinox-font-family)',
                     fontSize: 13,
                     readOnly: readOnly,
                     wordWrap: 'off',

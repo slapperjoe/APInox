@@ -6,15 +6,15 @@ import { SPACING_XS } from '../../styles/spacing';
 const Input = styled.input`
     width: 100%;
     padding: ${SPACING_XS};
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     outline: none;
     border-radius: 2px;
     font-size: 13px;
 
     &:focus {
-        border-color: var(--vscode-focusBorder);
+        border-color: var(--apinox-focusBorder);
     }
 `;
 

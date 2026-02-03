@@ -27,9 +27,9 @@ export const Skeleton = styled.div<SkeletonProps>`
     
     background: linear-gradient(
         90deg,
-        var(--vscode-editor-inactiveSelectionBackground) 25%,
-        var(--vscode-list-hoverBackground) 50%,
-        var(--vscode-editor-inactiveSelectionBackground) 75%
+        var(--apinox-editor-inactiveSelectionBackground) 25%,
+        var(--apinox-list-hoverBackground) 50%,
+        var(--apinox-editor-inactiveSelectionBackground) 75%
     );
     background-size: 200% 100%;
     animation: ${shimmer} 1.5s infinite linear;

@@ -366,7 +366,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
     if (!isTauriMode) {
         return (
             <Modal isOpen={isOpen} onClose={onClose} title="Debug & Diagnostics" width={800}>
-                <div style={{ padding: '20px', textAlign: 'center', color: 'var(--vscode-descriptionForeground)' }}>
+                <div style={{ padding: '20px', textAlign: 'center', color: 'var(--apinox-descriptionForeground)' }}>
                     Debug diagnostics are only available in Tauri standalone mode.
                 </div>
             </Modal>
@@ -378,17 +378,17 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
             {/* Tab Navigation */}
             <div style={{ 
                 display: 'flex', 
-                borderBottom: '1px solid var(--vscode-panel-border)',
+                borderBottom: '1px solid var(--apinox-panel-border)',
                 marginBottom: '20px'
             }}>
                 <button
                     onClick={() => setActiveTab('logs')}
                     style={{
                         padding: '10px 20px',
-                        background: activeTab === 'logs' ? 'var(--vscode-tab-activeBackground)' : 'transparent',
-                        color: activeTab === 'logs' ? 'var(--vscode-tab-activeForeground)' : 'var(--vscode-tab-inactiveForeground)',
+                        background: activeTab === 'logs' ? 'var(--apinox-tab-activeBackground)' : 'transparent',
+                        color: activeTab === 'logs' ? 'var(--apinox-tab-activeForeground)' : 'var(--apinox-tab-inactiveForeground)',
                         border: 'none',
-                        borderBottom: activeTab === 'logs' ? '2px solid var(--vscode-focusBorder)' : '2px solid transparent',
+                        borderBottom: activeTab === 'logs' ? '2px solid var(--apinox-focusBorder)' : '2px solid transparent',
                         cursor: 'pointer',
                         fontSize: '0.95em',
                         fontWeight: activeTab === 'logs' ? 600 : 400
@@ -400,10 +400,10 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                     onClick={() => setActiveTab('diagnostics')}
                     style={{
                         padding: '10px 20px',
-                        background: activeTab === 'diagnostics' ? 'var(--vscode-tab-activeBackground)' : 'transparent',
-                        color: activeTab === 'diagnostics' ? 'var(--vscode-tab-activeForeground)' : 'var(--vscode-tab-inactiveForeground)',
+                        background: activeTab === 'diagnostics' ? 'var(--apinox-tab-activeBackground)' : 'transparent',
+                        color: activeTab === 'diagnostics' ? 'var(--apinox-tab-activeForeground)' : 'var(--apinox-tab-inactiveForeground)',
                         border: 'none',
-                        borderBottom: activeTab === 'diagnostics' ? '2px solid var(--vscode-focusBorder)' : '2px solid transparent',
+                        borderBottom: activeTab === 'diagnostics' ? '2px solid var(--apinox-focusBorder)' : '2px solid transparent',
                         cursor: 'pointer',
                         fontSize: '0.95em',
                         fontWeight: activeTab === 'diagnostics' ? 600 : 400
@@ -426,9 +426,9 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                             style={{
                                 padding: '8px 16px',
                                 fontSize: '0.9em',
-                                background: debugIndicatorVisible ? 'var(--vscode-button-background)' : 'var(--vscode-button-secondaryBackground)',
-                                color: debugIndicatorVisible ? 'var(--vscode-button-foreground)' : 'var(--vscode-button-secondaryForeground)',
-                                border: '1px solid var(--vscode-button-border)',
+                                background: debugIndicatorVisible ? 'var(--apinox-button-background)' : 'var(--apinox-button-secondaryBackground)',
+                                color: debugIndicatorVisible ? 'var(--apinox-button-foreground)' : 'var(--apinox-button-secondaryForeground)',
+                                border: '1px solid var(--apinox-button-border)',
                                 cursor: 'pointer',
                                 borderRadius: '2px',
                             }}
@@ -440,9 +440,9 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                             style={{
                                 padding: '8px 16px',
                                 fontSize: '0.9em',
-                                background: 'var(--vscode-button-background)',
-                                color: 'var(--vscode-button-foreground)',
-                                border: '1px solid var(--vscode-button-border)',
+                                background: 'var(--apinox-button-background)',
+                                color: 'var(--apinox-button-foreground)',
+                                border: '1px solid var(--apinox-button-border)',
                                 cursor: 'pointer',
                                 borderRadius: '2px',
                             }}
@@ -469,9 +469,9 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                             disabled={isLoadingLogs}
                             style={{
                                 padding: '8px 16px',
-                                background: 'var(--vscode-button-secondaryBackground)',
-                                color: 'var(--vscode-button-secondaryForeground)',
-                                border: '1px solid var(--vscode-button-border)',
+                                background: 'var(--apinox-button-secondaryBackground)',
+                                color: 'var(--apinox-button-secondaryForeground)',
+                                border: '1px solid var(--apinox-button-border)',
                                 borderRadius: '2px',
                                 cursor: isLoadingLogs ? 'not-allowed' : 'pointer',
                                 fontSize: '0.9em',
@@ -484,9 +484,9 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                             onClick={copyAllDiagnostics}
                             style={{
                                 padding: '8px 16px',
-                                background: copyStatus ? 'var(--vscode-button-secondaryBackground)' : 'var(--vscode-button-background)',
-                                color: 'var(--vscode-button-foreground)',
-                                border: '1px solid var(--vscode-button-border)',
+                                background: copyStatus ? 'var(--apinox-button-secondaryBackground)' : 'var(--apinox-button-background)',
+                                color: 'var(--apinox-button-foreground)',
+                                border: '1px solid var(--apinox-button-border)',
                                 borderRadius: '2px',
                                 cursor: 'pointer',
                                 fontSize: '0.9em',
@@ -496,12 +496,12 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                             }}
                             onMouseEnter={(e) => {
                                 if (!copyStatus) {
-                                    e.currentTarget.style.background = 'var(--vscode-button-hoverBackground)';
+                                    e.currentTarget.style.background = 'var(--apinox-button-hoverBackground)';
                                 }
                             }}
                             onMouseLeave={(e) => {
                                 if (!copyStatus) {
-                                    e.currentTarget.style.background = 'var(--vscode-button-background)';
+                                    e.currentTarget.style.background = 'var(--apinox-button-background)';
                                 }
                             }}
                         >
@@ -519,15 +519,15 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                     <div style={{
                         padding: '8px 12px',
                         background: connectionTest.status === 'success' 
-                            ? 'var(--vscode-testing-iconPassed)' 
+                            ? 'var(--apinox-testing-iconPassed)' 
                             : connectionTest.status === 'error'
-                            ? 'var(--vscode-inputValidation-errorBackground)'
-                            : 'var(--vscode-badge-background)',
-                        border: '1px solid var(--vscode-panel-border)',
+                            ? 'var(--apinox-inputValidation-errorBackground)'
+                            : 'var(--apinox-badge-background)',
+                        border: '1px solid var(--apinox-panel-border)',
                         borderRadius: '3px',
                         fontSize: '0.9em',
                         whiteSpace: 'pre-line',
-                        color: 'var(--vscode-editor-foreground)',
+                        color: 'var(--apinox-editor-foreground)',
                     }}>
                         {connectionTest.message}
                     </div>
@@ -556,13 +556,13 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                     
                     {showSystemInfo && (
                         <div style={{
-                            background: 'var(--vscode-editor-background)',
-                            border: '1px solid var(--vscode-panel-border)',
+                            background: 'var(--apinox-editor-background)',
+                            border: '1px solid var(--apinox-panel-border)',
                             padding: '12px',
                             borderRadius: '3px',
                             fontSize: '0.9em',
                         }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontFamily: 'var(--vscode-editor-font-family, monospace)' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontFamily: 'var(--apinox-editor-font-family, monospace)' }}>
                         {configDir && (
                             <div>
                                 <span style={{ opacity: 0.7 }}>Settings Location:</span>{' '}
@@ -572,7 +572,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                         {sidecarReady !== null && (
                             <div>
                                 <span style={{ opacity: 0.7 }}>Sidecar Status:</span>{' '}
-                                <span style={{ color: sidecarReady ? 'var(--vscode-testing-iconPassed)' : 'var(--vscode-editorWarning-foreground)' }}>
+                                <span style={{ color: sidecarReady ? 'var(--apinox-testing-iconPassed)' : 'var(--apinox-editorWarning-foreground)' }}>
                                     {sidecarReady ? '✓ Ready' : '✗ Not Ready'}
                                     {sidecarPort && sidecarReady && ` (port ${sidecarPort})`}
                                 </span>
@@ -589,7 +589,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         style={{ 
-                                            color: 'var(--vscode-textLink-foreground)',
+                                            color: 'var(--apinox-textLink-foreground)',
                                             textDecoration: 'none',
                                         }}
                                         onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
@@ -602,7 +602,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         style={{ 
-                                            color: 'var(--vscode-textLink-foreground)',
+                                            color: 'var(--apinox-textLink-foreground)',
                                             textDecoration: 'none',
                                         }}
                                         onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
@@ -615,7 +615,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         style={{ 
-                                            color: 'var(--vscode-textLink-foreground)',
+                                            color: 'var(--apinox-textLink-foreground)',
                                             textDecoration: 'none',
                                         }}
                                         onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
@@ -631,7 +631,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                         {sidecarDiagnostics?.binaryInfo && (
                             <div>
                                 <span style={{ opacity: 0.7 }}>Binary Type:</span>{' '}
-                                <span style={{ color: 'var(--vscode-testing-iconPassed)' }}>
+                                <span style={{ color: 'var(--apinox-testing-iconPassed)' }}>
                                     ✓ Standalone ({sidecarDiagnostics.binaryInfo.embeddedNodeVersion})
                                 </span>
                             </div>
@@ -641,7 +641,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                         {sidecarDiagnostics?.processRunning !== undefined && (
                             <div>
                                 <span style={{ opacity: 0.7 }}>Sidecar Process:</span>{' '}
-                                <span style={{ color: sidecarDiagnostics.processRunning ? 'var(--vscode-testing-iconPassed)' : 'var(--vscode-editorWarning-foreground)' }}>
+                                <span style={{ color: sidecarDiagnostics.processRunning ? 'var(--apinox-testing-iconPassed)' : 'var(--apinox-editorWarning-foreground)' }}>
                                     {sidecarDiagnostics.processRunning ? '✓ Running' : '✗ Not Running'}
                                 </span>
                             </div>
@@ -651,7 +651,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                         {sidecarDiagnostics?.startupError && (
                             <div style={{ marginTop: '8px' }}>
                                 <span style={{ opacity: 0.7 }}>Startup Error:</span>{' '}
-                                <span style={{ color: 'var(--vscode-editorError-foreground)', fontWeight: 'bold' }}>
+                                <span style={{ color: 'var(--apinox-editorError-foreground)', fontWeight: 'bold' }}>
                                     {sidecarDiagnostics.startupError}
                                 </span>
                             </div>
@@ -665,7 +665,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                                     style={{ 
                                         fontSize: '0.85em', 
                                         wordBreak: 'break-all',
-                                        color: 'var(--vscode-textLink-foreground)',
+                                        color: 'var(--apinox-textLink-foreground)',
                                         cursor: 'pointer',
                                         textDecoration: 'underline'
                                     }}
@@ -725,12 +725,12 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                             <div style={{ 
                                 marginTop: '12px',
                                 padding: '12px',
-                                background: 'var(--vscode-inputValidation-warningBackground)',
-                                border: '1px solid var(--vscode-inputValidation-warningBorder)',
+                                background: 'var(--apinox-inputValidation-warningBackground)',
+                                border: '1px solid var(--apinox-inputValidation-warningBorder)',
                                 borderRadius: '4px',
                                 fontSize: '0.9em'
                             }}>
-                                <div style={{ fontWeight: 'bold', marginBottom: '8px', color: 'var(--vscode-inputValidation-warningForeground)' }}>
+                                <div style={{ fontWeight: 'bold', marginBottom: '8px', color: 'var(--apinox-inputValidation-warningForeground)' }}>
                                     ⚠ Sidecar Not Ready
                                 </div>
                                 <div style={{ marginBottom: '6px' }}>Possible causes:</div>
@@ -738,7 +738,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                                     {!sidecarDiagnostics?.processRunning && (
                                         <li>Standalone binary failed to start - Check logs below for errors</li>
                                     )}
-                                    <li>Standalone binary not built - Run: <code style={{ background: 'var(--vscode-textCodeBlock-background)', padding: '2px 4px' }}>npm run tauri:build</code></li>
+                                    <li>Standalone binary not built - Run: <code style={{ background: 'var(--apinox-textCodeBlock-background)', padding: '2px 4px' }}>npm run tauri:build</code></li>
                                     <li>Port conflict or firewall blocking localhost</li>
                                     <li>Permissions issue with config directory</li>
                                     <li>Binary corrupted or wrong architecture</li>
@@ -757,9 +757,9 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                 {fetchError && (
                     <div style={{
                         padding: '8px 12px',
-                        background: 'var(--vscode-inputValidation-errorBackground)',
-                        border: '1px solid var(--vscode-inputValidation-errorBorder)',
-                        color: 'var(--vscode-inputValidation-errorForeground)',
+                        background: 'var(--apinox-inputValidation-errorBackground)',
+                        border: '1px solid var(--apinox-inputValidation-errorBorder)',
+                        color: 'var(--apinox-inputValidation-errorForeground)',
                         borderRadius: '3px',
                         fontSize: '0.9em',
                     }}>
@@ -786,7 +786,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                                 {showSidecarLogs ? '▼' : '▶'}
                             </span>
                             All Logs (Tauri + Sidecar)
-                            <span style={{ fontSize: '0.85em', color: 'var(--vscode-descriptionForeground)', fontWeight: 'normal' }}>
+                            <span style={{ fontSize: '0.85em', color: 'var(--apinox-descriptionForeground)', fontWeight: 'normal' }}>
                                 ({sidecarLogs.length} {sidecarLogs.length === 1 ? 'entry' : 'entries'})
                                 {isLoadingLogs && ' - Loading...'}
                             </span>
@@ -801,9 +801,9 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                                 style={{
                                     padding: '4px 12px',
                                     fontSize: '0.9em',
-                                    background: 'var(--vscode-button-secondaryBackground)',
-                                    color: 'var(--vscode-button-secondaryForeground)',
-                                    border: '1px solid var(--vscode-button-border)',
+                                    background: 'var(--apinox-button-secondaryBackground)',
+                                    color: 'var(--apinox-button-secondaryForeground)',
+                                    border: '1px solid var(--apinox-button-border)',
                                     borderRadius: '2px',
                                     cursor: sidecarLogs.length === 0 ? 'not-allowed' : 'pointer',
                                     opacity: sidecarLogs.length === 0 ? 0.5 : 1,
@@ -820,17 +820,17 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                             style={{
                             maxHeight: '300px',
                             overflowY: 'auto',
-                            background: 'var(--vscode-editor-background)',
-                            border: '1px solid var(--vscode-panel-border)',
+                            background: 'var(--apinox-editor-background)',
+                            border: '1px solid var(--apinox-panel-border)',
                             padding: '8px',
-                            fontFamily: 'var(--vscode-editor-font-family, monospace)',
+                            fontFamily: 'var(--apinox-editor-font-family, monospace)',
                             fontSize: '0.85em',
                             lineHeight: '1.4',
                             borderRadius: '3px',
                         }}>
                             {sidecarLogs.length === 0 ? (
                                 <div style={{
-                                    color: 'var(--vscode-descriptionForeground)',
+                                    color: 'var(--apinox-descriptionForeground)',
                                     textAlign: 'center',
                                     padding: '20px',
                                     fontStyle: 'italic',
@@ -845,9 +845,9 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                                             marginBottom: 4,
                                             whiteSpace: 'pre-wrap',
                                             wordBreak: 'break-word',
-                                            color: log.includes('[ERROR]') || log.includes('Error') ? 'var(--vscode-errorForeground)' :
-                                                log.includes('[WARN]') || log.includes('Warning') ? 'var(--vscode-editorWarning-foreground)' :
-                                                    'var(--vscode-editor-foreground)',
+                                            color: log.includes('[ERROR]') || log.includes('Error') ? 'var(--apinox-errorForeground)' :
+                                                log.includes('[WARN]') || log.includes('Warning') ? 'var(--apinox-editorWarning-foreground)' :
+                                                    'var(--apinox-editor-foreground)',
                                         }}
                                     >
                                         {log}
@@ -877,7 +877,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                                 {showFrontendLogs ? '▼' : '▶'}
                             </span>
                             Frontend Logs (React/Browser)
-                            <span style={{ fontSize: '0.85em', color: 'var(--vscode-descriptionForeground)', fontWeight: 'normal' }}>
+                            <span style={{ fontSize: '0.85em', color: 'var(--apinox-descriptionForeground)', fontWeight: 'normal' }}>
                                 ({frontendLogState.length} {frontendLogState.length === 1 ? 'entry' : 'entries'})
                             </span>
                         </div>
@@ -891,9 +891,9 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                                 style={{
                                     padding: '4px 12px',
                                     fontSize: '0.9em',
-                                    background: 'var(--vscode-button-secondaryBackground)',
-                                    color: 'var(--vscode-button-secondaryForeground)',
-                                    border: '1px solid var(--vscode-button-border)',
+                                    background: 'var(--apinox-button-secondaryBackground)',
+                                    color: 'var(--apinox-button-secondaryForeground)',
+                                    border: '1px solid var(--apinox-button-border)',
                                     borderRadius: '2px',
                                     cursor: frontendLogState.length === 0 ? 'not-allowed' : 'pointer',
                                     opacity: frontendLogState.length === 0 ? 0.5 : 1,
@@ -910,17 +910,17 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                             style={{
                             maxHeight: '300px',
                             overflowY: 'auto',
-                            background: 'var(--vscode-editor-background)',
-                            border: '1px solid var(--vscode-panel-border)',
+                            background: 'var(--apinox-editor-background)',
+                            border: '1px solid var(--apinox-panel-border)',
                             padding: '8px',
-                            fontFamily: 'var(--vscode-editor-font-family, monospace)',
+                            fontFamily: 'var(--apinox-editor-font-family, monospace)',
                             fontSize: '0.85em',
                             lineHeight: '1.4',
                             borderRadius: '3px',
                         }}>
                             {frontendLogState.length === 0 ? (
                                 <div style={{
-                                    color: 'var(--vscode-descriptionForeground)',
+                                    color: 'var(--apinox-descriptionForeground)',
                                     textAlign: 'center',
                                     padding: '20px',
                                     fontStyle: 'italic',
@@ -937,9 +937,9 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                                                 marginBottom: 4,
                                                 whiteSpace: 'pre-wrap',
                                                 wordBreak: 'break-word',
-                                                color: log.level === 'error' ? 'var(--vscode-errorForeground)' :
-                                                    log.level === 'warn' ? 'var(--vscode-editorWarning-foreground)' :
-                                                        'var(--vscode-editor-foreground)',
+                                                color: log.level === 'error' ? 'var(--apinox-errorForeground)' :
+                                                    log.level === 'warn' ? 'var(--apinox-editorWarning-foreground)' :
+                                                        'var(--apinox-editor-foreground)',
                                             }}
                                         >
                                             <span style={{ opacity: 0.6 }}>[{timestamp}]</span> [{log.level.toUpperCase()}] {log.message}
@@ -975,10 +975,10 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                         
                         {showDebugInfo && (
                             <div style={{
-                                background: 'var(--vscode-editor-background)',
-                                border: '1px solid var(--vscode-panel-border)',
+                                background: 'var(--apinox-editor-background)',
+                                border: '1px solid var(--apinox-panel-border)',
                                 padding: '12px',
-                                fontFamily: 'var(--vscode-editor-font-family, monospace)',
+                                fontFamily: 'var(--apinox-editor-font-family, monospace)',
                                 fontSize: '0.8em',
                                 whiteSpace: 'pre-wrap',
                                 overflowX: 'auto',

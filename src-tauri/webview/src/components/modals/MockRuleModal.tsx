@@ -13,34 +13,34 @@ const Label = styled.label`
     display: block;
     margin-bottom: ${SPACING_XS};
     font-size: 12px;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
 `;
 
 const Input = styled.input`
     width: 100%;
     padding: ${SPACING_SM} 12px;
-    background-color: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background-color: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     border-radius: 4px;
     font-size: 13px;
 
     &:focus {
-        outline: 1px solid var(--vscode-focusBorder);
+        outline: 1px solid var(--apinox-focusBorder);
     }
 `;
 
 const Select = styled.select`
     padding: ${SPACING_SM} 12px;
-    background-color: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background-color: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     border-radius: 4px;
     font-size: 13px;
     cursor: pointer;
 
     &:focus {
-        outline: 1px solid var(--vscode-focusBorder);
+        outline: 1px solid var(--apinox-focusBorder);
     }
 `;
 
@@ -48,16 +48,16 @@ const Textarea = styled.textarea`
     width: 100%;
     min-height: 200px;
     padding: ${SPACING_SM} 12px;
-    background-color: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background-color: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     border-radius: 4px;
     font-size: 13px;
     font-family: monospace;
     resize: vertical;
 
     &:focus {
-        outline: 1px solid var(--vscode-focusBorder);
+        outline: 1px solid var(--apinox-focusBorder);
     }
 `;
 
@@ -87,8 +87,8 @@ const ConditionsHeader = styled.div`
 
 const AddConditionButton = styled.button`
     background: none;
-    border: 1px solid var(--vscode-button-background);
-    color: var(--vscode-button-background);
+    border: 1px solid var(--apinox-button-background);
+    color: var(--apinox-button-background);
     cursor: pointer;
     padding: 4px ${SPACING_SM};
     border-radius: 4px;
@@ -98,7 +98,7 @@ const AddConditionButton = styled.button`
     gap: 4px;
 
     &:hover {
-        background-color: var(--vscode-toolbar-hoverBackground);
+        background-color: var(--apinox-toolbar-hoverBackground);
     }
 `;
 
@@ -107,7 +107,7 @@ const ConditionItem = styled.div`
     gap: ${SPACING_SM};
     margin-bottom: ${SPACING_SM};
     padding: ${SPACING_SM};
-    background-color: var(--vscode-editor-inactiveSelectionBackground);
+    background-color: var(--apinox-editor-inactiveSelectionBackground);
     border-radius: 4px;
 `;
 
@@ -115,7 +115,7 @@ const RemoveButton = styled.button<{ $disabled?: boolean }>`
     background: none;
     border: none;
     cursor: ${props => props.$disabled ? 'not-allowed' : 'pointer'};
-    color: ${props => props.$disabled ? 'var(--vscode-disabledForeground)' : 'var(--vscode-testing-iconFailed)'};
+    color: ${props => props.$disabled ? 'var(--apinox-disabledForeground)' : 'var(--apinox-testing-iconFailed)'};
     padding: 4px;
 
     &:hover:not(:disabled) {
@@ -134,11 +134,11 @@ const Column = styled.div`
 `;
 
 const SecondaryButton = styled(Button)`
-    background-color: var(--vscode-button-secondaryBackground);
-    color: var(--vscode-button-secondaryForeground);
+    background-color: var(--apinox-button-secondaryBackground);
+    color: var(--apinox-button-secondaryForeground);
 
     &:hover {
-        background-color: var(--vscode-button-secondaryHoverBackground);
+        background-color: var(--apinox-button-secondaryHoverBackground);
     }
 `;
 

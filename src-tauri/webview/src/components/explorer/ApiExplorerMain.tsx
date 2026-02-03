@@ -112,7 +112,7 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
                     style={{
                         display: 'flex', alignItems: 'center', gap: 5,
                         background: 'transparent', border: 'none',
-                        color: 'var(--vscode-textLink-foreground)',
+                        color: 'var(--apinox-textLink-foreground)',
                         cursor: 'pointer', marginBottom: 15, padding: 0
                     }}
                 >
@@ -125,30 +125,30 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
 
                 <div style={{
                     padding: 15, borderRadius: 6,
-                    backgroundColor: 'var(--vscode-editor-background)',
-                    border: '1px solid var(--vscode-widget-border)',
+                    backgroundColor: 'var(--apinox-editor-background)',
+                    border: '1px solid var(--apinox-widget-border)',
                     marginBottom: 20
                 }}>
-                    <div style={{ fontSize: 11, fontWeight: 'bold', color: 'var(--vscode-descriptionForeground)', marginBottom: 5 }}>TYPE</div>
-                    <div style={{ fontFamily: 'var(--vscode-editor-font-family)' }}>Operation / Endpoint</div>
+                    <div style={{ fontSize: 11, fontWeight: 'bold', color: 'var(--apinox-descriptionForeground)', marginBottom: 5 }}>TYPE</div>
+                    <div style={{ fontFamily: 'var(--apinox-editor-font-family)' }}>Operation / Endpoint</div>
                 </div>
 
                 {(selectedOperation as any).originalEndpoint && (
                     <div style={{
                         padding: 15, borderRadius: 6,
-                        backgroundColor: 'var(--vscode-editor-background)',
-                        border: '1px solid var(--vscode-widget-border)',
+                        backgroundColor: 'var(--apinox-editor-background)',
+                        border: '1px solid var(--apinox-widget-border)',
                         marginBottom: 20
                     }}>
-                        <div style={{ fontSize: 11, fontWeight: 'bold', color: 'var(--vscode-descriptionForeground)', marginBottom: 5 }}>URL</div>
-                        <div style={{ fontFamily: 'var(--vscode-editor-font-family)', wordBreak: 'break-all' }}>{(selectedOperation as any).originalEndpoint}</div>
+                        <div style={{ fontSize: 11, fontWeight: 'bold', color: 'var(--apinox-descriptionForeground)', marginBottom: 5 }}>URL</div>
+                        <div style={{ fontFamily: 'var(--apinox-editor-font-family)', wordBreak: 'break-all' }}>{(selectedOperation as any).originalEndpoint}</div>
                     </div>
                 )}
 
                 <div style={{
                     padding: 15,
-                    backgroundColor: 'var(--vscode-editor-background)',
-                    border: '1px solid var(--vscode-widget-border)',
+                    backgroundColor: 'var(--apinox-editor-background)',
+                    border: '1px solid var(--apinox-widget-border)',
                     borderRadius: 6
                 }}>
                     <h3 style={{ marginTop: 0, marginBottom: 15, fontSize: 14, fontWeight: 500 }}>
@@ -177,7 +177,7 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
                     style={{
                         display: 'flex', alignItems: 'center', gap: 5,
                         background: 'transparent', border: 'none',
-                        color: 'var(--vscode-textLink-foreground)',
+                        color: 'var(--apinox-textLink-foreground)',
                         cursor: 'pointer', marginBottom: 15, padding: 0
                     }}
                 >
@@ -190,12 +190,12 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
 
                 <div style={{
                     padding: 15, borderRadius: 6,
-                    backgroundColor: 'var(--vscode-editor-background)',
-                    border: '1px solid var(--vscode-widget-border)',
+                    backgroundColor: 'var(--apinox-editor-background)',
+                    border: '1px solid var(--apinox-widget-border)',
                     marginBottom: 20
                 }}>
-                    <div style={{ fontSize: 11, fontWeight: 'bold', color: 'var(--vscode-descriptionForeground)', marginBottom: 5 }}>TYPE</div>
-                    <div style={{ fontFamily: 'var(--vscode-editor-font-family)' }}>Interface / Tag</div>
+                    <div style={{ fontSize: 11, fontWeight: 'bold', color: 'var(--apinox-descriptionForeground)', marginBottom: 5 }}>TYPE</div>
+                    <div style={{ fontFamily: 'var(--apinox-editor-font-family)' }}>Interface / Tag</div>
                 </div>
             </div>
         );
@@ -210,10 +210,10 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
         }}>
             {/* Load Section */}
             <div style={{ padding: 40, maxWidth: '800px', width: '100%', margin: '0 auto' }}> {/* Centered Container */}
-                <h1 style={{ fontSize: 24, fontWeight: 500, marginBottom: 10, color: 'var(--vscode-foreground)' }}>
+                <h1 style={{ fontSize: 24, fontWeight: 500, marginBottom: 10, color: 'var(--apinox-foreground)' }}>
                     API Explorer
                 </h1>
-                <p style={{ fontSize: 13, color: 'var(--vscode-descriptionForeground)', marginBottom: 30, lineHeight: 1.5 }}>
+                <p style={{ fontSize: 13, color: 'var(--apinox-descriptionForeground)', marginBottom: 30, lineHeight: 1.5 }}>
                     Enter a WSDL or OpenAPI URL to explore and test endpoints without saving to a project.
                 </p>
 
@@ -234,9 +234,9 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
                                 style={{
                                     width: '100%',
                                     padding: '10px 12px',
-                                    backgroundColor: 'var(--vscode-input-background)',
-                                    color: 'var(--vscode-input-foreground)',
-                                    border: '1px solid var(--vscode-input-border)',
+                                    backgroundColor: 'var(--apinox-input-background)',
+                                    color: 'var(--apinox-input-foreground)',
+                                    border: '1px solid var(--apinox-input-border)',
                                     borderRadius: 4,
                                     outline: 'none',
                                     fontSize: 13,
@@ -251,9 +251,9 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
                                 style={{
                                     padding: '0 20px',
                                     height: 38,
-                                    backgroundColor: 'var(--vscode-button-secondaryBackground)',
-                                    color: 'var(--vscode-button-secondaryForeground)',
-                                    border: '1px solid var(--vscode-button-border)',
+                                    backgroundColor: 'var(--apinox-button-secondaryBackground)',
+                                    color: 'var(--apinox-button-secondaryForeground)',
+                                    border: '1px solid var(--apinox-button-border)',
                                     borderRadius: 4,
                                     cursor: 'pointer',
                                     fontWeight: 500,
@@ -270,8 +270,8 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
                                 style={{
                                     padding: '0 20px',
                                     height: 38,
-                                    backgroundColor: 'var(--vscode-button-background)',
-                                    color: 'var(--vscode-button-foreground)',
+                                    backgroundColor: 'var(--apinox-button-background)',
+                                    color: 'var(--apinox-button-foreground)',
                                     border: 'none',
                                     borderRadius: 4,
                                     cursor: !wsdlUrl ? 'not-allowed' : 'pointer',
@@ -292,7 +292,7 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
                 <div style={{ marginBottom: 40 }}>
                     <div style={{
                         fontSize: 11, fontWeight: 600, textTransform: 'uppercase',
-                        color: 'var(--vscode-descriptionForeground)', marginBottom: 15,
+                        color: 'var(--apinox-descriptionForeground)', marginBottom: 15,
                         letterSpacing: 0.5
                     }}>
                         Sample APIs
@@ -305,15 +305,15 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
                             }}
                             style={{
                                 textAlign: 'left', padding: '12px',
-                                backgroundColor: 'var(--vscode-editor-background)',
-                                border: '1px solid var(--vscode-widget-border)',
+                                backgroundColor: 'var(--apinox-editor-background)',
+                                border: '1px solid var(--apinox-widget-border)',
                                 borderRadius: 6, cursor: 'pointer',
-                                color: 'var(--vscode-foreground)',
+                                color: 'var(--apinox-foreground)',
                                 display: 'flex', flexDirection: 'column', gap: 4
                             }}
                         >
                             <span style={{ fontWeight: 500 }}>Swagger Petstore</span>
-                            <span style={{ fontSize: 11, color: 'var(--vscode-descriptionForeground)' }}>OpenAPI 2.0 (JSON)</span>
+                            <span style={{ fontSize: 11, color: 'var(--apinox-descriptionForeground)' }}>OpenAPI 2.0 (JSON)</span>
                         </button>
 
                         <button
@@ -323,15 +323,15 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
                             }}
                             style={{
                                 textAlign: 'left', padding: '12px',
-                                backgroundColor: 'var(--vscode-editor-background)',
-                                border: '1px solid var(--vscode-widget-border)',
+                                backgroundColor: 'var(--apinox-editor-background)',
+                                border: '1px solid var(--apinox-widget-border)',
                                 borderRadius: 6, cursor: 'pointer',
-                                color: 'var(--vscode-foreground)',
+                                color: 'var(--apinox-foreground)',
                                 display: 'flex', flexDirection: 'column', gap: 4
                             }}
                         >
                             <span style={{ fontWeight: 500 }}>Country Info</span>
-                            <span style={{ fontSize: 11, color: 'var(--vscode-descriptionForeground)' }}>SOAP WSDL</span>
+                            <span style={{ fontSize: 11, color: 'var(--apinox-descriptionForeground)' }}>SOAP WSDL</span>
                         </button>
 
                         <button
@@ -341,15 +341,15 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
                             }}
                             style={{
                                 textAlign: 'left', padding: '12px',
-                                backgroundColor: 'var(--vscode-editor-background)',
-                                border: '1px solid var(--vscode-widget-border)',
+                                backgroundColor: 'var(--apinox-editor-background)',
+                                border: '1px solid var(--apinox-widget-border)',
                                 borderRadius: 6, cursor: 'pointer',
-                                color: 'var(--vscode-foreground)',
+                                color: 'var(--apinox-foreground)',
                                 display: 'flex', flexDirection: 'column', gap: 4
                             }}
                         >
                             <span style={{ fontWeight: 500 }}>Calculator</span>
-                            <span style={{ fontSize: 11, color: 'var(--vscode-descriptionForeground)' }}>SOAP WSDL</span>
+                            <span style={{ fontSize: 11, color: 'var(--apinox-descriptionForeground)' }}>SOAP WSDL</span>
                         </button>
 
                         <button
@@ -359,15 +359,15 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
                             }}
                             style={{
                                 textAlign: 'left', padding: '12px',
-                                backgroundColor: 'var(--vscode-editor-background)',
-                                border: '1px solid var(--vscode-widget-border)',
+                                backgroundColor: 'var(--apinox-editor-background)',
+                                border: '1px solid var(--apinox-widget-border)',
                                 borderRadius: 6, cursor: 'pointer',
-                                color: 'var(--vscode-foreground)',
+                                color: 'var(--apinox-foreground)',
                                 display: 'flex', flexDirection: 'column', gap: 4
                             }}
                         >
                             <span style={{ fontWeight: 500 }}>Petstore YAML</span>
-                            <span style={{ fontSize: 11, color: 'var(--vscode-descriptionForeground)' }}>OpenAPI 2.0 (YAML)</span>
+                            <span style={{ fontSize: 11, color: 'var(--apinox-descriptionForeground)' }}>OpenAPI 2.0 (YAML)</span>
                         </button>
                     </div>
                 </div>
@@ -376,7 +376,7 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
                 <button
                     onClick={handleImportFile}
                     style={{
-                        border: '2px dashed var(--vscode-widget-border)',
+                        border: '2px dashed var(--apinox-widget-border)',
                         borderRadius: 8,
                         padding: 40,
                         textAlign: 'center',
@@ -385,9 +385,9 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
                         transition: 'all 0.2s ease',
                         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
                         width: '100%',
-                        color: 'var(--vscode-foreground)'
+                        color: 'var(--apinox-foreground)'
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--vscode-list-hoverBackground)'}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--apinox-list-hoverBackground)'}
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
                     <input
@@ -397,11 +397,11 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
                         style={{ display: 'none' }}
                         accept=".wsdl,.xml,.json,.yaml,.yml"
                     />
-                    <Upload size={32} color="var(--vscode-descriptionForeground)" />
+                    <Upload size={32} color="var(--apinox-descriptionForeground)" />
                     <div style={{ fontWeight: 500 }}>
                         Import File
                     </div>
-                    <div style={{ fontSize: 12, color: 'var(--vscode-descriptionForeground)' }}>
+                    <div style={{ fontSize: 12, color: 'var(--apinox-descriptionForeground)' }}>
                         Support for WSDL, OpenAPI (JSON/YAML)
                     </div>
                 </button>

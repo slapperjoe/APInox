@@ -14,8 +14,8 @@ const WelcomeContainer = styled.div`
     padding: ${SPACING_XL};
     flex: 1;
     overflow: auto;
-    color: var(--vscode-editor-foreground);
-    font-family: var(--vscode-font-family);
+    color: var(--apinox-editor-foreground);
+    font-family: var(--apinox-font-family);
     position: relative;
     z-index: 1;
 `;

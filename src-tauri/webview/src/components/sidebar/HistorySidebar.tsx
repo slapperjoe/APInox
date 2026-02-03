@@ -39,14 +39,14 @@ const HistoryList = styled.div`
 `;
 
 const SearchBar = styled.input`
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     padding: ${SPACING_SM};
     border-radius: 4px;
     margin-bottom: ${SPACING_MD};
     &:focus {
-        outline: 1px solid var(--vscode-focusBorder);
+        outline: 1px solid var(--apinox-focusBorder);
     }
 `;
 
@@ -56,19 +56,19 @@ const HistoryItem = styled.div<{ $success?: boolean }>`
     gap: ${SPACING_SM};
     padding: ${SPACING_SM};
     margin-bottom: ${SPACING_XS};
-    background: var(--vscode-list-inactiveSelectionBackground);
+    background: var(--apinox-list-inactiveSelectionBackground);
     border-radius: 4px;
     cursor: pointer;
     border-left: 3px solid ${props =>
         props.$success === false
-            ? 'var(--vscode-testing-iconFailed)'
+            ? 'var(--apinox-testing-iconFailed)'
             : props.$success === true
-                ? 'var(--vscode-testing-iconPassed)'
-                : 'var(--vscode-input-border)'
+                ? 'var(--apinox-testing-iconPassed)'
+                : 'var(--apinox-input-border)'
     };
 
     &:hover {
-        background: var(--vscode-list-hoverBackground);
+        background: var(--apinox-list-hoverBackground);
     }
 `;
 
@@ -207,7 +207,7 @@ export default function HistorySidebar({
                 title={entry.starred ? 'Remove from favorites' : 'Add to favorites'}
                 style={{ 
                     opacity: entry.starred ? 1 : 0.6,
-                    color: entry.starred ? 'var(--vscode-editorWarning-foreground)' : undefined
+                    color: entry.starred ? 'var(--apinox-editorWarning-foreground)' : undefined
                 }}
             >
                 <Star size={14} fill={entry.starred ? 'currentColor' : 'none'} />

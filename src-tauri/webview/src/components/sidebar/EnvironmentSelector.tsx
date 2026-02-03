@@ -7,26 +7,26 @@ interface EnvironmentSelectorProps {
 }
 
 const envColors = [
-    'var(--vscode-charts-blue)',
-    'var(--vscode-charts-green)',
-    'var(--vscode-charts-red)',
-    'var(--vscode-charts-yellow)',
-    'var(--vscode-charts-orange)',
-    'var(--vscode-charts-purple)',
-    'var(--vscode-charts-foreground)',
-    'var(--vscode-textLink-foreground)',
-    'var(--vscode-terminal-ansiCyan)',
-    'var(--vscode-terminal-ansiMagenta)',
-    'var(--vscode-terminal-ansiYellow)',
-    'var(--vscode-terminal-ansiGreen)'
+    'var(--apinox-charts-blue)',
+    'var(--apinox-charts-green)',
+    'var(--apinox-charts-red)',
+    'var(--apinox-charts-yellow)',
+    'var(--apinox-charts-orange)',
+    'var(--apinox-charts-purple)',
+    'var(--apinox-charts-foreground)',
+    'var(--apinox-textLink-foreground)',
+    'var(--apinox-terminal-ansiCyan)',
+    'var(--apinox-terminal-ansiMagenta)',
+    'var(--apinox-terminal-ansiYellow)',
+    'var(--apinox-terminal-ansiGreen)'
 ];
 
 const getEnvColor = (env: string, environments?: Record<string, any>) => {
-    if (!environments) return 'var(--vscode-charts-green)';
+    if (!environments) return 'var(--apinox-charts-green)';
     const envData = environments[env];
     if (envData?.color) return envData.color;
     const index = Object.keys(environments).indexOf(env);
-    return index >= 0 ? envColors[index % envColors.length] : 'var(--vscode-charts-green)';
+    return index >= 0 ? envColors[index % envColors.length] : 'var(--apinox-charts-green)';
 };
 
 export const EnvironmentSelector: React.FC<EnvironmentSelectorProps> = ({
@@ -69,7 +69,7 @@ export const EnvironmentSelector: React.FC<EnvironmentSelectorProps> = ({
                 </div>
                 <div style={{
                     fontSize: 7,
-                    color: 'var(--vscode-activityBar-inactiveForeground)',
+                    color: 'var(--apinox-activityBar-inactiveForeground)',
                     marginTop: 2
                 }}>
                     ENV
@@ -89,10 +89,10 @@ export const EnvironmentSelector: React.FC<EnvironmentSelectorProps> = ({
                         left: 50,
                         bottom: 0,
                         width: 200,
-                        backgroundColor: 'var(--vscode-menu-background)',
-                        border: '1px solid var(--vscode-menu-border)',
+                        backgroundColor: 'var(--apinox-menu-background)',
+                        border: '1px solid var(--apinox-menu-border)',
                         borderRadius: 4,
-                        boxShadow: '0 2px 8px var(--vscode-widget-shadow)',
+                        boxShadow: '0 2px 8px var(--apinox-widget-shadow)',
                         zIndex: 1000,
                         display: 'flex',
                         flexDirection: 'column',
@@ -102,9 +102,9 @@ export const EnvironmentSelector: React.FC<EnvironmentSelectorProps> = ({
                             padding: '4px 8px',
                             fontSize: 10,
                             fontWeight: 'bold',
-                            borderBottom: '1px solid var(--vscode-menu-separatorBackground)',
+                            borderBottom: '1px solid var(--apinox-menu-separatorBackground)',
                             marginBottom: 4,
-                            color: 'var(--vscode-menu-foreground)',
+                            color: 'var(--apinox-menu-foreground)',
                             textTransform: 'uppercase'
                         }}>
                             Switch Environment
@@ -129,19 +129,19 @@ export const EnvironmentSelector: React.FC<EnvironmentSelectorProps> = ({
                                         alignItems: 'center',
                                         gap: 8,
                                         borderRadius: 3,
-                                        backgroundColor: activeEnvironment === env ? 'var(--vscode-menu-selectionBackground)' : 'transparent',
-                                        color: activeEnvironment === env ? 'var(--vscode-menu-selectionForeground)' : 'var(--vscode-menu-foreground)'
+                                        backgroundColor: activeEnvironment === env ? 'var(--apinox-menu-selectionBackground)' : 'transparent',
+                                        color: activeEnvironment === env ? 'var(--apinox-menu-selectionForeground)' : 'var(--apinox-menu-foreground)'
                                     }}
                                     onMouseEnter={(e) => {
                                         if (activeEnvironment !== env) {
-                                            e.currentTarget.style.backgroundColor = 'var(--vscode-menu-selectionBackground)';
-                                            e.currentTarget.style.color = 'var(--vscode-menu-selectionForeground)';
+                                            e.currentTarget.style.backgroundColor = 'var(--apinox-menu-selectionBackground)';
+                                            e.currentTarget.style.color = 'var(--apinox-menu-selectionForeground)';
                                         }
                                     }}
                                     onMouseLeave={(e) => {
                                         if (activeEnvironment !== env) {
                                             e.currentTarget.style.backgroundColor = 'transparent';
-                                            e.currentTarget.style.color = 'var(--vscode-menu-foreground)';
+                                            e.currentTarget.style.color = 'var(--apinox-menu-foreground)';
                                         }
                                     }}
                                 >

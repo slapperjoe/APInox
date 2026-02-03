@@ -82,8 +82,8 @@ export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoR
         }
     }));
 
-    // Use shared hook for decorations
-    useWildcardDecorations(editorRef.current, monacoRef.current, value);
+    // Use shared hook for decorations (pass chain variables for validation)
+    useWildcardDecorations(editorRef.current, monacoRef.current, value, availableVariables);
 
     // Sync value manual implementation to prevent cursor jumps
     useEffect(() => {
@@ -137,14 +137,14 @@ export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoR
             inherit: true,
             rules: [],
             colors: {
-                'editor.background': getVar('--vscode-editor-background', isLight ? '#ffffff' : '#1e1e1e'),
-                'editor.foreground': getVar('--vscode-editor-foreground', isLight ? '#000000' : '#d4d4d4'),
-                'editor.selectionBackground': getVar('--vscode-editor-selectionBackground', isLight ? '#add6ff' : '#264f78'),
-                'editor.lineHighlightBackground': getVar('--vscode-editor-lineHighlightBackground', 'transparent'),
-                'editorCursor.foreground': getVar('--vscode-editorCursor-foreground', isLight ? '#000000' : '#ffffff'),
-                'editorLineNumber.foreground': getVar('--vscode-editorLineNumber-foreground', isLight ? '#999999' : '#858585'),
-                'editorLineNumber.activeForeground': getVar('--vscode-editorLineNumber-activeForeground', isLight ? '#000000' : '#c6c6c6'),
-                'editorWhitespace.foreground': getVar('--vscode-editorWhitespace-foreground', isLight ? '#d3d3d3' : '#404040')
+                'editor.background': getVar('--apinox-editor-background', isLight ? '#ffffff' : '#1e1e1e'),
+                'editor.foreground': getVar('--apinox-editor-foreground', isLight ? '#000000' : '#d4d4d4'),
+                'editor.selectionBackground': getVar('--apinox-editor-selectionBackground', isLight ? '#add6ff' : '#264f78'),
+                'editor.lineHighlightBackground': getVar('--apinox-editor-lineHighlightBackground', 'transparent'),
+                'editorCursor.foreground': getVar('--apinox-editorCursor-foreground', isLight ? '#000000' : '#ffffff'),
+                'editorLineNumber.foreground': getVar('--apinox-editorLineNumber-foreground', isLight ? '#999999' : '#858585'),
+                'editorLineNumber.activeForeground': getVar('--apinox-editorLineNumber-activeForeground', isLight ? '#000000' : '#c6c6c6'),
+                'editorWhitespace.foreground': getVar('--apinox-editorWhitespace-foreground', isLight ? '#d3d3d3' : '#404040')
             }
         });
 
@@ -209,7 +209,7 @@ export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoR
         });
 
         // --- Variable Autocomplete ---
-        // Register completion provider for ${...} variables
+        // Register completion provider for ${...} variables (chain variables)
         if (availableVariables.length > 0) {
             monaco.languages.registerCompletionItemProvider(language, {
                 triggerCharacters: ['$', '{'],
@@ -248,6 +248,68 @@ export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoR
                 }
             });
         }
+
+        // Register completion provider for {{...}} variables (env/global/functions)
+        monaco.languages.registerCompletionItemProvider(language, {
+            triggerCharacters: ['{'],
+            provideCompletionItems: (model, position) => {
+                const textUntilPosition = model.getValueInRange({
+                    startLineNumber: position.lineNumber,
+                    startColumn: 1,
+                    endLineNumber: position.lineNumber,
+                    endColumn: position.column
+                });
+
+                // Check if we're typing {{...}}
+                const match = textUntilPosition.match(/\{\{([^}]*)$/);
+                if (!match) {
+                    return { suggestions: [] };
+                }
+
+                const word = model.getWordUntilPosition(position);
+                const range = {
+                    startLineNumber: position.lineNumber,
+                    endLineNumber: position.lineNumber,
+                    startColumn: word.startColumn,
+                    endColumn: word.endColumn
+                };
+
+                const suggestions: any[] = [];
+
+                // Add function suggestions
+                const functions = [
+                    { name: 'uuid', detail: 'Generate a new UUID', doc: 'Generates a random UUID v4 identifier' },
+                    { name: 'newguid', detail: 'Generate a new GUID', doc: 'Alias for uuid - generates a random UUID' },
+                    { name: 'now', detail: 'Current timestamp (ISO)', doc: 'Returns the current date/time in ISO 8601 format' },
+                    { name: 'epoch', detail: 'Current Unix timestamp', doc: 'Returns the current Unix timestamp in seconds' },
+                    { name: 'randomInt(1,100)', detail: 'Random integer', doc: 'Generate a random integer between min and max (inclusive)\nExample: {{randomInt(1,100)}}' },
+                    { name: 'lorem(5)', detail: 'Lorem ipsum text', doc: 'Generate lorem ipsum placeholder text\nExample: {{lorem(10)}} generates 10 words' },
+                    { name: 'name', detail: 'Random name', doc: 'Generates a random full name' },
+                    { name: 'country', detail: 'Random country', doc: 'Generates a random country name' },
+                    { name: 'state', detail: 'Random US state', doc: 'Generates a random US state name' },
+                    { name: 'now+1d', detail: 'Date math (future)', doc: 'Add time to current date\nExamples: {{now+1d}} (1 day), {{now+2m}} (2 months), {{now+3y}} (3 years)' },
+                    { name: 'now-1d', detail: 'Date math (past)', doc: 'Subtract time from current date\nExamples: {{now-1d}} (1 day ago), {{now-2m}} (2 months ago)' },
+                    { name: 'env', detail: 'Environment endpoint URL', doc: 'Shortcut for the current environment\'s endpoint URL' },
+                    { name: 'url', detail: 'Environment endpoint URL', doc: 'Shortcut for the current environment\'s endpoint URL (alias for env)' }
+                ];
+
+                functions.forEach(fn => {
+                    suggestions.push({
+                        label: fn.name,
+                        kind: monaco.languages.CompletionItemKind.Function,
+                        detail: fn.detail,
+                        documentation: fn.doc,
+                        insertText: fn.name,
+                        range: range
+                    });
+                });
+
+                // TODO: Add environment and global variables when available
+                // This would require passing them as props similar to availableVariables
+
+                return { suggestions };
+            }
+        });
 
         // Copy (Ctrl+C)
         const doCopy = (ed: any) => {

@@ -18,10 +18,10 @@ const Content = styled.div`
 const LeftPanel = styled.div`
     width: 40%;
     min-width: 300px;
-    border-right: 1px solid var(--vscode-panel-border);
+    border-right: 1px solid var(--apinox-panel-border);
     display: flex;
     flex-direction: column;
-    background: var(--vscode-sideBar-background);
+    background: var(--apinox-sideBar-background);
 `;
 
 const RightPanel = styled.div`
@@ -35,8 +35,8 @@ const SectionTitle = styled.div`
     font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
-    color: var(--vscode-descriptionForeground);
-    background: var(--vscode-panel-border);
+    color: var(--apinox-descriptionForeground);
+    background: var(--apinox-panel-border);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -46,7 +46,7 @@ const Section = styled.div<{ $flex?: number }>`
     flex: ${props => props.$flex || 'none'};
     display: flex;
     flex-direction: column;
-    border-bottom: 1px solid var(--vscode-panel-border);
+    border-bottom: 1px solid var(--apinox-panel-border);
     &:last-child { border-bottom: none; }
 `;
 
@@ -59,9 +59,9 @@ const InputRow = styled.div`
     
     label { min-width: 80px; }
     input {
-        background: var(--vscode-input-background);
-        color: var(--vscode-input-foreground);
-        border: 1px solid var(--vscode-input-border);
+        background: var(--apinox-input-background);
+        color: var(--apinox-input-foreground);
+        border: 1px solid var(--apinox-input-border);
         padding: 4px;
         flex: 1;
     }
@@ -75,8 +75,8 @@ const Footer = styled.div`
 `;
 
 const RunButton = styled.button`
-    background: var(--vscode-button-background);
-    color: var(--vscode-button-foreground);
+    background: var(--apinox-button-background);
+    color: var(--apinox-button-foreground);
     border: none;
     padding: 8px 16px;
     border-radius: 2px;
@@ -86,14 +86,14 @@ const RunButton = styled.button`
     align-items: center;
     gap: 8px;
 
-    &:hover { background: var(--vscode-button-hoverBackground); }
+    &:hover { background: var(--apinox-button-hoverBackground); }
     &:disabled { opacity: 0.5; cursor: not-allowed; }
 `;
 
 const ApplyButton = styled.button`
-    background: var(--vscode-button-secondaryBackground, var(--vscode-button-background));
-    color: var(--vscode-button-secondaryForeground, var(--vscode-button-foreground));
-    border: 1px solid var(--vscode-button-border, transparent);
+    background: var(--apinox-button-secondaryBackground, var(--apinox-button-background));
+    color: var(--apinox-button-secondaryForeground, var(--apinox-button-foreground));
+    border: 1px solid var(--apinox-button-border, transparent);
     padding: 8px 16px;
     border-radius: 2px;
     cursor: pointer;
@@ -103,15 +103,15 @@ const ApplyButton = styled.button`
     gap: 8px;
 
     &:hover { 
-        background: var(--vscode-button-secondaryHoverBackground, var(--vscode-button-hoverBackground)); 
+        background: var(--apinox-button-secondaryHoverBackground, var(--apinox-button-hoverBackground)); 
     }
     &:disabled { opacity: 0.5; cursor: not-allowed; }
 `;
 
 const OutputConsole = styled.div`
     flex: 1;
-    background: var(--vscode-terminal-background, #1e1e1e);
-    color: var(--vscode-terminal-foreground, #cccccc);
+    background: var(--apinox-terminal-background, #1e1e1e);
+    color: var(--apinox-terminal-foreground, #cccccc);
     padding: 10px;
     font-family: monospace;
     font-size: 12px;
@@ -123,22 +123,22 @@ const SectionToolbar = styled.div`
     display: flex;
     justify-content: flex-end;
     padding: 2px 5px;
-    background: var(--vscode-editor-background);
-    border-bottom: 1px solid var(--vscode-panel-border);
+    background: var(--apinox-editor-background);
+    border-bottom: 1px solid var(--apinox-panel-border);
     gap: 5px;
 `;
 
 const MiniButton = styled.button`
     background: transparent;
-    border: 1px solid var(--vscode-panel-border);
-    color: var(--vscode-descriptionForeground);
+    border: 1px solid var(--apinox-panel-border);
+    color: var(--apinox-descriptionForeground);
     font-size: 10px;
     padding: 2px 6px;
     border-radius: 2px;
     cursor: pointer;
     &:hover {
-        background: var(--vscode-list-hoverBackground);
-        color: var(--vscode-foreground);
+        background: var(--apinox-list-hoverBackground);
+        color: var(--apinox-foreground);
     }
 `;
 
@@ -149,17 +149,17 @@ const HelpOverlay = styled.div`
     transform: translate(-50%, -50%);
     width: 600px;
     max-width: 90%;
-    background: var(--vscode-editor-background);
-    border: 1px solid var(--vscode-focusBorder);
+    background: var(--apinox-editor-background);
+    border: 1px solid var(--apinox-focusBorder);
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
     z-index: 1001;
     padding: ${SPACING_LG};
     border-radius: 4px;
 
-    h3 { margin-top: 0; border-bottom: 1px solid var(--vscode-panel-border); padding-bottom: ${SPACING_SM}; }
+    h3 { margin-top: 0; border-bottom: 1px solid var(--apinox-panel-border); padding-bottom: ${SPACING_SM}; }
     ul { padding-left: ${SPACING_LG}; }
     li { margin-bottom: ${SPACING_XS}; }
-    code { background: var(--vscode-textCodeBlock-background); padding: 2px 4px; border-radius: 3px; font-family: monospace; }
+    code { background: var(--apinox-textCodeBlock-background); padding: 2px 4px; border-radius: 3px; font-family: monospace; }
 `;
 
 interface ScriptPlaygroundModalProps {
@@ -348,13 +348,13 @@ export const ScriptPlaygroundModal: React.FC<ScriptPlaygroundModalProps> = ({ on
                         background: 'transparent',
                         border: 'none',
                         cursor: 'pointer',
-                        color: 'var(--vscode-icon-foreground)',
+                        color: 'var(--apinox-icon-foreground)',
                         display: 'flex',
                         alignItems: 'center',
                         padding: 4,
                         borderRadius: 4
                     }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'var(--vscode-toolbar-hoverBackground)'}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--apinox-toolbar-hoverBackground)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
                     <HelpCircle size={18} />
@@ -391,7 +391,7 @@ export const ScriptPlaygroundModal: React.FC<ScriptPlaygroundModalProps> = ({ on
                                         background: 'transparent',
                                         border: 'none',
                                         cursor: 'pointer',
-                                        color: 'var(--vscode-icon-foreground)',
+                                        color: 'var(--apinox-icon-foreground)',
                                         padding: 4,
                                         borderRadius: 4,
                                         fontSize: 20,
@@ -422,7 +422,7 @@ export const ScriptPlaygroundModal: React.FC<ScriptPlaygroundModalProps> = ({ on
                         <SectionTitle>Context Inputs</SectionTitle>
 
                         <Section $flex={1} style={{ minHeight: '200px' }}>
-                            <div style={{ padding: '5px', fontSize: '11px', color: 'var(--vscode-descriptionForeground)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ padding: '5px', fontSize: '11px', color: 'var(--apinox-descriptionForeground)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <span>Response Body (accessible as <code>response</code>)</span>
                             </div>
                             <SectionToolbar>
@@ -447,7 +447,7 @@ export const ScriptPlaygroundModal: React.FC<ScriptPlaygroundModalProps> = ({ on
                                 onChange={(e) => setStatusCode(Number(e.target.value))}
                             />
                             <select
-                                style={{ background: 'var(--vscode-dropdown-background)', color: 'var(--vscode-dropdown-foreground)', border: '1px solid var(--vscode-dropdown-border)' }}
+                                style={{ background: 'var(--apinox-dropdown-background)', color: 'var(--apinox-dropdown-foreground)', border: '1px solid var(--apinox-dropdown-border)' }}
                                 onChange={(e) => setStatusCode(Number(e.target.value))}
                                 value={statusCode}
                             >
@@ -462,7 +462,7 @@ export const ScriptPlaygroundModal: React.FC<ScriptPlaygroundModalProps> = ({ on
                         </InputRow>
 
                         <Section $flex={1}>
-                            <div style={{ padding: '5px', fontSize: '11px', color: 'var(--vscode-descriptionForeground)' }}>Context Variables (JSON - accessible as <code>context</code>)</div>
+                            <div style={{ padding: '5px', fontSize: '11px', color: 'var(--apinox-descriptionForeground)' }}>Context Variables (JSON - accessible as <code>context</code>)</div>
                             <SectionToolbar>
                                 <MiniButton onClick={() => setVariables('{\n  "env": "dev",\n  "userId": 101,\n  "token": "abc-123"\n}')}>Default</MiniButton>
                                 <MiniButton onClick={() => setVariables('{}')}>Clear</MiniButton>

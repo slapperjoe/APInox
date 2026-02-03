@@ -30,21 +30,21 @@ const Label = styled.label`
 
 const Input = styled.input`
     padding: ${SPACING_SM} ${SPACING_SM};
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     border-radius: 4px;
     font-size: 13px;
     
     &:focus {
-        border-color: var(--vscode-focusBorder);
+        border-color: var(--apinox-focusBorder);
         outline: none;
     }
 `;
 
 const PreviewBox = styled.div`
-    background: var(--vscode-textBlockQuote-background);
-    border: 1px solid var(--vscode-widget-border);
+    background: var(--apinox-textBlockQuote-background);
+    border: 1px solid var(--apinox-widget-border);
     border-radius: 4px;
     padding: ${SPACING_MD};
     font-family: monospace;
@@ -61,11 +61,11 @@ const StatusMessage = styled.div<{ $success?: boolean }>`
     gap: ${SPACING_SM};
     padding: ${SPACING_SM} ${SPACING_MD};
     background: ${props => props.$success
-        ? 'var(--vscode-inputValidation-infoBackground)'
-        : 'var(--vscode-inputValidation-errorBackground)'};
+        ? 'var(--apinox-inputValidation-infoBackground)'
+        : 'var(--apinox-inputValidation-errorBackground)'};
     color: ${props => props.$success
-        ? 'var(--vscode-inputValidation-infoForeground)'
-        : 'var(--vscode-inputValidation-errorForeground)'};
+        ? 'var(--apinox-inputValidation-infoForeground)'
+        : 'var(--apinox-inputValidation-errorForeground)'};
     border-radius: 4px;
     font-size: 12px;
 `;
@@ -80,11 +80,11 @@ const Spinner = styled(Loader2)`
 `;
 
 const SecondaryButton = styled(Button)`
-    background: var(--vscode-button-secondaryBackground);
-    color: var(--vscode-button-secondaryForeground);
+    background: var(--apinox-button-secondaryBackground);
+    color: var(--apinox-button-secondaryForeground);
     
     &:hover {
-        background: var(--vscode-button-secondaryHoverBackground);
+        background: var(--apinox-button-secondaryHoverBackground);
     }
 `;
 

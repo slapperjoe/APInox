@@ -24,7 +24,7 @@ const LeftPanel = styled.div`
     flex-direction: column;
     gap: ${SPACING_MD};
     padding: ${SPACING_MD};
-    border-right: 1px solid var(--vscode-panel-border);
+    border-right: 1px solid var(--apinox-panel-border);
     overflow-y: auto;
 `;
 
@@ -40,11 +40,11 @@ const Header = styled.div`
     align-items: center;
     gap: ${SPACING_SM};
     padding-bottom: ${SPACING_SM};
-    border-bottom: 1px solid var(--vscode-panel-border);
+    border-bottom: 1px solid var(--apinox-panel-border);
 `;
 
 const IconContainer = styled.div`
-    color: var(--vscode-charts-blue);
+    color: var(--apinox-charts-blue);
 `;
 
 const Title = styled.h2`
@@ -67,40 +67,40 @@ const Label = styled.label`
 `;
 
 const Input = styled.input`
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     padding: 6px 8px;
     border-radius: 4px;
     font-size: 13px;
-    font-family: var(--vscode-font-family);
+    font-family: var(--apinox-font-family);
     width: 100%;
     
     &:focus {
-        outline: 1px solid var(--vscode-focusBorder);
+        outline: 1px solid var(--apinox-focusBorder);
     }
 `;
 
 const Select = styled.select`
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     padding: 6px 8px;
     border-radius: 4px;
     font-size: 13px;
-    font-family: var(--vscode-font-family);
+    font-family: var(--apinox-font-family);
     width: 100%;
     cursor: pointer;
     
     &:focus {
-        outline: 1px solid var(--vscode-focusBorder);
+        outline: 1px solid var(--apinox-focusBorder);
     }
 `;
 
 const InfoBox = styled.div`
     padding: ${SPACING_SM};
-    background: var(--vscode-textCodeBlock-background);
-    border: 1px solid var(--vscode-panel-border);
+    background: var(--apinox-textCodeBlock-background);
+    border: 1px solid var(--apinox-panel-border);
     border-radius: 4px;
     font-size: 11px;
     opacity: 0.8;
@@ -110,7 +110,7 @@ const InfoBox = styled.div`
 const StepsList = styled.div`
     display: flex;
     flex-direction: column;
-    border: 1px solid var(--vscode-panel-border);
+    border: 1px solid var(--apinox-panel-border);
     border-radius: 4px;
     max-height: 300px;
     overflow-y: auto;
@@ -121,12 +121,12 @@ const StepItem = styled.div<{ $isSelected?: boolean }>`
     align-items: center;
     gap: ${SPACING_SM};
     padding: ${SPACING_SM};
-    border-bottom: 1px solid var(--vscode-panel-border);
+    border-bottom: 1px solid var(--apinox-panel-border);
     cursor: pointer;
-    background: ${props => props.$isSelected ? 'var(--vscode-list-activeSelectionBackground)' : 'transparent'};
+    background: ${props => props.$isSelected ? 'var(--apinox-list-activeSelectionBackground)' : 'transparent'};
 
     &:hover {
-        background: ${props => props.$isSelected ? 'var(--vscode-list-activeSelectionBackground)' : 'var(--vscode-list-hoverBackground)'};
+        background: ${props => props.$isSelected ? 'var(--apinox-list-activeSelectionBackground)' : 'var(--apinox-list-hoverBackground)'};
     }
 
     &:last-child {
@@ -181,16 +181,16 @@ const DropdownButton = styled.button`
     align-items: center;
     gap: 6px;
     padding: 8px 12px;
-    background: var(--vscode-button-secondaryBackground);
-    color: var(--vscode-button-secondaryForeground);
-    border: 1px dashed var(--vscode-panel-border);
+    background: var(--apinox-button-secondaryBackground);
+    color: var(--apinox-button-secondaryForeground);
+    border: 1px dashed var(--apinox-panel-border);
     cursor: pointer;
     font-size: 13px;
     width: 100%;
     justify-content: center;
 
     &:hover {
-        background: var(--vscode-button-secondaryHoverBackground);
+        background: var(--apinox-button-secondaryHoverBackground);
     }
 `;
 
@@ -199,8 +199,8 @@ const DropdownMenu = styled.div`
     top: 100%;
     left: 0;
     right: 0;
-    background: var(--vscode-dropdown-background);
-    border: 1px solid var(--vscode-dropdown-border);
+    background: var(--apinox-dropdown-background);
+    border: 1px solid var(--apinox-dropdown-border);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     z-index: 1000;
     margin-top: 2px;
@@ -213,10 +213,10 @@ const DropdownItem = styled.div`
     display: flex;
     align-items: center;
     gap: 8px;
-    color: var(--vscode-dropdown-foreground);
+    color: var(--apinox-dropdown-foreground);
 
     &:hover {
-        background: var(--vscode-list-hoverBackground);
+        background: var(--apinox-list-hoverBackground);
     }
 `;
 

@@ -8,7 +8,7 @@ const Container = styled.div`
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
     padding: var(--space-xl);
     text-align: center;
     height: 100%;
@@ -18,7 +18,7 @@ const Container = styled.div`
 const IconWrapper = styled.div`
     margin-bottom: var(--space-lg);
     opacity: 0.5;
-    color: var(--vscode-foreground);
+    color: var(--apinox-foreground);
     
     svg {
         width: 48px;
@@ -28,7 +28,7 @@ const IconWrapper = styled.div`
 
 const Title = styled.h2`
     margin: 0 0 var(--space-sm) 0;
-    color: var(--vscode-foreground);
+    color: var(--apinox-foreground);
     font-weight: 600;
     font-size: 1.1em;
 `;

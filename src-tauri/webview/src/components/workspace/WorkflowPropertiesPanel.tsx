@@ -15,12 +15,12 @@ const Header = styled.div`
     align-items: center;
     gap: ${SPACING_SM};
     padding-bottom: ${SPACING_MD};
-    border-bottom: 1px solid var(--vscode-panel-border);
+    border-bottom: 1px solid var(--apinox-panel-border);
     margin-bottom: ${SPACING_MD};
 `;
 
 const IconContainer = styled.div`
-    color: var(--vscode-charts-blue);
+    color: var(--apinox-charts-blue);
     display: flex;
     align-items: center;
 `;
@@ -46,41 +46,41 @@ const Label = styled.label`
 `;
 
 const Input = styled.input`
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     padding: 8px 10px;
     border-radius: 4px;
     font-size: 13px;
-    font-family: var(--vscode-font-family);
+    font-family: var(--apinox-font-family);
     width: 100%;
     
     &:focus {
-        outline: 1px solid var(--vscode-focusBorder);
+        outline: 1px solid var(--apinox-focusBorder);
     }
 `;
 
 const TextArea = styled.textarea`
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     padding: 8px 10px;
     border-radius: 4px;
     font-size: 13px;
-    font-family: var(--vscode-font-family);
+    font-family: var(--apinox-font-family);
     width: 100%;
     min-height: 100px;
     resize: vertical;
     
     &:focus {
-        outline: 1px solid var(--vscode-focusBorder);
+        outline: 1px solid var(--apinox-focusBorder);
     }
 `;
 
 const InfoBox = styled.div`
     padding: ${SPACING_SM};
-    background: var(--vscode-textCodeBlock-background);
-    border: 1px solid var(--vscode-panel-border);
+    background: var(--apinox-textCodeBlock-background);
+    border: 1px solid var(--apinox-panel-border);
     border-radius: 4px;
     font-size: 12px;
     opacity: 0.8;
@@ -95,8 +95,8 @@ const StatsGrid = styled.div`
 
 const StatBox = styled.div`
     padding: ${SPACING_SM};
-    background: var(--vscode-sideBar-background);
-    border: 1px solid var(--vscode-panel-border);
+    background: var(--apinox-sideBar-background);
+    border: 1px solid var(--apinox-panel-border);
     border-radius: 4px;
 `;
 

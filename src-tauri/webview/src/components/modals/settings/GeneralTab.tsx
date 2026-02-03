@@ -116,7 +116,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange }) => {
                     </FormGroup>
                     <FormGroup>
                         <Label>Auto-Fold XML Elements</Label>
-                        <div style={{ fontSize: '0.85em', color: 'var(--vscode-descriptionForeground)', marginBottom: 8 }}>
+                        <div style={{ fontSize: '0.85em', color: 'var(--apinox-descriptionForeground)', marginBottom: 8 }}>
                             Enter element names to automatically collapse in editors (e.g., Security, Header)
                         </div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
@@ -128,8 +128,8 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange }) => {
                                         alignItems: 'center',
                                         gap: 4,
                                         padding: '4px 8px',
-                                        background: 'var(--vscode-badge-background)',
-                                        color: 'var(--vscode-badge-foreground)',
+                                        background: 'var(--apinox-badge-background)',
+                                        color: 'var(--apinox-badge-foreground)',
                                         borderRadius: 3,
                                         fontSize: '0.9em'
                                     }}
@@ -206,7 +206,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange }) => {
                             title="Retry logic not yet implemented"
                             style={{ opacity: 0.6, cursor: 'not-allowed' }}
                         />
-                        <div style={{ fontSize: '0.75em', color: 'var(--vscode-descriptionForeground)', marginTop: 4 }}>
+                        <div style={{ fontSize: '0.75em', color: 'var(--apinox-descriptionForeground)', marginTop: 4 }}>
                             ⚠️ Not implemented yet - requests will not be retried on failure
                         </div>
                     </FormGroup>

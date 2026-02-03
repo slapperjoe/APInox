@@ -66,8 +66,8 @@ export const DelayTitle = styled.span`
 
 export const DelayContent = styled.div`
     padding: 20px;
-    color: var(--vscode-editor-foreground);
-    font-family: var(--vscode-font-family);
+    color: var(--apinox-editor-foreground);
+    font-family: var(--apinox-font-family);
 `;
 
 export const DelayField = styled.div`
@@ -80,9 +80,9 @@ export const DelayLabel = styled.label`
 `;
 
 export const DelayInput = styled.input`
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     padding: 5px;
     font-size: 1em;
     width: 100px;
@@ -121,8 +121,8 @@ export const VariablesDropdown = styled.div`
     top: 100%;
     right: 0;
     margin-top: 5px;
-    background: var(--vscode-editor-background);
-    border: 1px solid var(--vscode-dropdown-border);
+    background: var(--apinox-editor-background);
+    border: 1px solid var(--apinox-dropdown-border);
     border-radius: 3px;
     z-index: 100;
     box-shadow: 0 4px 10px rgba(0,0,0,0.5);
@@ -133,7 +133,7 @@ export const VariablesDropdown = styled.div`
 
 export const VariablesDropdownHeader = styled.div`
     padding: 8px;
-    border-bottom: 1px solid var(--vscode-dropdown-border);
+    border-bottom: 1px solid var(--apinox-dropdown-border);
     font-weight: bold;
     font-size: 0.9em;
 `;
@@ -147,19 +147,19 @@ export const VariablesDropdownEmpty = styled.div`
 export const VariablesDropdownItem = styled.div`
     padding: 6px 10px;
     cursor: pointer;
-    border-bottom: 1px solid var(--vscode-panel-border);
+    border-bottom: 1px solid var(--apinox-panel-border);
     display: flex;
     flex-direction: column;
     gap: 2px;
 
     &:hover {
-        background: var(--vscode-list-hoverBackground);
+        background: var(--apinox-list-hoverBackground);
     }
 `;
 
 export const VariablesDropdownName = styled.div`
     font-weight: bold;
-    color: var(--vscode-textLink-foreground);
+    color: var(--apinox-textLink-foreground);
 `;
 
 export const VariablesDropdownSource = styled.div`
@@ -185,24 +185,24 @@ export const RequestPane = styled.div<{ $hasResponse: boolean; $splitRatio: numb
 
 export const BreadcrumbBar = styled.div`
     padding: 10px 15px;
-    background-color: var(--vscode-editor-background);
-    border-bottom: 1px solid var(--vscode-panel-border);
+    background-color: var(--apinox-editor-background);
+    border-bottom: 1px solid var(--apinox-panel-border);
     display: flex;
     align-items: center;
     gap: 5px;
     font-size: 0.9em;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
 `;
 
 export const BreadcrumbActive = styled.span`
     font-weight: bold;
-    color: var(--vscode-foreground);
+    color: var(--apinox-foreground);
 `;
 
 export const TabsHeader = styled.div`
     padding: 0 10px;
-    background-color: var(--vscode-editor-background);
-    border-bottom: 1px solid var(--vscode-panel-border);
+    background-color: var(--apinox-editor-background);
+    border-bottom: 1px solid var(--apinox-panel-border);
     display: flex;
     align-items: center;
     gap: 20px;
@@ -212,9 +212,9 @@ export const TabsHeader = styled.div`
 
 export const TabButton = styled.div<{ $active: boolean }>`
     cursor: pointer;
-    border-bottom: ${props => props.$active ? '2px solid var(--vscode-textLink-foreground)' : '2px solid transparent'};
+    border-bottom: ${props => props.$active ? '2px solid var(--apinox-textLink-foreground)' : '2px solid transparent'};
     padding: 5px 0;
-    color: ${props => props.$active ? 'var(--vscode-foreground)' : 'var(--vscode-descriptionForeground)'};
+    color: ${props => props.$active ? 'var(--apinox-foreground)' : 'var(--apinox-descriptionForeground)'};
 `;
 
 export const TabMeta = styled.span`
@@ -233,7 +233,7 @@ export const TabsRight = styled.div`
 export const Divider = styled.div`
     width: 1px;
     height: 16px;
-    background: var(--vscode-panel-border);
+    background: var(--apinox-panel-border);
     margin: 0 5px;
 `;
 
@@ -265,7 +265,7 @@ export const PanelBody = styled.div<{ $padded?: boolean }>`
 export const HeadersViewer = styled.div`
     overflow: auto;
     height: 100%;
-    background-color: var(--vscode-editor-background);
+    background-color: var(--apinox-editor-background);
 `;
 
 export const HeadersTitle = styled.h3`
@@ -284,7 +284,7 @@ export const HeadersRow = styled.div`
 export const HeadersKey = styled.div`
     font-weight: bold;
     min-width: 150px;
-    color: var(--vscode-textLink-foreground);
+    color: var(--apinox-textLink-foreground);
 `;
 
 export const HeadersValue = styled.div`
@@ -299,17 +299,17 @@ export const HeadersEmpty = styled.div`
 
 export const ResponseHeadersContainer = styled.div`
     flex: 1;
-    border-top: 1px solid var(--vscode-panel-border);
+    border-top: 1px solid var(--apinox-panel-border);
     padding: 10px;
     overflow: auto;
-    background-color: var(--vscode-editor-background);
+    background-color: var(--apinox-editor-background);
 `;
 
 export const SplitResizer = styled.div<{ $layoutMode: 'vertical' | 'horizontal'; $isResizing: boolean }>`
     width: ${props => props.$layoutMode === 'vertical' ? '5px' : '100%'};
     height: ${props => props.$layoutMode === 'horizontal' ? '5px' : '100%'};
     cursor: ${props => props.$layoutMode === 'vertical' ? 'col-resize' : 'row-resize'};
-    background-color: ${props => props.$isResizing ? 'var(--vscode-focusBorder)' : 'var(--vscode-widget-shadow)'};
+    background-color: ${props => props.$isResizing ? 'var(--apinox-focusBorder)' : 'var(--apinox-widget-shadow)'};
     z-index: 10;
     flex: 0 0 auto;
     transition: background-color 0.2s;
@@ -320,14 +320,14 @@ export const ResponseSection = styled.div<{ $layoutMode: 'vertical' | 'horizonta
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    border-left: ${props => props.$layoutMode === 'vertical' ? '1px solid var(--vscode-panel-border)' : 'none'};
-    border-top: ${props => props.$layoutMode === 'horizontal' ? '1px solid var(--vscode-panel-border)' : 'none'};
+    border-left: ${props => props.$layoutMode === 'vertical' ? '1px solid var(--apinox-panel-border)' : 'none'};
+    border-top: ${props => props.$layoutMode === 'horizontal' ? '1px solid var(--apinox-panel-border)' : 'none'};
 `;
 
 export const ResponseHeader = styled.div`
     padding: 5px 10px;
-    background-color: var(--vscode-editor-background);
-    border-bottom: 1px solid var(--vscode-panel-border);
+    background-color: var(--apinox-editor-background);
+    border-bottom: 1px solid var(--apinox-panel-border);
     font-weight: bold;
     display: flex;
     align-items: center;
@@ -355,12 +355,12 @@ export const ResponseStats = styled.div`
 
 export const ResponseContentType = styled.span`
     opacity: 0.8;
-    border-left: 1px solid var(--vscode-panel-border);
+    border-left: 1px solid var(--apinox-panel-border);
     padding-left: 10px;
 `;
 
 export const ResponseStatus = styled.span<{ $success: boolean }>`
-    color: ${props => props.$success ? 'var(--vscode-testing-iconPassed)' : 'var(--vscode-testing-iconFailed)'};
+    color: ${props => props.$success ? 'var(--apinox-testing-iconPassed)' : 'var(--apinox-testing-iconFailed)'};
     margin-left: 10px;
 `;
 
@@ -372,21 +372,21 @@ export const MiniButtonIcon = styled.span`
 export const MarkdownContainer = styled.div`
     margin-top: 20px;
     padding-top: 10px;
-    border-top: 1px solid var(--vscode-panel-border);
+    border-top: 1px solid var(--apinox-panel-border);
 
-    h1, h2, h3 { border-bottom: 1px solid var(--vscode-panel-border); padding-bottom: 5px; margin-top: 1.5em; }
+    h1, h2, h3 { border-bottom: 1px solid var(--apinox-panel-border); padding-bottom: 5px; margin-top: 1.5em; }
     p { margin-bottom: 1em; }
     ul { padding-left: 20px; }
-    code { background: var(--vscode-textCodeBlock-background); padding: 2px 4px; border-radius: 3px; font-family: monospace; }
-    pre { background: var(--vscode-textCodeBlock-background); padding: 10px; border-radius: 5px; overflow-x: auto; }
+    code { background: var(--apinox-textCodeBlock-background); padding: 2px 4px; border-radius: 3px; font-family: monospace; }
+    pre { background: var(--apinox-textCodeBlock-background); padding: 10px; border-radius: 5px; overflow-x: auto; }
     pre code { background: transparent; padding: 0; }
 `;
 
 export const Toolbar = styled.div`
     display: flex;
     padding: 5px 10px;
-    background-color: var(--vscode-editor-background);
-    border-bottom: 1px solid var(--vscode-panel-border);
+    background-color: var(--apinox-editor-background);
+    border-bottom: 1px solid var(--apinox-panel-border);
     align-items: center;
     gap: 10px;
     height: 40px;
@@ -396,19 +396,19 @@ export const Toolbar = styled.div`
 export const InfoBar = styled.div`
     display: flex;
     padding: 8px 12px;
-    background-color: var(--vscode-editor-inactiveSelectionBackground);
-    border-bottom: 1px solid var(--vscode-panel-border);
+    background-color: var(--apinox-editor-inactiveSelectionBackground);
+    border-bottom: 1px solid var(--apinox-panel-border);
     align-items: center;
     gap: 12px;
-    font-family: var(--vscode-editor-font-family);
+    font-family: var(--apinox-editor-font-family);
     font-size: 12px;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
 `;
 
 export const InfoBarMethod = styled.span`
     font-weight: 600;
-    color: var(--vscode-badge-foreground);
-    background: var(--vscode-badge-background);
+    color: var(--apinox-badge-foreground);
+    background: var(--apinox-badge-background);
     padding: 2px 6px;
     border-radius: 3px;
 `;
@@ -426,8 +426,8 @@ export const InfoBarUrlPrimary = styled(InfoBarUrl)`
 `;
 
 export const ToolbarButton = styled.button`
-    background: var(--vscode-button-background);
-    color: var(--vscode-button-foreground);
+    background: var(--apinox-button-background);
+    color: var(--apinox-button-foreground);
     border: none;
     padding: 4px 8px;
     cursor: pointer;
@@ -440,7 +440,7 @@ export const ToolbarButton = styled.button`
     box-sizing: border-box;
 
     &:hover {
-        background: var(--vscode-button-hoverBackground);
+        background: var(--apinox-button-hoverBackground);
     }
     &:disabled {
         opacity: 0.5;
@@ -454,21 +454,21 @@ export const ToolbarButton = styled.button`
 `;
 
 export const CancelButton = styled(ToolbarButton)`
-    background-color: var(--vscode-errorForeground);
+    background-color: var(--apinox-errorForeground);
 `;
 
 export const RunButton = styled(ToolbarButton)`
-    background-color: var(--vscode-testing-iconPassed);
-    color: var(--vscode-button-foreground);
+    background-color: var(--apinox-testing-iconPassed);
+    color: var(--apinox-button-foreground);
 
     &:hover {
-        background-color: var(--vscode-testing-iconPassed);
+        background-color: var(--apinox-testing-iconPassed);
         filter: brightness(0.95);
     }
 
     &:disabled {
-        background-color: var(--vscode-button-secondaryBackground);
-        color: var(--vscode-button-secondaryForeground);
+        background-color: var(--apinox-button-secondaryBackground);
+        color: var(--apinox-button-secondaryForeground);
         opacity: 1;
     }
 `;
@@ -480,9 +480,9 @@ export const MiniToolbarButton = styled(ToolbarButton)`
 `;
 
 export const ToolbarSelect = styled.select`
-    background-color: var(--vscode-dropdown-background);
-    color: var(--vscode-dropdown-foreground);
-    border: 1px solid var(--vscode-dropdown-border);
+    background-color: var(--apinox-dropdown-background);
+    color: var(--apinox-dropdown-foreground);
+    border: 1px solid var(--apinox-dropdown-border);
     padding: 4px;
     outline: none;
     height: 26px;
@@ -490,25 +490,25 @@ export const ToolbarSelect = styled.select`
     font-size: 11px;
 
     &:focus {
-        border-color: var(--vscode-focusBorder);
+        border-color: var(--apinox-focusBorder);
     }
 `;
 
 export const ToolbarSeparator = styled.div`
     width: 1px;
     height: 16px;
-    background-color: var(--vscode-panel-border);
+    background-color: var(--apinox-panel-border);
     margin: 0 4px;
     flex-shrink: 0;
 `;
 
 export const MainFooter = styled.div`
     padding: 5px 10px;
-    border-top: 1px solid var(--vscode-panel-border);
+    border-top: 1px solid var(--apinox-panel-border);
     display: flex;
     gap: 10px;
     justify-content: flex-end;
-    background-color: var(--vscode-editor-background);
+    background-color: var(--apinox-editor-background);
 `;
 
 export const shake = keyframes`
@@ -520,8 +520,8 @@ export const shake = keyframes`
 `;
 
 export const IconButton = styled.button<{ active?: boolean; shake?: boolean }>`
-    background: ${props => props.active ? 'var(--vscode-button-background)' : 'transparent'};
-    color: ${props => props.active ? 'var(--vscode-button-foreground)' : (props.shake ? 'var(--vscode-errorForeground)' : 'var(--vscode-icon-foreground)')};
+    background: ${props => props.active ? 'var(--apinox-button-background)' : 'transparent'};
+    color: ${props => props.active ? 'var(--apinox-button-foreground)' : (props.shake ? 'var(--apinox-errorForeground)' : 'var(--apinox-icon-foreground)')};
     border: 1px solid transparent;
     cursor: pointer;
     padding: 3px;
@@ -535,7 +535,7 @@ export const IconButton = styled.button<{ active?: boolean; shake?: boolean }>`
     ${props => props.shake && css`animation: ${shake} 0.5s ease-in-out infinite;`}
 
     &:hover {
-        background-color: ${props => props.active ? 'var(--vscode-button-hoverBackground)' : 'var(--vscode-toolbar-hoverBackground)'};
+        background-color: ${props => props.active ? 'var(--apinox-button-hoverBackground)' : 'var(--apinox-toolbar-hoverBackground)'};
     }
     &:disabled {
         opacity: 0.3;
@@ -550,7 +550,7 @@ export const CompactIconButton = styled(IconButton)`
 `;
 
 export const CompactIconButtonWarning = styled(CompactIconButton)`
-    color: var(--vscode-charts-orange);
+    color: var(--apinox-charts-orange);
 `;
 
 export const EmptyStateContainer = styled.div`
@@ -559,19 +559,19 @@ export const EmptyStateContainer = styled.div`
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
     padding: 20px;
     text-align: center;
 `;
 
 export const EmptyStateTitle = styled.h2`
     margin-bottom: 10px;
-    color: var(--vscode-foreground);
+    color: var(--apinox-foreground);
 `;
 
 export const ProjectContainer = styled.div`
     padding: 40px;
-    color: var(--vscode-foreground);
+    color: var(--apinox-foreground);
     overflow-y: auto;
     flex: 1;
 `;
@@ -602,7 +602,7 @@ export const StatsGrid = styled.div`
 
 export const StatCard = styled.div`
     padding: 20px;
-    background: var(--vscode-editor-inactiveSelectionBackground);
+    background: var(--apinox-editor-inactiveSelectionBackground);
     border-radius: 6px;
 `;
 
@@ -619,7 +619,7 @@ export const StatValue = styled.span`
 
 export const InterfacesHeading = styled.h2`
     margin-top: 40px;
-    border-bottom: 1px solid var(--vscode-panel-border);
+    border-bottom: 1px solid var(--apinox-panel-border);
     padding-bottom: 10px;
 `;
 
@@ -640,7 +640,7 @@ export const InterfacesList = styled.div`
 
 export const InterfaceItem = styled.div`
     padding: 15px;
-    background: var(--vscode-list-hoverBackground);
+    background: var(--apinox-list-hoverBackground);
     border-radius: 4px;
     cursor: pointer;
     display: flex;
@@ -663,8 +663,8 @@ export const EditorSettingsMenu = styled.div`
     top: 100%;
     right: 0;
     margin-top: 5px;
-    background: var(--vscode-editor-background);
-    border: 1px solid var(--vscode-dropdown-border);
+    background: var(--apinox-editor-background);
+    border: 1px solid var(--apinox-dropdown-border);
     border-radius: 3px;
     z-index: 100;
     box-shadow: 0 4px 10px rgba(0,0,0,0.5);
@@ -675,7 +675,7 @@ export const EditorSettingsMenu = styled.div`
 
 export const MenuSection = styled.div`
     padding: 8px 12px;
-    border-bottom: 1px solid var(--vscode-dropdown-border);
+    border-bottom: 1px solid var(--apinox-dropdown-border);
     
     &:last-child {
         border-bottom: none;
@@ -685,7 +685,7 @@ export const MenuSection = styled.div`
 export const MenuSectionTitle = styled.div`
     font-size: 11px;
     font-weight: 600;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
     text-transform: uppercase;
     margin-bottom: 8px;
     letter-spacing: 0.5px;
@@ -701,7 +701,7 @@ export const MenuRow = styled.div`
 
 export const MenuLabel = styled.div`
     font-size: 13px;
-    color: var(--vscode-foreground);
+    color: var(--apinox-foreground);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -715,16 +715,16 @@ export const MenuControls = styled.div`
 
 export const FontSizeDisplay = styled.div`
     font-size: 12px;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
     min-width: 35px;
     text-align: center;
-    font-family: var(--vscode-editor-font-family);
+    font-family: var(--apinox-editor-font-family);
 `;
 
 export const MenuIconButton = styled.button`
     background: transparent;
-    border: 1px solid var(--vscode-button-border);
-    color: var(--vscode-foreground);
+    border: 1px solid var(--apinox-button-border);
+    color: var(--apinox-foreground);
     padding: 4px 6px;
     cursor: pointer;
     border-radius: 3px;
@@ -733,7 +733,7 @@ export const MenuIconButton = styled.button`
     justify-content: center;
     
     &:hover:not(:disabled) {
-        background: var(--vscode-button-hoverBackground);
+        background: var(--apinox-button-hoverBackground);
     }
     
     &:disabled {
@@ -742,8 +742,8 @@ export const MenuIconButton = styled.button`
     }
     
     &.active {
-        background: var(--vscode-button-background);
-        border-color: var(--vscode-button-background);
+        background: var(--apinox-button-background);
+        border-color: var(--apinox-button-background);
     }
 `;
 
@@ -769,7 +769,7 @@ export const InterfaceContainer = styled(ProjectContainer)``;
 export const InfoCard = styled.div`
     margin-top: 20px;
     padding: 20px;
-    background: var(--vscode-editor-inactiveSelectionBackground);
+    background: var(--apinox-editor-inactiveSelectionBackground);
     border-radius: 6px;
 `;
 
@@ -786,7 +786,7 @@ export const EndpointText = styled.span`
 
 export const OperationsHeading = styled.h2`
     margin-top: 30px;
-    border-bottom: 1px solid var(--vscode-panel-border);
+    border-bottom: 1px solid var(--apinox-panel-border);
     padding-bottom: 10px;
 `;
 
@@ -799,10 +799,10 @@ export const OperationsList = styled.div`
 
 export const OperationItem = styled.div`
     padding: 15px;
-    background: var(--vscode-list-hoverBackground);
+    background: var(--apinox-list-hoverBackground);
     border-radius: 4px;
     cursor: pointer;
-    border: 1px solid var(--vscode-panel-border);
+    border: 1px solid var(--apinox-panel-border);
 `;
 
 export const OperationRow = styled.div`
@@ -826,7 +826,7 @@ export const OperationContainer = styled(ProjectContainer)``;
 
 export const RequestsHeading = styled.h2`
     margin-top: 30px;
-    border-bottom: 1px solid var(--vscode-panel-border);
+    border-bottom: 1px solid var(--apinox-panel-border);
     padding-bottom: 10px;
 `;
 
@@ -844,7 +844,7 @@ export const RequestCard = styled(OperationItem)`
     `;
 
 export const LinkText = styled.a`
-    color: var(--vscode-textLink-foreground);
+    color: var(--apinox-textLink-foreground);
 `;
 
 export const ChevronIcon = styled(ChevronLeft)`

@@ -559,6 +559,53 @@ const HELP_SECTIONS_RAW = [
 
     Edit the raw JSONC config directly. Useful for advanced tweaks and file watcher paths.
     `
+            },
+            {
+                id: 'settings-fonts',
+                label: 'Editor Fonts',
+                icon: FileJson,
+                order: 7,
+                content: `
+    # Editor Fonts
+
+    APInox supports various monospace fonts for the code editor. Only fonts installed on your system appear in the font selector.
+
+    ## Recommended Fonts
+
+    Popular coding fonts with ligature support:
+
+    - **Fira Code** - [Download](https://github.com/tonsky/FiraCode/releases)
+    - **JetBrains Mono** - [Download](https://www.jetbrains.com/lp/mono/)
+    - **Cascadia Code** - [Download](https://github.com/microsoft/cascadia-code/releases)
+
+    ## System Fonts
+
+    These fonts are typically pre-installed:
+
+    - **Consolas** (Windows)
+    - **Courier New** (Cross-platform)
+    - **Monaco** (macOS)
+    - **Menlo** (macOS)
+    - **Lucida Console** (Windows)
+
+    ## Additional Options
+
+    Other quality monospace fonts:
+
+    - **Source Code Pro** - [Download](https://adobe-fonts.github.io/source-code-pro/)
+    - **Roboto Mono** - [Download](https://fonts.google.com/specimen/Roboto+Mono)
+    - **Ubuntu Mono** - [Download](https://fonts.google.com/specimen/Ubuntu+Mono)
+    - **SF Mono** (macOS system font)
+
+    ## Installation
+
+    After installing a new font:
+    1. Install the font on your operating system
+    2. Restart APInox
+    3. The font will appear in the font selector dropdown
+
+    The font selector automatically detects which fonts are available on your system.
+    `
             }
         ]
     },

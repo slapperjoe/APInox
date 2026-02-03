@@ -11,35 +11,35 @@ const Label = styled.label`
     display: block;
     margin-bottom: ${SPACING_XS};
     font-size: 12px;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
 `;
 
 const Input = styled.input`
     width: 100%;
     padding: ${SPACING_SM} 12px;
-    background-color: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background-color: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     border-radius: 4px;
     font-size: 13px;
 
     &:focus {
-        outline: 1px solid var(--vscode-focusBorder);
+        outline: 1px solid var(--apinox-focusBorder);
     }
 `;
 
 const Select = styled.select`
     width: 100%;
     padding: ${SPACING_SM} 12px;
-    background-color: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background-color: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     border-radius: 4px;
     font-size: 13px;
     cursor: pointer;
 
     &:focus {
-        outline: 1px solid var(--vscode-focusBorder);
+        outline: 1px solid var(--apinox-focusBorder);
     }
 `;
 
@@ -71,11 +71,11 @@ const Column = styled.div`
 `;
 
 const SecondaryButton = styled(Button)`
-    background-color: var(--vscode-button-secondaryBackground);
-    color: var(--vscode-button-secondaryForeground);
+    background-color: var(--apinox-button-secondaryBackground);
+    color: var(--apinox-button-secondaryForeground);
 
     &:hover {
-        background-color: var(--vscode-button-secondaryHoverBackground);
+        background-color: var(--apinox-button-secondaryHoverBackground);
     }
 `;
 

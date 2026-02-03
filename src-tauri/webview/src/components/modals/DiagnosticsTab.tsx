@@ -30,10 +30,10 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ serverConfig }) 
 
     const getStatusIcon = (status: DiagnosticResult['status']) => {
         switch (status) {
-            case 'success': return <CheckCircle size={16} color="var(--vscode-testing-iconPassed)" />;
-            case 'error': return <XCircle size={16} color="var(--vscode-testing-iconFailed)" />;
-            case 'warning': return <AlertTriangle size={16} color="var(--vscode-charts-yellow)" />;
-            default: return <Shield size={16} color="var(--vscode-foreground)" />;
+            case 'success': return <CheckCircle size={16} color="var(--apinox-testing-iconPassed)" />;
+            case 'error': return <XCircle size={16} color="var(--apinox-testing-iconFailed)" />;
+            case 'warning': return <AlertTriangle size={16} color="var(--apinox-charts-yellow)" />;
+            default: return <Shield size={16} color="var(--apinox-foreground)" />;
         }
     };
 
@@ -299,11 +299,11 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ serverConfig }) 
                 <div style={{
                     padding: '12px 16px',
                     background: actionMessage.type === 'success' 
-                        ? 'var(--vscode-testing-iconPassed)' 
-                        : 'var(--vscode-inputValidation-errorBackground)',
-                    border: `1px solid ${actionMessage.type === 'success' ? 'var(--vscode-testing-iconPassed)' : 'var(--vscode-inputValidation-errorBorder)'}`,
+                        ? 'var(--apinox-testing-iconPassed)' 
+                        : 'var(--apinox-inputValidation-errorBackground)',
+                    border: `1px solid ${actionMessage.type === 'success' ? 'var(--apinox-testing-iconPassed)' : 'var(--apinox-inputValidation-errorBorder)'}`,
                     borderRadius: '4px',
-                    color: 'var(--vscode-editor-foreground)',
+                    color: 'var(--apinox-editor-foreground)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '8px'
@@ -316,7 +316,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ serverConfig }) 
                             marginLeft: 'auto',
                             background: 'transparent',
                             border: 'none',
-                            color: 'var(--vscode-editor-foreground)',
+                            color: 'var(--apinox-editor-foreground)',
                             cursor: 'pointer',
                             padding: '4px',
                             fontSize: '16px'
@@ -329,8 +329,8 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ serverConfig }) 
             {showRegenerateConfirm && (
                 <div style={{
                     padding: '16px',
-                    background: 'var(--vscode-notifications-background)',
-                    border: '1px solid var(--vscode-notifications-border)',
+                    background: 'var(--apinox-notifications-background)',
+                    border: '1px solid var(--apinox-notifications-border)',
                     borderRadius: '4px'
                 }}>
                     <div style={{ marginBottom: '12px', fontWeight: 600 }}>
@@ -344,9 +344,9 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ serverConfig }) 
                             onClick={regenerateCertificate}
                             style={{
                                 padding: '6px 16px',
-                                background: 'var(--vscode-button-background)',
-                                color: 'var(--vscode-button-foreground)',
-                                border: '1px solid var(--vscode-button-border)',
+                                background: 'var(--apinox-button-background)',
+                                color: 'var(--apinox-button-foreground)',
+                                border: '1px solid var(--apinox-button-border)',
                                 borderRadius: '2px',
                                 cursor: 'pointer'
                             }}
@@ -357,9 +357,9 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ serverConfig }) 
                             onClick={() => setShowRegenerateConfirm(false)}
                             style={{
                                 padding: '6px 16px',
-                                background: 'var(--vscode-button-secondaryBackground)',
-                                color: 'var(--vscode-button-secondaryForeground)',
-                                border: '1px solid var(--vscode-button-border)',
+                                background: 'var(--apinox-button-secondaryBackground)',
+                                color: 'var(--apinox-button-secondaryForeground)',
+                                border: '1px solid var(--apinox-button-border)',
                                 borderRadius: '2px',
                                 cursor: 'pointer'
                             }}
@@ -374,11 +374,11 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ serverConfig }) 
             {showResetConfirm && (
                 <div style={{
                     padding: '16px',
-                    background: 'var(--vscode-notifications-background)',
-                    border: '1px solid var(--vscode-notifications-border)',
+                    background: 'var(--apinox-notifications-background)',
+                    border: '1px solid var(--apinox-notifications-border)',
                     borderRadius: '4px'
                 }}>
-                    <div style={{ marginBottom: '12px', fontWeight: 600, color: 'var(--vscode-charts-red)' }}>
+                    <div style={{ marginBottom: '12px', fontWeight: 600, color: 'var(--apinox-charts-red)' }}>
                         ⚠️ Reset All Certificates?
                     </div>
                     <div style={{ marginBottom: '16px', fontSize: '0.9em', opacity: 0.9 }}>
@@ -395,9 +395,9 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ serverConfig }) 
                             onClick={resetCertificates}
                             style={{
                                 padding: '6px 16px',
-                                background: 'var(--vscode-inputValidation-errorBackground)',
-                                color: 'var(--vscode-button-foreground)',
-                                border: '1px solid var(--vscode-inputValidation-errorBorder)',
+                                background: 'var(--apinox-inputValidation-errorBackground)',
+                                color: 'var(--apinox-button-foreground)',
+                                border: '1px solid var(--apinox-inputValidation-errorBorder)',
                                 borderRadius: '2px',
                                 cursor: 'pointer'
                             }}
@@ -408,9 +408,9 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ serverConfig }) 
                             onClick={() => setShowResetConfirm(false)}
                             style={{
                                 padding: '6px 16px',
-                                background: 'var(--vscode-button-secondaryBackground)',
-                                color: 'var(--vscode-button-secondaryForeground)',
-                                border: '1px solid var(--vscode-button-border)',
+                                background: 'var(--apinox-button-secondaryBackground)',
+                                color: 'var(--apinox-button-secondaryForeground)',
+                                border: '1px solid var(--apinox-button-border)',
                                 borderRadius: '2px',
                                 cursor: 'pointer'
                             }}
@@ -429,7 +429,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ serverConfig }) 
                     alignItems: 'center',
                     marginBottom: '12px',
                     paddingBottom: '8px',
-                    borderBottom: '1px solid var(--vscode-panel-border)'
+                    borderBottom: '1px solid var(--apinox-panel-border)'
                 }}>
                     <h3 style={{ 
                         margin: 0, 
@@ -447,9 +447,9 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ serverConfig }) 
                         style={{
                             padding: '6px 12px',
                             fontSize: '0.85em',
-                            background: 'var(--vscode-button-background)',
-                            color: 'var(--vscode-button-foreground)',
-                            border: '1px solid var(--vscode-button-border)',
+                            background: 'var(--apinox-button-background)',
+                            color: 'var(--apinox-button-foreground)',
+                            border: '1px solid var(--apinox-button-border)',
                             cursor: isRunning ? 'not-allowed' : 'pointer',
                             borderRadius: '2px',
                             display: 'flex',
@@ -478,7 +478,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ serverConfig }) 
                                     alignItems: 'flex-start',
                                     gap: '10px',
                                     padding: '10px',
-                                    background: 'var(--vscode-editor-inactiveSelectionBackground)',
+                                    background: 'var(--apinox-editor-inactiveSelectionBackground)',
                                     borderRadius: '4px',
                                     fontSize: '0.9em'
                                 }}
@@ -509,9 +509,9 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ serverConfig }) 
                         style={{
                             padding: '8px 14px',
                             fontSize: '0.85em',
-                            background: 'var(--vscode-button-secondaryBackground)',
-                            color: 'var(--vscode-button-secondaryForeground)',
-                            border: '1px solid var(--vscode-button-border)',
+                            background: 'var(--apinox-button-secondaryBackground)',
+                            color: 'var(--apinox-button-secondaryForeground)',
+                            border: '1px solid var(--apinox-button-border)',
                             cursor: 'pointer',
                             borderRadius: '2px'
                         }}
@@ -523,9 +523,9 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ serverConfig }) 
                         style={{
                             padding: '8px 14px',
                             fontSize: '0.85em',
-                            background: 'var(--vscode-button-secondaryBackground)',
-                            color: 'var(--vscode-button-secondaryForeground)',
-                            border: '1px solid var(--vscode-button-border)',
+                            background: 'var(--apinox-button-secondaryBackground)',
+                            color: 'var(--apinox-button-secondaryForeground)',
+                            border: '1px solid var(--apinox-button-border)',
                             cursor: 'pointer',
                             borderRadius: '2px'
                         }}
@@ -537,9 +537,9 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ serverConfig }) 
                         style={{
                             padding: '8px 14px',
                             fontSize: '0.85em',
-                            background: 'var(--vscode-button-secondaryBackground)',
-                            color: 'var(--vscode-button-secondaryForeground)',
-                            border: '1px solid var(--vscode-button-border)',
+                            background: 'var(--apinox-button-secondaryBackground)',
+                            color: 'var(--apinox-button-secondaryForeground)',
+                            border: '1px solid var(--apinox-button-border)',
                             cursor: 'pointer',
                             borderRadius: '2px'
                         }}
@@ -551,9 +551,9 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ serverConfig }) 
                         style={{
                             padding: '8px 14px',
                             fontSize: '0.85em',
-                            background: 'var(--vscode-inputValidation-errorBackground)',
-                            color: 'var(--vscode-button-foreground)',
-                            border: '1px solid var(--vscode-inputValidation-errorBorder)',
+                            background: 'var(--apinox-inputValidation-errorBackground)',
+                            color: 'var(--apinox-button-foreground)',
+                            border: '1px solid var(--apinox-inputValidation-errorBorder)',
                             cursor: 'pointer',
                             borderRadius: '2px'
                         }}
@@ -571,7 +571,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ serverConfig }) 
                     alignItems: 'center',
                     marginBottom: '12px',
                     paddingBottom: '8px',
-                    borderBottom: '1px solid var(--vscode-panel-border)'
+                    borderBottom: '1px solid var(--apinox-panel-border)'
                 }}>
                     <h3 style={{ 
                         margin: 0, 
@@ -589,9 +589,9 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ serverConfig }) 
                         style={{
                             padding: '6px 12px',
                             fontSize: '0.85em',
-                            background: 'var(--vscode-button-background)',
-                            color: 'var(--vscode-button-foreground)',
-                            border: '1px solid var(--vscode-button-border)',
+                            background: 'var(--apinox-button-background)',
+                            color: 'var(--apinox-button-foreground)',
+                            border: '1px solid var(--apinox-button-border)',
                             cursor: isRunning ? 'not-allowed' : 'pointer',
                             borderRadius: '2px',
                             display: 'flex',
@@ -615,7 +615,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ serverConfig }) 
                                     alignItems: 'flex-start',
                                     gap: '10px',
                                     padding: '10px',
-                                    background: 'var(--vscode-editor-inactiveSelectionBackground)',
+                                    background: 'var(--apinox-editor-inactiveSelectionBackground)',
                                     borderRadius: '4px',
                                     fontSize: '0.9em'
                                 }}
@@ -643,8 +643,8 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ serverConfig }) 
             {/* Help Text */}
             <div style={{
                 padding: '12px',
-                background: 'var(--vscode-textBlockQuote-background)',
-                border: '1px solid var(--vscode-textBlockQuote-border)',
+                background: 'var(--apinox-textBlockQuote-background)',
+                border: '1px solid var(--apinox-textBlockQuote-border)',
                 borderRadius: '4px',
                 fontSize: '0.85em',
                 opacity: 0.8

@@ -13,7 +13,7 @@ const Container = styled.div`
     padding: ${SPACING_MD};
     height: 100%;
     overflow-y: auto;
-    background-color: var(--vscode-editor-background);
+    background-color: var(--apinox-editor-background);
 `;
 
 const Toolbar = styled.div`
@@ -23,8 +23,8 @@ const Toolbar = styled.div`
 `;
 
 const Button = styled.button`
-    background: var(--vscode-button-background);
-    color: var(--vscode-button-foreground);
+    background: var(--apinox-button-background);
+    color: var(--apinox-button-foreground);
     border: none;
     padding: ${SPACING_XS} ${SPACING_SM};
     border-radius: 2px;
@@ -32,7 +32,7 @@ const Button = styled.button`
     display: flex;
     align-items: center;
     gap: ${SPACING_SM};
-    &:hover { background: var(--vscode-button-hoverBackground); }
+    &:hover { background: var(--apinox-button-hoverBackground); }
 `;
 
 const AssertionList = styled.div`
@@ -45,8 +45,8 @@ const AssertionItem = styled.div`
     display: flex;
     align-items: center;
     padding: ${SPACING_SM};
-    background: var(--vscode-list-hoverBackground);
-    border: 1px solid var(--vscode-panel-border);
+    background: var(--apinox-list-hoverBackground);
+    border: 1px solid var(--apinox-panel-border);
     border-radius: 4px;
     gap: ${SPACING_MD};
 `;
@@ -73,24 +73,24 @@ const ConfigText = styled.div`
 `;
 
 const Input = styled.input`
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     padding: 2px ${SPACING_XS};
     margin-left: ${SPACING_SM};
 `;
 
 const Select = styled.select`
-    background-color: var(--vscode-dropdown-background);
-    color: var(--vscode-dropdown-foreground);
-    border: 1px solid var(--vscode-dropdown-border);
+    background-color: var(--apinox-dropdown-background);
+    color: var(--apinox-dropdown-foreground);
+    border: 1px solid var(--apinox-dropdown-border);
     padding: ${SPACING_XS};
     outline: none;
     height: 26px;
     box-sizing: border-box;
     cursor: pointer;
     &:focus {
-        border-color: var(--vscode-focusBorder);
+        border-color: var(--apinox-focusBorder);
     }
 `;
 
@@ -156,13 +156,13 @@ const ScriptHeader = styled.div`
 `;
 
 const Code = styled.code`
-    background: var(--vscode-textCodeBlock-background);
+    background: var(--apinox-textCodeBlock-background);
     padding: 1px ${SPACING_XS};
     border-radius: 2px;
 `;
 
 const ScriptEditorWrapper = styled.div`
-    border: 1px solid var(--vscode-input-border);
+    border: 1px solid var(--apinox-input-border);
     border-radius: 4px;
     overflow: hidden;
 `;
@@ -185,7 +185,7 @@ const CheckboxLabel = styled.label`
 
 const TransparentButton = styled(Button)`
     background: transparent;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
 `;
 
 function generateId() {
@@ -248,7 +248,7 @@ export const AssertionsPanel: React.FC<AssertionsPanelProps> = ({ assertions, on
         <Container>
             <Toolbar>
                 <Select onChange={(e) => handleAdd(e.target.value as any)} value="">
-                    <option value="" disabled style={{ color: 'var(--vscode-dropdown-foreground)' }}>+ Add Assertion</option>
+                    <option value="" disabled style={{ color: 'var(--apinox-dropdown-foreground)' }}>+ Add Assertion</option>
                     <option value="Simple Contains">Contains</option>
                     <option value="Simple Not Contains">Not Contains</option>
                     <option value="Response SLA">Response SLA</option>
@@ -267,8 +267,8 @@ export const AssertionsPanel: React.FC<AssertionsPanelProps> = ({ assertions, on
                     return (
                         <AssertionItem key={a.id || i}>
                             <IconWrapper title={status || 'Not Run'}>
-                                {status === 'PASS' ? <CheckCircle2 size={18} color="var(--vscode-testing-iconPassed)" /> :
-                                    status === 'FAIL' ? <XCircle size={18} color="var(--vscode-testing-iconFailed)" /> :
+                                {status === 'PASS' ? <CheckCircle2 size={18} color="var(--apinox-testing-iconPassed)" /> :
+                                    status === 'FAIL' ? <XCircle size={18} color="var(--apinox-testing-iconFailed)" /> :
                                         <Clock size={18} opacity={0.5} />}
                             </IconWrapper>
                             <Details>

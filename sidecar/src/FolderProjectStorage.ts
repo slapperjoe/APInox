@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { ApinoxProject, ApiInterface, ApiOperation, ApiRequest, TestSuite, TestCase } from '../shared/src/models';
+import { ApinoxProject, ApiInterface, ApiOperation, ApiRequest, TestSuite, TestCase } from '../../shared/src/models';
 
 export class FolderProjectStorage {
     private outputChannel: any = null;

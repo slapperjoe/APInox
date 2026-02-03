@@ -31,8 +31,8 @@ const AddSuiteMenu = styled.div`
     top: 100%;
     right: 0;
     margin-top: ${SPACING_XS};
-    background: var(--vscode-dropdown-background);
-    border: 1px solid var(--vscode-dropdown-border);
+    background: var(--apinox-dropdown-background);
+    border: 1px solid var(--apinox-dropdown-border);
     border-radius: 4px;
     z-index: 100;
     min-width: 180px;
@@ -43,7 +43,7 @@ const AddSuiteMenuTitle = styled.div`
     padding: ${SPACING_SM} 10px;
     font-size: 0.8em;
     opacity: 0.7;
-    border-bottom: 1px solid var(--vscode-panel-border);
+    border-bottom: 1px solid var(--apinox-panel-border);
 `;
 
 const AddSuiteMenuEmpty = styled.div`
@@ -61,7 +61,7 @@ const AddSuiteMenuItem = styled.div<{ $disabled?: boolean }>`
     opacity: ${props => props.$disabled ? 0.5 : 1};
 
     &:hover {
-        background: ${props => props.$disabled ? 'transparent' : 'var(--vscode-list-hoverBackground)'};
+        background: ${props => props.$disabled ? 'transparent' : 'var(--apinox-list-hoverBackground)'};
     }
 `;
 
@@ -171,10 +171,10 @@ const ContextMenuDropdown = styled.div<{ x: number; y: number }>`
     position: fixed;
     top: ${props => props.y}px;
     left: ${props => props.x}px;
-    background-color: var(--vscode-menu-background);
-    color: var(--vscode-menu-foreground);
-    border: 1px solid var(--vscode-menu-border);
-    box-shadow: 0 2px 8px var(--vscode-widget-shadow);
+    background-color: var(--apinox-menu-background);
+    color: var(--apinox-menu-foreground);
+    border: 1px solid var(--apinox-menu-border);
+    box-shadow: 0 2px 8px var(--apinox-widget-shadow);
     z-index: 2000;
     min-width: 150px;
     padding: 4px 0;
@@ -188,8 +188,8 @@ const ContextMenuItem = styled.div`
     gap: ${SPACING_XS};
 
     &:hover {
-        background-color: var(--vscode-menu-selectionBackground);
-        color: var(--vscode-menu-selectionForeground);
+        background-color: var(--apinox-menu-selectionBackground);
+        color: var(--apinox-menu-selectionForeground);
     }
 `;
 

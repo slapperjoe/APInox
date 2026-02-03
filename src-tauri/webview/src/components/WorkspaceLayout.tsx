@@ -339,8 +339,20 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     const [editorFontSize, setEditorFontSize] = React.useState(14);
     const [editorFontFamily, setEditorFontFamily] = React.useState<string>('Consolas, "Courier New", monospace');
     const [showEditorSettings, setShowEditorSettings] = React.useState(false);
+    const [installedFonts, setInstalledFonts] = React.useState<Array<{name: string; value: string}>>([]);
     
     console.log('[WorkspaceLayout] Component rendered, editorFontSize:', editorFontSize, 'config exists:', !!config);
+
+    // Detect installed fonts on mount
+    React.useEffect(() => {
+        const detectFonts = async () => {
+            // Dynamic import to avoid bundling issues
+            const { getInstalledFonts } = await import('../utils/fontDetection');
+            const fonts = getInstalledFonts();
+            setInstalledFonts(fonts);
+        };
+        detectFonts();
+    }, []);
 
     // ... imports
 
@@ -660,9 +672,9 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                     });
                                 }}
                                 style={{
-                                    background: 'var(--vscode-input-background)',
-                                    color: 'var(--vscode-input-foreground)',
-                                    border: '1px solid var(--vscode-input-border)',
+                                    background: 'var(--apinox-input-background)',
+                                    color: 'var(--apinox-input-foreground)',
+                                    border: '1px solid var(--apinox-input-border)',
                                     padding: '6px',
                                     borderRadius: '2px',
                                     fontSize: '13px'
@@ -695,9 +707,9 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                 rows={8}
                                 placeholder='{"variable1": "value1", "variable2": "value2"}'
                                 style={{
-                                    background: 'var(--vscode-input-background)',
-                                    color: 'var(--vscode-input-foreground)',
-                                    border: '1px solid var(--vscode-input-border)',
+                                    background: 'var(--apinox-input-background)',
+                                    color: 'var(--apinox-input-foreground)',
+                                    border: '1px solid var(--apinox-input-border)',
                                     padding: '8px',
                                     borderRadius: '2px',
                                     fontFamily: 'monospace',
@@ -705,7 +717,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                     width: '100%'
                                 }}
                             />
-                            <div style={{ fontSize: '11px', color: 'var(--vscode-descriptionForeground)', marginTop: '8px' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--apinox-descriptionForeground)', marginTop: '8px' }}>
                                 Variables defined here will override workflow defaults. Test case context variables are also available.
                             </div>
                         </DelayField>
@@ -856,7 +868,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                     targetNamespace?: string;
                 }) => {
                     // Create new request from sample
-                    const newReqName = `Request ${selectedOperation.requests.length + 1}`;
+                    const newReqName = `${selectedOperation.name} ${selectedOperation.requests.length + 1}`;
                     const newRequest: ApiRequest = {
                         name: newReqName,
                         request: sampleXml,
@@ -1329,29 +1341,26 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                                         value={editorFontFamily}
                                                         onChange={(e) => handleFontFamilyChange(e.target.value)}
                                                         style={{
-                                                            background: 'var(--vscode-dropdown-background)',
-                                                            color: 'var(--vscode-dropdown-foreground)',
-                                                            border: '1px solid var(--vscode-dropdown-border)',
+                                                            background: 'var(--apinox-dropdown-background)',
+                                                            color: 'var(--apinox-dropdown-foreground)',
+                                                            border: '1px solid var(--apinox-dropdown-border)',
                                                             padding: '4px 8px',
                                                             borderRadius: '2px',
                                                             fontSize: '12px',
-                                                            fontFamily: 'var(--vscode-font-family)',
+                                                            fontFamily: 'var(--apinox-font-family)',
                                                             cursor: 'pointer',
                                                             minWidth: '200px'
                                                         }}
                                                     >
-                                                        <option value='Consolas, "Courier New", monospace'>Consolas</option>
-                                                        <option value='"Courier New", Courier, monospace'>Courier New</option>
-                                                        <option value='"Fira Code", monospace'>Fira Code</option>
-                                                        <option value='"JetBrains Mono", monospace'>JetBrains Mono</option>
-                                                        <option value='"Source Code Pro", monospace'>Source Code Pro</option>
-                                                        <option value='Monaco, monospace'>Monaco</option>
-                                                        <option value='Menlo, Monaco, monospace'>Menlo</option>
-                                                        <option value='"Cascadia Code", monospace'>Cascadia Code</option>
-                                                        <option value='"SF Mono", Monaco, monospace'>SF Mono</option>
-                                                        <option value='"Roboto Mono", monospace'>Roboto Mono</option>
-                                                        <option value='"Ubuntu Mono", monospace'>Ubuntu Mono</option>
-                                                        <option value='"Lucida Console", Monaco, monospace'>Lucida Console</option>
+                                                        {installedFonts.length > 0 ? (
+                                                            installedFonts.map(font => (
+                                                                <option key={font.name} value={font.value}>
+                                                                    {font.name}
+                                                                </option>
+                                                            ))
+                                                        ) : (
+                                                            <option value='Consolas, "Courier New", monospace'>Consolas</option>
+                                                        )}
                                                     </select>
                                                 </MenuRow>
                                             </MenuSection>

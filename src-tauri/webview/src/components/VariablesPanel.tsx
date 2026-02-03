@@ -8,8 +8,8 @@ const Container = styled.div`
     display: flex;
     flex-direction: column;
     height: 100%;
-    color: var(--vscode-foreground);
-    background: var(--vscode-editor-background);
+    color: var(--apinox-foreground);
+    background: var(--apinox-editor-background);
     padding: 16px;
     gap: 16px;
     overflow-y: auto;
@@ -21,7 +21,7 @@ const Header = styled.div`
     gap: 8px;
     font-size: 13px;
     font-weight: 600;
-    color: var(--vscode-foreground);
+    color: var(--apinox-foreground);
 `;
 
 const EmptyMessage = styled.div`
@@ -31,7 +31,7 @@ const EmptyMessage = styled.div`
     align-items: center;
     justify-content: center;
     gap: 12px;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
     text-align: center;
     padding: 32px;
     
@@ -51,14 +51,14 @@ const VariableItem = styled.div`
     align-items: center;
     gap: 12px;
     padding: 12px;
-    background: var(--vscode-input-background);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    border: 1px solid var(--apinox-input-border);
     border-radius: 4px;
     transition: all 0.2s;
 
     &:hover {
-        background: var(--vscode-list-hoverBackground);
-        border-color: var(--vscode-focusBorder);
+        background: var(--apinox-list-hoverBackground);
+        border-color: var(--apinox-focusBorder);
     }
 `;
 
@@ -66,9 +66,9 @@ const StatusIcon = styled.div<{ status: 'extracted' | 'pending' | 'failed' }>`
     display: flex;
     align-items: center;
     color: ${props => {
-        if (props.status === 'extracted') return 'var(--vscode-testing-iconPassed)';
-        if (props.status === 'failed') return 'var(--vscode-testing-iconFailed)';
-        return 'var(--vscode-descriptionForeground)';
+        if (props.status === 'extracted') return 'var(--apinox-testing-iconPassed)';
+        if (props.status === 'failed') return 'var(--apinox-testing-iconFailed)';
+        return 'var(--apinox-descriptionForeground)';
     }};
     opacity: ${props => props.status === 'pending' ? 0.5 : 1};
 `;
@@ -82,22 +82,22 @@ const VariableInfo = styled.div`
 `;
 
 const VariableName = styled.div`
-    font-family: var(--vscode-editor-font-family);
+    font-family: var(--apinox-editor-font-family);
     font-size: 13px;
     font-weight: 500;
-    color: var(--vscode-textLink-foreground);
+    color: var(--apinox-textLink-foreground);
 `;
 
 const VariableMeta = styled.div`
     font-size: 11px;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
 `;
 
 const VariableValue = styled.div`
-    font-family: var(--vscode-editor-font-family);
+    font-family: var(--apinox-editor-font-family);
     font-size: 12px;
-    color: var(--vscode-foreground);
-    background: var(--vscode-editor-background);
+    color: var(--apinox-foreground);
+    background: var(--apinox-editor-background);
     padding: 4px 8px;
     border-radius: 3px;
     overflow: hidden;
@@ -111,15 +111,15 @@ const CopyButton = styled.button`
     justify-content: center;
     padding: 6px;
     background: transparent;
-    border: 1px solid var(--vscode-input-border);
+    border: 1px solid var(--apinox-input-border);
     border-radius: 3px;
-    color: var(--vscode-foreground);
+    color: var(--apinox-foreground);
     cursor: pointer;
     transition: all 0.2s;
 
     &:hover {
-        background: var(--vscode-button-hoverBackground);
-        border-color: var(--vscode-focusBorder);
+        background: var(--apinox-button-hoverBackground);
+        border-color: var(--apinox-focusBorder);
     }
 
     &:active {

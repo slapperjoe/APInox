@@ -17,15 +17,15 @@ const RuleRow = styled.div<{ active: boolean }>`
     align-items: center;
     gap: 8px;
     padding: 6px;
-    background: var(--vscode-list-hoverBackground);
-    border: 1px solid ${props => props.active ? 'var(--vscode-focusBorder)' : 'transparent'};
+    background: var(--apinox-list-hoverBackground);
+    border: 1px solid ${props => props.active ? 'var(--apinox-focusBorder)' : 'transparent'};
     border-radius: 4px;
 `;
 
 const Input = styled.input`
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     padding: 4px 6px;
     border-radius: 2px;
     font-size: 12px;
@@ -33,14 +33,14 @@ const Input = styled.input`
 
     &:focus {
         outline: none;
-        border-color: var(--vscode-focusBorder);
+        border-color: var(--apinox-focusBorder);
     }
 `;
 
 const Select = styled.select`
-    background: var(--vscode-dropdown-background);
-    color: var(--vscode-dropdown-foreground);
-    border: 1px solid var(--vscode-dropdown-border);
+    background: var(--apinox-dropdown-background);
+    color: var(--apinox-dropdown-foreground);
+    border: 1px solid var(--apinox-dropdown-border);
     padding: 4px;
     border-radius: 2px;
     font-size: 12px;
@@ -49,7 +49,7 @@ const Select = styled.select`
 const IconButton = styled.button`
     background: transparent;
     border: none;
-    color: var(--vscode-button-foreground);
+    color: var(--apinox-button-foreground);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -58,7 +58,7 @@ const IconButton = styled.button`
 
     &:hover {
         opacity: 1;
-        background: var(--vscode-toolbar-hoverBackground);
+        background: var(--apinox-toolbar-hoverBackground);
     }
 `;
 
@@ -103,7 +103,7 @@ export const ProxyRulesEditor: React.FC<ProxyRulesEditorProps> = ({ config, onCh
                     <Plus size={14} />
                 </IconButton>
             </SectionHeader>
-            <div style={{ fontSize: '0.85em', color: 'var(--vscode-descriptionForeground)', marginBottom: 8 }}>
+            <div style={{ fontSize: '0.85em', color: 'var(--apinox-descriptionForeground)', marginBottom: 8 }}>
                 Define wildcard overrides (*.example.com). Top-down priority.
             </div>
 
@@ -113,7 +113,7 @@ export const ProxyRulesEditor: React.FC<ProxyRulesEditorProps> = ({ config, onCh
                         <IconButton
                             onClick={() => handleUpdateRule(rule.id, 'enabled', !rule.enabled)}
                             title={rule.enabled ? 'Disable Rule' : 'Enable Rule'}
-                            style={{ color: rule.enabled ? 'var(--vscode-testing-iconPassed)' : 'var(--vscode-disabledForeground)' }}
+                            style={{ color: rule.enabled ? 'var(--apinox-testing-iconPassed)' : 'var(--apinox-disabledForeground)' }}
                         >
                             {rule.enabled ? <Check size={14} /> : <X size={14} />}
                         </IconButton>

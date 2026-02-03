@@ -13,16 +13,16 @@ const ModalBody = styled.div`
 
 const Sidebar = styled.div`
     width: 200px;
-    background-color: var(--vscode-sideBar-background);
-    border-right: 1px solid var(--vscode-panel-border);
+    background-color: var(--apinox-sideBar-background);
+    border-right: 1px solid var(--apinox-panel-border);
     display: flex;
     flex-direction: column;
     overflow-y: auto;
 `;
 
 const Tab = styled.button<{ $active: boolean }>`
-    background: ${props => props.$active ? 'var(--vscode-list-activeSelectionBackground)' : 'transparent'};
-    color: ${props => props.$active ? 'var(--vscode-list-activeSelectionForeground)' : 'var(--vscode-foreground)'};
+    background: ${props => props.$active ? 'var(--apinox-list-activeSelectionBackground)' : 'transparent'};
+    color: ${props => props.$active ? 'var(--apinox-list-activeSelectionForeground)' : 'var(--apinox-foreground)'};
     border: none;
     padding: ${SPACING_SM} ${SPACING_MD};
     text-align: left;
@@ -33,7 +33,7 @@ const Tab = styled.button<{ $active: boolean }>`
     font-size: 13px;
 
     &:hover {
-        background: ${props => props.$active ? 'var(--vscode-list-activeSelectionBackground)' : 'var(--vscode-list-hoverBackground)'};
+        background: ${props => props.$active ? 'var(--apinox-list-activeSelectionBackground)' : 'var(--apinox-list-hoverBackground)'};
     }
 `;
 
@@ -46,7 +46,7 @@ const GroupLabel = styled.div`
     padding: ${SPACING_SM} ${SPACING_MD} ${SPACING_XS};
     font-size: 11px;
     text-transform: uppercase;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
     letter-spacing: 0.5px;
 `;
 
@@ -54,17 +54,17 @@ const ContentArea = styled.div`
     flex: 1;
     padding: ${SPACING_LG} 30px;
     overflow-y: auto;
-    background-color: var(--vscode-editor-background);
+    background-color: var(--apinox-editor-background);
 
-    h1 { border-bottom: 1px solid var(--vscode-panel-border); padding-bottom: ${SPACING_SM}; margin-bottom: ${SPACING_LG}; font-size: 24px; }
-    h2 { margin-top: 25px; margin-bottom: ${SPACING_MD}; font-size: 18px; color: var(--vscode-textLink-foreground); }
+    h1 { border-bottom: 1px solid var(--apinox-panel-border); padding-bottom: ${SPACING_SM}; margin-bottom: ${SPACING_LG}; font-size: 24px; }
+    h2 { margin-top: 25px; margin-bottom: ${SPACING_MD}; font-size: 18px; color: var(--apinox-textLink-foreground); }
     h3 { margin-top: ${SPACING_LG}; margin-bottom: ${SPACING_SM}; font-size: 16px; font-weight: bold; }
     p { margin-bottom: ${SPACING_MD}; line-height: 1.5; }
     ul { margin-left: ${SPACING_LG}; margin-bottom: ${SPACING_MD}; }
     li { margin-bottom: ${SPACING_XS}; }
-    code { background: var(--vscode-textCodeBlock-background); padding: 2px 4px; border-radius: 3px; font-family: monospace; }
-    pre { background: var(--vscode-textCodeBlock-background); padding: ${SPACING_MD}; border-radius: 4px; overflow-x: auto; margin-bottom: ${SPACING_MD}; }
-    img { max-width: 100%; height: auto; border: 1px solid var(--vscode-panel-border); margin: ${SPACING_SM} 0; border-radius: 4px; }
+    code { background: var(--apinox-textCodeBlock-background); padding: 2px 4px; border-radius: 3px; font-family: monospace; }
+    pre { background: var(--apinox-textCodeBlock-background); padding: ${SPACING_MD}; border-radius: 4px; overflow-x: auto; margin-bottom: ${SPACING_MD}; }
+    img { max-width: 100%; height: auto; border: 1px solid var(--apinox-panel-border); margin: ${SPACING_SM} 0; border-radius: 4px; }
 `;
 
 import { HELP_SECTIONS } from '../data/helpContent';

@@ -1,6 +1,6 @@
 import SwaggerParser = require('@apidevtools/swagger-parser');
 import { OpenAPIV2, OpenAPIV3, OpenAPIV3_1 } from 'openapi-types';
-import { ApiService, ServiceOperation, ApinoxProject, ApinoxFolder, ApiRequest, HttpMethod, RequestType, BodyType, ApiInterface, ApiOperation } from '../shared/src/models';
+import { ApiService, ServiceOperation, ApinoxProject, ApinoxFolder, ApiRequest, HttpMethod, RequestType, BodyType, ApiInterface, ApiOperation } from '../../shared/src/models';
 import { v4 as uuidv4 } from 'uuid';
 
 export class OpenApiParser {

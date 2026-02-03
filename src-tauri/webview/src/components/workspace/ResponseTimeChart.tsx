@@ -41,7 +41,7 @@ const ChartTitle = styled.div`
     font-size: 11px;
     font-weight: 500;
     margin-bottom: ${SPACING_XS};
-    color: var(--vscode-foreground);
+    color: var(--apinox-foreground);
 `;
 
 const EmptyState = styled.div<{ $height: number }>`
@@ -49,7 +49,7 @@ const EmptyState = styled.div<{ $height: number }>`
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
     font-size: 12px;
 `;
 
@@ -142,7 +142,7 @@ export const ResponseTimeChart: React.FC<ResponseTimeChartProps> = ({
                             y1={line.y}
                             x2={CHART_WIDTH - padding.right}
                             y2={line.y}
-                            stroke="var(--vscode-editorWidget-border)"
+                            stroke="var(--apinox-editorWidget-border)"
                             strokeWidth={0.5}
                             strokeDasharray="3,3"
                         />
@@ -151,7 +151,7 @@ export const ResponseTimeChart: React.FC<ResponseTimeChartProps> = ({
                             y={line.y + 3}
                             textAnchor="end"
                             fontSize={9}
-                            fill="var(--vscode-descriptionForeground)"
+                            fill="var(--apinox-descriptionForeground)"
                         >
                             {Math.round(line.value)}ms
                         </text>
@@ -163,7 +163,7 @@ export const ResponseTimeChart: React.FC<ResponseTimeChartProps> = ({
                     <path
                         d={p99Path}
                         fill="none"
-                        stroke="var(--vscode-charts-red)"
+                        stroke="var(--apinox-charts-red)"
                         strokeWidth={1.5}
                         strokeDasharray="4,2"
                         opacity={0.6}
@@ -175,7 +175,7 @@ export const ResponseTimeChart: React.FC<ResponseTimeChartProps> = ({
                     <path
                         d={p95Path}
                         fill="none"
-                        stroke="var(--vscode-charts-yellow)"
+                        stroke="var(--apinox-charts-yellow)"
                         strokeWidth={1.5}
                         strokeDasharray="2,2"
                         opacity={0.8}
@@ -186,7 +186,7 @@ export const ResponseTimeChart: React.FC<ResponseTimeChartProps> = ({
                 <path
                     d={avgPath}
                     fill="none"
-                    stroke="var(--vscode-charts-green)"
+                    stroke="var(--apinox-charts-green)"
                     strokeWidth={2}
                 />
 
@@ -197,7 +197,7 @@ export const ResponseTimeChart: React.FC<ResponseTimeChartProps> = ({
                         cx={xScale(i)}
                         cy={yScale(d.value)}
                         r={3}
-                        fill="var(--vscode-charts-green)"
+                        fill="var(--apinox-charts-green)"
                     />
                 ))}
 
@@ -209,7 +209,7 @@ export const ResponseTimeChart: React.FC<ResponseTimeChartProps> = ({
                         y={height - 8}
                         textAnchor="middle"
                         fontSize={8}
-                        fill="var(--vscode-descriptionForeground)"
+                        fill="var(--apinox-descriptionForeground)"
                     >
                         {d.label.length > 6 ? d.label.slice(0, 6) + '…' : d.label}
                     </text>
@@ -219,18 +219,18 @@ export const ResponseTimeChart: React.FC<ResponseTimeChartProps> = ({
             {/* Legend */}
             <Legend>
                 <LegendItem>
-                    <LegendLine $color="var(--vscode-charts-green)" />
+                    <LegendLine $color="var(--apinox-charts-green)" />
                     Avg
                 </LegendItem>
                 {showP95 && (
                     <LegendItem>
-                        <LegendLine $color="var(--vscode-charts-yellow)" $opacity={0.8} />
+                        <LegendLine $color="var(--apinox-charts-yellow)" $opacity={0.8} />
                         P95
                     </LegendItem>
                 )}
                 {showP99 && (
                     <LegendItem>
-                        <LegendLine $color="var(--vscode-charts-red)" $opacity={0.6} />
+                        <LegendLine $color="var(--apinox-charts-red)" $opacity={0.6} />
                         P99
                     </LegendItem>
                 )}

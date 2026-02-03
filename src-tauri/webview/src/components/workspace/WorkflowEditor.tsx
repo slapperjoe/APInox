@@ -24,14 +24,14 @@ const StepsPanel = styled.div`
     flex: 0 0 350px;
     display: flex;
     flex-direction: column;
-    border-right: 1px solid var(--vscode-panel-border);
-    background: var(--vscode-sideBar-background);
+    border-right: 1px solid var(--apinox-panel-border);
+    background: var(--apinox-sideBar-background);
     overflow: hidden;
 `;
 
 const StepsPanelHeader = styled.div`
     padding: ${SPACING_MD};
-    border-bottom: 1px solid var(--vscode-panel-border);
+    border-bottom: 1px solid var(--apinox-panel-border);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -59,12 +59,12 @@ const StepItem = styled.div<{ $selected?: boolean; $dragging?: boolean; $nested?
     margin-bottom: ${SPACING_XS};
     margin-left: ${props => props.$nested ? '24px' : '0'};
     background: ${props => props.$selected 
-        ? 'var(--vscode-list-activeSelectionBackground)' 
-        : 'var(--vscode-sideBar-background)'};
+        ? 'var(--apinox-list-activeSelectionBackground)' 
+        : 'var(--apinox-sideBar-background)'};
     border: 1px solid ${props => props.$selected 
-        ? 'var(--vscode-list-activeSelectionForeground)' 
-        : 'var(--vscode-panel-border)'};
-    border-left: ${props => props.$nested ? '2px solid var(--vscode-charts-blue)' : 'inherit'};
+        ? 'var(--apinox-list-activeSelectionForeground)' 
+        : 'var(--apinox-panel-border)'};
+    border-left: ${props => props.$nested ? '2px solid var(--apinox-charts-blue)' : 'inherit'};
     border-radius: 4px;
     cursor: ${props => props.$dragging ? 'grabbing' : 'pointer'};
     opacity: ${props => props.$dragging ? '0.5' : '1'};
@@ -72,8 +72,8 @@ const StepItem = styled.div<{ $selected?: boolean; $dragging?: boolean; $nested?
     
     &:hover {
         background: ${props => props.$selected 
-            ? 'var(--vscode-list-activeSelectionBackground)' 
-            : 'var(--vscode-list-hoverBackground)'};
+            ? 'var(--apinox-list-activeSelectionBackground)' 
+            : 'var(--apinox-list-hoverBackground)'};
         
         .delete-icon {
             opacity: 1;
@@ -82,7 +82,7 @@ const StepItem = styled.div<{ $selected?: boolean; $dragging?: boolean; $nested?
 `;
 
 const DragHandle = styled.div`
-    color: var(--vscode-foreground);
+    color: var(--apinox-foreground);
     opacity: 0.5;
     cursor: grab;
     display: flex;
@@ -100,7 +100,7 @@ const StepNumber = styled.span`
 `;
 
 const StepIcon = styled.div`
-    color: var(--vscode-charts-blue);
+    color: var(--apinox-charts-blue);
     display: flex;
     align-items: center;
 `;
@@ -125,7 +125,7 @@ const StepType = styled.div`
 
 const DeleteIcon = styled.div`
     opacity: 0;
-    color: var(--vscode-errorForeground);
+    color: var(--apinox-errorForeground);
     cursor: pointer;
     transition: opacity 0.2s;
     display: flex;
@@ -140,7 +140,7 @@ const ExpandIcon = styled.div`
     cursor: pointer;
     display: flex;
     align-items: center;
-    color: var(--vscode-foreground);
+    color: var(--apinox-foreground);
     opacity: 0.6;
     
     &:hover {
@@ -150,16 +150,16 @@ const ExpandIcon = styled.div`
 
 const AddStepContainer = styled.div`
     padding: ${SPACING_SM};
-    border-top: 1px solid var(--vscode-panel-border);
+    border-top: 1px solid var(--apinox-panel-border);
     position: relative;
 `;
 
 const AddStepButton = styled.button`
     width: 100%;
     padding: ${SPACING_SM};
-    background: var(--vscode-button-secondaryBackground);
-    color: var(--vscode-button-secondaryForeground);
-    border: 1px solid var(--vscode-button-border);
+    background: var(--apinox-button-secondaryBackground);
+    color: var(--apinox-button-secondaryForeground);
+    border: 1px solid var(--apinox-button-border);
     border-radius: 4px;
     cursor: pointer;
     display: flex;
@@ -167,10 +167,10 @@ const AddStepButton = styled.button`
     justify-content: center;
     gap: ${SPACING_XS};
     font-size: 13px;
-    font-family: var(--vscode-font-family);
+    font-family: var(--apinox-font-family);
     
     &:hover {
-        background: var(--vscode-button-secondaryHoverBackground);
+        background: var(--apinox-button-secondaryHoverBackground);
     }
 `;
 
@@ -179,8 +179,8 @@ const Dropdown = styled.div`
     bottom: 100%;
     left: ${SPACING_SM};
     right: ${SPACING_SM};
-    background: var(--vscode-dropdown-background);
-    border: 1px solid var(--vscode-dropdown-border);
+    background: var(--apinox-dropdown-background);
+    border: 1px solid var(--apinox-dropdown-border);
     border-radius: 4px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     z-index: 1000;
@@ -196,7 +196,7 @@ const DropdownItem = styled.div`
     font-size: 13px;
     
     &:hover {
-        background: var(--vscode-list-hoverBackground);
+        background: var(--apinox-list-hoverBackground);
     }
     
     &:first-child {
@@ -213,7 +213,7 @@ const EditorPanel = styled.div`
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    background: var(--vscode-editor-background);
+    background: var(--apinox-editor-background);
 `;
 
 interface WorkflowEditorProps {

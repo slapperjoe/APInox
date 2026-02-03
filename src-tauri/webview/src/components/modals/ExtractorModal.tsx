@@ -40,7 +40,7 @@ export const ExtractorModal: React.FC<ExtractorModalProps> = ({ isOpen, data, on
             width={600}
             footer={
                 <>
-                    <Button onClick={onClose} style={{ marginRight: 10, background: 'transparent', border: '1px solid var(--vscode-button-secondaryForeground)' }}>Cancel</Button>
+                    <Button onClick={onClose} style={{ marginRight: 10, background: 'transparent', border: '1px solid var(--apinox-button-secondaryForeground)' }}>Cancel</Button>
                     <Button onClick={() => onSave(localData)} disabled={!localData.variableName.trim()}>{isEditing ? 'Save Changes' : 'Save Extractor'}</Button>
                 </>
             }
@@ -48,7 +48,7 @@ export const ExtractorModal: React.FC<ExtractorModalProps> = ({ isOpen, data, on
             <div style={{ marginBottom: 15 }}>
                 <label style={{ display: 'block', marginBottom: 5, fontWeight: 'bold' }}>Target Variable Name</label>
                 <input
-                    style={{ width: '100%', padding: 8, background: 'var(--vscode-input-background)', color: 'var(--vscode-input-foreground)', border: '1px solid var(--vscode-input-border)', borderRadius: 2 }}
+                    style={{ width: '100%', padding: 8, background: 'var(--apinox-input-background)', color: 'var(--apinox-input-foreground)', border: '1px solid var(--apinox-input-border)', borderRadius: 2 }}
                     value={localData.variableName}
                     placeholder="e.g. authToken"
                     onChange={(e) => setLocalData({ ...localData, variableName: e.target.value })}
@@ -62,7 +62,7 @@ export const ExtractorModal: React.FC<ExtractorModalProps> = ({ isOpen, data, on
             <div style={{ marginBottom: 15 }}>
                 <label style={{ display: 'block', marginBottom: 5, fontWeight: 'bold' }}>XPath Expression</label>
                 <textarea
-                    style={{ width: '100%', height: 60, padding: 8, background: 'var(--vscode-input-background)', color: 'var(--vscode-input-foreground)', border: '1px solid var(--vscode-input-border)', borderRadius: 2, fontFamily: 'monospace', fontSize: '0.9em' }}
+                    style={{ width: '100%', height: 60, padding: 8, background: 'var(--apinox-input-background)', color: 'var(--apinox-input-foreground)', border: '1px solid var(--apinox-input-border)', borderRadius: 2, fontFamily: 'monospace', fontSize: '0.9em' }}
                     value={localData.xpath}
                     onChange={(e) => setLocalData({ ...localData, xpath: e.target.value })}
                 />
@@ -71,7 +71,7 @@ export const ExtractorModal: React.FC<ExtractorModalProps> = ({ isOpen, data, on
             <div style={{ marginBottom: 15 }}>
                 <label style={{ display: 'block', marginBottom: 5, fontWeight: 'bold' }}>Default Value</label>
                 <input
-                    style={{ width: '100%', padding: 8, background: 'var(--vscode-input-background)', color: 'var(--vscode-input-foreground)', border: '1px solid var(--vscode-input-border)', borderRadius: 2 }}
+                    style={{ width: '100%', padding: 8, background: 'var(--apinox-input-background)', color: 'var(--apinox-input-foreground)', border: '1px solid var(--apinox-input-border)', borderRadius: 2 }}
                     value={localData.defaultValue || ''}
                     placeholder="Value to use if this step hasn't been run yet"
                     onChange={(e) => setLocalData({ ...localData, defaultValue: e.target.value })}

@@ -9,6 +9,7 @@ export interface PickRequestItem {
     detail?: string;
     type: 'request' | 'operation';
     data: any;
+    warning?: boolean;
 }
 
 interface PickRequestModalProps {
@@ -20,14 +21,14 @@ interface PickRequestModalProps {
 }
 
 const SearchInput = styled.input`
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border);
+    background: var(--apinox-input-background);
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
     padding: 6px 8px;
     border-radius: 4px;
     margin: 10px 10px 0 10px;
     &:focus {
-        outline: 1px solid var(--vscode-focusBorder);
+        outline: 1px solid var(--apinox-focusBorder);
     }
 `;
 
@@ -40,21 +41,30 @@ const List = styled.div`
     max-height: 50vh;
 `;
 
-const Item = styled.div`
+const Item = styled.div<{ $warning?: boolean }>`
     padding: 8px 10px;
     border-radius: 4px;
-    background: var(--vscode-list-inactiveSelectionBackground);
+    background: var(--apinox-list-inactiveSelectionBackground);
     cursor: pointer;
+    display: flex;
+    align-items: start;
+    gap: 8px;
+    border-left: ${props => props.$warning ? '3px solid var(--apinox-editorWarning-foreground)' : '3px solid transparent'};
+    padding-left: 7px;
 
     &:hover {
-        background: var(--vscode-list-hoverBackground);
+        background: var(--apinox-list-hoverBackground);
     }
+`;
+
+const ItemContent = styled.div`
+    flex: 1;
 `;
 
 const ItemLabel = styled.div`
     font-size: 12px;
     font-weight: 600;
-    color: var(--vscode-foreground);
+    color: var(--apinox-foreground);
 `;
 
 const ItemMeta = styled.div`
@@ -87,13 +97,15 @@ export const PickRequestModal: React.FC<PickRequestModalProps> = ({ isOpen, item
             />
             <List>
                 {filtered.map(item => (
-                    <Item key={item.id} onClick={() => onSelect(item)}>
-                        <ItemLabel>{item.label}</ItemLabel>
-                        {(item.description || item.detail) && (
-                            <ItemMeta>
-                                {item.description || item.detail}
-                            </ItemMeta>
-                        )}
+                    <Item key={item.id} onClick={() => onSelect(item)} $warning={item.warning}>
+                        <ItemContent>
+                            <ItemLabel>{item.label}</ItemLabel>
+                            {(item.description || item.detail) && (
+                                <ItemMeta>
+                                    {item.description || item.detail}
+                                </ItemMeta>
+                            )}
+                        </ItemContent>
                     </Item>
                 ))}
             </List>

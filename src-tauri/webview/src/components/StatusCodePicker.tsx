@@ -49,14 +49,14 @@ const Pill = styled.span<{ $isError: boolean }>`
     font-size: 11px;
     font-weight: 500;
     background: ${props => props.$isError
-        ? 'var(--vscode-diffEditor-removedTextBackground)'
-        : 'var(--vscode-diffEditor-insertedTextBackground)'};
+        ? 'var(--apinox-diffEditor-removedTextBackground)'
+        : 'var(--apinox-diffEditor-insertedTextBackground)'};
     color: ${props => props.$isError
-        ? 'var(--vscode-testing-iconFailed)'
-        : 'var(--vscode-testing-iconPassed)'};
+        ? 'var(--apinox-testing-iconFailed)'
+        : 'var(--apinox-testing-iconPassed)'};
     border: 1px solid ${props => props.$isError
-        ? 'var(--vscode-testing-iconFailed)'
-        : 'var(--vscode-testing-iconPassed)'};
+        ? 'var(--apinox-testing-iconFailed)'
+        : 'var(--apinox-testing-iconPassed)'};
 `;
 
 const RemoveButton = styled.button`
@@ -78,23 +78,23 @@ const DropdownTrigger = styled.button`
     padding: 2px 8px;
     border-radius: 12px;
     font-size: 11px;
-    background: var(--vscode-button-secondaryBackground);
-    color: var(--vscode-button-secondaryForeground);
-    border: 1px solid var(--vscode-button-border, transparent);
+    background: var(--apinox-button-secondaryBackground);
+    color: var(--apinox-button-secondaryForeground);
+    border: 1px solid var(--apinox-button-border, transparent);
     cursor: pointer;
-    &:hover { background: var(--vscode-button-secondaryHoverBackground); }
+    &:hover { background: var(--apinox-button-secondaryHoverBackground); }
 `;
 
 const Dropdown = styled.div`
     position: fixed;
     z-index: 10000;
-    background: var(--vscode-dropdown-background);
-    border: 1px solid var(--vscode-dropdown-border);
+    background: var(--apinox-dropdown-background);
+    border: 1px solid var(--apinox-dropdown-border);
     border-radius: 4px;
     max-height: 200px;
     overflow-y: auto;
     min-width: 180px;
-    box-shadow: 0 4px 12px var(--vscode-widget-shadow);
+    box-shadow: 0 4px 12px var(--apinox-widget-shadow);
 `;
 
 const DropdownItem = styled.div<{ $isSelected: boolean }>`
@@ -103,10 +103,10 @@ const DropdownItem = styled.div<{ $isSelected: boolean }>`
     font-size: 12px;
     display: flex;
     justify-content: space-between;
-    background: ${props => props.$isSelected ? 'var(--vscode-list-activeSelectionBackground)' : 'transparent'};
-    color: var(--vscode-foreground);
+    background: ${props => props.$isSelected ? 'var(--apinox-list-activeSelectionBackground)' : 'transparent'};
+    color: var(--apinox-foreground);
     &:hover {
-        background: var(--vscode-list-hoverBackground);
+        background: var(--apinox-list-hoverBackground);
     }
 `;
 
