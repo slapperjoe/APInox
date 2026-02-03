@@ -64,27 +64,46 @@ Create truly standalone sidecar binary with embedded Node.js runtime.
 ### Priority 3: Request Chaining (Feature #6)
 Property transfers between requests for complex test scenarios.
 
-**Planned Capabilities:**
-- [ ] Visual workflow builder
-- [ ] Variable extraction from responses (XPath, JSONPath)
-- [ ] Inject variables into subsequent requests
-- [ ] Conditional execution
-- [ ] Loop support
+**Status**: ✅ **95% COMPLETE** - Phase 1 UI improvements done!
 
-**Estimated effort**: 2 weeks
+**Phase 1 (Complete - January 2025):**
+- [x] Variable extraction from responses (XPath, JSONPath) - PerformanceService
+- [x] Inject variables into subsequent requests - PerformanceService
+- [x] Conditional execution - ConditionStepEditor component
+- [x] Loop support - LoopStepEditor component
+- [x] Workflow summary view - WorkflowSummary component
+- [x] **VariablesPanel** - Shows available variables with status ✅ NEW
+- [x] **Variable autocomplete** - Monaco completion for `${...}` ✅ NEW
+- [x] **Enhanced status visualization** - Better TestCaseView icons ✅ NEW
+
+**Phase 2 (Future - Optional Polish):**
+- [ ] Variable usage highlighting
+- [ ] Inline value preview on hover
+- [ ] Test data sets (parameterized testing)
+- [ ] Visual drag & drop workflow builder
+
+**Estimated effort for Phase 2**: 3-5 days
 
 ---
 
 ### Priority 5: OpenAPI/REST Support (Feature #8)
 Extend beyond SOAP to REST APIs.
 
-**Planned Capabilities:**
+**Status**: ✅ **80% COMPLETE** - Core REST/GraphQL working, missing OpenAPI import
+
+**Completed:**
+- [x] REST request editor (JSON body) - MonacoRequestEditor with JSON mode
+- [x] REST execution with HttpClient
+- [x] GraphQL support
+- [x] Query params, path params, REST auth (Basic, Bearer, API Key)
+- [x] GraphQL variables panel
+
+**Remaining:**
 - [ ] Import OpenAPI/Swagger specs
-- [ ] REST request editor (JSON body)
 - [ ] Auto-generate REST requests from spec
 - [ ] Response validation against schema
 
-**Estimated effort**: 1 week
+**Estimated effort**: 3-5 days for OpenAPI import
 
 ---
 

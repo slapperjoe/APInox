@@ -271,16 +271,139 @@ MyProject/
 ├── properties.json        # Project metadata
 ├── interfaces/
 │   └── MyService/
-│       ├── interface.json # Binding info
+│       ├── interface.json # Binding info (type, bindingName, soapVersion, definition)
 │       └── MyOperation/
-│           ├── operation.json
-│           ├── Request1.xml   # Request body
-│           └── Request1.json  # Request metadata
+│           ├── operation.json  # Operation metadata (name, action, input, targetNamespace, originalEndpoint, fullSchema)
+│           ├── Request1.xml    # Request body
+│           └── Request1.json   # Request metadata
 └── tests/
     └── MySuite/
         └── MyTestCase/
             └── 01_step.json
 ```
+
+### Critical Storage Fields
+
+**Interface-level** (`interface.json`):
+- `definition`: WSDL URL (critical for refresh operations)
+- `bindingName`, `soapVersion`: SOAP binding metadata
+- `type`: Always "soap" for SOAP interfaces
+- `displayName`: UI display name (optional, preserves original `name` for binding)
+
+**Operation-level** (`operation.json`):
+- `originalEndpoint`: **CRITICAL** - The service endpoint URL from WSDL. This is used when creating new requests and must persist across saves/loads.
+- `targetNamespace`: Namespace for XML generation
+- `fullSchema`: Deep schema tree for XML generation (SchemaNode structure)
+- `action`: SOAP action header
+- `input`: Input parameter schema
+- `displayName`: UI display name (optional)
+
+**Request-level** (`RequestName.json`):
+- `endpoint`: Request-specific endpoint override
+- `method`: HTTP method
+- `contentType`: Content type header
+- `headers`: Custom headers
+- `assertions`, `extractors`, `wsSecurity`, `attachments`: Test/security metadata
+
+### Storage Persistence Flow
+
+When adding an interface from API Explorer:
+1. **WSDL Parser** (`src/WsdlParser.ts`) sets `originalEndpoint` on each operation from WSDL
+2. **Explorer adds to project** - operations preserve all fields via spread operator
+3. **Save** - `FolderProjectStorage.saveProject()` writes `operation.json` with all metadata
+4. **Load** - `FolderProjectStorage.loadProject()` reads `operation.json` and restores via spread operator
+5. **Create request** - `useContextMenu.handleAddRequest()` uses `op.originalEndpoint` for new request endpoint
+
+**Common bug**: If `originalEndpoint` is missing in saved files, new requests won't have endpoints. Check that:
+- WSDL parser is setting the field (line 234 in `WsdlParser.ts`)
+- Save logic includes it (line 96 in `FolderProjectStorage.ts`)
+- Operations in memory have it (check before save)
+
+## Build & Development Workflow
+
+### Development Build Process
+
+**Important**: The Tauri app uses a **sidecar** architecture. The backend code runs in a separate Node.js process.
+
+#### What Gets Compiled Where
+
+| Source | Compiler | Output | Used By |
+|--------|----------|--------|---------|
+| `src/*.ts` | `tsc` (root) | `out/src/*.js` | Sidecar via imports |
+| `sidecar/src/*.ts` | `tsc` (sidecar) | `sidecar/dist/*.js` | Sidecar bundler |
+| `src-tauri/webview/src/*` | Vite | `src-tauri/webview/dist/*` | Tauri webview |
+| `src-tauri/src/*.rs` | cargo | `src-tauri/target/*` | Tauri core |
+
+#### Build Commands
+
+```bash
+# Backend (Node.js) - compiles TypeScript in root
+npm run compile              # Compiles src/*.ts → out/src/*.js
+
+# Sidecar - compiles and bundles backend into standalone binary  
+npm run build:sidecar        # Compiles sidecar/src/*.ts → sidecar/dist/*.js
+npm run prepare:sidecar      # Creates binary: sidecar/apinox-sidecar.exe
+
+# Webview (React) - compiles frontend
+npm run compile-webview      # Builds src-tauri/webview/src/* → src-tauri/webview/dist/*
+
+# Full Tauri builds
+npm run tauri:dev           # Runs build:sidecar + webview install + tauri dev
+npm run tauri:build         # Full production build with binary and installers
+```
+
+#### Critical: Sidecar Imports Root Source
+
+The sidecar imports shared code from the root `src/` directory:
+
+```typescript
+// sidecar/src/services.ts
+import { FolderProjectStorage } from '../../src/FolderProjectStorage';  // ← Imports root
+import { SoapClient } from '../../src/soapClient';
+```
+
+**This means**:
+1. Changes to `src/FolderProjectStorage.ts` require rebuilding **sidecar**, not just running `npm run compile`
+2. Run `npm run build:sidecar` after changing any file in `src/` that sidecar imports
+3. The sidecar TypeScript compiler (`sidecar/tsconfig.json`) compiles both sidecar code AND imported root code
+
+#### Development Iteration Loop
+
+When making changes:
+
+1. **Backend changes** (`src/*.ts`):
+   ```bash
+   npm run build:sidecar     # Recompile sidecar with updated imports
+   npm run tauri:dev         # Restart Tauri (or stop/start manually)
+   ```
+
+2. **Frontend changes** (`src-tauri/webview/src/*`):
+   - Hot reload works automatically in dev mode
+   - No rebuild needed, just refresh webview
+
+3. **Rust changes** (`src-tauri/src/*.rs`):
+   - Tauri watches and recompiles automatically in dev mode
+
+#### Debugging "My changes aren't working"
+
+If code changes don't appear after restart:
+
+1. **Check compiled output exists**:
+   - Backend: `sidecar/dist/` should have recent timestamps
+   - Frontend: `src-tauri/webview/dist/` should exist
+
+2. **Verify sidecar was rebuilt**:
+   ```bash
+   npm run build:sidecar
+   ```
+
+3. **Check which process is running**:
+   - Tauri launches `sidecar/apinox-sidecar.exe` (the bundled binary for dev)
+   - In dev mode, it runs the compiled JS, not the binary
+
+4. **Check logs for errors**:
+   - Tauri console output shows sidecar startup logs
+   - Look for `[Sidecar] All services initialized`
 
 ## Known Technical Debt
 

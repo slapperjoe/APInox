@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { Play, Plus, FileCode, Loader2, ArrowUp, ArrowDown, Trash2, ListChecks } from 'lucide-react';
+import { Play, Plus, FileCode, Loader2, ArrowUp, ArrowDown, Trash2, ListChecks, CheckCircle, XCircle } from 'lucide-react';
 import { TestCase, TestStep, TestStepType } from '@shared/models';
 import { ToolbarButton, IconButton, RunButton } from '../../styles/WorkspaceLayout.styles';
 import { ContextHelpButton } from '../ContextHelpButton';
@@ -268,12 +268,20 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
                                 <StepIndex>
                                     <StepIndexNumber>{index + 1}.</StepIndexNumber>
                                     {status?.status === 'running' && (
-                                        <StepStatusRunning>
-                                            <Loader2 size={14} className="spin" />
+                                        <StepStatusRunning title="Running...">
+                                            <Loader2 size={16} className="spin" />
                                         </StepStatusRunning>
                                     )}
-                                    {status?.status === 'pass' && <StepStatusPass>✔</StepStatusPass>}
-                                    {status?.status === 'fail' && <StepStatusFail>✘</StepStatusFail>}
+                                    {status?.status === 'pass' && (
+                                        <StepStatusPass title="Passed">
+                                            <CheckCircle size={16} />
+                                        </StepStatusPass>
+                                    )}
+                                    {status?.status === 'fail' && (
+                                        <StepStatusFail title="Failed">
+                                            <XCircle size={16} />
+                                        </StepStatusFail>
+                                    )}
                                 </StepIndex>
                                 <StepContent>
                                     <strong>{step.name}</strong> <StepType>({step.type})</StepType>
@@ -297,8 +305,19 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
                                     )}
                                 </StepContent>
                                 <StepActions>
-                                    {status?.response?.duration !== undefined && <StepStat title="Duration">{status.response.duration.toFixed(3)}s</StepStat>}
-                                    {status?.response?.rawResponse !== undefined && <StepStatWide title="Response Size">{(status.response.rawResponse.length / 1024).toFixed(2)} KB</StepStatWide>}
+                                    {status?.response?.duration !== undefined && (
+                                        <StepStat title="Execution time">
+                                            {status.response.duration < 1 
+                                                ? `${(status.response.duration * 1000).toFixed(0)}ms`
+                                                : `${status.response.duration.toFixed(2)}s`
+                                            }
+                                        </StepStat>
+                                    )}
+                                    {status?.response?.rawResponse !== undefined && (
+                                        <StepStatWide title="Response Size">
+                                            {(status.response.rawResponse.length / 1024).toFixed(2)} KB
+                                        </StepStatWide>
+                                    )}
 
                                     {onMoveStep && (
                                         <>

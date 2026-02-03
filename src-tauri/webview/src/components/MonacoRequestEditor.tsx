@@ -29,6 +29,7 @@ interface MonacoRequestEditorProps {
     logId?: string; // Debugging ID
     fontSize?: number; // Font size for editor (default: 14)
     fontFamily?: string; // Font family for editor (default: Consolas)
+    availableVariables?: Array<{ name: string; value: string | null; source: string }>; // For autocomplete
 }
 
 export interface MonacoRequestEditorHandle {
@@ -47,7 +48,8 @@ export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoR
     requestId,
     forceUpdateKey,
     fontSize = 14,
-    fontFamily = 'Consolas, "Courier New", monospace'
+    fontFamily = 'Consolas, "Courier New", monospace',
+    availableVariables = []
 }, ref) => {
     const editorRef = useRef<any>(null);
     const monacoRef = useRef<Monaco | null>(null);
@@ -205,6 +207,47 @@ export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoR
             precondition: '!readonly',
             run: doPaste
         });
+
+        // --- Variable Autocomplete ---
+        // Register completion provider for ${...} variables
+        if (availableVariables.length > 0) {
+            monaco.languages.registerCompletionItemProvider(language, {
+                triggerCharacters: ['$', '{'],
+                provideCompletionItems: (model, position) => {
+                    const textUntilPosition = model.getValueInRange({
+                        startLineNumber: position.lineNumber,
+                        startColumn: 1,
+                        endLineNumber: position.lineNumber,
+                        endColumn: position.column
+                    });
+
+                    // Check if we're typing ${...}
+                    const match = textUntilPosition.match(/\$\{([^}]*)$/);
+                    if (!match) {
+                        return { suggestions: [] };
+                    }
+
+                    const word = model.getWordUntilPosition(position);
+                    const range = {
+                        startLineNumber: position.lineNumber,
+                        endLineNumber: position.lineNumber,
+                        startColumn: word.startColumn,
+                        endColumn: word.endColumn
+                    };
+
+                    const suggestions = availableVariables.map((variable) => ({
+                        label: variable.name,
+                        kind: monaco.languages.CompletionItemKind.Variable,
+                        detail: variable.value ? `= ${variable.value}` : '(not yet extracted)',
+                        documentation: `From: ${variable.source}\nValue: ${variable.value || 'pending'}`,
+                        insertText: variable.name,
+                        range: range
+                    }));
+
+                    return { suggestions };
+                }
+            });
+        }
 
         // Copy (Ctrl+C)
         const doCopy = (ed: any) => {

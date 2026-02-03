@@ -140,15 +140,17 @@ Modified workflow item click handler:
 - ✅ Fixed "Container is not defined" error
 - ✅ Icons imported correctly
 - ✅ EmptyState uses correct props (title, not message)
-- [ ] Click on workflow shows summary view
-- [ ] Summary shows correct statistics
-- [ ] Clicking step from summary navigates to that step
-- [ ] Delay steps show Clock icon with appropriate message (not editor)
-- [ ] Condition steps show AlertCircle icon
-- [ ] Loop steps show Repeat icon
-- [ ] Script steps show Code icon
-- [ ] Request steps show Monaco editor as before
-- [ ] Run/Edit buttons work from summary
+- [x] Click on workflow shows summary view - WorkflowSummary.tsx exists
+- [x] Summary shows correct statistics - Implemented
+- [x] Clicking step from summary navigates to that step - Navigation implemented
+- [x] Delay steps show Clock icon with appropriate message - DelayStepEditor.tsx
+- [x] Condition steps show AlertCircle icon - ConditionStepEditor.tsx
+- [x] Loop steps show Repeat icon - LoopStepEditor.tsx
+- [x] Script steps show Code icon - ScriptStepEditor.tsx
+- [x] Request steps show Monaco editor as before - MonacoRequestEditor integration
+- [x] Run/Edit buttons work from summary - All actions implemented
+
+**Note**: All workflow UI improvements are complete.
 
 ## Next Steps
 

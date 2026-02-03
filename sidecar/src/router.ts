@@ -133,7 +133,15 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
                         graphqlConfig: payload.graphqlConfig
                     } as any);
                 } else {
-                    result = await services.soapClient.executeRequest(endpoint, operation, args, headers);
+                    // Pass wsSecurity and attachments to SOAP execution
+                    result = await services.soapClient.executeRequest(
+                        endpoint, 
+                        operation, 
+                        args, 
+                        headers,
+                        payload.wsSecurity,
+                        payload.attachments
+                    );
                 }
 
                 let historyEntry: RequestHistoryEntry | null = null;
@@ -219,6 +227,7 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
                 // In Tauri standalone, we can't prompt - return error
                 throw new Error('No file path provided. Please use "Save Project As" first.');
             }
+            
             await services.folderStorage.saveProject(project, filePath);
             return {
                 saved: true,
