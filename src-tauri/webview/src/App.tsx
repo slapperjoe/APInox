@@ -7,6 +7,7 @@ import { NavigationProvider } from './contexts/NavigationContext';
 import { TestRunnerProvider } from './contexts/TestRunnerContext';
 import { PerformanceProvider } from './contexts/PerformanceContext';
 import { MockProxyProvider } from './contexts/MockProxyContext';
+import { SearchProvider } from './contexts/SearchContext';
 import MainContent from './components/MainContent';
 import { DebugIndicator } from './components/DebugIndicator';
 import TitleBar from './components/TitleBar';
@@ -21,9 +22,11 @@ export default function App() {
                             <TestRunnerProvider>
                                 <PerformanceProvider>
                                     <MockProxyProvider>
-                                        <TitleBar />
-                                        <DebugIndicator />
-                                        <MainContent />
+                                        <SearchProvider>
+                                            <TitleBar />
+                                            <DebugIndicator />
+                                            <MainContent />
+                                        </SearchProvider>
                                     </MockProxyProvider>
                                 </PerformanceProvider>
                             </TestRunnerProvider>

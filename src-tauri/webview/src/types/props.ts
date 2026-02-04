@@ -136,6 +136,8 @@ export interface SidebarProxyProps {
 
 export interface SidebarTestsProps {
     projects: ApinoxProject[];
+    selectedTestSuite?: import('@shared/models').TestSuite | null;
+    selectedTestCase?: TestCase | null;
     onAddSuite: (projectName: string) => void;
     onDeleteSuite: (suiteId: string) => void;
     onRunSuite: (suiteId: string) => void;

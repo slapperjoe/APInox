@@ -154,6 +154,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {activeView === SidebarView.TESTS && (
                     <TestsUi
                         projects={testsProps.projects}
+                        selectedTestSuite={testsProps.selectedTestSuite}
+                        selectedTestCase={testsProps.selectedTestCase}
                         onAddSuite={testsProps.onAddSuite}
                         onDeleteSuite={testsProps.onDeleteSuite}
                         onRunSuite={testsProps.onRunSuite}

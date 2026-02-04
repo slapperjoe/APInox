@@ -101,6 +101,25 @@ interface ProjectContextValue {
     reorderItems: (itemId: string, targetId: string, position: 'before' | 'after', itemType: 'project' | 'folder' | 'interface', projectName?: string) => void;
 
     // -------------------------------------------------------------------------
+    // EXPANSION HELPERS (for programmatic navigation)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Ensures a project is expanded (does not toggle if already expanded)
+     */
+    ensureProjectExpanded: (name: string) => void;
+
+    /**
+     * Ensures an interface is expanded (does not toggle if already expanded)
+     */
+    ensureInterfaceExpanded: (projectName: string, interfaceName: string) => void;
+
+    /**
+     * Ensures an operation is expanded (does not toggle if already expanded)
+     */
+    ensureOperationExpanded: (projectName: string, interfaceName: string, operationName: string) => void;
+
+    // -------------------------------------------------------------------------
     // UTILITIES
     // -------------------------------------------------------------------------
 
@@ -519,6 +538,55 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
         })));
     }, []);
 
+    // -------------------------------------------------------------------------
+    // EXPANSION HELPERS (for programmatic navigation)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Ensures a project is expanded (does not toggle if already expanded)
+     */
+    const ensureProjectExpanded = useCallback((name: string) => {
+        setProjects(prev => prev.map(p =>
+            p.name === name && !p.expanded ? { ...p, expanded: true } : p
+        ));
+    }, []);
+
+    /**
+     * Ensures an interface is expanded (does not toggle if already expanded)
+     */
+    const ensureInterfaceExpanded = useCallback((projectName: string, interfaceName: string) => {
+        setProjects(prev => prev.map(p => {
+            if (p.name !== projectName) return p;
+            return {
+                ...p,
+                interfaces: p.interfaces.map(i =>
+                    i.name === interfaceName && !i.expanded ? { ...i, expanded: true } : i
+                )
+            };
+        }));
+    }, []);
+
+    /**
+     * Ensures an operation is expanded (does not toggle if already expanded)
+     */
+    const ensureOperationExpanded = useCallback((projectName: string, interfaceName: string, operationName: string) => {
+        setProjects(prev => prev.map(p => {
+            if (p.name !== projectName) return p;
+            return {
+                ...p,
+                interfaces: p.interfaces.map(i => {
+                    if (i.name !== interfaceName) return i;
+                    return {
+                        ...i,
+                        operations: i.operations.map(o =>
+                            o.name === operationName && !o.expanded ? { ...o, expanded: true } : o
+                        )
+                    };
+                })
+            };
+        }));
+    }, []);
+
     /**
      * Collapses all projects, interfaces, and operations in the sidebar.
      */
@@ -656,6 +724,9 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
         expandAll,
         collapseAll,
         reorderItems,
+        ensureProjectExpanded,
+        ensureInterfaceExpanded,
+        ensureOperationExpanded,
 
         // Utilities
         updateProject,

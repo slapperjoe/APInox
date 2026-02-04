@@ -136,6 +136,8 @@ const AddSuiteRow = styled.div`
 
 export interface TestsUiProps {
     projects: ApinoxProject[];
+    selectedTestSuite?: TestSuite | null;
+    selectedTestCase?: any | null;
     onAddSuite: (projectName: string, suiteName?: string) => void;
     onDeleteSuite: (suiteId: string) => void;
     onRunSuite: (suiteId: string) => void;
@@ -195,6 +197,8 @@ const ContextMenuItem = styled.div`
 
 export const TestsUi: React.FC<TestsUiProps> = ({
     projects,
+    selectedTestSuite,
+    selectedTestCase,
     onAddSuite,
     onDeleteSuite,
     onRunSuite,
@@ -211,8 +215,6 @@ export const TestsUi: React.FC<TestsUiProps> = ({
     deleteConfirm
 }) => {
     const [showAddSuiteMenu, setShowAddSuiteMenu] = useState(false);
-    const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
-    const [selectedSuiteId, setSelectedSuiteId] = useState<string | null>(null);
     const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
     const [renameId, setRenameId] = useState<string | null>(null);
     const [renameType, setRenameType] = useState<'case' | 'step' | 'suite' | null>(null);
@@ -389,21 +391,15 @@ export const TestsUi: React.FC<TestsUiProps> = ({
 
                     {/* Unique Test Suites List (Deduplicated) */}
                     {Array.from(new Map(projects.flatMap(p => (p.testSuites || []).map(s => [s.id, s]))).values()).map(suite => {
-                        const isSuiteSelected = selectedSuiteId === suite.id && selectedCaseId === null;
+                        const isSuiteSelected = selectedTestSuite?.id === suite.id && !selectedTestCase;
                         return (
                             <div key={suite.id}>
                                 {/* Suite Header */}
                                 <SuiteOperationItem
                                     $active={isSuiteSelected}
                                     onClick={() => {
-                                        // Toggle suite selection and notify parent
-                                        if (isSuiteSelected) {
-                                            setSelectedSuiteId(null);
-                                        } else {
-                                            setSelectedSuiteId(suite.id);
-                                            setSelectedCaseId(null); // Clear case selection
-                                            onSelectSuite(suite.id); // Notify parent
-                                        }
+                                        // Notify parent - let context handle state
+                                        onSelectSuite(suite.id);
                                     }}
                                 >
                                     <SuiteToggle
@@ -439,20 +435,14 @@ export const TestsUi: React.FC<TestsUiProps> = ({
 
                                 {/* Test Cases */}
                                 {suite.expanded !== false && (suite.testCases || []).map(tc => {
-                                    const isSelected = selectedCaseId === tc.id;
+                                    const isSelected = selectedTestCase?.id === tc.id;
                                     return (
                                         <React.Fragment key={tc.id}>
                                             <CaseRequestItem
                                                 $active={isSelected}
                                                 onClick={() => {
-                                                    // Select case and notify parent
-                                                    if (isSelected) {
-                                                        setSelectedCaseId(null);
-                                                    } else {
-                                                        setSelectedCaseId(tc.id);
-                                                        setSelectedSuiteId(null); // Clear suite selection
-                                                        onSelectTestCase(tc.id); // Notify parent
-                                                    }
+                                                    // Notify parent - let context handle state
+                                                    onSelectTestCase(tc.id);
                                                 }}
                                                 onContextMenu={(e) => handleContextMenu(e, tc.id, tc.name, 'case')}
                                             >

@@ -1496,6 +1496,8 @@ export function MainContent() {
                 }}
                 testsProps={{
                     projects,
+                    selectedTestSuite,
+                    selectedTestCase,
                     onAddSuite: handleAddSuite,
                     onDeleteSuite: handleDeleteSuite,
                     onRunSuite: handleRunTestSuiteWrapper,
