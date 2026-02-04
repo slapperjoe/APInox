@@ -1,27 +1,6 @@
 # Changelog
 
 
-## [0.15.108] - 2026-02-04
-### Changed
-- **Build Size Optimization Phase 2+3**: Further reduced installer size
-  - Installer size reduced to 20.45 MB (from 20.59 MB in Phase 1)
-  - Total reduction: 28.92 MB → 20.45 MB (-29.3%)
-  - Exceeded target of ~25 MB by 4.55 MB
-  
-**Phase 2 - Dependency Cleanup**:
-  - Removed unused test frameworks (jest, mocha, ts-jest)
-  - Moved all @types/* packages to devDependencies  
-  - Reduced node_modules by 293 packages
-  - Added @apidevtools/swagger-parser to sidecar (required for OpenAPI support)
-  - Kept react-markdown + remark-gfm (used in Help and Welcome)
-
-**Phase 3 - Monaco Editor Optimization**:
-  - Created vite-monaco-plugin.ts for custom optimization
-  - Improved manual chunking with function-based approach
-  - Better worker splitting (ts.worker, json.worker, css.worker, html.worker)
-  - Optimized vendor chunk separation
-  - Webview bundle: 16.78 MB (down from 16.91 MB)
-
 ## [0.15.105] - 2026-02-04
 ### Changed
 - **Build Size Optimization**: Significantly reduced installer size through production optimizations
