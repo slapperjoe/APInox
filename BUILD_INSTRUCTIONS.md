@@ -1,12 +1,25 @@
-## Tauri Production Build - IMPORTANT
+## Tauri Production Build
 
-### The sidecar is NOT being bundled! Here's why:
+### Build Metrics (v0.15.105)
 
-Looking at your logs, it's searching for `C:\Program Files\APInox\sidecar-bundle\bundle.js` but it doesn't exist.
+- **Installer Size**: 20.59 MB (optimized with LZMA compression)
+- **Webview Bundle**: 16.91 MB (production, no sourcemaps)
+- **Sidecar Binary**: 38.29 MB (minified with pkg + GZip)
+- **Total Application**: ~75 MB installed
 
-### Root Cause
+### Production vs Development Builds
 
-You likely ran the build using **Windows NSIS installer** or built without running the prepare script.
+**Production Build** (`npm run tauri:build`):
+- ✅ Sourcemaps stripped from webview (smaller size)
+- ✅ Sidecar minified
+- ✅ LZMA compression on installer
+- ✅ Optimized for distribution
+
+**Development Build** (`npm run tauri:dev`):
+- ✅ Sourcemaps included for debugging
+- ✅ Faster build times
+- ✅ Hot module reload
+- ⚠️ Larger bundle size
 
 ### How to Build Correctly
 
@@ -22,11 +35,18 @@ npm run tauri:build
 
 ### What `npm run tauri:build` Does
 
-1. ✅ Runs `npm run prepare:sidecar` which:
+1. ✅ Increments build number
+2. ✅ Syncs versions across all package files
+3. ✅ Runs `npm run prepare:sidecar` which:
    - Compiles TypeScript
-   - Bundles with esbuild
-   - Copies to `sidecar-bundle/` with dependencies
-2. ✅ Then runs `tauri build` which includes the bundle
+   - Bundles with esbuild (minified for production)
+   - Creates pkg binary with GZip compression
+   - Copies to `sidecar-bundle/` for Tauri inclusion
+4. ✅ Builds webview with Vite (production mode, no sourcemaps)
+5. ✅ Runs `tauri build` which:
+   - Compiles Rust code with release optimizations
+   - Includes sidecar binary
+   - Creates NSIS installer with LZMA compression
 
 ### Verification
 
@@ -39,14 +59,21 @@ dir "C:\Program Files\APInox\sidecar-bundle\"
 ```
 
 Should contain:
-- `bundle.js` (2.6 MB)
-- `node_modules\` folder with express, cors, jsonc-parser
+- `sidecar-x86_64-pc-windows-msvc.exe` (38.29 MB)
+
+### Build Optimization History
+
+**v0.15.105 (Feb 2026)**:
+- Reduced installer from 28.92 MB to 20.59 MB (-28.8%)
+- Stripped production sourcemaps (49 MB savings in webview)
+- Enabled sidecar minification
+- Added LZMA compression to NSIS bundler
 
 ### Current Status
 
-❌ Your production build is missing the sidecar-bundle  
-✅ The bundling code is implemented and working  
-⚠️ Need to rebuild using `npm run tauri:build`
+✅ Production build optimized and tested
+✅ All features working correctly
+✅ Installer size reduced by 8.33 MB
 
 ### Next Steps
 

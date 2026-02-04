@@ -28,7 +28,7 @@ export default defineConfig({
         outDir: 'dist',
         assetsInlineLimit: 1048576, // Inline assets up to 1MB (Mascot is ~635KB)
         minify: true,
-        sourcemap: true,
+        sourcemap: process.env.NODE_ENV === 'development', // Only in dev builds
         rollupOptions: {
             output: {
                 entryFileNames: `assets/[name].js`,
