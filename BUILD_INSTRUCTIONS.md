@@ -1,16 +1,11 @@
 ## Tauri Production Build
 
-### Build Metrics (v0.15.108 - Latest Optimized)
+### Build Metrics (v0.15.105)
 
-- **Installer Size**: 20.45 MB (optimized with LZMA compression)
-- **Webview Bundle**: 16.78 MB (production, no sourcemaps)
+- **Installer Size**: 20.59 MB (optimized with LZMA compression)
+- **Webview Bundle**: 16.91 MB (production, no sourcemaps)
 - **Sidecar Binary**: 38.29 MB (minified with pkg + GZip)
 - **Total Application**: ~75 MB installed
-
-**Optimization History**:
-- v0.15.104 (baseline): 28.92 MB
-- v0.15.105 (Phase 1): 20.59 MB (-28.8%)
-- v0.15.108 (Phase 2+3): 20.45 MB (-29.3% total)
 
 ### Production vs Development Builds
 
@@ -68,12 +63,7 @@ Should contain:
 
 ### Build Optimization History
 
-**v0.15.108 (Feb 2026) - Phase 2+3**:
-- Dependency cleanup: Removed 293 packages
-- Monaco optimization: Custom vite plugin + improved chunking
-- Result: 20.45 MB installer (-29.3% from baseline)
-
-**v0.15.105 (Feb 2026) - Phase 1**:
+**v0.15.105 (Feb 2026)**:
 - Reduced installer from 28.92 MB to 20.59 MB (-28.8%)
 - Stripped production sourcemaps (49 MB savings in webview)
 - Enabled sidecar minification
