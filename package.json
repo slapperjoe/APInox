@@ -7,7 +7,7 @@
     "url": "https://github.com/slapperjoe/apinox.git"
   },
   "license": "MIT",
-  "version": "0.15.102",
+  "version": "0.15.105",
   "bin": {
     "apinox": "./out/src/cli/index.js"
   },

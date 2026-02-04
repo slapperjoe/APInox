@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "APInox",
-  "version": "0.15.102",
+  "version": "0.15.105",
   "identifier": "app.apinox.dev1",
   "build": {
     "frontendDist": "webview/dist",
@@ -45,7 +45,12 @@
     },
     "externalBin": [
       "../sidecar-bundle/sidecar"
-    ]
+    ],
+    "windows": {
+      "nsis": {
+        "compression": "lzma"
+      }
+    }
   },
   "plugins": {}
 }

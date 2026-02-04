@@ -18,7 +18,7 @@ esbuild.build({
     define: {
         'process.env.APINOX_VERSION': JSON.stringify(pkg.version)
     },
-    minify: false, // Keep readable for debugging
+    minify: true, // Enable minification for production builds
     sourcemap: false
 }).then(() => {
     console.log(`✅ Bundle created successfully with version ${pkg.version}`);

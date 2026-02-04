@@ -1,6 +1,102 @@
 # Changelog
 
 
+## [0.15.105] - 2026-02-04
+### Changed
+- **Build Size Optimization**: Significantly reduced installer size through production optimizations
+  - Installer size reduced from 28.92 MB to 20.59 MB (-28.8% reduction)
+  - Stripped sourcemaps from production builds (kept in development)
+  - Enabled sidecar minification for production
+  - Added LZMA compression to NSIS installer
+  - Webview bundle reduced from 62.22 MB to 16.91 MB (-72.8%)
+  - Development builds retain sourcemaps for debugging
+  - All functionality preserved and tested
+
+## [0.15.94] - 2026-02-04
+### Added
+- **SettingsManager**: Comprehensive configuration management system
+  - Centralized handling of application settings (environments, UI state, mock server config)
+  - Methods for managing recent workspaces and performance testing configurations
+  - Support for proxy rules and timeout configurations
+- **WS-Security Support**: New WSSecurityUtil for generating WS-Security headers
+  - UsernameToken with PasswordText or PasswordDigest
+  - Certificate signing support
+  - Nonce and timestamp generation for replay attack prevention
+- **WildcardProcessor**: Advanced dynamic text processing
+  - Context-aware variable and function processing
+  - UUID generation, date manipulation, and user-defined scripts
+  - Integration with environment and global variables
+- **Font Detection**: Utility to detect installed monospaced fonts on user's system
+- **Workflow Editor UI**: Complete workflow editing interface
+  - ScriptStepEditor for JavaScript step editing
+  - WorkflowEditor with drag-and-drop step management
+  - WorkflowPropertiesPanel for metadata and statistics
+  - WorkflowSummary for workflow overview
+  - Integrated with TestRunnerService for step execution
+- **Drag-and-Drop Reordering**: Sidebar items can now be reordered via drag-and-drop
+  - Custom `useDragAndDrop` hook for managing drag state
+  - Visual feedback during dragging
+  - Works with projects, folders, and interfaces
+- **Sample Request Panel**: Display sample XML requests with metadata in Operation Summary
+  - Create requests directly from samples
+  - XML tree structure rendering
+  - Filtering of sample requests from project interface additions
+- **Variables Panel**: Display extracted variables from prior test steps
+  - Variable autocomplete in Monaco editor
+  - Execution status visualization with icons and tooltips
+- **Save Error Dialog**: User-friendly error handling for save failures
+  - Retry, delete, and keep options
+  - Clear error messages with actionable feedback
+- **TitleBar Enhancements**: Custom title bar with window controls
+  - Minimize/maximize functionality
+  - Project info display
+  - Better Tauri integration
+
+### Improved
+- **UI Consistency**: Comprehensive refactoring for standardization
+  - Unified Button and Form component libraries
+  - NumberSpinner for numeric inputs
+  - Consistent spacing constants (SPACING, MODAL)
+  - Semantic color variables (STATUS_COLORS, CHANGE_COLORS, ICON_COLORS, TAG_COLORS)
+  - Theme-aware color mixing for hover effects
+- **FileWatcherService**: Enhanced XML validation and retry logic
+  - Metrics tracking for request/response handling
+  - Improved error handling and logging
+- **Workflow Configuration**: Integrated workflow UI in WorkspaceLayout
+- **Component Styling**: Migrated components to use semantic spacing and theme variables
+  - GraphQLVariablesPanel, HeadersPanel, QueryParamsPanel
+  - RestAuthPanel, SecurityPanel
+  - MonacoSingleLineInput with themed wildcard tags
+  - TauriNotificationProvider with themed toast colors
+  - WorkspaceLayout with theme-aware logo visibility
+
+### Fixed
+- **Request File Cleanup**: FolderProjectStorage now properly deletes orphaned files when requests are renamed
+- **TestRunnerService**: Includes settings manager for workflow execution
+- **Color Consistency**: All UI components now properly use VS Code theme variables
+
+### Documentation
+- Added TLS Fix Guide for .NET WCF connections to APInox Proxy
+- Updated AGENTS.md to reflect Tauri as primary platform
+- Documented drag-and-drop implementation
+- Added request chaining phase 1 completion notes
+- Comprehensive Copilot instructions for Tauri development
+
+### Scripts & Diagnostics
+- **Certificate Management Scripts**:
+  - `bind-proxy-cert.ps1`: Bind APInox certificate to HTTPS port
+  - `fix-cert-store.ps1`: Check and fix certificate installation
+  - `install-proxy-cert.ps1`: Install certificate to Trusted Root
+  - `reset-certificates.ps1`: Complete certificate reset
+  - `verify-cert-installation.ps1`: Manual certificate verification
+- **Diagnostic Scripts**:
+  - `debug-proxy-config.ps1`: Diagnose proxy setup issues
+  - `test-cert-https.js`: Test HTTPS server with APInox certificate
+  - `test-proxy-tls.js`: Diagnose TLS connection issues for .NET WCF
+- **DiagnosticsTab**: Integrated certificate and proxy diagnostics
+  - React-based dialog system (replaces native alerts)
+  - TLS connection attempt logging
+
 ## [0.15.0] - 2026-01-24
 ### Added
 - **Encrypted Secrets**: Environment variables can now be marked as secret with AES-256-GCM encryption at rest
