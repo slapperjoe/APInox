@@ -49,6 +49,32 @@ interface ConfirmationState {
     onConfirm: () => void;
 }
 
+const MainContent: React.FC = () => {
+    // ==========================================================================
+    // PLATFORM DETECTION
+    // ==========================================================================
+    const [platformOS, setPlatformOS] = useState<'macos' | 'windows' | 'linux' | 'unknown'>('unknown');
+    
+    useEffect(() => {
+        async function detectPlatform() {
+            try {
+                if (window.__TAURI__) {
+                    const { invoke } = await import('@tauri-apps/api/core');
+                    const os = await invoke<string>('get_platform_os');
+                    setPlatformOS(os as any);
+                }
+            } catch (err) {
+                console.error('Failed to detect platform:', err);
+            }
+        }
+        detectPlatform();
+    }, []);
+    
+    const showCustomTitleBar = platformOS !== 'macos';
+    
+    // ==========================================================================
+    // STYLED COMPONENTS
+    // ==========================================================================
 const ImportModalOverlay = styled.div`
     position: fixed;
     top: 0;
@@ -131,10 +157,6 @@ const DangerMenuItem = styled(ContextMenuItem)`
     color: var(--apinox-errorForeground);
 `;
 
-
-
-
-export function MainContent() {
     // ==========================================================================
     // CONTEXT - Project state from ProjectContext
     // ==========================================================================
@@ -1401,7 +1423,7 @@ export function MainContent() {
 
 
     return (
-        <Container onClick={closeContextMenu}>
+        <Container onClick={closeContextMenu} $showCustomTitleBar={showCustomTitleBar} $isMacOS={platformOS === 'macos'}>
             {/* Sidebar with consolidated props */}
             <Sidebar
                 projectProps={{

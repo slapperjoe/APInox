@@ -9,6 +9,13 @@ const packageJson = require('../../package.json');
 export default defineConfig({
     plugins: [react()],
     base: './',
+    
+    // Ensure Tauri APIs are available
+    clearScreen: false,
+    server: {
+        strictPort: true,
+    },
+    envPrefix: ['VITE_', 'TAURI_'],
     define: {
         '__APP_VERSION__': JSON.stringify(packageJson.version)
     },
