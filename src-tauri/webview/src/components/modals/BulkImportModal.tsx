@@ -259,6 +259,20 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
     const [viewState, setViewState] = useState<ViewState>('input');
     const [results, setResults] = useState<BulkImportResult[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
+    
+    // Reset state when modal opens or existingProjects changes
+    React.useEffect(() => {
+        if (open) {
+            // Set import mode based on existing projects
+            const mode: ImportMode = existingProjects.length > 0 ? 'existing' : 'new';
+            setImportMode(mode);
+            
+            // Set selected project if in existing mode
+            if (mode === 'existing' && existingProjects.length > 0) {
+                setSelectedProject(existingProjects[0]);
+            }
+        }
+    }, [open, existingProjects]);
 
     // Parse URLs from textarea
     const parseUrls = useCallback((): string[] => {
