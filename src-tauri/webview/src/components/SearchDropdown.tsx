@@ -21,10 +21,9 @@ import { FileText, Folder, Box, Layers, TestTube, Workflow, Clock } from 'lucide
 const DropdownContainer = styled.div<{ $isMacOS?: boolean }>`
     position: fixed;
     top: ${props => props.$isMacOS ? '34px' : '32px'}; /* Below titlebar (macOS: 34px, Windows/Linux: 32px) */
-    left: 50%;
-    transform: translateX(-50%);
-    width: 600px;
-    max-width: 90vw;
+    left: ${props => props.$isMacOS ? '92px' : '95px'}; /* Align with search bar (after logo + padding) */
+    width: 450px;
+    max-width: calc(100vw - ${props => props.$isMacOS ? '280px' : '240px'}); /* Leave room for breadcrumb and version */
     max-height: 500px;
     background: var(--apinox-dropdown-background, var(--vscode-dropdown-background));
     border: 1px solid var(--apinox-dropdown-border, var(--vscode-dropdown-border));

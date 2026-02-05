@@ -350,6 +350,11 @@ export const lightTheme: Theme = {
         '--apinox-testing-iconPassed': '#388a34',
         '--apinox-testing-iconFailed': '#d73a49',
         '--apinox-testing-iconQueued': '#9a6700',
+        
+        // Tabs
+        '--apinox-tab-activeBackground': '#ffffff',
+        '--apinox-tab-activeForeground': '#000000',
+        '--apinox-tab-inactiveForeground': '#717171',
     },
 };
 
@@ -503,6 +508,11 @@ export const solarizedDarkTheme: Theme = {
         '--apinox-testing-iconPassed': '#859900',
         '--apinox-testing-iconFailed': '#dc322f',
         '--apinox-testing-iconQueued': '#b58900',
+        
+        // Tabs
+        '--apinox-tab-activeBackground': '#073642',
+        '--apinox-tab-activeForeground': '#93a1a1',
+        '--apinox-tab-inactiveForeground': '#586e75',
     },
 };
 
@@ -650,6 +660,11 @@ export const solarizedLightTheme: Theme = {
         '--apinox-testing-iconPassed': '#859900',
         '--apinox-testing-iconFailed': '#dc322f',
         '--apinox-testing-iconQueued': '#b58900',
+        
+        // Tabs
+        '--apinox-tab-activeBackground': '#eee8d5',
+        '--apinox-tab-activeForeground': '#586e75',
+        '--apinox-tab-inactiveForeground': '#93a1a1',
     },
 };
 

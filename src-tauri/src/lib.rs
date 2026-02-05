@@ -737,19 +737,20 @@ pub fn run() {
             }
             
             // Configure window decorations based on platform
-            // macOS: Already set in tauri.conf.json (decorations: false, titleBarStyle: Transparent)
-            // Windows/Linux: decorations = false for custom titlebar
             if let Some(window) = app.get_webview_window("main") {
-                log::info!("Platform-specific window styling configured via tauri.conf.json");
-                
                 #[cfg(target_os = "macos")]
                 {
-                    log::info!("macOS: Transparent titlebar with traffic lights");
+                    // On macOS, enable native titlebar with overlay style
+                    log::info!("macOS: Enabling native titlebar with traffic lights");
+                    let _ = window.set_decorations(true);
+                    // Note: titleBarStyle and hiddenTitle must be set in tauri.conf.json
+                    // as they can't be changed at runtime
                 }
                 
                 #[cfg(not(target_os = "macos"))]
                 {
-                    log::info!("Windows/Linux: Custom titlebar with window controls");
+                    log::info!("Windows/Linux: Using custom titlebar (decorations disabled)");
+                    // Decorations already false from config
                 }
             }
 
