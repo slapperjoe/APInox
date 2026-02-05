@@ -18,9 +18,9 @@ import { FileText, Folder, Box, Layers, TestTube, Workflow, Clock } from 'lucide
 // STYLED COMPONENTS
 // =============================================================================
 
-const DropdownContainer = styled.div`
+const DropdownContainer = styled.div<{ $isMacOS?: boolean }>`
     position: fixed;
-    top: 32px; /* Below TitleBar */
+    top: ${props => props.$isMacOS ? '34px' : '32px'}; /* Below titlebar (macOS: 34px, Windows/Linux: 32px) */
     left: 50%;
     transform: translateX(-50%);
     width: 600px;
@@ -249,6 +249,7 @@ interface SearchDropdownProps {
     onSelectResult: (result: SearchResult) => void;
     onClose: () => void;
     onChangeSelection: (index: number) => void;
+    isMacOS?: boolean;
 }
 
 export const SearchDropdown: React.FC<SearchDropdownProps> = ({
@@ -258,6 +259,7 @@ export const SearchDropdown: React.FC<SearchDropdownProps> = ({
     onSelectResult,
     onClose,
     onChangeSelection,
+    isMacOS = false,
 }) => {
     const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -321,7 +323,7 @@ export const SearchDropdown: React.FC<SearchDropdownProps> = ({
 
     if (isLoading) {
         return (
-            <DropdownContainer ref={dropdownRef}>
+            <DropdownContainer ref={dropdownRef} $isMacOS={isMacOS}>
                 <LoadingState>Searching...</LoadingState>
             </DropdownContainer>
         );
@@ -329,7 +331,7 @@ export const SearchDropdown: React.FC<SearchDropdownProps> = ({
 
     if (flatResults.length === 0) {
         return (
-            <DropdownContainer ref={dropdownRef}>
+            <DropdownContainer ref={dropdownRef} $isMacOS={isMacOS}>
                 <EmptyState>No results found</EmptyState>
             </DropdownContainer>
         );
@@ -338,7 +340,7 @@ export const SearchDropdown: React.FC<SearchDropdownProps> = ({
     let currentIndex = 0;
 
     return (
-        <DropdownContainer ref={dropdownRef}>
+        <DropdownContainer ref={dropdownRef} $isMacOS={isMacOS}>
             <ResultsList>
                 {Array.from(groupedResults.entries()).map(([view, results]) => (
                     <div key={view}>

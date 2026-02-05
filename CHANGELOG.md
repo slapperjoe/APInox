@@ -1,6 +1,10 @@
 # Changelog
 
 
+## [0.16.0] - 2026-02-05
+### Auto-Generated Changes
+- No Commit messages found.
+
 ## [0.15.105] - 2026-02-04
 ### Changed
 - **Build Size Optimization**: Significantly reduced installer size through production optimizations

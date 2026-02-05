@@ -19,7 +19,7 @@ interface DebugModalProps {
 
 // Frontend console log capture
 const frontendLogs: Array<{ timestamp: number; level: string; message: string }> = [];
-const MAX_FRONTEND_LOGS = 100;
+const MAX_FRONTEND_LOGS = 2000;
 
 // Intercept console methods
 const originalConsoleLog = console.log;
@@ -181,7 +181,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                 
                 // Load sidecar logs - always read from the actual log file for consistency
                 try {
-                    const tauriLogs = await invoke<string[]>('get_tauri_logs', { lines: 100 });
+                    const tauriLogs = await invoke<string[]>('get_tauri_logs', { lines: 2000 });
                     setSidecarLogs(tauriLogs);
                 } catch (e) {
                     console.warn('[DebugModal] Failed to get logs:', e);
@@ -329,19 +329,19 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                 }
             }
             
-            // Sidecar Logs (last 50 lines)
+            // Sidecar Logs (last 1000 lines)
             if (sidecarLogs.length > 0) {
                 lines.push('');
-                lines.push('--- Recent Logs (last 50 lines) ---');
-                const recentLogs = sidecarLogs.slice(-50);
+                lines.push('--- Recent Logs (last 1000 lines) ---');
+                const recentLogs = sidecarLogs.slice(-1000);
                 recentLogs.forEach(log => lines.push(log));
             }
             
-            // Frontend Logs (last 20 lines)
+            // Frontend Logs (last 1000 lines)
             if (frontendLogState.length > 0) {
                 lines.push('');
-                lines.push('--- Recent Frontend Logs (last 20) ---');
-                const recentFrontend = frontendLogState.slice(-20);
+                lines.push('--- Recent Frontend Logs (last 1000) ---');
+                const recentFrontend = frontendLogState.slice(-1000);
                 recentFrontend.forEach(log => {
                     const time = new Date(log.timestamp).toISOString();
                     lines.push(`[${time}] [${log.level.toUpperCase()}] ${log.message}`);
@@ -458,7 +458,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                                 try {
                                     const { invoke } = await import('@tauri-apps/api/core');
                                     // Always read from the actual log file for consistency with file contents
-                                    const tauriLogs = await invoke<string[]>('get_tauri_logs', { lines: 100 });
+                                    const tauriLogs = await invoke<string[]>('get_tauri_logs', { lines: 2000 });
                                     setSidecarLogs(tauriLogs);
                                 } catch (e) {
                                     console.error('[DebugModal] Failed to refresh logs:', e);

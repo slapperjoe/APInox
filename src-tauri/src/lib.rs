@@ -97,6 +97,21 @@ fn get_app_version() -> String {
 }
 
 #[tauri::command]
+fn get_platform_os() -> String {
+    #[cfg(target_os = "macos")]
+    return "macos".to_string();
+    
+    #[cfg(target_os = "windows")]
+    return "windows".to_string();
+    
+    #[cfg(target_os = "linux")]
+    return "linux".to_string();
+    
+    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+    return "unknown".to_string();
+}
+
+#[tauri::command]
 fn get_sidecar_port() -> u16 {
     SIDECAR_PORT.load(Ordering::Relaxed)
 }
@@ -656,7 +671,7 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![quit_app, set_border_color, get_app_version, get_sidecar_port, is_sidecar_ready, get_config_dir, get_sidecar_diagnostics, get_tauri_logs])
+        .invoke_handler(tauri::generate_handler![quit_app, set_border_color, get_app_version, get_platform_os, get_sidecar_port, is_sidecar_ready, get_config_dir, get_sidecar_diagnostics, get_tauri_logs])
         .setup(|app| {
             // Initialize logging for both debug and production
             // This helps diagnose issues on user machines
@@ -718,6 +733,23 @@ pub fn run() {
             {
                 if let Some(window) = app.get_webview_window("main") {
                     apply_window_styling(&window);
+                }
+            }
+            
+            // Configure window decorations based on platform
+            // macOS: Already set in tauri.conf.json (decorations: false, titleBarStyle: Transparent)
+            // Windows/Linux: decorations = false for custom titlebar
+            if let Some(window) = app.get_webview_window("main") {
+                log::info!("Platform-specific window styling configured via tauri.conf.json");
+                
+                #[cfg(target_os = "macos")]
+                {
+                    log::info!("macOS: Transparent titlebar with traffic lights");
+                }
+                
+                #[cfg(not(target_os = "macos"))]
+                {
+                    log::info!("Windows/Linux: Custom titlebar with window controls");
                 }
             }
 

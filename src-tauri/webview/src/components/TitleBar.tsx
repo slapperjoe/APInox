@@ -23,9 +23,10 @@ const TitleBarContainer = styled.div`
   user-select: none;
   z-index: 999;
   border-bottom: 1px solid var(--apinox-titleBar-border, transparent);
+  pointer-events: auto;
 `;
 
-const DragRegion = styled.div`
+const DragRegion = styled.div<{ $isMacOS?: boolean }>`
   flex: 1;
   height: 100%;
   display: flex;
@@ -35,6 +36,14 @@ const DragRegion = styled.div`
   -webkit-app-region: drag;
   cursor: move;
   min-width: 0;
+  
+  /* On macOS, add left padding for native traffic lights */
+  padding-left: ${props => props.$isMacOS ? '80px' : '12px'};
+  
+  /* All children should not be draggable */
+  > * {
+    -webkit-app-region: no-drag;
+  }
 `;
 
 const AppLogo = styled.div`
@@ -229,6 +238,7 @@ const WindowButton = styled.button<{ isClose?: boolean }>`
   align-items: center;
   justify-content: center;
   transition: background-color 0.1s;
+  pointer-events: auto;
 
   &:hover {
     background: ${props => 
@@ -256,6 +266,7 @@ const WindowButton = styled.button<{ isClose?: boolean }>`
 const TitleBar: React.FC = () => {
   const [isMaximized, setIsMaximized] = useState(false);
   const [version, setVersion] = useState<string>('');
+  const [platformOS, setPlatformOS] = useState<'macos' | 'windows' | 'linux' | 'unknown'>('unknown');
   const { projects } = useProject();
   const { openDebugModal } = useUI();
   const { 
@@ -313,6 +324,13 @@ const TitleBar: React.FC = () => {
     // Get app version
     invoke<string>('get_app_version').then(setVersion).catch(err => {
       console.error('Failed to get app version:', err);
+    });
+    
+    // Detect platform
+    invoke<string>('get_platform_os').then(os => {
+      setPlatformOS(os as any);
+    }).catch(err => {
+      console.error('Failed to detect platform:', err);
     });
 
     // Keyboard shortcut for search (Ctrl+K or Cmd+K)
@@ -391,7 +409,7 @@ const TitleBar: React.FC = () => {
   return (
     <>
       <TitleBarContainer>
-        <DragRegion>
+        <DragRegion $isMacOS={platformOS === 'macos'}>
           <AppLogo onClick={handleLogoClick} title="Double-click to open Debug Console">
             <LogoIcon src={apinoxIcon} alt="APInox" />
             <AppTitle>APInox</AppTitle>
@@ -430,29 +448,31 @@ const TitleBar: React.FC = () => {
           )}
         </DragRegion>
         {version && <VersionLabel>v{version}</VersionLabel>}
-        <WindowControls>
-          <WindowButton onClick={handleMinimize} title="Minimize">
-            <svg viewBox="0 0 10 1" fill="currentColor">
-              <rect width="10" height="1" />
-            </svg>
-          </WindowButton>
-          <WindowButton onClick={handleMaximize} title={isMaximized ? "Restore" : "Maximize"}>
-            {isMaximized ? (
-              <svg viewBox="0 0 10 10" fill="currentColor">
-                <path d="M2,0 L2,2 L0,2 L0,10 L8,10 L8,8 L10,8 L10,0 Z M3,1 L9,1 L9,7 L8,7 L8,2 L3,2 Z M1,3 L7,3 L7,9 L1,9 Z" />
+        {platformOS !== 'macos' && (
+          <WindowControls>
+            <WindowButton onClick={handleMinimize} title="Minimize">
+              <svg viewBox="0 0 10 1" fill="currentColor">
+                <rect width="10" height="1" />
               </svg>
-            ) : (
+            </WindowButton>
+            <WindowButton onClick={handleMaximize} title={isMaximized ? "Restore" : "Maximize"}>
+              {isMaximized ? (
+                <svg viewBox="0 0 10 10" fill="currentColor">
+                  <path d="M2,0 L2,2 L0,2 L0,10 L8,10 L8,8 L10,8 L10,0 Z M3,1 L9,1 L9,7 L8,7 L8,2 L3,2 Z M1,3 L7,3 L7,9 L1,9 Z" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 10 10" fill="currentColor">
+                  <path d="M0,0 L0,10 L10,10 L10,0 Z M1,1 L9,1 L9,9 L1,9 Z" />
+                </svg>
+              )}
+            </WindowButton>
+            <WindowButton onClick={handleClose} isClose title="Close">
               <svg viewBox="0 0 10 10" fill="currentColor">
-                <path d="M0,0 L0,10 L10,10 L10,0 Z M1,1 L9,1 L9,9 L1,9 Z" />
+                <path d="M0,0 L10,10 M10,0 L0,10" stroke="currentColor" strokeWidth="1.2" />
               </svg>
-            )}
-          </WindowButton>
-          <WindowButton onClick={handleClose} isClose title="Close">
-            <svg viewBox="0 0 10 10" fill="currentColor">
-              <path d="M0,0 L10,10 M10,0 L0,10" stroke="currentColor" strokeWidth="1.2" />
-            </svg>
-          </WindowButton>
-        </WindowControls>
+            </WindowButton>
+          </WindowControls>
+        )}
       </TitleBarContainer>
       
       {showDropdown && (
@@ -463,6 +483,7 @@ const TitleBar: React.FC = () => {
           onSelectResult={selectResult}
           onClose={clearSearch}
           onChangeSelection={setSelectedIndex}
+          isMacOS={false}
         />
       )}
     </>

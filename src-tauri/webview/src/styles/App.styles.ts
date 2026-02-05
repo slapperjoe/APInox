@@ -15,7 +15,7 @@ import styled from 'styled-components';
  * Main container for the application.
  * Uses VS Code theme variables for consistent appearance.
  */
-export const Container = styled.div`
+export const Container = styled.div<{ $showCustomTitleBar?: boolean; $isMacOS?: boolean }>`
     display: flex;
     height: 100vh;
     width: 100vw;
@@ -24,7 +24,11 @@ export const Container = styled.div`
     color: var(--apinox-editor-foreground);
     font-family: var(--apinox-font-family);
     font-size: var(--apinox-font-size);
-    padding-top: 32px; /* Account for title bar */
+    padding-top: ${props => {
+        if (props.$isMacOS) return '34px';  // macOS overlay titlebar with search
+        if (props.$showCustomTitleBar) return '32px';  // Custom titlebar on Windows/Linux
+        return '0';
+    }};
 `;
 
 // =============================================================================
