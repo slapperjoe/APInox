@@ -39,7 +39,10 @@ describe('WsdlParser Integration', () => {
                                     'OrderPort': { location: 'https://api.example.com/orders' }
                                 }
                             }
-                        }
+                        },
+                        schemas: {},
+                        portTypes: {},
+                        messages: {}
                     }
                 }
             };
@@ -67,7 +70,9 @@ describe('WsdlParser Integration', () => {
                         targetNamespace: 'http://test.com/',
                         imports: { 'http://external.com/types': {} },
                         schemas: { 'http://test.com/': { elements: {}, complexTypes: {} } },
-                        services: { 'SomeService': { ports: { 'SomePort': { location: '' } } } }
+                        services: { 'SomeService': { ports: { 'SomePort': { location: '' } } } },
+                        portTypes: {},
+                        messages: {}
                     }
                 }
             };
@@ -87,7 +92,10 @@ describe('WsdlParser Integration', () => {
                 wsdl: {
                     definitions: {
                         $targetNamespace: 'http://alt.namespace.com/',
-                        services: { 'Svc': { ports: { 'Port': { location: '' } } } }
+                        services: { 'Svc': { ports: { 'Port': { location: '' } } } },
+                        schemas: {},
+                        portTypes: {},
+                        messages: {}
                     }
                 }
             };
@@ -117,7 +125,10 @@ describe('WsdlParser Integration', () => {
                                     'HttpsPort': { location: 'https://api.com/service' }
                                 }
                             }
-                        }
+                        },
+                        schemas: {},
+                        portTypes: {},
+                        messages: {}
                     }
                 }
             };

@@ -63,7 +63,10 @@ describe('WsdlParser', () => {
                                     }
                                 }
                             }
-                        }
+                        },
+                        schemas: {},
+                        portTypes: {},
+                        messages: {}
                     }
                 }
             };
@@ -84,7 +87,13 @@ describe('WsdlParser', () => {
         it('should store client after parsing', async () => {
             const mockClient = {
                 describe: vi.fn(() => ({})),
-                wsdl: { definitions: {} }
+                wsdl: {
+                    definitions: {
+                        schemas: {},
+                        portTypes: {},
+                        messages: {}
+                    }
+                }
             };
 
             (soap.createClientAsync as any).mockResolvedValue(mockClient);
@@ -136,7 +145,10 @@ describe('WsdlParser', () => {
                         services: {
                             'ServiceA': { ports: { 'PortA1': { location: '' }, 'PortA2': { location: '' } } },
                             'ServiceB': { ports: { 'PortB1': { location: '' } } }
-                        }
+                        },
+                        schemas: {},
+                        portTypes: {},
+                        messages: {}
                     }
                 }
             };
@@ -152,7 +164,14 @@ describe('WsdlParser', () => {
         it('should log parsing progress', async () => {
             const mockClient = {
                 describe: vi.fn(() => ({})),
-                wsdl: { definitions: { targetNamespace: 'http://test.com' } }
+                wsdl: {
+                    definitions: {
+                        targetNamespace: 'http://test.com',
+                        schemas: {},
+                        portTypes: {},
+                        messages: {}
+                    }
+                }
             };
 
             (soap.createClientAsync as any).mockResolvedValue(mockClient);
