@@ -2,6 +2,15 @@
 
 
 ## [0.16.0] - 2026-02-05
+### Added
+- **Regex Extractors**: Extract values from JSON, HTML, or plain text responses using regex patterns
+  - Support for capture groups to extract specific values
+  - Common pattern library (email, URL, UUID, JSON fields, HTML tags)
+  - Pattern validation with helpful error messages
+  - Type dropdown in Extractor UI (XPath, Regex, JSONPath, Header)
+  - Enhanced documentation with real-world examples
+  - Complementary to existing XPath extractors for non-XML responses
+
 ### Auto-Generated Changes
 - No Commit messages found.
 
@@ -103,31 +112,49 @@
 
 ## [0.15.0] - 2026-01-24
 ### Added
+- **Environment Variables & Custom Fields**: Enhanced environment management with flexible custom field support
+  - Add unlimited custom fields to any environment (Dev/Test/Prod)
+  - Visual editor in Settings → Environments tab
+  - Quick environment switcher in toolbar
+  - Import/export environments for team sharing
+  - Variable resolution with `{{fieldName}}` syntax
+  
 - **Encrypted Secrets**: Environment variables can now be marked as secret with AES-256-GCM encryption at rest
   - Toggle any custom field between Plain/Secret with lock icon
   - Masked display (••••••••) with show/hide eye icon
   - Automatic encryption in `~/.apinox/secrets.enc`
   - Variable resolution ({{fieldName}}) works transparently with encrypted values
-  - Export redacts secrets as [REDACTED]
-  - Import preserves existing secrets
-- **Variable Resolution**: Request execution now automatically resolves environment variables (including secrets) before sending
-  - Added `getActiveEnvironment()` and `getGlobalVariables()` helper methods to SettingsManager
-  - Frontend now passes active environment to backend for proper variable substitution
+  - Export redacts secrets as `[REDACTED]` for safe version control
+  - Import preserves existing secrets (team members add their own locally)
   - Wildcard syntax highlighting for {{variables}} in Monaco editor
+  
+- **Performance Metrics & Load Testing**: Built-in performance testing capabilities
+  - Response time tracking across multiple test runs
+  - Load testing with configurable concurrent requests (1-100 users)
+  - SLA monitoring with visual threshold indicators
+  - Historical comparison charts showing trends
+  - Export metrics to CSV/JSON for analysis and CI/CD integration
+  - Ramp-up configuration for gradual load increase
+  
 - **Certificate Management**: Restored ability to open development certificates from the GUI
   - Added OpenCertificate command handler in sidecar router
   - Shield icon in Server UI opens certificate file in system file manager
   - Certificates automatically generated when proxy/mock server starts with HTTPS target
 
 ### Fixed
-- **macOS**: Performance suites and settings now persist across reinstalls. Config directory moved from exe-relative location to stable user directory (`~/Library/Application Support/apinox/` on macOS). Automatic migration from legacy location included.
+- **macOS**: Performance suites and settings now persist across reinstalls
+  - Config directory moved from exe-relative location to stable user directory (`~/Library/Application Support/apinox/` on macOS)
+  - Automatic migration from legacy location included
+  
 - **Request Rename Persistence**: Renamed requests no longer revert to original names after application restart
   - Added cleanup logic in FolderProjectStorage to delete old request files when requests are renamed
   - Orphaned request files (.xml/.json pairs) are now properly removed during save
   - Consistent with existing cleanup patterns for interfaces, operations, test suites, and test cases
+  
 - **Proxy UI Target URL**: Fixed hardcoded "localhost:8080" display to show actual configured target URL
   - Proxy/watcher status now correctly displays "9000 => {actual target URL}"
   - Status loads from lastProxyTarget setting on component mount
+  
 - **Performance Test UI**: Performance test request entries now show interaction icons on hover
   - Added trash/delete icon for quick request removal
   - Consistent with other sidebar item patterns (suites, test cases, operations)

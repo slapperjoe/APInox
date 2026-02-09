@@ -269,16 +269,53 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
      * First click: sets deleteConfirm to the project name
      * Second click (within 3s): actually removes the project
      */
-    const closeProject = useCallback((name: string) => {
+    const closeProject = useCallback(async (name: string) => {
         debugLog('closeProject', { name, isConfirming: deleteConfirm === name });
 
         if (deleteConfirm === name) {
             // Second click - actually close
+            const project = projects.find(p => p.name === name);
+            const projectPath = (project as any)?.fileName;
+            
+            // Ask if user wants to delete files from disk
+            let deleteFiles = false;
+            if (projectPath && bridge.isTauri()) {
+                try {
+                    const { ask } = await import('@tauri-apps/plugin-dialog');
+                    deleteFiles = await ask(
+                        `Delete project files from disk?\n\nPath: ${projectPath}\n\nThis will permanently delete the project folder and all its contents.`,
+                        {
+                            title: 'Delete Project Files',
+                            kind: 'warning',
+                            okLabel: 'Delete Files',
+                            cancelLabel: 'Keep Files'
+                        }
+                    );
+                } catch (error) {
+                    console.error('[ProjectContext] Failed to show delete confirmation:', error);
+                }
+            }
+            
+            // Remove from workspace
             setProjects(prev => prev.filter(p => p.name !== name));
             setWorkspaceDirty(true);
 
             // Notify backend that project is closed to clear from memory
             bridge.sendMessage({ command: 'closeProject', name });
+            
+            // Delete files if requested
+            if (deleteFiles && projectPath) {
+                try {
+                    await bridge.sendMessageAsync({ 
+                        command: 'deleteProjectFiles', 
+                        path: projectPath 
+                    });
+                    console.log(`[ProjectContext] Deleted project files: ${projectPath}`);
+                } catch (error: any) {
+                    console.error('[ProjectContext] Failed to delete project files:', error);
+                    alert(`Failed to delete project files: ${error.message || 'Unknown error'}`);
+                }
+            }
 
             // Clear selection if we're closing the selected project
             if (selectedProjectName === name) {
@@ -286,7 +323,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
             }
 
             setDeleteConfirm(null);
-            debugLog('closeProject executed', { name });
+            debugLog('closeProject executed', { name, deletedFiles: deleteFiles });
         } else {
             // First click - request confirmation
             setDeleteConfirm(name);
@@ -296,16 +333,134 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
                 setDeleteConfirm(current => current === name ? null : current);
             }, 3000);
         }
-    }, [deleteConfirm, selectedProjectName, debugLog]);
+    }, [deleteConfirm, selectedProjectName, projects, debugLog]);
 
     /**
-     * Requests project load from backend.
-     * If path is provided, loads that specific file.
-     * If not, shows file picker dialog (handled by backend).
+     * Loads a project or workspace.
+     * - If path is provided, loads that specific path
+     * - If not, shows file picker dialog for:
+     *   1. Project folder (native APInox format)
+     *   2. Workspace XML file (SoapUI export format - imports all projects)
      */
-    const loadProject = useCallback((path?: string) => {
+    const loadProject = useCallback(async (path?: string) => {
         debugLog('loadProject', { path: path || 'picker' });
-        bridge.sendMessage({ command: 'loadProject', path });
+        
+        let targetPath = path;
+        
+        // If no path provided, show dialog
+        if (!targetPath && bridge.isTauri()) {
+            try {
+                const { open } = await import('@tauri-apps/plugin-dialog');
+                
+                // Show file picker that accepts workspace files OR folders
+                const selected = await open({
+                    multiple: false,
+                    directory: false,
+                    filters: [{
+                        name: 'Workspace or Project',
+                        extensions: ['apinox', 'json', 'xml']
+                    }],
+                    title: 'Open Workspace File'
+                });
+                
+                if (!selected) {
+                    // User cancelled, offer folder selection
+                    const folderSelected = await open({
+                        multiple: false,
+                        directory: true,
+                        title: 'Or Select Project Folder'
+                    });
+                    
+                    if (!folderSelected) {
+                        return; // User cancelled
+                    }
+                    
+                    targetPath = folderSelected as string;
+                } else {
+                    targetPath = selected as string;
+                }
+            } catch (error) {
+                console.error('[ProjectContext] Failed to open file dialog:', error);
+                return;
+            }
+        }
+        
+        if (!targetPath) {
+            console.error('[ProjectContext] No path provided and dialog was cancelled or unavailable');
+            return;
+        }
+        
+        // Check if it's a workspace file (compressed, JSON, or legacy XML)
+        const ext = targetPath.toLowerCase().split('.').pop();
+        if (ext === 'apinox' || ext === 'json' || ext === 'xml') {
+            // Import workspace - this will load multiple projects
+            try {
+                const response = await bridge.sendMessageAsync({
+                    command: 'importWorkspace',
+                    filePath: targetPath
+                });
+                
+                if (response?.projects && Array.isArray(response.projects)) {
+                    console.log(`[ProjectContext] Imported workspace with ${response.projects.length} project(s)`);
+                    
+                    const importedProjects: ApinoxProject[] = [];
+                    
+                    // Add each project to state
+                    for (const project of response.projects) {
+                        if (project) {
+                            // Clear fileName so they're treated as new/unsaved
+                            delete (project as any).fileName;
+                            importedProjects.push(project);
+                            
+                            // Emit ProjectLoaded event for each project
+                            bridge.emit({
+                                command: BackendCommand.ProjectLoaded,
+                                project,
+                                filename: undefined
+                            });
+                        }
+                    }
+                    
+                    alert(`Successfully imported ${response.projects.length} project(s) from workspace.\n\nPlease save each project to disk.`);
+                    
+                    // Prompt user to save each imported project
+                    if (bridge.isTauri()) {
+                        setTimeout(async () => {
+                            for (const project of importedProjects) {
+                                try {
+                                    const { open } = await import('@tauri-apps/plugin-dialog');
+                                    const folderPath = await open({
+                                        multiple: false,
+                                        directory: true,
+                                        title: `Choose location to save project: ${project.name}`,
+                                        defaultPath: project.name
+                                    });
+                                    
+                                    if (folderPath) {
+                                        // Set fileName and save
+                                        (project as any).fileName = folderPath as string;
+                                        saveProject(project);
+                                    } else {
+                                        console.log(`[ProjectContext] User cancelled save for project: ${project.name}`);
+                                    }
+                                } catch (error) {
+                                    console.error(`[ProjectContext] Failed to show save dialog for ${project.name}:`, error);
+                                }
+                            }
+                        }, 500); // Small delay to let the UI update
+                    }
+                } else {
+                    console.error('[ProjectContext] Workspace import returned no projects');
+                    alert('Workspace import failed: No projects found in workspace file');
+                }
+            } catch (error: any) {
+                console.error('[ProjectContext] Failed to import workspace:', error);
+                alert(`Failed to import workspace: ${error.message || error}`);
+            }
+        } else {
+            // Load single project folder
+            bridge.sendMessage({ command: 'loadProject', path: targetPath });
+        }
     }, [debugLog]);
 
     /**

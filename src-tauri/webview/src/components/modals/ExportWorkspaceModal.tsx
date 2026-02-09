@@ -77,7 +77,7 @@ interface ExportWorkspaceModalProps {
   isOpen: boolean;
   onClose: () => void;
   projects: ApinoxProject[];
-  onExport: (projectPaths: string[]) => void;
+  onExport: (projects: ApinoxProject[]) => void;
 }
 
 export const ExportWorkspaceModal: React.FC<ExportWorkspaceModalProps> = ({
@@ -86,35 +86,36 @@ export const ExportWorkspaceModal: React.FC<ExportWorkspaceModalProps> = ({
   projects,
   onExport
 }) => {
-  const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
+  const [selectedNames, setSelectedNames] = useState<Set<string>>(new Set());
 
   const projectsWithPaths = useMemo(() => {
     return projects.filter(p => p.fileName && p.fileName.trim() !== '');
   }, [projects]);
 
-  const handleToggle = (path: string) => {
-    setSelectedPaths(prev => {
+  const handleToggle = (name: string) => {
+    setSelectedNames(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(path)) {
-        newSet.delete(path);
+      if (newSet.has(name)) {
+        newSet.delete(name);
       } else {
-        newSet.add(path);
+        newSet.add(name);
       }
       return newSet;
     });
   };
 
   const handleSelectAll = () => {
-    setSelectedPaths(new Set(projectsWithPaths.map(p => p.fileName!)));
+    setSelectedNames(new Set(projectsWithPaths.map(p => p.name)));
   };
 
   const handleDeselectAll = () => {
-    setSelectedPaths(new Set());
+    setSelectedNames(new Set());
   };
 
   const handleExport = () => {
-    onExport(Array.from(selectedPaths));
-    setSelectedPaths(new Set());
+    const selectedProjects = projectsWithPaths.filter(p => selectedNames.has(p.name));
+    onExport(selectedProjects);
+    setSelectedNames(new Set());
     onClose();
   };
 
@@ -141,8 +142,8 @@ export const ExportWorkspaceModal: React.FC<ExportWorkspaceModalProps> = ({
           >
             Cancel
           </Button>
-          <Button onClick={handleExport} disabled={selectedPaths.size === 0}>
-            Export ({selectedPaths.size})
+          <Button onClick={handleExport} disabled={selectedNames.size === 0}>
+            Export ({selectedNames.size})
           </Button>
         </>
       }
@@ -159,10 +160,10 @@ export const ExportWorkspaceModal: React.FC<ExportWorkspaceModalProps> = ({
           </SelectionControls>
           <ProjectList>
             {projectsWithPaths.map(project => (
-              <ProjectItem key={project.fileName}>
+              <ProjectItem key={project.name}>
                 <Checkbox
-                  checked={selectedPaths.has(project.fileName!)}
-                  onChange={() => handleToggle(project.fileName!)}
+                  checked={selectedNames.has(project.name)}
+                  onChange={() => handleToggle(project.name)}
                 />
                 <ProjectInfo>
                   <ProjectName>{project.name}</ProjectName>

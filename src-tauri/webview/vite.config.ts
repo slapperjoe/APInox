@@ -7,7 +7,28 @@ const packageJson = require('../../package.json');
 
 // https://vitejs.dev/config/
 export default defineConfig({
-    plugins: [react()],
+    plugins: [
+        react({
+            babel: {
+                plugins: [
+                    [
+                        'babel-plugin-styled-components',
+                        {
+                            displayName: true,
+                            fileName: true,
+                            ssr: false,
+                            meaninglessFileNames: ['index', 'styles'],
+                            namespace: 'apinox',
+                            topLevelImportPaths: [
+                                'styled-components',
+                                '@shared/styled-components'
+                            ]
+                        }
+                    ]
+                ]
+            }
+        })
+    ],
     base: './',
     
     // Ensure Tauri APIs are available

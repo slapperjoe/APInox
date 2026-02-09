@@ -4,6 +4,7 @@ import { SoapClient } from "../soapClient";
 import { AssertionRunner } from "../utils/AssertionRunner";
 import { BackendXPathEvaluator } from "../utils/BackendXPathEvaluator";
 import { WildcardProcessor } from "../utils/WildcardProcessor";
+import { RegexExtractor } from "../utils/RegexExtractor";
 import { WorkflowEngine } from './WorkflowEngine';
 
 export class TestRunnerService {
@@ -235,10 +236,31 @@ export class TestRunnerService {
                     if (ext.source === 'body') {
                         try {
                             const rawBody = result.rawResponse || '';
-                            const val = BackendXPathEvaluator.evaluate(rawBody, ext.path);
+                            let val: string | null = null;
+                            
+                            // Handle different extractor types
+                            if (ext.type === 'XPath' || !ext.type) {
+                                // Default to XPath for backward compatibility
+                                val = BackendXPathEvaluator.evaluate(rawBody, ext.path);
+                            } else if (ext.type === 'Regex') {
+                                val = RegexExtractor.extract(rawBody, ext.path);
+                                this.log(`  Regex extraction with pattern: ${ext.path}`);
+                            } else if (ext.type === 'JSONPath') {
+                                // TODO: Implement JSONPath extraction
+                                this.log(`  JSONPath not yet implemented, skipping extractor '${ext.variable}'`);
+                                val = null;
+                            } else if (ext.type === 'Header') {
+                                // TODO: Implement header extraction
+                                this.log(`  Header extraction not yet implemented, skipping extractor '${ext.variable}'`);
+                                val = null;
+                            }
+                            
                             if (val) {
                                 context[ext.variable] = val;
                                 this.log(`- Extracted '${ext.variable}' = '${val}'`);
+                            } else if (ext.defaultValue) {
+                                context[ext.variable] = ext.defaultValue;
+                                this.log(`- Using default for '${ext.variable}' = '${ext.defaultValue}'`);
                             } else {
                                 this.log(`- WARNING: Extractor '${ext.variable}' returned null`);
                             }

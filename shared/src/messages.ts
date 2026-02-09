@@ -137,8 +137,10 @@ export enum FrontendCommand {
     ResetCertificates = 'resetCertificates',
     GetProxyStatus = 'getProxyStatus',
 
-    // Workspace Export
+    // Workspace Export/Import
     ExportWorkspace = 'exportWorkspace',
+    ImportWorkspace = 'importWorkspace',
+    DeleteProjectFiles = 'deleteProjectFiles',
 }
 
 export enum BackendCommand {

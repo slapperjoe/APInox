@@ -64,25 +64,35 @@ Create truly standalone sidecar binary with embedded Node.js runtime.
 ### Priority 3: Request Chaining (Feature #6)
 Property transfers between requests for complex test scenarios.
 
-**Status**: ✅ **95% COMPLETE** - Phase 1 UI improvements done!
+**Status**: ✅ **COMPLETE** - All phases finished!
 
-**Phase 1 (Complete - January 2025):**
-- [x] Variable extraction from responses (XPath, JSONPath) - PerformanceService
-- [x] Inject variables into subsequent requests - PerformanceService
-- [x] Conditional execution - ConditionStepEditor component
-- [x] Loop support - LoopStepEditor component
-- [x] Workflow summary view - WorkflowSummary component
-- [x] **VariablesPanel** - Shows available variables with status ✅ NEW
-- [x] **Variable autocomplete** - Monaco completion for `${...}` ✅ NEW
-- [x] **Enhanced status visualization** - Better TestCaseView icons ✅ NEW
+**Phase 1 (Complete):**
+- [x] Variable extraction from responses (XPath, JSONPath, Regex)
+- [x] Regex extractors for JSON/HTML/plain text
+- [x] Inject variables into subsequent requests
+- [x] Conditional execution
+- [x] Loop support
+- [x] Workflow summary view
+- [x] VariablesPanel - Shows available variables with status
+- [x] Variable autocomplete - Monaco completion for `${...}`
+- [x] Enhanced status visualization
 
-**Phase 2 (Future - Optional Polish):**
-- [ ] Variable usage highlighting
-- [ ] Inline value preview on hover
-- [ ] Test data sets (parameterized testing)
+**Phase 2 (Complete):**
+- [x] Variable usage highlighting
+- [x] Enhanced hover tooltips with detailed context
+- [x] Documentation with workflow examples
+- [x] Integration with wildcard system
+- [x] Regex extraction backend (RegexExtractor utility)
+- [x] Extractor type dropdown UI (XPath/Regex/JSONPath/Header)
+- [x] Common regex pattern library
+
+**Optional Future Enhancements:**
+- [ ] JSONPath extractors (JSON responses)
+- [ ] Header extractors (HTTP headers)
+- [ ] Test data sets (parameterized testing with CSV/JSON)
 - [ ] Visual drag & drop workflow builder
 
-**Estimated effort for Phase 2**: 3-5 days
+**Estimated effort for optional features**: 1-5 days
 
 ---
 
@@ -125,7 +135,7 @@ Merge CLI commands into the sidecar to create a single standalone binary.
 
 ## 📝 Documentation Tasks
 
-- [ ] Update README with encrypted secrets feature
-- [ ] Document custom variables in user guide
-- [ ] Add security best practices section
-- [ ] Update CHANGELOG for 0.15.0 release
+- [x] Update README with encrypted secrets feature
+- [x] Document custom variables in user guide
+- [x] Add security best practices section
+- [x] Update CHANGELOG for 0.15.0 release
