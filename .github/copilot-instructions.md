@@ -2,13 +2,13 @@
 
 ## Development Priorities
 
-### 1. Platform Priority: Tauri over VS Code Extension
-**ALWAYS** prioritize Tauri implementation over VS Code Extensions when working on features or fixing issues.
+### 1. Platform: Tauri Desktop Application
+**IMPORTANT**: This is a Tauri standalone desktop application, NOT a VS Code extension.
 
-- **Tauri** (`src-tauri/`, Rust + Tauri APIs) is the primary target for new features
-- **VS Code Extension** (`src/`, Node.js + VS Code APIs) is maintained for backward compatibility
-- When implementing a feature, start with Tauri implementation first
-- If both platforms need updates, implement Tauri changes before VS Code extension changes
+- **Tauri** (`src-tauri/`, Rust + Tauri APIs) is the only platform
+- **Sidecar** (`sidecar/`, Node.js + TypeScript) provides backend services
+- **Webview** (`src-tauri/webview/`, React + Vite) provides the UI
+- No VS Code extension code - legacy references should be ignored
 - Use Tauri's cross-platform capabilities and native performance benefits
 
 ### 2. Build Considerations: Production AND Debug
@@ -19,15 +19,15 @@
 - Verify webview compilation with `npm run compile-webview`
 - Check that production optimizations don't break functionality
 - Consider bundle size and performance impacts in production builds
-- Verify VS Code extension builds with `npm run compile`
+- Verify sidecar builds with `npm run build:sidecar`
 
 ### 3. Logging: Use Logger Mechanism
 **ALWAYS** send important changes and errors through the logging mechanism, never use `console.log` for production code.
 
 - Use the logger for all important events, state changes, and errors
 - In Rust (Tauri): Use `log::info!()`, `log::warn!()`, `log::error!()`, `log::debug!()`
-- In Node.js (Extension): Use the VS Code Output Channel or configured logger
-- In React (Webview): Send messages to the extension host for logging
+- In Node.js (Sidecar): Use `console.log()` (captured by Tauri), `log:info`, etc.
+- In React (Webview): Send messages to sidecar for logging via `bridge.sendMessage({ command: 'log', ... })`
 - Include context and relevant data in log messages
 - Log errors with stack traces when available
 - Use appropriate log levels (debug, info, warn, error)
@@ -43,47 +43,83 @@
 - Use appropriate path separators and line endings
 - Test on multiple platforms when possible
 
-### 5. Language Priority: Rust over Node.js
-**ALWAYS** prioritize Rust implementations over Node.js when there's a choice.
+### 5. Architecture Pattern: Local-First Persistence
+**ALWAYS** use local-first patterns for state persistence in Tauri applications.
 
-- If a feature can be implemented in Rust (Tauri), prefer that over Node.js
-- Move performance-critical code to Rust when possible
-- Use Tauri commands for business logic when feasible
-- Leverage Rust's type safety and performance benefits
-- Only use Node.js when:
-  - Working with VS Code extension-specific features
-  - Using Node.js-specific libraries that have no Rust equivalent
-  - Maintaining backward compatibility with existing Node.js code
+- **Frontend manages project state**: React state is the source of truth
+- **Direct file saves**: Use `saveProject()` to write directly to disk via sidecar
+- **No backend commands for simple updates**: State changes don't need sidecar commands
+- **Use backend only when necessary**: WSDL parsing, HTTP requests, proxy/mock servers
+- Examples of local-first:
+  - Test step configuration changes → update React state → save project file
+  - UI preferences → update local state → save via bridge
+  - Project modifications → update state → write to disk
 
 ## Architecture Guidelines
 
 ### Tauri Application Structure
 ```
-src-tauri/
-├── src/
-│   ├── main.rs       # Tauri entry point
-│   └── lib.rs        # Shared library code
-├── Cargo.toml        # Rust dependencies
-└── tauri.conf.json   # Tauri configuration
+Root/
+├── src-tauri/              # Tauri Rust application
+│   ├── src/
+│   │   ├── main.rs         # Tauri entry point
+│   │   └── lib.rs          # Shared library code
+│   ├── webview/            # React frontend
+│   │   ├── src/
+│   │   │   ├── components/ # React components
+│   │   │   ├── App.tsx     # Main React app
+│   │   │   └── main.tsx    # Entry point
+│   │   └── vite.config.ts  # Vite build config
+│   ├── Cargo.toml          # Rust dependencies
+│   └── tauri.conf.json     # Tauri configuration
+├── sidecar/                # Node.js backend (bundled)
+│   ├── src/
+│   │   ├── router.ts       # Command routing
+│   │   ├── services/       # Business logic
+│   │   └── index.ts        # Sidecar entry point
+│   └── package.json
+└── shared/                 # Shared TypeScript models
+    └── src/
+        └── models.ts       # Type definitions
 ```
 
-### VS Code Extension Structure
+### Communication Architecture
 ```
-src/
-├── extension.ts          # Extension entry point
-├── services/            # Business logic services
-├── commands/            # VS Code command handlers
-└── utils/               # Utility functions
+React Webview (Frontend)
+    ↕ bridge.sendMessage() / window.addEventListener('message')
+Sidecar Process (Node.js Backend)
+    ↕ File System / Network / OS APIs
 ```
 
-### Webview Structure
+### Sidecar Backend Structure
 ```
-webview/
+sidecar/
 ├── src/
-│   ├── components/      # React components
-│   ├── App.tsx          # Main React app
-│   └── main.tsx         # Entry point
-└── vite.config.ts       # Vite build config
+│   ├── router.ts           # Command routing and handlers
+│   ├── services/           # Business logic services
+│   │   ├── SoapClient.ts   # WSDL parsing & SOAP execution
+│   │   ├── ProxyService.ts # HTTP/HTTPS proxy server
+│   │   ├── MockServerService.ts # Mock response server
+│   │   └── TestRunnerService.ts # Test execution engine
+│   └── storage/            # File persistence layer
+│       └── FolderProjectStorage.ts
+└── package.json
+```
+
+### Webview Structure (React Frontend)
+```
+src-tauri/webview/
+├── src/
+│   ├── components/         # React components
+│   │   ├── workspace/      # Workspace UI components
+│   │   ├── settings/       # Settings modal
+│   │   └── MainContent.tsx # Main app layout
+│   ├── hooks/              # Custom React hooks
+│   │   └── useWorkspaceCallbacks.ts
+│   ├── utils/              # Utility functions
+│   │   └── bridge.ts       # Bridge communication helper
+│   └── App.tsx             # Root component
+└── vite.config.ts
 ```
 
 ## Key Technical Considerations
@@ -105,29 +141,66 @@ const filePath = path.join(baseDir, 'config', 'settings.json');
 const filePath = baseDir + '\\config\\settings.json';
 ```
 
-### Tauri Command Pattern
-```rust
-// Rust side (src-tauri/src/)
-#[tauri::command]
-fn my_command(param: String) -> Result<String, String> {
-    log::info!("Executing my_command with param: {}", param);
-    // Implementation
-    Ok("result".to_string())
-}
+### Bridge Communication Pattern
+```typescript
+// Frontend (React) → Sidecar
+bridge.sendMessage({ 
+    command: 'executeRequest', 
+    request: { /* request data */ }
+});
 
-// Register in main.rs
-tauri::Builder::default()
-    .invoke_handler(tauri::generate_handler![my_command])
-    .run(tauri::generate_context!())
+// Sidecar → Frontend (via event listener)
+window.addEventListener('message', (event) => {
+    const { command, data } = event.data;
+    if (command === 'response') {
+        // Handle response
+    }
+});
+```
+
+### Local-First Persistence Pattern
+```typescript
+// ✅ Good: Update local state and save directly
+const handleUpdateStep = (step: TestStep) => {
+    setProjects(prev => prev.map(p => {
+        // Update project in React state
+        return updatedProject;
+    }));
+    setTimeout(() => saveProject(updatedProject), 0);
+};
+
+// ❌ Bad: Don't create backend commands for simple updates
+bridge.sendMessage({ command: 'updateTestStep', step, project });
+// This adds unnecessary complexity and latency
+```
+
+### Streaming Results Pattern
+```typescript
+// For long-running operations (tests, performance suites)
+// 1. Start operation with stream flag
+bridge.sendMessage({ command: 'runTestCase', testCase, stream: true });
+
+// 2. Backend creates run ID
+const runId = `run-${Date.now()}`;
+testRunStore.set(runId, { updates: [], done: false });
+return { runId };
+
+// 3. Frontend polls for updates
+const pollUpdates = () => {
+    bridge.sendMessage({ 
+        command: 'getTestRunUpdates', 
+        runId, 
+        fromIndex: lastIndex 
+    });
+};
 ```
 
 ## Testing Requirements
 - Write tests for new features
 - Ensure existing tests pass: `npm test`
 - Test Tauri builds: `npm run tauri:build`
-- Test VS Code extension in debug mode (F5)
-- Verify webview functionality in both platforms
-- Tests can be fixed in the pull requests they originated from.  No need for addtional PRs.
+- Verify webview functionality
+- Test sidecar independently: `cd sidecar && npm test`
 
 ## Common Commands
 ```bash
@@ -135,14 +208,17 @@ tauri::Builder::default()
 npm run tauri:dev          # Run in development mode
 npm run tauri:build        # Build for production
 
-# VS Code Extension
-npm run compile            # Compile TypeScript
-npm run watch              # Watch mode
-npm run test               # Run tests
+# Sidecar
+npm run build:sidecar      # Build sidecar
+npm run prepare:sidecar    # Build and bundle sidecar binary
 
 # Webview
 npm run compile-webview    # Build webview
-cd webview && npm run dev  # Webview dev mode
+cd src-tauri/webview && npm run dev  # Webview dev mode
+
+# Testing
+npm test                   # Run all tests
+cd sidecar && npm test     # Test sidecar only
 
 # Linting
 npm run lint               # Run ESLint

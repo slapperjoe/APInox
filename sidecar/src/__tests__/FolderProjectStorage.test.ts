@@ -1,0 +1,436 @@
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+
+import { FolderProjectStorage } from '../FolderProjectStorage';
+import { ApinoxProject } from '../../shared/src/models';
+
+describe('FolderProjectStorage', () => {
+    let storage: FolderProjectStorage;
+    let tempDir: string;
+
+    beforeEach(() => {
+        storage = new FolderProjectStorage();
+        tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'APInox-test-'));
+    });
+
+    afterEach(() => {
+        // Clean up temp directory
+        if (fs.existsSync(tempDir)) {
+            fs.rmSync(tempDir, { recursive: true });
+        }
+    });
+
+    const createTestProject = (): ApinoxProject => ({
+        name: 'Test Project',
+        description: 'A test project',
+        interfaces: [],
+        testSuites: [
+            {
+                id: 'suite-1',
+                name: 'TestSuite 1',
+                testCases: [
+                    {
+                        id: 'case-1',
+                        name: 'TestCase 1',
+                        steps: [
+                            {
+                                id: 'step-1',
+                                name: 'Request Step',
+                                type: 'request',
+                                config: {
+                                    request: {
+                                        id: 'req-1',
+                                        name: 'Test Request',
+                                        method: 'POST',
+                                        endpoint: 'http://example.com',
+                                        request: '<soap:Envelope/>'
+                                    }
+                                }
+                            },
+                            {
+                                id: 'step-2',
+                                name: 'Script Step',
+                                type: 'script',
+                                config: {
+                                    scriptContent: 'log("Hello World");'
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    });
+
+    describe('saveProject', () => {
+        it('should create project directory structure', async () => {
+            const project = createTestProject();
+            const projectDir = path.join(tempDir, 'TestProject');
+            fs.mkdirSync(projectDir);
+
+            await storage.saveProject(project, projectDir);
+
+            // Verify directory structure
+            expect(fs.existsSync(path.join(projectDir, 'properties.json'))).toBe(true);
+            expect(fs.existsSync(path.join(projectDir, 'tests'))).toBe(true);
+            expect(fs.existsSync(path.join(projectDir, 'tests', 'TestSuite_1'))).toBe(true);
+            expect(fs.existsSync(path.join(projectDir, 'tests', 'TestSuite_1', 'suite.json'))).toBe(true);
+            expect(fs.existsSync(path.join(projectDir, 'tests', 'TestSuite_1', 'TestCase_1'))).toBe(true);
+        });
+
+        it('should save scriptContent correctly', async () => {
+            const project = createTestProject();
+            const projectDir = path.join(tempDir, 'TestProject');
+            fs.mkdirSync(projectDir);
+
+            await storage.saveProject(project, projectDir);
+
+            // Find and verify script step
+            const caseDir = path.join(projectDir, 'tests', 'TestSuite_1', 'TestCase_1');
+            const stepFiles = fs.readdirSync(caseDir).filter(f => f.endsWith('.json') && f !== 'case.json');
+            const scriptStepFile = stepFiles.find(f => f.includes('Script'));
+
+            expect(scriptStepFile).toBeDefined();
+            if (scriptStepFile) {
+                const stepData = JSON.parse(fs.readFileSync(path.join(caseDir, scriptStepFile), 'utf8'));
+                expect(stepData.config.scriptContent).toBe('log("Hello World");');
+            }
+        });
+
+        it('should delete orphaned step files when steps are removed', async () => {
+            const project = createTestProject();
+            const projectDir = path.join(tempDir, 'TestProject');
+            fs.mkdirSync(projectDir);
+
+            // Save with 2 steps
+            await storage.saveProject(project, projectDir);
+
+            const caseDir = path.join(projectDir, 'tests', 'TestSuite_1', 'TestCase_1');
+            let stepFiles = fs.readdirSync(caseDir).filter(f => f.endsWith('.json') && f !== 'case.json');
+            expect(stepFiles.length).toBe(2);
+
+            // Remove one step and save again
+            if (project.testSuites && project.testSuites[0] && project.testSuites[0].testCases[0]) {
+                const steps = project.testSuites[0].testCases[0].steps;
+                if (steps) {
+                    project.testSuites[0].testCases[0].steps = [steps[0]];
+                    await storage.saveProject(project, projectDir);
+
+                    stepFiles = fs.readdirSync(caseDir).filter(f => f.endsWith('.json') && f !== 'case.json');
+                    expect(stepFiles.length).toBe(1);
+                }
+            }
+        });
+
+        it('should delete orphaned test case directories', async () => {
+            const project = createTestProject();
+            const projectDir = path.join(tempDir, 'TestProject');
+            fs.mkdirSync(projectDir);
+
+            // Add second test case
+            if (project.testSuites && project.testSuites[0]) {
+                project.testSuites[0].testCases.push({
+                    id: 'case-2',
+                    name: 'TestCase 2',
+                    steps: []
+                });
+            }
+            await storage.saveProject(project, projectDir);
+
+            const suiteDir = path.join(projectDir, 'tests', 'TestSuite_1');
+            let caseDirs = fs.readdirSync(suiteDir).filter(f => fs.statSync(path.join(suiteDir, f)).isDirectory());
+            expect(caseDirs.length).toBe(2);
+
+            // Remove one test case and save
+            if (project.testSuites && project.testSuites[0]) {
+                project.testSuites[0].testCases = [project.testSuites[0].testCases[0]];
+                await storage.saveProject(project, projectDir);
+
+                caseDirs = fs.readdirSync(suiteDir).filter(f => fs.statSync(path.join(suiteDir, f)).isDirectory());
+                expect(caseDirs.length).toBe(1);
+            }
+        });
+    });
+
+    describe('loadProject', () => {
+        it('should load project with all data', async () => {
+            const project = createTestProject();
+            const projectDir = path.join(tempDir, 'TestProject');
+            fs.mkdirSync(projectDir);
+
+            await storage.saveProject(project, projectDir);
+            const loadedProject = await storage.loadProject(projectDir);
+
+            expect(loadedProject.name).toBe('Test Project');
+            expect(loadedProject.testSuites).toHaveLength(1);
+            const suite = loadedProject.testSuites?.[0];
+            expect(suite?.testCases).toHaveLength(1);
+            expect(suite?.testCases[0].steps).toHaveLength(2);
+        });
+
+        it('should preserve scriptContent through save/load cycle', async () => {
+            const project = createTestProject();
+            const projectDir = path.join(tempDir, 'TestProject');
+            fs.mkdirSync(projectDir);
+
+            await storage.saveProject(project, projectDir);
+            const loadedProject = await storage.loadProject(projectDir);
+
+            const scriptStep = loadedProject.testSuites?.[0].testCases[0].steps.find(s => s.type === 'script');
+            expect(scriptStep).toBeDefined();
+            expect(scriptStep?.config.scriptContent).toBe('log("Hello World");');
+        });
+
+        it('should throw error for invalid project folder', async () => {
+            const invalidDir = path.join(tempDir, 'invalid');
+            fs.mkdirSync(invalidDir);
+
+            await expect(storage.loadProject(invalidDir)).rejects.toThrow('Invalid project folder');
+        });
+    });
+
+    describe('request rename cleanup', () => {
+        it('should delete old request files when a request is renamed', async () => {
+            const project: ApinoxProject = {
+                name: 'Test Project',
+                description: 'Test',
+                interfaces: [
+                    {
+                        id: 'iface-1',
+                        name: 'TestInterface',
+                        type: 'soap',
+                        bindingName: 'TestBinding',
+                        soapVersion: '1.1',
+                        definition: 'http://example.com/service?wsdl',
+                        
+                        operations: [
+                            {
+                                id: 'op-1',
+                                name: 'TestOperation',
+                                action: 'TestAction',
+                                input: { name: 'input' },
+                                requests: [
+                                    {
+                                        id: 'req-1',
+                                        name: 'OriginalName',
+                                        request: '<soap>Original</soap>'
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                testSuites: []
+            };
+
+            const projectDir = path.join(tempDir, 'TestProject');
+            fs.mkdirSync(projectDir);
+
+            // Save with original name
+            await storage.saveProject(project, projectDir);
+
+            const opDir = path.join(projectDir, 'interfaces', 'TestInterface', 'TestOperation');
+            let files = fs.readdirSync(opDir).filter(f => f.endsWith('.xml') || f.endsWith('.json'));
+            
+            // Should have OriginalName.xml and OriginalName.json
+            expect(files).toContain('OriginalName.xml');
+            expect(files).toContain('OriginalName.json');
+            expect(files.filter(f => f !== 'operation.json').length).toBe(2);
+
+            // Rename the request
+            project.interfaces[0].operations[0].requests[0].name = 'RenamedRequest';
+            await storage.saveProject(project, projectDir);
+
+            files = fs.readdirSync(opDir).filter(f => f.endsWith('.xml') || f.endsWith('.json'));
+            
+            // Should have RenamedRequest.xml and RenamedRequest.json
+            expect(files).toContain('RenamedRequest.xml');
+            expect(files).toContain('RenamedRequest.json');
+            
+            // Old files should be deleted
+            expect(files).not.toContain('OriginalName.xml');
+            expect(files).not.toContain('OriginalName.json');
+            
+            // Should only have the renamed files (plus operation.json)
+            expect(files.filter(f => f !== 'operation.json').length).toBe(2);
+        });
+
+        it('should persist renamed request through save/load cycle', async () => {
+            const project: ApinoxProject = {
+                name: 'Test Project',
+                description: 'Test',
+                interfaces: [
+                    {
+                        id: 'iface-1',
+                        name: 'TestInterface',
+                        type: 'soap',
+                        bindingName: 'TestBinding',
+                        soapVersion: '1.1',
+                        definition: 'http://example.com/service?wsdl',
+                        
+                        operations: [
+                            {
+                                id: 'op-1',
+                                name: 'TestOperation',
+                                action: 'TestAction',
+                                input: { name: 'input' },
+                                requests: [
+                                    {
+                                        id: 'req-1',
+                                        name: 'OriginalName',
+                                        request: '<soap>Original</soap>'
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                testSuites: []
+            };
+
+            const projectDir = path.join(tempDir, 'TestProject');
+            fs.mkdirSync(projectDir);
+
+            // Save with original name
+            await storage.saveProject(project, projectDir);
+
+            // Rename and save
+            project.interfaces[0].operations[0].requests[0].name = 'NewRequestName';
+            await storage.saveProject(project, projectDir);
+
+            // Load and verify name persisted
+            const loadedProject = await storage.loadProject(projectDir);
+            const loadedRequest = loadedProject.interfaces[0].operations[0].requests[0];
+            
+            expect(loadedRequest.name).toBe('NewRequestName');
+            expect(loadedRequest.request).toBe('<soap>Original</soap>');
+        });
+    });
+
+    describe('operation endpoint persistence', () => {
+        it('should save and load originalEndpoint field on operations', async () => {
+            const testEndpoint = 'http://example.com/calculator.asmx';
+            const project: ApinoxProject = {
+                name: 'Test Project',
+                description: 'Test',
+                interfaces: [
+                    {
+                        id: 'iface-1',
+                        name: 'CalculatorService',
+                        type: 'soap',
+                        bindingName: 'CalculatorSoap',
+                        soapVersion: '1.1',
+                        definition: 'http://example.com/calculator.asmx?wsdl',
+                        operations: [
+                            {
+                                id: 'op-1',
+                                name: 'Add',
+                                action: 'http://example.com/Add',
+                                input: { a: 'xsd:int', b: 'xsd:int' },
+                                targetNamespace: 'http://example.com/',
+                                originalEndpoint: testEndpoint,
+                                fullSchema: null,
+                                requests: []
+                            },
+                            {
+                                id: 'op-2',
+                                name: 'Subtract',
+                                action: 'http://example.com/Subtract',
+                                input: { a: 'xsd:int', b: 'xsd:int' },
+                                targetNamespace: 'http://example.com/',
+                                originalEndpoint: testEndpoint,
+                                fullSchema: null,
+                                requests: []
+                            }
+                        ]
+                    }
+                ],
+                testSuites: []
+            };
+
+            const projectDir = path.join(tempDir, 'TestProject');
+            fs.mkdirSync(projectDir);
+
+            // Save project
+            await storage.saveProject(project, projectDir);
+
+            // Verify operation.json files exist and have originalEndpoint
+            const addOpJsonPath = path.join(projectDir, 'interfaces', 'CalculatorService', 'Add', 'operation.json');
+            const subtractOpJsonPath = path.join(projectDir, 'interfaces', 'CalculatorService', 'Subtract', 'operation.json');
+
+            expect(fs.existsSync(addOpJsonPath)).toBe(true);
+            expect(fs.existsSync(subtractOpJsonPath)).toBe(true);
+
+            const addOpJson = JSON.parse(fs.readFileSync(addOpJsonPath, 'utf8'));
+            const subtractOpJson = JSON.parse(fs.readFileSync(subtractOpJsonPath, 'utf8'));
+
+            // CRITICAL: Verify originalEndpoint is saved
+            expect(addOpJson.originalEndpoint).toBe(testEndpoint);
+            expect(subtractOpJson.originalEndpoint).toBe(testEndpoint);
+
+            // Also verify fullSchema is saved (even if null)
+            expect(addOpJson).toHaveProperty('fullSchema');
+            expect(subtractOpJson).toHaveProperty('fullSchema');
+
+            // Load project and verify fields are restored
+            const loadedProject = await storage.loadProject(projectDir);
+            
+            expect(loadedProject.interfaces.length).toBe(1);
+            expect(loadedProject.interfaces[0].operations.length).toBe(2);
+            
+            const loadedAdd = loadedProject.interfaces[0].operations[0];
+            const loadedSubtract = loadedProject.interfaces[0].operations[1];
+
+            // CRITICAL: Verify originalEndpoint is loaded back
+            expect(loadedAdd.originalEndpoint).toBe(testEndpoint);
+            expect(loadedSubtract.originalEndpoint).toBe(testEndpoint);
+            expect(loadedAdd.fullSchema).toBe(null);
+            expect(loadedSubtract.fullSchema).toBe(null);
+        });
+
+        it('should handle empty string originalEndpoint', async () => {
+            const project: ApinoxProject = {
+                name: 'Test Project',
+                description: 'Test',
+                interfaces: [
+                    {
+                        id: 'iface-1',
+                        name: 'TestService',
+                        type: 'soap',
+                        bindingName: 'TestSoap',
+                        soapVersion: '1.1',
+                        definition: 'http://example.com/test.wsdl',
+                        operations: [
+                            {
+                                id: 'op-1',
+                                name: 'TestOp',
+                                action: '',
+                                input: {},
+                                targetNamespace: 'http://example.com/',
+                                originalEndpoint: '', // Empty string
+                                fullSchema: null,
+                                requests: []
+                            }
+                        ]
+                    }
+                ],
+                testSuites: []
+            };
+
+            const projectDir = path.join(tempDir, 'TestProject');
+            fs.mkdirSync(projectDir);
+
+            await storage.saveProject(project, projectDir);
+
+            const opJsonPath = path.join(projectDir, 'interfaces', 'TestService', 'TestOp', 'operation.json');
+            const opJson = JSON.parse(fs.readFileSync(opJsonPath, 'utf8'));
+
+            // Empty string should be saved
+            expect(opJson.originalEndpoint).toBe('');
+
+            const loadedProject = await storage.loadProject(projectDir);
+            expect(loadedProject.interfaces[0].operations[0].originalEndpoint).toBe('');
+        });
+    });
+});
