@@ -14,6 +14,17 @@ A visual SOAP client desktop application, inspired by Bruno and SOAP-UI.
     - **SSL Bypass**: Automatically handles self-signed certificates purely for WSDL loading and Request execution (useful for internal dev/test environments).
     - **Header Emulation**: Mimics browser headers to bypass strict WAFs.
     - **Detailed Logging**: Network errors are logged with full status and body for debugging.
+- **Environment Variables & Secrets**:
+    - Visual editor for environments (Dev/Test/Prod).
+    - Quick environment switcher in toolbar.
+    - **Custom Variables**: Add any custom fields to environments.
+    - **Encrypted Secrets**: Mark sensitive fields as secret with AES-256-GCM encryption.
+        - Toggle lock icon to encrypt fields at rest (`~/.apinox/secrets.enc`).
+        - Masked display (••••••••) with show/hide eye icon.
+        - Variable resolution with `{{fieldName}}` works transparently.
+        - Export redacts secrets as `[REDACTED]`.
+        - Import preserves existing secrets.
+    - Import/export environments for team sharing.
 - **Request Editor**: 
     - Auto-generates SOAP Envelopes with correct path handling and namespaces.
     - Editable Request Endpoint URL per request.
@@ -22,6 +33,22 @@ A visual SOAP client desktop application, inspired by Bruno and SOAP-UI.
 - **Response Viewer**:
     - View formatted XML responses.
     - Layout Toggle: Switch between vertical (split up/down) and horizontal (split left/right) views.
+- **Performance Metrics & Load Testing**:
+    - **Response Time Tracking**: Monitor performance across multiple test runs.
+    - **Load Testing**: Execute concurrent requests to test service capacity.
+    - **SLA Monitoring**: Visual indicators for response time thresholds.
+    - **Historical Comparison**: Charts show trends across test runs.
+    - **Export Metrics**: Save results to CSV/JSON for analysis.
+- **Request Chaining & Workflows**:
+    - **Variable Extraction**: Extract values from responses using XPath (XML), Regex (JSON/HTML/Text), or JSONPath
+    - **Regex Extractors**: Use regex patterns with capture groups for JSON, HTML, or plain text responses
+    - **Variable Injection**: Reference extracted variables in subsequent requests using `${varName}`
+    - **Conditional Steps**: IF/THEN logic to control test flow
+    - **Loop Steps**: Repeat operations with iteration counters
+    - **Script Steps**: JavaScript for complex logic and data manipulation
+    - **Variables Panel**: View all available variables with real-time values
+    - **Smart Autocomplete**: Variable suggestions when typing `${` or `{{`
+    - **Enhanced Tooltips**: Hover over variables to see source, value, and context
 - **Unified Server Tab** (Proxy + Mock):
     - **Mode Toggle**: Off, Mock, Proxy, or Both
     - **Dirty Proxy**: Intercepts HTTP/HTTPS traffic for debugging and testing.
@@ -31,6 +58,7 @@ A visual SOAP client desktop application, inspired by Bruno and SOAP-UI.
         - **Mock Rules**: Match requests by URL, XPath, or regex.
         - **Record Mode**: Auto-capture real responses as mock rules.
         - **Passthrough**: Forward unmatched requests to real backend.
+        - **Latency Simulation**: Add artificial delays to mock responses.
 - **Project Structure**: Organize work into Projects -> Interfaces -> Operations -> Requests.
 - **Context Actions**: Clone, Delete, and Rename requests easily via context menus.
 - **Settings**: Persistent configuration with a built-in JSONC editor and contextual **Help Panel**.
@@ -82,6 +110,30 @@ We are constantly working to improve APInox for C# developers. Here is what we a
 - **Azure DevOps**: Link operations to Work Items and attach artifacts directly.
 - **Generate C# Code**: Copy your SOAP request as a ready-to-use C# `HttpClient` snippet.
 - **WSDL to Proxy**: Integration with `dotnet-svcutil`.
+
+## Security Best Practices
+
+APInox takes security seriously, especially when handling sensitive data like API credentials and tokens.
+
+### Encrypted Secrets
+- **Use Secret Fields**: Always mark sensitive data (passwords, API keys, tokens) as "Secret" using the lock icon toggle in environment settings.
+- **Encryption at Rest**: Secret fields are encrypted using AES-256-GCM and stored separately in `~/.apinox/secrets.enc`.
+- **Never Commit Secrets**: When exporting environments for version control, secrets are automatically redacted as `[REDACTED]`.
+- **Team Sharing**: Share environment files safely - team members can import them and add their own secrets locally.
+
+### Certificate Security
+- **Development Only**: The proxy's self-signed certificate is for development/testing environments only.
+- **Trust Scope**: Only install the APInox certificate in your Trusted Root store for local development machines.
+- **Production**: Never use self-signed certificates or bypass SSL verification in production environments.
+
+### Access Control
+- **File Permissions**: APInox stores configuration and secrets in your user directory (`~/.apinox/`). Ensure proper OS-level file permissions.
+- **Network Isolation**: When using the proxy/mock server, be aware that it listens on localhost and can intercept traffic.
+
+### Best Practices
+- **Rotate Credentials**: Regularly update encrypted secrets, especially after team member changes.
+- **Audit Logs**: Review sidecar logs (Ctrl+Shift+D) for unexpected requests or errors.
+- **Environment Separation**: Use separate environments for Dev/Test/Prod with different credentials.
 
 ## Developer Notes
 

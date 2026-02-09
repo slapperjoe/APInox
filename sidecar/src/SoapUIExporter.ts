@@ -75,7 +75,63 @@ export class SoapUIExporter {
                                 "@_key": k,
                                 "@_value": v
                             })) : [],
-                            "dirty:requestContent": req.request // Save raw content here too
+                            "dirty:requestContent": req.request, // Save raw content here too
+                            "dirty:extractors": req.extractors ? req.extractors.map(e => ({
+                                "@_type": e.type,
+                                "@_source": e.source,
+                                "@_path": e.path,
+                                "@_variable": e.variable,
+                                "@_id": e.id,
+                                "@_defaultValue": e.defaultValue
+                            })) : undefined,
+                            "dirty:wsSecurity": req.wsSecurity ? {
+                                "@_type": req.wsSecurity.type,
+                                "@_username": req.wsSecurity.username,
+                                "@_password": req.wsSecurity.password,
+                                "@_passwordType": req.wsSecurity.passwordType,
+                                "@_hasNonce": req.wsSecurity.hasNonce,
+                                "@_hasCreated": req.wsSecurity.hasCreated,
+                                "@_privateKeyPath": req.wsSecurity.privateKeyPath,
+                                "@_publicCertPath": req.wsSecurity.publicCertPath
+                            } : undefined,
+                            "dirty:attachments": req.attachments ? req.attachments.map(att => ({
+                                "@_id": att.id,
+                                "@_name": att.name,
+                                "@_fsPath": att.fsPath,
+                                "@_contentId": att.contentId,
+                                "@_contentType": att.contentType,
+                                "@_type": att.type,
+                                "@_size": att.size
+                            })) : undefined,
+                            "dirty:restConfig": req.restConfig ? {
+                                "queryParams": req.restConfig.queryParams ? Object.entries(req.restConfig.queryParams).map(([k, v]) => ({
+                                    "@_key": k,
+                                    "@_value": v
+                                })) : undefined,
+                                "pathParams": req.restConfig.pathParams ? Object.entries(req.restConfig.pathParams).map(([k, v]) => ({
+                                    "@_key": k,
+                                    "@_value": v
+                                })) : undefined,
+                                "auth": req.restConfig.auth ? {
+                                    "@_type": req.restConfig.auth.type,
+                                    "@_username": req.restConfig.auth.username,
+                                    "@_password": req.restConfig.auth.password,
+                                    "@_token": req.restConfig.auth.token,
+                                    "@_apiKeyIn": req.restConfig.auth.apiKeyIn,
+                                    "@_apiKeyName": req.restConfig.auth.apiKeyName,
+                                    "oauth2Config": req.restConfig.auth.oauth2Config ? {
+                                        "@_authUrl": req.restConfig.auth.oauth2Config.authUrl,
+                                        "@_tokenUrl": req.restConfig.auth.oauth2Config.tokenUrl,
+                                        "@_clientId": req.restConfig.auth.oauth2Config.clientId,
+                                        "@_clientSecret": req.restConfig.auth.oauth2Config.clientSecret,
+                                        "@_scope": req.restConfig.auth.oauth2Config.scope
+                                    } : undefined
+                                } : undefined
+                            } : undefined,
+                            "dirty:graphqlConfig": req.graphqlConfig ? {
+                                "@_variables": req.graphqlConfig.variables ? JSON.stringify(req.graphqlConfig.variables) : undefined,
+                                "@_operationName": req.graphqlConfig.operationName
+                            } : undefined
                         }))
                     }))
                 }))
@@ -110,7 +166,67 @@ export class SoapUIExporter {
                                             "path": a.configuration?.xpath,
                                             "content": a.configuration?.expectedContent
                                         }
-                                    })) : []
+                                    })) : [],
+                                    "dirty:headers": step.config.request.headers ? Object.entries(step.config.request.headers).map(([k, v]) => ({
+                                        "@_key": k,
+                                        "@_value": v
+                                    })) : undefined,
+                                    "dirty:extractors": step.config.request.extractors ? step.config.request.extractors.map(e => ({
+                                        "@_type": e.type,
+                                        "@_source": e.source,
+                                        "@_path": e.path,
+                                        "@_variable": e.variable,
+                                        "@_id": e.id,
+                                        "@_defaultValue": e.defaultValue
+                                    })) : undefined,
+                                    "dirty:wsSecurity": step.config.request.wsSecurity ? {
+                                        "@_type": step.config.request.wsSecurity.type,
+                                        "@_username": step.config.request.wsSecurity.username,
+                                        "@_password": step.config.request.wsSecurity.password,
+                                        "@_passwordType": step.config.request.wsSecurity.passwordType,
+                                        "@_hasNonce": step.config.request.wsSecurity.hasNonce,
+                                        "@_hasCreated": step.config.request.wsSecurity.hasCreated,
+                                        "@_privateKeyPath": step.config.request.wsSecurity.privateKeyPath,
+                                        "@_publicCertPath": step.config.request.wsSecurity.publicCertPath
+                                    } : undefined,
+                                    "dirty:attachments": step.config.request.attachments ? step.config.request.attachments.map(att => ({
+                                        "@_id": att.id,
+                                        "@_name": att.name,
+                                        "@_fsPath": att.fsPath,
+                                        "@_contentId": att.contentId,
+                                        "@_contentType": att.contentType,
+                                        "@_type": att.type,
+                                        "@_size": att.size
+                                    })) : undefined,
+                                    "dirty:restConfig": step.config.request.restConfig ? {
+                                        "queryParams": step.config.request.restConfig.queryParams ? Object.entries(step.config.request.restConfig.queryParams).map(([k, v]) => ({
+                                            "@_key": k,
+                                            "@_value": v
+                                        })) : undefined,
+                                        "pathParams": step.config.request.restConfig.pathParams ? Object.entries(step.config.request.restConfig.pathParams).map(([k, v]) => ({
+                                            "@_key": k,
+                                            "@_value": v
+                                        })) : undefined,
+                                        "auth": step.config.request.restConfig.auth ? {
+                                            "@_type": step.config.request.restConfig.auth.type,
+                                            "@_username": step.config.request.restConfig.auth.username,
+                                            "@_password": step.config.request.restConfig.auth.password,
+                                            "@_token": step.config.request.restConfig.auth.token,
+                                            "@_apiKeyIn": step.config.request.restConfig.auth.apiKeyIn,
+                                            "@_apiKeyName": step.config.request.restConfig.auth.apiKeyName,
+                                            "oauth2Config": step.config.request.restConfig.auth.oauth2Config ? {
+                                                "@_authUrl": step.config.request.restConfig.auth.oauth2Config.authUrl,
+                                                "@_tokenUrl": step.config.request.restConfig.auth.oauth2Config.tokenUrl,
+                                                "@_clientId": step.config.request.restConfig.auth.oauth2Config.clientId,
+                                                "@_clientSecret": step.config.request.restConfig.auth.oauth2Config.clientSecret,
+                                                "@_scope": step.config.request.restConfig.auth.oauth2Config.scope
+                                            } : undefined
+                                        } : undefined
+                                    } : undefined,
+                                    "dirty:graphqlConfig": step.config.request.graphqlConfig ? {
+                                        "@_variables": step.config.request.graphqlConfig.variables ? JSON.stringify(step.config.request.graphqlConfig.variables) : undefined,
+                                        "@_operationName": step.config.request.graphqlConfig.operationName
+                                    } : undefined
                                 } : undefined,
                                 "delay": step.config.delayMs !== undefined ? { "@_ms": step.config.delayMs } : undefined,
                                 "transfer": step.config.sourceStepId ? {
@@ -166,7 +282,63 @@ export class SoapUIExporter {
                 "dirty:headers": req.headers ? Object.entries(req.headers).map(([k, v]) => ({
                     "@_key": k,
                     "@_value": v
-                })) : []
+                })) : [],
+                "dirty:extractors": req.extractors ? req.extractors.map((e: any) => ({
+                    "@_type": e.type,
+                    "@_source": e.source,
+                    "@_path": e.path,
+                    "@_variable": e.variable,
+                    "@_id": e.id,
+                    "@_defaultValue": e.defaultValue
+                })) : undefined,
+                "dirty:wsSecurity": req.wsSecurity ? {
+                    "@_type": req.wsSecurity.type,
+                    "@_username": req.wsSecurity.username,
+                    "@_password": req.wsSecurity.password,
+                    "@_passwordType": req.wsSecurity.passwordType,
+                    "@_hasNonce": req.wsSecurity.hasNonce,
+                    "@_hasCreated": req.wsSecurity.hasCreated,
+                    "@_privateKeyPath": req.wsSecurity.privateKeyPath,
+                    "@_publicCertPath": req.wsSecurity.publicCertPath
+                } : undefined,
+                "dirty:attachments": req.attachments ? req.attachments.map((att: any) => ({
+                    "@_id": att.id,
+                    "@_name": att.name,
+                    "@_fsPath": att.fsPath,
+                    "@_contentId": att.contentId,
+                    "@_contentType": att.contentType,
+                    "@_type": att.type,
+                    "@_size": att.size
+                })) : undefined,
+                "dirty:restConfig": req.restConfig ? {
+                    "queryParams": req.restConfig.queryParams ? Object.entries(req.restConfig.queryParams).map(([k, v]) => ({
+                        "@_key": k,
+                        "@_value": v
+                    })) : undefined,
+                    "pathParams": req.restConfig.pathParams ? Object.entries(req.restConfig.pathParams).map(([k, v]) => ({
+                        "@_key": k,
+                        "@_value": v
+                    })) : undefined,
+                    "auth": req.restConfig.auth ? {
+                        "@_type": req.restConfig.auth.type,
+                        "@_username": req.restConfig.auth.username,
+                        "@_password": req.restConfig.auth.password,
+                        "@_token": req.restConfig.auth.token,
+                        "@_apiKeyIn": req.restConfig.auth.apiKeyIn,
+                        "@_apiKeyName": req.restConfig.auth.apiKeyName,
+                        "oauth2Config": req.restConfig.auth.oauth2Config ? {
+                            "@_authUrl": req.restConfig.auth.oauth2Config.authUrl,
+                            "@_tokenUrl": req.restConfig.auth.oauth2Config.tokenUrl,
+                            "@_clientId": req.restConfig.auth.oauth2Config.clientId,
+                            "@_clientSecret": req.restConfig.auth.oauth2Config.clientSecret,
+                            "@_scope": req.restConfig.auth.oauth2Config.scope
+                        } : undefined
+                    } : undefined
+                } : undefined,
+                "dirty:graphqlConfig": req.graphqlConfig ? {
+                    "@_variables": req.graphqlConfig.variables ? JSON.stringify(req.graphqlConfig.variables) : undefined,
+                    "@_operationName": req.graphqlConfig.operationName
+                } : undefined
             })),
             "dirty:folder": (folder.folders || []).map((f: any) => this.serializeFolder(f))
         };
@@ -269,7 +441,63 @@ export class SoapUIExporter {
                         headers: req["dirty:headers"] ? (Array.isArray(req["dirty:headers"]) ? req["dirty:headers"] : [req["dirty:headers"]]).reduce((acc: any, curr: any) => {
                             acc[curr["@_key"]] = curr["@_value"];
                             return acc;
-                        }, {}) : {}
+                        }, {}) : {},
+                        extractors: req["dirty:extractors"] ? (Array.isArray(req["dirty:extractors"]) ? req["dirty:extractors"] : [req["dirty:extractors"]]).map((e: any) => ({
+                            type: e["@_type"],
+                            source: e["@_source"],
+                            path: e["@_path"],
+                            variable: e["@_variable"],
+                            id: e["@_id"],
+                            defaultValue: e["@_defaultValue"]
+                        })) : undefined,
+                        wsSecurity: req["dirty:wsSecurity"] ? {
+                            type: req["dirty:wsSecurity"]["@_type"],
+                            username: req["dirty:wsSecurity"]["@_username"],
+                            password: req["dirty:wsSecurity"]["@_password"],
+                            passwordType: req["dirty:wsSecurity"]["@_passwordType"],
+                            hasNonce: req["dirty:wsSecurity"]["@_hasNonce"],
+                            hasCreated: req["dirty:wsSecurity"]["@_hasCreated"],
+                            privateKeyPath: req["dirty:wsSecurity"]["@_privateKeyPath"],
+                            publicCertPath: req["dirty:wsSecurity"]["@_publicCertPath"]
+                        } : undefined,
+                        attachments: req["dirty:attachments"] ? (Array.isArray(req["dirty:attachments"]) ? req["dirty:attachments"] : [req["dirty:attachments"]]).map((att: any) => ({
+                            id: att["@_id"],
+                            name: att["@_name"],
+                            fsPath: att["@_fsPath"],
+                            contentId: att["@_contentId"],
+                            contentType: att["@_contentType"],
+                            type: att["@_type"],
+                            size: att["@_size"]
+                        })) : undefined,
+                        restConfig: req["dirty:restConfig"] ? {
+                            queryParams: req["dirty:restConfig"]["queryParams"] ? (Array.isArray(req["dirty:restConfig"]["queryParams"]) ? req["dirty:restConfig"]["queryParams"] : [req["dirty:restConfig"]["queryParams"]]).reduce((acc: any, curr: any) => {
+                                acc[curr["@_key"]] = curr["@_value"];
+                                return acc;
+                            }, {}) : undefined,
+                            pathParams: req["dirty:restConfig"]["pathParams"] ? (Array.isArray(req["dirty:restConfig"]["pathParams"]) ? req["dirty:restConfig"]["pathParams"] : [req["dirty:restConfig"]["pathParams"]]).reduce((acc: any, curr: any) => {
+                                acc[curr["@_key"]] = curr["@_value"];
+                                return acc;
+                            }, {}) : undefined,
+                            auth: req["dirty:restConfig"]["auth"] ? {
+                                type: req["dirty:restConfig"]["auth"]["@_type"],
+                                username: req["dirty:restConfig"]["auth"]["@_username"],
+                                password: req["dirty:restConfig"]["auth"]["@_password"],
+                                token: req["dirty:restConfig"]["auth"]["@_token"],
+                                apiKeyIn: req["dirty:restConfig"]["auth"]["@_apiKeyIn"],
+                                apiKeyName: req["dirty:restConfig"]["auth"]["@_apiKeyName"],
+                                oauth2Config: req["dirty:restConfig"]["auth"]["oauth2Config"] ? {
+                                    authUrl: req["dirty:restConfig"]["auth"]["oauth2Config"]["@_authUrl"],
+                                    tokenUrl: req["dirty:restConfig"]["auth"]["oauth2Config"]["@_tokenUrl"],
+                                    clientId: req["dirty:restConfig"]["auth"]["oauth2Config"]["@_clientId"],
+                                    clientSecret: req["dirty:restConfig"]["auth"]["oauth2Config"]["@_clientSecret"],
+                                    scope: req["dirty:restConfig"]["auth"]["oauth2Config"]["@_scope"]
+                                } : undefined
+                            } : undefined
+                        } : undefined,
+                        graphqlConfig: req["dirty:graphqlConfig"] ? {
+                            variables: req["dirty:graphqlConfig"]["@_variables"] ? JSON.parse(req["dirty:graphqlConfig"]["@_variables"]) : undefined,
+                            operationName: req["dirty:graphqlConfig"]["@_operationName"]
+                        } : undefined
                     })) : []
                 })) : []
             }));
@@ -303,7 +531,67 @@ export class SoapUIExporter {
                                     name: a["@_name"],
                                     id: a["@_id"],
                                     configuration: a["con:configuration"] // Map props individually if strictness needed
-                                })) : []
+                                })) : [],
+                                headers: r["dirty:headers"] ? (Array.isArray(r["dirty:headers"]) ? r["dirty:headers"] : [r["dirty:headers"]]).reduce((acc: any, curr: any) => {
+                                    acc[curr["@_key"]] = curr["@_value"];
+                                    return acc;
+                                }, {}) : undefined,
+                                extractors: r["dirty:extractors"] ? (Array.isArray(r["dirty:extractors"]) ? r["dirty:extractors"] : [r["dirty:extractors"]]).map((e: any) => ({
+                                    type: e["@_type"],
+                                    source: e["@_source"],
+                                    path: e["@_path"],
+                                    variable: e["@_variable"],
+                                    id: e["@_id"],
+                                    defaultValue: e["@_defaultValue"]
+                                })) : undefined,
+                                wsSecurity: r["dirty:wsSecurity"] ? {
+                                    type: r["dirty:wsSecurity"]["@_type"],
+                                    username: r["dirty:wsSecurity"]["@_username"],
+                                    password: r["dirty:wsSecurity"]["@_password"],
+                                    passwordType: r["dirty:wsSecurity"]["@_passwordType"],
+                                    hasNonce: r["dirty:wsSecurity"]["@_hasNonce"],
+                                    hasCreated: r["dirty:wsSecurity"]["@_hasCreated"],
+                                    privateKeyPath: r["dirty:wsSecurity"]["@_privateKeyPath"],
+                                    publicCertPath: r["dirty:wsSecurity"]["@_publicCertPath"]
+                                } : undefined,
+                                attachments: r["dirty:attachments"] ? (Array.isArray(r["dirty:attachments"]) ? r["dirty:attachments"] : [r["dirty:attachments"]]).map((att: any) => ({
+                                    id: att["@_id"],
+                                    name: att["@_name"],
+                                    fsPath: att["@_fsPath"],
+                                    contentId: att["@_contentId"],
+                                    contentType: att["@_contentType"],
+                                    type: att["@_type"],
+                                    size: att["@_size"]
+                                })) : undefined,
+                                restConfig: r["dirty:restConfig"] ? {
+                                    queryParams: r["dirty:restConfig"]["queryParams"] ? (Array.isArray(r["dirty:restConfig"]["queryParams"]) ? r["dirty:restConfig"]["queryParams"] : [r["dirty:restConfig"]["queryParams"]]).reduce((acc: any, curr: any) => {
+                                        acc[curr["@_key"]] = curr["@_value"];
+                                        return acc;
+                                    }, {}) : undefined,
+                                    pathParams: r["dirty:restConfig"]["pathParams"] ? (Array.isArray(r["dirty:restConfig"]["pathParams"]) ? r["dirty:restConfig"]["pathParams"] : [r["dirty:restConfig"]["pathParams"]]).reduce((acc: any, curr: any) => {
+                                        acc[curr["@_key"]] = curr["@_value"];
+                                        return acc;
+                                    }, {}) : undefined,
+                                    auth: r["dirty:restConfig"]["auth"] ? {
+                                        type: r["dirty:restConfig"]["auth"]["@_type"],
+                                        username: r["dirty:restConfig"]["auth"]["@_username"],
+                                        password: r["dirty:restConfig"]["auth"]["@_password"],
+                                        token: r["dirty:restConfig"]["auth"]["@_token"],
+                                        apiKeyIn: r["dirty:restConfig"]["auth"]["@_apiKeyIn"],
+                                        apiKeyName: r["dirty:restConfig"]["auth"]["@_apiKeyName"],
+                                        oauth2Config: r["dirty:restConfig"]["auth"]["oauth2Config"] ? {
+                                            authUrl: r["dirty:restConfig"]["auth"]["oauth2Config"]["@_authUrl"],
+                                            tokenUrl: r["dirty:restConfig"]["auth"]["oauth2Config"]["@_tokenUrl"],
+                                            clientId: r["dirty:restConfig"]["auth"]["oauth2Config"]["@_clientId"],
+                                            clientSecret: r["dirty:restConfig"]["auth"]["oauth2Config"]["@_clientSecret"],
+                                            scope: r["dirty:restConfig"]["auth"]["oauth2Config"]["@_scope"]
+                                        } : undefined
+                                    } : undefined
+                                } : undefined,
+                                graphqlConfig: r["dirty:graphqlConfig"] ? {
+                                    variables: r["dirty:graphqlConfig"]["@_variables"] ? JSON.parse(r["dirty:graphqlConfig"]["@_variables"]) : undefined,
+                                    operationName: r["dirty:graphqlConfig"]["@_operationName"]
+                                } : undefined
                             };
                         } else if (type === 'delay' && cfg["delay"]) {
                             parsedConfig.delayMs = parseInt(cfg["delay"]["@_ms"] || "0");
@@ -364,97 +652,206 @@ export class SoapUIExporter {
                 headers: req["dirty:headers"] ? (Array.isArray(req["dirty:headers"]) ? req["dirty:headers"] : [req["dirty:headers"]]).reduce((acc: any, curr: any) => {
                     acc[curr["@_key"]] = curr["@_value"];
                     return acc;
-                }, {}) : {}
+                }, {}) : {},
+                extractors: req["dirty:extractors"] ? (Array.isArray(req["dirty:extractors"]) ? req["dirty:extractors"] : [req["dirty:extractors"]]).map((e: any) => ({
+                    type: e["@_type"],
+                    source: e["@_source"],
+                    path: e["@_path"],
+                    variable: e["@_variable"],
+                    id: e["@_id"],
+                    defaultValue: e["@_defaultValue"]
+                })) : undefined,
+                wsSecurity: req["dirty:wsSecurity"] ? {
+                    type: req["dirty:wsSecurity"]["@_type"],
+                    username: req["dirty:wsSecurity"]["@_username"],
+                    password: req["dirty:wsSecurity"]["@_password"],
+                    passwordType: req["dirty:wsSecurity"]["@_passwordType"],
+                    hasNonce: req["dirty:wsSecurity"]["@_hasNonce"],
+                    hasCreated: req["dirty:wsSecurity"]["@_hasCreated"],
+                    privateKeyPath: req["dirty:wsSecurity"]["@_privateKeyPath"],
+                    publicCertPath: req["dirty:wsSecurity"]["@_publicCertPath"]
+                } : undefined,
+                attachments: req["dirty:attachments"] ? (Array.isArray(req["dirty:attachments"]) ? req["dirty:attachments"] : [req["dirty:attachments"]]).map((att: any) => ({
+                    id: att["@_id"],
+                    name: att["@_name"],
+                    fsPath: att["@_fsPath"],
+                    contentId: att["@_contentId"],
+                    contentType: att["@_contentType"],
+                    type: att["@_type"],
+                    size: att["@_size"]
+                })) : undefined,
+                restConfig: req["dirty:restConfig"] ? {
+                    queryParams: req["dirty:restConfig"]["queryParams"] ? (Array.isArray(req["dirty:restConfig"]["queryParams"]) ? req["dirty:restConfig"]["queryParams"] : [req["dirty:restConfig"]["queryParams"]]).reduce((acc: any, curr: any) => {
+                        acc[curr["@_key"]] = curr["@_value"];
+                        return acc;
+                    }, {}) : undefined,
+                    pathParams: req["dirty:restConfig"]["pathParams"] ? (Array.isArray(req["dirty:restConfig"]["pathParams"]) ? req["dirty:restConfig"]["pathParams"] : [req["dirty:restConfig"]["pathParams"]]).reduce((acc: any, curr: any) => {
+                        acc[curr["@_key"]] = curr["@_value"];
+                        return acc;
+                    }, {}) : undefined,
+                    auth: req["dirty:restConfig"]["auth"] ? {
+                        type: req["dirty:restConfig"]["auth"]["@_type"],
+                        username: req["dirty:restConfig"]["auth"]["@_username"],
+                        password: req["dirty:restConfig"]["auth"]["@_password"],
+                        token: req["dirty:restConfig"]["auth"]["@_token"],
+                        apiKeyIn: req["dirty:restConfig"]["auth"]["@_apiKeyIn"],
+                        apiKeyName: req["dirty:restConfig"]["auth"]["@_apiKeyName"],
+                        oauth2Config: req["dirty:restConfig"]["auth"]["oauth2Config"] ? {
+                            authUrl: req["dirty:restConfig"]["auth"]["oauth2Config"]["@_authUrl"],
+                            tokenUrl: req["dirty:restConfig"]["auth"]["oauth2Config"]["@_tokenUrl"],
+                            clientId: req["dirty:restConfig"]["auth"]["oauth2Config"]["@_clientId"],
+                            clientSecret: req["dirty:restConfig"]["auth"]["oauth2Config"]["@_clientSecret"],
+                            scope: req["dirty:restConfig"]["auth"]["oauth2Config"]["@_scope"]
+                        } : undefined
+                    } : undefined
+                } : undefined,
+                graphqlConfig: req["dirty:graphqlConfig"] ? {
+                    variables: req["dirty:graphqlConfig"]["@_variables"] ? JSON.parse(req["dirty:graphqlConfig"]["@_variables"]) : undefined,
+                    operationName: req["dirty:graphqlConfig"]["@_operationName"]
+                } : undefined
             })) : [],
             folders: folder["dirty:folder"] ? (Array.isArray(folder["dirty:folder"]) ? folder["dirty:folder"] : [folder["dirty:folder"]]).map((f: any) => this.deserializeFolder(f)) : []
         };
     }
 
     public async exportWorkspace(projects: any[], filePath: string) {
-        const workspaceDir = path.dirname(filePath);
-
-        // 1. Ensure all projects are saved
-        const projectRefs: { name: string, path: string }[] = [];
-
-        for (const p of projects) {
-            let pPath = p.fileName;
-            if (!pPath) {
-                // Auto-save unsaved projects alongside workspace
-                const safeName = p.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-                pPath = path.join(workspaceDir, `${safeName}.xml`);
-                await this.exportProject(p, pPath);
+        // Debug logging - use console.log for immediate output
+        console.log(`[SoapUIExporter] [ExportWorkspace] Received ${projects.length} project(s)`);
+        projects.forEach((p, idx) => {
+            console.log(`[SoapUIExporter]   Project ${idx}: name="${p.name}", interfaces=${p.interfaces?.length || 0}, testSuites=${p.testSuites?.length || 0}, folders=${p.folders?.length || 0}`);
+            if (p.interfaces && p.interfaces.length > 0) {
+                p.interfaces.forEach((iface: any, ifaceIdx: number) => {
+                    console.log(`[SoapUIExporter]     Interface ${ifaceIdx}: name="${iface.name}", operations=${iface.operations?.length || 0}`);
+                    if (iface.operations && iface.operations.length > 0) {
+                        iface.operations.forEach((op: any, opIdx: number) => {
+                            console.log(`[SoapUIExporter]       Operation ${opIdx}: name="${op.name}", requests=${op.requests?.length || 0}`);
+                        });
+                    }
+                });
             }
-            const refPath = path.relative(workspaceDir, pPath);
-            projectRefs.push({ name: p.name, path: refPath });
-        }
-
-        const builder = new XMLBuilder({
-            ignoreAttributes: false,
-            attributeNamePrefix: "@_",
-            format: true
         });
-
-        const workspaceObj = {
-            "con:soapui-workspace": {
-                "@_name": path.basename(filePath, '.xml'),
-                "@_soapui-version": "5.7.0",
-                "@_xmlns:con": "http://eviware.com/soapui/config",
-                "con:project": projectRefs.map(ref => ({
-                    "@_ref": ref.path
-                }))
-            }
+        
+        // Create a simple JSON workspace with all project data embedded
+        // All XML content (SOAP requests, etc.) is automatically escaped by JSON.stringify
+        const workspace = {
+            version: "1.0",
+            name: path.basename(filePath, path.extname(filePath)),
+            exportedAt: new Date().toISOString(),
+            projects: projects.map(p => ({
+                name: p.name,
+                interfaces: p.interfaces || [],
+                testSuites: p.testSuites || [],
+                folders: p.folders || [],
+                // Store original fileName for reference (won't be used on import)
+                _originalPath: p.fileName
+            }))
         };
 
-        const xmlContent = builder.build(workspaceObj);
-        fs.writeFileSync(filePath, xmlContent);
+        console.log(`[SoapUIExporter] [ExportWorkspace] Workspace structure preview: ${JSON.stringify(workspace, null, 2).substring(0, 500)}...`);
+
+        // JSON.stringify automatically handles escaping of:
+        // - XML content in request bodies
+        // - Special characters in strings
+        // - Nested objects and arrays
+        const jsonContent = JSON.stringify(workspace, null, 2);
+        
+        console.log(`[SoapUIExporter] [ExportWorkspace] JSON content length: ${jsonContent.length} bytes`);
+        
+        // If .apinox extension, use compressed format
+        if (filePath.endsWith('.apinox')) {
+            const zlib = require('zlib');
+            const compressed = zlib.gzipSync(jsonContent);
+            console.log(`[SoapUIExporter] [ExportWorkspace] Compressed size: ${compressed.length} bytes`);
+            fs.writeFileSync(filePath, compressed);
+            this.log(`Workspace exported to ${filePath} (compressed, ${projects.length} project(s))`);
+        } else {
+            // Plain JSON for .json extension
+            fs.writeFileSync(filePath, jsonContent);
+            this.log(`Workspace exported to ${filePath} (JSON, ${projects.length} project(s))`);
+        }
     }
 
     public async importWorkspace(filePath: string): Promise<ApinoxProject[]> {
-        const xmlContent = fs.readFileSync(filePath, 'utf8');
-        const parser = new XMLParser({
-            ignoreAttributes: false,
-            attributeNamePrefix: "@_",
-            isArray: (name) => name === "con:project"
-        });
-        const result = parser.parse(xmlContent);
-        const wsRoot = result["con:soapui-workspace"];
-        if (!wsRoot) throw new Error("Invalid SoapUI workspace file");
+        // Check if it's a directory (project folder) or a file (workspace export)
+        const stats = fs.statSync(filePath);
+        
+        if (stats.isDirectory()) {
+            // It's a project folder - load as single project
+            this.log(`Loading single project from folder: ${filePath}`);
+            const { FolderProjectStorage } = require('./FolderProjectStorage');
+            const storage = new FolderProjectStorage();
+            const project = await storage.loadProject(filePath);
+            (project as any).fileName = filePath;
+            return [project];
+        }
+        
+        // It's a file - check extension to determine format
+        const ext = path.extname(filePath).toLowerCase();
+        
+        if (ext === '.apinox') {
+            // Compressed APInox workspace format
+            const zlib = require('zlib');
+            const compressed = fs.readFileSync(filePath);
+            const jsonContent = zlib.gunzipSync(compressed).toString('utf8');
+            const workspace = JSON.parse(jsonContent);
+            
+            this.log(`Imported APInox workspace: ${workspace.name} (${workspace.projects.length} project(s))`);
+            return workspace.projects;
+        } else if (ext === '.json') {
+            // Plain JSON workspace format
+            const jsonContent = fs.readFileSync(filePath, 'utf8');
+            const workspace = JSON.parse(jsonContent);
+            
+            this.log(`Imported JSON workspace: ${workspace.name} (${workspace.projects.length} project(s))`);
+            return workspace.projects;
+        } else {
+            // Legacy XML workspace format (with project references)
+            const xmlContent = fs.readFileSync(filePath, 'utf8');
+            const parser = new XMLParser({
+                ignoreAttributes: false,
+                attributeNamePrefix: "@_",
+                isArray: (name) => name === "con:project"
+            });
+            const result = parser.parse(xmlContent);
+            const wsRoot = result["con:soapui-workspace"];
+            if (!wsRoot) throw new Error("Invalid SoapUI workspace file");
 
-        const projects: ApinoxProject[] = [];
-        const workspaceDir = path.dirname(filePath);
+            const projects: ApinoxProject[] = [];
+            const workspaceDir = path.dirname(filePath);
 
-        if (wsRoot["con:project"]) {
-            const projectRefs = Array.isArray(wsRoot["con:project"]) ? wsRoot["con:project"] : [wsRoot["con:project"]];
+            if (wsRoot["con:project"]) {
+                const projectRefs = Array.isArray(wsRoot["con:project"]) ? wsRoot["con:project"] : [wsRoot["con:project"]];
 
-            for (const ref of projectRefs) {
-                // SoapUI 5.8.0+ style: <con:project name="X">path</con:project> -> path is in #text
-                // Older/Other style: <con:project ref="path" /> ? (Unconfirmed, keeps backward compat if possible)
-                let refPath = ref["#text"];
-                if (!refPath) refPath = ref["@_ref"]; // Fallback or alternative format
+                for (const ref of projectRefs) {
+                    // SoapUI 5.8.0+ style: <con:project name="X">path</con:project> -> path is in #text
+                    // Older/Other style: <con:project ref="path" /> ? (Unconfirmed, keeps backward compat if possible)
+                    let refPath = ref["#text"];
+                    if (!refPath) refPath = ref["@_ref"]; // Fallback or alternative format
 
-                if (!refPath && typeof ref === 'string') {
-                    refPath = ref; // Handle case where it might be just a string without attributes
-                }
+                    if (!refPath && typeof ref === 'string') {
+                        refPath = ref; // Handle case where it might be just a string without attributes
+                    }
 
-                if (!refPath) {
-                    this.log(`Skipping project reference: Unable to determine path from ${JSON.stringify(ref)}`);
-                    continue;
-                }
+                    if (!refPath) {
+                        this.log(`Skipping project reference: Unable to determine path from ${JSON.stringify(ref)}`);
+                        continue;
+                    }
 
-                const projectPath = path.resolve(workspaceDir, refPath);
+                    const projectPath = path.resolve(workspaceDir, refPath);
 
-                if (fs.existsSync(projectPath)) {
-                    try {
-                        const project = await this.importProject(projectPath);
-                        (project as any).fileName = projectPath;
-                        projects.push(project);
-                    } catch (e: any) {
-                        this.log(`Error loading project from ${projectPath}: ${e.message}`);
-                        if (e.stack) this.log(e.stack);
+                    if (fs.existsSync(projectPath)) {
+                        try {
+                            const project = await this.importProject(projectPath);
+                            (project as any).fileName = projectPath;
+                            projects.push(project);
+                        } catch (e: any) {
+                            this.log(`Error loading project from ${projectPath}: ${e.message}`);
+                            if (e.stack) this.log(e.stack);
+                        }
                     }
                 }
             }
+            return projects;
         }
-        return projects;
     }
 }

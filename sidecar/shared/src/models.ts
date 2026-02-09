@@ -124,7 +124,7 @@ export interface Assertion {
 }
 
 export interface RequestExtractor {
-    type: 'XPath' | 'JSONPath';
+    type: 'XPath' | 'JSONPath' | 'Regex' | 'Header';
     source: 'body' | 'header';
     path: string;
     variable: string;

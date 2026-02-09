@@ -49,32 +49,9 @@ interface ConfirmationState {
     onConfirm: () => void;
 }
 
-const MainContent: React.FC = () => {
-    // ==========================================================================
-    // PLATFORM DETECTION
-    // ==========================================================================
-    const [platformOS, setPlatformOS] = useState<'macos' | 'windows' | 'linux' | 'unknown'>('unknown');
-    
-    useEffect(() => {
-        async function detectPlatform() {
-            try {
-                if (window.__TAURI__) {
-                    const { invoke } = await import('@tauri-apps/api/core');
-                    const os = await invoke<string>('get_platform_os');
-                    setPlatformOS(os as any);
-                }
-            } catch (err) {
-                console.error('Failed to detect platform:', err);
-            }
-        }
-        detectPlatform();
-    }, []);
-    
-    const showCustomTitleBar = platformOS !== 'macos';
-    
-    // ==========================================================================
-    // STYLED COMPONENTS
-    // ==========================================================================
+// ==========================================================================
+// STYLED COMPONENTS - Defined outside component to prevent dynamic creation
+// ==========================================================================
 const ImportModalOverlay = styled.div`
     position: fixed;
     top: 0;
@@ -157,6 +134,29 @@ const DangerMenuItem = styled(ContextMenuItem)`
     color: var(--apinox-errorForeground);
 `;
 
+const MainContent: React.FC = () => {
+    // ==========================================================================
+    // PLATFORM DETECTION
+    // ==========================================================================
+    const [platformOS, setPlatformOS] = useState<'macos' | 'windows' | 'linux' | 'unknown'>('unknown');
+    
+    useEffect(() => {
+        async function detectPlatform() {
+            try {
+                if (window.__TAURI__) {
+                    const { invoke } = await import('@tauri-apps/api/core');
+                    const os = await invoke<string>('get_platform_os');
+                    setPlatformOS(os as any);
+                }
+            } catch (err) {
+                console.error('Failed to detect platform:', err);
+            }
+        }
+        detectPlatform();
+    }, []);
+    
+    const showCustomTitleBar = platformOS !== 'macos';
+    
     // ==========================================================================
     // CONTEXT - Project state from ProjectContext
     // ==========================================================================
@@ -906,11 +906,44 @@ const DangerMenuItem = styled(ContextMenuItem)`
     const [codeSnippetModal, setCodeSnippetModal] = React.useState<{ open: boolean, request: ApiRequest | null }>({ open: false, request: null });
     const [workflowBuilderModal, setWorkflowBuilderModal] = React.useState<{ open: boolean, workflow: Workflow | null, projectPath: string | null }>({ open: false, workflow: null, projectPath: null });
 
-    const handleExportWorkspace = useCallback((projectPaths: string[]) => {
-        bridge.sendMessage({
-            command: FrontendCommand.ExportWorkspace,
-            projectPaths
-        });
+    const handleExportWorkspace = useCallback(async (selectedProjects: ApinoxProject[]) => {
+        try {
+            // Use Tauri dialog to choose save location first
+            const { save } = await import('@tauri-apps/plugin-dialog');
+            const filePath = await save({
+                defaultPath: 'workspace.apinox',
+                filters: [{
+                    name: 'APInox Workspace',
+                    extensions: ['apinox', 'json']
+                }]
+            });
+
+            if (!filePath) {
+                // User cancelled
+                setExportWorkspaceModal(false);
+                return;
+            }
+
+            // Send export command to sidecar with the full project data
+            console.log('[Export] Sending to sidecar:', {
+                command: FrontendCommand.ExportWorkspace,
+                projectCount: selectedProjects.length,
+                projectNames: selectedProjects.map(p => p.name),
+                filePath
+            });
+            await bridge.sendMessageAsync({
+                command: FrontendCommand.ExportWorkspace,
+                projects: selectedProjects,
+                filePath
+            });
+
+            console.log(`[Export] Workspace exported to ${filePath}`);
+            alert(`Workspace exported successfully to ${filePath}`);
+        } catch (error: any) {
+            console.error('[Export] Failed to export workspace:', error);
+            alert(`Failed to export workspace: ${error.message || 'Unknown error'}`);
+        }
+        setExportWorkspaceModal(false);
     }, []);
 
     const [replaceRuleModal, setReplaceRuleModal] = React.useState<{ open: boolean, xpath: string, matchText: string, target: 'request' | 'response' }>({ open: false, xpath: '', matchText: '', target: 'response' });

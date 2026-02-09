@@ -161,11 +161,18 @@ export const ExtractorsPanel: React.FC<ExtractorsPanelProps> = ({ extractors, on
                         let currentValue: string | null = null;
                         if (rawResponse && ex.source === 'body') {
                             try {
-                                currentValue = CustomXPathEvaluator.evaluate(rawResponse, ex.path);
-                                console.log(`[ExtractorsPanel] Expr: ${ex.path}, Val: ${currentValue}`);
+                                if (ex.type === 'Regex') {
+                                    // Use regex extraction (will be handled by backend)
+                                    // For now, show pattern
+                                    currentValue = `(Regex extraction - run step to see result)`;
+                                } else {
+                                    // Default to XPath for backward compatibility
+                                    currentValue = CustomXPathEvaluator.evaluate(rawResponse, ex.path);
+                                }
+                                console.log(`[ExtractorsPanel] Type: ${ex.type || 'XPath'}, Expr: ${ex.path}, Val: ${currentValue}`);
                             } catch (e) {
                                 console.error('[ExtractorsPanel] Evaluation Error:', e);
-                                currentValue = "Error evaluating XPath";
+                                currentValue = "Error evaluating expression";
                             }
                         }
 
@@ -180,8 +187,14 @@ export const ExtractorsPanel: React.FC<ExtractorsPanelProps> = ({ extractors, on
                                         <Label>Source:</Label>
                                         <span>{ex.source}</span>
                                     </InfoRow>
+                                    {ex.type && (
+                                        <InfoRow>
+                                            <Label>Type:</Label>
+                                            <span>{ex.type}</span>
+                                        </InfoRow>
+                                    )}
                                     <InfoRow>
-                                        <Label>Path:</Label>
+                                        <Label>{ex.type === 'Regex' ? 'Pattern:' : 'Path:'}</Label>
                                         <Value>{ex.path}</Value>
                                     </InfoRow>
                                     {ex.defaultValue && (

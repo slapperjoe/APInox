@@ -49,7 +49,7 @@ interface UseTestCaseHandlersReturn {
     handleGenerateTestSuite: (target: ApiInterface | ApiOperation) => void;
     handleRunTestCaseWrapper: (caseId: string) => void;
     handleRunTestSuiteWrapper: (suiteId: string) => void;
-    handleSaveExtractor: (data: { xpath: string, value: string, source: 'body' | 'header', variableName: string, defaultValue?: string, editingId?: string }) => void;
+    handleSaveExtractor: (data: { xpath: string, value: string, source: 'body' | 'header', variableName: string, defaultValue?: string, editingId?: string, type?: 'XPath' | 'JSONPath' | 'Regex' | 'Header' }) => void;
 }
 
 export function useTestCaseHandlers({
@@ -439,7 +439,7 @@ export function useTestCaseHandlers({
         });
     }, []);
 
-    const handleSaveExtractor = useCallback((data: { xpath: string, value: string, source: 'body' | 'header', variableName: string, defaultValue?: string, editingId?: string }) => {
+    const handleSaveExtractor = useCallback((data: { xpath: string, value: string, source: 'body' | 'header', variableName: string, defaultValue?: string, editingId?: string, type?: 'XPath' | 'JSONPath' | 'Regex' | 'Header' }) => {
         if (!selectedTestCase || !selectedStep) {
             console.error('[handleSaveExtractor] Missing selection state', {
                 hasTestCase: !!selectedTestCase,
@@ -458,7 +458,7 @@ export function useTestCaseHandlers({
                 // Edit mode - update existing extractor
                 newExtractors = (selectedStep.config.request.extractors || []).map(ext =>
                     ext.id === data.editingId
-                        ? { ...ext, path: data.xpath, variable: data.variableName, source: data.source, defaultValue: data.defaultValue }
+                        ? { ...ext, path: data.xpath, variable: data.variableName, source: data.source, defaultValue: data.defaultValue, type: data.type || ext.type || 'XPath' }
                         : ext
                 );
                 console.log('[handleSaveExtractor] Editing extractor:', data.editingId);
@@ -466,14 +466,14 @@ export function useTestCaseHandlers({
                 // Create mode - add new extractor
                 const newExtractor: RequestExtractor = {
                     id: crypto.randomUUID(),
-                    type: 'XPath',
+                    type: data.type || 'XPath', // Use provided type or default to XPath
                     path: data.xpath,
                     variable: data.variableName,
                     source: data.source,
                     defaultValue: data.defaultValue
                 };
                 newExtractors = [...(selectedStep.config.request.extractors || []), newExtractor];
-                console.log('[handleSaveExtractor] Creating new extractor');
+                console.log('[handleSaveExtractor] Creating new extractor with type:', data.type || 'XPath');
             }
 
             updatedStep = {

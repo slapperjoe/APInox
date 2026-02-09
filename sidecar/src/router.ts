@@ -271,6 +271,90 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             return { closed: true };
         },
 
+        [FrontendCommand.ExportWorkspace]: async (payload) => {
+            console.log('[Router] ExportWorkspace received payload keys:', Object.keys(payload));
+            console.log('[Router] ExportWorkspace payload:', {
+                hasProjects: !!payload.projects,
+                projectsIsArray: Array.isArray(payload.projects),
+                projectCount: payload.projects?.length,
+                hasFilePath: !!payload.filePath,
+                hasProjectPaths: !!payload.projectPaths
+            });
+            
+            const { projects, filePath } = payload;
+            if (!projects || !Array.isArray(projects) || projects.length === 0) {
+                throw new Error('No projects provided for export');
+            }
+            if (!filePath) {
+                throw new Error('No file path provided for export');
+            }
+
+            // Projects are already fully loaded in memory from the frontend
+            // No need to reload from disk - just export them directly
+            const { SoapUIExporter } = require('./SoapUIExporter');
+            const exporter = new SoapUIExporter();
+            
+            await exporter.exportWorkspace(projects, filePath);
+            
+            return { 
+                exported: true, 
+                projectCount: projects.length,
+                filePath
+            };
+        },
+
+        [FrontendCommand.ImportWorkspace]: async (payload) => {
+            const { filePath } = payload;
+            if (!filePath) {
+                throw new Error('No file path provided for import');
+            }
+
+            const { SoapUIExporter } = require('./SoapUIExporter');
+            const exporter = new SoapUIExporter();
+            
+            // Import the workspace XML file - returns all projects referenced in the workspace
+            const projects = await exporter.importWorkspace(filePath);
+            
+            return { 
+                imported: true,
+                projects,
+                projectCount: projects.length
+            };
+        },
+
+        [FrontendCommand.DeleteProjectFiles]: async (payload) => {
+            const { path } = payload;
+            if (!path) {
+                throw new Error('No path provided for deletion');
+            }
+
+            const fs = require('fs');
+            const pathModule = require('path');
+            
+            // Safety check: ensure it's an absolute path
+            if (!pathModule.isAbsolute(path)) {
+                throw new Error('Path must be absolute');
+            }
+            
+            // Safety check: ensure directory exists
+            if (!fs.existsSync(path)) {
+                console.log(`[Router] Path does not exist: ${path}`);
+                return { deleted: false, reason: 'Path does not exist' };
+            }
+            
+            // Safety check: ensure it's a directory
+            const stats = fs.statSync(path);
+            if (!stats.isDirectory()) {
+                throw new Error('Path must be a directory');
+            }
+            
+            console.log(`[Router] Deleting project directory: ${path}`);
+            fs.rmSync(path, { recursive: true, force: true });
+            console.log(`[Router] Successfully deleted: ${path}`);
+            
+            return { deleted: true, path };
+        },
+
         // ===== Proxy Service =====
         [FrontendCommand.StartProxy]: async (payload) => {
             if (payload?.config) {
@@ -499,6 +583,11 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
         // ===== Performance Testing =====
         [FrontendCommand.RunPerformanceSuite]: async (payload) => {
             const { suiteId, environment, variables } = payload;
+            
+            // Get environment config and globals
+            const envConfig = environment ? await services.settingsManager.getResolvedEnvironment(environment) : {};
+            const globals = services.settingsManager.getGlobalVariables() || {};
+            
             if (payload?.stream) {
                 const runId = `perf-run-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
                 const runState = { updates: [], done: false } as { updates: any[]; done: boolean; error?: string; run?: any };
@@ -525,7 +614,7 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
 
                 (async () => {
                     try {
-                        await services.performanceService.runSuite(suiteId, environment, variables);
+                        await services.performanceService.runSuite(suiteId, environment, variables, envConfig, globals);
                         services.settingsManager.updatePerformanceHistory(services.performanceService.getHistory());
                     } catch (error: any) {
                         runState.error = error?.message || String(error);
@@ -539,7 +628,7 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
                 return { runId };
             }
 
-            const result = await services.performanceService.runSuite(suiteId, environment, variables);
+            const result = await services.performanceService.runSuite(suiteId, environment, variables, envConfig, globals);
             services.settingsManager.updatePerformanceHistory(services.performanceService.getHistory());
             return result;
         },

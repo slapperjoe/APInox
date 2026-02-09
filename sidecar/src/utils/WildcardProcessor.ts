@@ -10,14 +10,16 @@ export class WildcardProcessor {
 
         let processed = text;
 
-        // 0. Context Variables (SoapUI Style: ${#TestCase#VarName})
+        // 0. Context Variables (Workflow Variables - SoapUI Style)
+        // Support ${#TestCase#VarName} and ${VarName} ONLY
+        // DO NOT support {{VarName}} - that syntax is reserved for env/global/functions
         if (contextVariables) {
             for (const [key, value] of Object.entries(contextVariables)) {
                 // Support SoapUI-style: ${#TestCase#VarName}
                 const soapUIRegex = new RegExp(`\\$\\{#TestCase#${key}\\}`, 'g');
                 processed = processed.replace(soapUIRegex, value);
 
-                // Also support simple style: ${VarName}
+                // Support simple style: ${VarName}
                 const simpleRegex = new RegExp(`\\$\\{${key}\\}`, 'g');
                 processed = processed.replace(simpleRegex, value);
             }

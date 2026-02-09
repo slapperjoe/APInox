@@ -8,6 +8,7 @@ import {
     RequestExtractor
 } from '../../shared/src/models';
 import { SoapClient } from '../soapClient';
+import { WildcardProcessor } from '../utils/WildcardProcessor';
 import * as xpath from 'xpath';
 import { DOMParser } from '@xmldom/xmldom';
 
@@ -119,7 +120,9 @@ export class PerformanceService extends EventEmitter {
     public async runSuite(
         suiteId: string,
         environment?: string,
-        variables?: Record<string, string>
+        variables?: Record<string, string>,
+        envConfig?: Record<string, string>,
+        globals?: Record<string, string>
     ): Promise<PerformanceRun | null> {
         const suite = this.getSuite(suiteId);
         if (!suite) {
@@ -155,9 +158,9 @@ export class PerformanceService extends EventEmitter {
                 this.log(`Iteration ${iteration + 1}/${totalIterations}${isWarmup ? ' (warmup)' : ''}`);
 
                 if (suite.concurrency <= 1) {
-                    await this.executeSequential(suite, iteration, isWarmup, extractedVars, results);
+                    await this.executeSequential(suite, iteration, isWarmup, extractedVars, results, envConfig, globals);
                 } else {
-                    await this.executeParallel(suite, iteration, isWarmup, extractedVars, results, suite.concurrency);
+                    await this.executeParallel(suite, iteration, isWarmup, extractedVars, results, suite.concurrency, envConfig, globals);
                 }
 
                 this.emit('iterationComplete', { iteration, total: totalIterations });
@@ -192,7 +195,9 @@ export class PerformanceService extends EventEmitter {
         iteration: number,
         isWarmup: boolean,
         variables: Record<string, string>,
-        results: PerformanceResult[]
+        results: PerformanceResult[],
+        envConfig?: Record<string, string>,
+        globals?: Record<string, string>
     ) {
         // Sort requests by order
         const requests = [...suite.requests].sort((a, b) => a.order - b.order);
@@ -200,7 +205,7 @@ export class PerformanceService extends EventEmitter {
         for (const req of requests) {
             if (this.shouldAbort) break;
 
-            const result = await this.executeRequest(req, iteration, variables);
+            const result = await this.executeRequest(req, iteration, variables, envConfig, globals);
             if (!isWarmup) {
                 results.push(result);
             }
@@ -220,7 +225,9 @@ export class PerformanceService extends EventEmitter {
         isWarmup: boolean,
         variables: Record<string, string>,
         results: PerformanceResult[],
-        concurrency: number
+        concurrency: number,
+        envConfig?: Record<string, string>,
+        globals?: Record<string, string>
     ) {
         const requests = [...suite.requests].sort((a, b) => a.order - b.order);
 
@@ -229,7 +236,7 @@ export class PerformanceService extends EventEmitter {
 
             const chunk = requests.slice(i, i + concurrency);
             const chunkResults = await Promise.all(
-                chunk.map(req => this.executeRequest(req, iteration, { ...variables }))
+                chunk.map(req => this.executeRequest(req, iteration, { ...variables }, envConfig, globals))
             );
 
             for (const result of chunkResults) {
@@ -257,7 +264,9 @@ export class PerformanceService extends EventEmitter {
     private async executeRequest(
         req: PerformanceRequest,
         iteration: number,
-        variables: Record<string, string>
+        variables: Record<string, string>,
+        envConfig?: Record<string, string>,
+        globals?: Record<string, string>
     ): Promise<PerformanceResult> {
         const startTime = performance.now();
         let status = 0;
@@ -267,13 +276,30 @@ export class PerformanceService extends EventEmitter {
         const extractedValues: Record<string, string> = {};
 
         try {
-            let body = req.requestBody;
+            // Apply wildcard processing first (handles {{env}}, {{url}}, {{now}}, etc.)
+            let body = WildcardProcessor.process(
+                req.requestBody,
+                envConfig || {},
+                globals || {},
+                '', // scriptsDir not needed for performance tests
+                variables
+            );
+            let endpoint = WildcardProcessor.process(
+                req.endpoint || '',
+                envConfig || {},
+                globals || {},
+                '',
+                variables
+            );
+
+            // Then apply variable substitution for ${variable} syntax
             for (const [key, value] of Object.entries(variables)) {
                 body = body.replace(new RegExp(`\\$\\{${key}\\}`, 'g'), value);
+                endpoint = endpoint.replace(new RegExp(`\\$\\{${key}\\}`, 'g'), value);
             }
 
             const response = await this.soapClient.executeRequest(
-                req.endpoint || '',
+                endpoint,
                 req.name,
                 body,
                 req.headers
