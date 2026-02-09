@@ -29,7 +29,7 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
 
             if (isJson) {
                 services.soapClient.log('Detected OpenAPI/Swagger format (JSON/YAML)...');
-                const { OpenApiParser } = require('../../src/OpenApiParser');
+                const { OpenApiParser } = require('./OpenApiParser');
                 const parser = new OpenApiParser(services.soapClient.getOutputChannel());
                 return await parser.parse(url);
             } else {
@@ -56,7 +56,7 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
 
                     let interfaces: any[];
                     if (isJson) {
-                        const { OpenApiParser } = require('../../src/OpenApiParser');
+                        const { OpenApiParser } = require('./OpenApiParser');
                         const parser = new OpenApiParser(services.soapClient.getOutputChannel());
                         interfaces = await parser.parse(url);
                     } else {
