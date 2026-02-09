@@ -33,7 +33,6 @@ yarn-error.log*
 
 # Testing
 coverage/
-webview/coverage/
 playwright-report/
 test-results/
 
@@ -44,8 +43,6 @@ playwright.config.js
 playwright.config.js.map
 
 # Transpiled JS files from TypeScript sources
-webview/src/**/*.js
-webview/src/**/*.js.map
 shared/src/**/*.js
 shared/src/**/*.js.map
 src/**/*.js
