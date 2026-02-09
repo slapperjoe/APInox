@@ -1,76 +1,35 @@
 {
   "name": "apinox",
-  "publisher": "dev1",
   "displayName": "APInox",
-  "description": "Visual SOAP client for VS Code",
+  "description": "A visual SOAP client desktop application",
   "repository": {
     "type": "git",
     "url": "https://github.com/slapperjoe/apinox.git"
   },
-  "icon": "images/APInox_logo_dark.jpg",
   "license": "MIT",
-  "version": "0.11.0",
-  "engines": {
-    "vscode": "^1.80.0"
-  },
-  "categories": [
-    "Other"
-  ],
-  "activationEvents": [
-    "onStartupFinished"
-  ],
-  "main": "./out/src/extension.js",
+  "version": "0.16.112",
   "bin": {
     "apinox": "./out/src/cli/index.js"
   },
-  "contributes": {
-    "commands": [
-      {
-        "command": "apinox.openInterface",
-        "title": "Open Interface",
-        "category": "APInox",
-        "icon": "$(zap)"
-      },
-      {
-        "command": "apinox.resetConfiguration",
-        "title": "Reset Configuration (Hard Reset)",
-        "category": "APInox",
-        "icon": "$(trash)"
-      },
-      {
-        "command": "apinox.exportToSoapUI",
-        "title": "Dirty Soap: Export to SoapUI"
-      },
-      {
-        "command": "apinox.exportDiagnostics",
-        "title": "Export Diagnostic Logs",
-        "category": "APInox",
-        "icon": "$(output)"
-      }
-    ]
-  },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
-    "compile": "npm run compile-webview && tsc -p ./",
-    "compile-webview": "cd webview && npm install && npm run build:skip-check",
-    "watch": "tsc -watch -p ./",
-    "pretest": "npm run compile && npm run lint",
-    "lint": "eslint src --ext ts",
+    "compile": "tsc -p ./",
+    "compile-webview": "cd src-tauri/webview && npm install && npm run build:skip-check",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "dev:webview": "cd webview && npm run dev",
+    "dev:webview": "cd src-tauri/webview && npm run dev",
     "version-bump-major": "node scripts/bump.js major",
     "version-bump-minor": "node scripts/bump.js minor",
     "version-bump-patch": "node scripts/bump.js patch",
+    "sync-version": "node sync-version.js",
     "prepare": "npx simple-git-hooks",
     "build-cli": "tsc -p ./ && chmod +x ./out/src/cli/index.js 2>/dev/null || true",
     "cli": "node ./out/src/cli/index.js",
-    "build-binary": "npm run compile && pkg ./out/src/cli/index.js --targets node18-win-x64,node18-macos-x64,node18-linux-x64 --out-path ./bin",
-    "build-binary-win": "npm run compile && pkg ./out/src/cli/index.js --targets node18-win-x64 --out-path ./bin",
-    "build:sidecar": "cd sidecar && npm run build",
-    "tauri:dev": "npm run build:sidecar && npx tauri dev",
-    "tauri:build": "npm run build:sidecar && npx tauri build"
+    "build:sidecar": "cd sidecar && npm install && npm run build",
+    "increment-build": "node increment-build.js",
+    "prepare:sidecar": "cd sidecar && npm install && npm run binary && cd .. && node prepare-sidecar-binary.js",
+    "tauri:dev": "npm run prepare:sidecar && cd src-tauri/webview && npm install && cd ../.. && npx tauri dev",
+    "tauri:build": "npm run increment-build && npm run sync-version && npm run prepare:sidecar && cd src-tauri/webview && npm install && cd ../.. && npx tauri build"
   },
   "pkg": {
     "scripts": [
@@ -95,12 +54,10 @@
     "@types/selfsigned": "^2.0.4",
     "@types/swagger-parser": "^4.0.3",
     "@types/uuid": "^10.0.0",
-    "@types/vscode": "^1.80.0",
     "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^5.59.8",
     "@typescript-eslint/parser": "^5.59.8",
     "@vitest/coverage-v8": "^4.0.16",
-    "@vscode/test-electron": "^2.3.2",
     "eslint": "^8.41.0",
     "glob": "^8.1.0",
     "jest": "^30.2.0",
@@ -119,15 +76,18 @@
     "@tauri-apps/plugin-opener": "^2.5.3",
     "@tauri-apps/plugin-shell": "^2.3.4",
     "@tauri-apps/plugin-store": "^2.4.2",
+    "@types/chokidar": "^1.7.5",
     "@types/node-cron": "^3.0.11",
-    "axios": "^1.13.2",
+    "@types/node-forge": "^1.3.14",
     "chalk": "^4.1.2",
+    "chokidar": "^5.0.0",
     "cli-table3": "^0.6.5",
     "commander": "^14.0.2",
     "fast-xml-parser": "^5.3.3",
     "https-proxy-agent": "^7.0.6",
     "jsonc-parser": "^3.3.1",
     "node-cron": "^4.2.1",
+    "node-forge": "^1.3.3",
     "selfsigned": "^5.4.0",
     "soap": "^1.0.0",
     "uuid": "^13.0.0",

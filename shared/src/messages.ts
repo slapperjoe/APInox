@@ -22,16 +22,20 @@ export enum FrontendCommand {
     GetWatcherHistory = 'getWatcherHistory',
     ClearWatcherHistory = 'clearWatcherHistory',
     SelectConfigFile = 'selectConfigFile',
+    SelectWatcherRequestFile = 'selectWatcherRequestFile',
+    SelectWatcherResponseFile = 'selectWatcherResponseFile',
 
     // Commands
     DownloadWsdl = 'downloadWsdl',
     LoadWsdl = 'loadWsdl',
+    CancelWsdlLoad = 'cancelWsdlLoad',
     GetLocalWsdls = 'getLocalWsdls',
     SelectLocalWsdl = 'selectLocalWsdl',
     CloseProject = 'closeProject',
     SyncProjects = 'syncProjects', // New command for strict syncing
     RefreshWsdl = 'refreshWsdl',
     ApplyWsdlSync = 'applyWsdlSync',
+    BulkImportWsdls = 'bulkImportWsdls',
 
     // ADO
     AdoStorePat = 'adoStorePat',
@@ -67,8 +71,15 @@ export enum FrontendCommand {
     // Test Runner
     RunTestSuite = 'runTestSuite',
     RunTestCase = 'runTestCase',
+    GetTestRunUpdates = 'getTestRunUpdates',
     PickOperationForTestCase = 'pickOperationForTestCase',
     UpdateTestStep = 'updateTestStep',
+
+    // Workflow
+    ExecuteWorkflow = 'executeWorkflow',
+    SaveWorkflow = 'saveWorkflow',
+    DeleteWorkflow = 'deleteWorkflow',
+    GetWorkflows = 'getWorkflows',
 
     // Performance
     GetPerformanceSuites = 'getPerformanceSuites',
@@ -82,6 +93,7 @@ export enum FrontendCommand {
     RunPerformanceSuite = 'runPerformanceSuite',
     AbortPerformanceSuite = 'abortPerformanceSuite',
     GetPerformanceHistory = 'getPerformanceHistory',
+        GetPerformanceRunUpdates = 'getPerformanceRunUpdates',
     ImportTestSuiteToPerformance = 'importTestSuiteToPerformance',
     ExportPerformanceResults = 'exportPerformanceResults',
 
@@ -114,6 +126,21 @@ export enum FrontendCommand {
     GetSidecarLogs = 'getSidecarLogs',
     ClearSidecarLogs = 'clearSidecarLogs',
     GetDebugInfo = 'getDebugInfo',
+    OpenFile = 'openFile',
+    CheckCertificate = 'checkCertificate',
+    CheckCertificateStore = 'checkCertificateStore',
+    TestHttpsServer = 'testHttpsServer',
+    TestProxyConnection = 'testProxyConnection',
+    InstallCertificateToLocalMachine = 'installCertificateToLocalMachine',
+    MoveCertificateToLocalMachine = 'moveCertificateToLocalMachine',
+    RegenerateCertificate = 'regenerateCertificate',
+    ResetCertificates = 'resetCertificates',
+    GetProxyStatus = 'getProxyStatus',
+
+    // Workspace Export/Import
+    ExportWorkspace = 'exportWorkspace',
+    ImportWorkspace = 'importWorkspace',
+    DeleteProjectFiles = 'deleteProjectFiles',
 }
 
 export enum BackendCommand {
@@ -140,6 +167,7 @@ export enum BackendCommand {
     ProjectSaved = 'projectSaved',
     WorkspaceSaved = 'workspaceSaved',
     WsdlParsed = 'wsdlParsed',
+    WsdlLoadCancelled = 'wsdlLoadCancelled',
     Response = 'response',
     Error = 'error',
     DownloadComplete = 'downloadComplete',
@@ -152,6 +180,8 @@ export enum BackendCommand {
     LocalWsdls = 'localWsdls',
     ConfigFileSelected = 'configFileSelected',
     WsdlRefreshResult = 'wsdlRefreshResult',
+    BulkImportProgress = 'bulkImportProgress',
+    BulkImportComplete = 'bulkImportComplete',
 
     // ADO Results
     AdoHasPatResult = 'adoHasPatResult',

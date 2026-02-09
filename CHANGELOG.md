@@ -1,222 +1,253 @@
 # Changelog
 
+
+## [0.16.0] - 2026-02-05
+### Added
+- **Regex Extractors**: Extract values from JSON, HTML, or plain text responses using regex patterns
+  - Support for capture groups to extract specific values
+  - Common pattern library (email, URL, UUID, JSON fields, HTML tags)
+  - Pattern validation with helpful error messages
+  - Type dropdown in Extractor UI (XPath, Regex, JSONPath, Header)
+  - Enhanced documentation with real-world examples
+  - Complementary to existing XPath extractors for non-XML responses
+
+### Auto-Generated Changes
+- No Commit messages found.
+
+## [0.15.105] - 2026-02-04
+### Changed
+- **Build Size Optimization**: Significantly reduced installer size through production optimizations
+  - Installer size reduced from 28.92 MB to 20.59 MB (-28.8% reduction)
+  - Stripped sourcemaps from production builds (kept in development)
+  - Enabled sidecar minification for production
+  - Added LZMA compression to NSIS installer
+  - Webview bundle reduced from 62.22 MB to 16.91 MB (-72.8%)
+  - Development builds retain sourcemaps for debugging
+  - All functionality preserved and tested
+
+## [0.15.94] - 2026-02-04
+### Added
+- **SettingsManager**: Comprehensive configuration management system
+  - Centralized handling of application settings (environments, UI state, mock server config)
+  - Methods for managing recent workspaces and performance testing configurations
+  - Support for proxy rules and timeout configurations
+- **WS-Security Support**: New WSSecurityUtil for generating WS-Security headers
+  - UsernameToken with PasswordText or PasswordDigest
+  - Certificate signing support
+  - Nonce and timestamp generation for replay attack prevention
+- **WildcardProcessor**: Advanced dynamic text processing
+  - Context-aware variable and function processing
+  - UUID generation, date manipulation, and user-defined scripts
+  - Integration with environment and global variables
+- **Font Detection**: Utility to detect installed monospaced fonts on user's system
+- **Workflow Editor UI**: Complete workflow editing interface
+  - ScriptStepEditor for JavaScript step editing
+  - WorkflowEditor with drag-and-drop step management
+  - WorkflowPropertiesPanel for metadata and statistics
+  - WorkflowSummary for workflow overview
+  - Integrated with TestRunnerService for step execution
+- **Drag-and-Drop Reordering**: Sidebar items can now be reordered via drag-and-drop
+  - Custom `useDragAndDrop` hook for managing drag state
+  - Visual feedback during dragging
+  - Works with projects, folders, and interfaces
+- **Sample Request Panel**: Display sample XML requests with metadata in Operation Summary
+  - Create requests directly from samples
+  - XML tree structure rendering
+  - Filtering of sample requests from project interface additions
+- **Variables Panel**: Display extracted variables from prior test steps
+  - Variable autocomplete in Monaco editor
+  - Execution status visualization with icons and tooltips
+- **Save Error Dialog**: User-friendly error handling for save failures
+  - Retry, delete, and keep options
+  - Clear error messages with actionable feedback
+- **TitleBar Enhancements**: Custom title bar with window controls
+  - Minimize/maximize functionality
+  - Project info display
+  - Better Tauri integration
+
+### Improved
+- **UI Consistency**: Comprehensive refactoring for standardization
+  - Unified Button and Form component libraries
+  - NumberSpinner for numeric inputs
+  - Consistent spacing constants (SPACING, MODAL)
+  - Semantic color variables (STATUS_COLORS, CHANGE_COLORS, ICON_COLORS, TAG_COLORS)
+  - Theme-aware color mixing for hover effects
+- **FileWatcherService**: Enhanced XML validation and retry logic
+  - Metrics tracking for request/response handling
+  - Improved error handling and logging
+- **Workflow Configuration**: Integrated workflow UI in WorkspaceLayout
+- **Component Styling**: Migrated components to use semantic spacing and theme variables
+  - GraphQLVariablesPanel, HeadersPanel, QueryParamsPanel
+  - RestAuthPanel, SecurityPanel
+  - MonacoSingleLineInput with themed wildcard tags
+  - TauriNotificationProvider with themed toast colors
+  - WorkspaceLayout with theme-aware logo visibility
+
+### Fixed
+- **Request File Cleanup**: FolderProjectStorage now properly deletes orphaned files when requests are renamed
+- **TestRunnerService**: Includes settings manager for workflow execution
+- **Color Consistency**: All UI components now properly use VS Code theme variables
+
+### Documentation
+- Added TLS Fix Guide for .NET WCF connections to APInox Proxy
+- Updated AGENTS.md to reflect Tauri as primary platform
+- Documented drag-and-drop implementation
+- Added request chaining phase 1 completion notes
+- Comprehensive Copilot instructions for Tauri development
+
+### Scripts & Diagnostics
+- **Certificate Management Scripts**:
+  - `bind-proxy-cert.ps1`: Bind APInox certificate to HTTPS port
+  - `fix-cert-store.ps1`: Check and fix certificate installation
+  - `install-proxy-cert.ps1`: Install certificate to Trusted Root
+  - `reset-certificates.ps1`: Complete certificate reset
+  - `verify-cert-installation.ps1`: Manual certificate verification
+- **Diagnostic Scripts**:
+  - `debug-proxy-config.ps1`: Diagnose proxy setup issues
+  - `test-cert-https.js`: Test HTTPS server with APInox certificate
+  - `test-proxy-tls.js`: Diagnose TLS connection issues for .NET WCF
+- **DiagnosticsTab**: Integrated certificate and proxy diagnostics
+  - React-based dialog system (replaces native alerts)
+  - TLS connection attempt logging
+
+## [0.15.0] - 2026-01-24
+### Added
+- **Environment Variables & Custom Fields**: Enhanced environment management with flexible custom field support
+  - Add unlimited custom fields to any environment (Dev/Test/Prod)
+  - Visual editor in Settings → Environments tab
+  - Quick environment switcher in toolbar
+  - Import/export environments for team sharing
+  - Variable resolution with `{{fieldName}}` syntax
+  
+- **Encrypted Secrets**: Environment variables can now be marked as secret with AES-256-GCM encryption at rest
+  - Toggle any custom field between Plain/Secret with lock icon
+  - Masked display (••••••••) with show/hide eye icon
+  - Automatic encryption in `~/.apinox/secrets.enc`
+  - Variable resolution ({{fieldName}}) works transparently with encrypted values
+  - Export redacts secrets as `[REDACTED]` for safe version control
+  - Import preserves existing secrets (team members add their own locally)
+  - Wildcard syntax highlighting for {{variables}} in Monaco editor
+  
+- **Performance Metrics & Load Testing**: Built-in performance testing capabilities
+  - Response time tracking across multiple test runs
+  - Load testing with configurable concurrent requests (1-100 users)
+  - SLA monitoring with visual threshold indicators
+  - Historical comparison charts showing trends
+  - Export metrics to CSV/JSON for analysis and CI/CD integration
+  - Ramp-up configuration for gradual load increase
+  
+- **Certificate Management**: Restored ability to open development certificates from the GUI
+  - Added OpenCertificate command handler in sidecar router
+  - Shield icon in Server UI opens certificate file in system file manager
+  - Certificates automatically generated when proxy/mock server starts with HTTPS target
+
+### Fixed
+- **macOS**: Performance suites and settings now persist across reinstalls
+  - Config directory moved from exe-relative location to stable user directory (`~/Library/Application Support/apinox/` on macOS)
+  - Automatic migration from legacy location included
+  
+- **Request Rename Persistence**: Renamed requests no longer revert to original names after application restart
+  - Added cleanup logic in FolderProjectStorage to delete old request files when requests are renamed
+  - Orphaned request files (.xml/.json pairs) are now properly removed during save
+  - Consistent with existing cleanup patterns for interfaces, operations, test suites, and test cases
+  
+- **Proxy UI Target URL**: Fixed hardcoded "localhost:8080" display to show actual configured target URL
+  - Proxy/watcher status now correctly displays "9000 => {actual target URL}"
+  - Status loads from lastProxyTarget setting on component mount
+  
+- **Performance Test UI**: Performance test request entries now show interaction icons on hover
+  - Added trash/delete icon for quick request removal
+  - Consistent with other sidebar item patterns (suites, test cases, operations)
+
+## [0.14.0] - 2026-01-22
+### Auto-Generated Changes
+- feat: Implement WSDL loading cancellation and local XSD resolution - Added CancelWsdlLoadCommand to allow users to cancel ongoing WSDL loading operations. - Enhanced LoadWsdlCommand to support cancellation and local directory resolution for XSD files. - Updated WebviewController to integrate the new cancel command. - Modified the bridge utility to automatically extract local directory paths for WSDL files. - Improved XML generation logic to handle complex types using full schema when available. - Introduced a build number management system with .buildno file for versioning. - Created scripts to fix XSD import paths in WSDL/XSD files for local development.
+
+## [0.13.4] - 2026-01-22
+### Auto-Generated Changes
+- Refactor code structure for improved readability and maintainability Fixes to WSDL imports
+
+## [0.13.3] - 2026-01-21
+### Auto-Generated Changes
+- feat: migrate from axios to native fetch API for standalone binary support  - Replaced axios with native Node.js fetch in ProxyService and other services - Updated ProxyService to handle HTTP requests and responses using fetch - Added NativeHttpClient utility for HTTP operations with error handling - Enhanced DebugModal to reflect changes in sidecar diagnostics - Updated WelcomePanel and styles for logo adjustments - Bumped webview version to 0.13.2 - Added comprehensive tests for NativeHttpClient - Documented standalone binary implementation and build process
+
+## [0.13.2] - 2026-01-21
+### Auto-Generated Changes
+- Mac Fixes
+
+## [0.13.1] - 2026-01-21
+### Auto-Generated Changes
+- feat: enhance script playground functionality
+
+## [0.13.0] - 2026-01-21
+### Auto-Generated Changes
+- feat: Major fixes for prod version
+
+## [0.12.0] - 2026-01-19
+### Auto-Generated Changes
+- feat: add Tauri dialog plugin and enhance settings management - Added @tauri-apps/plugin-dialog dependency for file selection dialogs. - Enhanced MainContent component to support new configDir state. - Updated SettingsEditorModal to auto-save settings on tab changes and close. - Integrated file watcher configuration in IntegrationsTab with file selection capability. - Improved GeneralTab to display settings location and sidecar status. - Added sample requests for SOAP,REST,and GraphQL in the Samples folder. - Updated UI context and message handling to manage new configDir state. - Refactored various components to improve settings handling and user experience.
 -----
 
 ## [0.11.0] - 2026-01-15
-### Auto-Generated Changes
-- Tauri Fixes
+### Fixed
+- Tauri application fixes and stability improvements.
 
 ## [0.10.0] - 2026-01-15
-### Auto-Generated Changes
-- feat: Reintroduction of Tauri App
+### Added
+- **Tauri App**: Reintroduction of the Tauri-based application.
 
 ## [0.9.0] - 2026-01-07
-### Auto-Generated Changes
-- feat: Implement WSDL parsing and a new webview for managing settings and SOAP operations.
-
-## [0.8.1] - 2026-01-01
-### Auto-Generated Changes
-- feat: Implement WSDL parsing and a new webview for managing settings and SOAP operations.
+### Added
+- **WSDL Management**: New settings webview for WSDL parsing and SOAP operations.
 
 ## [0.8.0] - 2026-01-01
 ### Added
-- **Mock Server**: Return predefined responses without hitting real backend
-    - Mock rules with URL, XPath, and regex matching
-    - Record mode to auto-capture real responses
-    - Passthrough for unmatched requests
-    - Latency simulation
-- **Unified Server Tab**: Combined Proxy and Mock into single Server view
-    - Mode toggle: Off, Mock, Proxy, Both
-    - Conditional sections show Mock Rules or Breakpoints based on mode
-- **Settings Tab Enum**: Refactored settings modal to use `SettingsTab` enum
-- **Updated Help Modal**: Added Server and Mock Server documentation sections
+- **Unified Server Tab**: Combined Proxy and Mock into a single Server view with toggle modes (Off, Mock, Proxy, Both).
+- **Mock Server**:
+    - Return predefined responses without hitting real backend.
+    - Mock rules with URL, XPath, and regex matching.
+    - Record mode to auto-capture real responses.
+    - Latency simulation.
+- **Settings Tab Enum**: Refactored settings modal for better navigation.
 
 ### Changed
-- Removed separate Proxy and Mock tabs from sidebar
-- Settings cog on Server tab now opens Settings directly to Server tab
+- Removed separate Proxy and Mock tabs from sidebar.
+- Settings cog on Server tab now opens directly to Server settings.
 
 ## [0.7.6] - 2025-12-31
-### Changes
-- **Status Bar Launch**: Added "🧪 Dirty SOAP" button in the status bar for quick access
-- **Manual Save**: Removed auto-save on every keystroke - projects now save manually
-- **Ctrl+S**: Added keyboard shortcut to save all dirty projects
-- **Save Indicators**: Save button only appears when project/request is dirty, turns green after save
-- **Unsaved Warning**: Browser warns when closing with unsaved changes
+### Added
+- **Status Bar Launch**: "🧪 Dirty SOAP" button for quick access.
+- **Manual Save**: New save workflow (Ctrl+S) replacing auto-save on keystroke.
+- **Unsaved Warning**: Browser alert when closing with unsaved changes.
 
-## [0.7.5] - 2025-12-30
-### Auto-Generated Changes
-- feat: Update .vscodeignore and package-lock.json for improved project structure and versioning
-
-## [0.7.4] - 2025-12-29
-### Auto-Generated Changes
-- feat: Enhance replace rule functionality in ProxyService and SettingsEditorModal - Updated ProxyService to log applied replace rules by name. - Added replace rules management in SettingsEditorModal with options to add,edit,and delete rules.
-
-## [0.7.3] - 2025-12-29
-### Auto-Generated Changes
-- feat: Implement replace rule functionality in proxy service - Added ReplaceRuleApplier for applying text replacement rules to XML content. - Updated ProxyService to manage and apply replace rules during request/response handling. - Enhanced SettingsManager to include replace rules in configuration.
-
-## [0.7.2] - 2025-12-29
-### Auto-Generated Changes
-- feat: Add replace rule functionality in proxy view - Implemented CreateReplaceRuleModal for defining text replacement rules in requests/responses. - Updated WorkspaceLayout to handle replace rule creation and display endpoint info in read-only mode. - Introduced ReplaceRule interface in models for managing replace rules.
-
-## [0.7.1] - 2025-12-29
-### Auto-Generated Changes
-- feat: Implement context providers for project,selection,and UI state management - Added ProjectContext for managing project-related state and actions. - Introduced SelectionContext to handle UI selection state across various components. - Created UIContext for managing UI configuration,layout preferences,and modal visibility. - Refactored main.tsx to wrap the App component with the new context providers. - Extracted message handling logic into a custom hook for better organization and maintainability. - Created styled components for the main application layout and context menu.
-
-## [0.7.0] - 2025-12-28
-### Auto-Generated Changes
-- feat: Implement new webview UI for SOAP interaction and project management,deprecating old verification scripts.
-
-## [0.6.6] - 2025-12-25
-### Auto-Generated Changes
-- feat: enhance request handling in App and Sidebar components for improved proxy configuration
-
-## [0.6.5] - 2025-12-24
-### Auto-Generated Changes
-- feat: add TypeScript declarations for Vite client and PNG module support
-
-## [0.6.4] - 2025-12-24
-### Auto-Generated Changes
-- feat: Enhance configuration management by adding lastConfigPath tracking - Updated WebviewController to store the last selected config file path. - Modified ProxyService to ensure proper handling of HTTPS target URLs with trimmed input. - Extended SettingsManager to include lastConfigPath in the configuration.
-
-## [0.6.3] - 2025-12-24
-### Auto-Generated Changes
-- feat: Add certificate opening functionality in WebviewController - Implemented handling for openCertificate message to open the generated certificate and provide user instructions for installation. - Enhanced user feedback for certificate management in the proxy service.
-
-## [0.6.2] - 2025-12-24
-### Auto-Generated Changes
-- feat: Add self-signed certificate generation for HTTPS proxy support - Updated ProxyService to handle HTTPS requests with self-signed certificates. - Introduced ensureCert method to generate and manage certificates. - Enhanced ConfigSwitcherService to replace URLs with proxy base URLs while preserving paths. - Added new ReplacerService for managing replacement rules in request and response bodies. - Updated package.json to include selfsigned and its types. - Modified webview components to support certificate installation and display.
-
-## [0.6.1] - 2025-12-24
-### Auto-Generated Changes
-- feat: Enhance proxy configuration handling and UI updates - Updated ConfigSwitcherService to return original URL upon proxy injection. - Modified WebviewController to send updated proxy target to the UI. - Enhanced Sidebar component to allow editing of proxy target URL and improved layout for proxy controls.
+## [0.7.0] - 2025-12-29
+### Added
+- **Replace Rules**:
+    - Functionality to apply text replacement rules to XML content in the Proxy Service.
+    - UI for creating and managing replace rules in Settings.
+- **Context Management**: new Project, Selection, and UI context providers.
+- **New Webview UI**: Updated UI for SOAP interaction, deprecating old verification scripts.
 
 ## [0.6.0] - 2025-12-24
-### Auto-Generated Changes
-- feat: Implement Proxy and Config Switcher Services - Added ProxyService to handle HTTP requests and responses including logging and error handling. - Introduced ConfigSwitcherService for injecting proxy URLs into configuration files and restoring original configurations. - Updated SoapPanel to integrate ProxyService and ConfigSwitcherService. - Enhanced App component to manage proxy state and history. - Modified Sidebar component to include proxy controls and navigation. - Updated WatcherEvent model to accommodate proxy-related fields.
-
-## [0.5.4] - 2025-12-24
-### Auto-Generated Changes
-- feat: Update Sidebar and WorkspaceLayout components for improved watcher controls and response display
-
-## [0.5.3] - 2025-12-24
-### Auto-Generated Changes
-- feat: Enhance file watcher functionality with clear history feature and operation name extraction
-
-## [0.5.2] - 2025-12-23
-### Auto-Generated Changes
-- feat: Add file watcher controls and enhance watcher event model with root element extraction
-
-## [0.5.1] - 2025-12-23
-### Auto-Generated Changes
-- feat: Implement file watcher service and integrate with WebviewController and Sidebar for real-time updates
+### Added
+- **Proxy Service**:
+    - HTTPS proxy support with self-signed certificate generation (`ensureCert`).
+    - ConfigSwitcherService to inject proxy URLs into config files.
+    - Certificate installation helpers in the UI.
 
 ## [0.5.0] - 2025-12-23
-### Auto-Generated Changes
-- feat: Enhance HTTP headers management with new HeadersPanel component and integrate into WorkspaceLayout
+### Added
+- **File Watcher**: Real-time file watching with history and operation name extraction.
+- **Headers Panel**: New UI for managing HTTP headers.
 
 ## [0.4.0] - 2025-12-23
-### Auto-Generated Changes
-- feat: Implement assertion handling and UI components for SoapUI requests
-
-## [0.3.8] - 2025-12-23
-### Auto-Generated Changes
-- feat: Add Help Modal and enhance sidebar with help functionality
-
-## [0.3.5] - 2025-12-23
-### Auto-Generated Changes
-- fix: Add https-proxy-agent for improved proxy handling in Axios requests
-
-## [0.3.4] - 2025-12-23
-### Auto-Generated Changes
-- fix: Implement proxy detection and configuration in Axios requests for improved network handling
-
-## [0.3.3] - 2025-12-23
-### Auto-Generated Changes
-- fix: Disable SSL verification in Axios requests and improve callback handling in WsdlParser
-
-## [0.3.2] - 2025-12-23
-### Auto-Generated Changes
-- fix: Enhance Axios request handling in WsdlParser for better URL resolution and error logging
-
-## [0.3.1] - 2025-12-23
-### Auto-Generated Changes
-- fix: Improve WSDL parsing request handling with Axios and enhanced error logging
+### Added
+- **Assertions**: UI components and handling for SoapUI assertions.
 
 ## [0.3.0] - 2025-12-22
-### Overview
-- Major variation release including workspace persistence, inline XML values, and performance optimizations.
-- feat: Add version bump tasks and update changelog; implement workspace dirty state tracking in App and Sidebar components
-
-## [0.2.22] - 2025-12-22
-### Auto-Generated Changes
-- fix: Optimize event listener management for resizing in App component
-- feat: Implement autosave retrieval in WebviewController and update App to request autosave on load
-- fix: Correct indentation handling for XML attributes in formatter
-
-## [0.2.21] - 2025-12-22
-### Auto-Generated Changes
-- feat: Add inline element values configuration for XML formatting and UI
-
-## [0.2.20] - 2025-12-22
-### Auto-Generated Changes
-- feat: Enhance clipboard handling in Monaco editor for robust copy and paste functionality
-
-## [0.2.19] - 2025-12-22
-### Auto-Generated Changes
-- feat: Enhance project storage to save and load request endpoints
-
-## [0.2.18] - 2025-12-22
-### Auto-Generated Changes
-- feat: Add clipboard command support in Monaco editor for copy, paste, and cut actions
-
-## [0.2.17] - 2025-12-22
-### Auto-Generated Changes
-- feat: Implement project saved notification and manage saved projects state in UI
-
-## [0.2.16] - 2025-12-22
-### Auto-Generated Changes
-- feat: Update default content type to application/soap+xml in project handling and UI components
-
-## [0.2.15] - 2025-12-22
-### Auto-Generated Changes
-- fix: Refactor Sidebar and WorkspaceLayout components for improved layout and response handling
-
-## [0.2.14] - 2025-12-22
-### Auto-Generated Changes
-- feat: Update request handling to include content type headers and adjust project expansion state in sidebar
-
-## [0.2.13] - 2025-12-22
-### Auto-Generated Changes
-- feat: Enhance project name logging and error handling in ProjectStorage and WebviewController; enable default context menu in MonacoRequestEditor
-
-## [0.2.12] - 2025-12-21
-### Auto-Generated Changes
-- feat: Add namespace for dirty-soap and save raw request content in ProjectStorage
-
-## [0.2.11] - 2025-12-21
-### Auto-Generated Changes
-- feat: Improve project name handling and request content processing in ProjectStorage
-- feat: Enhance project reference loading in ProjectStorage for compatibility with multiple SoapUI formats
-- feat: Enhance error logging for project and workspace loading in ProjectStorage and WebviewController
-
-## [0.2.7] - 2025-12-21
-### Auto-Generated Changes
-- feat: Implement `WorkspaceLayout` component with integrated Monaco editors, wildcard support, and updated documentation for new features and settings.
-
-
-## [0.2.5] - 2025-12-20
-### Auto-Generated Changes
-- feat: Update CHANGELOG for version 0.2.4 with new features and enhancements
-
-## [0.2.3] - 2025-12-20
-### Auto-Generated Changes
-- feat: Add Wildcard System for dynamic values in requests and enhance settings management
-- feat: Refactor codebase by removing unused components, integrating MonacoSingleLineInput, and adding ErrorBoundary for improved error handling
-- feat: Implement sidecar process for handling SOAP requests and responses
-- feat: Add MonacoResponseViewer and enhance WorkspaceLayout with XML formatting options
-- feat: Add MonacoRequestEditor component with syntax highlighting and decoration support
-- feat: Implement WSDL Parser and Schema Viewer
+### Added
+- **WSDL Parser**: Robust parsing with Axios, including proxy detection and SSL verification fixes.
+- **Workspace**: Dirty state tracking and workspace persistence.
 
 ## [0.2.0] - 2025-12-19
 ### Added
@@ -229,16 +260,16 @@
     - **Data Gen**: `{{lorem}}`, `{{name}}`, `{{country}}`, `{{state}}`.
     - **Date Math**: `{{now+1m}}` (add 1 minute), `{{now-2d}}` (subtract 2 days), etc.
 - **Settings Management**:
-    - Persistent configuration stored in `~/.dirty-soap/config.jsonc`.
+    - Persistent configuration stored in `~/.APInox/config.jsonc`.
     - UI Settings (layout, line numbers) are now remembered.
     - Autosave functionality for unsaved workspace changes.
 - **UI Improvements**:
-    - **Environment Selector**: Quickly switch between environments (e.g., Build vs. DIT).
+    - **Environment Selector**: Quickly switch between environments.
     - **Settings Editor**: Direct JSONC editing for advanced configuration.
     - **Enhanced Styling**: Distinct highlighting for environment variables (Blue) vs. dynamic wildcards (Pink).
     - Improved Toolbar alignment and layout.
 - **Logging**:
-    - Full request path and payload (after substitution) are now logged to the "Dirty SOAP" output channel.
+    - Full request path and payload are now logged.
 
 ### Fixed
 - Re-enabled build minification for better performance.

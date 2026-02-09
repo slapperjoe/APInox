@@ -14,6 +14,13 @@ out
 # Webview Build
 webview-build
 
+# Sidecar Bundle
+sidecar-bundle/
+sidecar/bundle.js
+sidecar/*.exe
+sidecar/apinox-sidecar
+sidecar/apinox-sidecar.exe
+
 # OS
 .DS_Store
 Thumbs.db
@@ -45,3 +52,5 @@ src/**/*.js
 src/**/*.js.map
 sidecar/src/**/*.js
 sidecar/src/**/*.js.map
+
+Samples/Organisation/*
