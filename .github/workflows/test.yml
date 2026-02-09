@@ -2,9 +2,9 @@ name: Tests
 
 on:
   push:
-    branches: [main]
+    branches: [main, Tauri]
   pull_request:
-    branches: [main]
+    branches: [main, Tauri]
 
 jobs:
   test:
@@ -19,23 +19,11 @@ jobs:
           node-version: '20'
           cache: 'npm'
       
-      - name: Install dependencies
+      - name: Install root dependencies
         run: npm ci
       
-      - name: Install webview dependencies
-        run: cd webview && npm ci
+      - name: Install sidecar dependencies
+        run: cd sidecar && npm ci
       
-      - name: Run extension tests
+      - name: Run tests
         run: npm test
-      
-      - name: Run webview tests
-        run: cd webview && npm test
-      
-      - name: Build webview
-        run: cd webview && npm run build
-      
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
-      
-      - name: Run Playwright tests
-        run: npx playwright test
