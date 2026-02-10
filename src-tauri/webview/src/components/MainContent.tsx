@@ -1669,7 +1669,7 @@ IMPORTANT: To use HTTPS targets with .NET/WCF applications, you MUST install thi
 
 AUTOMATED INSTALLATION (Recommended):
 1. Open PowerShell as Administrator
-2. Run: .\\install-proxy-cert.ps1
+2. Run: .\\scripts\\install-proxy-cert.ps1
 
 MANUAL INSTALLATION:
 1. Click "Install Certificate" in the dialog that opened

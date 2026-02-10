@@ -23,7 +23,7 @@ First, install the certificate to your trust store:
 **Option A: Automated Script**
 ```powershell
 # Open PowerShell as Administrator
-.\install-proxy-cert.ps1
+.\scripts\install-proxy-cert.ps1
 ```
 
 **Option B: Manual Installation**
@@ -37,10 +37,10 @@ First, install the certificate to your trust store:
 
 ```powershell
 # Open PowerShell as Administrator
-.\bind-proxy-cert.ps1
+.\scripts\bind-proxy-cert.ps1
 
 # If using a different port:
-.\bind-proxy-cert.ps1 -Port 9001
+.\scripts\bind-proxy-cert.ps1 -Port 9001
 ```
 
 This script uses `netsh http add sslcert` to bind the certificate to the proxy port, which is required by HTTP.SYS.
@@ -59,16 +59,16 @@ This script uses `netsh http add sslcert` to bind the certificate to the proxy p
 **Run these commands as Administrator:**
 
 ```powershell
-cd path\to\apinox
+   cd path\to\apinox
 
 # Step 1: Start APInox and start the proxy with HTTPS target
 # (Do this first so the certificate is generated)
 
 # Step 2: Install certificate to trust store
-.\install-proxy-cert.ps1
+.\scripts\install-proxy-cert.ps1
 
 # Step 3: Bind certificate to port (REQUIRED for .NET/WCF)
-.\bind-proxy-cert.ps1
+.\scripts\bind-proxy-cert.ps1
 
 # Step 4: Restart the proxy and your application
 ```

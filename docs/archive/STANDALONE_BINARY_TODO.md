@@ -26,7 +26,7 @@ See **STANDALONE_BINARY_COMPLETE.md** for full documentation.
 
 ### Phase 3: Integrate with Tauri ✅
 - Updated build scripts to use binary
-- Created `prepare-sidecar-binary.js`
+- Created `scripts/prepare-sidecar-binary.js`
 - Updated `tauri.conf.json` to declare `externalBin`
 - Removed Node.js dependency for users
 
