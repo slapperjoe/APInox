@@ -48,6 +48,29 @@ import { ScriptEditor } from './ScriptEditor';
 import { createMockRuleFromSource } from '../utils/mockUtils';
 import { findPathToRequest } from '../utils/projectUtils';
 
+/**
+ * Get Content-Type header based on body type
+ * Mirrors backend logic in HttpClient.ts
+ */
+function getContentTypeForBodyType(bodyType: BodyType): string {
+    switch (bodyType) {
+        case 'json':
+            return 'application/json';
+        case 'xml':
+            return 'application/xml';
+        case 'graphql':
+            return 'application/json';
+        case 'text':
+            return 'text/plain';
+        case 'form-data':
+            return 'multipart/form-data';
+        case 'none':
+            return '';
+        default:
+            return 'application/json';
+    }
+}
+
 import {
     Toolbar, InfoBarMethod,
     ToolbarButton, MainFooter, IconButton, ToolbarSeparator,
@@ -1047,7 +1070,16 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                     contentType={activeRequest.contentType}
                                     onRequestTypeChange={(type: RequestType) => onUpdateRequest({ ...activeRequest, requestType: type })}
                                     onMethodChange={(method) => onUpdateRequest({ ...activeRequest, method: method as string })}
-                                    onBodyTypeChange={(type: BodyType) => onUpdateRequest({ ...activeRequest, bodyType: type })}
+                                    onBodyTypeChange={(type: BodyType) => {
+                                        // Update body type and sync content type
+                                        const newContentType = getContentTypeForBodyType(type);
+                                        onUpdateRequest({ 
+                                            ...activeRequest, 
+                                            bodyType: type,
+                                            contentType: newContentType,
+                                            headers: { ...(activeRequest.headers || {}), 'Content-Type': newContentType }
+                                        });
+                                    }}
                                     onContentTypeChange={(ct) => onUpdateRequest({ 
                                         ...activeRequest, 
                                         contentType: ct,

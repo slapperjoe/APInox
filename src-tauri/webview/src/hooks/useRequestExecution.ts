@@ -16,8 +16,77 @@ import {
     ApiOperation,
     ApiRequest,
     TestCase,
-    TestStep
+    TestStep,
+    BodyType
 } from '@shared/models';
+
+/**
+ * Get Content-Type header based on body type
+ * Mirrors backend logic in HttpClient.ts
+ */
+function getContentTypeForBodyType(bodyType: BodyType): string {
+    switch (bodyType) {
+        case 'json':
+            return 'application/json';
+        case 'xml':
+            return 'application/xml';
+        case 'graphql':
+            return 'application/json';
+        case 'text':
+            return 'text/plain';
+        case 'form-data':
+            return 'multipart/form-data';
+        case 'none':
+            return '';
+        default:
+            return 'application/json';
+    }
+}
+
+/**
+ * Fix legacy content-type mismatches
+ * If we detect old default content-types that don't match the body type, fix them
+ */
+function fixContentType(request: ApiRequest): { contentType: string; headers: Record<string, string> } {
+    const legacyDefaults = ['text/xml; charset=utf-8', 'text/xml', 'application/soap+xml'];
+    const currentContentType = request.contentType || '';
+    const currentHeaderContentType = request.headers?.['Content-Type'] || '';
+    
+    // For REST/GraphQL requests with a body type, ensure content type matches
+    if (request.requestType === 'rest' || request.requestType === 'graphql') {
+        if (request.bodyType) {
+            const expectedContentType = getContentTypeForBodyType(request.bodyType);
+            
+            // If current content type is a legacy SOAP default, fix it
+            if (legacyDefaults.includes(currentContentType) || currentContentType === '') {
+                return {
+                    contentType: expectedContentType,
+                    headers: {
+                        ...(request.headers || {}),
+                        'Content-Type': expectedContentType
+                    }
+                };
+            }
+            
+            // If header doesn't match content type field, fix header
+            if (currentHeaderContentType !== currentContentType) {
+                return {
+                    contentType: currentContentType,
+                    headers: {
+                        ...(request.headers || {}),
+                        'Content-Type': currentContentType
+                    }
+                };
+            }
+        }
+    }
+    
+    // No fix needed
+    return {
+        contentType: currentContentType,
+        headers: request.headers || {}
+    };
+}
 
 interface UseRequestExecutionParams {
     // Selection state
@@ -157,14 +226,19 @@ export function useRequestExecution({
                 logToOutput(`[Context] Sending ${Object.keys(contextVariables).length} context variables to backend.`);
             }
 
+            // Regression fix: Ensure content-type matches body type
+            const { contentType: fixedContentType, headers: fixedHeaders } = selectedRequest 
+                ? fixContentType(selectedRequest) 
+                : { contentType: 'application/soap+xml', headers: {} };
+
             bridge.sendMessage({
                 command: FrontendCommand.ExecuteRequest,
                 url,
                 operation: opName,
                 xml,
-                contentType: selectedRequest?.contentType || 'application/soap+xml',
+                contentType: fixedContentType,
                 assertions: selectedRequest?.assertions,
-                headers: selectedRequest?.headers,
+                headers: fixedHeaders,
                 contextVariables,
                 // Environment for variable resolution
                 environment: config?.activeEnvironment,

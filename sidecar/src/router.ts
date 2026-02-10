@@ -1838,6 +1838,53 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
                 throw err;
             }
         },
+
+        // ===== Scrapbook (API Explorer Quick Requests) =====
+        [FrontendCommand.GetScrapbook]: async () => {
+            const { ScrapbookStorage } = require('./services/ScrapbookStorage');
+            const storage = new ScrapbookStorage();
+            const state = storage.loadScrapbook();
+            return { state };
+        },
+
+        [FrontendCommand.AddScrapbookRequest]: async (payload) => {
+            const { request } = payload;
+            if (!request) {
+                throw new Error('Request data required');
+            }
+
+            const { ScrapbookStorage } = require('./services/ScrapbookStorage');
+            const storage = new ScrapbookStorage();
+            const state = storage.addRequest(request);
+            return { state };
+        },
+
+        [FrontendCommand.UpdateScrapbookRequest]: async (payload) => {
+            const { id, updates } = payload;
+            if (!id) {
+                throw new Error('Request ID required');
+            }
+            if (!updates) {
+                throw new Error('Update data required');
+            }
+
+            const { ScrapbookStorage } = require('./services/ScrapbookStorage');
+            const storage = new ScrapbookStorage();
+            const state = storage.updateRequest(id, updates);
+            return { state };
+        },
+
+        [FrontendCommand.DeleteScrapbookRequest]: async (payload) => {
+            const { id } = payload;
+            if (!id) {
+                throw new Error('Request ID required');
+            }
+
+            const { ScrapbookStorage } = require('./services/ScrapbookStorage');
+            const storage = new ScrapbookStorage();
+            const state = storage.deleteRequest(id);
+            return { state };
+        },
     };
 
     return {

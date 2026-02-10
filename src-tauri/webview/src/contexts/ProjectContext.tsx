@@ -421,31 +421,38 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
                         }
                     }
                     
-                    alert(`Successfully imported ${response.projects.length} project(s) from workspace.\n\nPlease save each project to disk.`);
+                    alert(`Successfully imported ${response.projects.length} project(s) from workspace.\n\nPlease choose a parent folder to save all projects.`);
                     
-                    // Prompt user to save each imported project
+                    // Prompt user to choose parent directory once for all projects
                     if (bridge.isTauri()) {
                         setTimeout(async () => {
-                            for (const project of importedProjects) {
-                                try {
-                                    const { open } = await import('@tauri-apps/plugin-dialog');
-                                    const folderPath = await open({
-                                        multiple: false,
-                                        directory: true,
-                                        title: `Choose location to save project: ${project.name}`,
-                                        defaultPath: project.name
-                                    });
-                                    
-                                    if (folderPath) {
-                                        // Set fileName and save
-                                        (project as any).fileName = folderPath as string;
-                                        saveProject(project);
-                                    } else {
-                                        console.log(`[ProjectContext] User cancelled save for project: ${project.name}`);
+                            try {
+                                const { open } = await import('@tauri-apps/plugin-dialog');
+                                const parentFolderPath = await open({
+                                    multiple: false,
+                                    directory: true,
+                                    title: `Choose parent folder for ${response.projects.length} project(s)`,
+                                });
+                                
+                                if (parentFolderPath) {
+                                    const path = await import('@tauri-apps/api/path');
+                                    // Save each project in its own subdirectory under the parent folder
+                                    for (const project of importedProjects) {
+                                        try {
+                                            const projectFolderPath = await path.join(parentFolderPath as string, project.name);
+                                            (project as any).fileName = projectFolderPath;
+                                            await saveProject(project);
+                                            console.log(`[ProjectContext] Saved project ${project.name} to ${projectFolderPath}`);
+                                        } catch (error) {
+                                            console.error(`[ProjectContext] Failed to save project ${project.name}:`, error);
+                                        }
                                     }
-                                } catch (error) {
-                                    console.error(`[ProjectContext] Failed to show save dialog for ${project.name}:`, error);
+                                    alert(`Successfully saved ${importedProjects.length} project(s) to ${parentFolderPath}`);
+                                } else {
+                                    console.log(`[ProjectContext] User cancelled save for workspace import`);
                                 }
+                            } catch (error) {
+                                console.error(`[ProjectContext] Failed to show save dialog for workspace:`, error);
                             }
                         }, 500); // Small delay to let the UI update
                     }
