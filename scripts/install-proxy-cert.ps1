@@ -74,7 +74,7 @@ try {
     Write-Host "SUCCESS! Certificate installed to Trusted Root CA." -ForegroundColor Green
     Write-Host ""
     Write-Host "IMPORTANT: For .NET/WCF applications, you MUST also bind the certificate:" -ForegroundColor Yellow
-    Write-Host "  .\bind-proxy-cert.ps1" -ForegroundColor White
+    Write-Host "  .\scripts\bind-proxy-cert.ps1" -ForegroundColor White
     Write-Host ""
     
 } catch {

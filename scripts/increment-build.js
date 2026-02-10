@@ -5,7 +5,7 @@
  * Reads the current build number from .buildno file,
  * increments it by 1, and writes it back.
  * 
- * Usage: node increment-build.js
+ * Usage: node scripts/increment-build.js
  */
 
 const fs = require('fs');

@@ -99,43 +99,6 @@ The Node.js process may not have permission to install to LocalMachine\Root.
 
 **Solution**: Run APInox as Administrator, or install certificate manually:
 ```powershell
-# Run as Administrator
+# Run APInox as Administrator
 Import-Certificate -FilePath "$env:TEMP\apinox-proxy.cer" -CertStoreLocation Cert:\LocalMachine\Root
-```
-
-### Issue 3: Thumbprint Mismatch
-The certificate file might have been regenerated, but the old thumbprint is being checked.
-
-**Solution**: 
-1. Click "Regenerate Certificate" in diagnostics
-2. Wait for success message
-3. Click "Run Certificate Check" to get new thumbprint
-4. Click "Install Certificate"
-
-### Issue 4: Cached Results
-The diagnostic check might be showing cached results.
-
-**Solution**: Restart APInox and run diagnostics again.
-
-### Issue 5: PowerShell Execution Policy
-PowerShell might be blocking script execution.
-
-**Solution**: Run as Administrator:
-```powershell
-Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
-```
-
-Then try installing again through APInox.
-
-## Verification Command
-
-Quick check if certificate is installed:
-```powershell
-$thumbprint = "YOUR_THUMBPRINT_HERE"  # Replace with actual thumbprint
-$cert = Get-ChildItem -Path Cert:\LocalMachine\Root | Where-Object { $_.Thumbprint -eq $thumbprint }
-if ($cert) {
-    Write-Host "✅ Certificate IS installed in LocalMachine\Root" -ForegroundColor Green
-} else {
-    Write-Host "❌ Certificate NOT installed in LocalMachine\Root" -ForegroundColor Red
-}
 ```

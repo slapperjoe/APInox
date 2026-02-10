@@ -45,7 +45,7 @@ if ($machineCert) {
     Write-Host "Certificate is correctly installed! The binding should work." -ForegroundColor Green
     Write-Host "If binding still fails, try:" -ForegroundColor Yellow
     Write-Host "  1. Stop the APInox proxy" -ForegroundColor White
-    Write-Host "  2. Run: .\bind-proxy-cert.ps1" -ForegroundColor White
+    Write-Host "  2. Run: .\scripts\bind-proxy-cert.ps1" -ForegroundColor White
     Write-Host ""
     Read-Host "Press Enter to exit"
     exit 0
@@ -74,7 +74,7 @@ if ($userCert -and -not $machineCert) {
             Write-Host "✓ Certificate installed to LocalMachine\Root successfully!" -ForegroundColor Green
             Write-Host ""
             Write-Host "Now run the binding script:" -ForegroundColor Cyan
-            Write-Host "  .\bind-proxy-cert.ps1" -ForegroundColor White
+            Write-Host "  .\scripts\bind-proxy-cert.ps1" -ForegroundColor White
             Write-Host ""
         } catch {
             Write-Host "✗ Failed to install certificate!" -ForegroundColor Red
@@ -111,7 +111,7 @@ if (-not $userCert -and -not $machineCert) {
             Write-Host "✓ Certificate installed to LocalMachine\Root successfully!" -ForegroundColor Green
             Write-Host ""
             Write-Host "Now run the binding script:" -ForegroundColor Cyan
-            Write-Host "  .\bind-proxy-cert.ps1" -ForegroundColor White
+            Write-Host "  .\scripts\bind-proxy-cert.ps1" -ForegroundColor White
             Write-Host ""
         } catch {
             Write-Host "✗ Failed to install certificate!" -ForegroundColor Red

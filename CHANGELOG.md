@@ -96,14 +96,14 @@
 - Comprehensive Copilot instructions for Tauri development
 
 ### Scripts & Diagnostics
-- **Certificate Management Scripts**:
-  - `bind-proxy-cert.ps1`: Bind APInox certificate to HTTPS port
-  - `fix-cert-store.ps1`: Check and fix certificate installation
-  - `install-proxy-cert.ps1`: Install certificate to Trusted Root
-  - `reset-certificates.ps1`: Complete certificate reset
-  - `verify-cert-installation.ps1`: Manual certificate verification
+**Certificate Management Scripts**:
+  - `scripts/bind-proxy-cert.ps1`: Bind APInox certificate to HTTPS port
+  - `scripts/fix-cert-store.ps1`: Check and fix certificate installation
+  - `scripts/install-proxy-cert.ps1`: Install certificate to Trusted Root
+  - `scripts/reset-certificates.ps1`: Complete certificate reset
+  - `scripts/verify-cert-installation.ps1`: Manual certificate verification
 - **Diagnostic Scripts**:
-  - `debug-proxy-config.ps1`: Diagnose proxy setup issues
+  - `scripts/debug-proxy-config.ps1`: Diagnose proxy setup issues
   - `test-cert-https.js`: Test HTTPS server with APInox certificate
   - `test-proxy-tls.js`: Diagnose TLS connection issues for .NET WCF
 - **DiagnosticsTab**: Integrated certificate and proxy diagnostics

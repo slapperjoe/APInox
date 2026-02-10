@@ -2,8 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const sidecarDir = path.join(__dirname, 'sidecar');
-const targetDir = path.join(__dirname, 'sidecar-bundle');
+const sidecarDir = path.join(__dirname, '..', 'sidecar');
+const targetDir = path.join(__dirname, '..', 'sidecar-bundle');
 
 // Determine platform-specific binary name
 const platform = os.platform();

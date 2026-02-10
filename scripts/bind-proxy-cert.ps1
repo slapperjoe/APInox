@@ -94,7 +94,7 @@ try {
     Write-Host "Troubleshooting:" -ForegroundColor Yellow
     Write-Host "1. Make sure the certificate is installed in Trusted Root CA store" -ForegroundColor White
     Write-Host "2. Verify no other service is using port $Port" -ForegroundColor White
-    Write-Host "3. Try running with a different port: .\bind-proxy-cert.ps1 -Port 9001" -ForegroundColor White
+    Write-Host "3. Try running with a different port: .\\scripts\\bind-proxy-cert.ps1 -Port 9001" -ForegroundColor White
     Write-Host ""
     Read-Host "Press Enter to exit"
     exit 1

@@ -3,14 +3,14 @@
  * Sync version numbers across all package.json, Cargo.toml, and tauri.conf.json files
  * Uses patch version as auto-incrementing build number
  * 
- * Usage: node sync-version.js [major.minor]
+ * Usage: node scripts/sync-version.js [major.minor]
  * If no version specified, uses root package.json major.minor + .buildno for patch
  */
 
 const fs = require('fs');
 const path = require('path');
 
-const rootDir = __dirname;
+const rootDir = path.join(__dirname, '..');
 
 // Files to update
 const files = {
