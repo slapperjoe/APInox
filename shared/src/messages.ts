@@ -141,6 +141,12 @@ export enum FrontendCommand {
     ExportWorkspace = 'exportWorkspace',
     ImportWorkspace = 'importWorkspace',
     DeleteProjectFiles = 'deleteProjectFiles',
+
+    // Scrapbook (API Explorer Quick Requests)
+    GetScrapbook = 'getScrapbook',
+    AddScrapbookRequest = 'addScrapbookRequest',
+    UpdateScrapbookRequest = 'updateScrapbookRequest',
+    DeleteScrapbookRequest = 'deleteScrapbookRequest',
 }
 
 export enum BackendCommand {
@@ -211,6 +217,10 @@ export enum BackendCommand {
     // UI/Nav
     ToggleSidebar = 'toggleSidebar',
     SwitchToView = 'switchToView',
+
+    // Scrapbook
+    ScrapbookLoaded = 'scrapbookLoaded',
+    ScrapbookUpdated = 'scrapbookUpdated',
 
     // Mock/Proxy
     MockHistoryStart = 'mockHistoryStart',

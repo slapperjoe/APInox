@@ -201,6 +201,22 @@ export interface ApiRequest {
     readOnly?: boolean;
 }
 
+// ============================================================================
+// SCRAPBOOK TYPES (API Explorer Quick Requests)
+// ============================================================================
+
+/** Scrapbook request - standalone request in API Explorer for quick testing */
+export interface ScrapbookRequest extends ApiRequest {
+    id: string;           // Required unique identifier
+    createdAt: string;    // ISO timestamp
+    lastModified: string; // ISO timestamp
+}
+
+/** Scrapbook state for managing collection of scrapbook requests */
+export interface ScrapbookState {
+    requests: ScrapbookRequest[];
+}
+
 export interface SampleRequestMetadata {
     endpoint?: string;
     soapAction?: string;

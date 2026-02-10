@@ -83,7 +83,7 @@ export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoR
     }));
 
     // Use shared hook for decorations (pass chain variables for validation)
-    useWildcardDecorations(editorRef.current, monacoRef.current, value, availableVariables);
+    const { updateDecorations } = useWildcardDecorations(editorRef.current, monacoRef.current, value, availableVariables);
 
     // Sync value manual implementation to prevent cursor jumps
     useEffect(() => {
@@ -165,6 +165,11 @@ export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoR
         if (autoFoldElements && autoFoldElements.length > 0 && value) {
             applyAutoFolding(editor, value, autoFoldElements);
         }
+
+        // Apply wildcard decorations after editor is fully mounted
+        setTimeout(() => {
+            updateDecorations();
+        }, 0);
 
         // Fix Enter key to insert newline (prevents Enter from being stolen)
         editor.addAction({

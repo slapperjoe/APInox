@@ -173,19 +173,9 @@ export function useContextMenu({
                 newReqContent = generateInitialXmlForOperation(op);
             }
 
-            const newRequest: ApiRequest = {
-                name: newReqName,
-                request: newReqContent,
-                id: crypto.randomUUID(),
-                dirty: true,
-                endpoint: op.originalEndpoint || op.requests[0]?.endpoint || '',
-                contentType: op.requests[0]?.contentType || 'text/xml; charset=utf-8',
-                headers: op.requests[0]?.headers || {
-                    'Content-Type': 'text/xml; charset=utf-8'
-                },
-                requestType: 'soap',
-                bodyType: 'xml'
-            };
+            // Find the interface that contains this operation to get the correct SOAP version
+            let soapVersion = '1.1'; // Default to SOAP 1.1
+            let newRequest: ApiRequest | null = null;
 
             setProjects(prev => prev.map(p => {
                 let found = false;
@@ -193,6 +183,28 @@ export function useContextMenu({
                     const newOps = i.operations.map(o => {
                         if (o.name === op.name && i.operations.includes(op)) {
                             found = true;
+                            // Capture SOAP version from the interface
+                            soapVersion = i.soapVersion || '1.1';
+                            
+                            // Determine correct content type based on SOAP version
+                            const isSoap12 = soapVersion === '1.2';
+                            const defaultContentType = isSoap12 ? 'application/soap+xml' : 'text/xml; charset=utf-8';
+                            
+                            // Create request with proper content type
+                            newRequest = {
+                                name: newReqName,
+                                request: newReqContent,
+                                id: crypto.randomUUID(),
+                                dirty: true,
+                                endpoint: op.originalEndpoint || op.requests[0]?.endpoint || '',
+                                contentType: op.requests[0]?.contentType || defaultContentType,
+                                headers: op.requests[0]?.headers || {
+                                    'Content-Type': defaultContentType
+                                },
+                                requestType: 'soap',
+                                bodyType: 'xml'
+                            };
+                            
                             return { ...o, requests: [...o.requests, newRequest], expanded: true };
                         }
                         return o;
@@ -207,8 +219,10 @@ export function useContextMenu({
             }));
 
             // Auto-select the new request
-            setSelectedRequest(newRequest);
-            setResponse(null);
+            if (newRequest) {
+                setSelectedRequest(newRequest);
+                setResponse(null);
+            }
 
             if (contextMenu) closeContextMenu();
         }
