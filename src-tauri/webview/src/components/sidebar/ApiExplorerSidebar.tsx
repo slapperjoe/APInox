@@ -4,6 +4,10 @@ import { Plus, Trash2 } from 'lucide-react';
 import { ApiInterface, ApiOperation, ApiRequest } from '@shared/models';
 import { HeaderButton, SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle } from './shared/SidebarStyles';
 import { ServiceTree } from './ServiceTree';
+import { ScrapbookPanel } from './ScrapbookPanel';
+import { useScrapbook } from '../../contexts/ScrapbookContext';
+import { bridge } from '../../utils/bridge';
+import { FrontendCommand } from '@shared/messages';
 import { SPACING_MD, SPACING_XL } from '../../styles/spacing';
 
 
@@ -25,6 +29,7 @@ export interface ApiExplorerSidebarProps {
     setSelectedOperation: (op: ApiOperation | null) => void;
     selectedRequest: ApiRequest | null;
     setSelectedRequest: (req: ApiRequest | null) => void;
+    setSelectedProjectName: (name: string | null) => void;
     setResponse: (res: any) => void;
 
     handleContextMenu: (e: React.MouseEvent, type: string, data: any, isExplorer?: boolean) => void;
@@ -43,6 +48,12 @@ const EmptyMessage = styled.div`
     font-size: 0.9em;
 `;
 
+const Divider = styled.div`
+    height: 1px;
+    background: var(--apinox-widget-border);
+    margin: ${SPACING_MD} 0;
+`;
+
 export const ApiExplorerSidebar: React.FC<ApiExplorerSidebarProps> = ({
     exploredInterfaces,
     addToProject,
@@ -57,11 +68,81 @@ export const ApiExplorerSidebar: React.FC<ApiExplorerSidebarProps> = ({
     setSelectedOperation,
     selectedRequest,
     setSelectedRequest,
+    setSelectedProjectName,
     setResponse,
     handleContextMenu
 }) => {
     // Local state for delete confirmation
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+    // Scrapbook context
+    const {
+        scrapbookRequests,
+        selectedScrapbookRequest,
+        loading: scrapbookLoading,
+        createRequest,
+        selectRequest,
+        deleteRequest
+    } = useScrapbook();
+
+    const handleExecuteScrapbookRequest = (request: any) => {
+        // Convert scrapbook request to ApiRequest format
+        const apiRequest: ApiRequest = {
+            id: request.id,
+            name: request.name,
+            endpoint: request.endpoint || '',
+            method: request.method || 'POST',
+            contentType: request.contentType || 'application/xml',
+            request: request.request || '',
+            headers: request.headers || {},
+            requestType: request.requestType || 'soap',
+            bodyType: request.bodyType || 'xml'
+        };
+        
+        // Select the request in the workspace
+        setSelectedRequest(apiRequest);
+        setSelectedInterface(null);
+        setSelectedOperation(null);
+        setResponse(null);
+
+        // Execute the request
+        bridge.sendMessage({
+            command: FrontendCommand.ExecuteRequest,
+            url: apiRequest.endpoint,
+            operation: apiRequest.name,
+            xml: apiRequest.request,
+            contentType: apiRequest.contentType,
+            headers: apiRequest.headers,
+            requestType: apiRequest.requestType,
+            method: apiRequest.method,
+            bodyType: apiRequest.bodyType
+        });
+    };
+
+    const handleSelectScrapbookRequest = (request: any) => {
+        // Convert and select for editing (no execution)
+        const apiRequest: ApiRequest = {
+            id: request.id,
+            name: request.name,
+            endpoint: request.endpoint || '',
+            method: request.method || 'POST',
+            contentType: request.contentType || 'application/xml',
+            request: request.request || '',
+            headers: request.headers || {},
+            requestType: request.requestType || 'soap',
+            bodyType: request.bodyType || 'xml'
+        };
+        
+        // Update scrapbook context
+        selectRequest(request);
+        
+        // Clear ALL other contexts (project, explorer, test)
+        setSelectedRequest(apiRequest); // Display scrapbook request in workspace
+        setSelectedProjectName(null); // Clear project context
+        setSelectedInterface(null); // Clear API explorer interface selection
+        setSelectedOperation(null); // Clear API explorer operation selection
+        setResponse(null); // Clear previous response
+    };
 
     return (
         <SidebarContainer>
@@ -100,19 +181,29 @@ export const ApiExplorerSidebar: React.FC<ApiExplorerSidebarProps> = ({
 
                         onToggleInterface={(iface) => toggleExploredInterface(iface.name)}
                         onSelectInterface={(iface) => {
-                            // Only select, don't expand
+                            // Clear all other contexts
+                            selectRequest(null); // Clear scrapbook
+                            setSelectedProjectName(null); // Clear project
+                            // Select interface
                             setSelectedInterface(iface);
                             setSelectedOperation(null);
                             setSelectedRequest(null);
                         }}
                         onToggleOperation={(op, iface) => toggleExploredOperation(iface.name, op.name)}
                         onSelectOperation={(op, iface) => {
-                            // Only select operation, don't auto-select request
+                            // Clear all other contexts
+                            selectRequest(null); // Clear scrapbook
+                            setSelectedProjectName(null); // Clear project
+                            // Select operation
                             setSelectedInterface(iface);
                             setSelectedOperation(op);
                             setSelectedRequest(null);
                         }}
                         onSelectRequest={(req, op, iface) => {
+                            // Clear all other contexts
+                            selectRequest(null); // Clear scrapbook
+                            setSelectedProjectName(null); // Clear project
+                            // Select explorer request
                             setSelectedInterface(iface);
                             setSelectedOperation(op);
                             setSelectedRequest(req);
@@ -124,6 +215,18 @@ export const ApiExplorerSidebar: React.FC<ApiExplorerSidebarProps> = ({
                         onRemoveFromExplorer={removeFromExplorer}
                     />
                 )}
+
+                {/* Scrapbook Section */}
+                <Divider />
+                <ScrapbookPanel
+                    requests={scrapbookRequests}
+                    selectedRequest={selectedScrapbookRequest}
+                    loading={scrapbookLoading}
+                    onCreateRequest={createRequest}
+                    onSelectRequest={handleSelectScrapbookRequest}
+                    onDeleteRequest={deleteRequest}
+                    onExecuteRequest={handleExecuteScrapbookRequest}
+                />
             </ExplorerContent>
         </SidebarContainer>
     );

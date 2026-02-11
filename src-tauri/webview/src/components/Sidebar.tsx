@@ -208,6 +208,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         setSelectedOperation={setSelectedOperation}
                         selectedRequest={selectedRequest}
                         setSelectedRequest={setSelectedRequest}
+                        setSelectedProjectName={setSelectedProjectName}
                         setResponse={setResponse}
 
                         handleContextMenu={handleContextMenu}

@@ -44,13 +44,18 @@ export default defineConfig({
         exclude: [
             'monaco-editor',
             '@monaco-editor/react',
-            'monaco-editor/esm/vs/language/json/json.worker'
+            'monaco-editor/esm/vs/language/json/json.worker',
+            '@shared/messages',
+            '@shared/models'
         ]
     },
     resolve: {
         alias: {
+            '@shared/messages': path.resolve(__dirname, '../../shared/src/messages.ts'),
+            '@shared/models': path.resolve(__dirname, '../../shared/src/models.ts'),
             '@shared': path.resolve(__dirname, '../../shared/src')
-        }
+        },
+        extensions: ['.ts', '.tsx', '.js', '.jsx', '.json']
     },
     build: {
         outDir: 'dist',

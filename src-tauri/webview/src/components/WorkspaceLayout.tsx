@@ -1093,7 +1093,10 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                     <MonacoSingleLineInput
                                         ref={urlEditorRef}
                                         value={activeRequest.endpoint || defaultEndpoint || ''}
-                                        onChange={(val) => onUpdateRequest({ ...activeRequest, endpoint: val })}
+                                        onChange={(val) => {
+                                            console.log('[WorkspaceLayout] Endpoint onChange triggered, val:', val);
+                                            onUpdateRequest({ ...activeRequest, endpoint: val });
+                                        }}
                                         placeholder="Endpoint URL"
                                         readOnly={isReadOnly || isStructureLocked}
                                         onFocus={() => lastFocusedRef.current = urlEditorRef.current}
@@ -1483,7 +1486,10 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                                             'xml'
                                     }
                                     readOnly={isReadOnly && activeView !== SidebarView.PROJECTS && activeView !== SidebarView.EXPLORER}
-                                    onChange={(val) => onUpdateRequest({ ...activeRequest, request: val })}
+                                    onChange={(val) => {
+                                        console.log('[WorkspaceLayout] Body editor onChange triggered, val length:', val?.length);
+                                        onUpdateRequest({ ...activeRequest, request: val });
+                                    }}
                                     onFocus={() => lastFocusedRef.current = bodyEditorRef.current}
                                     autoFoldElements={config?.ui?.autoFoldElements}
                                     showLineNumbers={showLineNumbers}

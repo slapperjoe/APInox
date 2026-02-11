@@ -458,7 +458,10 @@ export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoR
                 key={`request-editor-${theme}`}
                 defaultLanguage={language}
                 defaultValue={value}
-                onChange={(val) => onChange(val || '')}
+                onChange={(val) => {
+                    console.log('[MonacoRequestEditor] onChange fired, val length:', val?.length, 'requestId:', requestId);
+                    onChange(val || '');
+                }}
                 theme={editorTheme}
                 onMount={handleEditorDidMount}
                 options={editorOptions as any}
