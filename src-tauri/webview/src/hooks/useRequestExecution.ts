@@ -116,6 +116,9 @@ interface UseRequestExecutionParams {
     // Explorer Support
     exploredInterfaces?: ApiInterface[];
     setExploredInterfaces?: React.Dispatch<React.SetStateAction<ApiInterface[]>>;
+
+    // Scrapbook auto-save callback
+    onScrapbookAutoSave?: (updated: ApiRequest) => Promise<boolean>;
 }
 
 interface UseRequestExecutionReturn {
@@ -144,14 +147,38 @@ export function useRequestExecution({
     config,
     setConfig,
     exploredInterfaces,
-    setExploredInterfaces
+    setExploredInterfaces,
+    onScrapbookAutoSave
 }: UseRequestExecutionParams): UseRequestExecutionReturn {
 
     const startTimeRef = useRef<number>(0);
 
-    const executeRequest = useCallback((xml: string) => {
+    const executeRequest = useCallback(async (xml: string) => {
         console.log('[App] executeRequest called');
         console.log('[App] Context - Operation:', selectedOperation?.name, 'Request:', selectedRequest?.name);
+
+        // Debug: Log all conditions for scrapbook auto-save
+        console.log('[executeRequest] Scrapbook save conditions:', {
+            hasCallback: !!onScrapbookAutoSave,
+            hasSelectedRequest: !!selectedRequest,
+            selectedRequestId: selectedRequest?.id,
+            selectedProjectName,
+            selectedInterface: selectedInterface?.name,
+            selectedOperation: selectedOperation?.name,
+            selectedTestCase: selectedTestCase?.id,
+            willSave: !!(onScrapbookAutoSave && selectedRequest && !selectedProjectName && !selectedInterface && !selectedOperation && !selectedTestCase)
+        });
+
+        // Auto-save scrapbook request before execution (captures manual edits to URL/body)
+        if (onScrapbookAutoSave && selectedRequest && !selectedProjectName && !selectedInterface && !selectedOperation && !selectedTestCase) {
+            console.log('[executeRequest] Auto-saving scrapbook request before execution');
+            try {
+                // Capture the current state including the xml being executed
+                await onScrapbookAutoSave({ ...selectedRequest, request: xml });
+            } catch (err) {
+                console.error('[executeRequest] Failed to auto-save scrapbook:', err);
+            }
+        }
 
         setLoading(true);
         setResponse(null);
@@ -261,7 +288,7 @@ export function useRequestExecution({
             console.error('[App] executeRequest aborted: No selectedOperation or selectedRequest');
             setLoading(false);
         }
-    }, [selectedOperation, selectedRequest, selectedInterface, selectedTestCase, selectedStep, wsdlUrl, testExecution, setLoading, setResponse]);
+    }, [selectedOperation, selectedRequest, selectedInterface, selectedTestCase, selectedStep, wsdlUrl, testExecution, setLoading, setResponse, onScrapbookAutoSave, selectedProjectName]);
 
     const cancelRequest = useCallback(() => {
         bridge.sendMessage({ command: FrontendCommand.CancelRequest });
@@ -271,7 +298,7 @@ export function useRequestExecution({
     // Ref for debouncing project updates
     const projectUpdateTimer = useRef<NodeJS.Timeout | null>(null);
 
-    const handleRequestUpdate = useCallback((updated: ApiRequest) => {
+    const handleRequestUpdate = useCallback(async (updated: ApiRequest) => {
         const logContext = {
             requestName: updated.name,
             requestId: updated.id,
@@ -301,8 +328,16 @@ export function useRequestExecution({
 
         // bridge.sendMessage({ command: 'log', message: '[handleRequestUpdate] Set dirty: true on request', data: JSON.stringify({ requestId: updated.id }) });
 
+        // 0. Scrapbook Request Modification (via callback)
+        if (onScrapbookAutoSave) {
+            const savedToScrapbook = await onScrapbookAutoSave(updated);
+            if (savedToScrapbook) {
+                console.log('[handleRequestUpdate] Saved to scrapbook via callback');
+                return;
+            }
+        }
 
-        // 0. Performance Request Modification (Immediate or Debounced? Keep immediate for now as it doesn't loop back to selectedRequest in the same way)
+        // 1. Performance Request Modification (Immediate or Debounced? Keep immediate for now as it doesn't loop back to selectedRequest in the same way)
         if (selectedPerformanceSuiteId && updated.id?.startsWith('perf-req-')) {
             // ... existing perf logic omitted/unchanged ...
             // Actually, limiting scope of change. I will COPY existing perf logic here? 

@@ -249,3 +249,74 @@ export const ScrapbookProvider = ({ children }: { children: ReactNode }) => {
         </ScrapbookContext.Provider>
     );
 };
+
+/**
+ * Hook to auto-save scrapbook request updates when edited in the workspace.
+ * Call this in a component that handles request updates (e.g., MainContent).
+ * 
+ * @param selectedRequest - The currently selected workspace request
+ * @param selectedProjectName - The currently selected project (null if scrapbook)
+ * @param selectedInterface - The currently selected interface (null if scrapbook)
+ * @param selectedOperation - The currently selected operation (null if scrapbook)
+ * @param selectedTestCase - The currently selected test case (null if scrapbook)
+ */
+export const useScrapbookAutoSave = (
+    _selectedRequest: any | null,
+    selectedProjectName: string | null,
+    selectedInterface: any | null,
+    selectedOperation: any | null,
+    selectedTestCase: any | null
+) => {
+    const { updateRequest, selectedScrapbookRequest } = useScrapbook();
+
+    return useCallback(async (updated: any) => {
+        // Only save if this is a scrapbook request context (no project/interface/operation/test)
+        const isScrapbookContext = !selectedProjectName && !selectedInterface && !selectedOperation && !selectedTestCase;
+        
+        console.log('[Scrapbook AutoSave] Callback called:', {
+            isScrapbookContext,
+            hasUpdatedId: !!updated.id,
+            hasSelectedScrapbookRequest: !!selectedScrapbookRequest,
+            selectedScrapbookRequestId: selectedScrapbookRequest?.id,
+            updatedId: updated.id,
+            selectedProjectName,
+            selectedInterface: selectedInterface?.name,
+            selectedOperation: selectedOperation?.name,
+            selectedTestCase: selectedTestCase?.id
+        });
+        
+        if (!isScrapbookContext) {
+            console.log('[Scrapbook AutoSave] Not a scrapbook context, skipping');
+            return false; // Not a scrapbook update
+        }
+        
+        if (!updated.id) {
+            console.log('[Scrapbook AutoSave] No updated.id, skipping');
+            return false;
+        }
+        
+        if (!selectedScrapbookRequest) {
+            console.log('[Scrapbook AutoSave] No selectedScrapbookRequest, skipping');
+            return false;
+        }
+
+        console.log('[Scrapbook] Auto-saving request:', updated.id);
+        try {
+            await updateRequest(updated.id, {
+                name: updated.name,
+                request: updated.request,
+                endpoint: updated.endpoint,
+                headers: updated.headers,
+                method: updated.method,
+                contentType: updated.contentType,
+                requestType: updated.requestType,
+                bodyType: updated.bodyType
+            });
+            console.log('[Scrapbook] Auto-save succeeded');
+            return true; // Successfully saved to scrapbook
+        } catch (error) {
+            console.error('[Scrapbook] Auto-save failed:', error);
+            return false;
+        }
+    }, [updateRequest, selectedProjectName, selectedInterface, selectedOperation, selectedTestCase, selectedScrapbookRequest]);
+};

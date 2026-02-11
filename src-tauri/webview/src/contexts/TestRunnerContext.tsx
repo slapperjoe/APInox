@@ -5,6 +5,7 @@ import { useProject } from './ProjectContext';
 import { useSelection } from './SelectionContext';
 import { useUI } from './UIContext';
 import { useNavigation } from './NavigationContext';
+import { useScrapbookAutoSave } from './ScrapbookContext';
 import { ApiInterface, ApiOperation, ApiRequest } from '@shared/models';
 import { BackendCommand } from '@shared/messages';
 import { bridge } from '../utils/bridge';
@@ -73,9 +74,18 @@ export const TestRunnerProvider = ({ children }: { children: ReactNode }) => {
         selectedPerformanceSuiteId
     } = useSelection();
 
-    // Note: TestRunnerProvider must be inside UIProvider and NavigationProvider
+    // Note: TestRunnerProvider must be inside UIProvider, NavigationProvider, and ScrapbookProvider
     const { config, setConfig } = useUI();
     const { setActiveView, exploredInterfaces, setExploredInterfaces } = useNavigation();
+    
+    // Scrapbook auto-save callback
+    const scrapbookAutoSave = useScrapbookAutoSave(
+        selectedRequest,
+        selectedProjectName,
+        selectedInterface,
+        selectedOperation,
+        selectedTestCase
+    );
     // -------------------------------------------------------------------------
     // MESSAGE HANDLING
     // -------------------------------------------------------------------------
@@ -234,7 +244,8 @@ export const TestRunnerProvider = ({ children }: { children: ReactNode }) => {
         config,
         setConfig,
         exploredInterfaces,
-        setExploredInterfaces
+        setExploredInterfaces,
+        onScrapbookAutoSave: scrapbookAutoSave
     });
 
     // Correction: We need setWorkspaceDirty in ProjectContext

@@ -788,6 +788,12 @@ export function useMessageHandler(state: MessageHandlerState) {
                     setWsdlDiff(message.diff);
                     break;
 
+                case BackendCommand.ScrapbookLoaded:
+                case BackendCommand.ScrapbookUpdated:
+                    debugLog(`${message.command}`, { hasData: !!message.state });
+                    // Scrapbook state handled by ScrapbookContext
+                    break;
+
                 default:
                     debugLog(`Unknown command: ${message.command}`);
             }

@@ -140,6 +140,8 @@ export const OperationItem = styled.div<{ $active?: boolean }>`
     padding-left: 20px;
     cursor: pointer;
     font-size: 0.88em;
+    line-height: 1.4;
+    min-height: 20px;
     background-color: ${props => props.$active ? 'var(--apinox-list-activeSelectionBackground)' : 'transparent'};
     color: ${props => props.$active ? 'var(--apinox-list-activeSelectionForeground)' : 'inherit'};
     display: flex;
@@ -158,6 +160,8 @@ export const RequestItem = styled.div<{ $active?: boolean }>`
     padding: 2px 8px;
     padding-left: 45px;
     cursor: pointer;
+    line-height: 1.4;
+    min-height: 20px;
     font-size: 0.82em;
     background-color: ${props => props.$active ? 'var(--apinox-list-activeSelectionBackground)' : 'transparent'};
     color: ${props => props.$active ? 'var(--apinox-list-activeSelectionForeground)' : 'inherit'};
