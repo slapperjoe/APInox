@@ -136,13 +136,14 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
     const [response, setResponseState] = useState<any>(null);
     
     // Wrapper to add logging for workflow step changes
-    const setSelectedWorkflowStep = useCallback((value: { workflow: Workflow; step: WorkflowStep } | null) => {
-        console.log('[SelectionContext] setSelectedWorkflowStep called with:', value ? { 
-            workflow: value.workflow.name, 
-            step: value.step?.name || 'null' 
+    const setSelectedWorkflowStep = useCallback((value: React.SetStateAction<{ workflow: Workflow; step: WorkflowStep } | null>) => {
+        const resolvedValue = typeof value === 'function' ? value(selectedWorkflowStep) : value;
+        console.log('[SelectionContext] setSelectedWorkflowStep called with:', resolvedValue ? { 
+            workflow: resolvedValue.workflow.name, 
+            step: resolvedValue.step?.name || 'null' 
         } : null);
-        setSelectedWorkflowStepInternal(value);
-    }, []);
+        setSelectedWorkflowStepInternal(resolvedValue);
+    }, [selectedWorkflowStep]);
     const [responseCache, setResponseCache] = useState<Record<string, any>>({});
     const [loading, setLoading] = useState(false);
 

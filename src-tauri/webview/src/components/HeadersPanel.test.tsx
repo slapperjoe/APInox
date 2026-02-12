@@ -1,18 +1,22 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { HeadersPanel } from '../components/HeadersPanel';
+import { HeadersPanel } from '@apinox/request-editor';
 
 // Mock MonacoSingleLineInput since it requires Monaco
-vi.mock('../components/MonacoSingleLineInput', () => ({
-    MonacoSingleLineInput: ({ value, onChange, placeholder }: any) => (
-        <input
-            data-testid={`input-${placeholder}`}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={placeholder}
-        />
-    )
-}));
+vi.mock('@apinox/request-editor', async () => {
+    const actual = await vi.importActual('@apinox/request-editor');
+    return {
+        ...actual,
+        MonacoSingleLineInput: ({ value, onChange, placeholder }: any) => (
+            <input
+                data-testid={`input-${placeholder}`}
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                placeholder={placeholder}
+            />
+        )
+    };
+});
 
 describe('HeadersPanel', () => {
     it('should render empty state when no headers', () => {

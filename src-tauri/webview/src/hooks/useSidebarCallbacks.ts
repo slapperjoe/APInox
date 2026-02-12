@@ -15,13 +15,6 @@ interface UseSidebarCallbacksParams {
     deleteConfirm: string | null;
     setDeleteConfirm: React.Dispatch<React.SetStateAction<string | null>>;
     saveProject: (project: ApinoxProject) => void;
-    setWatcherRunning: React.Dispatch<React.SetStateAction<boolean>>;
-    setWatcherHistory: React.Dispatch<React.SetStateAction<any[]>>;
-    setProxyRunning: React.Dispatch<React.SetStateAction<boolean>>;
-    setProxyHistory: React.Dispatch<React.SetStateAction<any[]>>;
-    proxyConfig: { port: number; target: string; systemProxyEnabled: boolean };
-    setProxyConfig: React.Dispatch<React.SetStateAction<{ port: number; target: string; systemProxyEnabled: boolean }>>;
-    configPath: string | null;
     config: any;
 }
 
@@ -34,15 +27,6 @@ interface UseSidebarCallbacksReturn {
     handleDeleteTestCase: (caseId: string) => void;
     handleRenameTestCase: (caseId: string, newName: string) => void;
     handleRenameTestStep: (caseId: string, stepId: string, newName: string) => void;
-    handleStartWatcher: () => void;
-    handleStopWatcher: () => void;
-    handleClearWatcher: () => void;
-    handleStartProxy: () => void;
-    handleStopProxy: () => void;
-    handleUpdateProxyConfig: (config: { port: number; target: string; systemProxyEnabled?: boolean }) => void;
-    handleClearProxy: () => void;
-    handleInjectProxy: () => void;
-    handleRestoreProxy: () => void;
     handleSaveUiState: () => void;
 }
 
@@ -52,13 +36,6 @@ export function useSidebarCallbacks({
     deleteConfirm,
     setDeleteConfirm,
     saveProject,
-    setWatcherRunning,
-    setWatcherHistory,
-    setProxyRunning,
-    setProxyHistory,
-    proxyConfig,
-    setProxyConfig,
-    configPath,
     config
 }: UseSidebarCallbacksParams): UseSidebarCallbacksReturn {
 
@@ -239,57 +216,6 @@ export function useSidebarCallbacks({
         });
     }, [setProjects, saveProject]);
 
-    // Watcher handlers
-    const handleStartWatcher = useCallback(() => {
-        setWatcherRunning(true);
-        bridge.sendMessage({ command: 'startWatcher' });
-    }, [setWatcherRunning]);
-
-    const handleStopWatcher = useCallback(() => {
-        setWatcherRunning(false);
-        bridge.sendMessage({ command: 'stopWatcher' });
-    }, [setWatcherRunning]);
-
-    const handleClearWatcher = useCallback(() => {
-        setWatcherHistory([]);
-        bridge.sendMessage({ command: 'clearWatcherHistory' });
-    }, [setWatcherHistory]);
-
-    // Proxy handlers
-    const handleStartProxy = useCallback(() => {
-        // Send current proxy config to ensure backend has the latest target URL
-        bridge.sendMessage({ command: 'startProxy', config: proxyConfig });
-        setProxyRunning(true);
-    }, [setProxyRunning, proxyConfig]);
-
-    const handleStopProxy = useCallback(() => {
-        bridge.sendMessage({ command: 'stopProxy' });
-        setProxyRunning(false);
-    }, [setProxyRunning]);
-
-    const handleUpdateProxyConfig = useCallback((newConfig: { port: number; target: string; systemProxyEnabled?: boolean }) => {
-        const fullConfig = { ...newConfig, systemProxyEnabled: newConfig.systemProxyEnabled ?? true };
-        setProxyConfig(fullConfig);
-        bridge.sendMessage({ command: 'updateProxyConfig', config: fullConfig });
-    }, [setProxyConfig]);
-
-    const handleClearProxy = useCallback(() => {
-        setProxyHistory([]);
-    }, [setProxyHistory]);
-
-    const handleInjectProxy = useCallback(() => {
-        if (configPath) {
-            const proxyUrl = `http://localhost:${proxyConfig.port}`;
-            bridge.sendMessage({ command: 'injectProxy', path: configPath, proxyUrl });
-        }
-    }, [configPath, proxyConfig.port]);
-
-    const handleRestoreProxy = useCallback(() => {
-        if (configPath) {
-            bridge.sendMessage({ command: 'restoreProxy', path: configPath });
-        }
-    }, [configPath]);
-
     const handleSaveUiState = useCallback(() => {
         if (config) {
             bridge.sendMessage({ command: 'saveUiState', ui: config.ui });
@@ -305,15 +231,6 @@ export function useSidebarCallbacks({
         handleDeleteTestCase,
         handleRenameTestCase,
         handleRenameTestStep,
-        handleStartWatcher,
-        handleStopWatcher,
-        handleClearWatcher,
-        handleStartProxy,
-        handleStopProxy,
-        handleUpdateProxyConfig,
-        handleClearProxy,
-        handleInjectProxy,
-        handleRestoreProxy,
         handleSaveUiState
     };
 }

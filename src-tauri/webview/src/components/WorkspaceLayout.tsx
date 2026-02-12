@@ -7,21 +7,22 @@ import { Layout as LayoutIcon, ListOrdered, Play, Loader2, RotateCcw, WrapText, 
 import { SidebarView, RequestType, BodyType, HttpMethod, WorkflowStep, ApiRequest } from '@shared/models';
 import { bridge } from '../utils/bridge';
 import { CustomXPathEvaluator } from '../utils/xpathEvaluator';
-// ... imports
-
-import { MonacoRequestEditor, MonacoRequestEditorHandle } from './MonacoRequestEditor';
-import { MonacoResponseViewer } from './MonacoResponseViewer';
-import { AssertionsPanel } from './AssertionsPanel';
-import { HeadersPanel } from './HeadersPanel';
-import { SecurityPanel } from './SecurityPanel';
-import { AttachmentsPanel } from './AttachmentsPanel';
-import { ExtractorsPanel } from './ExtractorsPanel';
-import { VariablesPanel } from './VariablesPanel';
-
-import { MonacoSingleLineInput, MonacoSingleLineInputHandle } from './MonacoSingleLineInput';
-import { formatXml, stripCausalityData } from '@shared/utils/xmlFormatter';
 import { XPathGenerator } from '../utils/xpathGenerator';
-import { CodeSnippetModal } from './modals/CodeSnippetModal';
+
+// Import Monaco editor components from @apinox/request-editor package
+import { MonacoRequestEditor } from '@apinox/request-editor';
+import type { MonacoRequestEditorHandle } from '@apinox/request-editor';
+import { MonacoResponseViewer } from '@apinox/request-editor';
+import { MonacoSingleLineInput } from '@apinox/request-editor';
+import type { MonacoSingleLineInputHandle } from '@apinox/request-editor';
+import { AssertionsPanel } from '@apinox/request-editor';
+import { HeadersPanel } from '@apinox/request-editor';
+// import { SecurityPanel } from '@apinox/request-editor'; // Not yet in package
+// import { AttachmentsPanel } from '@apinox/request-editor'; // Not yet in package
+import { ExtractorsPanel } from '@apinox/request-editor';
+// import { VariablesPanel } from '@apinox/request-editor'; // Not yet in package
+import { formatXml, stripCausalityData } from '@shared/utils/xmlFormatter';
+// import { CodeSnippetModal } from './modals/CodeSnippetModal'; // Temporarily disabled
 import { WelcomePanel, TestCaseView, EmptyTestCase } from './workspace';
 import { WorkflowSummary } from './workspace/WorkflowSummary';
 import { WorkflowEditor } from './workspace/WorkflowEditor';
@@ -37,15 +38,16 @@ import { TestSuiteSummary } from './workspace/TestSuiteSummary';
 import { OperationSummary } from './workspace/OperationSummary';
 import { PerformanceSuiteEditor } from './workspace/PerformanceSuiteEditor';
 import { RequestTypeSelector } from './workspace/RequestTypeSelector';
-import { QueryParamsPanel } from './QueryParamsPanel';
-import { RestAuthPanel } from './RestAuthPanel';
-import { GraphQLVariablesPanel } from './GraphQLVariablesPanel';
-import { ScriptEditor } from './ScriptEditor';
+// Query params and GraphQL panels temporarily disabled - need @apinox/request-editor
+// import { QueryParamsPanel } from './QueryParamsPanel';
+// import { RestAuthPanel } from './RestAuthPanel';
+// import { GraphQLVariablesPanel } from './GraphQLVariablesPanel';
+// import { ScriptEditor } from './ScriptEditor';
 
 
 // Styled components extracted to styles file
 
-import { createMockRuleFromSource } from '../utils/mockUtils';
+// import { createMockRuleFromSource } from '../utils/mockUtils'; // Removed - mock features
 import { findPathToRequest } from '../utils/projectUtils';
 
 /**
@@ -248,7 +250,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
             attachments: []
         } as any;
         
-        console.log('[WorkspaceLayout] Created activeRequest from workflow step:', activeRequest.name, 'type:', activeRequest.requestType);
+        console.log('[WorkspaceLayout] Created activeRequest from workflow step:', activeRequest!.name, 'type:', activeRequest!.requestType);
     }
 
     // Use activeRequest throughout instead of activeRequest
@@ -285,7 +287,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         onUpdateStep, onSelectStep, onDeleteStep, onMoveStep
     } = stepActions;
     const {
-        onAddExtractor, onEditExtractor, onAddAssertion, onAddExistenceAssertion, onAddReplaceRule, onAddMockRule, onOpenDevOps
+        onAddExtractor, onEditExtractor, onAddAssertion, onAddExistenceAssertion, /* onAddReplaceRule, onAddMockRule, */ onOpenDevOps
     } = toolsActions;
 
     // Performance Actions extracted in props destructuring above
@@ -486,7 +488,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
             && effectiveRequest.bodyType !== 'graphql'
             && effectiveRequest.bodyType !== 'text';
 
-        if (!isXmlRequest) return;
+        if (!isXmlRequest || !activeRequest) return;
 
         onUpdateRequest({
             ...activeRequest,
@@ -601,13 +603,18 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         setActiveTab('assertions');
     };
 
-    const handleCreateReplaceRule = (target: 'request' | 'response') => {
+    const handleCreateReplaceRule = (_target: 'request' | 'response') => {
+        // Replace rule and mock rule features removed - moved to APIprox
+        /*
         if (!selection || !currentXPath || !onAddReplaceRule) return;
 
         onAddReplaceRule({ xpath: currentXPath, matchText: selection.text, target });
+        */
     };
 
     const handleCreateMockRule = () => {
+        // Mock rule features removed - moved to APIprox
+        /*
         if (!activeRequest || !response || !onAddMockRule) {
             console.warn('[WorkspaceLayout] handleCreateMockRule aborted: missing data or callback');
             return;
@@ -621,6 +628,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         });
 
         onAddMockRule(newRule);
+        */
     };
 
     if (activeView === SidebarView.HOME) {
@@ -808,8 +816,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
             console.log('[WorkspaceLayout] No workflow step selected, showing welcome');
             return (
                 <WelcomePanel 
-                    changelog={null}
-                    message="Select a workflow or workflow step from the sidebar"
+                    changelog={undefined}
                 />
             );
         }
@@ -967,6 +974,8 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         }
     }
 
+    // Watcher/Server views removed - features moved to APIprox
+    /*
     // WATCHER VIEW
     if (activeView === SidebarView.WATCHER) {
         // If an event is selected (it's a request), it will have been handled by activeRequest above?
@@ -983,6 +992,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
             return <EmptyServer />;
         }
     }
+    */
 
     // HISTORY VIEW
     if (activeView === SidebarView.HISTORY) {
@@ -995,17 +1005,25 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     if (!effectiveRequest) {
         if (selectedStep && selectedStep.type === 'script' && onUpdateStep) {
             return (
-                <ScriptEditor
-                    step={selectedStep}
-                    onUpdate={onUpdateStep}
-                    isReadOnly={isReadOnly}
-                    onBack={onBackToCase}
-                />
+                <div style={{ padding: '20px', color: 'var(--text-secondary)' }}>
+                    Script editor temporarily disabled during package migration
+                </div>
+                // <ScriptEditor
+                //     step={selectedStep}
+                //     onUpdate={onUpdateStep}
+                //     isReadOnly={isReadOnly}
+                //     onBack={onBackToCase}
+                // />
             );
         }
         return <WelcomePanel changelog={changelog} />;
     }
 
+    // TypeScript flow analysis: After the guard above, activeRequest is guaranteed to be non-null
+    // Add a type assertion to help TypeScript understand this
+    if (!activeRequest) {
+        throw new Error('[WorkspaceLayout] Invariant violation: activeRequest should not be null after effectiveRequest check');
+    }
 
 
     // For the main rendering, use effectiveRequest as the current request
@@ -1014,13 +1032,13 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
 
     return (
         <Content>
-            {/* Modal */}
-            <CodeSnippetModal
+            {/* Modal - temporarily disabled during package migration */}
+            {/* <CodeSnippetModal
                 isOpen={showCodeSnippet}
                 onClose={() => setShowCodeSnippet(false)}
                 request={currentRequest}
                 environment={config?.environments && config?.activeEnvironment ? config.environments[config.activeEnvironment] : undefined}
-            />
+            /> */}
 
             <WorkspaceBody>
                 {/* Toolbar */}
@@ -1092,10 +1110,12 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                 <UrlInputWrapper>
                                     <MonacoSingleLineInput
                                         ref={urlEditorRef}
-                                        value={activeRequest.endpoint || defaultEndpoint || ''}
+                                        value={activeRequest?.endpoint || defaultEndpoint || ''}
                                         onChange={(val) => {
                                             console.log('[WorkspaceLayout] Endpoint onChange triggered, val:', val);
-                                            onUpdateRequest({ ...activeRequest, endpoint: val });
+                                            if (activeRequest) {
+                                                onUpdateRequest({ ...activeRequest, endpoint: val });
+                                            }
                                         }}
                                         placeholder="Endpoint URL"
                                         readOnly={isReadOnly || isStructureLocked}
@@ -1312,6 +1332,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                     </IconButton>
                                 )}
 
+                                {/* Mock rule button temporarily disabled
                                 {isReadOnly && onAddMockRule && (
                                     <CompactIconButtonWarning
                                         title="Import to Mock Rule"
@@ -1320,6 +1341,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                         <PlusSquare size={14} />
                                     </CompactIconButtonWarning>
                                 )}
+                                */}
 
                                 <Divider />
 
@@ -1471,7 +1493,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                             </TabsRight>
                         </TabsHeader>
 
-                        {activeTab === 'request' && (
+                        {activeTab === 'request' && activeRequest && (
                             <RequestEditorWrapper>
                                 <MonacoRequestEditor
                                     ref={bodyEditorRef}
@@ -1502,7 +1524,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                 {/* Format Button Overlay */}
                             </RequestEditorWrapper>
                         )}
-                        {activeTab === 'headers' && (
+                        {activeTab === 'headers' && activeRequest && (
                             <PanelColumn>
                                 <PanelBody $padded={isReadOnly || isStructureLocked}>
                                     {!isReadOnly && !isStructureLocked ? (
@@ -1540,81 +1562,47 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                 )}
                             </PanelColumn>
                         )}
-                        {/* Query Params Panel - REST only */}
-                        {activeTab === 'params' && activeRequest.requestType === 'rest' && (
-                            <PanelColumn>
-                                <QueryParamsPanel
-                                    params={activeRequest.restConfig?.queryParams || {}}
-                                    onChange={(newParams) => onUpdateRequest({
-                                        ...activeRequest,
-                                        restConfig: { ...activeRequest.restConfig, queryParams: newParams }
-                                    })}
-                                    title="Query Parameters"
-                                    readOnly={isReadOnly || isStructureLocked}
-                                />
-                            </PanelColumn>
+                        {/* REST/GraphQL panels temporarily disabled - need @apinox/request-editor */}
+                        {activeTab === 'params' && (
+                            <div style={{ padding: '20px', color: 'var(--text-secondary)' }}>
+                                Query params panel temporarily disabled during package migration
+                            </div>
                         )}
-                        {/* GraphQL Variables Panel - GraphQL only */}
-                        {activeTab === 'variables' && activeRequest.requestType === 'graphql' && (
-                            <PanelColumn>
-                                <GraphQLVariablesPanel
-                                    variables={activeRequest.graphqlConfig?.variables}
-                                    operationName={activeRequest.graphqlConfig?.operationName}
-                                    onChange={(newVars) => onUpdateRequest({
-                                        ...activeRequest,
-                                        graphqlConfig: { ...activeRequest.graphqlConfig, variables: newVars }
-                                    })}
-                                    onOperationNameChange={(name) => onUpdateRequest({
-                                        ...activeRequest,
-                                        graphqlConfig: { ...activeRequest.graphqlConfig, operationName: name }
-                                    })}
-                                />
-                            </PanelColumn>
+                        {activeTab === 'variables' && (
+                            <div style={{ padding: '20px', color: 'var(--text-secondary)' }}>
+                                GraphQL variables panel temporarily disabled during package migration
+                            </div>
                         )}
-                        {activeTab === 'assertions' && (
+                        {activeTab === 'assertions' && activeRequest && (
                             <AssertionsPanel
-                                assertions={activeRequest.assertions || []}
-                                onChange={(newAssertions) => onUpdateRequest({ ...activeRequest, assertions: newAssertions })}
+                                assertions={activeRequest.assertions || [] as any}
+                                onChange={(newAssertions) => onUpdateRequest({ ...activeRequest, assertions: newAssertions as any })}
                                 lastResult={response?.assertionResults}
                             />
                         )}
-                        {activeTab === 'extractors' && (
+                        {activeTab === 'extractors' && activeRequest && (
                             <ExtractorsPanel
-                                extractors={activeRequest.extractors || []}
-                                onChange={(newExtractors) => onUpdateRequest({ ...activeRequest, extractors: newExtractors })}
-                                onEdit={onEditExtractor}
+                                extractors={activeRequest.extractors || [] as any}
+                                onChange={(newExtractors) => onUpdateRequest({ ...activeRequest, extractors: newExtractors as any })}
+                                onEdit={onEditExtractor as any}
                                 rawResponse={response?.rawResponse}
                             />
                         )}
+                        {/* Variables, Auth, and Attachments panels temporarily disabled - need @apinox/request-editor */}
                         {activeTab === 'chainvars' && (
-                            <VariablesPanel
-                                testCase={selectedTestCase}
-                                currentStepId={selectedStep?.id || null}
-                                testExecution={testExecution}
-                            />
+                            <div style={{ padding: '20px', color: 'var(--text-secondary)' }}>
+                                Variables panel temporarily disabled during package migration
+                            </div>
                         )}
                         {activeTab === 'auth' && (
-                            activeRequest.requestType === 'rest' || activeRequest.requestType === 'graphql' ? (
-                                <RestAuthPanel
-                                    auth={activeRequest.restConfig?.auth}
-                                    onChange={(newAuth) => onUpdateRequest({
-                                        ...activeRequest,
-                                        restConfig: { ...activeRequest.restConfig, auth: newAuth }
-                                    })}
-                                    readOnly={isReadOnly || isStructureLocked}
-                                />
-                            ) : (
-                                <SecurityPanel
-                                    security={activeRequest.wsSecurity}
-                                    onChange={(newSecurity) => onUpdateRequest({ ...activeRequest, wsSecurity: newSecurity })}
-                                />
-                            )
+                            <div style={{ padding: '20px', color: 'var(--text-secondary)' }}>
+                                Auth panel temporarily disabled during package migration
+                            </div>
                         )}
                         {activeTab === 'attachments' && (
-                            <AttachmentsPanel
-                                attachments={activeRequest.attachments || []}
-                                onChange={(newAttachments) => onUpdateRequest({ ...activeRequest, attachments: newAttachments })}
-                            />
+                            <div style={{ padding: '20px', color: 'var(--text-secondary)' }}>
+                                Attachments panel temporarily disabled during package migration
+                            </div>
                         )}
                     </RequestPane>
 
@@ -1657,15 +1645,15 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                                             )}
                                         </ResponseHeaderActions>
                                     )}
-                                    {/* Replace Rule button for Proxy view */}
-                                    {selection && selection.text && isReadOnly && onAddReplaceRule && currentXPath && (
+                                    {/* Replace Rule button removed - proxy features moved to APIprox */}
+                                    {/* {selection && selection.text && isReadOnly && onAddReplaceRule && currentXPath && (
                                         <MiniToolbarButton
                                             onClick={() => handleCreateReplaceRule('response')}
                                             title="Create a replace rule for this selection"
                                         >
                                             <MiniButtonIcon><Replace size={12} /></MiniButtonIcon> Add Replace Rule
                                         </MiniToolbarButton>
-                                    )}
+                                    )} */}
                                 </ResponseHeaderLeft>
                                 {response && (
                                     <ResponseStats>

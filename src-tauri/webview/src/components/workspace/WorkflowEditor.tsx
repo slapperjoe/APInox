@@ -249,11 +249,11 @@ export const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
                     
                     operation.requests.forEach(request => {
                         items.push({
-                            projectName: project.name,
-                            interfaceName: iface.name,
-                            operationName: operation.name,
-                            requestName: request.name,
-                            request
+                            id: `${project.name}/${iface.name}/${operation.name}/${request.name}`,
+                            label: request.name,
+                            description: `${project.name} > ${iface.name} > ${operation.name}`,
+                            type: 'request' as const,
+                            data: request
                         });
                     });
                 });
@@ -337,20 +337,24 @@ export const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
     const handleSelectRequest = (item: PickRequestItem) => {
         if (selectedStepIndex === null) return;
         
+        // Parse the item description back to get project/interface/operation names
+        const parts = item.description?.split(' > ') || [];
+        const request = item.data;
+        
         const requestData: Partial<WorkflowStep> = {
-            projectName: item.projectName,
-            interfaceName: item.interfaceName,
-            operationName: item.operationName,
-            requestName: item.request.name,
-            endpoint: item.request.endpoint,
-            requestBody: item.request.request,
-            headers: item.request.headers || {},
-            contentType: item.request.contentType,
-            requestType: item.request.requestType,
-            bodyType: item.request.bodyType,
-            httpMethod: item.request.httpMethod,
-            method: item.request.method,
-            name: `Request: ${item.request.name}`
+            projectName: parts[0] || '',
+            interfaceName: parts[1] || '',
+            operationName: parts[2] || '',
+            // requestName: request.name, // Not a field in WorkflowStep
+            endpoint: request.endpoint,
+            requestBody: request.request,
+            headers: request.headers || {},
+            contentType: request.contentType,
+            requestType: request.requestType,
+            bodyType: request.bodyType,
+            httpMethod: request.httpMethod,
+            method: request.method,
+            name: `Request: ${request.name}`
         };
         
         handleUpdateStep(selectedStepIndex, requestData);

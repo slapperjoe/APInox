@@ -5,10 +5,8 @@ import { SidebarView } from '@shared/models';
 // Components
 import { ProjectList } from './sidebar/ProjectList';
 import { ApiExplorerSidebar } from './sidebar/ApiExplorerSidebar';
-import { WatcherPanel } from './sidebar/WatcherPanel';
 import { TestsUi } from './sidebar/TestsUi';
 import { WorkflowsUi } from './sidebar/WorkflowsUi';
-import { ServerUi } from './sidebar/ServerUi';
 import { PerformanceUi } from './sidebar/PerformanceUi';
 // @ts-ignore - TS export detection issue; runtime export exists.
 import HistorySidebar from './sidebar/HistorySidebar';
@@ -38,10 +36,8 @@ import {
     SidebarWsdlProps,
     SidebarSelectionProps,
     SidebarTestRunnerProps,
-    SidebarWatcherProps,
     SidebarTestsProps,
     SidebarWorkflowsProps,
-    SidebarServerProps,
     SidebarPerformanceProps,
     SidebarHistoryProps
 } from '../types/props';
@@ -52,10 +48,8 @@ interface SidebarProps {
     wsdlProps: SidebarWsdlProps;
     selectionProps: SidebarSelectionProps;
     testRunnerProps: SidebarTestRunnerProps;
-    watcherProps: SidebarWatcherProps;
     testsProps: SidebarTestsProps;
     workflowsProps?: SidebarWorkflowsProps;
-    serverProps?: SidebarServerProps;
     performanceProps?: SidebarPerformanceProps;
     historyProps?: SidebarHistoryProps;
 
@@ -84,10 +78,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     explorerProps,
     selectionProps,
     testRunnerProps: _testRunnerProps, // Legacy, tests now use testsProps
-    watcherProps,
     testsProps,
     workflowsProps,
-    serverProps,
     performanceProps,
     historyProps,
     workspaceDirty,
@@ -112,10 +104,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         setResponse, handleContextMenu, onAddRequest, onDeleteRequest,
         deleteConfirm, setDeleteConfirm
     } = selectionProps;
-    const {
-        history: watcherHistory, onSelectEvent: onSelectWatcherEvent, isRunning: watcherRunning,
-        onStart: onStartWatcher, onStop: onStopWatcher, onClear: onClearWatcher
-    } = watcherProps;
 
     const hideContent = !sidebarExpanded || activeView === SidebarView.HOME;
 
@@ -133,23 +121,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             {/* Content Area */}
             <SidebarContent $hidden={hideContent}>
-
-                {activeView === SidebarView.SERVER && serverProps && (
-                    <ServerUi
-                        {...serverProps}
-                    />
-                )}
-
-                {activeView === SidebarView.WATCHER && (
-                    <WatcherPanel
-                        history={watcherHistory}
-                        isRunning={watcherRunning}
-                        onStart={onStartWatcher}
-                        onStop={onStopWatcher}
-                        onClear={onClearWatcher}
-                        onSelectEvent={onSelectWatcherEvent}
-                    />
-                )}
 
                 {activeView === SidebarView.TESTS && (
                     <TestsUi

@@ -5,10 +5,10 @@
  */
 
 import styled from 'styled-components';
-import { ApinoxConfig, ReplaceRule } from '@shared/models';
+import { ApinoxConfig } from '@shared/models';
 
 export type { ApinoxConfig };
-export type ReplaceRuleSettings = ReplaceRule;
+// export type ReplaceRuleSettings = ReplaceRule; // Removed - proxy features
 
 // =============================================================================
 // TYPES

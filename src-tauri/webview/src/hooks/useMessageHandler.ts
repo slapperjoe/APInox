@@ -15,14 +15,13 @@ import {
     ApiRequest,
     TestStep,
     TestCase,
-    WatcherEvent,
     SidebarView,
     RequestHistoryEntry,
     RequestAttachment,
     WsdlDiff
 } from '@shared/models';
 import { useNavigation } from '../contexts/NavigationContext';
-import { useMockProxy } from '../contexts/MockProxyContext';
+// import { useMockProxy } from '../contexts/MockProxyContext'; // Removed - mock/proxy features
 
 // Debug logger - console only to prevent message flooding
 // Note: Sending log messages back to the backend on every received message
@@ -61,21 +60,11 @@ export interface MessageHandlerState {
     setSavedProjects: React.Dispatch<React.SetStateAction<Set<string>>>;
     setSaveErrors: React.Dispatch<React.SetStateAction<Map<string, string>>>;
     setChangelog: React.Dispatch<React.SetStateAction<string>>;
-    setWatcherHistory: React.Dispatch<React.SetStateAction<WatcherEvent[]>>;
     // setProxyHistory: Moved to MockProxyContext
     // setProxyRunning: Moved to MockProxyContext
     // setTestExecution: Moved to TestRunnerContext
     // setExploredInterfaces: Moved to NavigationContext
     setActiveView: React.Dispatch<React.SetStateAction<SidebarView>>;
-    setActiveBreakpoint: React.Dispatch<React.SetStateAction<{
-        id: string;
-        type: 'request' | 'response';
-        content: string;
-        headers?: Record<string, any>;
-        breakpointName: string;
-        timeoutMs: number;
-        startTime: number;
-    } | null>>;
     // setMockHistory: Moved to MockProxyContext
     // setMockRunning: Moved to MockProxyContext
     // setMockConfig: Moved to MockProxyContext
@@ -121,12 +110,12 @@ export function useMessageHandler(state: MessageHandlerState) {
         setSavedProjects,
         setSaveErrors,
         setChangelog,
-        setWatcherHistory,
+        // setWatcherHistory, // Removed - watcher features
         // setProxyHistory,
         // setProxyRunning,
         // setTestExecution,
         setActiveView,
-        setActiveBreakpoint,
+        // setActiveBreakpoint, // Removed - breakpoint features
         // setMockHistory,
         // setMockRunning,
         // setMockConfig,
@@ -148,8 +137,8 @@ export function useMessageHandler(state: MessageHandlerState) {
     // Get exploredInterfaces from NavigationContext
     const { setExploredInterfaces, setActiveView: setActiveViewFromNav } = useNavigation();
 
-    // Get proxy/mock history setters from MockProxyContext
-    const { setProxyHistory, setMockHistory, setProxyRunning, setMockRunning } = useMockProxy();
+    // MockProxyContext removed - proxy/mock features moved to APIprox
+    // const { setProxyHistory, setMockHistory, setProxyRunning, setMockRunning } = useMockProxy();
 
     // Silence unused variable warning until migration is complete
     void setSavedProjects;
@@ -652,7 +641,8 @@ export function useMessageHandler(state: MessageHandlerState) {
                     break;
 
 
-
+                // Watcher/Proxy/Mock commands removed - features moved to APIprox
+                /*
                 case BackendCommand.WatcherUpdate:
                     debugLog('watcherUpdate', {
                         historyLength: message.history?.length
@@ -673,7 +663,10 @@ export function useMessageHandler(state: MessageHandlerState) {
                         setMockHistory(prev => [message.event, ...prev].slice(0, 50));
                     }
                     break;
+                */
 
+                // Proxy/Mock/Breakpoint commands removed - features moved to APIprox
+                /*
                 case BackendCommand.ProxyStatus:
                     if (message.running !== undefined && setProxyRunning) {
                         setProxyRunning(message.running);
@@ -709,6 +702,7 @@ export function useMessageHandler(state: MessageHandlerState) {
                     debugLog('breakpointTimeout', { breakpointId: message.breakpointId });
                     setActiveBreakpoint(null);
                     break;
+                */
 
                 case BackendCommand.ConfigFileSelected:
                     debugLog('configFileSelected', { path: message.path });

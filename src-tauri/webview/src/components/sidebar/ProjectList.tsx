@@ -582,7 +582,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                                             onDragStart={handleDragStart}
                                             onDragOver={handleDragOver}
                                             onDragLeave={handleDragLeave}
-                                            onDrop={(e, itemId, itemType) => handleDrop(e, itemId, itemType, proj.name)}
+                                            onDrop={(e, itemId, itemType) => handleDrop(e, itemId, itemType)}
                                             onDragEnd={handleDragEnd}
                                         />
 
@@ -609,7 +609,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
 
                                                 // Inline Rename Props
                                                 renameId={renameId}
-                                                renameType={renameType}
+                                                renameType={renameType === 'interface' || renameType === 'operation' || renameType === 'project' ? null : renameType}
                                                 renameValue={renameName}
                                                 onRenameChange={setRenameName}
                                                 onRenameSubmit={submitRename}

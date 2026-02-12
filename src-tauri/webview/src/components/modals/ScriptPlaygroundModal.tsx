@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import Editor from '@monaco-editor/react';
 import { Play, Loader2, HelpCircle } from 'lucide-react';
 import { bridge, isTauri, isStandalone } from '../../utils/bridge';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '@apinox/request-editor'; // Use package ThemeContext
 import { Modal } from './Modal';
 import { SPACING_XS, SPACING_SM, SPACING_MD, SPACING_LG } from '../../styles/spacing';
 import { STATUS_COLORS } from '../../styles/colors';

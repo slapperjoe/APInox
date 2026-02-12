@@ -53,7 +53,8 @@ export default defineConfig({
         alias: {
             '@shared/messages': path.resolve(__dirname, '../../shared/src/messages.ts'),
             '@shared/models': path.resolve(__dirname, '../../shared/src/models.ts'),
-            '@shared': path.resolve(__dirname, '../../shared/src')
+            '@shared': path.resolve(__dirname, '../../shared/src'),
+            '@apinox/request-editor': path.resolve(__dirname, '../../packages/request-editor/src/index.ts')
         },
         extensions: ['.ts', '.tsx', '.js', '.jsx', '.json']
     },

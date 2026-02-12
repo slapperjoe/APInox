@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { AssertionsPanel } from '../components/AssertionsPanel';
+import { AssertionsPanel } from '@apinox/request-editor';
 
 describe('AssertionsPanel', () => {
     it('should render empty state when no assertions', () => {

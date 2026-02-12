@@ -137,10 +137,10 @@ function mapResponseToBackendEvent(command: string, data: any): BackendMessage |
             command: BackendCommand.HistoryLoaded,
             entries: data || []
         }),
-        [FrontendCommand.GetWatcherHistory]: (data) => ({
-            command: BackendCommand.WatcherUpdate,
-            history: data || []
-        }),
+        // [FrontendCommand.GetWatcherHistory]: (data) => ({ // Removed - watcher features
+        //     command: BackendCommand.WatcherUpdate,
+        //     history: data || []
+        // }),
         [FrontendCommand.GetSettings]: (data) => ({
             command: BackendCommand.SettingsUpdate,
             // Frontend expects 'config' not 'settings'
@@ -186,10 +186,10 @@ function mapResponseToBackendEvent(command: string, data: any): BackendMessage |
                 filename: fileName
             };
         },
-        [FrontendCommand.GetMockStatus]: (data) => ({
-            command: BackendCommand.MockStatus,
-            ...data
-        }),
+        // [FrontendCommand.GetMockStatus]: (data) => ({ // Removed - mock features
+        //     command: BackendCommand.MockStatus,
+        //     ...data
+        // }),
         ['webviewReady']: (data) => data, // Pass through sidecar response with samplesProject and changelog
         // Add more mappings as needed
     };

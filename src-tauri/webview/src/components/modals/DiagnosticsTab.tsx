@@ -18,7 +18,7 @@ type DiagnosticResult = {
     details?: string;
 };
 
-export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ serverConfig }) => {
+export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
     const [certResults, setCertResults] = useState<DiagnosticResult[]>([]);
     const [proxyResults, setProxyResults] = useState<DiagnosticResult[]>([]);
     const [isRunning, setIsRunning] = useState(false);

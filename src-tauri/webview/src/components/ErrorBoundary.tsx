@@ -116,6 +116,7 @@ export class ErrorBoundary extends Component<Props, State> {
                             alignItems: 'center',
                             justifyContent: 'space-between',
                             padding: '0 10px',
+                            // @ts-ignore - WebkitAppRegion is a valid CSS property for Tauri
                             WebkitAppRegion: 'drag' as any,
                             userSelect: 'none'
                         }}>
@@ -123,6 +124,7 @@ export class ErrorBoundary extends Component<Props, State> {
                             <button
                                 onClick={() => window.close()}
                                 style={{
+                                    // @ts-ignore - WebkitAppRegion is a valid CSS property for Tauri
                                     WebkitAppRegion: 'no-drag' as any,
                                     background: 'transparent',
                                     border: 'none',

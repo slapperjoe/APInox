@@ -1,13 +1,12 @@
 // import React from 'react'; // React 17+ JSX transform doesn't need React in scope
 import { useState, useEffect } from 'react';
-import { ThemeProvider } from './contexts/ThemeContext';
+import { ThemeProvider } from '@apinox/request-editor'; // Use package ThemeProvider so editors get theme
 import { ProjectProvider } from './contexts/ProjectContext';
 import { SelectionProvider } from './contexts/SelectionContext';
 import { UIProvider } from './contexts/UIContext';
 import { NavigationProvider } from './contexts/NavigationContext';
 import { TestRunnerProvider } from './contexts/TestRunnerContext';
 import { PerformanceProvider } from './contexts/PerformanceContext';
-import { MockProxyProvider } from './contexts/MockProxyContext';
 import { SearchProvider } from './contexts/SearchContext';
 import { ScrapbookProvider } from './contexts/ScrapbookContext';
 import MainContent from './components/MainContent';
@@ -54,14 +53,12 @@ export default function App() {
                             <ScrapbookProvider>
                                 <TestRunnerProvider>
                                     <PerformanceProvider>
-                                        <MockProxyProvider>
-                                            <SearchProvider>
-                                                {showCustomTitleBar && <TitleBar />}
-                                                {showMacOSSearchBar && <MacOSTitleBarSearch />}
-                                                <DebugIndicator />
-                                                <MainContent />
-                                            </SearchProvider>
-                                        </MockProxyProvider>
+                                        <SearchProvider>
+                                            {showCustomTitleBar && <TitleBar />}
+                                            {showMacOSSearchBar && <MacOSTitleBarSearch />}
+                                            <DebugIndicator />
+                                            <MainContent />
+                                        </SearchProvider>
                                     </PerformanceProvider>
                                 </TestRunnerProvider>
                             </ScrapbookProvider>

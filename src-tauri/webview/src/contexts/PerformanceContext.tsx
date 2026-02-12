@@ -2,7 +2,8 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { bridge, isTauri } from '../utils/bridge';
 import { PerformanceSuite, PerformanceRequest, ApiRequest } from '@shared/models';
 import { BackendCommand, FrontendCommand } from '@shared/messages';
-import { getInitialXml } from '../utils/soapUtils';
+// import { getInitialXml } from '@apinox/request-editor'; // Temporarily disabled
+import { getInitialXml } from '../utils/soapUtils'; // Use local version temporarily
 import { useUI } from './UIContext';
 import { useSelection } from './SelectionContext';
 import { useNavigation } from './NavigationContext';

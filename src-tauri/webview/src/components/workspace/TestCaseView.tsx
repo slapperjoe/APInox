@@ -214,7 +214,7 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
     onDeleteStep,
     onOpenStepRequest,
     workflows,
-    projects
+    // projects // Unused
 }) => {
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 

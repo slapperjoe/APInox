@@ -1,13 +1,17 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { ExtractorsPanel } from '../components/ExtractorsPanel';
+import { ExtractorsPanel } from '@apinox/request-editor';
 
 // Mock the xpathEvaluator
-vi.mock('../utils/xpathEvaluator', () => ({
-    CustomXPathEvaluator: {
-        evaluate: vi.fn(() => 'mocked-value')
-    }
-}));
+vi.mock('@apinox/request-editor', async () => {
+    const actual = await vi.importActual('@apinox/request-editor');
+    return {
+        ...actual,
+        CustomXPathEvaluator: {
+            evaluate: vi.fn(() => 'mocked-value')
+        }
+    };
+});
 
 describe('ExtractorsPanel', () => {
     it('should render empty state when no extractors', () => {

@@ -16,14 +16,8 @@ export enum FrontendCommand {
     SaveUiState = 'saveUiState',
     UpdateActiveEnvironment = 'updateActiveEnvironment',
     AutoSaveWorkspace = 'autoSaveWorkspace',
-    StartWatcher = 'startWatcher',
-    StopWatcher = 'stopWatcher',
     GetAutosave = 'getAutosave',
-    GetWatcherHistory = 'getWatcherHistory',
-    ClearWatcherHistory = 'clearWatcherHistory',
     SelectConfigFile = 'selectConfigFile',
-    SelectWatcherRequestFile = 'selectWatcherRequestFile',
-    SelectWatcherResponseFile = 'selectWatcherResponseFile',
 
     // Commands
     DownloadWsdl = 'downloadWsdl',
@@ -44,29 +38,6 @@ export enum FrontendCommand {
     AdoListProjects = 'adoListProjects',
     AdoTestConnection = 'adoTestConnection',
     AdoAddComment = 'adoAddComment',
-
-    // Proxy
-    StartProxy = 'startProxy',
-    StopProxy = 'stopProxy',
-    UpdateProxyConfig = 'updateProxyConfig',
-    SaveProxyHistory = 'saveProxyHistory',
-    InjectProxy = 'injectProxy',
-    RestoreProxy = 'restoreProxy',
-    OpenCertificate = 'openCertificate',
-    ResolveBreakpoint = 'resolveBreakpoint',
-    SetServerMode = 'setServerMode',
-
-    // Mock
-    StartMockServer = 'startMockServer',
-    StopMockServer = 'stopMockServer',
-    UpdateMockConfig = 'updateMockConfig',
-    UpdateMockRules = 'updateMockRules',
-    AddMockRule = 'addMockRule',
-    DeleteMockRule = 'deleteMockRule',
-    ToggleMockRule = 'toggleMockRule',
-    InjectMockConfig = 'injectMockConfig',
-    RestoreMockConfig = 'restoreMockConfig',
-    GetMockStatus = 'getMockStatus',
 
     // Test Runner
     RunTestSuite = 'runTestSuite',
@@ -129,13 +100,10 @@ export enum FrontendCommand {
     OpenFile = 'openFile',
     CheckCertificate = 'checkCertificate',
     CheckCertificateStore = 'checkCertificateStore',
-    TestHttpsServer = 'testHttpsServer',
-    TestProxyConnection = 'testProxyConnection',
     InstallCertificateToLocalMachine = 'installCertificateToLocalMachine',
     MoveCertificateToLocalMachine = 'moveCertificateToLocalMachine',
     RegenerateCertificate = 'regenerateCertificate',
     ResetCertificates = 'resetCertificates',
-    GetProxyStatus = 'getProxyStatus',
 
     // Workspace Export/Import
     ExportWorkspace = 'exportWorkspace',
@@ -151,19 +119,9 @@ export enum FrontendCommand {
 
 export enum BackendCommand {
     Log = 'log',
-    WatcherUpdate = 'watcherUpdate',
-    ProxyLog = 'proxyLog',
-    ProxyStatus = 'proxyStatus',
-    BreakpointHit = 'breakpointHit',
-    BreakpointTimeout = 'breakpointTimeout',
     TestRunnerUpdate = 'testRunnerUpdate',
-    MockLog = 'mockLog',
-    MockStatus = 'mockStatus',
-    MockRulesUpdated = 'mockRulesUpdated',
     PerformanceRunComplete = 'performanceRunComplete',
     PerformanceIterationComplete = 'performanceIterationComplete',
-    MockHit = 'mockHit',
-    MockRecorded = 'mockRecorded',
     CoordinatorStatus = 'coordinatorStatus',
     ClipboardText = 'clipboardText',
     SampleSchema = 'sampleSchema',

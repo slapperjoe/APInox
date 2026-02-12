@@ -15,8 +15,7 @@ import {
     CheckboxLabel,
     SectionHeader,
 } from './SettingsTypes';
-import { ProxyRulesEditor } from './ProxyRulesEditor';
-import { useTheme } from '../../../contexts/ThemeContext';
+import { useTheme } from '@apinox/request-editor'; // Use package ThemeContext
 import { useUI } from '../../../contexts/UIContext';
 
 interface GeneralTabProps {
@@ -230,7 +229,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange }) => {
                         </CheckboxLabel>
                     </FormGroup>
 
-                    <ProxyRulesEditor config={config} onChange={onChange} />
+                    {/* Proxy rules editor temporarily disabled during proxy feature removal */}
                 </div>
             </div>
         </ScrollableForm >

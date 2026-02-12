@@ -1,0 +1,56 @@
+{
+  "name": "@apinox/request-editor",
+  "version": "0.1.0",
+  "description": "Reusable Monaco-based request/response editor components for APInox",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build && tsc --emitDeclarationOnly --declaration --outDir dist",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "monaco-editor",
+    "soap",
+    "rest",
+    "graphql",
+    "api",
+    "request-editor",
+    "react"
+  ],
+  "author": "APInox Team",
+  "license": "MIT",
+  "peerDependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "styled-components": "^6.0.0"
+  },
+  "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
+    "lucide-react": "^0.263.1",
+    "monaco-editor": "^0.55.1"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/react": "^18.2.14",
+    "@types/react-dom": "^18.2.6",
+    "@vitejs/plugin-react": "^5.1.2",
+    "jsdom": "^28.0.0",
+    "typescript": "^5.1.3",
+    "vite": "^7.3.0",
+    "vitest": "^4.0.16"
+  }
+}

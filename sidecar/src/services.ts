@@ -6,13 +6,10 @@
  */
 
 import { SoapClient } from './soapClient';
-import { ProxyService } from './services/ProxyService';
-import { MockService } from './services/MockService';
 import { TestRunnerService } from './services/TestRunnerService';
 import { PerformanceService } from './services/PerformanceService';
 import { ScheduleService } from './services/ScheduleService';
 import { ConfigSwitcherService } from './services/ConfigSwitcherService';
-import { FileWatcherService } from './services/FileWatcherService';
 import { RequestHistoryService } from './services/RequestHistoryService';
 import { FolderProjectStorage } from './FolderProjectStorage';
 import { SettingsManager } from './utils/SettingsManager';
@@ -24,13 +21,10 @@ import { SecretManager } from './SecretManager';
 
 export class ServiceContainer {
     public readonly soapClient: SoapClient;
-    public readonly proxyService: ProxyService;
-    public readonly mockService: MockService;
     public readonly testRunnerService: TestRunnerService;
     public readonly performanceService: PerformanceService;
     public readonly scheduleService: ScheduleService;
     public readonly configSwitcherService: ConfigSwitcherService;
-    public readonly fileWatcherService: FileWatcherService;
     public readonly historyService: RequestHistoryService;
     public readonly folderStorage: FolderProjectStorage;
     public readonly settingsManager: SettingsManager;
@@ -42,8 +36,6 @@ export class ServiceContainer {
     public readonly secretManager: SecretManager;
 
     private outputLog: string[] = [];
-    private trafficEventBuffer: any[] = [];
-    private readonly MAX_TRAFFIC_EVENTS = 100;
 
     constructor() {
         // Create platform adapters
@@ -68,26 +60,6 @@ export class ServiceContainer {
         
         this.soapClient = new SoapClient(this.settingsManager, outputChannel, this.configService);
         this.folderStorage = new FolderProjectStorage(outputChannel);
-        this.fileWatcherService = new FileWatcherService(outputChannel, this.settingsManager);
-
-        // Load saved proxy target from settings
-        const savedProxyTarget = this.settingsManager.getConfig()?.lastProxyTarget || 'http://localhost:8080';
-        this.proxyService = new ProxyService(
-            { port: 9000, targetUrl: savedProxyTarget, systemProxyEnabled: true },
-            this.notificationService,
-            this.configService
-        );
-        this.proxyService.setLogger(msg => outputChannel.appendLine(msg));
-
-        this.mockService = new MockService({}, this.notificationService);
-        this.mockService.setLogger(msg => outputChannel.appendLine(msg));
-        this.mockService.setProxyPort(this.proxyService.getConfig().port);
-
-        // Link mock service to proxy for 'both' mode
-        this.proxyService.setMockService(this.mockService);
-
-        // Set up event listeners for traffic logging
-        this.setupTrafficEventListeners();
 
         this.configSwitcherService = new ConfigSwitcherService();
         this.testRunnerService = new TestRunnerService(this.soapClient, outputChannel, this.settingsManager);
@@ -110,47 +82,9 @@ export class ServiceContainer {
     }
 
     /**
-     * Set up event listeners to capture traffic events from proxy and mock services
-     */
-    private setupTrafficEventListeners(): void {
-        // Listen for proxy traffic events
-        this.proxyService.on('log', (event: any) => {
-            this.trafficEventBuffer.push({
-                type: 'proxyLog',
-                event,
-                timestamp: Date.now()
-            });
-            
-            // Keep buffer size limited
-            if (this.trafficEventBuffer.length > this.MAX_TRAFFIC_EVENTS) {
-                this.trafficEventBuffer.shift();
-            }
-        });
-
-        // Listen for mock traffic events
-        this.mockService.on('log', (event: any) => {
-            this.trafficEventBuffer.push({
-                type: 'mockHistoryUpdate',
-                event,
-                timestamp: Date.now()
-            });
-            
-            // Keep buffer size limited
-            if (this.trafficEventBuffer.length > this.MAX_TRAFFIC_EVENTS) {
-                this.trafficEventBuffer.shift();
-            }
-        });
-
-        console.log('[Sidecar] Traffic event listeners configured');
-    }
-
-    /**
      * Clean up resources when shutting down
      */
     dispose(): void {
-        this.proxyService.stop();
-        this.mockService.stop();
-        this.fileWatcherService.stop();
         console.log('[Sidecar] Services disposed');
     }
 
@@ -167,23 +101,5 @@ export class ServiceContainer {
     clearOutputLogs(): void {
         this.outputLog = [];
         console.log('[Sidecar] Output logs cleared');
-    }
-
-    /**
-     * Get traffic events since the last poll
-     * Returns all buffered events and clears the buffer
-     */
-    getTrafficEvents(): any[] {
-        const events = [...this.trafficEventBuffer];
-        this.trafficEventBuffer = [];
-        return events;
-    }
-
-    /**
-     * Clear traffic event buffer
-     */
-    clearTrafficEvents(): void {
-        this.trafficEventBuffer = [];
-        console.log('[Sidecar] Traffic events cleared');
     }
 }

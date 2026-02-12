@@ -2,9 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { parse, modify, applyEdits } from 'jsonc-parser';
-import { ReplaceRule } from './ReplaceRuleApplier';
-import { Breakpoint } from '../services/ProxyService';
-import { MockConfig, MockRule, PerformanceSuite, PerformanceRun, PerformanceSchedule, ProxyRule } from '../../shared/src/models';
+import { PerformanceSuite, PerformanceRun, PerformanceSchedule } from '../../shared/src/models';
 
 export interface ApinoxConfig {
     version: number;
@@ -13,7 +11,6 @@ export interface ApinoxConfig {
         retryCount?: number;
         proxy?: string;
         strictSSL?: boolean;
-        proxyRules?: ProxyRule[];
     };
     fileWatcher?: {
         requestPath?: string;
@@ -43,12 +40,6 @@ export interface ApinoxConfig {
     }>;
     globals?: Record<string, string>;
     recentWorkspaces?: string[];
-    /** Auto-replace rules for proxy view */
-    replaceRules?: ReplaceRule[];
-    /** Breakpoints for proxy - pause on matching requests/responses */
-    breakpoints?: Breakpoint[];
-    /** Mock server configuration */
-    mockServer?: MockConfig;
     /** Performance testing suites */
     performanceSuites?: PerformanceSuite[];
     /** Performance run history */
@@ -238,20 +229,6 @@ export class SettingsManager {
 
     public updateOpenProjects(paths: string[]) {
         this.updateConfigPath(['openProjects'], paths);
-    }
-
-    public updateMockConfig(config: Partial<MockConfig>) {
-        const current = this.getConfig();
-        const updated = { ...current.mockServer, ...config };
-        this.updateConfigPath(['mockServer'], updated);
-    }
-
-    public updateMockRules(rules: MockRule[]) {
-        this.updateConfigPath(['mockServer', 'rules'], rules);
-    }
-
-    public getMockConfig(): MockConfig | undefined {
-        return this.getConfig().mockServer;
     }
 
     public updatePerformanceSuites(suites: PerformanceSuite[]) {

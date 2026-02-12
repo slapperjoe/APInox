@@ -45,9 +45,9 @@ export const NavigationProvider = ({ children }: { children: ReactNode }) => {
                             'explorer': SidebarView.EXPLORER,
                             'home': SidebarView.HOME,
                             'projects': SidebarView.PROJECTS,
-                            'mock': SidebarView.SERVER, // Mapped to Server
-                            'proxy': SidebarView.SERVER, // Mapped to Server
-                            'debug': SidebarView.WATCHER, // Mapped to Watcher
+                            // 'mock': SidebarView.SERVER, // Removed - mock features moved to APIprox
+                            // 'proxy': SidebarView.SERVER, // Removed - proxy features moved to APIprox
+                            // 'debug': SidebarView.WATCHER, // Removed - watcher features moved to APIprox
                             'tests': SidebarView.TESTS,
                             'performance': SidebarView.PERFORMANCE,
                             'history': SidebarView.HISTORY
