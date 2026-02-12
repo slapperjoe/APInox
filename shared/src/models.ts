@@ -383,13 +383,6 @@ export interface WatcherEvent {
     formattedBody?: string;
 }
 
-export type ProxyEvent = WatcherEvent;
-
-export interface MockEvent extends WatcherEvent {
-    ruleId?: string;
-    matchedRule?: string;
-}
-
 export enum SidebarView {
     HOME = 'home',
     PROJECTS = 'projects',
@@ -397,141 +390,8 @@ export enum SidebarView {
     EXPLORER = 'explorer',
     TESTS = 'tests',
     WORKFLOWS = 'workflows', // NEW: Request chaining workflows
-    WATCHER = 'watcher',
-    SERVER = 'server',  // Unified server tab (replaces PROXY + MOCK)
     PERFORMANCE = 'performance',
     HISTORY = 'history'
-}
-
-/**
- * Rule for automatically replacing text in proxy request/response XML.
- * Used for masking sensitive data or normalizing responses.
- */
-export interface ReplaceRule {
-    /** Unique identifier */
-    id: string;
-    /** Optional friendly name */
-    name?: string;
-    /** XPath expression to target element */
-    xpath: string;
-    /** Text to find within the element */
-    matchText: string;
-    /** Replacement text */
-    replaceWith: string;
-    /** Apply to request, response, or both */
-    target: 'request' | 'response' | 'both';
-    /** Treat matchText as regex */
-    isRegex?: boolean;
-    /** Rule is active */
-    enabled: boolean;
-}
-
-// ============================================
-// Unified Server Types
-// ============================================
-
-/** Server operating mode */
-export type ServerMode = 'off' | 'proxy' | 'mock' | 'both';
-
-/** Unified server configuration */
-export interface ServerConfig {
-    mode: ServerMode;
-    port: number;
-    targetUrl: string;
-
-    /** Use system proxy for outgoing requests */
-    useSystemProxy?: boolean;
-
-    /** Mock rules (active when mode is 'mock' or 'both') */
-    mockRules: MockRule[];
-
-    /** Forward unmatched requests to target */
-    passthroughEnabled: boolean;
-
-    /** Auto-capture real responses as mocks */
-    recordMode?: boolean;
-}
-
-// ============================================
-// Mock Server Types
-// ============================================
-
-/** Single match condition within a mock rule */
-export interface MockMatchCondition {
-    type: 'operation' | 'url' | 'soapAction' | 'xpath' | 'header' | 'contains' | 'templateName';
-    pattern: string;
-    isRegex?: boolean;
-    /** For header matching */
-    headerName?: string;
-}
-
-/** Mock rule with multiple conditions (AND logic) */
-export interface MockRule {
-    id: string;
-    name: string;
-    enabled: boolean;
-
-    /** All conditions must match (AND logic) */
-    conditions: MockMatchCondition[];
-
-    /** Response configuration */
-    statusCode: number;
-    responseBody: string;
-    responseHeaders?: Record<string, string>;
-    contentType?: string;
-    /** Simulate latency (ms) */
-    delayMs?: number;
-
-    /** Metadata for recorded mocks */
-    recordedFrom?: string;
-    recordedAt?: number;
-    /** How many times this rule has been matched */
-    hitCount?: number;
-}
-
-/** Mock server configuration */
-export interface MockConfig {
-    enabled: boolean;
-    port: number;
-
-    /** Where to forward unmatched requests */
-    targetUrl: string;
-
-    /** Mock rules */
-    rules: MockRule[];
-
-    /** Forward unmatched requests to target (true) or return 404 (false) */
-    passthroughEnabled: boolean;
-    /** Route passthrough through Dirty Proxy instead of direct */
-    routeThroughProxy: boolean;
-
-    /** Auto-capture real responses as mocks */
-    recordMode?: boolean;
-}
-
-/** Mock event for traffic log */
-export interface MockEvent {
-    id: string;
-    timestamp: number;
-    timestampLabel: string;
-    method: string;
-    url: string;
-    requestHeaders: Record<string, any>;
-    requestBody: string;
-    status?: number;
-    responseHeaders?: Record<string, any>;
-    responseBody?: string;
-    duration?: number;
-    matchedRule?: string;
-    passthrough?: boolean;
-}
-
-/** Rule for proxy routing */
-export interface ProxyRule {
-    id: string; // valid UUID
-    pattern: string; // e.g. "*.local", "api.google.com"
-    useProxy: boolean; // true = use configured/system proxy, false = direct
-    enabled: boolean;
 }
 
 export interface ApinoxConfig {
@@ -541,7 +401,6 @@ export interface ApinoxConfig {
         retryCount?: number;
         proxy?: string;
         strictSSL?: boolean;
-        proxyRules?: ProxyRule[];
     };
     fileWatcher?: {
         requestPath?: string;
@@ -570,25 +429,17 @@ export interface ApinoxConfig {
     }>;
     globals?: Record<string, string>;
     recentWorkspaces?: string[];
-    /** Auto-replace rules for proxy view */
-    replaceRules?: ReplaceRule[];
-    /** Breakpoints for proxy - pause on matching requests/responses */
-    breakpoints?: any[];
     /** Azure DevOps integration settings */
     azureDevOps?: {
         orgUrl?: string;
         project?: string;
     };
-    /** Mock server configuration (legacy, use server instead) */
-    mockServer?: MockConfig;
     /** Performance testing suites */
     performanceSuites?: PerformanceSuite[];
     /** Performance run history (last 5 per suite) */
     performanceHistory?: PerformanceRun[];
     /** Scheduled performance runs */
     performanceSchedules?: PerformanceSchedule[];
-    /** Unified server configuration */
-    server?: ServerConfig;
     /** Workflows for request chaining */
     workflows?: Workflow[];
 }

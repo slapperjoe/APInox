@@ -6,10 +6,10 @@ import {
     TestCase,
     TestStep,
     TestStepType,
-    WatcherEvent,
-    MockConfig,
-    MockRule,
-    MockEvent,
+    // WatcherEvent, // Removed - watcher features moved to APIprox
+    // MockConfig, // Removed - mock features moved to APIprox
+    // MockRule, // Removed - mock features moved to APIprox
+    // MockEvent, // Removed - mock features moved to APIprox
     PerformanceSuite,
     RequestHistoryEntry,
     Workflow,
@@ -106,34 +106,6 @@ export interface SidebarTestRunnerProps {
     onToggleCaseExpand?: (caseId: string) => void;
 }
 
-export interface SidebarWatcherProps {
-    history: WatcherEvent[];
-    onSelectEvent: (event: WatcherEvent) => void;
-    isRunning: boolean;
-    onStart: () => void;
-    onStop: () => void;
-    onClear: () => void;
-}
-
-export interface SidebarProxyProps {
-    isRunning: boolean;
-    onStart: () => void;
-    onStop: () => void;
-    config: { port: number, target: string, systemProxyEnabled?: boolean };
-    onUpdateConfig: (config: { port: number, target: string, systemProxyEnabled?: boolean }) => void;
-    history: any[]; // ProxyEvent type
-    onClear: () => void;
-    configPath: string | null;
-    onSelectConfigFile: () => void;
-    onOpenCertificate: () => void;
-    onSaveHistory: (content: string) => void;
-    onInject: () => void;
-    onRestore: () => void;
-    // Breakpoints
-    breakpoints?: any[]; // Breakpoint[]
-    onUpdateBreakpoints?: (breakpoints: any[]) => void;
-}
-
 export interface SidebarTestsProps {
     projects: ApinoxProject[];
     selectedTestSuite?: import('@shared/models').TestSuite | null;
@@ -163,56 +135,6 @@ export interface SidebarWorkflowsProps {
     onDuplicate: (workflow: Workflow) => void;
     onSelect?: (workflow: Workflow) => void;
     onSelectStep: (workflow: Workflow, step: WorkflowStep) => void;
-}
-
-export interface SidebarMockProps {
-    isRunning: boolean;
-    config: MockConfig;
-    history: MockEvent[];
-    onStart: () => void;
-    onStop: () => void;
-    onUpdateConfig: (config: Partial<MockConfig>) => void;
-    onClear: () => void;
-    onSelectEvent: (event: MockEvent) => void;
-
-    // Rule management
-    rules: MockRule[];
-    onAddRule: (rule: MockRule) => void;
-    onUpdateRule: (id: string, updates: Partial<MockRule>) => void;
-    onDeleteRule: (id: string) => void;
-    onToggleRule: (id: string, enabled: boolean) => void;
-    onEditRule?: (rule: MockRule) => void;
-}
-
-export interface SidebarServerProps {
-    serverConfig: import('@shared/models').ServerConfig;
-    isRunning: boolean;
-
-    onModeChange: (mode: import('@shared/models').ServerMode) => void;
-    onStart: () => void;
-    onStop: () => void;
-    onOpenSettings: () => void;
-
-    // Combined traffic
-    proxyHistory: WatcherEvent[];
-    mockHistory: MockEvent[];
-    onSelectProxyEvent: (event: WatcherEvent) => void;
-    onSelectMockEvent: (event: MockEvent) => void;
-    selectedEventId?: string;
-    onClearHistory: () => void;
-
-    // Mock Rules (mode = mock or both)
-    mockRules?: MockRule[];
-    onAddMockRule?: (rule: MockRule) => void;
-    onDeleteMockRule?: (id: string) => void;
-    onToggleMockRule?: (id: string, enabled: boolean) => void;
-
-    // Breakpoints (mode = proxy or both)
-    breakpoints?: import('../components/modals/BreakpointModal').Breakpoint[];
-    onUpdateBreakpoints?: (breakpoints: import('../components/modals/BreakpointModal').Breakpoint[]) => void;
-
-    // Certificate
-    onOpenCertificate?: () => void;
 }
 
 export interface SidebarPerformanceProps {
@@ -309,10 +231,10 @@ export interface WorkspaceToolsActions {
     onEditExtractor?: (extractor: import('@shared/models').RequestExtractor, index: number) => void;
     onAddAssertion?: (data: { xpath: string, expectedContent: string }) => void;
     onAddExistenceAssertion?: (data: { xpath: string }) => void;
-    onAddReplaceRule?: (data: { xpath: string, matchText: string, target: 'request' | 'response' }) => void;
-    onAddMockRule?: (rule: import('@shared/models').MockRule) => void;
+    // onAddReplaceRule?: (data: { xpath: string, matchText: string, target: 'request' | 'response' }) => void; // Removed - proxy features
+    // onAddMockRule?: (rule: import('@shared/models').MockRule) => void; // Removed - mock features
     onOpenDevOps?: () => void;
-    onOpenCodeSnippet?: (request: ApiRequest) => void;
+    // onOpenCodeSnippet?: (request: ApiRequest) => void; // Temporarily disabled during package migration
 }
 
 export interface WorkspacePerformanceActions {

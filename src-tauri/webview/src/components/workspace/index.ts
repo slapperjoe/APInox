@@ -1,5 +1,5 @@
 export { WelcomePanel } from './WelcomePanel';
-export { BreakpointOverlay } from './BreakpointOverlay';
+// export { BreakpointOverlay } from './BreakpointOverlay'; // Removed - breakpoint features
 // (pruned unused type re-exports)
 export { TestCaseView, EmptyTestCase } from './TestCaseView';
 // (pruned unused type re-exports)

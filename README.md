@@ -1,6 +1,9 @@
-# APInox
+# APInox - SOAP & API Testing Tool
 
-A visual SOAP client desktop application, inspired by Bruno and SOAP-UI.
+A desktop application for SOAP web service testing and API development, inspired by Bruno and SOAP-UI.
+
+**Focus**: SOAP/REST/GraphQL API testing, test automation, and workflow management.  
+**Sister Application**: [APIprox](https://github.com/yourusername/apiprox) - HTTP/HTTPS proxy & mock server for traffic interception.
 
 ## Features
 
@@ -49,16 +52,6 @@ A visual SOAP client desktop application, inspired by Bruno and SOAP-UI.
     - **Variables Panel**: View all available variables with real-time values
     - **Smart Autocomplete**: Variable suggestions when typing `${` or `{{`
     - **Enhanced Tooltips**: Hover over variables to see source, value, and context
-- **Unified Server Tab** (Proxy + Mock):
-    - **Mode Toggle**: Off, Mock, Proxy, or Both
-    - **Dirty Proxy**: Intercepts HTTP/HTTPS traffic for debugging and testing.
-        - **Replace Rules**: Modify request/response content in-flight (XPath-scoped).
-        - **Breakpoints**: Pause and edit requests/responses in real-time.
-    - **Mock Server**: Return canned responses without hitting real backends.
-        - **Mock Rules**: Match requests by URL, XPath, or regex.
-        - **Record Mode**: Auto-capture real responses as mock rules.
-        - **Passthrough**: Forward unmatched requests to real backend.
-        - **Latency Simulation**: Add artificial delays to mock responses.
 - **Project Structure**: Organize work into Projects -> Interfaces -> Operations -> Requests.
 - **Context Actions**: Clone, Delete, and Rename requests easily via context menus.
 - **Settings**: Persistent configuration with a built-in JSONC editor and contextual **Help Panel**.
@@ -101,6 +94,23 @@ A visual SOAP client desktop application, inspired by Bruno and SOAP-UI.
     - View sidecar logs, frontend logs, and system diagnostics.
     - Test connection to backend.
     - Toggle debug indicator visibility if needed.
+
+## APIprox - Sister Application
+
+**Need to intercept and mock HTTP/HTTPS traffic?** Check out [APIprox](https://github.com/yourusername/apiprox)!
+
+**APIprox** is the companion application for network traffic interception, mocking, and manipulation:
+
+- **HTTP/HTTPS Proxy**: Route traffic through APIprox to inspect requests/responses
+- **HTTPS Interception**: Decrypt HTTPS with custom CA certificate
+- **Mock Server**: Return predefined responses without hitting real servers
+- **Replace Rules**: Modify XML/JSON in-flight using XPath or regex
+- **Traffic Recording**: Capture and analyze all HTTP traffic
+- **Certificate Management**: Easy HTTPS interception setup
+
+**Use Together:** Run APIprox to intercept traffic from APInox or any other application!
+
+See **APIprox** [README](../APIprox/README.md) and [manual](../APIprox/manual.md) for full documentation.
 
 ## Roadmap & Planned Features
 

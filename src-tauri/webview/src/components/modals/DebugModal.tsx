@@ -8,7 +8,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Modal } from './Modal';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '@apinox/request-editor'; // Use package ThemeContext
 import { bridge } from '../../utils/bridge';
 import { DiagnosticsTab } from './DiagnosticsTab';
 

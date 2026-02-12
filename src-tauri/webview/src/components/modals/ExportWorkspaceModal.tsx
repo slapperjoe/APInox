@@ -120,7 +120,7 @@ export const ExportWorkspaceModal: React.FC<ExportWorkspaceModalProps> = ({
   };
 
   const handleCancel = () => {
-    setSelectedPaths(new Set());
+    setSelectedNames(new Set());
     onClose();
   };
 

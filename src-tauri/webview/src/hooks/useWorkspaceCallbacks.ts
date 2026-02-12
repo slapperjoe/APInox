@@ -32,8 +32,6 @@ interface UseWorkspaceCallbacksParams {
     setInlineElementValues: React.Dispatch<React.SetStateAction<boolean>>;
     hideCausalityData: boolean;
     setHideCausalityData: React.Dispatch<React.SetStateAction<boolean>>;
-    setProxyHistory: React.Dispatch<React.SetStateAction<any[]>>;
-    setWatcherHistory: React.Dispatch<React.SetStateAction<any[]>>;
     config: any;
 
     // Modal state
@@ -74,8 +72,6 @@ export function useWorkspaceCallbacks({
     setInlineElementValues,
     hideCausalityData,
     setHideCausalityData,
-    setProxyHistory,
-    setWatcherHistory,
     config,
     setExtractorModal,
     onPickRequestForTestCase
@@ -328,20 +324,14 @@ export function useWorkspaceCallbacks({
     const handleToggleInlineElementValues = useCallback(() => {
         const newState = !inlineElementValues;
         setInlineElementValues(newState);
-        // Invalidate formatted body cache
-        setProxyHistory(prev => prev.map(e => ({ ...e, formattedBody: undefined })));
-        setWatcherHistory(prev => prev.map(e => ({ ...e, formattedBody: undefined })));
         bridge.sendMessage({ command: 'saveUiState', ui: { ...config?.ui, inlineElementValues: newState } });
-    }, [inlineElementValues, setInlineElementValues, setProxyHistory, setWatcherHistory, config]);
+    }, [inlineElementValues, setInlineElementValues, config]);
 
     const handleToggleHideCausalityData = useCallback(() => {
         const newState = !hideCausalityData;
         setHideCausalityData(newState);
-        // Invalidate formatted body cache
-        setProxyHistory(prev => prev.map(e => ({ ...e, formattedBody: undefined })));
-        setWatcherHistory(prev => prev.map(e => ({ ...e, formattedBody: undefined })));
         bridge.sendMessage({ command: 'saveUiState', ui: { ...config?.ui, hideCausalityData: newState } });
-    }, [hideCausalityData, setHideCausalityData, setProxyHistory, setWatcherHistory, config]);
+    }, [hideCausalityData, setHideCausalityData, config]);
 
     const handleAddExtractor = useCallback((data: { xpath: string; value: string; source: 'body' | 'header' }) => {
         if (!selectedStep) return;

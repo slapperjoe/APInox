@@ -217,11 +217,12 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
             return;
         }
 
-        sendMessage({
+        // Watcher file selection removed - watcher features moved to APIprox
+        /* sendMessage({
             command: kind === 'request'
                 ? FrontendCommand.SelectWatcherRequestFile
                 : FrontendCommand.SelectWatcherResponseFile
-        });
+        }); */
     };
 
     return (

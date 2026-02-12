@@ -355,148 +355,6 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             return { deleted: true, path };
         },
 
-        // ===== Proxy Service =====
-        [FrontendCommand.StartProxy]: async (payload) => {
-            if (payload?.config) {
-                // Map 'target' to 'targetUrl' for ProxyService
-                const configData = payload.config;
-                const proxyConfig = configData.target
-                    ? { ...configData, targetUrl: configData.target }
-                    : configData;
-                services.proxyService.updateConfig(proxyConfig);
-            }
-            await services.proxyService.start();
-            return { started: true, port: services.proxyService.getConfig().port };
-        },
-
-        [FrontendCommand.StopProxy]: async () => {
-            services.proxyService.stop();
-            return { stopped: true };
-        },
-
-        [FrontendCommand.UpdateProxyConfig]: async (payload) => {
-            // Payload comes as { config: { port, target, ... } }
-            const configData = payload.config || payload;
-
-            // Map 'target' to 'targetUrl' for ProxyService
-            const proxyConfig = configData.target
-                ? { ...configData, targetUrl: configData.target }
-                : configData;
-
-            services.proxyService.updateConfig(proxyConfig);
-
-            // Persist target URL to settings
-            const targetUrl = proxyConfig.targetUrl || configData.target;
-            if (targetUrl) {
-                services.settingsManager.updateLastProxyTarget(targetUrl);
-            }
-
-            return { updated: true };
-        },
-
-        [FrontendCommand.ResolveBreakpoint]: async (payload) => {
-            const { breakpointId, content, cancelled } = payload;
-            services.proxyService.resolveBreakpoint(breakpointId, content, cancelled);
-            return { resolved: true };
-        },
-
-        [FrontendCommand.SetServerMode]: async (payload) => {
-            services.proxyService.setServerMode(payload.mode);
-            return { set: true };
-        },
-
-        [FrontendCommand.OpenCertificate]: async () => {
-            console.log('[Router] OpenCertificate command received');
-            try {
-                console.log('[Router] Calling prepareCert...');
-                // Generate certificate if it doesn't exist
-                await services.proxyService.prepareCert();
-                console.log('[Router] prepareCert completed');
-
-                const certPath = services.proxyService.getCertPath();
-                console.log('[Router] certPath:', certPath);
-
-                if (!certPath) {
-                    console.error('[Router] certPath is null/undefined');
-                    return {
-                        success: false,
-                        error: 'Failed to generate certificate - no path returned.'
-                    };
-                }
-
-                const result = {
-                    success: true,
-                    certPath,
-                    instructions: "To trust this proxy for HTTPS interception:\n\n" +
-                        "Windows: Double-click the certificate → Install Certificate → Local Machine → " +
-                        "Place in 'Trusted Root Certification Authorities'\n\n" +
-                        "macOS: Open Keychain Access → File → Import Items → Select certificate → " +
-                        "Set to 'Always Trust'\n\n" +
-                        "Linux: Copy to /usr/local/share/ca-certificates/ and run 'sudo update-ca-certificates'"
-                };
-                console.log('[Router] Returning success result:', result);
-                return result;
-            } catch (error: any) {
-                console.error('[Router] Error in OpenCertificate:', error);
-                return {
-                    success: false,
-                    error: `Failed to generate certificate: ${error.message || error}`
-                };
-            }
-        },
-
-        // ===== Mock Service =====
-        [FrontendCommand.StartMockServer]: async (payload) => {
-            if (payload?.config) {
-                services.mockService.updateConfig(payload.config);
-            }
-            await services.mockService.start();
-            return { started: true, port: services.mockService.getConfig().port };
-        },
-
-        [FrontendCommand.StopMockServer]: async () => {
-            services.mockService.stop();
-            return { stopped: true };
-        },
-
-        [FrontendCommand.UpdateMockConfig]: async (payload) => {
-            services.mockService.updateConfig(payload);
-            return { updated: true };
-        },
-
-        [FrontendCommand.UpdateMockRules]: async (payload) => {
-            services.mockService.setRules(payload.rules || []);
-            return { set: true };
-        },
-
-        [FrontendCommand.AddMockRule]: async (payload) => {
-            services.mockService.addRule(payload.rule);
-            return { added: true };
-        },
-
-        [FrontendCommand.DeleteMockRule]: async (payload) => {
-            services.mockService.removeRule(payload.id);
-            return { removed: true };
-        },
-
-        [FrontendCommand.ToggleMockRule]: async (payload) => {
-            // Toggle via updateRule with enabled toggled
-            const rules = services.mockService.getRules();
-            const rule = rules.find(r => r.id === payload.id);
-            if (rule) {
-                services.mockService.updateRule(payload.id, { enabled: !rule.enabled });
-            }
-            return { toggled: true };
-        },
-
-        [FrontendCommand.GetMockStatus]: async () => {
-            return {
-                running: services.mockService.isActive(),
-                config: services.mockService.getConfig(),
-                rules: services.mockService.getRules()
-            };
-        },
-
         // ===== Test Runner =====
         [FrontendCommand.RunTestCase]: async (payload) => {
             const { testCase, fallbackEndpoint } = payload;
@@ -762,16 +620,6 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             return { acknowledged: true };
         },
 
-        // ===== Config Switcher =====
-        [FrontendCommand.InjectProxy]: async (payload) => {
-            const { filePath, proxyBaseUrl } = payload;
-            return services.configSwitcherService.inject(filePath, proxyBaseUrl);
-        },
-
-        [FrontendCommand.RestoreProxy]: async (payload) => {
-            return services.configSwitcherService.restore(payload.filePath);
-        },
-
         // ===== Request History =====
         [FrontendCommand.GetHistory]: async () => {
             return services.historyService.getAll();
@@ -837,15 +685,9 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             }
             const updatedConfig = services.settingsManager.getConfig();
             console.log('[Router] Updated config retrieved, editorFontSize:', updatedConfig?.ui?.editorFontSize);
-            services.fileWatcherService.reloadConfiguration();
             services.performanceService.setSuites(updatedConfig.performanceSuites || []);
             services.performanceService.setHistory(updatedConfig.performanceHistory || []);
             services.scheduleService.loadSchedules(updatedConfig.performanceSchedules || []);
-
-            // Sync proxy-related rules to ProxyService if running
-            services.proxyService.setProxyRules(updatedConfig.network?.proxyRules || []);
-            services.proxyService.setReplaceRules(updatedConfig.replaceRules || []);
-            services.proxyService.setBreakpoints(updatedConfig.breakpoints || []);
 
             // Return config data for bridge to emit SettingsUpdate event
             const configPath = services.settingsManager.getConfigPath();
@@ -878,17 +720,6 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             const { envName, fieldName } = payload;
             await services.secretManager.deleteEnvironmentSecret(envName, fieldName);
             return { success: true };
-        },
-
-        // ===== File Watcher =====
-        [FrontendCommand.StartWatcher]: async () => {
-            services.fileWatcherService.start();
-            return { started: true };
-        },
-
-        [FrontendCommand.StopWatcher]: async () => {
-            services.fileWatcherService.stop();
-            return { stopped: true };
         },
 
         // ===== Schedules =====
@@ -1013,16 +844,6 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             return { running: false, workers: [] };
         },
 
-        // ===== File Watcher =====
-        [FrontendCommand.GetWatcherHistory]: async () => {
-            return services.fileWatcherService.getHistory();
-        },
-
-        [FrontendCommand.ClearWatcherHistory]: async () => {
-            services.fileWatcherService.clearHistory();
-            return { cleared: true };
-        },
-
         // ===== Echo (for testing) =====
         ['echo']: async (payload) => {
             return { echo: payload };
@@ -1050,19 +871,7 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
                     ready: true,
                     version: process.env.APINOX_VERSION || 'unknown',
                 },
-                services: {
-                    proxy: {
-                        running: services.proxyService.isActive(),
-                        port: services.proxyService.getConfig().port,
-                    },
-                    mock: {
-                        running: services.mockService.isActive(),
-                        port: services.mockService.getPort(),
-                    },
-                    watcher: {
-                        running: services.fileWatcherService.isActive(),
-                    },
-                },
+                services: {},
                 config: {
                     configDir: services.settingsManager.getConfigDir(),
                     hasOpenProjects: (config.openProjects?.length || 0) > 0,
@@ -1185,102 +994,6 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             }
 
             return { inLocalMachine, inCurrentUser };
-        },
-
-        [FrontendCommand.TestHttpsServer]: async () => {
-            const https = require('https');
-            const fs = require('fs');
-            const path = require('path');
-            const os = require('os');
-
-            const certPath = path.join(os.tmpdir(), 'apinox-proxy.cer');
-            const keyPath = path.join(os.tmpdir(), 'apinox-proxy.key');
-
-            if (!fs.existsSync(certPath) || !fs.existsSync(keyPath)) {
-                return { success: false, error: 'Certificate files not found' };
-            }
-
-            try {
-                const cert = fs.readFileSync(certPath, 'utf8');
-                const key = fs.readFileSync(keyPath, 'utf8');
-
-                // Try to create HTTPS server with the certificate
-                const testServer = https.createServer({ cert, key }, (req: any, res: any) => {
-                    res.writeHead(200);
-                    res.end('OK');
-                });
-
-                // Try to bind to a random port
-                await new Promise<void>((resolve, reject) => {
-                    testServer.listen(0, '127.0.0.1', () => {
-                        testServer.close(() => resolve());
-                    });
-                    testServer.on('error', reject);
-                });
-
-                return { success: true };
-            } catch (error: any) {
-                return { success: false, error: error.message };
-            }
-        },
-
-        [FrontendCommand.TestProxyConnection]: async () => {
-            const https = require('https');
-
-            // Check if proxy is running
-            if (!services.proxyService.isActive()) {
-                return { success: false, error: 'Proxy is not running' };
-            }
-
-            const config = services.proxyService.getConfig();
-            const proxyUrl = `https://localhost:${config.port}`;
-
-            return new Promise((resolve) => {
-                const options = {
-                    hostname: 'localhost',
-                    port: config.port,
-                    path: '/',
-                    method: 'GET',
-                    rejectUnauthorized: false, // Accept self-signed cert
-                    requestCert: false,
-                    agent: false
-                };
-
-                console.log('[Diagnostics] Testing connection to proxy:', proxyUrl);
-
-                const req = https.request(options, (res: any) => {
-                    console.log('[Diagnostics] Connection successful! Status:', res.statusCode);
-                    console.log('[Diagnostics] TLS Protocol:', res.socket.getProtocol());
-                    console.log('[Diagnostics] Cipher:', res.socket.getCipher());
-
-                    let data = '';
-                    res.on('data', (chunk: any) => { data += chunk; });
-                    res.on('end', () => {
-                        resolve({
-                            success: true,
-                            protocol: res.socket.getProtocol(),
-                            cipher: res.socket.getCipher()?.name,
-                            statusCode: res.statusCode
-                        });
-                    });
-                });
-
-                req.on('error', (error: any) => {
-                    console.error('[Diagnostics] Connection failed:', error);
-                    resolve({
-                        success: false,
-                        error: error.message,
-                        code: error.code
-                    });
-                });
-
-                req.setTimeout(5000, () => {
-                    req.destroy();
-                    resolve({ success: false, error: 'Connection timeout' });
-                });
-
-                req.end();
-            });
         },
 
         [FrontendCommand.InstallCertificateToLocalMachine]: async () => {
@@ -1553,13 +1266,6 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
 
                 return { success: false, error: error.message };
             }
-        },
-
-        [FrontendCommand.GetProxyStatus]: async () => {
-            return {
-                running: services.proxyService.isActive(),
-                config: services.proxyService.getConfig()
-            };
         },
 
         [FrontendCommand.ResetCertificates]: async () => {

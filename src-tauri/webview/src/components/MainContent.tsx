@@ -12,20 +12,19 @@ import { HelpModal } from './HelpModal';
 import { AddToTestCaseModal } from './modals/AddToTestCaseModal';
 import { ConfirmationModal } from './modals/ConfirmationModal';
 import { RenameModal } from './modals/RenameModal';
-import { SampleModal } from './modals/SampleModal';
+// import { SampleModal } from './modals/SampleModal';
 import { ExtractorModal } from './modals/ExtractorModal';
 import { SettingsEditorModal } from './modals/SettingsEditorModal';
-import { CreateReplaceRuleModal } from './modals/CreateReplaceRuleModal';
 import { AddToDevOpsModal } from './modals/AddToDevOpsModal';
 import { AddToProjectModal } from './modals/AddToProjectModal';
 import { WsdlSyncModal } from './modals/WsdlSyncModal';
 import { DebugModal } from './modals/DebugModal';
 import { PickRequestModal, PickRequestItem } from './modals/PickRequestModal';
 import { ExportWorkspaceModal } from './modals/ExportWorkspaceModal';
-import { CodeSnippetModal } from './modals/CodeSnippetModal';
+// import { CodeSnippetModal } from './modals/CodeSnippetModal';
 import { WorkflowBuilderModal } from './modals/WorkflowBuilderModal';
 import { BulkImportModal, BulkImportResult } from './modals/BulkImportModal';
-import { ApiRequest, TestCase, TestStep, SidebarView, ReplaceRule, RequestHistoryEntry, WsdlDiff, ApiInterface, Workflow, WorkflowStep } from '@shared/models';
+import { ApiRequest, TestCase, TestStep, SidebarView, RequestHistoryEntry, WsdlDiff, ApiInterface, Workflow, WorkflowStep, ApinoxProject } from '@shared/models';
 import { BackendCommand, FrontendCommand } from '@shared/messages';
 import { useMessageHandler } from '../hooks/useMessageHandler';
 import { useProject } from '../contexts/ProjectContext';
@@ -36,7 +35,6 @@ import { useTestRunner } from '../contexts/TestRunnerContext';
 import { usePerformance } from '../contexts/PerformanceContext';
 import { useExplorer } from '../hooks/useExplorer';
 import { useContextMenu } from '../hooks/useContextMenu';
-import { useWatcherProxy } from '../hooks/useWatcherProxy';
 import { useSidebarCallbacks } from '../hooks/useSidebarCallbacks';
 import { useWorkspaceCallbacks } from '../hooks/useWorkspaceCallbacks';
 import { useAppLifecycle } from '../hooks/useAppLifecycle';
@@ -415,17 +413,6 @@ const MainContent: React.FC = () => {
     // Log unused handlers temporarily
 
 
-    // Breakpoint State
-    const [activeBreakpoint, setActiveBreakpoint] = useState<{
-        id: string;
-        type: 'request' | 'response';
-        content: string;
-        headers?: Record<string, any>;
-        breakpointName: string;
-        timeoutMs: number;
-        startTime: number;
-    } | null>(null);
-
     // Bulk Import Modal State
     const [showBulkImportModal, setShowBulkImportModal] = useState(false);
 
@@ -526,45 +513,6 @@ const MainContent: React.FC = () => {
     } = useTestRunner();
 
     // ==========================================================================
-    // WATCHER/PROXY/MOCK - from useWatcherProxy hook
-    // ==========================================================================
-    const {
-        watcherHistory,
-        setWatcherHistory,
-        watcherRunning,
-        setWatcherRunning,
-        proxyHistory,
-        setProxyHistory,
-        proxyRunning: _proxyRunning,
-        setProxyRunning,
-        proxyConfig,
-        setProxyConfig,
-        handleSelectWatcherEvent,
-        // Mock state
-        mockHistory,
-        // setMockHistory unused
-        mockRunning: _mockRunning,
-        // setMockRunning unused
-        mockConfig,
-        // setMockConfig unused
-        handleSelectMockEvent,
-        handleClearMockHistory,
-        // Unified Server Mode
-        serverMode,
-        setServerMode
-    } = useWatcherProxy({
-        activeView,
-        inlineElementValues,
-        hideCausalityData,
-        setSelectedInterface,
-        setSelectedOperation,
-        setSelectedRequest,
-        setSelectedTestCase,
-        setResponse,
-        config
-    });
-
-    // ==========================================================================
     // SIDEBAR CALLBACKS - from useSidebarCallbacks hook
     // ==========================================================================
     const {
@@ -576,15 +524,6 @@ const MainContent: React.FC = () => {
         handleDeleteTestCase: _handleDeleteTestCase,
         handleRenameTestCase,
         handleRenameTestStep,
-        handleStartWatcher,
-        handleStopWatcher,
-        handleClearWatcher,
-        handleStartProxy: _handleStartProxy,
-        handleStopProxy: _handleStopProxy,
-        handleUpdateProxyConfig: _handleUpdateProxyConfig,
-        handleClearProxy,
-        handleInjectProxy: _handleInjectProxy,
-        handleRestoreProxy: _handleRestoreProxy,
         handleSaveUiState
     } = useSidebarCallbacks({
         projects,
@@ -592,13 +531,6 @@ const MainContent: React.FC = () => {
         deleteConfirm,
         setDeleteConfirm,
         saveProject,
-        setWatcherRunning,
-        setWatcherHistory,
-        setProxyRunning,
-        setProxyHistory,
-        proxyConfig,
-        setProxyConfig,
-        configPath,
         config
     });
 
@@ -888,8 +820,6 @@ const MainContent: React.FC = () => {
         setInlineElementValues,
         hideCausalityData,
         setHideCausalityData,
-        setProxyHistory,
-        setWatcherHistory,
         config,
         setExtractorModal,
         onPickRequestForTestCase: (caseId) => {
@@ -903,7 +833,7 @@ const MainContent: React.FC = () => {
     const [pickRequestModal, setPickRequestModal] = React.useState<{ open: boolean, mode: 'testcase' | 'performance', caseId: string | null, suiteId: string | null }>({ open: false, mode: 'testcase', caseId: null, suiteId: null });
     const [sampleModal, setSampleModal] = React.useState<{ open: boolean, schema: any | null, operationName: string }>({ open: false, schema: null, operationName: '' });
     const [exportWorkspaceModal, setExportWorkspaceModal] = React.useState(false);
-    const [codeSnippetModal, setCodeSnippetModal] = React.useState<{ open: boolean, request: ApiRequest | null }>({ open: false, request: null });
+    // const [codeSnippetModal, setCodeSnippetModal] = React.useState<{ open: boolean, request: ApiRequest | null }>({ open: false, request: null });
     const [workflowBuilderModal, setWorkflowBuilderModal] = React.useState<{ open: boolean, workflow: Workflow | null, projectPath: string | null }>({ open: false, workflow: null, projectPath: null });
 
     const handleExportWorkspace = useCallback(async (selectedProjects: ApinoxProject[]) => {
@@ -946,7 +876,6 @@ const MainContent: React.FC = () => {
         setExportWorkspaceModal(false);
     }, []);
 
-    const [replaceRuleModal, setReplaceRuleModal] = React.useState<{ open: boolean, xpath: string, matchText: string, target: 'request' | 'response' }>({ open: false, xpath: '', matchText: '', target: 'response' });
     const [importToPerformanceModal, setImportToPerformanceModal] = React.useState<{ open: boolean, suiteId: string | null }>({ open: false, suiteId: null });
 
     // ==========================================================================
@@ -1289,10 +1218,8 @@ const MainContent: React.FC = () => {
         setSavedProjects,
         setSaveErrors,
         setChangelog,
-        setWatcherHistory,
         // Mock/Proxy setters moved to MockProxyContext but kept for useSidebarCallbacks via MainContent state
         setActiveView,
-        setActiveBreakpoint,
         setRequestHistory,
 
         // Current values
@@ -1439,22 +1366,6 @@ const MainContent: React.FC = () => {
 
 
 
-
-    // Breakpoint Resolution Handler
-    const handleResolveBreakpoint = (modifiedContent: string, cancelled: boolean = false) => {
-        if (activeBreakpoint) {
-            bridge.sendMessage({
-                command: 'resolveBreakpoint',
-                breakpointId: activeBreakpoint.id,
-                content: modifiedContent,
-                cancelled
-            });
-            setActiveBreakpoint(null);
-        }
-    };
-
-
-
     return (
         <Container onClick={closeContextMenu} $showCustomTitleBar={showCustomTitleBar} $isMacOS={platformOS === 'macos'}>
             {/* Sidebar with consolidated props */}
@@ -1541,14 +1452,6 @@ const MainContent: React.FC = () => {
                     onToggleSuiteExpand: handleToggleSuiteExpand,
                     onToggleCaseExpand: handleToggleCaseExpand
                 }}
-                watcherProps={{
-                    history: watcherHistory,
-                    onSelectEvent: handleSelectWatcherEvent,
-                    isRunning: watcherRunning,
-                    onStart: handleStartWatcher,
-                    onStop: handleStopWatcher,
-                    onClear: handleClearWatcher
-                }}
                 testsProps={{
                     projects,
                     selectedTestSuite,
@@ -1598,100 +1501,6 @@ const MainContent: React.FC = () => {
                     onReplay: handleReplayRequest,
                     onToggleStar: handleToggleHistoryStar,
                     onDelete: handleDeleteHistory
-                }}
-                serverProps={{
-                    serverConfig: {
-                        mode: serverMode,  // Use dedicated state instead of deriving from running
-                        port: config?.server?.port || proxyConfig.port || 9000,
-                        targetUrl: config?.server?.targetUrl || proxyConfig.target || '',
-                        mockRules: config?.server?.mockRules || mockConfig.rules || [],
-                        passthroughEnabled: config?.server?.passthroughEnabled ?? mockConfig.passthroughEnabled ?? true,
-                        useSystemProxy: config?.server?.useSystemProxy ?? proxyConfig.systemProxyEnabled ?? true
-                    },
-                    isRunning: _proxyRunning,
-                    onModeChange: (mode) => {
-                        // Update UI state immediately
-                        setServerMode(mode);
-
-                        // Send unified command to backend
-                        bridge.sendMessage({ command: 'setServerMode', mode });
-                    },
-                    onStart: () => {
-                        _handleStartProxy();
-                    },
-                    onStop: () => {
-                        _handleStopProxy();
-                    },
-                    onOpenSettings: () => openSettings('server'),
-                    proxyHistory,
-                    mockHistory,
-                    onSelectProxyEvent: handleSelectWatcherEvent,
-                    onSelectMockEvent: handleSelectMockEvent,
-                    selectedEventId: selectedRequest?.id,
-                    onClearHistory: () => {
-                        handleClearProxy();
-                        handleClearMockHistory();
-                    },
-                    // Mock Rules
-                    mockRules: mockConfig.rules || [],
-                    onAddMockRule: (rule) => bridge.sendMessage({ command: 'addMockRule', rule }),
-                    onDeleteMockRule: (id) => bridge.sendMessage({ command: 'deleteMockRule', ruleId: id }),
-                    onToggleMockRule: (id, enabled) => bridge.sendMessage({ command: 'toggleMockRule', ruleId: id, enabled }),
-                    // Breakpoints
-                    breakpoints: config?.breakpoints || [],
-                    onUpdateBreakpoints: (bps) => {
-                        if (config) {
-                            const updatedConfig = { ...config, breakpoints: bps };
-                            setConfig(updatedConfig);
-                            bridge.sendMessage({ command: 'saveSettings', config: updatedConfig });
-                        }
-                    },
-                    // Certificate
-                    onOpenCertificate: async () => {
-                        try {
-                            console.log('[MainContent] Sending openCertificate command...');
-                            const result: any = await bridge.sendMessageAsync({ command: 'openCertificate' });
-                            console.log('[MainContent] Received result:', result);
-                            console.log('[MainContent] result.success:', result?.success);
-                            console.log('[MainContent] result.certPath:', result?.certPath);
-
-                            if (result?.success && result.certPath) {
-                                console.log('[MainContent] Opening certificate file...');
-                                // Use Tauri's opener to open the certificate file
-                                if (isTauri()) {
-                                    const { openPath } = await import('@tauri-apps/plugin-opener');
-                                    await openPath(result.certPath);
-
-                                    // Show comprehensive instructions to user
-                                    const instructions = `Certificate file opened: ${result.certPath}
-
-IMPORTANT: To use HTTPS targets with .NET/WCF applications, you MUST install this certificate to your Trusted Root Certification Authorities store.
-
-AUTOMATED INSTALLATION (Recommended):
-1. Open PowerShell as Administrator
-2. Run: .\\scripts\\install-proxy-cert.ps1
-
-MANUAL INSTALLATION:
-1. Click "Install Certificate" in the dialog that opened
-2. Select "Local Machine" (requires admin)
-3. Choose "Place all certificates in the following store"
-4. Select "Trusted Root Certification Authorities"
-5. Complete the wizard
-6. Restart your application
-
-See PROXY_CERTIFICATE_SETUP.md for detailed instructions.`;
-
-                                    alert(instructions);
-                                }
-                            } else {
-                                console.error('[MainContent] Failed - no success or certPath:', result);
-                                alert(result?.error || 'Failed to open certificate');
-                            }
-                        } catch (err: any) {
-                            console.error('[MainContent] Exception:', err);
-                            alert(`Failed to open certificate: ${err.message}`);
-                        }
-                    }
                 }}
                 activeView={activeView}
                 onChangeView={handleSetActiveViewWrapper}
@@ -1813,10 +1622,9 @@ See PROXY_CERTIFICATE_SETUP.md for detailed instructions.`;
                     onEditExtractor: handleEditExtractor,
                     onAddAssertion: handleAddAssertion,
                     onAddExistenceAssertion: handleAddExistenceAssertion,
-                    onAddReplaceRule: (data) => setReplaceRuleModal({ open: true, ...data }),
-                    onAddMockRule: (rule) => bridge.sendMessage({ command: 'addMockRule', rule }),
+                    // onAddMockRule: (rule) => bridge.sendMessage({ command: 'addMockRule', rule }), // Removed - mock features
                     onOpenDevOps: () => setShowDevOpsModal(true),
-                    onOpenCodeSnippet: (request) => setCodeSnippetModal({ open: true, request })
+                    // onOpenCodeSnippet: (request) => setCodeSnippetModal({ open: true, request })
                 }}
                 onUpdateSuite={handleUpdatePerformanceSuite}
                 onAddPerformanceRequest={handleAddPerformanceRequestForUi}
@@ -1829,12 +1637,6 @@ See PROXY_CERTIFICATE_SETUP.md for detailed instructions.`;
                 performanceProgress={performanceProgress}
                 performanceHistory={config?.performanceHistory || []}
                 onBackToSuite={() => setSelectedRequest(null)}
-
-
-                breakpointState={{
-                    activeBreakpoint,
-                    onResolve: handleResolveBreakpoint
-                }}
 
                 coordinatorStatus={coordinatorStatus}
                 onStartCoordinator={handleStartCoordinator}
@@ -1956,7 +1758,7 @@ See PROXY_CERTIFICATE_SETUP.md for detailed instructions.`;
                     />
                 )
             }
-            {
+            {/* Code snippet modal temporarily disabled during package migration
                 codeSnippetModal.open && codeSnippetModal.request && (
                     <CodeSnippetModal
                         isOpen={codeSnippetModal.open}
@@ -1967,7 +1769,7 @@ See PROXY_CERTIFICATE_SETUP.md for detailed instructions.`;
                             : undefined}
                     />
                 )
-            }
+            */}
             {
                 workflowBuilderModal.open && (
                     <WorkflowBuilderModal
@@ -1994,12 +1796,14 @@ See PROXY_CERTIFICATE_SETUP.md for detailed instructions.`;
                         {!contextMenu.isExplorer && contextMenu.type === 'request' && (
                             <>
                                 <ContextMenuItem onClick={handleCloneRequest}>Clone Request</ContextMenuItem>
+                                {/* Code snippet temporarily disabled during package migration
                                 <ContextMenuItem onClick={() => {
                                     if (contextMenu) {
                                         setCodeSnippetModal({ open: true, request: contextMenu.data as ApiRequest });
                                         closeContextMenu();
                                     }
                                 }}>Copy as Code...</ContextMenuItem>
+                                */}
                                 <ContextMenuItem onClick={() => {
                                     if (contextMenu) {
                                         setAddToTestCaseModal({ open: true, request: contextMenu.data as ApiRequest });
@@ -2067,13 +1871,14 @@ See PROXY_CERTIFICATE_SETUP.md for detailed instructions.`;
                 }}
             />
 
-            {/* Sample Schema Modal */}
+            {/* Sample Schema Modal - temporarily disabled
             <SampleModal
                 isOpen={sampleModal.open}
                 operationName={sampleModal.operationName}
                 schema={sampleModal.schema}
                 onClose={() => setSampleModal({ open: false, schema: null, operationName: '' })}
             />
+            */}
 
             {/* Add to Test Case Modal */}
             {
@@ -2251,33 +2056,6 @@ See PROXY_CERTIFICATE_SETUP.md for detailed instructions.`;
                 onSave={(data) => {
                     handleSaveExtractor(data);
                     setExtractorModal(null);
-                }}
-            />
-
-            <CreateReplaceRuleModal
-                isOpen={replaceRuleModal.open}
-                xpath={replaceRuleModal.xpath}
-                matchText={replaceRuleModal.matchText}
-                initialTarget={replaceRuleModal.target}
-                onCancel={() => setReplaceRuleModal({ open: false, xpath: '', matchText: '', target: 'response' })}
-                onSave={(rule) => {
-                    // Create rule with unique ID and save to config
-                    const newRule: ReplaceRule = {
-                        id: crypto.randomUUID(),
-                        name: rule.name,
-                        xpath: rule.xpath,
-                        matchText: rule.matchText,
-                        replaceWith: rule.replaceWith,
-                        target: rule.target,
-                        enabled: true
-                    };
-                    const currentRules = config?.replaceRules || [];
-                    bridge.sendMessage({
-                        command: 'saveSettings',
-                        raw: false,
-                        config: { ...config, replaceRules: [...currentRules, newRule] }
-                    });
-                    setReplaceRuleModal({ open: false, xpath: '', matchText: '', target: 'response' });
                 }}
             />
 

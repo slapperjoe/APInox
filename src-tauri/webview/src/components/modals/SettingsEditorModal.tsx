@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import Editor, { Monaco } from '@monaco-editor/react';
-import { AlertTriangle, Settings, FileJson, Server, Globe, Replace, Cloud, Network } from 'lucide-react';
-import { GeneralTab, EnvironmentsTab, GlobalsTab, ReplaceRulesTab, IntegrationsTab, ServerTab, ApinoxConfig, ReplaceRuleSettings } from './settings';
+import { AlertTriangle, Settings, FileJson, Globe, Cloud } from 'lucide-react';
+import { GeneralTab, EnvironmentsTab, GlobalsTab, IntegrationsTab, ApinoxConfig } from './settings';
 import { bridge, isTauri } from '../../utils/bridge';
 import { FrontendCommand } from '@shared/messages';
-import { ServerConfig } from '@shared/models';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '@apinox/request-editor'; // Use package ThemeContext
 import { Modal } from './Modal';
 import { TAG_COLORS } from '../../styles/colors';
 import { SPACING_SM, SPACING_MD } from '../../styles/spacing';
@@ -60,9 +59,7 @@ enum SettingsTab {
     GUI = 'gui',
     ENVIRONMENTS = 'environments',
     GLOBALS = 'globals',
-    REPLACE_RULES = 'replaceRules',
     INTEGRATIONS = 'integrations',
-    SERVER = 'server',
     JSON = 'json'
 }
 
@@ -90,17 +87,6 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
     const [selectedEnvKey, setSelectedEnvKey] = useState<string | null>(null);
     // Globals State
     const [selectedGlobalKey, setSelectedGlobalKey] = useState<string | null>(null);
-    // Replace Rules State
-    const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
-
-    // Server Config State
-    const [serverConfig, setServerConfig] = useState<ServerConfig>({
-        mode: 'off',
-        port: 9000,
-        targetUrl: '',
-        mockRules: [],
-        passthroughEnabled: true
-    });
 
     // Status message for inject/restore operations
     const [injectionStatus, setInjectionStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -150,11 +136,6 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
             lastSavedConfigRef.current = JSON.stringify(parsed);
             const rawTrimmed = (rawConfig || '').trim();
             setConfigLoaded(rawTrimmed.length > 0 && rawTrimmed !== '{}');
-            
-            // Initialize serverConfig from guiConfig.server
-            if (parsed.server) {
-                setServerConfig(prev => ({ ...prev, ...parsed.server }));
-            }
             
             // Select active environment by default if available
             if (parsed.activeEnvironment && parsed.environments?.[parsed.activeEnvironment]) {
@@ -228,9 +209,8 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
         if (activeTab === SettingsTab.JSON) {
             if (!tryPersistJson()) return;
         } else {
-            // Sync serverConfig back to guiConfig.server before saving
-            const updatedConfig = { ...guiConfig, server: serverConfig };
-            persistGuiConfig(updatedConfig);
+            // Server config removed - proxy features moved to APIprox
+            persistGuiConfig(guiConfig);
         }
         onClose();
     };
@@ -387,59 +367,6 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
         return () => clearTimeout(handle);
     }, [guiConfig, activeTab, configLoaded]);
 
-    const handleSelectConfigFile = async () => {
-        if (isTauri()) {
-            const dialog = await import('@tauri-apps/plugin-dialog');
-            const selected = await dialog.open({
-                multiple: false,
-                filters: [{ name: 'Config Files', extensions: ['config', 'xml'] }]
-            });
-            if (typeof selected === 'string') {
-                setGuiConfig(prev => ({ ...prev, lastConfigPath: selected }));
-            }
-            return;
-        }
-
-        bridge.sendMessage({ command: 'selectConfigFile' });
-    };
-
-    // environments and globals are managed by tab components via guiConfig prop
-    const replaceRules = guiConfig.replaceRules || [];
-
-    const handleAddRule = () => {
-        const newRule: ReplaceRuleSettings = {
-            id: crypto.randomUUID(),
-            name: 'New Rule',
-            xpath: '//element',
-            matchText: '',
-            replaceWith: '',
-            target: 'response',
-            enabled: true
-        };
-        setGuiConfig(prev => ({
-            ...prev,
-            replaceRules: [...(prev.replaceRules || []), newRule]
-        }));
-        setSelectedRuleId(newRule.id);
-    };
-
-    const handleDeleteRule = (id: string) => {
-        setGuiConfig(prev => ({
-            ...prev,
-            replaceRules: (prev.replaceRules || []).filter(r => r.id !== id)
-        }));
-        if (selectedRuleId === id) setSelectedRuleId(null);
-    };
-
-    const handleRuleChange = (id: string, field: keyof ReplaceRuleSettings, value: any) => {
-        setGuiConfig(prev => ({
-            ...prev,
-            replaceRules: (prev.replaceRules || []).map(r =>
-                r.id === id ? { ...r, [field]: value } : r
-            )
-        }));
-    };
-
     return (
         <Modal
             isOpen={true}
@@ -454,19 +381,13 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
                         <Settings size={14} /> General
                     </Tab>
                     <Tab $active={activeTab === SettingsTab.ENVIRONMENTS} onClick={() => handleTabSwitch(SettingsTab.ENVIRONMENTS)}>
-                        <Server size={14} /> Environments
+                        <Globe size={14} /> Environments
                     </Tab>
                     <Tab $active={activeTab === SettingsTab.GLOBALS} onClick={() => handleTabSwitch(SettingsTab.GLOBALS)}>
                         <Globe size={14} /> Globals
                     </Tab>
-                    <Tab $active={activeTab === SettingsTab.REPLACE_RULES} onClick={() => handleTabSwitch(SettingsTab.REPLACE_RULES)}>
-                        <Replace size={14} /> Replace Rules
-                    </Tab>
                     <Tab $active={activeTab === SettingsTab.INTEGRATIONS} onClick={() => handleTabSwitch(SettingsTab.INTEGRATIONS)}>
                         <Cloud size={14} /> Integrations
-                    </Tab>
-                    <Tab $active={activeTab === SettingsTab.SERVER} onClick={() => handleTabSwitch(SettingsTab.SERVER)}>
-                        <Network size={14} /> Server
                     </Tab>
                     <Tab $active={activeTab === SettingsTab.JSON} onClick={() => handleTabSwitch(SettingsTab.JSON)} style={{ marginLeft: 'auto', borderRight: 'none', borderLeft: '1px solid var(--apinox-panel-border)' }}>
                         <FileJson size={14} /> JSON (Advanced)
@@ -509,79 +430,11 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
                         />
                     )}
 
-                    {activeTab === SettingsTab.REPLACE_RULES && (
-                        <ReplaceRulesTab
-                            rules={replaceRules}
-                            selectedRuleId={selectedRuleId}
-                            setSelectedRuleId={setSelectedRuleId}
-                            onAddRule={handleAddRule}
-                            onDeleteRule={handleDeleteRule}
-                            onRuleChange={handleRuleChange}
-                        />
-                    )}
-
                     {activeTab === SettingsTab.INTEGRATIONS && (
                         <IntegrationsTab
                             config={guiConfig}
                             onConfigChange={(field, value) => setGuiConfig(prev => ({ ...prev, [field]: value }))}
                             sendMessage={(msg) => bridge.sendMessage(msg)}
-                        />
-                    )}
-
-                    {activeTab === SettingsTab.SERVER && (
-                        <ServerTab
-                            config={guiConfig}
-                            serverConfig={serverConfig}
-                            onServerConfigChange={(updates) => setServerConfig(prev => ({ ...prev, ...updates }))}
-                            configPath={guiConfig.lastConfigPath || null}
-                            onSelectConfigFile={handleSelectConfigFile}
-                            onInjectConfig={async () => {
-                                try {
-                                    const result = await bridge.sendMessageAsync({
-                                        command: 'injectProxy',
-                                        filePath: guiConfig.lastConfigPath,
-                                        proxyBaseUrl: `http://localhost:${serverConfig.port || 9000}`
-                                    });
-                                    
-                                    if (result?.success) {
-                                        setInjectionStatus({ type: 'success', message: result.message });
-                                        
-                                        // Update Target URL with the original URL from the config
-                                        if (result.originalUrl) {
-                                            setServerConfig(prev => ({ ...prev, targetUrl: result.originalUrl }));
-                                        }
-                                        
-                                        // Clear status after 5 seconds
-                                        setTimeout(() => setInjectionStatus(null), 5000);
-                                    } else {
-                                        setInjectionStatus({ type: 'error', message: result?.message || 'Injection failed' });
-                                        setTimeout(() => setInjectionStatus(null), 8000);
-                                    }
-                                } catch (error: any) {
-                                    setInjectionStatus({ type: 'error', message: error.message || 'Injection failed' });
-                                    setTimeout(() => setInjectionStatus(null), 8000);
-                                }
-                            }}
-                            onRestoreConfig={async () => {
-                                try {
-                                    const result = await bridge.sendMessageAsync({
-                                        command: 'restoreProxy',
-                                        filePath: guiConfig.lastConfigPath
-                                    });
-                                    
-                                    if (result?.success) {
-                                        setInjectionStatus({ type: 'success', message: result.message });
-                                        setTimeout(() => setInjectionStatus(null), 5000);
-                                    } else {
-                                        setInjectionStatus({ type: 'error', message: result?.message || 'Restore failed' });
-                                        setTimeout(() => setInjectionStatus(null), 8000);
-                                    }
-                                } catch (error: any) {
-                                    setInjectionStatus({ type: 'error', message: error.message || 'Restore failed' });
-                                    setTimeout(() => setInjectionStatus(null), 8000);
-                                }
-                            }}
-                            injectionStatus={injectionStatus}
                         />
                     )}
 

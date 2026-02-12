@@ -156,7 +156,7 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
     onRenameSubmit,
     onRenameCancel,
     
-    projectName,
+    // projectName, // Unused
     dragState,
     onDragStart,
     onDragOver,
