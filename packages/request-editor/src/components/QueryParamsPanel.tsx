@@ -5,7 +5,7 @@
 
 import React from 'react';
 import styled from 'styled-components';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Code } from 'lucide-react';
 import { MonacoSingleLineInput } from './MonacoSingleLineInput';
 import { SPACING_XS, SPACING_SM } from '../styles/spacing';
 
@@ -25,10 +25,16 @@ const Header = styled.div`
     justify-content: space-between;
     align-items: center;
     margin-bottom: ${SPACING_XS};
+    gap: ${SPACING_SM};
+    font-weight: 600;
+    font-size: 0.95em;
+    color: var(--apinox-foreground);
 `;
 
-const Title = styled.h3`
-    margin: 0;
+const Title = styled.div`
+    display: flex;
+    align-items: center;
+    gap: ${SPACING_SM};
 `;
 
 const ParamRow = styled.div`
@@ -134,7 +140,10 @@ export const QueryParamsPanel: React.FC<QueryParamsPanelProps> = ({
     return (
         <Container>
             <Header>
-                <Title>{title}</Title>
+                <Title>
+                    <Code size={16} />
+                    {title}
+                </Title>
                 {!readOnly && (
                     <IconButton onClick={addParam} title={`Add ${paramLabel}`}>
                         <Plus size={16} /> Add

@@ -13,11 +13,13 @@
   },
   "scripts": {
     "compile": "tsc -p ./",
-    "compile-webview": "cd src-tauri/webview && npm install && npm run build:skip-check",
+    "build:packages": "cd packages/request-editor && npm install && npm run build",
+    "compile-webview": "npm run build:packages && cd src-tauri/webview && npm install && npm run build:skip-check",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "dev:webview": "cd src-tauri/webview && npm run dev",
+    "dev:webview": "npm run build:packages && cd src-tauri/webview && npm run dev",
+    "dev:editor": "cd packages/request-editor && npm install && npm run dev",
     "version-bump-major": "node scripts/bump.js major",
     "version-bump-minor": "node scripts/bump.js minor",
     "version-bump-patch": "node scripts/bump.js patch",
@@ -28,8 +30,8 @@
     "build:sidecar": "cd sidecar && npm install && npm run build",
     "increment-build": "node scripts/increment-build.js",
     "prepare:sidecar": "cd sidecar && npm install && npm run binary && cd .. && node scripts/prepare-sidecar-binary.js",
-    "tauri:dev": "npm run prepare:sidecar && cd src-tauri/webview && npm install && cd ../.. && npx tauri dev",
-    "tauri:build": "npm run increment-build && npm run sync-version && npm run prepare:sidecar && cd src-tauri/webview && npm install && cd ../.. && npx tauri build"
+    "tauri:dev": "npm run prepare:sidecar && npm run build:packages && cd src-tauri/webview && npm install && cd ../.. && npx tauri dev",
+    "tauri:build": "npm run increment-build && npm run sync-version && npm run prepare:sidecar && npm run build:packages && cd src-tauri/webview && npm install && cd ../.. && npx tauri build"
   },
   "pkg": {
     "scripts": [

@@ -1,18 +1,17 @@
 /**
  * ThemeContext.tsx
  * 
- * Context for managing themes in Tauri mode.
- * Automatically detects runtime environment and only applies themes when NOT in VSCode.
+ * Context for managing themes in standalone mode.
+ * Parent app can control whether to apply themes via standalone prop.
  */
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { isVsCode } from '../utils/bridge';
 import { themes, ThemeName } from '../styles/themes';
 
 interface ThemeContextType {
     theme: ThemeName;
     setTheme: (theme: ThemeName) => void;
-    isTauriMode: boolean;
+    isStandalone: boolean;
     monacoTheme: string;
 }
 
@@ -28,30 +27,32 @@ export const useTheme = () => {
 
 interface ThemeProviderProps {
     children: ReactNode;
+    /** Whether running as standalone app (true) vs embedded in another app (false). Default: true */
+    standalone?: boolean;
 }
 
-export const ThemeProvider = ({ children }: ThemeProviderProps) => {
-    // Detect if we're in Tauri mode (NOT VSCode)
-    const isTauriMode = !isVsCode();
+export const ThemeProvider = ({ children, standalone = true }: ThemeProviderProps) => {
+    // Use standalone mode to determine if we should apply themes
+    const isStandalone = standalone;
 
     // Default to dark theme
     const [theme, setThemeState] = useState<ThemeName>('dark');
     const [monacoTheme, setMonacoTheme] = useState<string>('vs-dark');
 
-    // Load saved theme preference on mount (Tauri only)
+    // Load saved theme preference on mount (standalone only)
     useEffect(() => {
-        if (!isTauriMode) return;
+        if (!isStandalone) return;
 
         // Try to load from localStorage
         const saved = localStorage.getItem('apinox-theme');
         if (saved && saved in themes) {
             setThemeState(saved as ThemeName);
         }
-    }, [isTauriMode]);
+    }, [isStandalone]);
 
-    // Apply theme CSS variables when theme changes (Tauri only)
+    // Apply theme CSS variables when theme changes (standalone only)
     useEffect(() => {
-        if (!isTauriMode) return;
+        if (!isStandalone) return;
 
         const selectedTheme = themes[theme];
         const root = document.documentElement;
@@ -68,6 +69,11 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
 
         // Update window border color to match theme
         const updateBorderColor = async () => {
+            // Only run in Tauri environment
+            if (typeof window === 'undefined' || !(window as any).__TAURI__) {
+                return;
+            }
+            
             try {
                 const { invoke } = await import('@tauri-apps/api/core');
                 // getCurrentWindow import removed - not needed for invoke
@@ -123,12 +129,12 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
         };
 
         applyMonacoTheme();
-    }, [theme, isTauriMode]);
+    }, [theme, isStandalone]);
 
     // Wrapper to save theme preference
     const setTheme = (newTheme: ThemeName) => {
-        if (!isTauriMode) {
-            console.warn('[ThemeContext] Theme switching disabled in VSCode mode');
+        if (!isStandalone) {
+            console.warn('[ThemeContext] Theme switching disabled in embedded mode');
             return;
         }
 
@@ -138,7 +144,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
     };
 
     return (
-        <ThemeContext.Provider value={{ theme, setTheme, isTauriMode, monacoTheme }}>
+        <ThemeContext.Provider value={{ theme, setTheme, isStandalone, monacoTheme }}>
             {children}
         </ThemeContext.Provider>
     );

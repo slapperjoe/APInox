@@ -5,7 +5,7 @@
 
 import React from 'react';
 import styled from 'styled-components';
-import { RequestType, BodyType, HttpMethod } from '@shared/models';
+import type { RequestType, BodyType, HttpMethod } from '../types';
 
 const Select = styled.select`
     background: var(--apinox-input-background);

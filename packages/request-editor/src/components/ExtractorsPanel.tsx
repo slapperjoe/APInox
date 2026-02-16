@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-import { Trash2, Pencil } from 'lucide-react';
+import { Trash2, Pencil, Variable } from 'lucide-react';
 import { CustomXPathEvaluator } from '../utils/xpathEvaluator';
 import { RequestExtractor } from '../types';
 const SPACING_XS = '4px';
@@ -9,24 +9,29 @@ const SPACING_MD = '16px';
 const SPACING_LG = '24px';
 
 const Container = styled.div`
+    display: flex;
+    flex-direction: column;
     height: 100%;
     overflow: auto;
-    padding: 0;
+    padding: ${SPACING_SM};
+    gap: ${SPACING_SM};
     font-family: var(--apinox-font-family);
     color: var(--apinox-foreground);
     background-color: var(--apinox-editor-background);
 `;
 
 const Toolbar = styled.div`
-    padding: ${SPACING_SM};
-    border-bottom: 1px solid var(--apinox-panel-border);
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
     gap: ${SPACING_SM};
+    margin-bottom: ${SPACING_XS};
 `;
 
 const ExtractorList = styled.div`
-    padding: ${SPACING_SM};
+    display: flex;
+    flex-direction: column;
+    gap: ${SPACING_SM};
 `;
 
 const ExtractorItem = styled.div`
@@ -93,10 +98,13 @@ const ButtonGroup = styled.div`
     gap: ${SPACING_XS};
 `;
 
-const ToolbarTitle = styled.span`
-    margin-right: auto;
-    font-weight: bold;
-    font-size: 1.1em;
+const ToolbarTitle = styled.div`
+    font-weight: 600;
+    font-size: 0.95em;
+    display: flex;
+    align-items: center;
+    gap: ${SPACING_SM};
+    color: var(--apinox-foreground);
 `;
 
 const EmptyState = styled.div`
@@ -152,7 +160,10 @@ export const ExtractorsPanel: React.FC<ExtractorsPanelProps> = ({ extractors, on
     return (
         <Container>
             <Toolbar>
-                <ToolbarTitle>Context Variables extracted from this Step</ToolbarTitle>
+                <ToolbarTitle>
+                    <Variable size={16} />
+                    Context Variables extracted from this Step
+                </ToolbarTitle>
             </Toolbar>
             <ExtractorList>
                 {extractors.length === 0 ? (

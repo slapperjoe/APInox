@@ -174,6 +174,28 @@ export interface RequestAttachment {
     size?: number;       // File size in bytes for UI display
 }
 
+// Form Data Types (for multipart/form-data and application/x-www-form-urlencoded)
+export type FormFieldType = 'text' | 'file';
+
+export interface FormField {
+    name: string;
+    value: string;  // For text fields: the value; For file fields: base64 content
+    type: FormFieldType;
+    enabled: boolean;
+    // File-specific fields (only when type === 'file')
+    fileName?: string;
+    contentType?: string;
+    size?: number;
+}
+
+// Binary Body Type (for raw binary uploads)
+export interface BinaryFile {
+    name: string;
+    content: string;  // base64-encoded binary data
+    contentType: string;
+    size: number;
+}
+
 export interface ApiRequest {
     name: string;
     request: string; // The body content (XML, JSON, GraphQL query, etc.)
@@ -199,6 +221,12 @@ export interface ApiRequest {
     graphqlConfig?: GraphQLConfig;
     /** Marks the request as read-only (e.g. within Samples project) */
     readOnly?: boolean;
+    
+    // Form Data & Binary Body Support
+    /** Form fields for multipart/form-data or application/x-www-form-urlencoded */
+    formFields?: FormField[];
+    /** Binary file for raw binary body uploads */
+    binaryFile?: BinaryFile;
 }
 
 // ============================================================================
@@ -402,10 +430,6 @@ export interface ApinoxConfig {
         proxy?: string;
         strictSSL?: boolean;
     };
-    fileWatcher?: {
-        requestPath?: string;
-        responsePath?: string;
-    };
     ui?: {
         layoutMode?: 'vertical' | 'horizontal';
         showLineNumbers?: boolean;
@@ -415,6 +439,7 @@ export interface ApinoxConfig {
         splitRatio?: number;
         autoFoldElements?: string[];
         editorFontSize?: number;
+        editorFontFamily?: string;
     };
     activeEnvironment?: string;
     lastConfigPath?: string;

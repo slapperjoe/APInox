@@ -24,12 +24,12 @@ interface GeneralTabProps {
 }
 
 export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange }) => {
-    const { theme, setTheme, isTauriMode } = useTheme();
+    const { theme, setTheme, isStandalone } = useTheme();
     const { configDir } = useUI();
     const [tauriConfigDir, setTauriConfigDir] = useState<string | null>(null);
 
     useEffect(() => {
-        if (!isTauriMode) return;
+        if (!isStandalone) return;
         const loadTauriInfo = async () => {
             try {
                 const { invoke } = await import('@tauri-apps/api/core');
@@ -41,7 +41,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange }) => {
         };
 
         loadTauriInfo();
-    }, [isTauriMode]);
+    }, [isStandalone]);
 
     return (
         <ScrollableForm>
@@ -51,7 +51,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange }) => {
                     <SectionHeader style={{ marginTop: 0 }}>User Interface</SectionHeader>
 
                     {/* Theme Selector - Only in Tauri Mode */}
-                    {isTauriMode && (
+                    {isStandalone && (
                         <FormGroup>
                             <Label>Theme</Label>
                             <Select value={theme} onChange={e => setTheme(e.target.value as any)}>

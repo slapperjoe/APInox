@@ -35,6 +35,13 @@ export default defineConfig({
     clearScreen: false,
     server: {
         strictPort: true,
+        fs: {
+            // Allow serving files from the packages directory (for monaco CSS imports)
+            allow: [
+                '.', // Current directory (webview)
+                '../../packages', // Packages directory (for @apinox/request-editor)
+            ]
+        }
     },
     envPrefix: ['VITE_', 'TAURI_'],
     define: {

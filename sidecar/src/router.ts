@@ -5,7 +5,7 @@
  * to the appropriate service method calls.
  */
 
-import { FrontendCommand } from '../../shared/src/messages';
+import { FrontendCommand } from '../shared/src/messages';
 import { RequestHistoryEntry } from '../../shared/src/models';
 import { ServiceContainer } from './services';
 import { SAMPLES_PROJECT } from './data/DefaultSamples';
@@ -303,7 +303,7 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             };
         },
 
-        [FrontendCommand.ImportWorkspace]: async (payload) => {
+        ['importWorkspace']: async (payload) => {
             const { filePath } = payload;
             if (!filePath) {
                 throw new Error('No file path provided for import');
@@ -322,7 +322,7 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             };
         },
 
-        [FrontendCommand.DeleteProjectFiles]: async (payload) => {
+        ["deleteProjectFiles"]: async (payload) => {
             const { path } = payload;
             if (!path) {
                 throw new Error('No path provided for deletion');
@@ -807,6 +807,12 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
         [FrontendCommand.GetAutosave]: async () => {
             // Return empty - autosave handled client-side
             return { hasAutosave: false };
+        },
+
+        [FrontendCommand.GetWatcherHistory]: async () => {
+            // Watcher history - return empty array as placeholder
+            // TODO: Implement watcher history storage if needed
+            return [];
         },
 
         [FrontendCommand.SaveUiState]: async (payload) => {
@@ -1546,14 +1552,14 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
         },
 
         // ===== Scrapbook (API Explorer Quick Requests) =====
-        [FrontendCommand.GetScrapbook]: async () => {
+        ["getScrapbook"]: async () => {
             const { ScrapbookStorage } = require('./services/ScrapbookStorage');
             const storage = new ScrapbookStorage();
             const state = storage.loadScrapbook();
             return { state };
         },
 
-        [FrontendCommand.AddScrapbookRequest]: async (payload) => {
+        ["addScrapbookRequest"]: async (payload) => {
             const { request } = payload;
             if (!request) {
                 throw new Error('Request data required');
@@ -1565,7 +1571,7 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             return { state };
         },
 
-        [FrontendCommand.UpdateScrapbookRequest]: async (payload) => {
+        ["updateScrapbookRequest"]: async (payload) => {
             const { id, updates } = payload;
             if (!id) {
                 throw new Error('Request ID required');
@@ -1580,7 +1586,7 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             return { state };
         },
 
-        [FrontendCommand.DeleteScrapbookRequest]: async (payload) => {
+        ['deleteScrapbookRequest']: async (payload) => {
             const { id } = payload;
             if (!id) {
                 throw new Error('Request ID required');

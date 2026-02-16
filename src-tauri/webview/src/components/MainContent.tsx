@@ -1320,6 +1320,30 @@ const MainContent: React.FC = () => {
         }
     }, [projects, selectedTestSuite]);
 
+    // Auto-save projects when workspace becomes dirty
+    useEffect(() => {
+        if (!workspaceDirty) return;
+
+        console.log('[MainContent] Workspace dirty, scheduling auto-save');
+        
+        const timer = setTimeout(() => {
+            console.log('[MainContent] Auto-save executing for', projects.length, 'projects');
+            
+            // Save all projects that have a file path (are persisted)
+            projects.forEach(project => {
+                if (project.fileName) {
+                    console.log('[MainContent] Auto-saving project:', project.name);
+                    saveProject(project);
+                }
+            });
+            
+            // Clear dirty flag after save
+            setWorkspaceDirty(false);
+        }, 1000); // Debounce 1 second
+
+        return () => clearTimeout(timer);
+    }, [workspaceDirty, projects, saveProject, setWorkspaceDirty]);
+
 
     // Handlers
     const loadWsdl = () => {

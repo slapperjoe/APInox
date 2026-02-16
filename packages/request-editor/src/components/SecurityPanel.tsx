@@ -4,7 +4,6 @@ import { Shield, Key, Clock, Hash } from 'lucide-react';
 import { WSSecurityConfig, WSSecurityType } from '../types';
 const SPACING_XS = '4px';
 const SPACING_SM = '8px';
-const SPACING_MD = '16px';
 
 const Container = styled.div`
     display: flex;
@@ -12,8 +11,8 @@ const Container = styled.div`
     height: 100%;
     color: var(--apinox-foreground);
     background: var(--apinox-editor-background);
-    padding: ${SPACING_MD};
-    gap: ${SPACING_MD};
+    padding: ${SPACING_SM};
+    gap: ${SPACING_SM};
     overflow-y: auto;
 `;
 
