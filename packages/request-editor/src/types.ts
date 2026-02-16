@@ -2,6 +2,19 @@
 // These define the public API surface
 
 // ============================================================================
+// Request Types
+// ============================================================================
+
+/** Type of API request */
+export type RequestType = 'soap' | 'rest' | 'graphql';
+
+/** HTTP methods supported */
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
+
+/** Body content type */
+export type BodyType = 'xml' | 'json' | 'graphql' | 'text' | 'form-data' | 'binary' | 'none';
+
+// ============================================================================
 // Theme System
 // ============================================================================
 
@@ -72,6 +85,8 @@ export interface MonacoRequestEditorProps {
   autoFoldElements?: string[];
   /** Show line numbers */
   showLineNumbers?: boolean;
+  /** Show minimap (default: false) */
+  showMinimap?: boolean;
   /** Unique request ID (triggers reset when changed) */
   requestId?: string;
   /** Force update key (triggers rerender) */
@@ -102,6 +117,8 @@ export interface MonacoResponseViewerProps {
   language?: 'xml' | 'json' | 'text';
   /** Show line numbers */
   showLineNumbers?: boolean;
+  /** Show minimap (default: false) */
+  showMinimap?: boolean;
   /** Callback when selection changes */
   onSelectionChange?: (data: { text: string, offset: number } | null) => void;
   /** Elements to auto-fold */
@@ -228,6 +245,68 @@ export interface ExtractorsPanelProps {
   availableVariables?: EditorVariable[];
   /** Theme configuration */
   theme?: EditorTheme;
+}
+
+// ============================================================================
+// Form Data Panel
+// ============================================================================
+
+export type FormFieldType = 'text' | 'file';
+
+export interface FormField {
+  key: string;
+  value: string;
+  type: FormFieldType;
+  enabled: boolean;
+  /** For file type: file name */
+  fileName?: string;
+  /** For file type: content type */
+  contentType?: string;
+  /** For file type: file size in bytes */
+  fileSize?: number;
+}
+
+export interface FormDataPanelProps {
+  /** Current form fields */
+  fields: FormField[];
+  /** Callback when fields change */
+  onChange: (fields: FormField[]) => void;
+  /** Encoding type */
+  enctype?: 'application/x-www-form-urlencoded' | 'multipart/form-data';
+  /** Read-only mode */
+  readOnly?: boolean;
+  /** Available variables for autocomplete */
+  availableVariables?: EditorVariable[];
+  /** Callback to trigger file picker (returns file data) */
+  onPickFile?: () => Promise<{ name: string; content: string; contentType: string; size: number } | null>;
+  /** Theme configuration */
+  theme?: EditorTheme;
+}
+
+// ============================================================================
+// Binary Body Panel
+// ============================================================================
+
+export interface BinaryFile {
+  /** File name */
+  fileName: string;
+  /** MIME type */
+  contentType: string;
+  /** File size in bytes */
+  fileSize: number;
+  /** File content (base64 encoded or raw string) */
+  content: string;
+}
+
+export interface BinaryBodyPanelProps {
+  /** Current binary file (null if none selected) */
+  file: BinaryFile | null;
+  /** Callback when file changes */
+  onChange: (file: BinaryFile | null) => void;
+  /** Read-only mode */
+  readOnly?: boolean;
+  /** Callback to trigger file picker */
+  onPickFile?: () => Promise<{ name: string; content: string; contentType: string; size: number } | null>;
 }
 
 // ============================================================================
@@ -443,4 +522,30 @@ export interface ScriptEditorProps {
   availableVariables?: EditorVariable[];
   /** Theme configuration */
   theme?: EditorTheme;
+}
+
+// ============================================================================
+// Error Boundary
+// ============================================================================
+
+export interface ErrorInfo {
+  /** Error message */
+  message: string;
+  /** Error stack trace */
+  stack?: string;
+  /** Component stack where error occurred */
+  componentStack?: string;
+}
+
+export interface ErrorBoundaryProps {
+  /** Child components to wrap */
+  children: React.ReactNode;
+  /** Optional fallback UI (receives error and reset function) */
+  fallback?: (error: ErrorInfo, reset: () => void) => React.ReactNode;
+  /** Optional error callback for logging/reporting */
+  onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
+  /** Optional custom error title */
+  errorTitle?: string;
+  /** Optional custom error message */
+  errorMessage?: string;
 }

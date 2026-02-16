@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-import { Trash2, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Trash2, CheckCircle2, XCircle, Clock, ListChecks } from 'lucide-react';
 import { Assertion } from '../types';
 import { StatusCodePicker } from './StatusCodePicker';
 import Editor from '@monaco-editor/react';
@@ -12,7 +12,8 @@ const SPACING_MD = '16px';
 const Container = styled.div`
     display: flex;
     flex-direction: column;
-    padding: ${SPACING_MD};
+    padding: ${SPACING_SM};
+    gap: ${SPACING_SM};
     height: 100%;
     overflow-y: auto;
     background-color: var(--apinox-editor-background);
@@ -20,8 +21,18 @@ const Container = styled.div`
 
 const Toolbar = styled.div`
     display: flex;
-    gap: ${SPACING_MD};
-    margin-bottom: ${SPACING_MD};
+    gap: ${SPACING_SM};
+    margin-bottom: ${SPACING_XS};
+    align-items: center;
+`;
+
+const ToolbarTitle = styled.div`
+    font-weight: 600;
+    font-size: 0.95em;
+    display: flex;
+    align-items: center;
+    gap: ${SPACING_SM};
+    color: var(--apinox-foreground);
 `;
 
 const Button = styled.button`
@@ -251,6 +262,10 @@ export const AssertionsPanel: React.FC<AssertionsPanelProps> = ({ assertions, on
     return (
         <Container>
             <Toolbar>
+                <ToolbarTitle>
+                    <ListChecks size={16} />
+                    Response Assertions
+                </ToolbarTitle>
                 <Select onChange={(e) => handleAdd(e.target.value as any)} value="">
                     <option value="" disabled style={{ color: 'var(--apinox-dropdown-foreground)' }}>+ Add Assertion</option>
                     <option value="Simple Contains">Contains</option>

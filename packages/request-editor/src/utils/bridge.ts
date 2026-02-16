@@ -1,13 +1,30 @@
-// Stub bridge utility
-// Components should not use this - they should use callback props instead
-// This is temporary for components that haven't been refactored yet
+/**
+ * @deprecated This file is deprecated and will be removed in a future version.
+ * Components no longer use bridge dependencies - they use native browser APIs
+ * or accept callback props from parent applications.
+ * 
+ * This stub remains temporarily for backward compatibility.
+ */
 
+// Stub bridge utility - NO LONGER USED
+// Components have been refactored to use native clipboard APIs
 export const bridge = {
   sendMessage: (message: any) => {
-    console.warn('[request-editor] bridge.sendMessage called - components should use callback props instead', message);
+    console.warn('[request-editor] DEPRECATED: bridge.sendMessage called. This is a no-op stub.', message);
   }
 };
 
-// Check if running in VS Code
-export const isVsCode = () => false; // Always false for Tauri standalone app
-export const isTauri = () => typeof window !== 'undefined' && (window as any).__TAURI__ !== undefined;
+/**
+ * @deprecated Use ThemeProvider's `standalone` prop instead
+ */
+export const isVsCode = () => {
+  console.warn('[request-editor] DEPRECATED: isVsCode() is deprecated. Use ThemeProvider standalone prop.');
+  return false;
+};
+
+/**
+ * @deprecated Not used by package components
+ */
+export const isTauri = () => {
+  return typeof window !== 'undefined' && (window as any).__TAURI__ !== undefined;
+};

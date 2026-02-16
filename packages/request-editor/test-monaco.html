@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="node_modules/monaco-editor/min/vs/editor/editor.main.css">
+</head>
+<body>
+<div id="container" style="width:800px;height:600px;border:1px solid grey"></div>
+<script type="module">
+import * as monaco from './node_modules/monaco-editor/esm/vs/editor/editor.api.js';
+
+const value = '<test>Hello Monaco</test>';
+const editor = monaco.editor.create(document.getElementById('container'), {
+    value: value,
+    language: 'xml'
+});
+console.log('Monaco initialized!', editor);
+</script>
+</body>
+</html>

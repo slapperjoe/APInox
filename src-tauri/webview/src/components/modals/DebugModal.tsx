@@ -27,9 +27,24 @@ const originalConsoleWarn = console.warn;
 const originalConsoleError = console.error;
 
 const captureLog = (level: string, ...args: any[]) => {
-    const message = args.map(arg => 
-        typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-    ).join(' ');
+    const message = args.map(arg => {
+        if (typeof arg === 'object' && arg !== null) {
+            try {
+                // Try to stringify, but catch circular reference errors
+                return JSON.stringify(arg);
+            } catch (e) {
+                // If circular reference, use a fallback representation
+                if (arg instanceof Error) {
+                    return `Error: ${arg.message}`;
+                }
+                if (typeof arg.toString === 'function' && arg.toString !== Object.prototype.toString) {
+                    return arg.toString();
+                }
+                return '[Circular or Complex Object]';
+            }
+        }
+        return String(arg);
+    }).join(' ');
     
     frontendLogs.push({
         timestamp: Date.now(),
@@ -59,7 +74,7 @@ console.error = (...args: any[]) => {
 };
 
 export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
-    const { isTauriMode } = useTheme();
+    const { isStandalone } = useTheme();
 
     // Tab state
     const [activeTab, setActiveTab] = useState<'logs' | 'diagnostics'>('logs');
@@ -142,7 +157,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
 
     // Load logs and debug info when modal opens in Tauri mode
     useEffect(() => {
-        if (!isOpen || !isTauriMode) return;
+        if (!isOpen || !isStandalone) return;
 
         const loadLogsAndDebugInfo = async () => {
             try {
@@ -210,7 +225,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
 
         // Only poll if explicitly requested (don't auto-poll to avoid UI freezing)
         // User can manually refresh if needed
-    }, [isOpen, isTauriMode]);
+    }, [isOpen, isStandalone]);
 
     // Check debug indicator visibility on mount
     useEffect(() => {
@@ -363,7 +378,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
         }
     };
 
-    if (!isTauriMode) {
+    if (!isStandalone) {
         return (
             <Modal isOpen={isOpen} onClose={onClose} title="Debug & Diagnostics" width={800}>
                 <div style={{ padding: '20px', textAlign: 'center', color: 'var(--apinox-descriptionForeground)' }}>

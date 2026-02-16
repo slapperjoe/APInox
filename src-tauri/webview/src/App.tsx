@@ -1,6 +1,7 @@
 // import React from 'react'; // React 17+ JSX transform doesn't need React in scope
 import { useState, useEffect } from 'react';
-import { ThemeProvider } from '@apinox/request-editor'; // Use package ThemeProvider so editors get theme
+import { ThemeProvider, EditorSettingsProvider, ErrorBoundary } from '@apinox/request-editor'; // Use package providers
+import type { EditorSettings } from '@apinox/request-editor';
 import { ProjectProvider } from './contexts/ProjectContext';
 import { SelectionProvider } from './contexts/SelectionContext';
 import { UIProvider } from './contexts/UIContext';
@@ -13,6 +14,27 @@ import MainContent from './components/MainContent';
 import { DebugIndicator } from './components/DebugIndicator';
 import TitleBar from './components/TitleBar';
 import { MacOSTitleBarSearch } from './components/MacOSTitleBarSearch';
+
+// Editor settings persistence
+const EDITOR_SETTINGS_KEY = 'apinox-editor-settings';
+
+function loadEditorSettings(): EditorSettings | undefined {
+    try {
+        const stored = localStorage.getItem(EDITOR_SETTINGS_KEY);
+        return stored ? JSON.parse(stored) : undefined;
+    } catch (err) {
+        console.error('Failed to load editor settings:', err);
+        return undefined;
+    }
+}
+
+function saveEditorSettings(settings: EditorSettings): void {
+    try {
+        localStorage.setItem(EDITOR_SETTINGS_KEY, JSON.stringify(settings));
+    } catch (err) {
+        console.error('Failed to save editor settings:', err);
+    }
+}
 
 export default function App() {
     // TEMPORARY: Hardcode macOS detection since Tauri API isn't loading properly
@@ -45,8 +67,12 @@ export default function App() {
     console.log('📱 App render - platformOS:', platformOS, 'showCustomTitleBar:', showCustomTitleBar, 'showMacOSSearchBar:', showMacOSSearchBar);
     
     return (
-        <ThemeProvider>
-            <ProjectProvider>
+        <ThemeProvider standalone={true}>
+            <EditorSettingsProvider
+                initialSettings={loadEditorSettings()}
+                onSettingsChange={saveEditorSettings}
+            >
+                <ProjectProvider>
                 <SelectionProvider>
                     <UIProvider>
                         <NavigationProvider>
@@ -57,15 +83,23 @@ export default function App() {
                                             {showCustomTitleBar && <TitleBar />}
                                             {showMacOSSearchBar && <MacOSTitleBarSearch />}
                                             <DebugIndicator />
-                                            <MainContent />
+                                            <ErrorBoundary
+                                                onError={(error, errorInfo) => {
+                                                    console.error('💥 Application Error:', error);
+                                                    console.error('Component Stack:', errorInfo.componentStack);
+                                                }}
+                                            >
+                                                <MainContent />
+                                            </ErrorBoundary>
                                         </SearchProvider>
                                     </PerformanceProvider>
                                 </TestRunnerProvider>
                             </ScrapbookProvider>
                         </NavigationProvider>
                     </UIProvider>
-                </SelectionProvider>
-            </ProjectProvider>
+                    </SelectionProvider>
+                </ProjectProvider>
+            </EditorSettingsProvider>
         </ThemeProvider>
     );
 }

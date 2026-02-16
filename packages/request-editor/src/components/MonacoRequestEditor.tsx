@@ -1,14 +1,10 @@
 
 import { useRef, useImperativeHandle, forwardRef, useEffect, useState } from 'react';
-import Editor, { Monaco, loader } from '@monaco-editor/react';
-import * as monaco from 'monaco-editor';
+import Editor, { Monaco } from '@monaco-editor/react';
 import styled from 'styled-components';
 import { useWildcardDecorations } from '../hooks/useWildcardDecorations';
-import { bridge } from '../utils/bridge';
 import { applyAutoFolding } from '../utils/xmlFoldingUtils';
 import { useTheme } from '../contexts/ThemeContext';
-
-loader.config({ monaco });
 
 const EditorContainer = styled.div`
   height: 100%;
@@ -24,12 +20,14 @@ interface MonacoRequestEditorProps {
     onFocus?: () => void;
     autoFoldElements?: string[];
     showLineNumbers?: boolean;
+    showMinimap?: boolean; // NEW: Show minimap
     requestId?: string; // Used to detect when user switches to different request
     forceUpdateKey?: number; // Used to force update when value changes externally (e.g. formatting)
     logId?: string; // Debugging ID
     fontSize?: number; // Font size for editor (default: 14)
     fontFamily?: string; // Font family for editor (default: Consolas)
     availableVariables?: Array<{ name: string; value: string | null; source: string }>; // For autocomplete
+    onLog?: (message: string, level?: 'info' | 'warn' | 'error' | 'debug') => void; // Logging callback
 }
 
 export interface MonacoRequestEditorHandle {
@@ -45,11 +43,13 @@ export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoR
     onFocus,
     autoFoldElements,
     showLineNumbers = true,
+    showMinimap = false,
     requestId,
     forceUpdateKey,
     fontSize = 14,
     fontFamily = 'Consolas, "Courier New", monospace',
-    availableVariables = []
+    availableVariables = [],
+    onLog
 }, ref) => {
     const editorRef = useRef<any>(null);
     const monacoRef = useRef<Monaco | null>(null);
@@ -185,15 +185,15 @@ export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoR
 
         const doPaste = async (ed: any) => {
             try {
-                // Try Native Web API first
+                // Use native clipboard API
                 const text = await navigator.clipboard.readText();
                 if (text) {
                     const selection = ed.getSelection();
                     ed.executeEdits('clipboard', [{ range: selection, text: text, forceMoveMarkers: true }]);
                 }
             } catch (e) {
-                // Fallback to Backend
-                bridge.sendMessage({ command: 'clipboardAction', action: 'read' });
+                // Clipboard access denied - log warning
+                console.warn('[MonacoRequestEditor] Clipboard access denied. Grant clipboard permissions in browser settings.');
             }
         };
 
@@ -321,9 +321,10 @@ export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoR
             const selection = ed.getSelection();
             const text = ed.getModel()?.getValueInRange(selection);
             if (text) {
-                // Try Native + Backend for redundancy coverage
-                navigator.clipboard.writeText(text).catch(() => { });
-                bridge.sendMessage({ command: 'clipboardAction', action: 'write', text });
+                // Use native clipboard API
+                navigator.clipboard.writeText(text).catch((e) => {
+                    console.warn('[MonacoRequestEditor] Clipboard write failed:', e.message);
+                });
             }
         };
 
@@ -346,8 +347,9 @@ export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoR
             const selection = ed.getSelection();
             const text = ed.getModel()?.getValueInRange(selection);
             if (text) {
-                navigator.clipboard.writeText(text).catch(() => { });
-                bridge.sendMessage({ command: 'clipboardAction', action: 'write', text });
+                navigator.clipboard.writeText(text).catch((e) => {
+                    console.warn('[MonacoRequestEditor] Clipboard write failed:', e.message);
+                });
                 // Delete selection
                 ed.executeEdits('clipboard', [{ range: selection, text: '', forceMoveMarkers: true }]);
             }
@@ -381,7 +383,9 @@ export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoR
     // Listen for Clipboard Data from Backend (Fallback for Paste)
     useEffect(() => {
         // Log mount
-        bridge.sendMessage({ command: 'log', message: `[MonacoRequestEditor] Mounted. RequestId: ${requestId}` });
+        if (onLog) {
+            onLog(`[MonacoRequestEditor] Mounted. RequestId: ${requestId}`, 'info');
+        }
 
         const handleMessage = (event: MessageEvent) => {
             const message = event.data;
@@ -400,13 +404,15 @@ export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoR
 
         window.addEventListener('message', handleMessage);
         return () => {
-            bridge.sendMessage({ command: 'log', message: `[MonacoRequestEditor] Unmounted. RequestId: ${requestId}` });
+            if (onLog) {
+                onLog(`[MonacoRequestEditor] Unmounted. RequestId: ${requestId}`, 'info');
+            }
             window.removeEventListener('message', handleMessage);
         };
-    }, []);
+    }, [onLog, requestId]);
 
     const editorOptions = {
-        minimap: { enabled: false }, // Save space
+        minimap: { enabled: showMinimap },
         fontSize: fontSize,
         fontFamily: fontFamily,
         scrollBeyondLastLine: false,
@@ -441,10 +447,10 @@ export const MonacoRequestEditor = forwardRef<MonacoRequestEditorHandle, MonacoR
 
     // Keep Monaco language in sync when request or body type changes
     useEffect(() => {
-        if (!editorRef.current || !language) return;
+        if (!editorRef.current || !monacoRef.current || !language) return;
         const model = editorRef.current.getModel?.();
         if (model) {
-            monaco.editor.setModelLanguage(model, language);
+            monacoRef.current.editor.setModelLanguage(model, language);
         }
     }, [language, requestId]);
 

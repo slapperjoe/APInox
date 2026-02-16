@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, List } from 'lucide-react';
 import { MonacoSingleLineInput } from './MonacoSingleLineInput';
 import { SPACING_XS, SPACING_SM } from '../styles/spacing';
 
@@ -15,11 +15,11 @@ const Container = styled.div`
     overflow-y: auto;
 `;
 
-const HeaderRow = styled.div<{ dimmed?: boolean }>`
+const HeaderRow = styled.div<{ $dimmed?: boolean }>`
     display: flex;
     gap: ${SPACING_SM};
     align-items: center;
-    opacity: ${props => props.dimmed ? 0.7 : 1};
+    opacity: ${props => props.$dimmed ? 0.7 : 1};
 `;
 
 const HeaderTitle = styled.div`
@@ -27,6 +27,10 @@ const HeaderTitle = styled.div`
     justify-content: space-between;
     align-items: center;
     margin-bottom: ${SPACING_XS};
+    gap: ${SPACING_SM};
+    font-weight: 600;
+    font-size: 0.95em;
+    color: var(--apinox-foreground);
 `;
 
 const FlexColumn = styled.div`
@@ -117,14 +121,17 @@ export const HeadersPanel: React.FC<HeadersPanelProps> = ({ headers, onChange, c
     return (
         <Container>
             <HeaderTitle>
-                <h3>HTTP Headers</h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <List size={16} />
+                    HTTP Headers
+                </div>
                 <IconButton onClick={addHeader} title="Add Header">
                     <Plus size={16} /> Add
                 </IconButton>
             </HeaderTitle>
 
             {/* Read-only Content-Type row */}
-            <HeaderRow dimmed>
+            <HeaderRow $dimmed>
                 <FlexColumn>
                     <ReadOnlyField>
                         Content-Type

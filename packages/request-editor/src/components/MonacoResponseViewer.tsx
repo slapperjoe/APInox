@@ -17,6 +17,7 @@ interface MonacoResponseViewerProps {
     value: string;
     language?: string;
     showLineNumbers?: boolean;
+    showMinimap?: boolean; // NEW: Show minimap
     onSelectionChange?: (data: { text: string, offset: number } | null) => void;
     autoFoldElements?: string[];
     fontSize?: number; // Font size for viewer (default: 14)
@@ -27,6 +28,7 @@ export const MonacoResponseViewer: React.FC<MonacoResponseViewerProps> = ({
     value,
     language = 'xml',
     showLineNumbers = true,
+    showMinimap = false,
     onSelectionChange,
     autoFoldElements,
     fontSize = 14,
@@ -104,7 +106,7 @@ export const MonacoResponseViewer: React.FC<MonacoResponseViewerProps> = ({
                 value={value}
                 theme={viewerTheme}
                 options={{
-                    minimap: { enabled: false },
+                    minimap: { enabled: showMinimap },
                     fontSize: fontSize,
                     fontFamily: fontFamily,
                     scrollBeyondLastLine: false,

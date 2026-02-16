@@ -152,7 +152,7 @@ export function UIProvider({ children }: UIProviderProps) {
 
     const [layoutMode, setLayoutMode] = useState<'vertical' | 'horizontal'>('vertical');
     const [showLineNumbers, setShowLineNumbers] = useState(true);
-    const [inlineElementValues, setInlineElementValues] = useState(false);
+    const [inlineElementValues, setInlineElementValues] = useState(true);
     const [hideCausalityData, setHideCausalityData] = useState(false);
     const [splitRatio, setSplitRatio] = useState(0.5);
     const [isResizing, setIsResizing] = useState(false);

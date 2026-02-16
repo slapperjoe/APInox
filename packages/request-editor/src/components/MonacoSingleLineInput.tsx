@@ -4,7 +4,6 @@ import Editor, { Monaco, loader } from '@monaco-editor/react';
 import * as monaco from 'monaco-editor';
 import styled from 'styled-components';
 import { useWildcardDecorations } from '../hooks/useWildcardDecorations';
-import { bridge } from '../utils/bridge';
 
 loader.config({ monaco });
 
@@ -79,7 +78,7 @@ export const MonacoSingleLineInput = forwardRef<MonacoSingleLineInputHandle, Mon
         // Paste Action (Shared logic)
         const doPaste = async (ed: any) => {
             try {
-                // Try Native Web API first
+                // Use native clipboard API
                 const text = await navigator.clipboard.readText();
                 if (text) {
                     const clean = text.replace(/[\r\n]+/g, ''); // Enforce single line
@@ -87,8 +86,8 @@ export const MonacoSingleLineInput = forwardRef<MonacoSingleLineInputHandle, Mon
                     ed.executeEdits('clipboard', [{ range: selection, text: clean, forceMoveMarkers: true }]);
                 }
             } catch (e) {
-                // Fallback to Backend
-                bridge.sendMessage({ command: 'clipboardAction', action: 'read' });
+                // Clipboard access denied - log warning
+                console.warn('[MonacoSingleLineInput] Clipboard access denied. Grant clipboard permissions in browser settings.');
             }
         };
 
@@ -115,8 +114,9 @@ export const MonacoSingleLineInput = forwardRef<MonacoSingleLineInputHandle, Mon
             const selection = ed.getSelection();
             const text = ed.getModel()?.getValueInRange(selection);
             if (text) {
-                navigator.clipboard.writeText(text).catch(() => { });
-                bridge.sendMessage({ command: 'clipboardAction', action: 'write', text });
+                navigator.clipboard.writeText(text).catch((e) => {
+                    console.warn('[MonacoSingleLineInput] Clipboard write failed:', e.message);
+                });
             }
         };
 
@@ -140,8 +140,9 @@ export const MonacoSingleLineInput = forwardRef<MonacoSingleLineInputHandle, Mon
             const selection = ed.getSelection();
             const text = ed.getModel()?.getValueInRange(selection);
             if (text) {
-                navigator.clipboard.writeText(text).catch(() => { });
-                bridge.sendMessage({ command: 'clipboardAction', action: 'write', text });
+                navigator.clipboard.writeText(text).catch((e) => {
+                    console.warn('[MonacoSingleLineInput] Clipboard write failed:', e.message);
+                });
                 ed.executeEdits('clipboard', [{ range: selection, text: '', forceMoveMarkers: true }]);
             }
         };

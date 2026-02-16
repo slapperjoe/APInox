@@ -10,18 +10,25 @@ import { CustomXPathEvaluator } from '../utils/xpathEvaluator';
 import { XPathGenerator } from '../utils/xpathGenerator';
 
 // Import Monaco editor components from @apinox/request-editor package
-import { MonacoRequestEditor } from '@apinox/request-editor';
+import { RequestWorkspace, ErrorBoundary } from '@apinox/request-editor';
+import type { ApiRequest as PackageApiRequest, ExecutionResponse as PackageExecutionResponse, Variable as PackageVariable } from '@apinox/request-editor';
+import { MonacoRequestEditorWithToolbar as MonacoRequestEditor } from '@apinox/request-editor';
 import type { MonacoRequestEditorHandle } from '@apinox/request-editor';
-import { MonacoResponseViewer } from '@apinox/request-editor';
+import { MonacoResponseViewer, formatXml, stripCausalityData, formatContent, formatJson } from '@apinox/request-editor';
 import { MonacoSingleLineInput } from '@apinox/request-editor';
 import type { MonacoSingleLineInputHandle } from '@apinox/request-editor';
 import { AssertionsPanel } from '@apinox/request-editor';
 import { HeadersPanel } from '@apinox/request-editor';
-// import { SecurityPanel } from '@apinox/request-editor'; // Not yet in package
-// import { AttachmentsPanel } from '@apinox/request-editor'; // Not yet in package
+import { SecurityPanel } from '@apinox/request-editor';
+import { AttachmentsPanel } from '@apinox/request-editor';
 import { ExtractorsPanel } from '@apinox/request-editor';
-// import { VariablesPanel } from '@apinox/request-editor'; // Not yet in package
-import { formatXml, stripCausalityData } from '@shared/utils/xmlFormatter';
+import { VariablesPanel } from '@apinox/request-editor';
+import { QueryParamsPanel } from '@apinox/request-editor';
+import { RestAuthPanel } from '@apinox/request-editor';
+import { GraphQLVariablesPanel } from '@apinox/request-editor';
+import { ScriptEditor } from '@apinox/request-editor';
+import { validateUrl, validateJson, validateXml, validateXPath, validateRegex } from '@apinox/request-editor';
+import type { ValidationResult } from '@apinox/request-editor';
 // import { CodeSnippetModal } from './modals/CodeSnippetModal'; // Temporarily disabled
 import { WelcomePanel, TestCaseView, EmptyTestCase } from './workspace';
 import { WorkflowSummary } from './workspace/WorkflowSummary';
@@ -37,12 +44,6 @@ import { InterfaceSummary } from './workspace/InterfaceSummary';
 import { TestSuiteSummary } from './workspace/TestSuiteSummary';
 import { OperationSummary } from './workspace/OperationSummary';
 import { PerformanceSuiteEditor } from './workspace/PerformanceSuiteEditor';
-import { RequestTypeSelector } from './workspace/RequestTypeSelector';
-// Query params and GraphQL panels temporarily disabled - need @apinox/request-editor
-// import { QueryParamsPanel } from './QueryParamsPanel';
-// import { RestAuthPanel } from './RestAuthPanel';
-// import { GraphQLVariablesPanel } from './GraphQLVariablesPanel';
-// import { ScriptEditor } from './ScriptEditor';
 
 
 // Styled components extracted to styles file
@@ -393,6 +394,10 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     const lastAlignedRequestIdRef = React.useRef<string | null>(null);
     const lastFormattedRequestIdRef = React.useRef<string | null>(null);
     const settingsMenuRef = React.useRef<HTMLDivElement>(null);
+    
+    // Validation state
+    const [urlValidationError, setUrlValidationError] = React.useState<string | null>(null);
+    const [bodyValidationError, setBodyValidationError] = React.useState<string | null>(null);
 
     // Close editor settings menu when clicking outside
     React.useEffect(() => {
@@ -602,6 +607,49 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         onAddExistenceAssertion({ xpath: currentXPath });
         setActiveTab('assertions');
     };
+
+    // Validated execute handler - MUST be defined before any conditional returns
+    const handleValidatedExecute = React.useCallback(() => {
+        if (!activeRequest) return;
+        
+        // Validate URL
+        const urlResult = validateUrl(activeRequest.endpoint || '');
+        if (!urlResult.valid) {
+            setUrlValidationError(urlResult.error || 'Invalid URL');
+            console.error('❌ URL validation failed:', urlResult.error);
+            // Show user-friendly error via alert (could be replaced with toast notification)
+            alert(`Cannot execute request:\n\n${urlResult.error || 'Invalid URL'}`);
+            return;
+        }
+        setUrlValidationError(null);
+        
+        // Validate body based on type
+        const bodyType = activeRequest.bodyType || 'xml';
+        if (bodyType === 'json') {
+            const jsonResult = validateJson(activeRequest.request);
+            if (!jsonResult.valid) {
+                setBodyValidationError(jsonResult.details || jsonResult.error || 'Invalid JSON');
+                console.error('❌ JSON validation failed:', jsonResult.details);
+                alert(`Cannot execute request:\n\nInvalid JSON body:\n${jsonResult.details || jsonResult.error}`);
+                return;
+            }
+        } else if (bodyType === 'xml') {
+            const xmlResult = validateXml(activeRequest.request);
+            if (!xmlResult.valid) {
+                setBodyValidationError(xmlResult.error || 'Invalid XML');
+                console.error('❌ XML validation failed:', xmlResult.error);
+                alert(`Cannot execute request:\n\nInvalid XML body:\n${xmlResult.error}`);
+                return;
+            }
+        }
+        setBodyValidationError(null);
+        
+        // All validations passed - execute
+        console.log('✅ All validations passed, executing request');
+        if (onExecute) {
+            onExecute(activeRequest.request);
+        }
+    }, [activeRequest, onExecute]);
 
     const handleCreateReplaceRule = (_target: 'request' | 'response') => {
         // Replace rule and mock rule features removed - moved to APIprox
@@ -1030,6 +1078,67 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     // This avoids having to change hundreds of references throughout the component
     const currentRequest = effectiveRequest;
 
+    // File picker callback for form-data and binary uploads
+    // TODO: Implement proper binary file reading via Tauri command
+    // 
+    // IMPLEMENTATION NEEDED:
+    // 1. Add Tauri command in src-tauri/src/main.rs:
+    //    #[tauri::command]
+    //    fn read_binary_file(path: String) -> Result<Vec<u8>, String> {
+    //        std::fs::read(path).map_err(|e| e.to_string())
+    //    }
+    // 
+    // 2. Register command in tauri::Builder:
+    //    .invoke_handler(tauri::generate_handler![read_binary_file])
+    // 
+    // 3. Update this function to call the command:
+    //    const { invoke } = await import('@tauri-apps/api/core');
+    //    const bytes = await invoke<number[]>('read_binary_file', { path: selected });
+    //    const base64 = btoa(String.fromCharCode(...bytes));
+    //    return { name, content: base64, contentType, size: bytes.length };
+    const handlePickFile = async (): Promise<{ name: string; content: string; contentType: string; size: number } | null> => {
+        try {
+            // Import Tauri dialog API
+            const { open } = await import('@tauri-apps/plugin-dialog');
+            
+            // Open file picker
+            const selected = await open({
+                multiple: false,
+                directory: false
+            });
+            
+            if (!selected || typeof selected !== 'string') return null;
+            
+            // Get file name
+            const name = selected.split('/').pop() || selected.split('\\').pop() || 'file';
+            
+            // Detect content type from extension
+            const ext = selected.split('.').pop()?.toLowerCase();
+            let contentType = 'application/octet-stream';
+            if (ext === 'jpg' || ext === 'jpeg') contentType = 'image/jpeg';
+            else if (ext === 'png') contentType = 'image/png';
+            else if (ext === 'gif') contentType = 'image/gif';
+            else if (ext === 'pdf') contentType = 'application/pdf';
+            else if (ext === 'json') contentType = 'application/json';
+            else if (ext === 'xml') contentType = 'application/xml';
+            else if (ext === 'txt') contentType = 'text/plain';
+            
+            // TEMPORARY: Return placeholder until Tauri command is implemented
+            // This allows the UI to work but files won't be uploaded yet
+            console.warn('⚠️ File selected:', selected, 'but binary reading not yet implemented');
+            console.warn('⚠️ See TODO comment above for implementation details');
+            return {
+                name,
+                content: '', // FIXME: Empty for now - needs Tauri command to read binary
+                contentType,
+                size: 0      // FIXME: Actual size unknown without reading file
+            };
+        } catch (err) {
+            console.error('File picker error:', err);
+            return null;
+        }
+    };
+
     return (
         <Content>
             {/* Modal - temporarily disabled during package migration */}
@@ -1040,670 +1149,108 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                 environment={config?.environments && config?.activeEnvironment ? config.environments[config.activeEnvironment] : undefined}
             /> */}
 
-            <WorkspaceBody>
-                {/* Toolbar */}
-
-                {!isHistoryMode && (
-                    <Toolbar>
-                        {/* Explorer view back button */}
-                        {activeView === SidebarView.EXPLORER && !selectedTestCase && !selectedPerformanceSuite && navigationActions?.onSelectRequest && (
-                            <>
-                                <ToolbarButton onClick={() => navigationActions.onSelectRequest(null as any)} title="Back to API Explorer">
-                                    <ChevronLeft size={14} /> Back
-                                </ToolbarButton>
-                                <ToolbarSeparator />
-                            </>
-                        )}
-
-                        {selectedTestCase && onBackToCase && (
-                            <>
-                                <ToolbarButton onClick={onBackToCase} title="Back to Test Case">
-                                    <ChevronLeft size={14} /> Back
-                                </ToolbarButton>
-                                <ToolbarSeparator />
-                            </>
-                        )}
-
-                        {!selectedTestCase && selectedPerformanceSuite && onBackToSuite && (
-                            <>
-                                <ToolbarButton onClick={onBackToSuite} title="Back to Performance Suite">
-                                    <ChevronLeft size={14} /> Back
-                                </ToolbarButton>
-                                <ToolbarSeparator />
-                            </>
-                        )}
-
-                        {/* Request Type / Method / Content-Type - Unified Selector */}
-                        {preventEditing || isStructureLocked ? (
-                            <ToolbarInfo>
-                                <InfoBarMethod>{activeRequest.method || 'POST'}</InfoBarMethod>
-                                <InfoBarUrlPrimary title={activeRequest.endpoint}>{activeRequest.endpoint}</InfoBarUrlPrimary>
-                            </ToolbarInfo>
-                        ) : (
-                            <>
-                                <RequestTypeSelector
-                                    requestType={activeRequest.requestType}
-                                    method={activeRequest.method as HttpMethod}
-                                    bodyType={activeRequest.bodyType}
-                                    contentType={activeRequest.contentType}
-                                    onRequestTypeChange={(type: RequestType) => onUpdateRequest({ ...activeRequest, requestType: type })}
-                                    onMethodChange={(method) => onUpdateRequest({ ...activeRequest, method: method as string })}
-                                    onBodyTypeChange={(type: BodyType) => {
-                                        // Update body type and sync content type
-                                        const newContentType = getContentTypeForBodyType(type);
-                                        onUpdateRequest({ 
-                                            ...activeRequest, 
-                                            bodyType: type,
-                                            contentType: newContentType,
-                                            headers: { ...(activeRequest.headers || {}), 'Content-Type': newContentType }
-                                        });
-                                    }}
-                                    onContentTypeChange={(ct) => onUpdateRequest({ 
-                                        ...activeRequest, 
-                                        contentType: ct,
-                                        headers: { ...(activeRequest.headers || {}), 'Content-Type': ct }
-                                    })}
-                                    compact={true}
-                                />
-
-                                {/* URL */}
-                                <UrlInputWrapper>
-                                    <MonacoSingleLineInput
-                                        ref={urlEditorRef}
-                                        value={activeRequest?.endpoint || defaultEndpoint || ''}
-                                        onChange={(val) => {
-                                            console.log('[WorkspaceLayout] Endpoint onChange triggered, val:', val);
-                                            if (activeRequest) {
-                                                onUpdateRequest({ ...activeRequest, endpoint: val });
-                                            }
-                                        }}
-                                        placeholder="Endpoint URL"
-                                        readOnly={isReadOnly || isStructureLocked}
-                                        onFocus={() => lastFocusedRef.current = urlEditorRef.current}
-                                    />
-                                </UrlInputWrapper>
-                            </>
-                        )}
-
-                        {/* Actions */}
-                        {!selectedTestCase && !preventEditing && (
-                            <ToolbarButton onClick={() => { onReset(); forceEditorUpdate(); }} title="Revert to Default XML">
-                                <RotateCcw size={14} /> Reset
+            {/* Back navigation buttons */}
+            {!isHistoryMode && (activeView === SidebarView.EXPLORER || selectedTestCase || selectedPerformanceSuite) && (
+                <Toolbar>
+                    {/* Explorer view back button */}
+                    {activeView === SidebarView.EXPLORER && !selectedTestCase && !selectedPerformanceSuite && navigationActions?.onSelectRequest && (
+                        <>
+                            <ToolbarButton onClick={() => navigationActions.onSelectRequest(null as any)} title="Back to API Explorer">
+                                <ChevronLeft size={14} /> Back
                             </ToolbarButton>
-                        )}
-
-                        {!selectedTestCase && (
-                            <ToolbarButton onClick={() => setShowCodeSnippet(true)} title="Generate Code">
-                                <FileCode size={14} /> Code
-                            </ToolbarButton>
-                        )}
-
-                        {loading ? (
-                            <CancelButton onClick={onCancel}>
-                                <Loader2 size={14} className="spin" /> Cancel
-                            </CancelButton>
-                        ) : (
-                            <RunButton onClick={() => {
-                                // Get current content from editor, falling back to activeRequest.request
-                                // This allows users to edit read-only samples and test with the edited content
-                                const currentContent = bodyEditorRef.current?.getValue() ?? activeRequest.request;
-                                onExecute(currentContent);
-                            }} title="Run Request">
-                                <Play size={14} /> Run
-                            </RunButton>
-                        )}
-
-                        <ToolbarSeparator />
-
-
-
-                        {/* Variables Inserter */}
-                        {selectedTestCase && selectedStep && (
-                            <VariablesWrapper>
-                                <ToolbarButton onClick={() => setShowVariables(!showVariables)} title="Insert/View Variables from Previous Steps">
-                                    <Braces size={14} />
-                                    <VariablesLabel>Variables</VariablesLabel>
-                                </ToolbarButton>
-                                {showVariables && (
-                                    <VariablesDropdown>
-                                        <VariablesDropdownHeader>
-                                            Available Context Variables
-                                        </VariablesDropdownHeader>
-                                        {(() => {
-                                            const idx = selectedTestCase.steps.findIndex(s => s.id === selectedStep.id);
-                                            const vars: { name: string, step: string }[] = [];
-                                            if (idx > 0) {
-                                                selectedTestCase.steps.slice(0, idx).forEach(s => {
-                                                    if (s.type === 'request' && s.config.request?.extractors) {
-                                                        s.config.request.extractors.forEach(e => {
-                                                            vars.push({ name: e.variable, step: s.name });
-                                                        });
-                                                    }
-                                                });
-                                            }
-
-                                            if (vars.length === 0) {
-                                                return <VariablesDropdownEmpty>No variables defined in previous steps.</VariablesDropdownEmpty>
-                                            }
-
-                                            return vars.map((v, i) => (
-                                                <VariablesDropdownItem
-                                                    key={i}
-                                                    onClick={() => {
-                                                        const target = lastFocusedRef.current || bodyEditorRef.current; // Default to body
-                                                        if (target) {
-                                                            target.insertText('${#TestCase#' + v.name + '}');
-                                                            // InsertText modifies model directly, so no force update needed usually,
-                                                            // but if we updated state, we might. Here we access editor instance directly.
-                                                        }
-                                                        setShowVariables(false);
-                                                    }}
-                                                    title="Click to Insert"
-                                                >
-                                                    <VariablesDropdownName>{v.name}</VariablesDropdownName>
-                                                    <VariablesDropdownSource>from {v.step}</VariablesDropdownSource>
-                                                </VariablesDropdownItem>
-                                            ));
-                                        })()}
-                                    </VariablesDropdown>
-                                )}
-                            </VariablesWrapper>
-                        )}
-                    </Toolbar>
-                )}
-
-                <EditorSplitContainer $layoutMode={layoutMode}>
-                    <RequestPane $hasResponse={Boolean(response || loading)} $splitRatio={splitRatio}>
-                        {/* Title Section (Moved above tabs) */}
-                        {/* Title Section (Breadcrumbs) */}
-                        <BreadcrumbBar>
-                            {(() => {
-                                const breadcrumbPath = projects && activeRequest && activeRequest.id ? findPathToRequest(projects, activeRequest.id) : null;
-
-                                if (breadcrumbPath) {
-                                    return (
-                                        <>
-                                            {breadcrumbPath.map((segment, i) => (
-                                                <React.Fragment key={i}>
-                                                    {i > 0 && <ChevronRight size={12} />}
-                                                    <span>{segment}</span>
-                                                </React.Fragment>
-                                            ))}
-                                            <ChevronRight size={12} />
-                                            <BreadcrumbActive>
-                                                {activeRequest.name}
-                                            </BreadcrumbActive>
-                                        </>
-                                    );
-                                }
-                                // Fallback
-                                return (
-                                    <>
-                                        <span>{selectedOperation?.name}</span>
-                                        {selectedOperation && <ChevronRight size={12} />}
-                                        <BreadcrumbActive>
-                                            {activeRequest.name}
-                                        </BreadcrumbActive>
-                                    </>
-                                );
-                            })()}
-                        </BreadcrumbBar>
-
-                        {/* Tabs Header */}
-                        <TabsHeader>
-                            <TabButton $active={activeTab === 'request'} onClick={() => setActiveTab('request')}>
-                                Body
-                            </TabButton>
-                            <TabButton $active={activeTab === 'headers'} onClick={() => setActiveTab('headers')}>
-                                Headers
-                                {activeRequest.headers && Object.keys(activeRequest.headers).length > 0 && ` (${Object.keys(activeRequest.headers).length})`}
-                            </TabButton>
-
-                            {/* Params tab - only for REST requests */}
-                            {activeRequest.requestType === 'rest' && (
-                                <TabButton $active={activeTab === 'params'} onClick={() => setActiveTab('params')}>
-                                    Params
-                                    {activeRequest.restConfig?.queryParams && Object.keys(activeRequest.restConfig.queryParams).length > 0 && ` (${Object.keys(activeRequest.restConfig.queryParams).length})`}
-                                </TabButton>
-                            )}
-
-                            {/* Variables tab - only for GraphQL requests */}
-                            {activeRequest.requestType === 'graphql' && (
-                                <TabButton $active={activeTab === 'variables'} onClick={() => setActiveTab('variables')}>
-                                    Variables
-                                    {activeRequest.graphqlConfig?.variables && Object.keys(activeRequest.graphqlConfig.variables).length > 0 && ' ✓'}
-                                </TabButton>
-                            )}
-                            {!isHistoryMode && (
-                                <>
-                                    <TabButton $active={activeTab === 'assertions'} onClick={() => setActiveTab('assertions')}>
-                                        Assertions
-                                        {activeRequest.assertions && activeRequest.assertions.length > 0 && ` (${activeRequest.assertions.length})`}
-                                        {response && response.assertionResults && (
-                                            <TabMeta>
-                                                {response.assertionResults.every((r: any) => r.status === 'PASS') ? '✔' : '❌'}
-                                            </TabMeta>
-                                        )}
-                                    </TabButton>
-                                    <TabButton $active={activeTab === 'extractors'} onClick={() => setActiveTab('extractors')}>
-                                        <Code size={14} />
-                                        Extractors
-                                        {activeRequest.extractors && activeRequest.extractors.length > 0 && ` (${activeRequest.extractors.length})`}
-                                    </TabButton>
-                                    {/* Request Chaining Variables - show in test context only */}
-                                    {activeView === SidebarView.TESTS && selectedTestCase && (
-                                        <TabButton $active={activeTab === 'chainvars'} onClick={() => setActiveTab('chainvars')}>
-                                            <Variable size={14} />
-                                            Chain Vars
-                                        </TabButton>
-                                    )}
-                                </>
-                            )}
-                            <TabButton $active={activeTab === 'auth'} onClick={() => setActiveTab('auth')}>
-                                Auth
-                                {activeRequest.wsSecurity && activeRequest.wsSecurity.type !== 'none' && ' ✓'}
-                            </TabButton>
-                            <TabButton $active={activeTab === 'attachments'} onClick={() => setActiveTab('attachments')}>
-                                Attachments
-                                {activeRequest.attachments && activeRequest.attachments.length > 0 && ` (${activeRequest.attachments.length})`}
-                            </TabButton>
-
-                            <TabsRight>
-                                {/* Quick Format Actions - Keep These Visible */}
-                                <IconButton
-                                    title="Format XML Now"
-                                    onClick={() => {
-                                        const formatted = formatXml(activeRequest.request, alignAttributes, inlineElementValues);
-                                        onUpdateRequest({ ...activeRequest, request: formatted });
-                                        forceEditorUpdate();
-                                    }}
-                                    as={CompactIconButton}
-                                >
-                                    <Braces size={14} />
-                                </IconButton>
-
-                                {onOpenDevOps && config?.azureDevOps?.project && (
-                                    <IconButton
-                                        title="Add to Azure DevOps"
-                                        onClick={onOpenDevOps}
-                                        as={CompactIconButton}
-                                    >
-                                        <Cloud size={14} />
-                                    </IconButton>
-                                )}
-
-                                {/* Mock rule button temporarily disabled
-                                {isReadOnly && onAddMockRule && (
-                                    <CompactIconButtonWarning
-                                        title="Import to Mock Rule"
-                                        onClick={handleCreateMockRule}
-                                    >
-                                        <PlusSquare size={14} />
-                                    </CompactIconButtonWarning>
-                                )}
-                                */}
-
-                                <Divider />
-
-                                {/* Editor Settings Menu */}
-                                <SettingsMenuWrapper ref={settingsMenuRef}>
-                                    <IconButton
-                                        title="Editor Settings"
-                                        onClick={() => setShowEditorSettings(!showEditorSettings)}
-                                        active={showEditorSettings}
-                                        as={CompactIconButton}
-                                    >
-                                        <Settings size={14} />
-                                    </IconButton>
-                                    
-                                    {showEditorSettings && (
-                                        <EditorSettingsMenu>
-                                            <MenuSection>
-                                                <MenuSectionTitle>Font Settings</MenuSectionTitle>
-                                                <MenuRow>
-                                                    <MenuLabel>
-                                                        <Type size={14} />
-                                                        Font Size
-                                                    </MenuLabel>
-                                                    <MenuControls>
-                                                        <MenuIconButton
-                                                            onClick={() => {
-                                                                console.log('[Button] Minus clicked, current:', editorFontSize);
-                                                                handleFontSizeChange(Math.max(8, editorFontSize - 1));
-                                                            }}
-                                                            disabled={editorFontSize <= 8}
-                                                            title="Decrease"
-                                                        >
-                                                            <Minus size={12} />
-                                                        </MenuIconButton>
-                                                        <FontSizeDisplay>{editorFontSize}px</FontSizeDisplay>
-                                                        <MenuIconButton
-                                                            onClick={() => {
-                                                                console.log('[Button] Plus clicked, current:', editorFontSize);
-                                                                handleFontSizeChange(Math.min(24, editorFontSize + 1));
-                                                            }}
-                                                            disabled={editorFontSize >= 24}
-                                                            title="Increase"
-                                                        >
-                                                            <Plus size={12} />
-                                                        </MenuIconButton>
-                                                    </MenuControls>
-                                                </MenuRow>
-                                                <MenuRow>
-                                                    <MenuLabel>
-                                                        <Type size={14} />
-                                                        Font Family
-                                                    </MenuLabel>
-                                                    <select
-                                                        value={editorFontFamily}
-                                                        onChange={(e) => handleFontFamilyChange(e.target.value)}
-                                                        style={{
-                                                            background: 'var(--apinox-dropdown-background)',
-                                                            color: 'var(--apinox-dropdown-foreground)',
-                                                            border: '1px solid var(--apinox-dropdown-border)',
-                                                            padding: '4px 8px',
-                                                            borderRadius: '2px',
-                                                            fontSize: '12px',
-                                                            fontFamily: 'var(--apinox-font-family)',
-                                                            cursor: 'pointer',
-                                                            minWidth: '200px'
-                                                        }}
-                                                    >
-                                                        {installedFonts.length > 0 ? (
-                                                            installedFonts.map(font => (
-                                                                <option key={font.name} value={font.value}>
-                                                                    {font.name}
-                                                                </option>
-                                                            ))
-                                                        ) : (
-                                                            <option value='Consolas, "Courier New", monospace'>Consolas</option>
-                                                        )}
-                                                    </select>
-                                                </MenuRow>
-                                            </MenuSection>
-
-                                            <MenuSection>
-                                                <MenuSectionTitle>Formatting Options</MenuSectionTitle>
-                                                <MenuRow>
-                                                    <MenuLabel>
-                                                        <WrapText size={14} />
-                                                        Align Attributes
-                                                    </MenuLabel>
-                                                    <MenuIconButton
-                                                        onClick={() => {
-                                                            const newValue = !alignAttributes;
-                                                            setAlignAttributes(newValue);
-                                                            if (activeRequest.request) onUpdateRequest({ ...activeRequest, request: formatXml(activeRequest.request, newValue, inlineElementValues) });
-                                                            forceEditorUpdate();
-                                                        }}
-                                                        className={alignAttributes ? 'active' : ''}
-                                                        title={alignAttributes ? 'On' : 'Off'}
-                                                    >
-                                                        {alignAttributes ? 'On' : 'Off'}
-                                                    </MenuIconButton>
-                                                </MenuRow>
-
-                                                {onToggleInlineElementValues && (
-                                                    <MenuRow>
-                                                        <MenuLabel>
-                                                            <AlignLeft size={14} />
-                                                            Inline Values
-                                                        </MenuLabel>
-                                                        <MenuIconButton
-                                                            onClick={() => {
-                                                                if (onToggleInlineElementValues) onToggleInlineElementValues();
-                                                                const nextVal = !inlineElementValues;
-                                                                if (activeRequest.request) {
-                                                                    onUpdateRequest({ ...activeRequest, request: formatXml(activeRequest.request, alignAttributes, nextVal) });
-                                                                    forceEditorUpdate();
-                                                                }
-                                                            }}
-                                                            className={inlineElementValues ? 'active' : ''}
-                                                            title={inlineElementValues ? 'Compact' : 'Expanded'}
-                                                        >
-                                                            {inlineElementValues ? 'On' : 'Off'}
-                                                        </MenuIconButton>
-                                                    </MenuRow>
-                                                )}
-
-                                                {onToggleHideCausalityData && (
-                                                    <MenuRow>
-                                                        <MenuLabel>
-                                                            <Bug size={14} />
-                                                            Hide Causality Data
-                                                        </MenuLabel>
-                                                        <MenuIconButton
-                                                            onClick={onToggleHideCausalityData}
-                                                            className={hideCausalityData ? 'active' : ''}
-                                                            title={hideCausalityData ? 'Hidden' : 'Shown'}
-                                                        >
-                                                            {hideCausalityData ? 'On' : 'Off'}
-                                                        </MenuIconButton>
-                                                    </MenuRow>
-                                                )}
-                                            </MenuSection>
-                                        </EditorSettingsMenu>
-                                    )}
-                                </SettingsMenuWrapper>
-
-                                <Divider />
-
-                                <StatText>Lines: {typeof activeRequest.request === 'string' ? activeRequest.request.split('\n').length : 0}</StatText>
-                                <StatText>Size: {typeof activeRequest.request === 'string' ? (activeRequest.request.length / 1024).toFixed(2) : 0} KB</StatText>
-                            </TabsRight>
-                        </TabsHeader>
-
-                        {activeTab === 'request' && activeRequest && (
-                            <RequestEditorWrapper>
-                                <MonacoRequestEditor
-                                    ref={bodyEditorRef}
-                                    value={hideCausalityData ? stripCausalityData(activeRequest.request) : activeRequest.request}
-                                    language={
-                                        // Dynamic language based on bodyType or requestType
-                                        activeRequest.bodyType === 'json' ? 'json' :
-                                            activeRequest.bodyType === 'graphql' ? 'graphql' :
-                                                activeRequest.bodyType === 'text' ? 'plaintext' :
-                                                    activeRequest.requestType === 'graphql' ? 'graphql' :
-                                                        activeRequest.requestType === 'rest' ? 'json' :
-                                                            'xml'
-                                    }
-                                    readOnly={isReadOnly && activeView !== SidebarView.PROJECTS && activeView !== SidebarView.EXPLORER}
-                                    onChange={(val) => {
-                                        console.log('[WorkspaceLayout] Body editor onChange triggered, val length:', val?.length);
-                                        onUpdateRequest({ ...activeRequest, request: val });
-                                    }}
-                                    onFocus={() => lastFocusedRef.current = bodyEditorRef.current}
-                                    autoFoldElements={config?.ui?.autoFoldElements}
-                                    showLineNumbers={showLineNumbers}
-                                    requestId={activeRequest.id || activeRequest.name}
-                                    forceUpdateKey={editorForceUpdateKey}
-                                    fontSize={editorFontSize}
-                                    fontFamily={editorFontFamily}
-                                    availableVariables={availableVariables}
-                                />
-                                {/* Format Button Overlay */}
-                            </RequestEditorWrapper>
-                        )}
-                        {activeTab === 'headers' && activeRequest && (
-                            <PanelColumn>
-                                <PanelBody $padded={isReadOnly || isStructureLocked}>
-                                    {!isReadOnly && !isStructureLocked ? (
-                                        <HeadersPanel
-                                            headers={activeRequest.headers || {}}
-                                            onChange={(newHeaders) => onUpdateRequest({ ...activeRequest, headers: newHeaders })}
-                                            contentType={activeRequest.contentType}
-                                        />
-                                    ) : (
-                                        <HeadersViewer>
-                                            <HeadersTitle>Request Headers</HeadersTitle>
-                                            {activeRequest.headers && Object.keys(activeRequest.headers).length > 0 ? (
-                                                Object.entries(activeRequest.headers).map(([key, value]) => (
-                                                    <HeadersRow key={key}>
-                                                        <HeadersKey>{key}:</HeadersKey>
-                                                        <HeadersValue>{String(value)}</HeadersValue>
-                                                    </HeadersRow>
-                                                ))
-                                            ) : (
-                                                <HeadersEmpty>No headers captured.</HeadersEmpty>
-                                            )}
-                                        </HeadersViewer>
-                                    )}
-                                </PanelBody>
-                                {response && response.headers && (
-                                    <ResponseHeadersContainer>
-                                        <HeadersTitle>Response Headers</HeadersTitle>
-                                        {Object.entries(response.headers).map(([key, value]) => (
-                                            <HeadersRow key={key}>
-                                                <HeadersKey>{key}:</HeadersKey>
-                                                <HeadersValue>{String(value)}</HeadersValue>
-                                            </HeadersRow>
-                                        ))}
-                                    </ResponseHeadersContainer>
-                                )}
-                            </PanelColumn>
-                        )}
-                        {/* REST/GraphQL panels temporarily disabled - need @apinox/request-editor */}
-                        {activeTab === 'params' && (
-                            <div style={{ padding: '20px', color: 'var(--text-secondary)' }}>
-                                Query params panel temporarily disabled during package migration
-                            </div>
-                        )}
-                        {activeTab === 'variables' && (
-                            <div style={{ padding: '20px', color: 'var(--text-secondary)' }}>
-                                GraphQL variables panel temporarily disabled during package migration
-                            </div>
-                        )}
-                        {activeTab === 'assertions' && activeRequest && (
-                            <AssertionsPanel
-                                assertions={activeRequest.assertions || [] as any}
-                                onChange={(newAssertions) => onUpdateRequest({ ...activeRequest, assertions: newAssertions as any })}
-                                lastResult={response?.assertionResults}
-                            />
-                        )}
-                        {activeTab === 'extractors' && activeRequest && (
-                            <ExtractorsPanel
-                                extractors={activeRequest.extractors || [] as any}
-                                onChange={(newExtractors) => onUpdateRequest({ ...activeRequest, extractors: newExtractors as any })}
-                                onEdit={onEditExtractor as any}
-                                rawResponse={response?.rawResponse}
-                            />
-                        )}
-                        {/* Variables, Auth, and Attachments panels temporarily disabled - need @apinox/request-editor */}
-                        {activeTab === 'chainvars' && (
-                            <div style={{ padding: '20px', color: 'var(--text-secondary)' }}>
-                                Variables panel temporarily disabled during package migration
-                            </div>
-                        )}
-                        {activeTab === 'auth' && (
-                            <div style={{ padding: '20px', color: 'var(--text-secondary)' }}>
-                                Auth panel temporarily disabled during package migration
-                            </div>
-                        )}
-                        {activeTab === 'attachments' && (
-                            <div style={{ padding: '20px', color: 'var(--text-secondary)' }}>
-                                Attachments panel temporarily disabled during package migration
-                            </div>
-                        )}
-                    </RequestPane>
-
-                    {/* Resizer */}
-                    {(response || loading) && (
-                        <SplitResizer
-                            onMouseDown={onStartResizing}
-                            $layoutMode={layoutMode}
-                            $isResizing={isResizing}
-                        />
+                            <ToolbarSeparator />
+                        </>
                     )}
 
-                    {/* Debug visibility */}
-                    {(() => { console.log('[WorkspaceLayout] Rendering Response Section', { response: !!response, loading, splitRatio }); return null; })()}
-
-                    {/* Response Section */}
-                    {(response || loading) && (
-                        <ResponseSection data-testid="response-section" $layoutMode={layoutMode}>
-                            <ResponseHeader>
-                                <ResponseHeaderLeft>
-                                    <span>Response</span>
-                                    {selection && onAddExtractor && !isReadOnly && currentXPath && (
-                                        <ResponseHeaderActions>
-                                            {selection.text && (
-                                                <>
-                                                    <MiniToolbarButton onClick={handleCreateExtractor}>
-                                                        <MiniButtonIcon><Bug size={12} /></MiniButtonIcon> Extract
-                                                    </MiniToolbarButton>
-                                                    {onAddAssertion && (
-                                                        <MiniToolbarButton onClick={handleCreateAssertion}>
-                                                            <MiniButtonIcon><Braces size={12} /></MiniButtonIcon> Match
-                                                        </MiniToolbarButton>
-                                                    )}
-                                                </>
-                                            )}
-                                            {onAddExistenceAssertion && (
-                                                <MiniToolbarButton onClick={handleCreateExistenceAssertion}>
-                                                    <MiniButtonIcon><ListChecks size={12} /></MiniButtonIcon> Exists
-                                                </MiniToolbarButton>
-                                            )}
-                                        </ResponseHeaderActions>
-                                    )}
-                                    {/* Replace Rule button removed - proxy features moved to APIprox */}
-                                    {/* {selection && selection.text && isReadOnly && onAddReplaceRule && currentXPath && (
-                                        <MiniToolbarButton
-                                            onClick={() => handleCreateReplaceRule('response')}
-                                            title="Create a replace rule for this selection"
-                                        >
-                                            <MiniButtonIcon><Replace size={12} /></MiniButtonIcon> Add Replace Rule
-                                        </MiniToolbarButton>
-                                    )} */}
-                                </ResponseHeaderLeft>
-                                {response && (
-                                    <ResponseStats>
-                                        {/* ... stats ... */}
-                                        <StatText>Lines: {response.lineCount || 0}</StatText>
-                                        <StatText>Time: {(response.duration || 0).toFixed(1)}s</StatText>
-                                        <StatText>Size: {typeof response.rawResponse === 'string' ? (response.rawResponse.length / 1024).toFixed(2) : 0} KB</StatText>
-                                        {response.createdAt && (
-                                            <StatText>Received: {new Date(response.createdAt).toLocaleTimeString()}</StatText>
-                                        )}
-                                        {response.headers && response.headers['content-type'] && (
-                                            <ResponseContentType title="Content-Type">
-                                                {response.headers['content-type'].split(';')[0]}
-                                            </ResponseContentType>
-                                        )}
-                                        <ResponseStatus $success={response.success}>
-                                            {response.success ? '200 OK' : 'Error'}
-                                        </ResponseStatus>
-                                    </ResponseStats>
-                                )}
-                            </ResponseHeader>
-                            <MonacoResponseViewer
-                                value={(() => {
-                                    const raw = response ? (response.rawResponse ? response.rawResponse : (response.error || '')) : '';
-                                    const viewerLanguage = response?.language || 'xml';
-                                    if (!raw) return '';
-                                    if (viewerLanguage === 'json') return raw;
-                                    return formatXml(raw, alignAttributes, inlineElementValues);
-                                })()}
-                                language={response?.language || 'xml'}
-                                showLineNumbers={showLineNumbers}
-                                onSelectionChange={setSelection}
-                                autoFoldElements={config?.ui?.autoFoldElements}
-                                fontSize={editorFontSize}
-                                fontFamily={editorFontFamily}
-                            />
-                        </ResponseSection>
+                    {/* Test case back button */}
+                    {selectedTestCase && onBackToCase && (
+                        <>
+                            <ToolbarButton onClick={onBackToCase} title="Back to Test Case">
+                                <ChevronLeft size={14} /> Back
+                            </ToolbarButton>
+                            <ToolbarSeparator />
+                        </>
                     )}
-                </EditorSplitContainer>
-            </WorkspaceBody>
 
-            <MainFooter>
-                <IconButton onClick={onToggleLineNumbers} active={showLineNumbers} title="Toggle Line Numbers">
-                    <ListOrdered size={16} />
-                </IconButton>
+                    {/* Performance suite back button */}
+                    {!selectedTestCase && selectedPerformanceSuite && onBackToSuite && (
+                        <>
+                            <ToolbarButton onClick={onBackToSuite} title="Back to Performance Suite">
+                                <ChevronLeft size={14} /> Back
+                            </ToolbarButton>
+                            <ToolbarSeparator />
+                        </>
+                    )}
+                </Toolbar>
+            )}
 
-                <IconButton onClick={onToggleLayout} title="Toggle Layout (Vertical/Horizontal)">
-                    <LayoutIcon size={16} />
-                </IconButton>
-            </MainFooter>
+            {/* RequestWorkspace component */}
+            <ErrorBoundary
+                onError={(error, errorInfo) => {
+                    console.error('💥 RequestWorkspace Error:', error);
+                    console.error('Component Stack:', errorInfo.componentStack);
+                }}
+            >
+                <RequestWorkspace
+                    request={activeRequest as PackageApiRequest}
+                response={response ? {
+                    rawResponse: response.rawResponse,
+                    status: response.status,
+                    statusText: response.statusText,
+                    time: response.time,
+                    size: response.size,
+                    headers: response.headers,
+                    contentType: response.contentType
+                } as PackageExecutionResponse : undefined}
+                loading={loading}
+                onUpdateRequest={(updated) => onUpdateRequest(updated as any)}
+                onExecute={handleValidatedExecute}
+                onCancel={onCancel}
+                onReset={onReset}
+                readOnly={preventEditing}
+                defaultEndpoint={defaultEndpoint}
+                availableVariables={availableVariables.map(v => ({
+                    name: v.name,
+                    value: v.value,
+                    source: v.source
+                }) as PackageVariable)}
+                showBreadcrumb={activeView === SidebarView.PROJECTS}
+                breadcrumbPath={(() => {
+                    if (activeView !== SidebarView.PROJECTS) return [];
+                    const path: string[] = [];
+                    if (selectedProject) path.push(selectedProject.name);
+                    if (selectedInterface) path.push(selectedInterface.name);
+                    if (selectedOperation) path.push(selectedOperation.name);
+                    if (activeRequest) path.push(activeRequest.name);
+                    return path;
+                })()}
+                onLog={(message, level = 'info') => {
+                    console.log(`[${level.toUpperCase()}] ${message}`);
+                }}
+                initialEditorSettings={{
+                    fontSize: config?.ui?.editorFontSize || 14,
+                    fontFamily: config?.ui?.editorFontFamily || 'Consolas, "Courier New", monospace',
+                    showLineNumbers: config?.ui?.showLineNumbers ?? true,
+                    alignAttributes: config?.ui?.alignAttributes ?? false,
+                    inlineValues: config?.ui?.inlineElementValues ?? true,
+                    hideCausality: false
+                }}
+                onEditorSettingsChange={(settings) => {
+                    bridge.sendMessage({
+                        command: 'saveUiState',
+                        ui: {
+                            ...config?.ui,
+                            editorFontSize: settings.fontSize,
+                            editorFontFamily: settings.fontFamily,
+                            showLineNumbers: settings.showLineNumbers,
+                            alignAttributes: settings.alignAttributes,
+                            inlineElementValues: settings.inlineValues
+                        }
+                    });
+                }}
+                onPickFile={handlePickFile}
+            />
+            </ErrorBoundary>
         </Content >
     );
 };

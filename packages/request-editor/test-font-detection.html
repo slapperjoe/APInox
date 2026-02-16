@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Font Detection Test</title>
+</head>
+<body>
+    <h1>Font Detection Test</h1>
+    <div id="results"></div>
+    <script type="module">
+        // Import the font detection utility (simulated)
+        const MONOSPACE_FONTS = [
+            { name: 'Consolas', value: 'Consolas, "Courier New", monospace' },
+            { name: 'SF Mono', value: '"SF Mono", Monaco, "Cascadia Code", monospace' },
+            { name: 'Fira Code', value: '"Fira Code", monospace' },
+            { name: 'JetBrains Mono', value: '"JetBrains Mono", monospace' },
+            { name: 'Menlo', value: 'Menlo, Monaco, "Courier New", monospace' },
+            { name: 'Source Code Pro', value: '"Source Code Pro", monospace' },
+            { name: 'Courier New', value: '"Courier New", monospace' },
+            { name: 'Monaco', value: 'Monaco, monospace' },
+            { name: 'Cascadia Code', value: '"Cascadia Code", monospace' },
+            { name: 'Cascadia Mono', value: '"Cascadia Mono", monospace' },
+            { name: 'IBM Plex Mono', value: '"IBM Plex Mono", monospace' },
+            { name: 'Roboto Mono', value: '"Roboto Mono", monospace' }
+        ];
+
+        function isFontInstalled(fontName) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            if (!context) return false;
+
+            const testString = 'mmmmmmmmmmlli';
+            const testSize = '72px';
+            const fallbackFont = 'monospace';
+
+            context.font = `${testSize} ${fallbackFont}`;
+            const fallbackWidth = context.measureText(testString).width;
+
+            const testFont = fontName.includes(',') 
+                ? fontName.split(',')[0].trim().replace(/['"]/g, '')
+                : fontName.replace(/['"]/g, '');
+
+            context.font = `${testSize} "${testFont}", ${fallbackFont}`;
+            const testWidth = context.measureText(testString).width;
+
+            return Math.abs(testWidth - fallbackWidth) > 0.1;
+        }
+
+        function getInstalledFonts() {
+            return MONOSPACE_FONTS.filter(font => {
+                const installed = isFontInstalled(font.value);
+                return installed;
+            });
+        }
+
+        const installedFonts = getInstalledFonts();
+        const results = document.getElementById('results');
+        results.innerHTML = `
+            <h2>Installed Fonts (${installedFonts.length}/${MONOSPACE_FONTS.length})</h2>
+            <ul>
+                ${installedFonts.map(f => `<li><strong>${f.name}</strong>: ${f.value}</li>`).join('')}
+            </ul>
+            <h2>All Fonts</h2>
+            <ul>
+                ${MONOSPACE_FONTS.map(f => {
+                    const installed = installedFonts.some(i => i.name === f.name);
+                    return `<li style="${installed ? 'color: green' : 'color: red'}">${f.name} (${installed ? '✓' : '✗'})</li>`;
+                }).join('')}
+            </ul>
+        `;
+    </script>
+</body>
+</html>
