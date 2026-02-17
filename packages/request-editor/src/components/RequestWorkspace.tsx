@@ -631,7 +631,7 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
       <S.ContentArea>
         <S.EditorSplitContainer $layoutMode={layoutMode}>
           {/* Request Pane */}
-          <S.RequestPane $ratio={splitRatio}>
+          <S.RequestPane $ratio={response ? splitRatio : 1}>
             <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
               {renderTabContent()}
             </div>
