@@ -385,7 +385,7 @@ export const MarkdownContainer = styled.div`
 export const Toolbar = styled.div`
     display: flex;
     padding: 5px 10px;
-    background-color: var(--apinox-editor-background);
+    background-color: var(--apinox-sideBar-background);
     border-bottom: 1px solid var(--apinox-panel-border);
     align-items: center;
     gap: 10px;

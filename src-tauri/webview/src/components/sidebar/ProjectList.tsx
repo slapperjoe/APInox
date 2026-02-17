@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { Plus, FolderPlus, ChevronDown, ChevronRight, Trash2, Lock, Save, ChevronsDownUp, ChevronsUpDown, Download, Upload, GripVertical } from 'lucide-react';
+import { Plus, FolderPlus, ChevronDown, ChevronRight, Trash2, Lock, Save, Download, Upload, GripVertical, Package } from 'lucide-react';
 import { ApinoxProject, ApiInterface, ApiOperation, ApiRequest } from '@shared/models';
 import { HeaderButton, OperationItem, SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle } from './shared/SidebarStyles';
 import { ServiceTree } from './ServiceTree';
@@ -9,6 +9,8 @@ import { ContextMenu, ContextMenuItem } from '../../styles/App.styles';
 import { updateProjectWithRename } from '../../utils/projectUtils';
 import { SaveErrorDialog } from '../SaveErrorDialog';
 import { useDragAndDrop } from '../../hooks/useDragAndDrop';
+import { ExpandCollapseToggle } from '../common/ExpandCollapseToggle';
+import { DropdownMenu } from '../common/DropdownMenu';
 
 interface ProjectListProps {
     projects: ApinoxProject[];
@@ -225,6 +227,9 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     // Local Context Menu State
     const [localContextMenu, setLocalContextMenu] = useState<{ x: number; y: number; type: string; data: any } | null>(null);
 
+    // Track if tree is fully expanded for toggle button state
+    const [isTreeExpanded, setIsTreeExpanded] = useState<boolean>(false);
+
     // Show error dialog when a save error occurs
     React.useEffect(() => {
         // Find the first project with an error that doesn't already have a dialog open
@@ -373,17 +378,63 @@ export const ProjectList: React.FC<ProjectListProps> = ({
         }
     };
 
+    const handleExpandAll = () => {
+        expandAll();
+        setIsTreeExpanded(true);
+    };
+
+    const handleCollapseAll = () => {
+        collapseAll();
+        setIsTreeExpanded(false);
+    };
+
     return (
         <ProjectContainer onClick={closeLocalContextMenu}>
             <SidebarHeader>
                 <SidebarHeaderTitle>Workspace</SidebarHeaderTitle>
                 <SidebarHeaderActions>
-                    <HeaderButton onClick={collapseAll} title="Collapse All"><ChevronsDownUp size={16} /></HeaderButton>
-                    <HeaderButton onClick={expandAll} title="Expand All"><ChevronsUpDown size={16} /></HeaderButton>
-                    <HeaderButton onClick={onExportWorkspace} title="Export Workspace"><Upload size={16} /></HeaderButton>
-                    <HeaderButton onClick={onBulkImport} title="Bulk Import"><Download size={16} /></HeaderButton>
-                    <HeaderButton onClick={onAddProject} title="New Project"><Plus size={16} /></HeaderButton>
-                    <HeaderButton onClick={loadProject} title="Add Project"><FolderPlus size={16} /></HeaderButton>
+                    {/* Expand/Collapse Toggle */}
+                    <ExpandCollapseToggle
+                        isExpanded={isTreeExpanded}
+                        onExpandAll={handleExpandAll}
+                        onCollapseAll={handleCollapseAll}
+                    />
+                    
+                    {/* Import/Export Menu */}
+                    <DropdownMenu
+                        icon={<Package size={16} />}
+                        title="Import & Export"
+                        items={[
+                            {
+                                icon: <Upload size={16} />,
+                                label: 'Export Workspace',
+                                onClick: onExportWorkspace
+                            },
+                            {
+                                icon: <Download size={16} />,
+                                label: 'Bulk Import',
+                                onClick: onBulkImport
+                            }
+                        ]}
+                    />
+                    
+                    {/* Add Project Menu */}
+                    <DropdownMenu
+                        icon={<Plus size={16} />}
+                        title="Add Project"
+                        items={[
+                            {
+                                icon: <Plus size={16} />,
+                                label: 'New Project',
+                                onClick: onAddProject
+                            },
+                            {
+                                icon: <FolderPlus size={16} />,
+                                label: 'Add Existing Project',
+                                onClick: loadProject
+                            }
+                        ]}
+                    />
                 </SidebarHeaderActions>
             </SidebarHeader>
 
