@@ -52,34 +52,6 @@ export enum FrontendCommand {
     DeleteWorkflow = 'deleteWorkflow',
     GetWorkflows = 'getWorkflows',
 
-    // Performance
-    GetPerformanceSuites = 'getPerformanceSuites',
-    AddPerformanceSuite = 'addPerformanceSuite',
-    UpdatePerformanceSuite = 'updatePerformanceSuite',
-    DeletePerformanceSuite = 'deletePerformanceSuite',
-    AddPerformanceRequest = 'addPerformanceRequest',
-    PickOperationForPerformance = 'pickOperationForPerformance',
-    UpdatePerformanceRequest = 'updatePerformanceRequest',
-    DeletePerformanceRequest = 'deletePerformanceRequest',
-    RunPerformanceSuite = 'runPerformanceSuite',
-    AbortPerformanceSuite = 'abortPerformanceSuite',
-    GetPerformanceHistory = 'getPerformanceHistory',
-        GetPerformanceRunUpdates = 'getPerformanceRunUpdates',
-    ImportTestSuiteToPerformance = 'importTestSuiteToPerformance',
-    ExportPerformanceResults = 'exportPerformanceResults',
-
-    // Schedule
-    GetSchedules = 'getSchedules',
-    AddSchedule = 'addSchedule',
-    UpdateSchedule = 'updateSchedule',
-    DeleteSchedule = 'deleteSchedule',
-    ToggleSchedule = 'toggleSchedule',
-
-    // Coordinator
-    StartCoordinator = 'startCoordinator',
-    StopCoordinator = 'stopCoordinator',
-    GetCoordinatorStatus = 'getCoordinatorStatus',
-
     // Request History
     GetHistory = 'getHistory',
     ToggleStarHistory = 'toggleStarHistory',

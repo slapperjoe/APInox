@@ -165,18 +165,6 @@ function mapResponseToBackendEvent(command: string, data: any): BackendMessage |
             config: data?.config,
             raw: data?.raw
         }),
-        [FrontendCommand.AddPerformanceSuite]: (data) => ({
-            command: BackendCommand.SettingsUpdate,
-            config: data?.config ?? data
-        }),
-        [FrontendCommand.UpdatePerformanceSuite]: (data) => ({
-            command: BackendCommand.SettingsUpdate,
-            config: data?.config ?? data
-        }),
-        [FrontendCommand.DeletePerformanceSuite]: (data) => ({
-            command: BackendCommand.SettingsUpdate,
-            config: data?.config ?? data
-        }),
         [FrontendCommand.LoadProject]: (data) => {
             const project = data?.project ?? data;
             const fileName = data?.filename || data?.fileName;

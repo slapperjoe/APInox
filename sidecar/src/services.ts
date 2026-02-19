@@ -7,8 +7,6 @@
 
 import { SoapClient } from './soapClient';
 import { TestRunnerService } from './services/TestRunnerService';
-import { PerformanceService } from './services/PerformanceService';
-import { ScheduleService } from './services/ScheduleService';
 import { ConfigSwitcherService } from './services/ConfigSwitcherService';
 import { RequestHistoryService } from './services/RequestHistoryService';
 import { FolderProjectStorage } from './FolderProjectStorage';
@@ -22,8 +20,6 @@ import { SecretManager } from './SecretManager';
 export class ServiceContainer {
     public readonly soapClient: SoapClient;
     public readonly testRunnerService: TestRunnerService;
-    public readonly performanceService: PerformanceService;
-    public readonly scheduleService: ScheduleService;
     public readonly configSwitcherService: ConfigSwitcherService;
     public readonly historyService: RequestHistoryService;
     public readonly folderStorage: FolderProjectStorage;
@@ -63,17 +59,6 @@ export class ServiceContainer {
 
         this.configSwitcherService = new ConfigSwitcherService();
         this.testRunnerService = new TestRunnerService(this.soapClient, outputChannel, this.settingsManager);
-
-        this.performanceService = new PerformanceService(this.soapClient);
-        this.performanceService.setLogger(msg => outputChannel.appendLine(msg));
-
-        this.scheduleService = new ScheduleService(this.performanceService);
-
-        // Initialize performance data from settings
-        const config = this.settingsManager.getConfig();
-        this.performanceService.setSuites(config.performanceSuites || []);
-        this.performanceService.setHistory(config.performanceHistory || []);
-        this.scheduleService.loadSchedules(config.performanceSchedules || []);
 
         const configDir = this.settingsManager.getConfigDir();
         this.historyService = new RequestHistoryService(configDir);

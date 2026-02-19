@@ -32,7 +32,6 @@ import { useSelection } from '../contexts/SelectionContext';
 import { useUI } from '../contexts/UIContext';
 import { useNavigation } from '../contexts/NavigationContext';
 import { useTestRunner } from '../contexts/TestRunnerContext';
-import { usePerformance } from '../contexts/PerformanceContext';
 import { useExplorer } from '../hooks/useExplorer';
 import { useContextMenu } from '../hooks/useContextMenu';
 import { useSidebarCallbacks } from '../hooks/useSidebarCallbacks';
@@ -204,9 +203,7 @@ const MainContent: React.FC = () => {
         loading,
         setLoading,
         selectedTestSuite,
-        setSelectedTestSuite,
-        selectedPerformanceSuiteId,
-        setSelectedPerformanceSuiteId
+        setSelectedTestSuite
     } = useSelection();
 
     // Notify backend that the Webview is ready and load initial data (Samples, Changelog)
@@ -363,11 +360,6 @@ const MainContent: React.FC = () => {
 
     // View Isolation Logic - Prevent leaking requests between contexts
     useEffect(() => {
-        // If we switch TO Performance view, and have a non-perf request selected -> Clear it
-        if (activeView === SidebarView.PERFORMANCE && selectedRequest?.id && !selectedRequest.id.startsWith('perf-req-')) {
-            setSelectedRequest(null);
-        }
-
         // If we switch TO Projects/Explorer view, and have a perf request selected -> Clear it
         if ((activeView === SidebarView.PROJECTS || activeView === SidebarView.EXPLORER) && selectedRequest?.id && selectedRequest.id.startsWith('perf-req-')) {
             setSelectedRequest(null);
@@ -390,12 +382,6 @@ const MainContent: React.FC = () => {
     const [wsdlUseProxy, setWsdlUseProxy] = useState<boolean>(false);
     const [wsdlDiff, setWsdlDiff] = useState<WsdlDiff | null>(null);
 
-    // Derived State
-    const selectedPerformanceSuite = config?.performanceSuites?.find(s => s.id === selectedPerformanceSuiteId) || null;
-
-    // ==========================================================================
-    // FOLDER HANDLERS - Work with project.folders for unified structure
-    // ==========================================================================
     // ==========================================================================
     // FOLDER HANDLERS - Work with project.folders for unified structure
     // ==========================================================================
@@ -563,38 +549,6 @@ const MainContent: React.FC = () => {
 
     // Performance Handlers
     // ==========================================================================
-    // CONTEXT - Performance state from PerformanceContext
-    // ==========================================================================
-    const {
-        activeRunId,
-        // setActiveRunId,
-        performanceProgress,
-        // setPerformanceProgress,
-        coordinatorStatus,
-        // setCoordinatorStatus,
-        expandedPerformanceSuiteIds,
-        handleAddPerformanceSuite,
-        handleDeletePerformanceSuite,
-        handleRunPerformanceSuite,
-        handleStopPerformanceRun,
-        handleSelectPerformanceSuite,
-        handleUpdatePerformanceSuite,
-        handleAddPerformanceRequest,
-        handleDeletePerformanceRequest,
-        handleUpdatePerformanceRequest,
-        handleSelectPerformanceRequest,
-        handleStartCoordinator,
-        handleStopCoordinator,
-        handleTogglePerformanceSuiteExpand
-    } = usePerformance();
-
-    // Auto-select first performance suite when none is selected but suites exist
-    useEffect(() => {
-        const suites = config?.performanceSuites || [];
-        if (suites.length > 0 && !selectedPerformanceSuiteId) {
-            setSelectedPerformanceSuiteId(suites[0].id);
-        }
-    }, [config?.performanceSuites, selectedPerformanceSuiteId, setSelectedPerformanceSuiteId]);
 
     // Auto-select first test case when none is selected but test cases exist
     // ONLY in Tests view to avoid re-selecting after user clears selection for navigation
@@ -666,29 +620,6 @@ const MainContent: React.FC = () => {
             command: FrontendCommand.DeleteHistoryEntry,
             id
         });
-    };
-
-    const handleAddPerformanceRequestForUi = (suiteId: string) => {
-        if (isTauri()) {
-            setPickRequestModal({ open: true, mode: 'performance', caseId: null, suiteId });
-            return;
-        }
-        handleAddPerformanceRequest(suiteId);
-    };
-
-    const sidebarPerformanceProps = {
-        suites: config?.performanceSuites || [],
-        onAddSuite: handleAddPerformanceSuite,
-        onDeleteSuite: handleDeletePerformanceSuite,
-        onRunSuite: handleRunPerformanceSuite,
-        onSelectSuite: handleSelectPerformanceSuite,
-        onStopRun: handleStopPerformanceRun,
-        isRunning: !!activeRunId,
-        activeRunId,
-        selectedSuiteId: selectedPerformanceSuite?.id,
-        deleteConfirm,
-        setDeleteConfirm,
-        onAddRequest: handleAddPerformanceRequestForUi
     };
 
     // Extractor Modal State (needed before useWorkspaceCallbacks)
@@ -830,7 +761,7 @@ const MainContent: React.FC = () => {
     // Modals (remaining)
     const [confirmationModal, setConfirmationModal] = useState<ConfirmationState | null>(null);
     const [addToTestCaseModal, setAddToTestCaseModal] = React.useState<{ open: boolean, request: ApiRequest | null }>({ open: false, request: null });
-    const [pickRequestModal, setPickRequestModal] = React.useState<{ open: boolean, mode: 'testcase' | 'performance', caseId: string | null, suiteId: string | null }>({ open: false, mode: 'testcase', caseId: null, suiteId: null });
+    const [pickRequestModal, setPickRequestModal] = React.useState<{ open: boolean, mode: 'testcase', caseId: string | null }>({ open: false, mode: 'testcase', caseId: null });
     const [sampleModal, setSampleModal] = React.useState<{ open: boolean, schema: any | null, operationName: string }>({ open: false, schema: null, operationName: '' });
     const [exportWorkspaceModal, setExportWorkspaceModal] = React.useState(false);
     // const [codeSnippetModal, setCodeSnippetModal] = React.useState<{ open: boolean, request: ApiRequest | null }>({ open: false, request: null });
@@ -875,8 +806,6 @@ const MainContent: React.FC = () => {
         }
         setExportWorkspaceModal(false);
     }, []);
-
-    const [importToPerformanceModal, setImportToPerformanceModal] = React.useState<{ open: boolean, suiteId: string | null }>({ open: false, suiteId: null });
 
     // ==========================================================================
     // WORKFLOW HANDLERS
@@ -978,7 +907,6 @@ const MainContent: React.FC = () => {
         console.log('[MainContent] About to set workflow step with null step');
 
         setSelectedRequest(null);
-        setSelectedPerformanceSuiteId(null);
 
         // Set workflow with a placeholder step to indicate workflow-level selection
         // The step will be null/undefined which WorkspaceLayout will detect
@@ -989,14 +917,13 @@ const MainContent: React.FC = () => {
         setActiveView(SidebarView.WORKFLOWS);
 
         console.log('[MainContent] handleSelectWorkflow complete');
-    }, [setSelectedRequest, setSelectedPerformanceSuiteId, setSelectedWorkflowStep, setActiveView]);
+    }, [setSelectedRequest, setSelectedWorkflowStep, setActiveView]);
 
     const handleSelectWorkflowStep = useCallback((workflow: Workflow, step: WorkflowStep) => {
         console.log('[MainContent] handleSelectWorkflowStep called:', workflow.name, step.name);
         console.log('[MainContent] setSelectedWorkflowStep function exists:', !!setSelectedWorkflowStep);
 
         setSelectedRequest(null);
-        setSelectedPerformanceSuiteId(null);
 
         console.log('[MainContent] About to call setSelectedWorkflowStep with:', { workflow: workflow.name, step: step.name });
         setSelectedWorkflowStep({ workflow, step });
@@ -1004,7 +931,7 @@ const MainContent: React.FC = () => {
 
         setActiveView(SidebarView.WORKFLOWS);
         console.log('[MainContent] Set activeView to WORKFLOWS');
-    }, [setSelectedRequest, setSelectedPerformanceSuiteId, setSelectedWorkflowStep, setActiveView]);
+    }, [setSelectedRequest, setSelectedWorkflowStep, setActiveView]);
 
     const handleUpdateWorkflowStep = useCallback(async (workflow: Workflow, updatedStep: WorkflowStep) => {
         console.log('[MainContent] handleUpdateWorkflowStep called:', workflow.name, updatedStep.name);
@@ -1190,9 +1117,7 @@ const MainContent: React.FC = () => {
         setSelectedInterface,
         setSelectedOperation,
         setSelectedRequest,
-        setSelectedTestCase,
-        selectedPerformanceSuiteId,
-        setSelectedPerformanceSuiteId
+        setSelectedTestCase
     });
     useMessageHandler({
         setProjects,
@@ -1511,15 +1436,6 @@ const MainContent: React.FC = () => {
                     onSelect: handleSelectWorkflow,
                     onSelectStep: handleSelectWorkflowStep
                 }}
-                performanceProps={{
-                    ...sidebarPerformanceProps,
-                    onAddRequest: handleAddPerformanceRequestForUi,
-                    onDeleteRequest: handleDeletePerformanceRequest,
-                    onSelectRequest: handleSelectPerformanceRequest,
-                    onUpdateRequest: handleUpdatePerformanceRequest,
-                    onToggleSuiteExpand: handleTogglePerformanceSuiteExpand,
-                    expandedSuiteIds: expandedPerformanceSuiteIds
-                }}
                 historyProps={{
                     history: requestHistory,
                     onReplay: handleReplayRequest,
@@ -1552,7 +1468,6 @@ const MainContent: React.FC = () => {
                     testCase: selectedTestCase,
                     testSuite: selectedTestSuite,
                     testStep: selectedStep,
-                    performanceSuite: selectedPerformanceSuite,
                     workflowStep: (() => {
                         console.log('[MainContent] Passing workflowStep to WorkspaceLayout:', !!selectedWorkflowStep);
                         if (selectedWorkflowStep) {
@@ -1567,7 +1482,6 @@ const MainContent: React.FC = () => {
                 navigationActions={{
                     onSelectProject: (p) => {
                         setSelectedProjectName(p.name);
-                        setSelectedPerformanceSuiteId(null); // Clear performance state when navigating to projects
                         setSelectedTestCase(null); // Clear test case state when navigating to projects
                         setActiveView(SidebarView.PROJECTS);
                     },
@@ -1575,13 +1489,11 @@ const MainContent: React.FC = () => {
                         // Ensure parent project is selected if possible (we only have interface here, might need project name context)
                         // If we are navigating from Project Summary, we assume Project Level is correct.
                         setSelectedInterface(i);
-                        setSelectedPerformanceSuiteId(null); // Clear performance state
                         setSelectedTestCase(null); // Clear test case state
                         setActiveView(SidebarView.PROJECTS);
                     },
                     onSelectOperation: (o) => {
                         setSelectedOperation(o);
-                        setSelectedPerformanceSuiteId(null); // Clear performance state
                         setSelectedTestCase(null); // Clear test case state
                         setActiveView(SidebarView.PROJECTS);
                     },
@@ -1591,14 +1503,12 @@ const MainContent: React.FC = () => {
                             setSelectedRequest(null);
                         } else {
                             setSelectedRequest({ ...r, contentType: r.contentType || 'application/soap+xml' });
-                            setSelectedPerformanceSuiteId(null); // Clear performance state when selecting workspace request
                             setSelectedTestCase(null); // Clear test case state when selecting workspace request
                             setActiveView(SidebarView.PROJECTS);
                         }
                     },
                     onSelectTestCase: (tc) => {
                         handleSelectTestCase(tc.id);
-                        setSelectedPerformanceSuiteId(null); // Clear performance state
                         setActiveView(SidebarView.TESTS);
                     },
                     onSelectWorkflowStep: handleSelectWorkflowStep,
@@ -1650,21 +1560,6 @@ const MainContent: React.FC = () => {
                     onOpenDevOps: () => setShowDevOpsModal(true),
                     // onOpenCodeSnippet: (request) => setCodeSnippetModal({ open: true, request })
                 }}
-                onUpdateSuite={handleUpdatePerformanceSuite}
-                onAddPerformanceRequest={handleAddPerformanceRequestForUi}
-                onDeletePerformanceRequest={handleDeletePerformanceRequest}
-                onSelectPerformanceRequest={handleSelectPerformanceRequest}
-                onUpdatePerformanceRequest={handleUpdatePerformanceRequest}
-                onImportFromWorkspace={(suiteId) => setImportToPerformanceModal({ open: true, suiteId })}
-                onRunSuite={handleRunPerformanceSuite}
-                onStopRun={handleStopPerformanceRun}
-                performanceProgress={performanceProgress}
-                performanceHistory={config?.performanceHistory || []}
-                onBackToSuite={() => setSelectedRequest(null)}
-
-                coordinatorStatus={coordinatorStatus}
-                onStartCoordinator={handleStartCoordinator}
-                onStopCoordinator={handleStopCoordinator}
                 explorerState={{
                     inputType,
                     setInputType,
@@ -1974,21 +1869,9 @@ const MainContent: React.FC = () => {
                 <PickRequestModal
                     isOpen={pickRequestModal.open}
                     items={pickRequestItems}
-                    title={pickRequestModal.mode === 'performance' ? 'Add Request to Performance Suite' : 'Add Request to Test Case'}
-                    onClose={() => setPickRequestModal({ open: false, mode: 'testcase', caseId: null, suiteId: null })}
+                    title="Add Request to Test Case"
+                    onClose={() => setPickRequestModal({ open: false, mode: 'testcase', caseId: null })}
                     onSelect={(item) => {
-                        if (pickRequestModal.mode === 'performance') {
-                            const suiteId = pickRequestModal.suiteId;
-                            if (!suiteId) return;
-                            bridge.emit({
-                                command: BackendCommand.AddOperationToPerformance,
-                                suiteId,
-                                ...(item.type === 'request' ? { request: item.data } : { operation: item.data })
-                            });
-                            setPickRequestModal({ open: false, mode: 'testcase', caseId: null, suiteId: null });
-                            return;
-                        }
-
                         const caseId = pickRequestModal.caseId;
                         if (!caseId) return;
                         bridge.emit({
@@ -1996,7 +1879,7 @@ const MainContent: React.FC = () => {
                             caseId,
                             ...(item.type === 'request' ? { request: item.data } : { operation: item.data })
                         });
-                        setPickRequestModal({ open: false, mode: 'testcase', caseId: null, suiteId: null });
+                        setPickRequestModal({ open: false, mode: 'testcase', caseId: null });
                     }}
                 />
             )}
@@ -2013,65 +1896,6 @@ const MainContent: React.FC = () => {
                 }}
             />
 
-            {/* Import to Performance Suite Modal */}
-            {importToPerformanceModal.open && importToPerformanceModal.suiteId && (
-                <ImportModalOverlay>
-                    <ImportModalContainer>
-                        <ImportModalTitle>Import Test Case to Performance Suite</ImportModalTitle>
-                        <ImportModalDescription>Select a test case to import. All request steps from the test case will be added to this performance suite.</ImportModalDescription>
-                        <ImportModalList>
-                            {projects.flatMap(p =>
-                                (p.testSuites || []).flatMap(suite =>
-                                    (suite.testCases || []).map(tc => ({
-                                        projectName: p.name,
-                                        suiteName: suite.name,
-                                        testCase: tc,
-                                        // Count the request steps
-                                        stepCount: (tc.steps || []).filter(s => s.type === 'request').length
-                                    }))
-                                )
-                            ).map((item, idx) => (
-                                <ImportModalItem key={idx} onClick={() => {
-                                    // Import all request steps from the test case
-                                    const requestSteps = (item.testCase.steps || []).filter(s => s.type === 'request');
-                                    if (requestSteps.length > 0) {
-                                        for (const step of requestSteps) {
-                                            // Access request data from step.config.request
-                                            const req = step.config.request;
-                                            if (!req) continue; // Skip if no request data
-
-                                            bridge.sendMessage({
-                                                command: 'addPerformanceRequest',
-                                                suiteId: importToPerformanceModal.suiteId,
-                                                name: step.name || 'Imported Step',
-                                                endpoint: req.endpoint || '',
-                                                method: req.method || 'POST',
-                                                soapAction: req.method === 'POST' ? req.headers?.['SOAPAction'] : undefined,
-                                                requestBody: req.request || '',
-                                                headers: req.headers || {},
-                                                extractors: req.extractors || [],
-                                                requestType: req.requestType,
-                                                bodyType: req.bodyType,
-                                                restConfig: req.restConfig,
-                                                graphqlConfig: req.graphqlConfig,
-                                            });
-                                        }
-                                    }
-                                    setImportToPerformanceModal({ open: false, suiteId: null });
-                                }}>
-                                    <ImportModalItemTitle>{item.testCase.name}</ImportModalItemTitle>
-                                    <ImportModalItemMeta>{item.projectName} → {item.suiteName}</ImportModalItemMeta>
-                                    <ImportModalItemCount>{item.stepCount} request step{item.stepCount !== 1 ? 's' : ''}</ImportModalItemCount>
-                                </ImportModalItem>
-                            ))}
-                            {projects.flatMap(p => (p.testSuites || []).flatMap(s => s.testCases || [])).length === 0 && (
-                                <ImportModalEmpty>No test cases available. Create a test suite first.</ImportModalEmpty>
-                            )}
-                        </ImportModalList>
-                        <ImportModalCancel onClick={() => setImportToPerformanceModal({ open: false, suiteId: null })}>Cancel</ImportModalCancel>
-                    </ImportModalContainer>
-                </ImportModalOverlay>
-            )}
             {/* Extractor Modal */}
             <ExtractorModal
                 isOpen={!!extractorModal}

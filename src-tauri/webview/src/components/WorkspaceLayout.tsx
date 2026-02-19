@@ -43,7 +43,8 @@ import { ProjectSummary } from './workspace/ProjectSummary';
 import { InterfaceSummary } from './workspace/InterfaceSummary';
 import { TestSuiteSummary } from './workspace/TestSuiteSummary';
 import { OperationSummary } from './workspace/OperationSummary';
-import { PerformanceSuiteEditor } from './workspace/PerformanceSuiteEditor';
+// REMOVED: Performance UI moved to APIprox
+// import { PerformanceSuiteEditor } from './workspace/PerformanceSuiteEditor';
 
 
 // Styled components extracted to styles file
@@ -167,21 +168,21 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     configState,
     stepActions,
     toolsActions,
-    onUpdateSuite,
-    onAddPerformanceRequest,
-    onDeletePerformanceRequest,
-    onSelectPerformanceRequest,
-    onUpdatePerformanceRequest,
-    onImportFromWorkspace,
-    onRunSuite,
-    onStopRun,
-    performanceProgress,
-    performanceHistory,
-    onBackToSuite,
+    onUpdateSuite: _onUpdateSuite, // Unused - performance removed
+    onAddPerformanceRequest: _onAddPerformanceRequest, // Unused - performance removed
+    onDeletePerformanceRequest: _onDeletePerformanceRequest, // Unused - performance removed
+    onSelectPerformanceRequest: _onSelectPerformanceRequest, // Unused - performance removed
+    onUpdatePerformanceRequest: _onUpdatePerformanceRequest, // Unused - performance removed
+    onImportFromWorkspace: _onImportFromWorkspace, // Unused - performance removed
+    onRunSuite: _onRunSuite, // Unused - performance removed
+    onStopRun: _onStopRun, // Unused - performance removed
+    performanceProgress: _performanceProgress, // Unused - performance removed
+    performanceHistory: _performanceHistory, // Unused - performance removed
+    onBackToSuite: _onBackToSuite, // Unused - performance removed
     navigationActions,
-    coordinatorStatus,
-    onStartCoordinator,
-    onStopCoordinator,
+    coordinatorStatus: _coordinatorStatus, // Unused - performance removed
+    onStartCoordinator: _onStartCoordinator, // Unused - performance removed
+    onStopCoordinator: _onStopCoordinator, // Unused - performance removed
     explorerState // Add this
 }) => {
     // Destructure groups
@@ -193,7 +194,6 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         testCase: selectedTestCase,
         testSuite: selectedTestSuite,
         testStep: selectedStep,
-        performanceSuite: selectedPerformanceSuite,
         workflowStep: selectedWorkflowStep
     } = selectionState;
 
@@ -278,7 +278,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     }, []);
 
     // Derived read-only state
-    const isStructureLocked = (activeView === SidebarView.PERFORMANCE || activeView === SidebarView.TESTS);
+    const isStructureLocked = (activeView === SidebarView.TESTS);
     const isContentLocked = (activeRequest?.readOnly === true) ||
         (!isStructureLocked && selectedProject?.readOnly === true);
     const preventEditing = isHistoryMode || isContentLocked;
@@ -683,40 +683,8 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         return <WelcomePanel changelog={changelog} />;
     }
 
-    // PERFORMANCE VIEW
-    if (activeView === SidebarView.PERFORMANCE) {
-        const suiteHistory = (performanceHistory || []).filter(run => selectedPerformanceSuite ? run.suiteId === selectedPerformanceSuite.id : false);
-        const performanceSchedules = config?.performanceSchedules || [];
-        const isPerfRunning = !!performanceProgress;
-
-        if (!selectedPerformanceSuite && !activeRequest) {
-            return <EmptyState title="No Performance Suite Selected" description="Pick or create a performance suite from the sidebar." icon={Play} />;
-        }
-
-        if (selectedPerformanceSuite && !activeRequest) {
-            return (
-                <PerformanceSuiteEditor
-                    suite={selectedPerformanceSuite}
-                    onUpdate={onUpdateSuite || (() => { })}
-                    onRun={onRunSuite || (() => { })}
-                    onStop={onStopRun || (() => { })}
-                    isRunning={isPerfRunning}
-                    onAddRequest={onAddPerformanceRequest}
-                    onDeleteRequest={onDeletePerformanceRequest}
-                    onUpdateRequest={onUpdatePerformanceRequest}
-                    onSelectRequest={onSelectPerformanceRequest}
-                    onImportFromWorkspace={onImportFromWorkspace}
-                    progress={performanceProgress || null}
-                    history={suiteHistory}
-                    schedules={performanceSchedules}
-                    coordinatorStatus={coordinatorStatus}
-                    onStartCoordinator={onStartCoordinator}
-                    onStopCoordinator={onStopCoordinator}
-                />
-            );
-        }
-        // If a performance request is selected, fall through to the request editor below.
-    }
+    // PERFORMANCE VIEW - REMOVED: Moved to APIprox
+    // Performance testing is now available in the APIprox project
 
     // TESTS VIEW
     if (activeView === SidebarView.TESTS) {
@@ -1150,10 +1118,10 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
             /> */}
 
             {/* Back navigation buttons */}
-            {!isHistoryMode && (activeView === SidebarView.EXPLORER || selectedTestCase || selectedPerformanceSuite) && (
+            {!isHistoryMode && (activeView === SidebarView.EXPLORER || selectedTestCase) && (
                 <Toolbar>
                     {/* Explorer view back button */}
-                    {activeView === SidebarView.EXPLORER && !selectedTestCase && !selectedPerformanceSuite && navigationActions?.onSelectRequest && (
+                    {activeView === SidebarView.EXPLORER && !selectedTestCase && navigationActions?.onSelectRequest && (
                         <>
                             <ToolbarButton onClick={() => navigationActions.onSelectRequest(null as any)} title="Back to API Explorer">
                                 <ChevronLeft size={14} /> Back
@@ -1166,16 +1134,6 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                     {selectedTestCase && onBackToCase && (
                         <>
                             <ToolbarButton onClick={onBackToCase} title="Back to Test Case">
-                                <ChevronLeft size={14} /> Back
-                            </ToolbarButton>
-                            <ToolbarSeparator />
-                        </>
-                    )}
-
-                    {/* Performance suite back button */}
-                    {!selectedTestCase && selectedPerformanceSuite && onBackToSuite && (
-                        <>
-                            <ToolbarButton onClick={onBackToSuite} title="Back to Performance Suite">
                                 <ChevronLeft size={14} /> Back
                             </ToolbarButton>
                             <ToolbarSeparator />

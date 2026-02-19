@@ -119,17 +119,28 @@ Extend beyond SOAP to REST APIs.
 
 ## 🚧 Infrastructure Backlog
 
-### CLI + Sidecar Merge
-Merge CLI commands into the sidecar to create a single standalone binary.
+### CLI + Sidecar → APIprox (COMPLETED)
+CLI functionality has been split into a separate project: **[APIprox](https://github.com/yourusername/apiprox)**
 
-**Goal**: 
-- Single binary works as Tauri sidecar AND CLI
-- Distributed testing with zero dependencies
-- Docker FROM scratch possible
+**APIprox provides**:
+- CLI commands for distributed testing
+- Coordinator/Worker architecture  
+- HTTP/HTTPS proxy with traffic interception
+- Mock server functionality
+- Standalone binary with zero dependencies
 
-**Status**: Planned but not started
+**APInox focus**: Desktop UI for SOAP testing only
 
-**Estimated effort**: 6 days (see CLI_SIDECAR_MERGE.md)
+### Future: Migrate Sidecar to Rust
+Consider migrating Node.js sidecar backend logic into Tauri Rust commands for single-binary distribution.
+
+**Benefits**:
+- Single executable (no separate sidecar process)
+- Better performance
+- Smaller distribution size
+- Simpler deployment
+
+**Estimated effort**: 8-10 days
 
 ---
 

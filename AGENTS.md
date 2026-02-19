@@ -1,16 +1,16 @@
 # APInox - Agent Context
 
 ## Project Overview
-This is a **Tauri Desktop Application** (with legacy VS Code Extension support) for exploring SOAP Web Services (WSDL). It mimics the UI/UX of tools like Bruno or Postman but for SOAP.
+This is a **Tauri Desktop Application** for exploring SOAP Web Services (WSDL). It mimics the UI/UX of tools like Bruno or Postman but for SOAP.
 
 ## Architecture
 
-**PRIMARY PLATFORM**: Tauri standalone desktop application
-**LEGACY SUPPORT**: VS Code extension (backward compatibility only)
+**PRIMARY PLATFORM**: Tauri standalone desktop application  
+**SISTER PROJECT**: [APIprox](https://github.com/yourusername/apiprox) - HTTP/HTTPS proxy & CLI tools (distributed testing, coordinator/worker)
 
-The project has two deployment modes:
-1. **Tauri App** (Primary): Standalone desktop application using Tauri + React
-2. **VS Code Extension** (Legacy): VSIX extension for VS Code
+The project is a Tauri desktop application:
+1. **Tauri App**: Standalone desktop application using Tauri + React
+2. **Sidecar**: Node.js backend for WSDL parsing, SOAP execution, file I/O (will be migrated to Rust in future)
 
 ### Tauri Application Architecture (PRIMARY)
 
@@ -48,11 +48,12 @@ The project has two deployment modes:
   - Backend: `sidecar/src/router.ts` command handlers
 - **Pattern**: Request/Response + Event Streaming
 
-**Key Difference from VS Code Extension**:
-- No extension host process
-- Direct file I/O via sidecar (no need for VS Code file APIs)
+**Key Difference from Legacy Architecture**:
+- No VS Code extension code
+- No CLI binary in this repository (moved to APIprox)
+- Direct file I/O via sidecar
 - Local-first persistence (save directly to disk)
-- No backend commands needed for simple state updates
+- Simpler build process (no dual compilation)
 
 ### 1. Sidecar Backend (`sidecar/`)
 -   **Runtime**: Node.js (bundled as standalone binary)

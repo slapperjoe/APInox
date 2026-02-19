@@ -16,7 +16,6 @@ export interface CommandRouter {
 
 export function createCommandRouter(services: ServiceContainer): CommandRouter {
     const testRunStore = new Map<string, { updates: any[]; done: boolean; error?: string }>();
-    const performanceRunStore = new Map<string, { updates: any[]; done: boolean; error?: string; run?: any }>();
     const handlers: Record<string, (payload: any) => Promise<any>> = {
         // ===== WSDL/SOAP Operations =====
         [FrontendCommand.LoadWsdl]: async (payload) => {
@@ -438,188 +437,6 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             return { updates, nextIndex, done, error };
         },
 
-        // ===== Performance Testing =====
-        [FrontendCommand.RunPerformanceSuite]: async (payload) => {
-            const { suiteId, environment, variables } = payload;
-            
-            // Get environment config and globals
-            const envConfig = environment ? await services.settingsManager.getResolvedEnvironment(environment) : {};
-            const globals = services.settingsManager.getGlobalVariables() || {};
-            
-            if (payload?.stream) {
-                const runId = `perf-run-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-                const runState = { updates: [], done: false } as { updates: any[]; done: boolean; error?: string; run?: any };
-                performanceRunStore.set(runId, runState);
-
-                const onRunStarted = (data: any) => {
-                    runState.updates.push({ type: 'runStarted', runId: data.runId, suiteId: data.suiteId, suiteName: data.suiteName });
-                };
-                const onIterationComplete = (data: any) => {
-                    runState.updates.push({ type: 'iterationComplete', runId: data.runId, iteration: data.iteration, total: data.total });
-                };
-                const onRunCompleted = (run: any) => {
-                    runState.run = run;
-                    runState.updates.push({ type: 'runCompleted', run });
-                    runState.done = true;
-                    services.performanceService.off('runStarted', onRunStarted);
-                    services.performanceService.off('iterationComplete', onIterationComplete);
-                    services.performanceService.off('runCompleted', onRunCompleted);
-                };
-
-                services.performanceService.on('runStarted', onRunStarted);
-                services.performanceService.on('iterationComplete', onIterationComplete);
-                services.performanceService.on('runCompleted', onRunCompleted);
-
-                (async () => {
-                    try {
-                        await services.performanceService.runSuite(suiteId, environment, variables, envConfig, globals);
-                        services.settingsManager.updatePerformanceHistory(services.performanceService.getHistory());
-                    } catch (error: any) {
-                        runState.error = error?.message || String(error);
-                        runState.done = true;
-                        services.performanceService.off('runStarted', onRunStarted);
-                        services.performanceService.off('iterationComplete', onIterationComplete);
-                        services.performanceService.off('runCompleted', onRunCompleted);
-                    }
-                })();
-
-                return { runId };
-            }
-
-            const result = await services.performanceService.runSuite(suiteId, environment, variables, envConfig, globals);
-            services.settingsManager.updatePerformanceHistory(services.performanceService.getHistory());
-            return result;
-        },
-
-        [FrontendCommand.AbortPerformanceSuite]: async () => {
-            services.performanceService.abort();
-            return { stopped: true };
-        },
-
-        [FrontendCommand.GetPerformanceHistory]: async (payload) => {
-            if (payload?.suiteId) {
-                return services.performanceService.getSuiteHistory(payload.suiteId);
-            }
-            return services.performanceService.getHistory();
-        },
-
-        [FrontendCommand.GetPerformanceSuites]: async () => {
-            return services.performanceService.getSuites();
-        },
-
-        [FrontendCommand.GetPerformanceRunUpdates]: async (payload) => {
-            const runId = payload?.runId;
-            const fromIndex = typeof payload?.fromIndex === 'number' ? payload.fromIndex : 0;
-            if (!runId) return { updates: [], nextIndex: fromIndex, done: true, error: 'Missing runId' };
-
-            const run = performanceRunStore.get(runId);
-            if (!run) return { updates: [], nextIndex: fromIndex, done: true, error: 'Run not found' };
-
-            const safeIndex = Math.max(0, fromIndex);
-            const updates = run.updates.slice(safeIndex);
-            const nextIndex = safeIndex + updates.length;
-            const done = run.done;
-            const error = run.error;
-            const runData = run.run;
-
-            if (done && nextIndex >= run.updates.length) {
-                performanceRunStore.delete(runId);
-            }
-
-            return { updates, nextIndex, done, error, run: runData };
-        },
-
-        [FrontendCommand.AddPerformanceSuite]: async (payload) => {
-            const now = Date.now();
-            const suite = payload?.suite || {
-                id: payload?.id || `perf-suite-${now}`,
-                name: payload?.name || 'New Performance Suite',
-                description: payload?.description || '',
-                requests: [],
-                iterations: payload?.iterations || 10,
-                delayBetweenRequests: payload?.delayBetweenRequests || 0,
-                warmupRuns: payload?.warmupRuns || 1,
-                concurrency: payload?.concurrency || 1,
-                createdAt: now,
-                modifiedAt: now,
-                collapsedSections: ['scheduling', 'workers']
-            };
-            services.performanceService.addSuite(suite);
-            services.settingsManager.updatePerformanceSuites(services.performanceService.getSuites());
-            return { suite, config: services.settingsManager.getConfig() };
-        },
-
-        [FrontendCommand.UpdatePerformanceSuite]: async (payload) => {
-            const suiteId = payload.suiteId || payload.id;
-            services.performanceService.updateSuite(suiteId, payload.updates);
-            services.settingsManager.updatePerformanceSuites(services.performanceService.getSuites());
-            return { updated: true, config: services.settingsManager.getConfig() };
-        },
-
-        [FrontendCommand.DeletePerformanceSuite]: async (payload) => {
-            const suiteId = payload.suiteId || payload.id;
-            services.performanceService.deleteSuite(suiteId);
-            services.settingsManager.updatePerformanceSuites(services.performanceService.getSuites());
-            return { deleted: true, config: services.settingsManager.getConfig() };
-        },
-
-        [FrontendCommand.DeletePerformanceRequest]: async (payload) => {
-            const { suiteId, requestId } = payload;
-            const suite = services.performanceService.getSuite(suiteId);
-            if (suite) {
-                const updatedRequests = suite.requests.filter(r => r.id !== requestId);
-                services.performanceService.updateSuite(suiteId, { requests: updatedRequests });
-                services.settingsManager.updatePerformanceSuites(services.performanceService.getSuites());
-            }
-            return { deleted: true, config: services.settingsManager.getConfig() };
-        },
-
-        [FrontendCommand.UpdatePerformanceRequest]: async (payload) => {
-            const { suiteId, requestId, updates } = payload;
-            const suite = services.performanceService.getSuite(suiteId);
-            if (suite) {
-                const updatedRequests = suite.requests.map(r =>
-                    r.id === requestId ? { ...r, ...updates } : r
-                );
-                services.performanceService.updateSuite(suiteId, { requests: updatedRequests });
-                services.settingsManager.updatePerformanceSuites(services.performanceService.getSuites());
-            }
-            return { updated: true, config: services.settingsManager.getConfig() };
-        },
-
-        [FrontendCommand.AddPerformanceRequest]: async (payload) => {
-            const { suiteId, ...requestData } = payload;
-            const suite = services.performanceService.getSuite(suiteId);
-            if (suite) {
-                const newRequest = {
-                    id: `perf-req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                    name: requestData.name || 'New Request',
-                    endpoint: requestData.endpoint || '',
-                    method: requestData.method || 'POST',
-                    soapAction: requestData.soapAction,
-                    interfaceName: requestData.interfaceName,
-                    operationName: requestData.operationName,
-                    requestBody: requestData.requestBody || '',
-                    headers: requestData.headers || {},
-                    extractors: requestData.extractors || [],
-                    order: suite.requests.length,
-                    requestType: requestData.requestType,
-                    bodyType: requestData.bodyType,
-                    restConfig: requestData.restConfig,
-                    graphqlConfig: requestData.graphqlConfig,
-                };
-                const updatedRequests = [...suite.requests, newRequest];
-                services.performanceService.updateSuite(suiteId, { requests: updatedRequests });
-                services.settingsManager.updatePerformanceSuites(services.performanceService.getSuites());
-            }
-            return { added: true, config: services.settingsManager.getConfig() };
-        },
-
-        [FrontendCommand.PickOperationForPerformance]: async (payload) => {
-            // This is handled by the frontend context, but we include it for completeness
-            return { acknowledged: true };
-        },
-
         // ===== Request History =====
         [FrontendCommand.GetHistory]: async () => {
             return services.historyService.getAll();
@@ -685,9 +502,6 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             }
             const updatedConfig = services.settingsManager.getConfig();
             console.log('[Router] Updated config retrieved, editorFontSize:', updatedConfig?.ui?.editorFontSize);
-            services.performanceService.setSuites(updatedConfig.performanceSuites || []);
-            services.performanceService.setHistory(updatedConfig.performanceHistory || []);
-            services.scheduleService.loadSchedules(updatedConfig.performanceSchedules || []);
 
             // Return config data for bridge to emit SettingsUpdate event
             const configPath = services.settingsManager.getConfigPath();
@@ -720,33 +534,6 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             const { envName, fieldName } = payload;
             await services.secretManager.deleteEnvironmentSecret(envName, fieldName);
             return { success: true };
-        },
-
-        // ===== Schedules =====
-        [FrontendCommand.GetSchedules]: async () => {
-            return services.scheduleService.getSchedules();
-        },
-
-        [FrontendCommand.AddSchedule]: async (payload) => {
-            const { suiteId, suiteName, cronExpression, description } = payload;
-            return services.scheduleService.addSchedule(suiteId, suiteName, cronExpression, description);
-        },
-
-        [FrontendCommand.UpdateSchedule]: async (payload) => {
-            return services.scheduleService.updateSchedule(payload.id, payload.updates);
-        },
-
-        [FrontendCommand.DeleteSchedule]: async (payload) => {
-            return services.scheduleService.deleteSchedule(payload.id);
-        },
-
-        [FrontendCommand.ToggleSchedule]: async (payload) => {
-            const schedules = services.scheduleService.getSchedules();
-            const schedule = schedules.find(s => s.id === payload.id);
-            if (schedule) {
-                return services.scheduleService.updateSchedule(payload.id, { enabled: !schedule.enabled });
-            }
-            return null;
         },
 
         // ===== ADO (Azure DevOps) =====
@@ -835,19 +622,6 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             // Clipboard operations handled by Tauri plugin
             console.log('[Sidecar] Clipboard action:', payload.action);
             return { success: true };
-        },
-
-        // ===== Coordinator (stub - not implemented for standalone) =====
-        [FrontendCommand.StartCoordinator]: async () => {
-            return { started: false, message: 'Coordinator not available in standalone mode' };
-        },
-
-        [FrontendCommand.StopCoordinator]: async () => {
-            return { stopped: true };
-        },
-
-        [FrontendCommand.GetCoordinatorStatus]: async () => {
-            return { running: false, workers: [] };
         },
 
         // ===== Echo (for testing) =====
