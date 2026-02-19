@@ -7,6 +7,9 @@ use std::sync::Mutex;
 use std::thread;
 use tauri::Manager;
 
+#[cfg(target_os = "macos")]
+use tauri_plugin_decorum::WebviewWindowExt;
+
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 
@@ -665,6 +668,7 @@ fn apply_window_styling(_window: &tauri::WebviewWindow) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_decorum::init()) // Initialize decorum plugin
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
@@ -736,21 +740,25 @@ pub fn run() {
                 }
             }
             
-            // Configure window decorations based on platform
-            if let Some(window) = app.get_webview_window("main") {
-                #[cfg(target_os = "macos")]
-                {
-                    // On macOS, enable native titlebar with overlay style
-                    log::info!("macOS: Enabling native titlebar with traffic lights");
-                    let _ = window.set_decorations(true);
-                    // Note: titleBarStyle and hiddenTitle must be set in tauri.conf.json
-                    // as they can't be changed at runtime
-                }
-                
-                #[cfg(not(target_os = "macos"))]
-                {
-                    log::info!("Windows/Linux: Using custom titlebar (decorations disabled)");
-                    // Decorations already false from config
+            // Apply decorum plugin for macOS traffic lights
+            #[cfg(target_os = "macos")]
+            {
+                if let Some(window) = app.get_webview_window("main") {
+                    log::info!("Applying decorum plugin for macOS traffic lights");
+                    match window.create_overlay_titlebar() {
+                        Ok(_) => {
+                            log::info!("Successfully created overlay titlebar");
+                            // Set traffic lights inset to align with our custom titlebar
+                            if let Err(e) = window.set_traffic_lights_inset(12.0, 16.0) {
+                                log::error!("Failed to set traffic lights inset: {:?}", e);
+                            }
+                        },
+                        Err(e) => {
+                            log::error!("Failed to create overlay titlebar: {:?}", e);
+                        }
+                    }
+                } else {
+                    log::error!("Failed to get main window for decorum setup");
                 }
             }
 

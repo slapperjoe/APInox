@@ -12,7 +12,6 @@ import { ScrapbookProvider } from './contexts/ScrapbookContext';
 import MainContent from './components/MainContent';
 import { DebugIndicator } from './components/DebugIndicator';
 import TitleBar from './components/TitleBar';
-import { MacOSTitleBarSearch } from './components/MacOSTitleBarSearch';
 
 // Editor settings persistence
 const EDITOR_SETTINGS_KEY = 'apinox-editor-settings';
@@ -78,8 +77,7 @@ export default function App() {
                             <ScrapbookProvider>
                                 <TestRunnerProvider>
                                         <SearchProvider>
-                                            {showCustomTitleBar && <TitleBar />}
-                                            {showMacOSSearchBar && <MacOSTitleBarSearch />}
+                                            <TitleBar />
                                             <DebugIndicator />
                                             <ErrorBoundary
                                                 onError={(error, errorInfo) => {

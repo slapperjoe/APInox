@@ -20,7 +20,7 @@ import { FileText, Folder, Box, Layers, TestTube, Workflow, Clock } from 'lucide
 
 const DropdownContainer = styled.div<{ $isMacOS?: boolean }>`
     position: fixed;
-    top: ${props => props.$isMacOS ? '34px' : '32px'}; /* Below titlebar (macOS: 34px, Windows/Linux: 32px) */
+    top: ${props => props.$isMacOS ? '40px' : '40px'}; /* Below titlebar (now 40px for both) */
     left: ${props => props.$isMacOS ? '92px' : '95px'}; /* Align with search bar (after logo + padding) */
     width: 450px;
     max-width: calc(100vw - ${props => props.$isMacOS ? '280px' : '240px'}); /* Leave room for breadcrumb and version */

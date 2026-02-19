@@ -19,9 +19,13 @@
         "minHeight": 600,
         "resizable": true,
         "fullscreen": false,
-        "decorations": false
+        "decorations": true,
+        "hiddenTitle": true,
+        "titleBarStyle": "Overlay",
+        "transparent": false
       }
     ],
+    "withGlobalTauri": true,
     "macOSPrivateApi": true,
     "security": {
       "csp": "default-src 'self'; connect-src 'self' https: http://localhost:* http://127.0.0.1:*; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-eval'; worker-src blob:; font-src 'self' data:; img-src 'self' data:;"
