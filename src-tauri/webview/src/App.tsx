@@ -7,7 +7,6 @@ import { SelectionProvider } from './contexts/SelectionContext';
 import { UIProvider } from './contexts/UIContext';
 import { NavigationProvider } from './contexts/NavigationContext';
 import { TestRunnerProvider } from './contexts/TestRunnerContext';
-import { PerformanceProvider } from './contexts/PerformanceContext';
 import { SearchProvider } from './contexts/SearchContext';
 import { ScrapbookProvider } from './contexts/ScrapbookContext';
 import MainContent from './components/MainContent';
@@ -78,7 +77,6 @@ export default function App() {
                         <NavigationProvider>
                             <ScrapbookProvider>
                                 <TestRunnerProvider>
-                                    <PerformanceProvider>
                                         <SearchProvider>
                                             {showCustomTitleBar && <TitleBar />}
                                             {showMacOSSearchBar && <MacOSTitleBarSearch />}
@@ -92,7 +90,6 @@ export default function App() {
                                                 <MainContent />
                                             </ErrorBoundary>
                                         </SearchProvider>
-                                    </PerformanceProvider>
                                 </TestRunnerProvider>
                             </ScrapbookProvider>
                         </NavigationProvider>

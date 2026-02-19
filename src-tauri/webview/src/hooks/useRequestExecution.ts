@@ -108,10 +108,8 @@ interface UseRequestExecutionParams {
     // Other
     testExecution: Record<string, Record<string, { response?: any }>>;
 
-    // Performance Support
-    selectedPerformanceSuiteId?: string | null;
+    // Config support (for environment variables)
     config?: any;
-    setConfig?: React.Dispatch<React.SetStateAction<any>>;
 
     // Explorer Support
     exploredInterfaces?: ApiInterface[];
@@ -143,9 +141,7 @@ export function useRequestExecution({
     setProjects,
     setWorkspaceDirty,
     testExecution,
-    selectedPerformanceSuiteId,
     config,
-    setConfig,
     exploredInterfaces,
     setExploredInterfaces,
     onScrapbookAutoSave
@@ -307,8 +303,7 @@ export function useRequestExecution({
             selectedInterfaceName: selectedInterface?.name,
             selectedOperationName: selectedOperation?.name,
             selectedTestCaseName: selectedTestCase?.name,
-            selectedTestCaseId: selectedTestCase?.id,
-            selectedPerformanceSuiteId
+            selectedTestCaseId: selectedTestCase?.id
         };
 
 
@@ -337,61 +332,7 @@ export function useRequestExecution({
             }
         }
 
-        // 1. Performance Request Modification (Immediate or Debounced? Keep immediate for now as it doesn't loop back to selectedRequest in the same way)
-        if (selectedPerformanceSuiteId && updated.id?.startsWith('perf-req-')) {
-            // ... existing perf logic omitted/unchanged ...
-            // Actually, limiting scope of change. I will COPY existing perf logic here? 
-            // No, I need to include it in the replacement chunk or omit it if outside.
-        }
-
-        // Re-implementing the Performance logic part to ensure it's not lost in replacement
-        if (selectedPerformanceSuiteId && updated.id?.startsWith('perf-req-')) {
-            console.log('[handleRequestUpdate] Updating Performance Request:', updated.id);
-            bridge.sendMessage({ command: 'log', message: '[handleRequestUpdate] PERF PATH - updating perf request', data: JSON.stringify({ suiteId: selectedPerformanceSuiteId, requestId: updated.id }) });
-
-            // Send update to backend immediately (safe?)
-            bridge.sendMessage({
-                command: FrontendCommand.UpdatePerformanceRequest,
-                suiteId: selectedPerformanceSuiteId,
-                requestId: updated.id!,
-                updates: {
-                    name: updated.name,
-                    requestBody: updated.request,
-                    headers: updated.headers,
-                    method: updated.method,
-                    endpoint: updated.endpoint
-                }
-            });
-
-            // Optimistic update of local config
-            if (setConfig && config) {
-                setConfig((prev: any) => {
-                    const suites = prev.performanceSuites || [];
-                    const suiteIndex = suites.findIndex((s: any) => s.id === selectedPerformanceSuiteId);
-                    if (suiteIndex === -1) return prev;
-                    // ... verify structure ... 
-                    const suite = { ...suites[suiteIndex] };
-                    const reqIndex = suite.requests.findIndex((r: any) => r.id === updated.id);
-                    if (reqIndex !== -1) {
-                        const updatedReq = {
-                            ...suite.requests[reqIndex],
-                            name: updated.name,
-                            requestBody: updated.request,
-                            headers: updated.headers,
-                            method: updated.method,
-                            endpoint: updated.endpoint
-                        };
-                        const newRequests = [...suite.requests];
-                        newRequests[reqIndex] = updatedReq;
-                        const newSuites = [...suites];
-                        newSuites[suiteIndex] = { ...suite, requests: newRequests };
-                        return { ...prev, performanceSuites: newSuites };
-                    }
-                    return prev;
-                });
-            }
-            return;
-        }
+        // PERFORMANCE REMOVED: Performance functionality moved to APIprox
 
         // 2. Project/Explorer Update - DEBOUNCED
         // This prevents the race condition where `setProjects` triggers a MainContent re-render
@@ -503,7 +444,7 @@ export function useRequestExecution({
             });
         }, 300); // 300ms debounce for tree updates
 
-    }, [selectedProjectName, selectedTestCase, selectedInterface, selectedOperation, selectedRequest, setProjects, setSelectedRequest, setWorkspaceDirty, selectedPerformanceSuiteId, config, setConfig, exploredInterfaces, setExploredInterfaces]);
+    }, [selectedProjectName, selectedTestCase, selectedInterface, selectedOperation, selectedRequest, setProjects, setSelectedRequest, setWorkspaceDirty, exploredInterfaces, setExploredInterfaces]);
 
     const handleResetRequest = useCallback(() => {
         if (selectedRequest && selectedOperation) {

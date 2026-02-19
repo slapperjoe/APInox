@@ -408,12 +408,12 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                             {
                                 icon: <Upload size={16} />,
                                 label: 'Export Workspace',
-                                onClick: onExportWorkspace
+                                onClick: onExportWorkspace || (() => {})
                             },
                             {
                                 icon: <Download size={16} />,
                                 label: 'Bulk Import',
-                                onClick: onBulkImport
+                                onClick: onBulkImport || (() => {})
                             }
                         ]}
                     />

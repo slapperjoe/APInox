@@ -54,12 +54,7 @@ export class WsdlParser {
             this.log(`Using proxy: ${proxyUrl}`);
             this.log(`Strict SSL: ${strictSSL}`);
 
-            const isHttps = url.toLowerCase().startsWith('https');
-            const agentOptions = { rejectUnauthorized: strictSSL };
-
-            agent = isHttps
-                ? new HttpsProxyAgent(proxyUrl, agentOptions)
-                : new HttpsProxyAgent(proxyUrl.replace('http://', 'https://'), agentOptions);
+            agent = new HttpsProxyAgent(proxyUrl, { rejectUnauthorized: strictSSL });
 
             // node-soap accepts http/https agents directly via wsdl_options
             soapOptions.wsdl_options = {

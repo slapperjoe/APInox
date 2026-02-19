@@ -33,7 +33,6 @@ interface UseTestCaseHandlersParams {
     setSelectedRequest: React.Dispatch<React.SetStateAction<ApiRequest | null>>;
     setSelectedOperation: React.Dispatch<React.SetStateAction<ApiOperation | null>>;
     setSelectedInterface: React.Dispatch<React.SetStateAction<ApiInterface | null>>;
-    setSelectedPerformanceSuiteId: React.Dispatch<React.SetStateAction<string | null>>;
     setResponse: React.Dispatch<React.SetStateAction<any>>;
     setActiveView: React.Dispatch<React.SetStateAction<SidebarView>>;
     closeContextMenu: () => void;
@@ -63,7 +62,6 @@ export function useTestCaseHandlers({
     setSelectedRequest,
     setSelectedOperation,
     setSelectedInterface,
-    setSelectedPerformanceSuiteId,
     setResponse,
     setActiveView,
     closeContextMenu,
@@ -82,13 +80,12 @@ export function useTestCaseHandlers({
             setSelectedRequest(null);
             setSelectedOperation(null);
             setSelectedInterface(null);
-            setSelectedPerformanceSuiteId(null);
             setResponse(null);
 
             // Don't change activeView - let user stay on current sidebar tab
             // (Assumes SidebarView.TESTS is active if clicking suite)
         }
-    }, [projects, setSelectedTestSuite, setSelectedTestCase, setSelectedStep, setSelectedRequest, setSelectedOperation, setSelectedInterface, setSelectedPerformanceSuiteId, setResponse]);
+    }, [projects, setSelectedTestSuite, setSelectedTestCase, setSelectedStep, setSelectedRequest, setSelectedOperation, setSelectedInterface, setResponse]);
 
     const handleSelectTestCase = useCallback((caseId: string) => {
         let foundCase: TestCase | null = null;
@@ -111,13 +108,12 @@ export function useTestCaseHandlers({
             setSelectedRequest(null);
             setSelectedOperation(null);
             setSelectedInterface(null);
-            setSelectedPerformanceSuiteId(null);
             setResponse(null);
             // Don't change activeView - let user stay on current sidebar tab
         } else {
             bridge.sendMessage({ command: 'error', message: `Could not find Test Case: ${caseId}` });
         }
-    }, [projects, setSelectedTestCase, setSelectedStep, setSelectedRequest, setSelectedOperation, setSelectedInterface, setSelectedPerformanceSuiteId, setResponse]);
+    }, [projects, setSelectedTestCase, setSelectedStep, setSelectedRequest, setSelectedOperation, setSelectedInterface, setResponse]);
 
     const handleAddAssertion = useCallback((data: { xpath: string, expectedContent: string }) => {
         console.log("handleAddAssertion Called.", data, "TC:", selectedTestCase?.id, "Step:", selectedStep?.id);
