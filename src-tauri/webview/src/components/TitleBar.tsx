@@ -14,7 +14,7 @@ const TitleBarContainer = styled.div`
   top: 0;
   left: 0;
   right: 0;
-  height: 32px;
+  height: 40px; /* Increased from 32px to match macOS titlebar height */
   background: var(--apinox-titleBar-activeBackground);
   color: var(--apinox-titleBar-activeForeground);
   display: flex;
@@ -26,7 +26,7 @@ const TitleBarContainer = styled.div`
   pointer-events: auto;
 `;
 
-const DragRegion = styled.div<{ $isMacOS?: boolean }>`
+const DragRegion = styled.div<{ $isMacOS?: boolean; $isMaximized?: boolean }>`
   flex: 1;
   height: 100%;
   display: flex;
@@ -38,7 +38,14 @@ const DragRegion = styled.div<{ $isMacOS?: boolean }>`
   min-width: 0;
   
   /* On macOS, add left padding for native traffic lights */
-  padding-left: ${props => props.$isMacOS ? '80px' : '12px'};
+  /* When maximized, reduce padding since traffic lights auto-hide */
+  padding-left: ${props => {
+    if (!props.$isMacOS) return '12px';
+    return props.$isMaximized ? '12px' : '90px';
+  }};
+  
+  /* Smooth transition when toggling maximize */
+  transition: padding-left 0.2s ease;
   
   /* All children should not be draggable */
   > * {
@@ -85,7 +92,7 @@ const SearchContainer = styled.div`
   align-items: center;
   gap: 8px;
   padding: 0 10px;
-  height: 24px;
+  height: 26px; /* Increased from 24px for better visual alignment */
   background: var(--vscode-input-background);
   border: 1px solid var(--vscode-input-border, rgba(128, 128, 128, 0.3));
   border-radius: 4px;
@@ -409,7 +416,7 @@ const TitleBar: React.FC = () => {
   return (
     <>
       <TitleBarContainer>
-        <DragRegion $isMacOS={platformOS === 'macos'}>
+        <DragRegion $isMacOS={platformOS === 'macos'} $isMaximized={isMaximized} data-tauri-drag-region>
           <AppLogo onClick={handleLogoClick} title="Double-click to open Debug Console">
             <LogoIcon src={apinoxIcon} alt="APInox" />
             <AppTitle>APInox</AppTitle>

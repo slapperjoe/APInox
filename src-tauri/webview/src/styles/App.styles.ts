@@ -25,8 +25,8 @@ export const Container = styled.div<{ $showCustomTitleBar?: boolean; $isMacOS?: 
     font-family: var(--apinox-font-family);
     font-size: var(--apinox-font-size);
     padding-top: ${props => {
-        if (props.$isMacOS) return '34px';  // macOS overlay titlebar with search
-        if (props.$showCustomTitleBar) return '32px';  // Custom titlebar on Windows/Linux
+        if (props.$isMacOS) return '40px';  // macOS custom titlebar (increased for traffic light alignment)
+        if (props.$showCustomTitleBar) return '40px';  // Custom titlebar on Windows/Linux
         return '0';
     }};
 `;
