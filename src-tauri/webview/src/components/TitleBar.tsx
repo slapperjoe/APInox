@@ -34,7 +34,6 @@ const DragRegion = styled.div<{ $isMacOS?: boolean; $isMaximized?: boolean }>`
   gap: 12px;
   padding: 0 12px;
   -webkit-app-region: drag;
-  cursor: move;
   min-width: 0;
   
   /* On macOS, add left padding for native traffic lights */

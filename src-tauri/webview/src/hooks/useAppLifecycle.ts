@@ -14,6 +14,7 @@ interface UseAppLifecycleProps {
     setExplorerExpanded: (expanded: boolean) => void;
     setWsdlUrl: (url: string) => void;
     setSelectedProjectName: (name: string | null) => void;
+    setRequestHistory: (history: any[]) => void;
 }
 
 export const useAppLifecycle = ({
@@ -25,7 +26,8 @@ export const useAppLifecycle = ({
     setProjects,
     setExplorerExpanded,
     setWsdlUrl,
-    setSelectedProjectName
+    setSelectedProjectName,
+    setRequestHistory
 }: UseAppLifecycleProps) => {
 
     // Get exploredInterfaces from NavigationContext
@@ -76,7 +78,11 @@ export const useAppLifecycle = ({
         loadSettings();
         bridge.sendMessage({ command: 'getAutosave' });
         bridge.sendMessage({ command: 'getWatcherHistory' });
-        bridge.sendMessage({ command: FrontendCommand.GetHistory });
+        
+        // Load history from Rust
+        bridge.invokeTauriCommand('get_history', {})
+            .then(history => setRequestHistory(history))
+            .catch(err => console.error('[useAppLifecycle] Failed to load history:', err));
 
         // Retrieve initial state from bridge
         const state = bridge.getState();

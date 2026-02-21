@@ -1,0 +1,31 @@
+{
+  "id": "samples-folder-rest",
+  "name": "REST",
+  "requests": [
+    {
+      "endpoint": "https://jsonplaceholder.typicode.com/users",
+      "headers": {
+        "Accept": "application/json"
+      },
+      "id": "sample-rest-get-users",
+      "method": "GET",
+      "name": "Get Users",
+      "readOnly": true,
+      "request": "",
+      "requestType": "rest"
+    },
+    {
+      "bodyType": "json",
+      "endpoint": "https://jsonplaceholder.typicode.com/posts",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "id": "sample-rest-post-posts",
+      "method": "POST",
+      "name": "Create Post",
+      "readOnly": true,
+      "request": "{\n  \"title\": \"foo\",\n  \"body\": \"bar\",\n  \"userId\": 1\n}",
+      "requestType": "rest"
+    }
+  ]
+}

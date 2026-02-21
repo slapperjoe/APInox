@@ -2,6 +2,33 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { ApinoxProject, ApiInterface, ApiOperation, ApiRequest, TestSuite, TestCase } from '../../shared/src/models';
 
+/**
+ * FolderProjectStorage - Project persistence layer
+ * 
+ * @deprecated This class is being migrated to Rust (src-tauri/src/project_storage.rs)
+ * New code should use Tauri commands: save_project, load_project, delete_project
+ * 
+ * Still used by:
+ * - SoapUIExporter.importWorkspace() for multi-project workspace imports
+ * - Fallback handlers in router.ts (backwards compatibility)
+ * 
+ * APInox uses folder-based project format (git-friendly, human-readable):
+ * ```
+ * MyProject/
+ * ├── properties.json          # Project metadata
+ * ├── interfaces/
+ * │   └── ServiceName/
+ * │       ├── interface.json   # Binding info
+ * │       └── OperationName/
+ * │           ├── operation.json  # Metadata
+ * │           ├── Request1.xml
+ * │           └── Request1.json
+ * └── tests/
+ *     └── SuiteName/
+ *         └── CaseName/
+ *             └── 01_step.json
+ * ```
+ */
 export class FolderProjectStorage {
     private outputChannel: any = null;
 

@@ -71,6 +71,27 @@ export interface BackendMessage {
     [key: string]: any;
 }
 
+// ============== Tauri Command Helpers ==============
+
+/**
+ * Call a Tauri command directly (bypassing sidecar)
+ * Use this for commands implemented in Rust (file I/O, config, etc.)
+ */
+export async function invokeTauriCommand<T = any>(command: string, args?: Record<string, any>): Promise<T> {
+    await ensureTauriInitialized();
+    
+    if (!tauriInvoke) {
+        throw new Error('Tauri not initialized');
+    }
+    
+    try {
+        return await tauriInvoke(command, args);
+    } catch (error: any) {
+        console.error(`[Bridge] Tauri command '${command}' failed:`, error);
+        throw error;
+    }
+}
+
 // ============== Sidecar HTTP Client (for Tauri) ==============
 
 async function sendToSidecar(message: BridgeMessage): Promise<any> {
@@ -349,6 +370,7 @@ export const bridge = {
      */
     getPlatform,
     isTauri,
+    invokeTauriCommand, // Direct Rust command access
     
     // Deprecated - kept for backwards compatibility
     isVsCode: () => false,
