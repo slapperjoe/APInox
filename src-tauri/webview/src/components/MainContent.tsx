@@ -608,18 +608,26 @@ const MainContent: React.FC = () => {
         }
     };
 
-    const handleToggleHistoryStar = (id: string) => {
-        bridge.sendMessage({
-            command: FrontendCommand.ToggleStarHistory,
-            id
-        });
+    const handleToggleHistoryStar = async (id: string) => {
+        try {
+            await bridge.invokeTauriCommand('toggle_star_history', { id });
+            // Refresh history
+            const updatedHistory = await bridge.invokeTauriCommand('get_history', {});
+            setRequestHistory(updatedHistory);
+        } catch (error) {
+            console.error('[MainContent] Failed to toggle star:', error);
+        }
     };
 
-    const handleDeleteHistory = (id: string) => {
-        bridge.sendMessage({
-            command: FrontendCommand.DeleteHistoryEntry,
-            id
-        });
+    const handleDeleteHistory = async (id: string) => {
+        try {
+            await bridge.invokeTauriCommand('delete_history_entry', { id });
+            // Refresh history
+            const updatedHistory = await bridge.invokeTauriCommand('get_history', {});
+            setRequestHistory(updatedHistory);
+        } catch (error) {
+            console.error('[MainContent] Failed to delete history entry:', error);
+        }
     };
 
     // Extractor Modal State (needed before useWorkspaceCallbacks)
@@ -761,7 +769,7 @@ const MainContent: React.FC = () => {
     // Modals (remaining)
     const [confirmationModal, setConfirmationModal] = useState<ConfirmationState | null>(null);
     const [addToTestCaseModal, setAddToTestCaseModal] = React.useState<{ open: boolean, request: ApiRequest | null }>({ open: false, request: null });
-    const [pickRequestModal, setPickRequestModal] = React.useState<{ open: boolean, mode: 'testcase', caseId: string | null }>({ open: false, mode: 'testcase', caseId: null });
+    const [pickRequestModal, setPickRequestModal] = React.useState<{ open: boolean, mode: 'testcase', caseId: string | null, suiteId?: string | null }>({ open: false, mode: 'testcase', caseId: null });
     const [sampleModal, setSampleModal] = React.useState<{ open: boolean, schema: any | null, operationName: string }>({ open: false, schema: null, operationName: '' });
     const [exportWorkspaceModal, setExportWorkspaceModal] = React.useState(false);
     // const [codeSnippetModal, setCodeSnippetModal] = React.useState<{ open: boolean, request: ApiRequest | null }>({ open: false, request: null });
@@ -1172,7 +1180,8 @@ const MainContent: React.FC = () => {
         setProjects,
         setExplorerExpanded,
         setWsdlUrl,
-        setSelectedProjectName
+        setSelectedProjectName,
+        setRequestHistory
     });
 
     // Sync selectedTestCase with latest projects state

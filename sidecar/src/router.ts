@@ -217,13 +217,16 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
         },
 
         // ===== Project Storage =====
+        // ===== Project Storage (MIGRATED TO RUST) =====
+        // These handlers are deprecated - now handled by Rust Tauri commands
+        // See: src-tauri/src/project_storage.rs
+        
         [FrontendCommand.SaveProject]: async (payload) => {
-            // Accept both 'filePath' and 'path' from frontend
+            // DEPRECATED: Now handled by Rust 'save_project' command
+            // Kept for backwards compatibility during migration
             const filePath = payload.filePath || payload.path || payload?.project?.fileName;
             const { project } = payload;
             if (!filePath) {
-                // If no path, this is a new project that needs "Save As" dialog
-                // In Tauri standalone, we can't prompt - return error
                 throw new Error('No file path provided. Please use "Save Project As" first.');
             }
             
@@ -231,14 +234,14 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             return {
                 saved: true,
                 path: filePath,
-                // CRITICAL: Return these so frontend updates the project state
                 projectName: project.name,
                 fileName: filePath
             };
         },
 
         [FrontendCommand.LoadProject]: async (payload) => {
-            // Accept both 'filePath' and 'path' from frontend
+            // DEPRECATED: Now handled by Rust 'load_project' command
+            // Kept for backwards compatibility during migration
             const filePath = payload.filePath || payload.path;
             if (!filePath) {
                 throw new Error('No file path provided');
@@ -322,6 +325,8 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
         },
 
         ["deleteProjectFiles"]: async (payload) => {
+            // DEPRECATED: Now handled by Rust 'delete_project' command
+            // Kept for backwards compatibility during migration
             const { path } = payload;
             if (!path) {
                 throw new Error('No path provided for deletion');
@@ -330,18 +335,15 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             const fs = require('fs');
             const pathModule = require('path');
             
-            // Safety check: ensure it's an absolute path
             if (!pathModule.isAbsolute(path)) {
                 throw new Error('Path must be absolute');
             }
             
-            // Safety check: ensure directory exists
             if (!fs.existsSync(path)) {
                 console.log(`[Router] Path does not exist: ${path}`);
                 return { deleted: false, reason: 'Path does not exist' };
             }
             
-            // Safety check: ensure it's a directory
             const stats = fs.statSync(path);
             if (!stats.isDirectory()) {
                 throw new Error('Path must be a directory');
@@ -438,21 +440,30 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
         },
 
         // ===== Request History =====
+        // ===== Request History (MIGRATED TO RUST) =====
+        // These handlers are deprecated - now handled by Rust Tauri commands
+        // See: src-tauri/src/history_storage.rs
+        
         [FrontendCommand.GetHistory]: async () => {
+            // DEPRECATED: Now handled by Rust 'get_history' command
+            // Kept for backwards compatibility during migration
             return services.historyService.getAll();
         },
 
         [FrontendCommand.ClearHistory]: async () => {
+            // DEPRECATED: Now handled by Rust 'clear_history' command
             services.historyService.clearAll();
             return { cleared: true };
         },
 
         [FrontendCommand.DeleteHistoryEntry]: async (payload) => {
+            // DEPRECATED: Now handled by Rust 'delete_history_entry' command
             services.historyService.deleteEntry(payload.id);
             return { deleted: true };
         },
 
         [FrontendCommand.ToggleStarHistory]: async (payload) => {
+            // DEPRECATED: Now handled by Rust 'toggle_star_history' command
             services.historyService.toggleStar(payload.id);
             return { toggled: true };
         },
@@ -517,20 +528,27 @@ export function createCommandRouter(services: ServiceContainer): CommandRouter {
             };
         },
 
-        // ===== Secrets Management =====
+        // ===== Secrets Management (MIGRATED TO RUST) =====
+        // These handlers are deprecated - now handled by Rust Tauri commands
+        // See: src-tauri/src/secret_storage.rs
+        
         ['setEnvironmentSecret']: async (payload) => {
+            // DEPRECATED: Now handled by Rust 'store_secret' command
+            // Kept for backwards compatibility during migration
             const { envName, fieldName, value } = payload;
             await services.secretManager.setEnvironmentSecret(envName, fieldName, value);
             return { success: true };
         },
 
         ['getEnvironmentSecret']: async (payload) => {
+            // DEPRECATED: Now handled by Rust 'get_secret' command
             const { envName, fieldName } = payload;
             const value = await services.secretManager.getEnvironmentSecret(envName, fieldName);
             return { value };
         },
 
         ['deleteEnvironmentSecret']: async (payload) => {
+            // DEPRECATED: Now handled by Rust 'delete_secret' command
             const { envName, fieldName } = payload;
             await services.secretManager.deleteEnvironmentSecret(envName, fieldName);
             return { success: true };

@@ -1,0 +1,48 @@
+{
+  "id": "samples-folder-soap",
+  "name": "SOAP",
+  "requests": [
+    {
+      "contentType": "text/xml; charset=utf-8",
+      "endpoint": "http://www.dneonline.com/calculator.asmx",
+      "headers": {
+        "Content-Type": "text/xml; charset=utf-8",
+        "SOAPAction": "http://tempuri.org/Add"
+      },
+      "id": "sample-soap-calc-add",
+      "method": "POST",
+      "name": "Calculator - Add",
+      "readOnly": true,
+      "request": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<soap:Envelope xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\">\n  <soap:Body>\n    <Add xmlns=\"http://tempuri.org/\">\n      <intA>5</intA>\n      <intB>7</intB>\n    </Add>\n  </soap:Body>\n</soap:Envelope>",
+      "requestType": "soap"
+    },
+    {
+      "contentType": "text/xml; charset=utf-8",
+      "endpoint": "http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso",
+      "headers": {
+        "Content-Type": "text/xml; charset=utf-8",
+        "SOAPAction": "http://www.oorsprong.org/websamples.countryinfo/FullCountryInfo"
+      },
+      "id": "sample-soap-country-info",
+      "method": "POST",
+      "name": "Country Info - Complex Types",
+      "readOnly": true,
+      "request": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:web=\"http://www.oorsprong.org/websamples.countryinfo\">\n  <soap:Body>\n    <web:FullCountryInfo>\n      <web:sCountryISOCode>US</web:sCountryISOCode>\n    </web:FullCountryInfo>\n  </soap:Body>\n</soap:Envelope>",
+      "requestType": "soap"
+    },
+    {
+      "contentType": "text/xml; charset=utf-8",
+      "endpoint": "http://webservices.daehosting.com/services/isbnservice.wso",
+      "headers": {
+        "Content-Type": "text/xml; charset=utf-8",
+        "SOAPAction": "http://webservices.daehosting.com/ISBN/IsValidISBN10"
+      },
+      "id": "sample-soap-isbn",
+      "method": "POST",
+      "name": "ISBN Validator",
+      "readOnly": true,
+      "request": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:web=\"http://webservices.daehosting.com/ISBN\">\n  <soap:Body>\n    <web:IsValidISBN10>\n      <web:sISBN>0-19-852663-6</web:sISBN>\n    </web:IsValidISBN10>\n  </soap:Body>\n</soap:Envelope>",
+      "requestType": "soap"
+    }
+  ]
+}

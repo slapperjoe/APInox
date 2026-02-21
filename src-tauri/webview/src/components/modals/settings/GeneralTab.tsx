@@ -77,36 +77,6 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange }) => {
                         <CheckboxLabel>
                             <input
                                 type="checkbox"
-                                checked={config.ui?.showLineNumbers ?? true}
-                                onChange={e => onChange('ui', 'showLineNumbers', e.target.checked)}
-                            />
-                            Show Line Numbers in Editor
-                        </CheckboxLabel>
-                    </FormGroup>
-                    <FormGroup>
-                        <CheckboxLabel>
-                            <input
-                                type="checkbox"
-                                checked={config.ui?.alignAttributes ?? false}
-                                onChange={e => onChange('ui', 'alignAttributes', e.target.checked)}
-                            />
-                            Align Attributes Vertically
-                        </CheckboxLabel>
-                    </FormGroup>
-                    <FormGroup>
-                        <CheckboxLabel>
-                            <input
-                                type="checkbox"
-                                checked={config.ui?.inlineElementValues ?? false}
-                                onChange={e => onChange('ui', 'inlineElementValues', e.target.checked)}
-                            />
-                            Inline simple values in XML Response (Experimental)
-                        </CheckboxLabel>
-                    </FormGroup>
-                    <FormGroup>
-                        <CheckboxLabel>
-                            <input
-                                type="checkbox"
                                 checked={config.ui?.showDebugIndicator ?? false}
                                 onChange={e => onChange('ui', 'showDebugIndicator', e.target.checked)}
                             />

@@ -1,3 +1,6 @@
+// Prevent additional console window on Windows in release builds
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
@@ -6,6 +9,12 @@ use std::sync::atomic::{AtomicU16, Ordering};
 use std::sync::Mutex;
 use std::thread;
 use tauri::Manager;
+
+mod project_storage;
+mod history_storage;
+mod scrapbook_storage;
+mod secret_storage;
+mod settings_manager;
 
 #[cfg(target_os = "macos")]
 use tauri_plugin_decorum::WebviewWindowExt;
@@ -675,7 +684,52 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![quit_app, set_border_color, get_app_version, get_platform_os, get_sidecar_port, is_sidecar_ready, get_config_dir, get_sidecar_diagnostics, get_tauri_logs])
+        .invoke_handler(tauri::generate_handler![
+            quit_app,
+            set_border_color,
+            get_app_version,
+            get_platform_os,
+            get_sidecar_port,
+            is_sidecar_ready,
+            get_config_dir,
+            get_sidecar_diagnostics,
+            get_tauri_logs,
+            project_storage::save_project,
+            project_storage::load_project,
+            project_storage::delete_project,
+            history_storage::get_history,
+            history_storage::add_history_entry,
+            history_storage::clear_history,
+            history_storage::delete_history_entry,
+            history_storage::toggle_star_history,
+            history_storage::get_starred_history,
+            history_storage::clear_history_older_than,
+            history_storage::update_history_config,
+            history_storage::get_history_config,
+            scrapbook_storage::get_scrapbook,
+            scrapbook_storage::add_scrapbook_request,
+            scrapbook_storage::update_scrapbook_request,
+            scrapbook_storage::delete_scrapbook_request,
+            scrapbook_storage::get_scrapbook_request,
+            secret_storage::store_secret,
+            secret_storage::get_secret,
+            secret_storage::delete_secret,
+            secret_storage::resolve_secret_value,
+            secret_storage::is_secret_ref,
+            secret_storage::list_secret_keys,
+            settings_manager::get_settings,
+            settings_manager::get_raw_settings,
+            settings_manager::save_raw_settings,
+            settings_manager::save_settings,
+            settings_manager::update_ui_settings,
+            settings_manager::update_active_environment,
+            settings_manager::update_open_projects,
+            settings_manager::update_workflows,
+            settings_manager::get_config_dir_path,
+            settings_manager::get_config_file_path,
+            settings_manager::get_resolved_environment,
+            settings_manager::get_global_variables
+        ])
         .setup(|app| {
             // Initialize logging for both debug and production
             // This helps diagnose issues on user machines
