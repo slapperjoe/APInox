@@ -37,6 +37,41 @@ tauri-plugin-process = "2"
 raw-window-handle = "0.6"
 tauri-plugin-decorum = "1.1.1"
 
+# HTTP client and networking
+reqwest = { version = "0.12", features = ["json", "cookies", "gzip", "rustls-tls"] }
+tokio = { version = "1.45", features = ["full"] }
+
+# XML parsing and XPath
+quick-xml = { version = "0.31", features = ["serialize"] }
+sxd-document = "0.3"
+sxd-xpath = "0.4"
+
+# YAML parsing for OpenAPI
+serde_yaml = "0.9"
+
+# Regular expressions
+regex = "1.11"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "2.0"
+
+# Async recursion
+async-recursion = "1.1"
+
+# URL parsing
+url = "2.5"
+
+# Base64 encoding/decoding
+base64 = "0.22"
+
+# SHA for hashing (WS-Security nonce/digest)
+sha1 = "0.10"
+sha2 = "0.10"
+
+# UUID generation
+uuid = { version = "1.11", features = ["v4"] }
+
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.58", features = ["Win32_Graphics_Dwm", "Win32_Foundation"] }
 
