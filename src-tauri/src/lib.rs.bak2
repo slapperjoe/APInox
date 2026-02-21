@@ -20,9 +20,9 @@ pub mod settings_manager;
 pub mod utils;
 pub mod http;
 pub mod soap;
-pub mod parsers;
-pub mod testing;
-pub mod workflow;
+mod parsers;
+mod testing;
+mod workflow;
 
 #[cfg(target_os = "macos")]
 use tauri_plugin_decorum::WebviewWindowExt;
