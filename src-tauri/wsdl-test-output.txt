@@ -1,0 +1,30 @@
+=================================================================
+WSDL PARSER TEST UTILITY
+=================================================================
+
+Input WSDL: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso?WSDL
+Max Import Depth: 10
+Resolve Imports: true
+Output File: wsdl-test-output.txt
+Timestamp: 2026-02-22 01:21:57 UTC
+
+-----------------------------------------------------------------
+PHASE 1: Fetching Main WSDL
+-----------------------------------------------------------------
+✓ Fetched (37172 bytes, 910ms)
+
+-----------------------------------------------------------------
+DOWNLOAD-ONLY MODE
+-----------------------------------------------------------------
+Saving files to: wsdl-downloads/
+
+✓ Saved main WSDL: CountryInfoService_wso.wsdl
+Found 0 imports to download
+
+
+✓ Saved manifest: manifest.txt
+
+✓ Downloaded 2 files to: wsdl-downloads/
+
+To transfer for analysis:
+  zip -r wsdl-downloads.zip wsdl-downloads/

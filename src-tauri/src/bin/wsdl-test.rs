@@ -13,6 +13,8 @@ struct TestConfig {
     max_depth: usize,
     output_file: String,
     resolve_imports: bool,
+    download_only: bool,
+    download_dir: String,
 }
 
 impl TestConfig {
@@ -20,7 +22,7 @@ impl TestConfig {
         let args: Vec<String> = std::env::args().collect();
         
         if args.len() < 2 {
-            return Err("Usage: wsdl-test <wsdl-url> [--max-depth N] [--output FILE] [--no-imports]".to_string());
+            return Err("Usage: wsdl-test <wsdl-url> [--max-depth N] [--output FILE] [--no-imports] [--download-only [DIR]]".to_string());
         }
         
         let mut config = TestConfig {
@@ -28,6 +30,8 @@ impl TestConfig {
             max_depth: 10,
             output_file: "wsdl-test-output.txt".to_string(),
             resolve_imports: true,
+            download_only: false,
+            download_dir: "wsdl-downloads".to_string(),
         };
         
         let mut i = 2;
@@ -53,6 +57,16 @@ impl TestConfig {
                 "--no-imports" => {
                     config.resolve_imports = false;
                     i += 1;
+                }
+                "--download-only" => {
+                    config.download_only = true;
+                    // Check if next arg is a directory path (doesn't start with --)
+                    if i + 1 < args.len() && !args[i + 1].starts_with("--") {
+                        config.download_dir = args[i + 1].clone();
+                        i += 2;
+                    } else {
+                        i += 1;
+                    }
                 }
                 _ => {
                     return Err(format!("Unknown option: {}", args[i]));
@@ -157,6 +171,11 @@ async fn run_test(config: &TestConfig, output: &mut TestOutput) -> Result<(), an
     output.log(&format!("✓ Fetched ({} bytes, {}ms)", wsdl_xml.len(), fetch_time.as_millis()));
     output.log("");
     
+    // If download-only mode, save files and exit
+    if config.download_only {
+        return run_download_only(config, output, &wsdl_xml).await;
+    }
+    
     let mut import_resolver = ImportResolver::new()?;
     if config.resolve_imports {
         output.section("PHASE 2: Resolving Imports");
@@ -240,6 +259,107 @@ async fn run_test(config: &TestConfig, output: &mut TestOutput) -> Result<(), an
     output.log(&format!("{} services, {} operations parsed", services.len(), total_ops));
     
     Ok(())
+}
+
+async fn run_download_only(config: &TestConfig, output: &mut TestOutput, main_wsdl: &str) -> Result<(), anyhow::Error> {
+    use std::fs;
+    use std::path::Path;
+    
+    output.section("DOWNLOAD-ONLY MODE");
+    output.log(&format!("Saving files to: {}/", config.download_dir));
+    output.log("");
+    
+    // Create download directory
+    let download_path = Path::new(&config.download_dir);
+    fs::create_dir_all(download_path)?;
+    
+    // Save main WSDL
+    let main_filename = sanitize_filename(&config.wsdl_url);
+    let main_path = download_path.join(&main_filename);
+    fs::write(&main_path, main_wsdl)?;
+    output.log(&format!("✓ Saved main WSDL: {}", main_filename));
+    
+    // Create manifest
+    let mut manifest = String::new();
+    manifest.push_str(&format!("WSDL Download Manifest\n"));
+    manifest.push_str(&format!("======================\n\n"));
+    manifest.push_str(&format!("Main WSDL: {}\n", config.wsdl_url));
+    manifest.push_str(&format!("  → {}\n\n", main_filename));
+    
+    // Resolve and download all imports
+    let mut import_resolver = ImportResolver::new()?;
+    let imports = ImportResolver::parse_imports(main_wsdl)?;
+    
+    output.log(&format!("Found {} imports to download", imports.len()));
+    output.log("");
+    
+    manifest.push_str(&format!("Imports ({}):\n", imports.len()));
+    
+    for (i, import_decl) in imports.iter().enumerate() {
+        let start = Instant::now();
+        match import_resolver.fetch_document(&import_decl.location, Some(&config.wsdl_url)).await {
+            Ok(xml) => {
+                let import_filename = format!("{:02}_{}", i + 1, sanitize_filename(&import_decl.location));
+                let import_path = download_path.join(&import_filename);
+                fs::write(&import_path, &xml)?;
+                
+                let fetch_ms = start.elapsed().as_millis();
+                output.log(&format!("  ✓ {} → {} ({} bytes, {}ms)", 
+                    i + 1, import_filename, xml.len(), fetch_ms));
+                
+                manifest.push_str(&format!("  {}. {}\n", i + 1, import_decl.location));
+                manifest.push_str(&format!("     → {}\n", import_filename));
+                if let Some(ns) = &import_decl.namespace {
+                    manifest.push_str(&format!("     Namespace: {}\n", ns));
+                }
+                manifest.push_str(&format!("     Type: {:?}\n", import_decl.import_type));
+                manifest.push_str(&format!("     Size: {} bytes\n\n", xml.len()));
+            }
+            Err(e) => {
+                output.log(&format!("  ✗ {} - {}", i + 1, e));
+                manifest.push_str(&format!("  {}. {} - FAILED: {}\n\n", i + 1, import_decl.location, e));
+            }
+        }
+    }
+    
+    // Save manifest
+    let manifest_path = download_path.join("manifest.txt");
+    fs::write(&manifest_path, manifest)?;
+    output.log("");
+    output.log(&format!("✓ Saved manifest: manifest.txt"));
+    
+    // Count total files
+    let file_count = fs::read_dir(download_path)?.count();
+    output.log("");
+    output.log(&format!("✓ Downloaded {} files to: {}/", file_count, config.download_dir));
+    output.log("");
+    output.log("To transfer for analysis:");
+    output.log(&format!("  zip -r {}.zip {}/", config.download_dir, config.download_dir));
+    
+    Ok(())
+}
+
+fn sanitize_filename(url: &str) -> String {
+    // Extract filename from URL, sanitize for filesystem
+    let url_path = url.split('?').next().unwrap_or(url);
+    let filename = url_path.split('/').last().unwrap_or("wsdl");
+    
+    let mut result = filename
+        .replace(|c: char| !c.is_alphanumeric() && c != '.' && c != '-', "_");
+    
+    // Ensure it has an extension
+    if !result.contains('.') {
+        result.push_str(".wsdl");
+    } else if !result.ends_with(".wsdl") && !result.ends_with(".xsd") {
+        let parts: Vec<&str> = result.split('.').collect();
+        if parts.len() > 1 {
+            result = format!("{}_{}.wsdl", parts[0], parts.last().unwrap());
+        } else {
+            result.push_str(".wsdl");
+        }
+    }
+    
+    result
 }
 
 fn count_nodes(node: &apinox_lib::parsers::wsdl::SchemaNode) -> usize {

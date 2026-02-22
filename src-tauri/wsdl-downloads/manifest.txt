@@ -1,0 +1,7 @@
+WSDL Download Manifest
+======================
+
+Main WSDL: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso?WSDL
+  → CountryInfoService_wso.wsdl
+
+Imports (0):
