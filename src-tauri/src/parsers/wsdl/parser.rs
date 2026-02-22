@@ -144,20 +144,47 @@ impl WsdlParser {
     ) -> Result<Vec<ApiService>> {
         log::info!("Starting WSDL parse with import resolution from: {}", wsdl_url);
         
-        // Parse the main WSDL structure first
-        let mut definitions = Self::parse_definitions(wsdl_xml)?;
+        // Check for WSDL imports first
+        let all_imports = super::imports::ImportResolver::parse_imports(wsdl_xml)?;
+        let wsdl_imports: Vec<_> = all_imports.iter()
+            .filter(|i| matches!(i.import_type, super::imports::ImportType::WsdlImport))
+            .collect();
         
-        // Check if there are schema imports to resolve
+        let mut merged_wsdl = wsdl_xml.to_string();
+        
+        // If there are wsdl:import declarations, fetch and merge them
+        if !wsdl_imports.is_empty() {
+            log::info!("Found {} WSDL imports, fetching...", wsdl_imports.len());
+            
+            let mut resolver = super::imports::ImportResolver::new()?;
+            
+            // Fetch all WSDL imports
+            for import_decl in &wsdl_imports {
+                log::info!("Fetching WSDL import: {}", import_decl.location);
+                resolver.fetch_document(&import_decl.location, Some(wsdl_url)).await?;
+            }
+            
+            // Merge imported WSDL files into the main WSDL
+            for import_decl in &wsdl_imports {
+                if let Some(imported_wsdl) = resolver.get_all_documents().get(&import_decl.location) {
+                    log::info!("Merging WSDL import: {}", import_decl.location);
+                    merged_wsdl = Self::merge_wsdl_definitions(&merged_wsdl, imported_wsdl)?;
+                }
+            }
+        }
+        
+        // Parse the merged WSDL structure
+        let mut definitions = Self::parse_definitions(&merged_wsdl)?;
+        
+        // Now handle schema imports
         if !definitions.schemas.is_empty() {
             log::info!("Found {} schemas in WSDL, checking for imports...", definitions.schemas.len());
             
             // Create import resolver
             let mut resolver = super::imports::ImportResolver::new()?;
             
-            // For each schema, extract its XML and check for imports
-            // Note: We need to re-parse the WSDL to extract raw schema XML
-            // since parse_definitions() already processed it
-            let schema_sections = Self::extract_schema_sections(wsdl_xml)?;
+            // Extract schema sections from merged WSDL
+            let schema_sections = Self::extract_schema_sections(&merged_wsdl)?;
             
             for (i, schema_xml) in schema_sections.iter().enumerate() {
                 if i >= definitions.schemas.len() {
@@ -168,10 +195,13 @@ impl WsdlParser {
                 
                 // Check for imports in this schema section
                 let imports = super::imports::ImportResolver::parse_imports(schema_xml)?;
+                let schema_imports: Vec<_> = imports.iter()
+                    .filter(|i| !matches!(i.import_type, super::imports::ImportType::WsdlImport))
+                    .collect();
                 
-                if !imports.is_empty() {
-                    log::info!("Found {} imports in schema namespace: {}", 
-                        imports.len(), schema.target_namespace);
+                if !schema_imports.is_empty() {
+                    log::info!("Found {} schema imports in namespace: {}", 
+                        schema_imports.len(), schema.target_namespace);
                     
                     // Resolve all imports recursively
                     let resolved_schema = resolver.resolve_schema_imports(
@@ -200,6 +230,127 @@ impl WsdlParser {
         
         log::info!("WSDL parse complete with imports. Found {} services", api_services.len());
         Ok(api_services)
+    }
+    
+    
+    /// Merge WSDL definitions from an imported WSDL file
+    /// 
+    /// Extracts <binding>, <portType>, and <message> elements from imported WSDL
+    /// and inserts them into the main WSDL before the closing </definitions> tag.
+    ///
+    /// # Arguments
+    /// * `main_wsdl` - The main WSDL XML string
+    /// * `imported_wsdl` - The imported WSDL XML string
+    ///
+    /// # Returns
+    /// The merged WSDL XML string
+    fn merge_wsdl_definitions(main_wsdl: &str, imported_wsdl: &str) -> Result<String> {
+        use quick_xml::events::Event;
+        use quick_xml::Reader;
+        
+        log::debug!("Merging WSDL definitions...");
+        
+        // Extract elements to merge from imported WSDL
+        let mut bindings = Vec::new();
+        let mut port_types = Vec::new();
+        let mut messages = Vec::new();
+        
+        let mut reader = Reader::from_str(imported_wsdl);
+        reader.trim_text(true);
+        let mut buf = Vec::new();
+        let mut depth = 0;
+        let mut current_type = String::new();
+        let mut element_xml = String::new();
+        
+        loop {
+            match reader.read_event_into(&mut buf) {
+                Ok(Event::Start(ref e)) => {
+                    let name_bytes = e.name();
+                    let name = String::from_utf8_lossy(name_bytes.as_ref());
+                    let local_name = name.split(':').last().unwrap_or(&name);
+                    
+                    if depth == 0 {
+                        match local_name {
+                            "binding" => {
+                                current_type = "binding".to_string();
+                                element_xml = String::from_utf8_lossy(&buf).to_string();
+                                depth = 1;
+                            }
+                            "portType" => {
+                                current_type = "portType".to_string();
+                                element_xml = String::from_utf8_lossy(&buf).to_string();
+                                depth = 1;
+                            }
+                            "message" => {
+                                current_type = "message".to_string();
+                                element_xml = String::from_utf8_lossy(&buf).to_string();
+                                depth = 1;
+                            }
+                            _ => {}
+                        }
+                    } else if depth > 0 {
+                        element_xml.push_str(&String::from_utf8_lossy(&buf));
+                        depth += 1;
+                    }
+                }
+                Ok(Event::End(_)) => {
+                    if depth > 0 {
+                        element_xml.push_str(&String::from_utf8_lossy(&buf));
+                        depth -= 1;
+                        
+                        if depth == 0 {
+                            match current_type.as_str() {
+                                "binding" => bindings.push(element_xml.clone()),
+                                "portType" => port_types.push(element_xml.clone()),
+                                "message" => messages.push(element_xml.clone()),
+                                _ => {}
+                            }
+                            element_xml.clear();
+                            current_type.clear();
+                        }
+                    }
+                }
+                Ok(Event::Empty(_)) | Ok(Event::Text(_)) => {
+                    if depth > 0 {
+                        element_xml.push_str(&String::from_utf8_lossy(&buf));
+                    }
+                }
+                Ok(Event::Eof) => break,
+                Err(e) => return Err(anyhow::anyhow!("XML parse error while merging: {}", e)),
+                _ => {}
+            }
+            buf.clear();
+        }
+        
+        log::debug!("Extracted {} messages, {} portTypes, {} bindings from imported WSDL",
+            messages.len(), port_types.len(), bindings.len());
+        
+        // Find insertion point in main WSDL (before </definitions>)
+        let mut result = main_wsdl.to_string();
+        let insertion_point = result.rfind("</wsdl:definitions>")
+            .or_else(|| result.rfind("</definitions>"))
+            .ok_or_else(|| anyhow::anyhow!("No closing </definitions> tag found in main WSDL"))?;
+        
+        // Build insertion string
+        let mut to_insert = String::new();
+        for msg in messages {
+            to_insert.push_str(&msg);
+            to_insert.push('\n');
+        }
+        for pt in port_types {
+            to_insert.push_str(&pt);
+            to_insert.push('\n');
+        }
+        for binding in bindings {
+            to_insert.push_str(&binding);
+            to_insert.push('\n');
+        }
+        
+        // Insert before </definitions>
+        result.insert_str(insertion_point, &to_insert);
+        
+        log::debug!("Successfully merged WSDL definitions");
+        Ok(result)
     }
     
     /// Extract raw schema sections from WSDL XML
