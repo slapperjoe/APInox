@@ -126,9 +126,14 @@ impl ImportResolver {
         Ok(resolved.to_string())
     }
     
-    /// Parse import declarations from schema XML
+    /// Parse import declarations from WSDL/schema XML
     /// 
-    /// Returns a list of (namespace, schemaLocation) tuples
+    /// Supports:
+    /// - `<wsdl:import namespace="..." location="..."/>` - Import another WSDL
+    /// - `<xsd:import namespace="..." schemaLocation="..."/>` - Import schema
+    /// - `<xsd:include schemaLocation="..."/>` - Include schema
+    ///
+    /// Returns a list of import declarations
     pub fn parse_imports(xml: &str) -> Result<Vec<ImportDeclaration>> {
         let mut imports = Vec::new();
         let mut reader = Reader::from_str(xml);
@@ -144,28 +149,35 @@ impl ImportResolver {
                     
                     match local_name {
                         "import" => {
-                            // <xsd:import namespace="..." schemaLocation="..."/>
-                            let namespace = e.attributes()
-                                .filter_map(|a| a.ok())
-                                .find(|a| {
-                                    let key = String::from_utf8_lossy(a.key.as_ref());
-                                    key == "namespace"
-                                })
-                                .map(|a| String::from_utf8_lossy(&a.value).to_string());
+                            // Could be <xsd:import> or <wsdl:import>
+                            let is_wsdl_import = tag_name.starts_with("wsdl:") || tag_name.starts_with("w:");
                             
-                            let schema_location = e.attributes()
-                                .filter_map(|a| a.ok())
-                                .find(|a| {
-                                    let key = String::from_utf8_lossy(a.key.as_ref());
-                                    key == "schemaLocation"
-                                })
-                                .map(|a| String::from_utf8_lossy(&a.value).to_string());
+                            let mut namespace = None;
+                            let mut location = None;
                             
-                            if let Some(location) = schema_location {
+                            for attr_result in e.attributes() {
+                                if let Ok(attr) = attr_result {
+                                    let key = String::from_utf8_lossy(attr.key.as_ref());
+                                    let value = String::from_utf8_lossy(&attr.value).to_string();
+                                    
+                                    match key.as_ref() {
+                                        "namespace" => namespace = Some(value),
+                                        "schemaLocation" => location = Some(value), // xsd:import
+                                        "location" => location = Some(value),       // wsdl:import
+                                        _ => {}
+                                    }
+                                }
+                            }
+                            
+                            if let Some(loc) = location {
                                 imports.push(ImportDeclaration {
-                                    import_type: ImportType::SchemaImport,
+                                    import_type: if is_wsdl_import {
+                                        ImportType::WsdlImport
+                                    } else {
+                                        ImportType::SchemaImport
+                                    },
                                     namespace,
-                                    location,
+                                    location: loc,
                                 });
                             }
                         }
@@ -300,6 +312,13 @@ impl ImportResolver {
             base.elements.len(), base.complex_types.len(), base.simple_types.len());
         
         Ok(base)
+    }
+    
+    /// Get all cached documents
+    ///
+    /// Returns a reference to the document cache (URL → XML content)
+    pub fn get_all_documents(&self) -> &HashMap<String, String> {
+        &self.document_cache
     }
 }
 

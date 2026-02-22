@@ -1,0 +1,162 @@
+
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:wsx="http://schemas.xmlsoap.org/ws/2004/09/mex" xmlns:i0="http://socialservices.gov.au/acg" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd" xmlns:wsa10="http://www.w3.org/2005/08/addressing" xmlns:wsp="http://schemas.xmlsoap.org/ws/2004/09/policy" xmlns:wsap="http://schemas.xmlsoap.org/ws/2004/08/addressing/policy" xmlns:msc="http://schemas.microsoft.com/ws/2005/12/wsdl/contract" xmlns:soap12="http://schemas.xmlsoap.org/wsdl/soap12/" xmlns:wsa="http://schemas.xmlsoap.org/ws/2004/08/addressing" xmlns:wsam="http://www.w3.org/2007/05/addressing/metadata" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:tns="http://socialservices.gov.au/ACG" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:wsaw="http://www.w3.org/2006/05/addressing/wsdl" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" name="BatchJobService" targetNamespace="http://socialservices.gov.au/ACG">
+<wsdl:import namespace="http://socialservices.gov.au/acg" location="https://acg-r02-bld-iis-app.myac.gov.au/BatchJobService.svc?wsdl=wsdl0"/>
+<wsdl:types>
+<xsd:schema targetNamespace="http://socialservices.gov.au/ACG/Imports">
+<xsd:import schemaLocation="https://acg-r02-bld-iis-app.myac.gov.au/BatchJobService.svc?xsd=xsd0" namespace="http://socialservices.gov.au/ACG"/>
+<xsd:import schemaLocation="https://acg-r02-bld-iis-app.myac.gov.au/BatchJobService.svc?xsd=xsd2" namespace="http://socialservices.gov.au/Mobile"/>
+<xsd:import schemaLocation="https://acg-r02-bld-iis-app.myac.gov.au/BatchJobService.svc?xsd=xsd3" namespace="http://socialservices.gov.au/Common"/>
+<xsd:import schemaLocation="https://acg-r02-bld-iis-app.myac.gov.au/BatchJobService.svc?xsd=xsd1" namespace="http://schemas.microsoft.com/2003/10/Serialization/"/>
+<xsd:import schemaLocation="https://acg-r02-bld-iis-app.myac.gov.au/BatchJobService.svc?xsd=xsd4" namespace="http://facsia.gov.au/Batch"/>
+<xsd:import schemaLocation="https://acg-r02-bld-iis-app.myac.gov.au/BatchJobService.svc?xsd=xsd5" namespace="http://facsia.gov.au"/>
+<xsd:import schemaLocation="https://acg-r02-bld-iis-app.myac.gov.au/BatchJobService.svc?xsd=xsd6" namespace="http://schemas.microsoft.com/2003/10/Serialization/Arrays"/>
+</xsd:schema>
+</wsdl:types>
+<wsdl:message name="IBatchJobService_SubmitJob_InputMessage">
+<wsdl:part name="parameters" element="tns:SubmitJob"/>
+</wsdl:message>
+<wsdl:message name="IBatchJobService_SubmitJob_InputMessage_Headers">
+<wsdl:part xmlns:q1="http://socialservices.gov.au/Mobile" name="MobileHeader" element="q1:MobileHeader"/>
+<wsdl:part xmlns:q2="http://socialservices.gov.au/Common" name="Header" element="q2:Header"/>
+</wsdl:message>
+<wsdl:message name="IBatchJobService_SubmitJob_OutputMessage">
+<wsdl:part name="parameters" element="tns:SubmitJobResponse"/>
+</wsdl:message>
+<wsdl:message name="IBatchJobService_SubmitJob_OutputMessage_Headers">
+<wsdl:part xmlns:q3="http://socialservices.gov.au/Common" name="Header" element="q3:Header"/>
+</wsdl:message>
+<wsdl:message name="IBatchJobService_GetApplicationNames_InputMessage">
+<wsdl:part name="parameters" element="tns:GetApplicationNames"/>
+</wsdl:message>
+<wsdl:message name="IBatchJobService_GetApplicationNames_InputMessage_Headers">
+<wsdl:part xmlns:q4="http://socialservices.gov.au/Mobile" name="MobileHeader" element="q4:MobileHeader"/>
+<wsdl:part xmlns:q5="http://socialservices.gov.au/Common" name="Header" element="q5:Header"/>
+</wsdl:message>
+<wsdl:message name="IBatchJobService_GetApplicationNames_OutputMessage">
+<wsdl:part name="parameters" element="tns:GetApplicationNamesResponse"/>
+</wsdl:message>
+<wsdl:message name="IBatchJobService_GetApplicationNames_OutputMessage_Headers">
+<wsdl:part xmlns:q6="http://socialservices.gov.au/Common" name="Header" element="q6:Header"/>
+</wsdl:message>
+<wsdl:message name="IBatchJobService_GetJobs_InputMessage">
+<wsdl:part name="parameters" element="tns:GetJobs"/>
+</wsdl:message>
+<wsdl:message name="IBatchJobService_GetJobs_InputMessage_Headers">
+<wsdl:part xmlns:q7="http://socialservices.gov.au/Mobile" name="MobileHeader" element="q7:MobileHeader"/>
+<wsdl:part xmlns:q8="http://socialservices.gov.au/Common" name="Header" element="q8:Header"/>
+</wsdl:message>
+<wsdl:message name="IBatchJobService_GetJobs_OutputMessage">
+<wsdl:part name="parameters" element="tns:GetJobsResponse"/>
+</wsdl:message>
+<wsdl:message name="IBatchJobService_GetJobs_OutputMessage_Headers">
+<wsdl:part xmlns:q9="http://socialservices.gov.au/Common" name="Header" element="q9:Header"/>
+</wsdl:message>
+<wsdl:message name="IBatchJobService_ListJobRuns_InputMessage">
+<wsdl:part name="parameters" element="tns:ListJobRuns"/>
+</wsdl:message>
+<wsdl:message name="IBatchJobService_ListJobRuns_InputMessage_Headers">
+<wsdl:part xmlns:q10="http://socialservices.gov.au/Mobile" name="MobileHeader" element="q10:MobileHeader"/>
+<wsdl:part xmlns:q11="http://socialservices.gov.au/Common" name="Header" element="q11:Header"/>
+</wsdl:message>
+<wsdl:message name="IBatchJobService_ListJobRuns_OutputMessage">
+<wsdl:part name="parameters" element="tns:ListJobRunsResponse"/>
+</wsdl:message>
+<wsdl:message name="IBatchJobService_ListJobRuns_OutputMessage_Headers">
+<wsdl:part xmlns:q12="http://socialservices.gov.au/Common" name="Header" element="q12:Header"/>
+</wsdl:message>
+<wsdl:message name="IBatchJobService_DownloadLog_InputMessage">
+<wsdl:part name="parameters" element="tns:DownloadLog"/>
+</wsdl:message>
+<wsdl:message name="IBatchJobService_DownloadLog_InputMessage_Headers">
+<wsdl:part xmlns:q13="http://socialservices.gov.au/Mobile" name="MobileHeader" element="q13:MobileHeader"/>
+<wsdl:part xmlns:q14="http://socialservices.gov.au/Common" name="Header" element="q14:Header"/>
+</wsdl:message>
+<wsdl:message name="IBatchJobService_DownloadLog_OutputMessage">
+<wsdl:part name="parameters" element="tns:DownloadLogResponse"/>
+</wsdl:message>
+<wsdl:message name="IBatchJobService_DownloadLog_OutputMessage_Headers">
+<wsdl:part xmlns:q15="http://socialservices.gov.au/Common" name="Header" element="q15:Header"/>
+</wsdl:message>
+<wsdl:portType name="IBatchJobService">
+<wsdl:operation name="SubmitJob">
+<wsdl:input wsaw:Action="http://socialservices.gov.au/ACG/IBatchJobService/SubmitJob" message="tns:IBatchJobService_SubmitJob_InputMessage"/>
+<wsdl:output wsaw:Action="http://socialservices.gov.au/ACG/IBatchJobService/SubmitJobResponse" message="tns:IBatchJobService_SubmitJob_OutputMessage"/>
+</wsdl:operation>
+<wsdl:operation name="GetApplicationNames">
+<wsdl:input wsaw:Action="http://socialservices.gov.au/ACG/IBatchJobService/GetApplicationNames" message="tns:IBatchJobService_GetApplicationNames_InputMessage"/>
+<wsdl:output wsaw:Action="http://socialservices.gov.au/ACG/IBatchJobService/GetApplicationNamesResponse" message="tns:IBatchJobService_GetApplicationNames_OutputMessage"/>
+</wsdl:operation>
+<wsdl:operation name="GetJobs">
+<wsdl:input wsaw:Action="http://socialservices.gov.au/ACG/IBatchJobService/GetJobs" message="tns:IBatchJobService_GetJobs_InputMessage"/>
+<wsdl:output wsaw:Action="http://socialservices.gov.au/ACG/IBatchJobService/GetJobsResponse" message="tns:IBatchJobService_GetJobs_OutputMessage"/>
+</wsdl:operation>
+<wsdl:operation name="ListJobRuns">
+<wsdl:input wsaw:Action="http://socialservices.gov.au/ACG/IBatchJobService/ListJobRuns" message="tns:IBatchJobService_ListJobRuns_InputMessage"/>
+<wsdl:output wsaw:Action="http://socialservices.gov.au/ACG/IBatchJobService/ListJobRunsResponse" message="tns:IBatchJobService_ListJobRuns_OutputMessage"/>
+</wsdl:operation>
+<wsdl:operation name="DownloadLog">
+<wsdl:input wsaw:Action="http://socialservices.gov.au/ACG/IBatchJobService/DownloadLog" message="tns:IBatchJobService_DownloadLog_InputMessage"/>
+<wsdl:output wsaw:Action="http://socialservices.gov.au/ACG/IBatchJobService/DownloadLogResponse" message="tns:IBatchJobService_DownloadLog_OutputMessage"/>
+</wsdl:operation>
+</wsdl:portType>
+<wsdl:service name="BatchJobService">
+<wsdl:port name="CustomBinding_IBatchJobService" binding="i0:CustomBinding_IBatchJobService">
+<soap12:address location="https://acg-r02-bld-iis-app.myac.gov.au/BatchJobService.svc"/>
+</wsdl:port>
+</wsdl:service>
+</wsdl:definitions>
+
+=================================================================
+WSDL PARSER TEST UTILITY
+=================================================================
+
+Input WSDL: https://acg-r02-bld-iis-app.myac.gov.au/BatchJobService.svc?WSDL
+Max Import Depth: 10
+Resolve Imports: true
+Output File: batch.txt
+Timestamp: 2026-02-21 23:52:27 UTC
+
+-----------------------------------------------------------------
+PHASE 1: Fetching Main WSDL
+-----------------------------------------------------------------
+✓ Fetched (8149 bytes, 251ms)
+
+-----------------------------------------------------------------
+PHASE 2: Resolving Imports
+-----------------------------------------------------------------
+Found 7 imports
+  1. https://acg-r02-bld-iis-app.myac.gov.au/BatchJobService.svc?xsd=xsd0
+  2. https://acg-r02-bld-iis-app.myac.gov.au/BatchJobService.svc?xsd=xsd2
+  3. https://acg-r02-bld-iis-app.myac.gov.au/BatchJobService.svc?xsd=xsd3
+  4. https://acg-r02-bld-iis-app.myac.gov.au/BatchJobService.svc?xsd=xsd1
+  5. https://acg-r02-bld-iis-app.myac.gov.au/BatchJobService.svc?xsd=xsd4
+  6. https://acg-r02-bld-iis-app.myac.gov.au/BatchJobService.svc?xsd=xsd5
+  7. https://acg-r02-bld-iis-app.myac.gov.au/BatchJobService.svc?xsd=xsd6
+
+  ✓ https://acg-r02-bld-iis-app.myac.gov.au/BatchJobService.svc?xsd=xsd0 (5778 bytes, 551ms)
+  ✓ https://acg-r02-bld-iis-app.myac.gov.au/BatchJobService.svc?xsd=xsd2 (709 bytes, 125ms)
+  ✓ https://acg-r02-bld-iis-app.myac.gov.au/BatchJobService.svc?xsd=xsd3 (1160 bytes, 815ms)
+  ✓ https://acg-r02-bld-iis-app.myac.gov.au/BatchJobService.svc?xsd=xsd1 (2273 bytes, 113ms)
+  ✓ https://acg-r02-bld-iis-app.myac.gov.au/BatchJobService.svc?xsd=xsd4 (5310 bytes, 133ms)
+  ✓ https://acg-r02-bld-iis-app.myac.gov.au/BatchJobService.svc?xsd=xsd5 (1723 bytes, 104ms)
+  ✓ https://acg-r02-bld-iis-app.myac.gov.au/BatchJobService.svc?xsd=xsd6 (1154 bytes, 101ms)
+
+-----------------------------------------------------------------
+PHASE 3: Parsing WSDL
+-----------------------------------------------------------------
+Services: 1
+  └─ BatchJobService (0 operations)
+
+-----------------------------------------------------------------
+PHASE 4: Schema Analysis
+-----------------------------------------------------------------
+Ops with schemas: 0/0
+Total schema nodes: 0
+
+-----------------------------------------------------------------
+PHASE 5: Operation Details
+-----------------------------------------------------------------
+-----------------------------------------------------------------
+✓ SUCCESS (2202ms)
+-----------------------------------------------------------------
+1 services, 0 operations parsed
