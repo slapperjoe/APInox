@@ -21,12 +21,17 @@ const envColors = [
     'var(--apinox-terminal-ansiGreen)'
 ];
 
+const hashEnvName = (name: string) => {
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+    return h;
+};
+
 const getEnvColor = (env: string, environments?: Record<string, any>) => {
     if (!environments) return 'var(--apinox-charts-green)';
     const envData = environments[env];
     if (envData?.color) return envData.color;
-    const index = Object.keys(environments).indexOf(env);
-    return index >= 0 ? envColors[index % envColors.length] : 'var(--apinox-charts-green)';
+    return envColors[hashEnvName(env) % envColors.length];
 };
 
 export const EnvironmentSelector: React.FC<EnvironmentSelectorProps> = ({
@@ -109,9 +114,8 @@ export const EnvironmentSelector: React.FC<EnvironmentSelectorProps> = ({
                         }}>
                             Switch Environment
                         </div>
-                        {Object.keys(environments).map((env, index) => {
-                            const fallbackColor = envColors[index % envColors.length];
-                            const color = environments[env].color || fallbackColor;
+                        {Object.keys(environments).map((env) => {
+                            const color = environments[env].color || envColors[hashEnvName(env) % envColors.length];
 
                             return (
                                 <div

@@ -10,6 +10,25 @@ import { Modal } from './Modal';
 import { TAG_COLORS } from '../../styles/colors';
 import { SPACING_SM, SPACING_MD } from '../../styles/spacing';
 
+// Hex-only palette for deterministic env color assignment (stored in config)
+const ENV_HEX_COLORS = ['#58A6FF', '#7EE787', '#FF7B72', '#FFA657', '#D29922', '#A371F7', '#79C0FF', '#FFA198', '#FFCB6B', '#C9D1D9'];
+
+const hashStr = (s: string) => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; };
+
+/** Fills in missing color fields on environments and returns [patched config, didChange]. */
+const fillMissingEnvColors = (config: ApinoxConfig): [ApinoxConfig, boolean] => {
+    if (!config.environments) return [config, false];
+    let changed = false;
+    const environments = { ...config.environments };
+    for (const key of Object.keys(environments)) {
+        if (!environments[key]?.color) {
+            environments[key] = { ...environments[key], color: ENV_HEX_COLORS[hashStr(key) % ENV_HEX_COLORS.length] };
+            changed = true;
+        }
+    }
+    return changed ? [{ ...config, environments }, true] : [config, false];
+};
+
 const ModalWrapper = styled.div`
     display: flex;
     flex-direction: column;
@@ -130,18 +149,18 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
     // Initial Parse
     useEffect(() => {
         try {
-            const parsed = JSON.parse(rawConfig || '{}');
-            setGuiConfig(parsed);
-            setJsonContent(rawConfig || '{}');
-            lastSavedConfigRef.current = JSON.stringify(parsed);
+            const [patched, changed] = fillMissingEnvColors(JSON.parse(rawConfig || '{}'));
+            setGuiConfig(patched);
+            setJsonContent(changed ? JSON.stringify(patched, null, 2) : (rawConfig || '{}'));
+            lastSavedConfigRef.current = JSON.stringify(changed ? patched : JSON.parse(rawConfig || '{}'));
             const rawTrimmed = (rawConfig || '').trim();
             setConfigLoaded(rawTrimmed.length > 0 && rawTrimmed !== '{}');
             
             // Select active environment by default if available
-            if (parsed.activeEnvironment && parsed.environments?.[parsed.activeEnvironment]) {
-                setSelectedEnvKey(parsed.activeEnvironment);
-            } else if (parsed.environments) {
-                const keys = Object.keys(parsed.environments);
+            if (patched.activeEnvironment && patched.environments?.[patched.activeEnvironment]) {
+                setSelectedEnvKey(patched.activeEnvironment);
+            } else if (patched.environments) {
+                const keys = Object.keys(patched.environments);
                 if (keys.length > 0) setSelectedEnvKey(keys[0]);
             }
         } catch (e) {
@@ -160,10 +179,10 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
                     const config = data?.config ?? data;
                     if (raw && raw.trim().length > 0) {
                         try {
-                            const parsed = JSON.parse(raw);
-                            setGuiConfig(parsed);
-                            setJsonContent(raw);
-                            lastSavedConfigRef.current = JSON.stringify(parsed);
+                            const [patched, changed] = fillMissingEnvColors(JSON.parse(raw));
+                            setGuiConfig(patched);
+                            setJsonContent(changed ? JSON.stringify(patched, null, 2) : raw);
+                            lastSavedConfigRef.current = JSON.stringify(changed ? patched : JSON.parse(raw));
                             setConfigLoaded(true);
                             return;
                         } catch (e) {
@@ -172,8 +191,9 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
                     }
 
                     if (config) {
-                        setGuiConfig(config);
-                        const serialized = JSON.stringify(config, null, 2);
+                        const [patched] = fillMissingEnvColors(config);
+                        setGuiConfig(patched);
+                        const serialized = JSON.stringify(patched, null, 2);
                         setJsonContent(serialized);
                         lastSavedConfigRef.current = JSON.stringify(config);
                         setConfigLoaded(true);
