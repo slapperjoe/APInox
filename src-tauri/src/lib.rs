@@ -15,6 +15,7 @@ mod history_storage;
 mod scrapbook_storage;
 mod secret_storage;
 pub mod settings_manager;
+mod workspace_export;
 
 // New modules for sidecar migration
 pub mod utils;
@@ -131,11 +132,17 @@ fn get_platform_os() -> String {
     return "unknown".to_string();
 }
 
+// ============== DEPRECATED SIDECAR FUNCTIONS ==============
+// These functions are no longer used but kept for backwards compatibility
+// during migration. They will be removed in a future release.
+
+#[allow(dead_code)]
 #[tauri::command]
 fn get_sidecar_port() -> u16 {
     SIDECAR_PORT.load(Ordering::Relaxed)
 }
 
+#[allow(dead_code)]
 #[tauri::command]
 fn is_sidecar_ready() -> bool {
     SIDECAR_PORT.load(Ordering::Relaxed) > 0
@@ -146,6 +153,7 @@ fn get_config_dir() -> Option<String> {
     CONFIG_DIR.lock().ok().and_then(|dir| dir.clone())
 }
 
+#[allow(dead_code)]
 #[tauri::command]
 fn get_sidecar_diagnostics() -> serde_json::Value {
     serde_json::json!({
@@ -183,6 +191,7 @@ fn get_tauri_logs(lines: Option<usize>) -> Result<Vec<String>, String> {
     Ok(result)
 }
 
+#[allow(dead_code)]
 fn get_sidecar_binary_info() -> serde_json::Value {
     // Since we're using a standalone binary with embedded Node.js v18.5.0,
     // we no longer need to check for Node.js installation
@@ -193,7 +202,8 @@ fn get_sidecar_binary_info() -> serde_json::Value {
     })
 }
 
-/// Spawn the Node.js sidecar process
+#[allow(dead_code)]
+/// Spawn the Node.js sidecar process (DEPRECATED - Sidecar removed)
 fn spawn_sidecar(app_handle: &tauri::AppHandle) -> Result<(), String> {
     log::info!("========== SIDECAR STARTUP ==========");
     
@@ -678,6 +688,7 @@ fn apply_window_styling(window: &tauri::WebviewWindow) {
 }
 
 #[cfg(not(windows))]
+#[cfg(target_os = "macos")]
 fn apply_window_styling(_window: &tauri::WebviewWindow) {
     // No-op on non-Windows platforms
 }
@@ -697,10 +708,11 @@ pub fn run() {
             set_border_color,
             get_app_version,
             get_platform_os,
-            get_sidecar_port,
-            is_sidecar_ready,
+            // Sidecar commands removed - using Rust backend directly
+            // get_sidecar_port,
+            // is_sidecar_ready,
+            // get_sidecar_diagnostics,
             get_config_dir,
-            get_sidecar_diagnostics,
             get_tauri_logs,
             project_storage::save_project,
             project_storage::load_project,
@@ -739,12 +751,33 @@ pub fn run() {
             settings_manager::get_global_variables,
             http::commands::execute_http_request,
             http::commands::execute_rest_request,
-            parsers::commands::parse_openapi_spec
+            parsers::commands::parse_openapi_spec,
+            // New Rust backend commands (sidecar replacement)
+            parsers::wsdl_commands::parse_wsdl,
+            parsers::wsdl_commands::refresh_wsdl,
+            parsers::wsdl_commands::apply_wsdl_sync,
+            soap::commands::build_soap_envelope,
+            soap::commands::execute_soap_request,
+            soap::commands::cancel_request,
+            soap::cert_commands::generate_certificate,
+            soap::cert_commands::save_certificate,
+            soap::cert_commands::list_certificates,
+            soap::cert_commands::load_certificate,
+            testing::commands::run_test_case,
+            testing::commands::run_test_suite,
+            testing::commands::get_test_run_updates,
+            workflow::commands::run_workflow,
+            workflow::commands::get_workflows,
+            workflow::commands::save_workflow,
+            workflow::commands::delete_workflow,
+            workspace_export::export_workspace,
+            workspace_export::import_workspace,
+            project_storage::close_project,
         ])
         .setup(|app| {
             // Initialize logging for both debug and production
             // This helps diagnose issues on user machines
-            let log_level = if cfg!(debug_assertions) {
+            let _log_level = if cfg!(debug_assertions) {
                 log::LevelFilter::Info
             } else {
                 log::LevelFilter::Info  // Keep info level in production for diagnostics
@@ -766,13 +799,14 @@ pub fn run() {
             
             app.handle().plugin(
                 tauri_plugin_log::Builder::default()
-                    .level(log_level)
+                    .level(log::LevelFilter::Debug)  // Enable DEBUG level for detailed logs
                     .targets([
                         tauri_plugin_log::Target::new(
                             tauri_plugin_log::TargetKind::LogDir { file_name: Some("apinox.log".to_string()) }
                         ),
-                        // Disable stdout in production to avoid double logging
                         tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
+                        // Add Webview target for DevTools console
+                        tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Webview),
                     ])
                     .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll)
                     .max_file_size(5_000_000) // 5 MB
@@ -787,15 +821,9 @@ pub fn run() {
                 }
             }
 
-            // Launch sidecar
-            let handle = app.handle().clone();
-            thread::spawn(move || {
-                if let Err(e) = spawn_sidecar(&handle) {
-                    log::error!("========== SIDECAR STARTUP FAILED ==========");
-                    log::error!("Error: {}", e);
-                    log::error!("==========================================");
-                }
-            });
+            // SIDECAR REMOVED - All functionality now in Rust backend
+            // Previous code spawned Node.js sidecar process here
+            log::info!("Using Rust backend directly (sidecar removed)");
 
             // Apply custom window styling for Windows
             #[cfg(windows)]

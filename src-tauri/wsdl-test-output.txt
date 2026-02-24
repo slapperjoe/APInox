@@ -6,25 +6,287 @@ Input WSDL: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoS
 Max Import Depth: 10
 Resolve Imports: true
 Output File: wsdl-test-output.txt
-Timestamp: 2026-02-22 01:21:57 UTC
+Timestamp: 2026-02-22 04:02:36 UTC
 
 -----------------------------------------------------------------
 PHASE 1: Fetching Main WSDL
 -----------------------------------------------------------------
-✓ Fetched (37172 bytes, 910ms)
+✓ Fetched (37172 bytes, 1041ms)
 
 -----------------------------------------------------------------
-DOWNLOAD-ONLY MODE
+PHASE 2: Resolving Imports
 -----------------------------------------------------------------
-Saving files to: wsdl-downloads/
-
-✓ Saved main WSDL: CountryInfoService_wso.wsdl
-Found 0 imports to download
+Found 0 imports
 
 
-✓ Saved manifest: manifest.txt
+-----------------------------------------------------------------
+PHASE 3: Parsing WSDL
+-----------------------------------------------------------------
+Services: 1
+  └─ CountryInfoService (42 operations)
+     1. CountryName
+     2. CountryIntPhoneCode
+     3. CapitalCity
+     4. ListOfCurrenciesByName
+     5. CurrencyName
+     6. ListOfLanguagesByCode
+     7. ListOfCurrenciesByCode
+     8. CountriesUsingCurrency
+     9. CountryCurrency
+     10. LanguageName
+     11. CountryFlag
+     12. CountryISOCode
+     13. FullCountryInfo
+     14. ListOfContinentsByCode
+     15. ListOfLanguagesByName
+     16. ListOfCountryNamesGroupedByContinent
+     17. LanguageISOCode
+     18. ListOfCountryNamesByCode
+     19. ListOfCountryNamesByName
+     20. ListOfContinentsByName
+     21. FullCountryInfoAllCountries
+     22. CountryName
+     23. CountryIntPhoneCode
+     24. CapitalCity
+     25. ListOfCurrenciesByName
+     26. CurrencyName
+     27. ListOfLanguagesByCode
+     28. ListOfCurrenciesByCode
+     29. CountriesUsingCurrency
+     30. CountryCurrency
+     31. LanguageName
+     32. CountryFlag
+     33. CountryISOCode
+     34. FullCountryInfo
+     35. ListOfContinentsByCode
+     36. ListOfLanguagesByName
+     37. ListOfCountryNamesGroupedByContinent
+     38. LanguageISOCode
+     39. ListOfCountryNamesByCode
+     40. ListOfCountryNamesByName
+     41. ListOfContinentsByName
+     42. FullCountryInfoAllCountries
 
-✓ Downloaded 2 files to: wsdl-downloads/
+-----------------------------------------------------------------
+PHASE 4: Schema Analysis
+-----------------------------------------------------------------
+Ops with schemas: 0/42
+Total schema nodes: 0
 
-To transfer for analysis:
-  zip -r wsdl-downloads.zip wsdl-downloads/
+-----------------------------------------------------------------
+PHASE 5: Operation Details
+-----------------------------------------------------------------
+Operation: CountryName
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: CountryIntPhoneCode
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: CapitalCity
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: ListOfCurrenciesByName
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: CurrencyName
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: ListOfLanguagesByCode
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: ListOfCurrenciesByCode
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: CountriesUsingCurrency
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: CountryCurrency
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: LanguageName
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: CountryFlag
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: CountryISOCode
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: FullCountryInfo
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: ListOfContinentsByCode
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: ListOfLanguagesByName
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: ListOfCountryNamesGroupedByContinent
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: LanguageISOCode
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: ListOfCountryNamesByCode
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: ListOfCountryNamesByName
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: ListOfContinentsByName
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: FullCountryInfoAllCountries
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: CountryName
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: CountryIntPhoneCode
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: CapitalCity
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: ListOfCurrenciesByName
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: CurrencyName
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: ListOfLanguagesByCode
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: ListOfCurrenciesByCode
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: CountriesUsingCurrency
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: CountryCurrency
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: LanguageName
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: CountryFlag
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: CountryISOCode
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: FullCountryInfo
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: ListOfContinentsByCode
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: ListOfLanguagesByName
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: ListOfCountryNamesGroupedByContinent
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: LanguageISOCode
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: ListOfCountryNamesByCode
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: ListOfCountryNamesByName
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: ListOfContinentsByName
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+Operation: FullCountryInfoAllCountries
+  Namespace: http://www.oorsprong.org/websamples.countryinfo
+  Endpoint: http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso
+  Action: 
+
+-----------------------------------------------------------------
+✓ SUCCESS (1055ms)
+-----------------------------------------------------------------
+1 services, 42 operations parsed

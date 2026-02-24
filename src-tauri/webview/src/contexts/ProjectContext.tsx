@@ -307,7 +307,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
             if (deleteFiles && projectPath) {
                 try {
                     await bridge.invokeTauriCommand('delete_project', {
-                        dirPath: projectPath
+                        dirPath: projectPath  // Tauri converts to dir_path
                     });
                     console.log(`[ProjectContext] Deleted project files via Rust: ${projectPath}`);
                 } catch (error: any) {
@@ -477,7 +477,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
             // Load single project folder - use Rust command
             try {
                 const loadedProject = await bridge.invokeTauriCommand<ApinoxProject>('load_project', {
-                    dirPath: targetPath
+                    dirPath: targetPath  // Tauri converts to dir_path
                 });
                 
                 // Add fileName to project
@@ -537,7 +537,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
                     try {
                         await bridge.invokeTauriCommand('save_project', {
                             project,
-                            dirPath: cleanPath
+                            dirPath: cleanPath  // Tauri converts to dir_path
                         });
                         
                         // Update project with file path
@@ -578,7 +578,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
             try {
                 await bridge.invokeTauriCommand('save_project', {
                     project,
-                    dirPath: filePath
+                    dirPath: filePath  // Tauri converts to dir_path
                 });
                 console.log('[ProjectContext] Project saved successfully via Rust:', filePath);
             } catch (error: any) {

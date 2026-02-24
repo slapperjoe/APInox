@@ -4,7 +4,7 @@
 //! Builds schema trees for generating request XML.
 
 use super::types::SchemaNode;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use quick_xml::events::{Event, BytesStart};
 use quick_xml::Reader;
 use std::collections::HashMap;
@@ -191,6 +191,22 @@ impl SchemaParser {
         
         loop {
             match reader.read_event_into(buf) {
+                Ok(Event::Empty(e)) => {
+                    let tag_name = Self::local_name(&e);
+                    
+                    match tag_name.as_str() {
+                        "sequence" | "choice" => {
+                            // Self-closing sequence/choice - empty, no elements
+                            // Don't call parse_sequence/parse_choice
+                        }
+                        "attribute" => {
+                            if let Some(attr) = Self::parse_attribute(&e)? {
+                                attributes.push(attr);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
                 Ok(Event::Start(e)) => {
                     let tag_name = Self::local_name(&e);
                     

@@ -4,13 +4,14 @@
 
 use super::types::{ApiService, ServiceOperation};
 use super::schema::{SchemaParser, SchemaDefinition};
-use anyhow::{Context, Result};
+use anyhow::Result;
 use quick_xml::events::{Event, BytesStart};
 use quick_xml::Reader;
 use std::collections::HashMap;
 
 /// Internal WSDL structures (not exported)
 #[derive(Debug, Clone)]
+#[allow(dead_code)] // Internal parsing structures
 struct WsdlDefinitions {
     target_namespace: String,
     namespaces: HashMap<String, String>,
@@ -22,6 +23,7 @@ struct WsdlDefinitions {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)] // Internal parsing structures
 struct WsdlService {
     name: String,
     ports: HashMap<String, WsdlPort>,
@@ -35,6 +37,7 @@ struct WsdlPort {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)] // Internal parsing structures
 struct WsdlBinding {
     name: String,
     port_type: String,
@@ -55,6 +58,7 @@ struct WsdlPortType {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)] // Internal parsing structures
 struct WsdlOperation {
     name: String,
     input_message: String,
@@ -68,6 +72,7 @@ struct WsdlMessage {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)] // Internal parsing structures
 struct WsdlMessagePart {
     name: String,
     element: Option<String>,
@@ -184,13 +189,16 @@ impl WsdlParser {
             let mut resolver = super::imports::ImportResolver::new()?;
             
             // Extract schema sections from merged WSDL
+            log::info!("Extracting schema sections from WSDL...");
             let schema_sections = Self::extract_schema_sections(&merged_wsdl)?;
+            log::info!("Extracted {} schema sections", schema_sections.len());
             
             for (i, schema_xml) in schema_sections.iter().enumerate() {
                 if i >= definitions.schemas.len() {
                     break;
                 }
                 
+                log::info!("Processing schema {} of {}", i + 1, definitions.schemas.len());
                 let schema = &definitions.schemas[i];
                 
                 // Check for imports in this schema section
@@ -198,6 +206,8 @@ impl WsdlParser {
                 let schema_imports: Vec<_> = imports.iter()
                     .filter(|i| !matches!(i.import_type, super::imports::ImportType::WsdlImport))
                     .collect();
+                
+                log::info!("Schema {} has {} imports", i + 1, schema_imports.len());
                 
                 if !schema_imports.is_empty() {
                     log::info!("Found {} schema imports in namespace: {}", 
@@ -223,9 +233,12 @@ impl WsdlParser {
                         mut_schema.simple_types.len());
                 }
             }
+            
+            log::info!("Schema processing complete");
         }
         
         // Build API services with enriched schemas
+        log::info!("Building API services from definitions...");
         let api_services = Self::build_api_services(&definitions)?;
         
         log::info!("WSDL parse complete with imports. Found {} services", api_services.len());
@@ -369,7 +382,7 @@ impl WsdlParser {
                     let name = String::from_utf8_lossy(name_bytes.as_ref());
                     if name.ends_with("schema") || name.ends_with(":schema") {
                         // Extract this entire schema section as raw XML
-                        let schema_xml = Self::extract_schema_xml(&mut reader)?;
+                        let schema_xml = Self::extract_schema_xml_with_start(&mut reader, &e)?;
                         schemas.push(schema_xml);
                     }
                 }
@@ -383,9 +396,18 @@ impl WsdlParser {
         Ok(schemas)
     }
     
-    /// Extract raw XML content from a schema element
-    fn extract_schema_xml(reader: &mut Reader<&[u8]>) -> Result<String> {
+    /// Extract raw XML content from a schema element (including the start tag)
+    fn extract_schema_xml_with_start(reader: &mut Reader<&[u8]>, start: &BytesStart) -> Result<String> {
         let mut schema_xml = String::from("<schema");
+        
+        // Add all attributes from the schema start tag
+        for attr in start.attributes().flatten() {
+            let key = String::from_utf8_lossy(attr.key.as_ref());
+            let value = String::from_utf8_lossy(&attr.value);
+            schema_xml.push_str(&format!(" {}=\"{}\"", key, value));
+        }
+        schema_xml.push('>');
+        
         let mut depth = 1;
         let mut buf = Vec::new();
         
@@ -570,7 +592,10 @@ impl WsdlParser {
         loop {
             match reader.read_event_into(&mut buf) {
                 Ok(Event::Start(e)) => {
-                    schema_xml.push_str(&format!("<{}", String::from_utf8_lossy(e.name().as_ref())));
+                    let name_bytes = e.name();
+                    let tag_name_full = String::from_utf8_lossy(name_bytes.as_ref());
+                    let tag_name = tag_name_full.split(':').last().unwrap_or(&tag_name_full);
+                    schema_xml.push_str(&format!("<{}", tag_name));
                     for attr in e.attributes().flatten() {
                         let key = String::from_utf8_lossy(attr.key.as_ref());
                         let value = String::from_utf8_lossy(&attr.value);
@@ -612,10 +637,14 @@ impl WsdlParser {
         }
         
         // Parse the extracted schema XML
+        log::debug!("Schema XML length: {} bytes", schema_xml.len());
+        log::debug!("Schema XML preview: {}", &schema_xml.chars().take(500).collect::<String>());
+        
         match SchemaParser::parse_schema(&schema_xml, &target_ns) {
             Ok(schema) => Ok(Some(schema)),
             Err(e) => {
-                log::warn!("Failed to parse schema: {}", e);
+                log::error!("Failed to parse schema XML. Error: {}", e);
+                log::error!("Schema XML (first 1000 chars): {}", &schema_xml.chars().take(1000).collect::<String>());
                 Ok(None)
             }
         }
@@ -686,8 +715,13 @@ impl WsdlParser {
                 Ok(Event::Start(e)) | Ok(Event::Empty(e)) => {
                     let local_name = Self::local_name(&e);
                     
-                    if local_name == "binding" && Self::is_soap12_namespace(&e) {
-                        soap_version = "1.2".to_string();
+                    // Check for soap12:binding element
+                    if local_name == "binding" {
+                        let name_bytes = e.name();
+                        let full_name = String::from_utf8_lossy(name_bytes.as_ref()).to_string();
+                        if full_name.contains("soap12:") {
+                            soap_version = "1.2".to_string();
+                        }
                     } else if local_name == "operation" {
                         let op_name = Self::get_attr(&e, "name")?;
                         let soap_action = Self::parse_operation_action(reader, buf)?;
@@ -818,43 +852,88 @@ impl WsdlParser {
     fn build_api_services(defs: &WsdlDefinitions) -> Result<Vec<ApiService>> {
         let mut services = Vec::new();
         
+        // Group ports by binding to create separate services for SOAP 1.1 and 1.2
         for (service_name, wsdl_service) in &defs.services {
-            let mut operations = Vec::new();
-            let mut ports = Vec::new();
+            let mut bindings_map: HashMap<String, (Vec<String>, String)> = HashMap::new(); // binding_name -> (ports, soap_version)
             
+            // First pass: group ports by binding
             for (port_name, wsdl_port) in &wsdl_service.ports {
-                ports.push(port_name.clone());
-                
                 if let Some(binding) = defs.bindings.get(&wsdl_port.binding) {
-                    if let Some(port_type) = defs.port_types.get(&binding.port_type) {
-                        for (op_name, operation) in &port_type.operations {
-                            let soap_action = binding.operations.get(op_name).map(|bo| bo.soap_action.clone());
-                            
-                            // Build schema tree from input message
-                            let full_schema = Self::build_schema_for_operation(operation, defs);
-                            
-                            operations.push(ServiceOperation {
-                                name: op_name.clone(),
-                                input: Some(serde_json::json!({})),
-                                output: serde_json::json!({}),
-                                description: None,
-                                target_namespace: Some(defs.target_namespace.clone()),
-                                port_name: Some(port_name.clone()),
-                                original_endpoint: Some(wsdl_port.location.clone()),
-                                full_schema,
-                                action: soap_action,
-                            });
-                        }
-                    }
+                    bindings_map
+                        .entry(wsdl_port.binding.clone())
+                        .or_insert_with(|| (Vec::new(), binding.soap_version.clone()))
+                        .0
+                        .push(port_name.clone());
                 }
             }
             
-            services.push(ApiService {
-                name: service_name.clone(),
-                ports,
-                operations,
-                target_namespace: Some(defs.target_namespace.clone()),
-            });
+            // Second pass: create a separate service for each binding
+            for (binding_name, (ports, soap_version)) in bindings_map {
+                let binding = match defs.bindings.get(&binding_name) {
+                    Some(b) => b,
+                    None => continue,
+                };
+                
+                let port_type = match defs.port_types.get(&binding.port_type) {
+                    Some(pt) => pt,
+                    None => continue,
+                };
+                
+                let mut operations = Vec::new();
+                
+                // Get the first port's location for the endpoint
+                log::debug!("Looking for endpoint with binding: {}", binding_name);
+                log::debug!("Available ports: {:?}", wsdl_service.ports.keys().collect::<Vec<_>>());
+                
+                let endpoint = wsdl_service.ports.iter()
+                    .find(|(port_name, p)| {
+                        log::debug!("Checking port '{}': binding={}", port_name, p.binding);
+                        p.binding == binding_name
+                    })
+                    .map(|(_, p)| {
+                        log::debug!("Found matching port with location: {}", p.location);
+                        p.location.clone()
+                    });
+                
+                if endpoint.is_none() {
+                    log::warn!("No endpoint found for binding: {}", binding_name);
+                }
+                
+                for (op_name, operation) in &port_type.operations {
+                    let soap_action = binding.operations.get(op_name).map(|bo| bo.soap_action.clone());
+                    
+                    // Build schema tree from input message
+                    let full_schema = Self::build_schema_for_operation(operation, defs);
+                    
+                    log::debug!("Creating operation '{}' with endpoint: {:?}", op_name, endpoint);
+                    
+                    operations.push(ServiceOperation {
+                        name: op_name.clone(),
+                        input: Some(serde_json::json!({})),
+                        output: serde_json::json!({}),
+                        description: None,
+                        target_namespace: Some(defs.target_namespace.clone()),
+                        port_name: ports.first().cloned(),
+                        original_endpoint: endpoint.clone(),
+                        full_schema,
+                        action: soap_action,
+                    });
+                }
+                
+                // Create service name with SOAP version suffix (like node-soap does)
+                let service_name_with_version = if soap_version == "1.2" {
+                    format!("{}Soap12", service_name)
+                } else {
+                    format!("{}Soap", service_name)
+                };
+                
+                services.push(ApiService {
+                    name: service_name_with_version,
+                    ports,
+                    operations,
+                    target_namespace: Some(defs.target_namespace.clone()),
+                });
+            }
         }
         
         Ok(services)

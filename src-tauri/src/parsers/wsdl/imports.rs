@@ -23,6 +23,7 @@ use crate::http::HttpClient;
 use super::schema::{SchemaParser, SchemaDefinition};
 
 /// Import resolver that fetches and parses remote WSDL/XSD files
+#[allow(dead_code)] // schema_registry field reserved for future use
 pub struct ImportResolver {
     /// HTTP client for fetching remote documents
     http_client: HttpClient,
