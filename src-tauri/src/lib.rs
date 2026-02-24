@@ -829,6 +829,10 @@ pub fn run() {
             #[cfg(windows)]
             {
                 if let Some(window) = app.get_webview_window("main") {
+                    // Remove native Windows titlebar - we use our own custom React titlebar
+                    if let Err(e) = window.set_decorations(false) {
+                        log::error!("Failed to remove Windows decorations: {:?}", e);
+                    }
                     apply_window_styling(&window);
                 }
             }
