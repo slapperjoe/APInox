@@ -57,6 +57,7 @@ export default defineConfig({
         ]
     },
     resolve: {
+        dedupe: ['react', 'react-dom', 'react/jsx-runtime', 'styled-components'],
         alias: {
             '@shared/messages': path.resolve(__dirname, '../../shared/src/messages.ts'),
             '@shared/models': path.resolve(__dirname, '../../shared/src/models.ts'),
