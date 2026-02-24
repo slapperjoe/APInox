@@ -128,26 +128,31 @@ impl ApinoxConfig {
         let mut build = HashMap::new();
         build.insert("endpoint_url".to_string(), Value::String("http://bld02.acme.com".to_string()));
         build.insert("env".to_string(), Value::String("bld02".to_string()));
+        build.insert("color".to_string(), Value::String("#58A6FF".to_string()));
         envs.insert("Build".to_string(), build);
         
         let mut dit = HashMap::new();
         dit.insert("endpoint_url".to_string(), Value::String("http://dit.example.com".to_string()));
         dit.insert("env".to_string(), Value::String("dit01".to_string()));
+        dit.insert("color".to_string(), Value::String("#7EE787".to_string()));
         envs.insert("DIT".to_string(), dit);
         
         let mut sit = HashMap::new();
         sit.insert("endpoint_url".to_string(), Value::String("http://sit.example.com".to_string()));
         sit.insert("env".to_string(), Value::String("sit01".to_string()));
+        sit.insert("color".to_string(), Value::String("#FFA657".to_string()));
         envs.insert("SIT".to_string(), sit);
         
         let mut perf = HashMap::new();
         perf.insert("endpoint_url".to_string(), Value::String("http://perf.example.com".to_string()));
         perf.insert("env".to_string(), Value::String("pft01".to_string()));
+        perf.insert("color".to_string(), Value::String("#D29922".to_string()));
         envs.insert("Perf".to_string(), perf);
         
         let mut prod = HashMap::new();
         prod.insert("endpoint_url".to_string(), Value::String("http://prod.example.com".to_string()));
         prod.insert("env".to_string(), Value::String("prd01".to_string()));
+        prod.insert("color".to_string(), Value::String("#FF7B72".to_string()));
         envs.insert("Prod".to_string(), prod);
         
         envs

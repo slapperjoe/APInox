@@ -281,6 +281,7 @@ export function useRequestExecution({
                 requestType: selectedRequest?.requestType,
                 method: selectedRequest?.method,
                 bodyType: selectedRequest?.bodyType,
+                queryParams: selectedRequest?.queryParams,
                 restConfig: selectedRequest?.restConfig,
                 graphqlConfig: selectedRequest?.graphqlConfig
             });
