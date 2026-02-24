@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use reqwest::{Client, Method, Proxy, Response};
+use reqwest::{Client, Method, Proxy};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};

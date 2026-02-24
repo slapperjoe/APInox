@@ -256,7 +256,24 @@ pub async fn save_settings(config: ApinoxConfig) -> Result<(), String> {
 #[tauri::command]
 pub async fn update_ui_settings(ui: UiConfig) -> Result<(), String> {
     let mut config = load_config()?;
-    config.ui = Some(ui);
+    
+    // Merge with existing UI settings instead of replacing
+    if let Some(existing_ui) = &config.ui {
+        config.ui = Some(UiConfig {
+            layout_mode: ui.layout_mode.or(existing_ui.layout_mode.clone()),
+            show_line_numbers: ui.show_line_numbers.or(existing_ui.show_line_numbers),
+            align_attributes: ui.align_attributes.or(existing_ui.align_attributes),
+            inline_element_values: ui.inline_element_values.or(existing_ui.inline_element_values),
+            show_debug_indicator: ui.show_debug_indicator.or(existing_ui.show_debug_indicator),
+            split_ratio: ui.split_ratio.or(existing_ui.split_ratio),
+            auto_fold_elements: ui.auto_fold_elements.or_else(|| existing_ui.auto_fold_elements.clone()),
+            editor_font_size: ui.editor_font_size.or(existing_ui.editor_font_size),
+            editor_font_family: ui.editor_font_family.or_else(|| existing_ui.editor_font_family.clone()),
+        });
+    } else {
+        config.ui = Some(ui);
+    }
+    
     save_config(&config)
 }
 
@@ -279,6 +296,47 @@ pub async fn update_open_projects(paths: Vec<String>) -> Result<(), String> {
 /// Update workflows
 #[tauri::command]
 pub async fn update_workflows(workflows: Vec<Value>) -> Result<(), String> {
+    let mut config = load_config()?;
+    config.workflows = Some(workflows);
+    save_config(&config)
+}
+
+/// Internal function to get workflows (callable from other modules)
+pub(crate) fn get_workflows_internal() -> Result<Vec<Value>, String> {
+    let config = load_config()?;
+    Ok(config.workflows.unwrap_or_default())
+}
+
+/// Internal function to save a workflow (callable from other modules)
+pub(crate) fn save_workflow_internal(workflow: Value) -> Result<(), String> {
+    let mut workflows = get_workflows_internal()?;
+    
+    let workflow_id = workflow.get("id")
+        .and_then(|v| v.as_str())
+        .ok_or("Workflow must have an id")?;
+    
+    // Find and update existing, or append new
+    if let Some(index) = workflows.iter().position(|w| {
+        w.get("id").and_then(|v| v.as_str()) == Some(workflow_id)
+    }) {
+        workflows[index] = workflow;
+    } else {
+        workflows.push(workflow);
+    }
+    
+    let mut config = load_config()?;
+    config.workflows = Some(workflows);
+    save_config(&config)
+}
+
+/// Internal function to delete a workflow (callable from other modules)
+pub(crate) fn delete_workflow_internal(workflow_id: &str) -> Result<(), String> {
+    let mut workflows = get_workflows_internal()?;
+    
+    workflows.retain(|w| {
+        w.get("id").and_then(|v| v.as_str()) != Some(workflow_id)
+    });
+    
     let mut config = load_config()?;
     config.workflows = Some(workflows);
     save_config(&config)

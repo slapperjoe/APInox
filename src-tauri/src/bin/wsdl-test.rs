@@ -171,6 +171,12 @@ async fn run_test(config: &TestConfig, output: &mut TestOutput) -> Result<(), an
     output.log(&format!("✓ Fetched ({} bytes, {}ms)", wsdl_xml.len(), fetch_time.as_millis()));
     output.log("");
     
+    // Check for imports in the WSDL
+    let has_imports = {
+        let imports = ImportResolver::parse_imports(&wsdl_xml)?;
+        !imports.is_empty()
+    };
+    
     // If download-only mode, save files and exit
     if config.download_only {
         return run_download_only(config, output, &wsdl_xml).await;
@@ -207,7 +213,14 @@ async fn run_test(config: &TestConfig, output: &mut TestOutput) -> Result<(), an
     
     output.section("PHASE 3: Parsing WSDL");
     
-    let services = WsdlParser::parse(&wsdl_xml)?;
+    let services = if config.resolve_imports && has_imports {
+        // Use parse_with_imports to merge wsdl:import files
+        output.log("Using import-aware parser to merge WSDL definitions...");
+        WsdlParser::parse_with_imports(&config.wsdl_url, &wsdl_xml, config.max_depth).await?
+    } else {
+        // Simple parse without imports
+        WsdlParser::parse(&wsdl_xml)?
+    };
     
     output.log(&format!("Services: {}", services.len()));
     for svc in &services {

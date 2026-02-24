@@ -81,6 +81,10 @@ export interface RequestWorkspaceProps {
   showBreadcrumb?: boolean;
   breadcrumbPath?: string[];
 
+  // Layout persistence
+  initialLayoutMode?: 'vertical' | 'horizontal';
+  onLayoutModeChange?: (mode: 'vertical' | 'horizontal') => void;
+
   // Event handlers for response actions
   onCreateExtractor?: (xpath: string, value: string) => void;
   onCreateAssertion?: (xpath: string, value: string) => void;
@@ -131,7 +135,9 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
   onCreateAssertion,
   onCreateExistenceAssertion,
   onLog,
-  onPickFile
+  onPickFile,
+  initialLayoutMode,
+  onLayoutModeChange
 }) => {
   // Editor settings from context
   const editorSettings = useEditorSettings();
@@ -141,7 +147,7 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
   const [showVariables, setShowVariables] = useState(false);
   const [showEditorSettings, setShowEditorSettings] = useState(false);
   const [menuPosition, setMenuPosition] = useState<{ top: number; right: number } | null>(null);
-  const [layoutMode, setLayoutMode] = useState<'vertical' | 'horizontal'>('vertical');
+  const [layoutMode, setLayoutMode] = useState<'vertical' | 'horizontal'>(initialLayoutMode ?? 'vertical');
   const [splitRatio, setSplitRatio] = useState(0.5);
   const [isResizing, setIsResizing] = useState(false);
   const [selection, setSelection] = useState<{ text: string; offset: number } | null>(null);
@@ -256,8 +262,12 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
 
   // Handle layout toggle
   const handleToggleLayout = useCallback(() => {
-    setLayoutMode(prev => prev === 'vertical' ? 'horizontal' : 'vertical');
-  }, []);
+    setLayoutMode(prev => {
+      const next = prev === 'vertical' ? 'horizontal' : 'vertical';
+      onLayoutModeChange?.(next);
+      return next;
+    });
+  }, [onLayoutModeChange]);
 
   // Handle split view resizing
   const handleMouseDown = useCallback((e: React.MouseEvent) => {

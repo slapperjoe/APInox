@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
@@ -8,18 +9,38 @@ use std::path::PathBuf;
 pub struct RequestHistoryEntry {
     pub id: String,
     pub timestamp: i64,
+    #[serde(alias = "requestName")]
     pub request_name: Option<String>,
-    pub method: String,
-    pub url: String,
+    pub method: Option<String>,
+    /// The endpoint URL (alias "url" for backward compat with older history files)
+    #[serde(alias = "url")]
+    pub endpoint: Option<String>,
+    #[serde(alias = "statusCode")]
     pub status: Option<i32>,
     pub duration: Option<i32>,
     pub starred: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub project_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub project_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub interface_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub operation_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub request_body: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub headers: Option<HashMap<String, String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub response_body: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub response_headers: Option<HashMap<String, String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub response_size: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub success: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
 }
 
 /// History configuration
