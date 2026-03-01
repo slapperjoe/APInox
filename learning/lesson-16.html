@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 16 — Testing & Cargo Ecosystem | Rust for C#/JS Devs</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-one-dark.min.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a href="index.html" class="back-link">← All Lessons</a>
+  <span class="lesson-badge">Lesson 16 · ~25 min</span>
+</header>
+
+<main class="lesson">
+  <div class="lesson-hero">
+    <h1>Testing &amp; the Cargo Ecosystem</h1>
+    <div class="lesson-meta">
+      <span>⏱ ~25 min</span>
+      <span>📁 <code>Cargo.toml</code>, codebase structure</span>
+    </div>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:0%"></div></div>
+  <p class="progress-label">0 of 5 questions answered</p>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>1. Unit Tests — Built In, Zero Setup</h2>
+    <pre class="language-rust"><code>// src/math.rs
+pub fn add(a: i32, b: i32) -&gt; i32 { a + b }
+pub fn divide(a: f64, b: f64) -&gt; Option&lt;f64&gt; {
+    if b == 0.0 { None } else { Some(a / b) }
+}
+
+#[cfg(test)]          // compile ONLY during test runs
+mod tests {
+    use super::*;     // import everything from parent module
+
+    #[test]
+    fn test_add() {
+        assert_eq!(add(2, 3), 5);
+    }
+
+    #[test]
+    fn test_add_negative() {
+        assert_eq!(add(-1, -1), -2);
+    }
+
+    #[test]
+    fn test_divide_by_zero() {
+        assert_eq!(divide(10.0, 0.0), None);
+    }
+
+    #[test]
+    fn test_divide() {
+        assert!((divide(10.0, 3.0).unwrap() - 3.333).abs() &lt; 0.001);
+    }
+
+    #[test]
+    #[should_panic(expected = "called unwrap on None")]
+    fn test_unwrap_none_panics() {
+        divide(1.0, 0.0).unwrap(); // panics — test passes
+    }
+}</code></pre>
+
+    <p>Run tests:</p>
+    <pre class="language-bash"><code>cargo test                          # run all tests
+cargo test test_add                 # run tests matching "test_add"
+cargo test -- --nocapture           # show println! output during tests
+cargo test -- --test-threads=1      # run serially (no parallelism)</code></pre>
+
+    <!-- QUIZ 1 -->
+    <div class="quiz" id="q16-1">
+      <div class="quiz-label">✍️ Fill in the Blank</div>
+      <div class="quiz-q">Add the attribute that marks this as a test that should panic:</div>
+      <div class="fill-wrap">
+        #[test]<br>
+        #[<input class="fill-input" id="q16-1-in" placeholder="????" style="width:16ch">]<br>
+        fn test_invalid_input() {<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;parse("not-a-number").unwrap(); // should panic<br>
+        }
+      </div>
+      <button class="btn-check" onclick="fillCheck('q16-1', ['should_panic', 'should_panic(expected = \"called `Option::unwrap()` on a `None` value\")'])">Check</button>
+      <div class="quiz-exp" id="q16-1-exp">
+        <strong>should_panic</strong> — the test passes if the function panics, fails if it returns normally. You can be more specific: <code>#[should_panic(expected = "divide by zero")]</code> — the panic message must contain that string. This tests your error paths explicitly, unlike C# where you'd use <code>Assert.Throws&lt;Exception&gt;()</code>.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>2. Integration Tests and Doc Tests</h2>
+    <pre class="language-rust"><code">// Integration tests — in tests/ at crate root, test public API:
+// tests/soap_integration.rs
+use my_crate::SoapClient;
+
+#[test]
+fn test_client_connects() {
+    let client = SoapClient::new();
+    let result = client.ping("https://test.example.com");
+    assert!(result.is_ok());
+}
+
+// ---- Doc tests — in code comments: ----
+/// Adds two numbers together.
+///
+/// # Examples
+///
+/// ```
+/// let result = add(2, 3);
+/// assert_eq!(result, 5);
+/// ```
+pub fn add(a: i32, b: i32) -&gt; i32 { a + b }
+
+// cargo test RUNS the code in ``` blocks — docs are always up to date!</code></pre>
+
+    <table>
+      <thead><tr><th>Test type</th><th>Location</th><th>What it tests</th><th>C# equivalent</th></tr></thead>
+      <tbody>
+        <tr><td>Unit</td><td><code>#[cfg(test)] mod tests</code> in same file</td><td>Private + public functions</td><td>Test class in same project</td></tr>
+        <tr><td>Integration</td><td><code>tests/</code> directory</td><td>Public API only</td><td>Separate test project</td></tr>
+        <tr><td>Doc</td><td>Code comments</td><td>Example code in docs</td><td>(no equivalent)</td></tr>
+      </tbody>
+    </table>
+
+    <!-- QUIZ 2 -->
+    <div class="quiz" id="q16-2">
+      <div class="quiz-label">✅ True or False</div>
+      <div class="quiz-q">Code examples in Rust doc comments (between <code>```</code> fences) are compiled and run by <code>cargo test</code>.</div>
+      <div class="quiz-options tf">
+        <button data-answer="true" onclick="tf('q16-2', this, true, true)">True</button>
+        <button data-answer="true" onclick="tf('q16-2', this, false, true)">False</button>
+      </div>
+      <div class="quiz-exp" id="q16-2-exp">
+        <strong>True!</strong> Doc tests are a first-class feature. <code>cargo test</code> runs them automatically. This means your documentation examples can never get out of sync with the actual API — if you rename a function and forget to update the docs, the doc test fails. It's documentation-driven development baked into the toolchain.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>3. Assert Macros</h2>
+
+    <table>
+      <thead><tr><th>Macro</th><th>Checks</th><th>C# equivalent</th></tr></thead>
+      <tbody>
+        <tr><td><code>assert!(expr)</code></td><td>expr is true</td><td><code>Assert.IsTrue(expr)</code></td></tr>
+        <tr><td><code>assert_eq!(a, b)</code></td><td>a == b (shows both values on fail)</td><td><code>Assert.AreEqual(a, b)</code></td></tr>
+        <tr><td><code>assert_ne!(a, b)</code></td><td>a != b</td><td><code>Assert.AreNotEqual(a, b)</code></td></tr>
+        <tr><td><code>assert!(expr, "msg {}", val)</code></td><td>expr is true, custom message</td><td><code>Assert.IsTrue(expr, msg)</code></td></tr>
+        <tr><td><code>panic!("msg")</code></td><td>Always fails</td><td><code>Assert.Fail("msg")</code></td></tr>
+      </tbody>
+    </table>
+
+    <pre class="language-rust"><code">// assert_eq! gives great error messages:
+assert_eq!(result, expected);
+// thread 'test_add' panicked at 'assertion failed: `(left == right)`
+//   left: `4`,
+//  right: `5`'
+
+// Custom message for context:
+assert_eq!(
+    actual_status, 200,
+    "Expected 200 but got {} for request to {}",
+    actual_status, endpoint
+);</code></pre>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>4. Cargo Features — Conditional Compilation at Scale</h2>
+    <pre class="language-rust"><code">// Cargo.toml — define optional features:
+[features]
+default = ["http"]           # features enabled by default
+http = ["reqwest"]           # "http" feature pulls in reqwest dep
+metrics = ["prometheus"]     # optional metrics
+dev-tools = []               # no extra deps, just a flag
+
+[dependencies]
+reqwest = { version = "0.11", optional = true }
+prometheus = { version = "0.13", optional = true }
+
+// In code — use #[cfg(feature = "...")] to gate code:
+#[cfg(feature = "metrics")]
+mod metrics {
+    pub fn record_request_duration(ms: u64) {
+        HISTOGRAM.observe(ms as f64 / 1000.0);
+    }
+}
+
+#[cfg(not(feature = "metrics"))]
+mod metrics {
+    pub fn record_request_duration(_ms: u64) {}  // no-op
+}
+
+// Enable features when building:
+// cargo build --features metrics
+// cargo build --features "metrics,dev-tools"
+// cargo build --all-features
+// cargo build --no-default-features</code></pre>
+
+    <!-- QUIZ 3 -->
+    <div class="quiz" id="q16-3">
+      <div class="quiz-label">🔘 Multiple Choice</div>
+      <div class="quiz-q">What's the purpose of <code>#[cfg(feature = "dev-tools")]</code> on a function?</div>
+      <div class="quiz-options">
+        <button data-correct="false" onclick="mc('q16-3', this, false)">It hides the function from documentation</button>
+        <button data-correct="true"  onclick="mc('q16-3', this, true)">The function is only compiled when the "dev-tools" feature is enabled — it doesn't exist in production builds</button>
+        <button data-correct="false" onclick="mc('q16-3', this, false)">It marks the function as deprecated</button>
+        <button data-correct="false" onclick="mc('q16-3', this, false)">It makes the function available only in test builds</button>
+      </div>
+      <div class="quiz-exp" id="q16-3-exp">
+        <strong>✓ Conditional compilation!</strong> The function literally doesn't exist in binaries built without that feature. This is how you ship debug panels, test endpoints, or expensive instrumentation that should never reach production. No runtime check — the code is physically absent. Equivalent to C# preprocessor directives (<code>#if DEBUG</code>) but more granular and managed through Cargo's dependency system.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>5. Cargo Workspaces — Monorepos</h2>
+
+    <pre class="language-toml"><code># workspace Cargo.toml (crate root)
+[workspace]
+members = [
+    "apinox-core",
+    "apinox-tauri",
+    "apinox-cli",
+    "shared-types",
+]
+
+# Each member has its own Cargo.toml
+# All members share a single Cargo.lock
+# Single target/ directory (build artifacts deduped)</code></pre>
+
+    <pre class="language-toml"><code># apinox-tauri/Cargo.toml — refer to sibling crates:
+[dependencies]
+apinox-core = { path = "../apinox-core" }
+shared-types = { path = "../shared-types" }</code></pre>
+
+    <pre class="language-bash"><code># Cargo commands work across the whole workspace:
+cargo build                    # build everything
+cargo test                     # test everything
+cargo test -p apinox-core      # test only one member
+cargo build -p apinox-cli      # build only one member</code></pre>
+
+    <div class="callout"><strong>APInox doesn't use a workspace</strong> — it's a single crate. But if you were to split the sidecar logic into a pure Rust library and keep the Tauri-specific code separate, a workspace would be the right tool. It's the Rust equivalent of a .NET solution with multiple projects.</div>
+
+    <!-- QUIZ 4 -->
+    <div class="quiz" id="q16-4">
+      <div class="quiz-label">🔗 Match It</div>
+      <div class="quiz-q">Match the Cargo command to its purpose:</div>
+      <div class="match-grid">
+        <div class="match-col">
+          <button class="match-item" data-id="a" onclick="matchClick('q16-4', 'a', 'left', this)"><code>cargo check</code></button>
+          <button class="match-item" data-id="b" onclick="matchClick('q16-4', 'b', 'left', this)"><code>cargo clippy</code></button>
+          <button class="match-item" data-id="c" onclick="matchClick('q16-4', 'c', 'left', this)"><code>cargo doc --open</code></button>
+          <button class="match-item" data-id="d" onclick="matchClick('q16-4', 'd', 'left', this)"><code>cargo add tokio</code></button>
+        </div>
+        <div class="match-col">
+          <button class="match-item" data-id="b" onclick="matchClick('q16-4', 'b', 'right', this)">Lint and style suggestions (like Resharper)</button>
+          <button class="match-item" data-id="d" onclick="matchClick('q16-4', 'd', 'right', this)">Add a dependency to Cargo.toml</button>
+          <button class="match-item" data-id="a" onclick="matchClick('q16-4', 'a', 'right', this)">Fast type-check without producing a binary</button>
+          <button class="match-item" data-id="c" onclick="matchClick('q16-4', 'c', 'right', this)">Build and open HTML docs in browser</button>
+        </div>
+      </div>
+      <div class="quiz-exp" id="q16-4-exp">
+        <strong>All matched!</strong><br>
+        • <code>cargo check</code> → type-checks your code without full compilation — 5-10× faster than <code>cargo build</code>, great for tight edit-check loops<br>
+        • <code>cargo clippy</code> → Rust's official linter — catches common mistakes and suggests idiomatic improvements<br>
+        • <code>cargo doc --open</code> → generates beautiful HTML docs from your code and opens in browser<br>
+        • <code>cargo add tokio</code> → adds to <code>Cargo.toml</code> automatically (Cargo 1.62+), like <code>npm install</code>
+      </div>
+    </div>
+
+    <!-- QUIZ 5 -->
+    <div class="quiz" id="q16-5">
+      <div class="quiz-label">🐛 Spot the Bug</div>
+      <div class="quiz-q">This test always passes, but it has a logic error. Click the buggy line:</div>
+      <div class="bug-pre">
+        <span class="bug-line" onclick="bugLine('q16-5', this, false)">#[test]</span>
+        <span class="bug-line" onclick="bugLine('q16-5', this, false)">fn test_parse() {</span>
+        <span class="bug-line" onclick="bugLine('q16-5', this, false)">&nbsp;&nbsp;&nbsp;&nbsp;let result = parse("42");</span>
+        <span class="bug-line" onclick="bugLine('q16-5', this, true)">&nbsp;&nbsp;&nbsp;&nbsp;assert!(result.is_ok());</span>
+        <span class="bug-line" onclick="bugLine('q16-5', this, false)">}</span>
+      </div>
+      <div class="quiz-exp" id="q16-5-exp">
+        <strong>Line 4!</strong> <code>assert!(result.is_ok())</code> checks that parsing succeeded — but it doesn't check the <em>value</em>. <code>parse("42")</code> could return <code>Ok(-1)</code> and the test would still pass. Better: <code>assert_eq!(result.unwrap(), 42);</code> — this verifies both success AND the correct parsed value. Testing that something doesn't error is a starting point, but test the actual output too.
+      </div>
+    </div>
+  </section>
+
+  <nav class="lesson-nav">
+    <a href="lesson-15.html">← Lesson 15: Serde</a>
+    <a href="index.html" class="nav-center">All Lessons</a>
+    <a href="lesson-17.html">Lesson 17: Tauri Architecture →</a>
+  </nav>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-toml.min.js"></script>
+<script src="quiz.js"></script>
+</body>
+</html>

@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 22 — Packaging & Distribution | Rust for C#/JS Devs</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-one-dark.min.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a href="index.html" class="back-link">← All Lessons</a>
+  <span class="lesson-badge">Lesson 22 · Phase 3: Tauri v2 · ~25 min</span>
+</header>
+
+<main class="lesson">
+  <div class="lesson-hero">
+    <div class="phase-banner">🦀 Phase 3 — Tauri v2</div>
+    <h1>Packaging &amp; Distribution</h1>
+    <div class="lesson-meta">
+      <span>⏱ ~25 min</span>
+      <span>📁 <code>tauri.conf.json</code>, <code>Cargo.toml</code>, GitHub Actions</span>
+    </div>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:0%"></div></div>
+  <p class="progress-label">0 of 5 questions answered</p>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>1. The Build Pipeline</h2>
+    <p>A Tauri production build compiles everything into a single native installer. The pipeline has four stages:</p>
+
+    <pre><code>1. Frontend build      → npm/vite builds React → webview/dist/
+2. Sidecar compile     → tsc + pkg → apinox-sidecar binary (if used)
+3. Rust compile        → cargo build --release → libapinox.so / .dylib / .dll
+4. Tauri bundle        → packs webview + Rust into installer / app bundle</code></pre>
+
+    <pre class="language-bash"><code># The single command that does all of this:
+npm run tauri:build
+# or
+npx tauri build
+
+# Output (from tauri.conf.json bundle.targets):
+# macOS:   src-tauri/target/release/bundle/dmg/APInox_0.16.114_x64.dmg
+# Windows: src-tauri/target/release/bundle/nsis/APInox_0.16.114_x64-setup.exe
+# Linux:   src-tauri/target/release/bundle/deb/apinox_0.16.114_amd64.deb</code></pre>
+
+    <p>APInox also has a <code>beforeBuildCommand</code> in <code>tauri.conf.json</code> that runs the webview build automatically before Tauri bundles:</p>
+    <pre class="language-json"><code>{
+  "build": {
+    "frontendDist": "webview/dist",
+    "beforeBuildCommand": "cd src-tauri/webview && npm run build:skip-check"
+  }
+}</code></pre>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>2. Bundle Targets — APInox's Config</h2>
+
+    <pre class="language-json"><code>// tauri.conf.json — APInox's actual bundle config:
+{
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "dmg"],    // Windows NSIS + macOS DMG
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",           // macOS app icon
+      "icons/icon.ico"             // Windows icon
+    ],
+    "resources": {
+      "../CHANGELOG.md": "CHANGELOG.md"   // bundle changelog with app
+    },
+    "windows": {
+      "nsis": {
+        "compression": "lzma"      // LZMA = smaller installer, slower extract
+      }
+    }
+  }
+}</code></pre>
+
+    <p>All supported targets:</p>
+    <table>
+      <thead><tr><th>Target</th><th>Platform</th><th>Format</th></tr></thead>
+      <tbody>
+        <tr><td><code>nsis</code></td><td>Windows</td><td>NSIS installer (.exe)</td></tr>
+        <tr><td><code>msi</code></td><td>Windows</td><td>Windows Installer (.msi)</td></tr>
+        <tr><td><code>dmg</code></td><td>macOS</td><td>Disk image (.dmg)</td></tr>
+        <tr><td><code>app</code></td><td>macOS</td><td>App bundle (.app)</td></tr>
+        <tr><td><code>deb</code></td><td>Linux</td><td>Debian package (.deb)</td></tr>
+        <tr><td><code>rpm</code></td><td>Linux</td><td>RPM package (.rpm)</td></tr>
+        <tr><td><code>appimage</code></td><td>Linux</td><td>Portable executable (.AppImage)</td></tr>
+      </tbody>
+    </table>
+
+    <!-- QUIZ 1 -->
+    <div class="quiz" id="q22-1">
+      <div class="quiz-label">✍️ Fill in the Blank</div>
+      <div class="quiz-q">APInox's <code>bundle.targets</code> only includes <code>"nsis"</code> and <code>"dmg"</code>. A Linux user downloads the repo and runs <code>cargo tauri build</code>. What output format would they get?</div>
+      <div class="fill-wrap">
+        They would get a <input class="fill-input" id="q22-1-in" placeholder="????" style="width:12ch"> package, because Tauri builds the appropriate Linux format based on the build platform.
+      </div>
+      <button class="btn-check" onclick="fillCheck('q22-1', ['.deb', 'deb', '.AppImage', 'AppImage', 'linux', 'linux package'])">Check</button>
+      <div class="quiz-exp" id="q22-1-exp">
+        <strong>A .deb (or .AppImage) package</strong> — Tauri detects the build platform and uses the appropriate Linux bundle format regardless of what's listed in <code>targets</code>. The <code>targets</code> list is a hint, but cross-compilation isn't supported out of the box — you must build on each platform to get that platform's installer. CI/CD typically runs separate jobs on macOS, Windows, and Ubuntu runners to produce all three.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>3. Code Signing</h2>
+    <p>Without code signing, OS security features warn users or block installation. Here's what each platform requires:</p>
+
+    <table>
+      <thead><tr><th>Platform</th><th>Requirement</th><th>Cost</th></tr></thead>
+      <tbody>
+        <tr><td>macOS</td><td>Apple Developer certificate + notarization</td><td>$99/year</td></tr>
+        <tr><td>Windows</td><td>EV code signing certificate</td><td>$300-500/year</td></tr>
+        <tr><td>Linux</td><td>No signing required (GPG for packages optionally)</td><td>Free</td></tr>
+      </tbody>
+    </table>
+
+    <pre class="language-bash"><code># macOS signing via environment variables (set in CI):
+export APPLE_CERTIFICATE="base64-encoded-p12-cert"
+export APPLE_CERTIFICATE_PASSWORD="cert-password"
+export APPLE_ID="developer@example.com"
+export APPLE_PASSWORD="app-specific-password"
+export APPLE_TEAM_ID="XXXXXXXXXX"
+
+# Windows signing:
+export WINDOWS_CERTIFICATE="base64-encoded-pfx"
+export WINDOWS_CERTIFICATE_PASSWORD="cert-password"
+
+# Then just:
+npx tauri build
+# Tauri automatically signs and notarizes using the env vars</code></pre>
+
+    <!-- QUIZ 2 -->
+    <div class="quiz" id="q22-2">
+      <div class="quiz-label">✅ True or False</div>
+      <div class="quiz-q">An unsigned macOS Tauri app can be installed by users by holding Option and double-clicking, but macOS Gatekeeper will block it by default.</div>
+      <div class="quiz-options tf">
+        <button data-answer="true" onclick="tf('q22-2', this, true, true)">True</button>
+        <button data-answer="true" onclick="tf('q22-2', this, false, true)">False</button>
+      </div>
+      <div class="quiz-exp" id="q22-2-exp">
+        <strong>True!</strong> Gatekeeper blocks unsigned apps with "cannot be opened because the developer cannot be verified." Users can override this in System Settings → Privacy & Security → "Open Anyway" (Control+click also works). For internal tools distributed to known users, this is an acceptable tradeoff. For public distribution, signing is essential — most users won't know how to override Gatekeeper.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>4. Cross-Platform CI with GitHub Actions</h2>
+    <p>The standard approach for Tauri apps: run the build on each platform's native runner:</p>
+
+    <pre class="language-yaml"><code># .github/workflows/release.yml
+name: Release
+on:
+  push:
+    tags: ['v*']        # triggers on git tags like v1.2.3
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        platform:
+          - os: ubuntu-latest
+            rust-target: x86_64-unknown-linux-gnu
+          - os: windows-latest
+            rust-target: x86_64-pc-windows-msvc
+          - os: macos-latest
+            rust-target: x86_64-apple-darwin
+          - os: macos-latest         # Apple Silicon
+            rust-target: aarch64-apple-darwin
+
+    runs-on: ${{ matrix.platform.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with: { node-version: 20 }
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform.rust-target }}
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'APInox ${{ github.ref_name }}'
+          args: --target ${{ matrix.platform.rust-target }}</code></pre>
+
+    <!-- QUIZ 3 -->
+    <div class="quiz" id="q22-3">
+      <div class="quiz-label">🔘 Multiple Choice</div>
+      <div class="quiz-q">Why does the CI matrix include <em>two</em> macOS entries (x86_64 and aarch64)?</div>
+      <div class="quiz-options">
+        <button data-correct="false" onclick="mc('q22-3', this, false)">For redundancy — if one build fails, the other covers it</button>
+        <button data-correct="false" onclick="mc('q22-3', this, false)">The x86_64 build is for older macOS; aarch64 is for newer macOS versions</button>
+        <button data-correct="true"  onclick="mc('q22-3', this, true)">x86_64 targets Intel Macs; aarch64 targets Apple Silicon (M1/M2/M3). They're different CPU architectures</button>
+        <button data-correct="false" onclick="mc('q22-3', this, false)">One is for the Tauri app, one is for the embedded sidecar binary</button>
+      </div>
+      <div class="quiz-exp" id="q22-3-exp">
+        <strong>Two CPU architectures!</strong> Apple Silicon (M1/M2/M3) uses ARM (aarch64), while older Macs use Intel x86_64. A binary compiled for one won't run on the other natively (though Rosetta 2 can translate Intel binaries on Apple Silicon with a performance hit). For maximum performance on both, you build two separate binaries. Some teams build a <em>universal binary</em> with <code>lipo</code> — it contains both architectures and runs natively on either.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>5. Auto-Updater</h2>
+    <p>Tauri v2 includes a built-in updater plugin for delivering updates to users:</p>
+
+    <pre class="language-toml"><code># Cargo.toml
+[dependencies]
+tauri-plugin-updater = "2"</code></pre>
+
+    <pre class="language-rust"><code">// In setup:
+.plugin(tauri_plugin_updater::Builder::default().build())</code></pre>
+
+    <pre class="language-typescript"><code">// TypeScript — check for and apply updates:
+import { check } from '@tauri-apps/plugin-updater';
+import { relaunch } from '@tauri-apps/plugin-process';
+
+async function checkForUpdates() {
+    const update = await check();
+    if (update) {
+        console.log(`Update available: ${update.version}`);
+        console.log(`Release notes: ${update.body}`);
+
+        // Download and install
+        await update.downloadAndInstall((event) => {
+            if (event.event === 'Progress') {
+                setProgress(event.data.chunkLength / event.data.contentLength);
+            }
+        });
+
+        // Restart to apply
+        await relaunch();
+    }
+}</code></pre>
+
+    <pre class="language-json"><code>// tauri.conf.json — point to your update server:
+{
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://releases.myapp.com/{{target}}/{{arch}}/{{current_version}}"
+      ],
+      "dialog": true,      // show native update dialog
+      "pubkey": "your-public-key-for-update-verification"
+    }
+  }
+}</code></pre>
+
+    <div class="callout">The updater signs update bundles cryptographically — users can't be tricked into installing a malicious "update." You sign with a private key (kept secret); the public key is embedded in the app. APInox doesn't currently use the built-in updater (it's distributed manually), but this is the standard pattern for apps with auto-update.</div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>6. Resources &amp; Sidecar Bundling</h2>
+    <p>APInox bundles a Node.js sidecar binary alongside the Rust app. This is configured in <code>tauri.conf.json</code>:</p>
+
+    <pre class="language-json"><code>{
+  "bundle": {
+    "resources": {
+      "../CHANGELOG.md": "CHANGELOG.md"
+    },
+    "externalBin": [
+      "binaries/apinox-sidecar"   // sidecar binary (built separately)
+    ]
+  }
+}</code></pre>
+
+    <p>The sidecar binary must exist for all target platforms. For APInox:</p>
+    <pre class="language-bash"><code># Build the Node.js sidecar into a standalone binary:
+npm run build:sidecar     # tsc compilation
+npm run prepare:sidecar   # pkg bundles into apinox-sidecar binary
+
+# The naming convention Tauri expects (platform suffix):
+# binaries/apinox-sidecar-x86_64-pc-windows-msvc.exe   (Windows x64)
+# binaries/apinox-sidecar-x86_64-apple-darwin           (macOS Intel)
+# binaries/apinox-sidecar-aarch64-apple-darwin          (macOS M1/M2)</code></pre>
+
+    <!-- QUIZ 4 -->
+    <div class="quiz" id="q22-4">
+      <div class="quiz-label">🐛 Spot the Bug</div>
+      <div class="quiz-q">This CI workflow is meant to build for macOS Apple Silicon. Click the buggy line:</div>
+      <div class="bug-pre">
+        <span class="bug-line" onclick="bugLine('q22-4', this, false)">- name: Setup Rust</span>
+        <span class="bug-line" onclick="bugLine('q22-4', this, false)">&nbsp;&nbsp;uses: dtolnay/rust-toolchain@stable</span>
+        <span class="bug-line" onclick="bugLine('q22-4', this, false)">&nbsp;&nbsp;with:</span>
+        <span class="bug-line" onclick="bugLine('q22-4', this, true)">&nbsp;&nbsp;&nbsp;&nbsp;targets: aarch64-apple-darwin</span>
+        <span class="bug-line" onclick="bugLine('q22-4', this, false)">- name: Build</span>
+        <span class="bug-line" onclick="bugLine('q22-4', this, false)">&nbsp;&nbsp;run: npx tauri build</span>
+        <span class="bug-line" onclick="bugLine('q22-4', this, false)">&nbsp;&nbsp;# Missing the --target flag!</span>
+      </div>
+      <div class="quiz-exp" id="q22-4-exp">
+        <strong>Line 4 is misleading but the real issue is line 6!</strong> Installing the <code>aarch64-apple-darwin</code> toolchain is correct — but without passing <code>--target aarch64-apple-darwin</code> to <code>tauri build</code>, it compiles for the runner's native architecture (x86_64 on a standard GitHub runner). Fix: <code>npx tauri build --target aarch64-apple-darwin</code>. The toolchain install just makes the target <em>available</em>; you must explicitly request it.
+      </div>
+    </div>
+
+    <!-- QUIZ 5 -->
+    <div class="quiz" id="q22-5">
+      <div class="quiz-label">🔗 Match It</div>
+      <div class="quiz-q">Match the build concern to its solution:</div>
+      <div class="match-grid">
+        <div class="match-col">
+          <button class="match-item" data-id="a" onclick="matchClick('q22-5', 'a', 'left', this)">Windows SmartScreen warning</button>
+          <button class="match-item" data-id="b" onclick="matchClick('q22-5', 'b', 'left', this)">Large installer size</button>
+          <button class="match-item" data-id="c" onclick="matchClick('q22-5', 'c', 'left', this)">Cross-platform builds in CI</button>
+          <button class="match-item" data-id="d" onclick="matchClick('q22-5', 'd', 'left', this)">Auto-updating the app</button>
+        </div>
+        <div class="match-col">
+          <button class="match-item" data-id="b" onclick="matchClick('q22-5', 'b', 'right', this)"><code>bundle.windows.nsis.compression: "lzma"</code></button>
+          <button class="match-item" data-id="d" onclick="matchClick('q22-5', 'd', 'right', this)"><code>tauri-plugin-updater</code> with signed releases</button>
+          <button class="match-item" data-id="a" onclick="matchClick('q22-5', 'a', 'right', this)">EV code signing certificate</button>
+          <button class="match-item" data-id="c" onclick="matchClick('q22-5', 'c', 'right', this)">GitHub Actions matrix with OS-specific runners</button>
+        </div>
+      </div>
+      <div class="quiz-exp" id="q22-5-exp">
+        All matched! Tauri gives you all these tools but you have to wire them up. The pattern: matrix CI for builds, LZMA for compression, EV cert for Windows SmartScreen (it builds reputation over time unlike standard OV certs), and the updater plugin for delivering updates. Put it all together and you have a professional cross-platform distribution pipeline.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>🎓 Course Complete!</h2>
+    <div class="callout" style="text-align:center; font-size:1.1rem;">
+      <p>You've completed all three phases of the Rust + Tauri course:</p>
+      <p>
+        <strong>Phase 1</strong> — Rust fundamentals with APInox (Lessons 00–06)<br>
+        <strong>Phase 2</strong> — Deeper Rust: strings, traits, async, serde, testing (Lessons 07–16)<br>
+        <strong>Phase 3</strong> — Tauri v2: architecture, commands, events, plugins, security, distribution (Lessons 17–22)
+      </p>
+      <p>You now have the foundational knowledge to read and contribute to the APInox Rust codebase, and to build your own Tauri v2 desktop applications.</p>
+    </div>
+  </section>
+
+  <nav class="lesson-nav">
+    <a href="lesson-21.html">← Lesson 21: Capabilities & Security</a>
+    <a href="index.html" class="nav-center">All Lessons</a>
+    <span style="opacity:0.3">End of Course</span>
+  </nav>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-yaml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="quiz.js"></script>
+</body>
+</html>

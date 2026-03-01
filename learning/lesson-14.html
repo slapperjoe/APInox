@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 14 — Concurrency & Async Patterns | Rust for C#/JS Devs</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-one-dark.min.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a href="index.html" class="back-link">← All Lessons</a>
+  <span class="lesson-badge">Lesson 14 · ~30 min</span>
+</header>
+
+<main class="lesson">
+  <div class="lesson-hero">
+    <h1>Concurrency &amp; Async Patterns</h1>
+    <div class="lesson-meta">
+      <span>⏱ ~30 min</span>
+      <span>📁 <code>workflow/engine.rs</code>, <code>testing/test_runner.rs</code></span>
+    </div>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:0%"></div></div>
+  <p class="progress-label">0 of 5 questions answered</p>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>1. <code>tokio::spawn</code> — Fire and Forget</h2>
+    <p>Spawning a task is like C#'s <code>Task.Run()</code> — the task runs concurrently on the Tokio thread pool:</p>
+
+    <pre class="language-rust"><code>use tokio::task::JoinHandle;
+
+// Spawn returns a JoinHandle — you can await it later:
+let handle: JoinHandle&lt;String&gt; = tokio::spawn(async {
+    // runs concurrently
+    expensive_operation().await
+});
+
+// Do other work concurrently...
+other_work().await;
+
+// Then wait for the spawned task:
+let result = handle.await?;  // propagates panic as JoinError
+
+// Spawn and forget (fire-and-forget):
+tokio::spawn(async {
+    send_telemetry().await;
+    // result ignored — task runs until done
+});
+
+// From workflow/engine.rs — running steps in parallel:
+use tokio::task::JoinSet;
+
+let mut set = JoinSet::new();
+for step in parallel_steps {
+    set.spawn(async move { execute_step(step).await });
+}
+// Collect results as they complete:
+while let Some(result) = set.join_next().await {
+    results.push(result??);
+}</code></pre>
+
+    <!-- QUIZ 1 -->
+    <div class="quiz" id="q14-1">
+      <div class="quiz-label">✍️ Fill in the Blank</div>
+      <div class="quiz-q">Complete the spawn call. The task must own <code>step</code> because it may outlive the current scope:</div>
+      <div class="fill-wrap">
+        set.spawn(async <input class="fill-input" id="q14-1-in" placeholder="????" style="width:6ch"> {<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;execute_step(step).await<br>
+        });
+      </div>
+      <button class="btn-check" onclick="fillCheck('q14-1', 'move')">Check</button>
+      <div class="quiz-exp" id="q14-1-exp">
+        <strong>move</strong> — the <code>move</code> keyword transfers ownership of <code>step</code> into the async block. Without it, the closure borrows <code>step</code>, but the spawned task can outlive the current stack frame where <code>step</code> lives. Tokio requires spawned tasks to be <code>'static</code> — meaning they can't borrow short-lived values. <code>move</code> is the fix.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>2. <code>join!</code> — Run Tasks Concurrently, Wait for All</h2>
+    <pre class="language-rust"><code>// Sequential — each awaits before starting the next:
+let users = fetch_users().await?;
+let orders = fetch_orders().await?;
+let config = fetch_config().await?;
+// Total time: time(users) + time(orders) + time(config)
+
+// Concurrent with join! — all start simultaneously:
+let (users, orders, config) = tokio::join!(
+    fetch_users(),
+    fetch_orders(),
+    fetch_config(),
+);
+// Total time: max(time(users), time(orders), time(config))
+
+// join! with error handling — try_join! stops on first error:
+let (users, orders) = tokio::try_join!(
+    fetch_users(),
+    fetch_orders(),
+)?;
+// If either fails, the whole thing returns Err</code></pre>
+
+    <pre class="language-csharp"><code>// C# equivalent:
+var usersTask = FetchUsersAsync();
+var ordersTask = FetchOrdersAsync();
+await Task.WhenAll(usersTask, ordersTask);
+var users = await usersTask;
+var orders = await ordersTask;
+</code></pre>
+
+    <!-- QUIZ 2 -->
+    <div class="quiz" id="q14-2">
+      <div class="quiz-label">🤔 Predict the Output</div>
+      <div class="quiz-q">Which is faster — sequential awaits or <code>tokio::join!</code> — and roughly how much faster for three 1-second operations?</div>
+      <button class="btn-reveal" onclick="reveal('q14-2')">Reveal Answer</button>
+      <div class="quiz-exp" id="q14-2-exp">
+        <strong>join! is ~3× faster!</strong> Sequential: 1s + 1s + 1s = 3s. <code>join!</code>: all three start simultaneously, total ≈ 1s (the longest). This is the core win of async programming — overlapping I/O wait times. Note: this only applies to I/O-bound tasks (network, disk). CPU-bound tasks still take the same CPU time — you'd need multiple threads (<code>tokio::spawn</code> on a multi-threaded runtime) for true parallel CPU work.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>3. Channels — Communicating Between Tasks</h2>
+    <pre class="language-rust"><code>use tokio::sync::mpsc;  // multi-producer, single-consumer
+
+// Create a channel with buffer size 32:
+let (tx, mut rx) = mpsc::channel::&lt;String&gt;(32);
+
+// Producer task — can clone tx for multiple senders:
+let tx2 = tx.clone();
+tokio::spawn(async move {
+    tx2.send("result from task 1".to_string()).await.unwrap();
+});
+
+tokio::spawn(async move {
+    tx.send("result from task 2".to_string()).await.unwrap();
+});
+
+// Consumer — receive until channel closes (all tx clones dropped):
+while let Some(msg) = rx.recv().await {
+    println!("Got: {}", msg);
+}</code></pre>
+
+    <table>
+      <thead><tr><th>Channel type</th><th>Senders</th><th>Receivers</th><th>Use case</th></tr></thead>
+      <tbody>
+        <tr><td><code>mpsc</code></td><td>Many (clone tx)</td><td>One</td><td>Workers → aggregator (most common)</td></tr>
+        <tr><td><code>oneshot</code></td><td>One</td><td>One</td><td>Single response to a request</td></tr>
+        <tr><td><code>broadcast</code></td><td>One</td><td>Many</td><td>Events to multiple subscribers</td></tr>
+        <tr><td><code>watch</code></td><td>One</td><td>Many</td><td>Latest-value notification (config updates)</td></tr>
+      </tbody>
+    </table>
+
+    <!-- QUIZ 3 -->
+    <div class="quiz" id="q14-3">
+      <div class="quiz-label">🔘 Multiple Choice</div>
+      <div class="quiz-q">What does "mpsc" stand for?</div>
+      <div class="quiz-options">
+        <button data-correct="false" onclick="mc('q14-3', this, false)">Multi-process single-core</button>
+        <button data-correct="true"  onclick="mc('q14-3', this, true)">Multi-producer, single-consumer</button>
+        <button data-correct="false" onclick="mc('q14-3', this, false)">Mutable pointer to shared channel</button>
+        <button data-correct="false" onclick="mc('q14-3', this, false)">Message-passing synchronisation construct</button>
+      </div>
+      <div class="quiz-exp" id="q14-3-exp">
+        <strong>✓ Multi-producer, single-consumer!</strong> Many tasks can clone the <code>tx</code> sender and send messages. Only one task owns the <code>rx</code> receiver. This maps to a classic pattern: a pool of worker tasks producing results, funnelled into one aggregator task that collects them. APInox's workflow engine uses this to collect results from parallel step execution.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>4. <code>select!</code> — Race Multiple Futures</h2>
+    <pre class="language-rust"><code">use tokio::select;
+use tokio::time::{sleep, Duration};
+
+// Race: whichever future completes first wins
+select! {
+    result = fetch_data() =&gt; {
+        println!("Got data: {:?}", result);
+    }
+    _ = sleep(Duration::from_secs(5)) =&gt; {
+        println!("Timeout! fetch took too long");
+    }
+}
+
+// Cancellation pattern — stop when a shutdown signal arrives:
+let (shutdown_tx, mut shutdown_rx) = tokio::sync::oneshot::channel::&lt;()&gt;();
+
+loop {
+    select! {
+        work = queue.recv() =&gt; {
+            if let Some(item) = work { process(item).await; }
+        }
+        _ = &amp;mut shutdown_rx =&gt; {
+            println!("Shutting down");
+            break;
+        }
+    }
+}</code></pre>
+
+    <!-- QUIZ 4 -->
+    <div class="quiz" id="q14-4">
+      <div class="quiz-label">✅ True or False</div>
+      <div class="quiz-q">When one branch of <code>select!</code> completes, Tokio waits for the other branches to finish before continuing.</div>
+      <div class="quiz-options tf">
+        <button data-answer="false" onclick="tf('q14-4', this, true, false)">True</button>
+        <button data-answer="false" onclick="tf('q14-4', this, false, false)">False</button>
+      </div>
+      <div class="quiz-exp" id="q14-4-exp">
+        <strong>False!</strong> <code>select!</code> cancels the other branches as soon as one completes. That's the whole point — it's a race. The losing futures are <em>dropped</em> (cancelled). This is how timeouts work: <code>select!</code> between your operation and a timer — if the timer wins, the operation future is dropped and the operation stops. Be careful with non-cancellation-safe operations.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>5. The <code>Send</code> and <code>Sync</code> Traits</h2>
+    <p>You'll see these in compiler errors. They're auto-implemented marker traits:</p>
+
+    <table>
+      <thead><tr><th>Trait</th><th>Means</th><th>Implemented by</th></tr></thead>
+      <tbody>
+        <tr><td><code>Send</code></td><td>Safe to transfer to another thread</td><td>Most types (not <code>Rc</code>, raw pointers)</td></tr>
+        <tr><td><code>Sync</code></td><td>Safe to reference from multiple threads</td><td>Most types (not <code>RefCell</code>, <code>Cell</code>)</td></tr>
+      </tbody>
+    </table>
+
+    <pre class="language-rust"><code">// tokio::spawn requires the future to be Send:
+tokio::spawn(async move {
+    // Everything used here must be Send
+    // Rc is NOT Send — use Arc instead
+    // MutexGuard held across .await is problematic
+});
+
+// If you hold a std::sync::MutexGuard across .await:
+let guard = mutex.lock().unwrap();
+do_something_with(&amp;guard);
+some_async_call().await;  // ERROR: MutexGuard is not Send
+drop(guard);              // FIX: drop before awaiting
+
+// Use tokio::sync::Mutex instead — it's designed for async:
+let guard = tokio_mutex.lock().await;
+some_async_call().await;  // OK — tokio's guard is Send</code></pre>
+
+    <!-- QUIZ 5 -->
+    <div class="quiz" id="q14-5">
+      <div class="quiz-label">🔗 Match It</div>
+      <div class="quiz-q">Match the Tokio tool to its purpose:</div>
+      <div class="match-grid">
+        <div class="match-col">
+          <button class="match-item" data-id="a" onclick="matchClick('q14-5', 'a', 'left', this)"><code>tokio::join!</code></button>
+          <button class="match-item" data-id="b" onclick="matchClick('q14-5', 'b', 'left', this)"><code>tokio::select!</code></button>
+          <button class="match-item" data-id="c" onclick="matchClick('q14-5', 'c', 'left', this)"><code>mpsc::channel</code></button>
+          <button class="match-item" data-id="d" onclick="matchClick('q14-5', 'd', 'left', this)"><code>JoinSet</code></button>
+        </div>
+        <div class="match-col">
+          <button class="match-item" data-id="b" onclick="matchClick('q14-5', 'b', 'right', this)">Race futures, cancel losers</button>
+          <button class="match-item" data-id="d" onclick="matchClick('q14-5', 'd', 'right', this)">Spawn many tasks, collect as they finish</button>
+          <button class="match-item" data-id="a" onclick="matchClick('q14-5', 'a', 'right', this)">Run several futures simultaneously, wait for all</button>
+          <button class="match-item" data-id="c" onclick="matchClick('q14-5', 'c', 'right', this)">Pass messages from workers to aggregator</button>
+        </div>
+      </div>
+      <div class="quiz-exp" id="q14-5-exp">
+        <strong>All matched!</strong><br>
+        • <code>join!</code> → concurrent, wait for all (like <code>Task.WhenAll</code>)<br>
+        • <code>select!</code> → race, first wins, rest cancelled (like <code>Task.WhenAny</code> + cancellation)<br>
+        • <code>mpsc::channel</code> → producer/consumer message passing across tasks<br>
+        • <code>JoinSet</code> → dynamic collection of spawned tasks, results collected as they arrive
+      </div>
+    </div>
+  </section>
+
+  <nav class="lesson-nav">
+    <a href="lesson-13.html">← Lesson 13: Smart Pointers</a>
+    <a href="index.html" class="nav-center">All Lessons</a>
+    <a href="lesson-15.html">Lesson 15: Serde →</a>
+  </nav>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-csharp.min.js"></script>
+<script src="quiz.js"></script>
+</body>
+</html>

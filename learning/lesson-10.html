@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 10 — Closures & Iterators | Rust for C#/JS Devs</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-one-dark.min.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a href="index.html" class="back-link">← All Lessons</a>
+  <span class="lesson-badge">Lesson 10 · ~35 min</span>
+</header>
+
+<main class="lesson">
+  <div class="lesson-hero">
+    <h1>Closures &amp; Iterators</h1>
+    <div class="lesson-meta">
+      <span>⏱ ~35 min</span>
+      <span>📁 <code>testing/test_runner.rs</code>, <code>workflow/engine.rs</code></span>
+    </div>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:0%"></div></div>
+  <p class="progress-label">0 of 5 questions answered</p>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>1. Closures — Inline Functions That Capture Their Environment</h2>
+    <pre class="language-rust"><code>// Closure syntax:   |params| expression
+let double = |x| x * 2;
+let add    = |x, y| x + y;
+
+// With explicit types (usually inferred):
+let double: impl Fn(i32) -&gt; i32 = |x: i32| -&gt; i32 { x * 2 };
+
+// Multi-line — use braces:
+let process = |item: &amp;str| {
+    let trimmed = item.trim();
+    trimmed.to_uppercase()
+};
+
+// The key power — CAPTURING the surrounding scope:
+let base_url = "https://api.example.com".to_string();
+let make_url = |path: &amp;str| format!("{}/{}", base_url, path);
+//                                  ↑ captured from outer scope
+
+println!("{}", make_url("users"));  // https://api.example.com/users</code></pre>
+
+    <pre class="language-csharp"><code>// C# equivalent — lambda expressions
+var double = (int x) => x * 2;
+var makeUrl = (string path) => $"{baseUrl}/{path}"; // captures baseUrl
+</code></pre>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>2. The Three Fn Traits</h2>
+    <p>How a closure captures its environment determines which <code>Fn</code> trait it implements:</p>
+
+    <table>
+      <thead><tr><th>Trait</th><th>Captures</th><th>Can call</th><th>When required</th></tr></thead>
+      <tbody>
+        <tr><td><code>Fn</code></td><td>Immutable borrows</td><td>Many times</td><td>Most iterators, callbacks</td></tr>
+        <tr><td><code>FnMut</code></td><td>Mutable borrows</td><td>Many times</td><td>Accumulating state</td></tr>
+        <tr><td><code>FnOnce</code></td><td>Takes ownership (moves)</td><td>Exactly once</td><td>Consuming a value, <code>move</code> closures</td></tr>
+      </tbody>
+    </table>
+
+    <pre class="language-rust"><code">// Fn — borrows immutably, reusable:
+let name = String::from("Alice");
+let greet = || println!("Hello, {}", name);
+greet(); greet(); // name still exists, just borrowed
+
+// FnMut — mutably borrows, can accumulate:
+let mut count = 0;
+let mut increment = || { count += 1; count };
+println!("{}", increment()); // 1
+println!("{}", increment()); // 2
+
+// FnOnce — moves the value, can only call once:
+let data = vec![1, 2, 3];
+let consume = || drop(data);  // data moved into closure
+consume();    // works
+// consume(); // ERROR: closure already consumed `data`
+
+// move keyword — explicitly take ownership even if only borrowing:
+let name = String::from("Alice");
+tokio::spawn(async move {
+    // name is MOVED here — the spawned task can outlive the current scope
+    println!("Hello, {}", name);
+});
+// name is no longer accessible here</code></pre>
+
+    <!-- QUIZ 1 -->
+    <div class="quiz" id="q10-1">
+      <div class="quiz-label">🔘 Multiple Choice</div>
+      <div class="quiz-q">You need to pass a closure to <code>tokio::spawn</code> that uses a <code>String</code> defined in the current scope. The spawned task may outlive the current function. What must you use?</div>
+      <div class="quiz-options">
+        <button data-correct="false" onclick="mc('q10-1', this, false)">Nothing special — Rust figures it out</button>
+        <button data-correct="false" onclick="mc('q10-1', this, false)"><code>&amp;</code> borrow the String</button>
+        <button data-correct="true"  onclick="mc('q10-1', this, true)"><code>move</code> — take ownership of the String into the closure</button>
+        <button data-correct="false" onclick="mc('q10-1', this, false)"><code>Arc::clone</code> — always wrap in Arc</button>
+      </div>
+      <div class="quiz-exp" id="q10-1-exp">
+        <strong>✓ move!</strong> A spawned task can run after the current function returns — meaning the stack frame with your String would be gone. Borrowing into a task that outlives the lender is a compile error. <code>move</code> transfers ownership into the closure, giving the task its own copy of the data. If you need to share the data (keep it usable after spawning), wrap in <code>Arc::clone</code> first, then <code>move</code> the clone.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>3. Iterators — Lazy, Composable, Zero-Cost</h2>
+    <p>Iterator chains compile to the same code as hand-written loops. There's no overhead:</p>
+
+    <pre class="language-rust"><code>let numbers = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+// LINQ-style pipeline:
+let result: Vec&lt;i32&gt; = numbers.iter()
+    .filter(|&&amp;n| n % 2 == 0)    // keep evens
+    .map(|&amp;n| n * n)              // square them
+    .take(3)                      // first 3
+    .collect();                   // materialize into Vec
+
+// result = [4, 16, 36]
+
+// From test_runner.rs — finding failing assertions:
+let failures: Vec&lt;&amp;AssertionResult&gt; = results.iter()
+    .filter(|r| !r.passed)
+    .collect();</code></pre>
+
+    <h3>Key adapters</h3>
+    <table>
+      <thead><tr><th>Rust</th><th>C# LINQ</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td><code>.map(|x| ...)</code></td><td><code>.Select(x => ...)</code></td><td>Transform each element</td></tr>
+        <tr><td><code>.filter(|x| ...)</code></td><td><code>.Where(x => ...)</code></td><td>Keep matching elements</td></tr>
+        <tr><td><code>.flat_map(|x| ...)</code></td><td><code>.SelectMany(x => ...)</code></td><td>Map then flatten</td></tr>
+        <tr><td><code>.enumerate()</code></td><td><code>.Select((x, i) => ...)</code></td><td>Add index</td></tr>
+        <tr><td><code>.zip(other)</code></td><td><code>.Zip(other, ...)</code></td><td>Pair with another iterator</td></tr>
+        <tr><td><code>.fold(init, |acc, x| ...)</code></td><td><code>.Aggregate(seed, (acc, x) => ...)</code></td><td>Reduce to single value</td></tr>
+        <tr><td><code>.find(|x| ...)</code></td><td><code>.FirstOrDefault(x => ...)</code></td><td>First match → <code>Option</code></td></tr>
+        <tr><td><code>.any(|x| ...)</code></td><td><code>.Any(x => ...)</code></td><td>Is there at least one?</td></tr>
+        <tr><td><code>.all(|x| ...)</code></td><td><code>.All(x => ...)</code></td><td>Do all match?</td></tr>
+        <tr><td><code>.count()</code></td><td><code>.Count()</code></td><td>How many?</td></tr>
+        <tr><td><code>.collect::&lt;Vec&lt;_&gt;&gt;()</code></td><td><code>.ToList()</code></td><td>Materialise</td></tr>
+        <tr><td><code>.sum()</code></td><td><code>.Sum()</code></td><td>Add all numbers</td></tr>
+      </tbody>
+    </table>
+
+    <!-- QUIZ 2 -->
+    <div class="quiz" id="q10-2">
+      <div class="quiz-label">✍️ Fill in the Blank</div>
+      <div class="quiz-q">Complete the chain to get just the names of passed assertions as a <code>Vec&lt;String&gt;</code>:</div>
+      <div class="fill-wrap">
+        let names: Vec&lt;String&gt; = results<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;.iter()<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;.filter(|r| r.passed)<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;.map(|r| r.name.clone())<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;.<input class="fill-input" id="q10-2-in" placeholder="????" style="width:12ch">();
+      </div>
+      <button class="btn-check" onclick="fillCheck('q10-2', ['collect', 'collect::<Vec<String>>'])">Check</button>
+      <div class="quiz-exp" id="q10-2-exp">
+        <strong>collect()</strong> — it materialises the lazy iterator into a collection. The type (<code>Vec&lt;String&gt;</code>) is inferred from the variable annotation. If the type can't be inferred, use the turbofish: <code>.collect::&lt;Vec&lt;String&gt;&gt;()</code>. Iterators are lazy — nothing happens until you call a <em>consuming adapter</em> like <code>collect()</code>, <code>sum()</code>, <code>count()</code>, or <code>for_each()</code>.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>4. Chaining &amp; Real-World Examples</h2>
+
+    <pre class="language-rust"><code>// From workflow/engine.rs — processing workflow steps:
+let step_names: Vec&lt;String&gt; = workflow.steps
+    .iter()
+    .filter(|s| s.enabled)
+    .map(|s| s.name.clone())
+    .collect();
+
+// Enumerate — getting index + value:
+for (i, step) in workflow.steps.iter().enumerate() {
+    log::info!("Running step {}/{}: {}", i + 1, total, step.name);
+}
+
+// flat_map — flatten nested collections:
+let all_assertions: Vec&lt;&amp;Assertion&gt; = test_cases
+    .iter()
+    .flat_map(|tc| tc.assertions.iter())
+    .collect();
+
+// fold — accumulate results:
+let total_duration_ms: u64 = results
+    .iter()
+    .fold(0, |acc, r| acc + r.duration_ms);
+
+// partition — split into two Vecs:
+let (passed, failed): (Vec&lt;_&gt;, Vec&lt;_&gt;) = results
+    .into_iter()
+    .partition(|r| r.passed);</code></pre>
+
+    <!-- QUIZ 3 -->
+    <div class="quiz" id="q10-3">
+      <div class="quiz-label">🤔 Predict the Output</div>
+      <div class="quiz-q">What does this print?</div>
+      <pre class="language-rust"><code>let words = vec!["hello", "world", "rust"];
+let result: String = words.iter()
+    .filter(|w| w.len() > 4)
+    .map(|w| w.to_uppercase())
+    .collect::&lt;Vec&lt;_&gt;&gt;()
+    .join(", ");
+println!("{}", result);</code></pre>
+      <button class="btn-reveal" onclick="reveal('q10-3')">Reveal Answer</button>
+      <div class="quiz-exp" id="q10-3-exp">
+        <strong>HELLO, WORLD</strong><br>
+        <code>"rust"</code> is filtered out (len 4, not &gt; 4). The remaining two are uppercased. <code>.collect::&lt;Vec&lt;_&gt;&gt;()</code> materialises into a Vec, then <code>.join(", ")</code> joins with a comma separator. Note: <code>join</code> is a method on slices/Vecs of strings — it's not an iterator adapter.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>5. Implementing the Iterator Trait</h2>
+    <p>You can make any type iterable by implementing <code>Iterator</code>:</p>
+
+    <pre class="language-rust"><code">struct Counter {
+    count: u32,
+    max: u32,
+}
+
+impl Counter {
+    fn new(max: u32) -&gt; Self {
+        Self { count: 0, max }
+    }
+}
+
+impl Iterator for Counter {
+    type Item = u32;  // what type does it yield?
+
+    fn next(&amp;mut self) -&gt; Option&lt;Self::Item&gt; {
+        if self.count &lt; self.max {
+            self.count += 1;
+            Some(self.count)  // yield the value
+        } else {
+            None  // signal end of iteration
+        }
+    }
+}
+
+// Now it works with all iterator adapters automatically:
+let sum: u32 = Counter::new(5).sum();         // 15
+let doubled: Vec&lt;u32&gt; = Counter::new(3)
+    .map(|x| x * 2)
+    .collect();                                // [2, 4, 6]</code></pre>
+
+    <div class="callout"><strong>You only implement <code>next()</code></strong> — Rust provides all the adapters (<code>map</code>, <code>filter</code>, <code>collect</code>, etc.) for free via a blanket implementation on the <code>Iterator</code> trait. The same pattern as C#'s <code>IEnumerable&lt;T&gt;</code> where you implement <code>GetEnumerator()</code> and LINQ works automatically.</div>
+
+    <!-- QUIZ 4 -->
+    <div class="quiz" id="q10-4">
+      <div class="quiz-label">✅ True or False</div>
+      <div class="quiz-q">When you implement the <code>Iterator</code> trait, you must also manually implement <code>map()</code>, <code>filter()</code>, and <code>collect()</code> for your type.</div>
+      <div class="quiz-options tf">
+        <button data-answer="false" onclick="tf('q10-4', this, true, false)">True</button>
+        <button data-answer="false" onclick="tf('q10-4', this, false, false)">False</button>
+      </div>
+      <div class="quiz-exp" id="q10-4-exp">
+        <strong>False!</strong> You only implement <code>next()</code>. The standard library provides all adapters via a default implementation: the <code>Iterator</code> trait has 70+ methods with default implementations that all call <code>next()</code> internally. This is the power of Rust traits with default methods — implement one function, get dozens for free.
+      </div>
+    </div>
+
+    <!-- QUIZ 5 -->
+    <div class="quiz" id="q10-5">
+      <div class="quiz-label">🐛 Spot the Bug</div>
+      <div class="quiz-q">This iterator chain has a subtle mistake. Click the buggy line:</div>
+      <div class="bug-pre">
+        <span class="bug-line" onclick="bugLine('q10-5', this, false)">let names = vec!["alice", "bob", "charlie"];</span>
+        <span class="bug-line" onclick="bugLine('q10-5', this, false)">let long_names: Vec&lt;&amp;str&gt; = names</span>
+        <span class="bug-line" onclick="bugLine('q10-5', this, false)">&nbsp;&nbsp;&nbsp;&nbsp;.iter()</span>
+        <span class="bug-line" onclick="bugLine('q10-5', this, false)">&nbsp;&nbsp;&nbsp;&nbsp;.filter(|n| n.len() > 3)</span>
+        <span class="bug-line" onclick="bugLine('q10-5', this, true)">&nbsp;&nbsp;&nbsp;&nbsp;.map(|n| n.to_uppercase())</span>
+        <span class="bug-line" onclick="bugLine('q10-5', this, false)">&nbsp;&nbsp;&nbsp;&nbsp;.collect();</span>
+      </div>
+      <div class="quiz-exp" id="q10-5-exp">
+        <strong>Line 5!</strong> The type annotation says <code>Vec&lt;&amp;str&gt;</code> but <code>.to_uppercase()</code> returns a new owned <code>String</code> — not a reference. The types don't match. Either change the annotation to <code>Vec&lt;String&gt;</code>, or remove <code>.map(|n| n.to_uppercase())</code> if you just want the original borrowed strings. This kind of mismatch is caught at compile time — not at runtime.
+      </div>
+    </div>
+  </section>
+
+  <nav class="lesson-nav">
+    <a href="lesson-09.html">← Lesson 9: Modules</a>
+    <a href="index.html" class="nav-center">All Lessons</a>
+    <a href="lesson-11.html">Lesson 11: Traits Deep Dive →</a>
+  </nav>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+<script src="quiz.js"></script>
+</body>
+</html>

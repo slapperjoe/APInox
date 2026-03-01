@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 19 — IPC & Events | Rust for C#/JS Devs</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-one-dark.min.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a href="index.html" class="back-link">← All Lessons</a>
+  <span class="lesson-badge">Lesson 19 · Phase 3: Tauri v2 · ~25 min</span>
+</header>
+
+<main class="lesson">
+  <div class="lesson-hero">
+    <div class="phase-banner">🦀 Phase 3 — Tauri v2</div>
+    <h1>IPC &amp; Events</h1>
+    <div class="lesson-meta">
+      <span>⏱ ~25 min</span>
+      <span>📁 <code>webview/src/utils/bridge.ts</code>, <code>lib.rs</code></span>
+    </div>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:0%"></div></div>
+  <p class="progress-label">0 of 5 questions answered</p>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>1. The Two Communication Channels</h2>
+
+    <p>Tauri provides two ways for the webview and the Rust backend to communicate:</p>
+
+    <table>
+      <thead><tr><th>Channel</th><th>Direction</th><th>Pattern</th><th>Use when...</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>invoke()</strong></td>
+          <td>→ Webview to Rust</td>
+          <td>Request/response (like HTTP)</td>
+          <td>Webview needs to <em>ask</em> Rust for something</td>
+        </tr>
+        <tr>
+          <td><strong>emit() / listen()</strong></td>
+          <td>← Rust to Webview</td>
+          <td>Pub/sub events</td>
+          <td>Rust needs to <em>push</em> data to the webview</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout">Think of it like JavaScript's <code>fetch()</code> vs <code>WebSocket</code>. <code>invoke()</code> is the request-response model: the webview asks, Rust answers. Events are push-only: Rust can fire an event any time, even from a background thread, and the webview listens.</div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>2. invoke() — Calling Rust from TypeScript</h2>
+
+    <pre class="language-typescript"><code>// webview/src/utils/bridge.ts — APInox's real invoke wrapper:
+import { invoke } from '@tauri-apps/api/core';
+
+// Simple call
+const version = await invoke&lt;string&gt;('get_app_version');
+
+// With arguments — must match the Rust function parameter names exactly
+const project = await invoke&lt;ApinoxProject&gt;('load_project', {
+    dirPath: '/Users/mark/Projects/MySOAPProject'
+});
+
+// APInox's bridge wraps invoke for consistency:
+export async function invokeTauriCommand&lt;T = any&gt;(
+    command: string,
+    args?: Record&lt;string, any&gt;
+): Promise&lt;T&gt; {
+    await ensureTauriInitialized();
+    try {
+        return await tauriInvoke(command, args);
+    } catch (error: any) {
+        console.error(`[Bridge] Tauri command '${command}' failed:`, error);
+        throw error;
+    }
+}</code></pre>
+
+    <pre class="language-rust"><code>// Rust side — the Err becomes a JS rejected promise:
+#[tauri::command]
+pub async fn load_project(dir_path: String) -&gt; Result&lt;ApinoxProject, String&gt; {
+    //                                                              ^^^^^^
+    // String errors are forwarded to JS as rejected promise reasons
+    FolderProjectStorage::load(&amp;PathBuf::from(dir_path))
+        .map_err(|e| e.to_string())
+}</code></pre>
+
+    <p>In TypeScript:</p>
+    <pre class="language-typescript"><code>try {
+    const project = await invoke('load_project', { dirPath: '/bad/path' });
+} catch (err) {
+    // err is the String from Rust's Err(...)
+    console.error('Load failed:', err);  // "No such file or directory"
+}</code></pre>
+
+    <!-- QUIZ 1 -->
+    <div class="quiz" id="q19-1">
+      <div class="quiz-label">✍️ Fill in the Blank</div>
+      <div class="quiz-q">In TypeScript, a Tauri command that returns <code>Err("project not found")</code> from Rust will cause the <code>invoke()</code> Promise to:</div>
+      <div class="fill-wrap">
+        The Promise will <input class="fill-input" id="q19-1-in" placeholder="????" style="width:12ch"> with the error string as the rejection reason.
+      </div>
+      <button class="btn-check" onclick="fillCheck('q19-1', ['reject', 'throw', 'fail'])">Check</button>
+      <div class="quiz-exp" id="q19-1-exp">
+        <strong>reject</strong> — a Rust <code>Err(String)</code> becomes a JS rejected Promise. You catch it with <code>try/catch</code> around <code>await invoke()</code> or with <code>.catch()</code>. The <code>Ok(value)</code> path resolves the Promise with the serialized value. This maps naturally to async/await error handling in TypeScript.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>3. Events — Rust Pushing to the Webview</h2>
+    <p>Events are fire-and-forget messages from Rust to the webview. Any Rust code with access to an <code>AppHandle</code> can emit an event, even background threads:</p>
+
+    <pre class="language-rust"><code">// Rust — emit an event from any command or background task:
+#[tauri::command]
+pub async fn start_long_operation(
+    app: tauri::AppHandle,
+    params: OperationParams,
+) -&gt; Result&lt;(), String&gt; {
+    let app_clone = app.clone();
+    
+    tokio::spawn(async move {
+        for i in 0..10 {
+            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+            
+            // Push progress update to ALL windows
+            app_clone.emit("operation-progress", serde_json::json!({
+                "step": i + 1,
+                "total": 10,
+                "message": format!("Processing item {}", i + 1),
+            })).ok();
+        }
+        
+        app_clone.emit("operation-complete", serde_json::json!({
+            "success": true,
+            "result": "All done!"
+        })).ok();
+    });
+    
+    Ok(())  // Returns immediately
+}</code></pre>
+
+    <pre class="language-typescript"><code>// TypeScript — listen for events:
+import { listen } from '@tauri-apps/api/event';
+
+// Returns an unlisten function — call it to clean up!
+const unlisten = await listen&lt;{ step: number; total: number; message: string }&gt;(
+    'operation-progress',
+    (event) =&gt; {
+        console.log(`Step ${event.payload.step}/${event.payload.total}`);
+        setProgress(event.payload.step / event.payload.total);
+    }
+);
+
+await listen('operation-complete', (event) =&gt; {
+    console.log('Done!', event.payload);
+    unlisten(); // Stop listening to progress events
+});
+
+// Trigger the operation
+await invoke('start_long_operation', { params: { ... } });</code></pre>
+
+    <!-- QUIZ 2 -->
+    <div class="quiz" id="q19-2">
+      <div class="quiz-label">✅ True or False</div>
+      <div class="quiz-q"><code>app.emit("my-event", data)</code> in Rust sends the event to a specific window only — you need to specify which window to receive it.</div>
+      <div class="quiz-options tf">
+        <button data-answer="false" onclick="tf('q19-2', this, true, false)">True</button>
+        <button data-answer="false" onclick="tf('q19-2', this, false, false)">False</button>
+      </div>
+      <div class="quiz-exp" id="q19-2-exp">
+        <strong>False!</strong> <code>app.emit()</code> broadcasts to ALL windows. To target a specific window use <code>app.get_webview_window("main").unwrap().emit("my-event", data)</code>. In APInox there's only one window, so the distinction doesn't matter — but in multi-window apps (e.g., a detached editor panel) you'd want targeted events.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>4. APInox's Bridge — The Dual-Mode Abstraction</h2>
+    <p>APInox has an interesting historical layer: the <code>bridge.ts</code> file was originally designed for a <em>sidecar</em> (postMessage to a Node.js process). As functionality migrated to Rust, the bridge became a hybrid:</p>
+
+    <pre class="language-typescript"><code>// bridge.ts — the two paths:
+
+// PATH 1: Direct Tauri invoke (pure Rust commands)
+export async function invokeTauriCommand&lt;T&gt;(command: string, args?: any): Promise&lt;T&gt; {
+    await ensureTauriInitialized();
+    return tauriInvoke(command, args);   // calls Rust directly
+}
+
+// PATH 2: Legacy sidecar message routing (being phased out)
+export async function sendMessage(message: BridgeMessage): Promise&lt;BackendMessage&gt; {
+    // Routes to the Node.js sidecar process via HTTP
+    // ...
+}
+
+// Usage in components:
+// Modern (Rust):
+const project = await bridge.invokeTauriCommand('load_project', { dirPath });
+
+// Legacy (sidecar HTTP — being migrated):
+const result = await bridge.sendMessage({ command: 'parseWsdl', url });
+</code></pre>
+
+    <div class="callout callout-warn">⚠️ The dual bridge is a migration artifact. New Tauri projects should use <code>invoke()</code> exclusively — no sidecar needed. The pattern to learn is the <code>invoke()</code> path; the <code>sendMessage()</code> path is legacy.</div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>5. Window Events — Lifecycle and User Actions</h2>
+    <p>Beyond custom events, Tauri fires built-in window lifecycle events:</p>
+
+    <pre class="language-typescript"><code>import { getCurrentWindow } from '@tauri-apps/api/window';
+
+const appWindow = getCurrentWindow();
+
+// Listen for window events
+await appWindow.onCloseRequested(async (event) => {
+    // Intercept the close — ask user to save first
+    const shouldClose = await confirmUnsavedChanges();
+    if (!shouldClose) {
+        event.preventDefault();  // Cancel the close
+    }
+});
+
+await appWindow.listen('tauri://focus', () => {
+    console.log('Window focused — refresh data?');
+});
+
+await appWindow.listen('tauri://blur', () => {
+    console.log('Window lost focus — pause background polling?');
+});
+
+await appWindow.listen('tauri://move', (event) => {
+    console.log('Window moved to:', event.payload);
+});</code></pre>
+
+    <pre class="language-rust"><code">// In Rust, emit to specific window:
+#[tauri::command]
+pub fn open_project_from_args(
+    app: tauri::AppHandle,
+    path: String,
+) {
+    let window = app.get_webview_window("main").unwrap();
+    // Push to webview after Rust opens/validates the path
+    window.emit("open-project-path", &amp;path).ok();
+}</code></pre>
+
+    <!-- QUIZ 3 -->
+    <div class="quiz" id="q19-3">
+      <div class="quiz-label">🔘 Multiple Choice</div>
+      <div class="quiz-q">A Tauri app needs to warn the user before closing if there are unsaved changes. Which approach is correct?</div>
+      <div class="quiz-options">
+        <button data-correct="false" onclick="mc('q19-3', this, false)">Override <code>window.onbeforeunload</code> in TypeScript just like a browser app</button>
+        <button data-correct="false" onclick="mc('q19-3', this, false)">Add a <code>#[tauri::command] fn should_close()</code> that Tauri calls before every close</button>
+        <button data-correct="true"  onclick="mc('q19-3', this, true)">Use <code>appWindow.onCloseRequested()</code> in TypeScript — call <code>event.preventDefault()</code> to cancel the close</button>
+        <button data-correct="false" onclick="mc('q19-3', this, false)">It's not possible — Tauri always closes immediately on the system close button</button>
+      </div>
+      <div class="quiz-exp" id="q19-3-exp">
+        <strong><code>onCloseRequested</code> with <code>event.preventDefault()</code></strong> — Tauri fires this event before the window actually closes, giving you a chance to cancel it. Note: <code>window.onbeforeunload</code> doesn't work in Tauri (the webview is sandboxed). You must use the Tauri API. Show your "Save changes?" dialog inside the handler and only let the close proceed if the user confirms.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>6. invoke() vs Events — When to Use Which</h2>
+
+    <table>
+      <thead><tr><th>Scenario</th><th>Use</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Save a project file</td><td><code>invoke()</code></td><td>Request/response — webview needs confirmation</td></tr>
+        <tr><td>Get app version</td><td><code>invoke()</code></td><td>Synchronous query with a result</td></tr>
+        <tr><td>Stream test step results</td><td>events or polling</td><td>Rust pushes multiple updates over time</td></tr>
+        <tr><td>File system change detected</td><td>events</td><td>Rust initiates — webview didn't ask</td></tr>
+        <tr><td>Background download progress</td><td>events</td><td>Continuous push, no specific request</td></tr>
+        <tr><td>Open file dialog result</td><td><code>invoke()</code></td><td>Webview asks, Rust returns chosen path</td></tr>
+      </tbody>
+    </table>
+
+    <!-- QUIZ 4 -->
+    <div class="quiz predict" id="q19-4">
+      <div class="quiz-label">🔮 Predict &amp; Reveal</div>
+      <div class="quiz-q">If you forget to call <code>unlisten()</code> after listening to a Tauri event, what happens?</div>
+      <pre class="language-typescript"><code>// Component mounts and starts listening:
+const unlisten = await listen('operation-progress', handler);
+
+// Component unmounts — but unlisten() is never called
+// What's the consequence?</code></pre>
+      <button class="btn-reveal" onclick="reveal('q19-4')">Reveal Answer</button>
+      <div class="quiz-exp" id="q19-4-exp">
+        <strong>Memory leak and phantom handler calls!</strong> The event listener stays alive even after the component unmounts. If the event fires again, <code>handler</code> is called even though the component no longer exists — potentially updating unmounted state, causing React "Can't perform a state update on unmounted component" warnings, or worse, null reference crashes. Always call <code>unlisten()</code> in your cleanup: in React, return it from a <code>useEffect</code> cleanup function: <code>useEffect(() => { let unsub; listen(...).then(fn => unsub = fn); return () => unsub?.(); }, []);</code>
+      </div>
+    </div>
+
+    <!-- QUIZ 5 -->
+    <div class="quiz" id="q19-5">
+      <div class="quiz-label">🐛 Spot the Bug</div>
+      <div class="quiz-q">This Rust command is supposed to emit a "done" event when a background task completes. Click the buggy line:</div>
+      <div class="bug-pre">
+        <span class="bug-line" onclick="bugLine('q19-5', this, false)">#[tauri::command]</span>
+        <span class="bug-line" onclick="bugLine('q19-5', this, false)">pub async fn start_task(app: tauri::AppHandle) -&gt; Result&lt;(), String&gt; {</span>
+        <span class="bug-line" onclick="bugLine('q19-5', this, true)">&nbsp;&nbsp;&nbsp;&nbsp;tokio::spawn(async {</span>
+        <span class="bug-line" onclick="bugLine('q19-5', this, false)">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;do_long_work().await;</span>
+        <span class="bug-line" onclick="bugLine('q19-5', this, false)">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;app.emit("task-done", true).ok();</span>
+        <span class="bug-line" onclick="bugLine('q19-5', this, false)">&nbsp;&nbsp;&nbsp;&nbsp;});</span>
+        <span class="bug-line" onclick="bugLine('q19-5', this, false)">&nbsp;&nbsp;&nbsp;&nbsp;Ok(())</span>
+        <span class="bug-line" onclick="bugLine('q19-5', this, false)">}</span>
+      </div>
+      <div class="quiz-exp" id="q19-5-exp">
+        <strong>Line 3!</strong> <code>tokio::spawn(async {</code> creates a closure that tries to capture <code>app</code> — but <code>app</code> needs to be <em>moved</em> into the async block to cross thread boundaries. Fix: <code>tokio::spawn(async move {</code>. The <code>move</code> keyword transfers ownership of <code>app</code> into the spawned task. Without it, the borrow checker rejects the code because the spawned task might outlive the function's stack frame where <code>app</code> lives.
+      </div>
+    </div>
+  </section>
+
+  <nav class="lesson-nav">
+    <a href="lesson-18.html">← Lesson 18: Commands & State</a>
+    <a href="index.html" class="nav-center">All Lessons</a>
+    <a href="lesson-20.html">Lesson 20: Plugins & Native APIs →</a>
+  </nav>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
+<script src="quiz.js"></script>
+</body>
+</html>

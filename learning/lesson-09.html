@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 9 — Modules & Visibility | Rust for C#/JS Devs</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-one-dark.min.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a href="index.html" class="back-link">← All Lessons</a>
+  <span class="lesson-badge">Lesson 9 · ~25 min</span>
+</header>
+
+<main class="lesson">
+  <div class="lesson-hero">
+    <h1>Modules &amp; Visibility</h1>
+    <div class="lesson-meta">
+      <span>⏱ ~25 min</span>
+      <span>📁 <code>lib.rs</code>, <code>soap/mod.rs</code>, <code>testing/mod.rs</code></span>
+    </div>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:0%"></div></div>
+  <p class="progress-label">0 of 5 questions answered</p>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>1. Modules — Rust's Namespace System</h2>
+    <p>Rust doesn't use folders/namespaces the way C# does. The module system is explicit — you declare what exists. From <code>lib.rs</code>:</p>
+
+    <pre class="language-rust"><code>// lib.rs — the crate root declares all submodules:
+mod project_storage;     // private — only this crate can use it
+mod secret_storage;      // private
+pub mod settings_manager; // public — external code can access
+
+pub mod soap;            // exposes the entire soap/ subdirectory
+pub mod testing;
+pub mod workflow;
+pub mod parsers;</code></pre>
+
+    <p>Each <code>mod foo;</code> declaration tells the compiler to look for either:</p>
+    <ul>
+      <li><code>src/foo.rs</code> — a single file module</li>
+      <li><code>src/foo/mod.rs</code> — a directory module</li>
+    </ul>
+
+    <pre class="language-rust"><code>// src/soap/mod.rs — the soap module's root:
+pub mod client;     // makes soap/client.rs accessible as soap::client
+pub mod commands;
+pub mod envelope_builder;
+pub mod ws_security;
+
+// Re-export commonly used items to the module surface:
+pub use client::SoapClient;
+pub use commands::execute_soap_request;</code></pre>
+
+    <!-- QUIZ 1 -->
+    <div class="quiz" id="q9-1">
+      <div class="quiz-label">✅ True or False</div>
+      <div class="quiz-q">In Rust, if you create a file <code>src/database.rs</code>, it is automatically included in your project.</div>
+      <div class="quiz-options tf">
+        <button data-answer="false" onclick="tf('q9-1', this, true, false)">True</button>
+        <button data-answer="false" onclick="tf('q9-1', this, false, false)">False</button>
+      </div>
+      <div class="quiz-exp" id="q9-1-exp">
+        <strong>False!</strong> Rust's module system is <em>explicit</em>. You must declare <code>mod database;</code> in <code>lib.rs</code> (or the parent module) for the file to be compiled. Files that aren't declared are completely ignored by the compiler. This is intentional — it prevents accidental inclusion of abandoned files and makes the module tree visible in one place.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>2. Visibility Modifiers</h2>
+
+    <table>
+      <thead><tr><th>Modifier</th><th>Accessible from</th><th>C# equivalent</th></tr></thead>
+      <tbody>
+        <tr><td>(none)</td><td>Only within the current module</td><td><code>private</code></td></tr>
+        <tr><td><code>pub</code></td><td>Anywhere</td><td><code>public</code></td></tr>
+        <tr><td><code>pub(crate)</code></td><td>Anywhere within this crate</td><td><code>internal</code></td></tr>
+        <tr><td><code>pub(super)</code></td><td>Only the parent module</td><td><code>protected</code> (roughly)</td></tr>
+        <tr><td><code>pub(in path)</code></td><td>A specific ancestor module</td><td>(no equivalent)</td></tr>
+      </tbody>
+    </table>
+
+    <pre class="language-rust"><code>mod authentication {
+    pub struct User {
+        pub username: String,           // pub — accessible everywhere
+        pub(crate) password_hash: String, // internal — only this crate
+        session_token: String,           // private — only this module
+    }
+
+    pub fn login(username: &amp;str) -&gt; User { ... }  // public
+    fn hash_password(pw: &amp;str) -&gt; String { ... }   // private helper
+    pub(crate) fn validate_session(token: &amp;str) { ... } // crate-internal
+}</code></pre>
+
+    <!-- QUIZ 2 -->
+    <div class="quiz" id="q9-2">
+      <div class="quiz-label">🔘 Multiple Choice</div>
+      <div class="quiz-q">Your Tauri app has a function that should be callable from any module in your crate, but <em>not</em> exposed to JavaScript via <code>invoke()</code>. What visibility do you use?</div>
+      <div class="quiz-options">
+        <button data-correct="false" onclick="mc('q9-2', this, false)"><code>pub</code> — make it fully public</button>
+        <button data-correct="true"  onclick="mc('q9-2', this, true)"><code>pub(crate)</code> — accessible throughout your crate but not externally</button>
+        <button data-correct="false" onclick="mc('q9-2', this, false)">(no modifier) — private is fine</button>
+        <button data-correct="false" onclick="mc('q9-2', this, false)"><code>pub(super)</code> — parent module only</button>
+      </div>
+      <div class="quiz-exp" id="q9-2-exp">
+        <strong>✓ pub(crate)!</strong> Tauri commands must be <code>pub</code> to be registered with <code>tauri::generate_handler!</code>. But for internal utility functions you want shared across modules — not exposed to the JS layer — <code>pub(crate)</code> is the right choice. It's Rust's equivalent of C#'s <code>internal</code>: visible within the assembly (crate) but not externally.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>3. <code>use</code> — Bringing Items into Scope</h2>
+
+    <pre class="language-rust"><code>// Bring specific items into scope:
+use std::collections::HashMap;
+use std::path::PathBuf;
+use std::fs;
+
+// Multiple items from one module:
+use std::io::{BufRead, BufReader, Write};
+
+// Rename on import:
+use std::collections::HashMap as Map;
+use serde_json::Value as JsonValue;    // seen in assertion_runner.rs!
+
+// Glob import (use sparingly — makes it hard to trace where things come from):
+use std::prelude::*;
+
+// Re-export — expose an item as if it's part of your module:
+pub use crate::soap::SoapClient;   // callers can use `your_crate::SoapClient`
+
+// Relative paths:
+use super::utils::format_xml;   // go up one module level
+use self::models::User;         // explicitly current module
+use crate::settings_manager;    // from the crate root</code></pre>
+
+    <!-- QUIZ 3 -->
+    <div class="quiz" id="q9-3">
+      <div class="quiz-label">✍️ Fill in the Blank</div>
+      <div class="quiz-q">Bring <code>HashMap</code> and <code>HashSet</code> into scope from <code>std::collections</code> in one line:</div>
+      <div class="fill-wrap">
+        use std::collections::{<input class="fill-input" id="q9-3-in" placeholder="???, ???" style="width:22ch">};
+      </div>
+      <button class="btn-check" onclick="fillCheck('q9-3', ['HashMap, HashSet', 'HashSet, HashMap'])">Check</button>
+      <div class="quiz-exp" id="q9-3-exp">
+        <strong>HashMap, HashSet</strong> (order doesn't matter) — the <code>{ }</code> syntax lets you import multiple items from one path. This is called a "use tree" and you can nest them: <code>use std::{collections::HashMap, path::PathBuf, fs};</code> — all from one <code>use</code> statement.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>4. The APInox Module Tree</h2>
+    <p>Here's how the codebase is structured — notice everything flows from <code>lib.rs</code>:</p>
+
+    <pre class="language-rust"><code>// lib.rs (crate root)
+├── mod project_storage      → src/project_storage.rs
+├── mod secret_storage       → src/secret_storage.rs
+├── pub mod settings_manager → src/settings_manager.rs
+├── pub mod soap             → src/soap/mod.rs
+│   ├── pub mod client       → src/soap/client.rs
+│   ├── pub mod commands     → src/soap/commands.rs
+│   └── pub mod ws_security  → src/soap/ws_security.rs
+├── pub mod testing          → src/testing/mod.rs
+│   ├── pub mod test_runner  → src/testing/test_runner.rs
+│   └── pub mod assertion_runner → src/testing/assertion_runner.rs
+└── pub mod workflow         → src/workflow/mod.rs
+    └── pub mod engine       → src/workflow/engine.rs</code></pre>
+
+    <p>Accessing items across modules:</p>
+    <pre class="language-rust"><code>// In soap/commands.rs, access the testing module:
+use crate::testing::TestRunner;
+//   ↑ always start from crate root for absolute paths
+
+// OR use super for relative:
+use super::client::SoapClient;  // go up to soap/, then into client</code></pre>
+
+    <!-- QUIZ 4 -->
+    <div class="quiz" id="q9-4">
+      <div class="quiz-label">🐛 Spot the Bug</div>
+      <div class="quiz-q">Code in <code>soap/commands.rs</code> tries to use a private function from <code>project_storage.rs</code>. Click the problem:</div>
+      <div class="bug-pre">
+        <span class="bug-line" onclick="bugLine('q9-4', this, false)">// In project_storage.rs:</span>
+        <span class="bug-line" onclick="bugLine('q9-4', this, true)">fn load_from_disk(path: &amp;str) -&gt; Result&lt;Project&gt; { ... }</span>
+        <span class="bug-line" onclick="bugLine('q9-4', this, false)"></span>
+        <span class="bug-line" onclick="bugLine('q9-4', this, false)">// In soap/commands.rs:</span>
+        <span class="bug-line" onclick="bugLine('q9-4', this, false)">use crate::project_storage::load_from_disk;</span>
+      </div>
+      <div class="quiz-exp" id="q9-4-exp">
+        <strong>Line 2!</strong> <code>load_from_disk</code> has no <code>pub</code> — it's private to <code>project_storage</code>. Even though it's accessible within that module, no other module can import it. Fix: add <code>pub fn</code> if it's meant to be shared, or <code>pub(crate) fn</code> to limit it to this crate. Private functions are a form of encapsulation — they protect internal implementation details.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>5. Inline Modules &amp; Test Modules</h2>
+    <p>You can also declare modules inline, without creating a file. This is especially useful for test code:</p>
+
+    <pre class="language-rust"><code">// Inline module — all in the same file:
+mod utils {
+    pub fn format_xml(s: &amp;str) -&gt; String {
+        // implementation
+    }
+}
+
+// The #[cfg(test)] module pattern — standard across ALL Rust codebases:
+// src/my_module.rs
+pub fn add(a: i32, b: i32) -&gt; i32 { a + b }
+
+#[cfg(test)]         // ← only compiled when running tests
+mod tests {
+    use super::*;    // ← import everything from the parent module
+
+    #[test]
+    fn test_add() {
+        assert_eq!(add(2, 3), 5);
+    }
+
+    #[test]
+    fn test_add_negative() {
+        assert_eq!(add(-1, 1), 0);
+    }
+}</code></pre>
+
+    <!-- QUIZ 5 -->
+    <div class="quiz predict" id="q9-5">
+      <div class="quiz-label">🤔 Predict the Output</div>
+      <div class="quiz-q">What does <code>use super::*</code> do inside a <code>#[cfg(test)] mod tests</code> block?</div>
+      <button class="btn-reveal" onclick="reveal('q9-5')">Reveal Answer</button>
+      <div class="quiz-exp" id="q9-5-exp">
+        <strong>It imports everything from the parent module</strong> — all functions, structs, and types defined in the file that contains the test module. Since the test module is a child of the file's module, <code>super</code> refers to that parent. This gives tests access to <em>private</em> functions (not just <code>pub</code> ones) — because parent-child module relationships allow access to private items. It's intentional: tests should be able to test internals.
+      </div>
+    </div>
+  </section>
+
+  <nav class="lesson-nav">
+    <a href="lesson-08.html">← Lesson 8: Pattern Matching</a>
+    <a href="index.html" class="nav-center">All Lessons</a>
+    <a href="lesson-10.html">Lesson 10: Closures &amp; Iterators →</a>
+  </nav>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+<script src="quiz.js"></script>
+</body>
+</html>

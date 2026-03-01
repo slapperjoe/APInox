@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 18 — Commands & State | Rust for C#/JS Devs</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-one-dark.min.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a href="index.html" class="back-link">← All Lessons</a>
+  <span class="lesson-badge">Lesson 18 · Phase 3: Tauri v2 · ~30 min</span>
+</header>
+
+<main class="lesson">
+  <div class="lesson-hero">
+    <div class="phase-banner">🦀 Phase 3 — Tauri v2</div>
+    <h1>Commands &amp; Managed State</h1>
+    <div class="lesson-meta">
+      <span>⏱ ~30 min</span>
+      <span>📁 <code>soap/commands.rs</code>, <code>testing/commands.rs</code>, <code>lib.rs</code></span>
+    </div>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:0%"></div></div>
+  <p class="progress-label">0 of 5 questions answered</p>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>1. The #[tauri::command] Attribute</h2>
+    <p>Any Rust function marked <code>#[tauri::command]</code> becomes callable from the webview via JavaScript's <code>invoke()</code>. Tauri handles:</p>
+    <ul>
+      <li>Deserialising the JSON arguments into Rust types</li>
+      <li>Calling your function on a thread-pool thread (for async) or directly (for sync)</li>
+      <li>Serialising the <code>Ok(value)</code> result back to JSON, or forwarding the <code>Err(msg)</code> as a JS rejection</li>
+    </ul>
+
+    <pre class="language-rust"><code>// soap/commands.rs — minimal command:
+#[tauri::command]
+pub async fn cancel_request() -&gt; Result&lt;serde_json::Value, String&gt; {
+    log::debug!("Request cancellation called");
+    Ok(serde_json::json!({ "success": true }))
+}
+
+// ↕ webview TypeScript:
+import { invoke } from '@tauri-apps/api/core';
+const result = await invoke('cancel_request');
+// result = { success: true }</code></pre>
+
+    <p>The command name is auto-derived from the function name: <code>cancel_request</code> → <code>"cancel_request"</code>. You can override it with <code>#[tauri::command(rename = "cancelRequest")]</code>.</p>
+
+    <!-- QUIZ 1 -->
+    <div class="quiz" id="q18-1">
+      <div class="quiz-label">✅ True or False</div>
+      <div class="quiz-q">A <code>#[tauri::command]</code> function MUST be <code>async</code> to be callable from the webview.</div>
+      <div class="quiz-options tf">
+        <button data-answer="false" onclick="tf('q18-1', this, true, false)">True</button>
+        <button data-answer="false" onclick="tf('q18-1', this, false, false)">False</button>
+      </div>
+      <div class="quiz-exp" id="q18-1-exp">
+        <strong>False!</strong> Tauri commands can be sync or async. Sync commands run on the same thread as the event loop (fast, non-blocking operations only). Async commands get <code>tokio::spawn</code>-ed onto a thread pool — use these for anything that does I/O (file reads, HTTP calls, WSDL parsing). In practice, APInox makes almost all commands <code>async</code> to keep the event loop free.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>2. Arguments — Automatic JSON Deserialization</h2>
+    <p>Tauri deserializes incoming JSON arguments directly into your function parameter types. If the type implements <code>serde::Deserialize</code>, it works:</p>
+
+    <pre class="language-rust"><code>// testing/commands.rs — a real APInox command
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RunTestCaseRequest {
+    pub test_case: FrontendTestCase,
+    pub variables: Option&lt;HashMap&lt;String, String&gt;&gt;,
+    #[serde(default)]
+    pub stream: bool,
+    pub fallback_endpoint: Option&lt;String&gt;,
+}
+
+#[tauri::command]
+pub async fn run_test_case(
+    request: RunTestCaseRequest,   // ← Tauri deserializes JSON → RunTestCaseRequest
+) -&gt; Result&lt;RunTestCaseResponse, String&gt; {
+    log::info!("[run_test_case] Starting: '{}' (stream={})",
+        request.test_case.name, request.stream);
+
+    if request.stream {
+        let run_id = generate_run_id();
+        tokio::spawn(async move {
+            run_steps_and_stream_updates(&run_id, request).await;
+        });
+        return Ok(RunTestCaseResponse { run_id: Some(run_id), .. });
+    }
+    // ... non-streaming path
+}</code></pre>
+
+    <pre class="language-typescript"><code>// TypeScript side — camelCase matches thanks to #[serde(rename_all)]
+await invoke('run_test_case', {
+    request: {
+        testCase: { id: '1', name: 'Login test', steps: [...] },
+        stream: true,
+        variables: { 'baseUrl': 'https://api.example.com' },
+        fallbackEndpoint: null
+    }
+});</code></pre>
+
+    <!-- QUIZ 2 -->
+    <div class="quiz" id="q18-2">
+      <div class="quiz-label">✍️ Fill in the Blank</div>
+      <div class="quiz-q">The serde attribute that converts Rust's <code>snake_case</code> fields to JSON <code>camelCase</code> automatically:</div>
+      <div class="fill-wrap">
+        #[serde(<input class="fill-input" id="q18-2-in" placeholder="????" style="width:26ch">)]<br>
+        pub struct MyRequest {<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;pub test_case: TestCase,   // → "testCase" in JSON<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;pub run_id: String,        // → "runId" in JSON<br>
+        }
+      </div>
+      <button class="btn-check" onclick="fillCheck('q18-2', ['rename_all = &quot;camelCase&quot;', 'rename_all=&quot;camelCase&quot;'])">Check</button>
+      <div class="quiz-exp" id="q18-2-exp">
+        <strong>rename_all = "camelCase"</strong> — this is essential for Tauri commands because JavaScript conventions use camelCase but Rust conventions use snake_case. Without it you'd have to either use snake_case in TypeScript (ugly) or manually <code>#[serde(rename = "testCase")]</code> every field. The attribute handles the whole struct at once.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>3. Managed State — Shared Data Between Commands</h2>
+    <p>Tauri's <code>State&lt;T&gt;</code> is how you share data across commands without global variables. Think of it like ASP.NET Core's <em>dependency injection</em> — you register a type once, and commands receive it automatically.</p>
+
+    <pre class="language-rust"><code">// 1. Define your state type
+struct AppState {
+    request_count: Mutex&lt;u64&gt;,
+    active_connections: Arc&lt;RwLock&lt;HashMap&lt;String, Connection&gt;&gt;&gt;,
+}
+
+// 2. Register it in setup (or .manage() on the builder)
+tauri::Builder::default()
+    .setup(|app| {
+        app.manage(AppState {
+            request_count: Mutex::new(0),
+            active_connections: Arc::new(RwLock::new(HashMap::new())),
+        });
+        Ok(())
+    })
+    // ...
+
+// 3. Access it in any command via State&lt;T&gt; parameter:
+#[tauri::command]
+pub async fn execute_soap_request(
+    request: SoapRequest,
+    state: tauri::State&lt;'_, AppState&gt;,  // ← injected automatically
+) -&gt; Result&lt;SoapResponse, String&gt; {
+    // Increment counter (Mutex guards against race conditions)
+    *state.request_count.lock().unwrap() += 1;
+    // Execute the request...
+    perform_soap_call(request).await
+}</code></pre>
+
+    <div class="callout">APInox uses a simpler pattern: <code>Lazy&lt;Arc&lt;Mutex&lt;HashMap&gt;&gt;&gt;</code> static variables in each module. Both approaches work. <code>State&lt;T&gt;</code> is more idiomatic and testable; statics are quick to write.</div>
+
+    <!-- QUIZ 3 -->
+    <div class="quiz" id="q18-3">
+      <div class="quiz-label">🔘 Multiple Choice</div>
+      <div class="quiz-q">Why does managed state typically wrap data in <code>Mutex&lt;T&gt;</code> or <code>RwLock&lt;T&gt;</code>?</div>
+      <div class="quiz-options">
+        <button data-correct="false" onclick="mc('q18-3', this, false)">Because <code>State&lt;T&gt;</code> requires it — it won't compile otherwise</button>
+        <button data-correct="false" onclick="mc('q18-3', this, false)">To make the data available across threads from a single allocation</button>
+        <button data-correct="true"  onclick="mc('q18-3', this, true)">Multiple commands can run concurrently on different threads — interior mutability prevents data races</button>
+        <button data-correct="false" onclick="mc('q18-3', this, false)">Tauri serializes all commands into a single thread, so it's actually not necessary</button>
+      </div>
+      <div class="quiz-exp" id="q18-3-exp">
+        <strong>Concurrent commands!</strong> Every <code>async</code> Tauri command runs on a tokio thread pool — two commands can execute simultaneously. If they both write to the same data without synchronization, you have a data race (undefined behavior). <code>Mutex</code> ensures only one command holds the write lock at a time. <code>RwLock</code> allows multiple simultaneous readers but exclusive writers. The Rust compiler enforces that <em>all</em> shared mutable state goes through one of these mechanisms — you can't accidentally create a data race.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>4. AppHandle — The God Object (Used Sparingly)</h2>
+    <p><code>tauri::AppHandle</code> gives you access to the whole application at runtime — emit events, spawn windows, access managed state, get app directories. You can inject it as a parameter too:</p>
+
+    <pre class="language-rust"><code">// lib.rs — AppHandle used to manage the app lifecycle:
+#[tauri::command]
+fn quit_app(app: tauri::AppHandle) {
+    log::info!("Quit command received");
+    stop_sidecar();
+    app.exit(0);   // ← terminate the process cleanly
+}
+
+// Or emit an event to ALL webview windows:
+#[tauri::command]
+pub async fn send_notification(
+    app: tauri::AppHandle,
+    message: String,
+) -&gt; Result&lt;(), String&gt; {
+    app.emit("notification", &amp;message)
+        .map_err(|e| e.to_string())
+}
+
+// Or access a specific window:
+#[tauri::command]
+pub async fn focus_main_window(app: tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        window.set_focus().ok();
+        window.show().ok();
+    }
+}</code></pre>
+
+    <p>Use <code>AppHandle</code> when you need to:</p>
+    <ul>
+      <li>Emit events to the frontend</li>
+      <li>Access the app's data/config directories</li>
+      <li>Manage window visibility</li>
+      <li>Access managed state from outside a command (in background tasks)</li>
+    </ul>
+
+    <!-- QUIZ 4 -->
+    <div class="quiz" id="q18-4">
+      <div class="quiz-label">🐛 Spot the Bug</div>
+      <div class="quiz-q">This command should return the number of active connections. Click the buggy line:</div>
+      <div class="bug-pre">
+        <span class="bug-line" onclick="bugLine('q18-4', this, false)">static CONNECTIONS: Lazy&lt;Mutex&lt;Vec&lt;String&gt;&gt;&gt; = Lazy::new(|| Mutex::new(vec![]));  </span>
+        <span class="bug-line" onclick="bugLine('q18-4', this, false)"> </span>
+        <span class="bug-line" onclick="bugLine('q18-4', this, false)">#[tauri::command]</span>
+        <span class="bug-line" onclick="bugLine('q18-4', this, false)">pub fn get_connection_count() -&gt; usize {</span>
+        <span class="bug-line" onclick="bugLine('q18-4', this, true)">&nbsp;&nbsp;&nbsp;&nbsp;CONNECTIONS.lock().len()</span>
+        <span class="bug-line" onclick="bugLine('q18-4', this, false)">}</span>
+      </div>
+      <div class="quiz-exp" id="q18-4-exp">
+        <strong>Line 5!</strong> <code>.lock()</code> returns a <code>Result&lt;MutexGuard, PoisonError&gt;</code> — you need to <code>.unwrap()</code> (or handle the error) before calling <code>.len()</code>. Fix: <code>CONNECTIONS.lock().unwrap().len()</code>. A Mutex is "poisoned" if a thread panics while holding it, which is why <code>lock()</code> returns a Result rather than the guard directly.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>5. The Streaming Pattern — APInox's Test Runner</h2>
+    <p>Long-running operations (test suites, WSDL fetches) can't just block for 30 seconds. APInox solves this with a poll-based streaming pattern:</p>
+
+    <pre class="language-rust"><code">// testing/commands.rs — the full pattern (simplified):
+static TEST_RUN_STORE: Lazy&lt;Arc&lt;Mutex&lt;HashMap&lt;String, TestRunData&gt;&gt;&gt;&gt; = 
+    Lazy::new(|| Arc::new(Mutex::new(HashMap::new())));
+
+// Step 1: Start the run, return an ID immediately
+#[tauri::command]
+pub async fn run_test_case(request: RunTestCaseRequest) -&gt; Result&lt;RunTestCaseResponse, String&gt; {
+    let run_id = format!("tc-{}-{}", timestamp_ms(), short_uuid());
+    
+    // Insert empty slot
+    TEST_RUN_STORE.lock().unwrap().insert(run_id.clone(),
+        TestRunData { updates: vec![], done: false, error: None });
+    
+    // Spawn background task — doesn't block the command response
+    let run_id_clone = run_id.clone();
+    tokio::spawn(async move {
+        // Runs steps, pushes updates to TEST_RUN_STORE as it goes...
+        for step in &amp;request.test_case.steps {
+            let result = run_step(step).await;
+            push_update(&amp;run_id_clone, json!({ "type": "stepResult", "result": result }));
+        }
+        // Mark done
+        TEST_RUN_STORE.lock().unwrap()
+            .entry(run_id_clone)
+            .and_modify(|d| d.done = true);
+    });
+    
+    Ok(RunTestCaseResponse { run_id: Some(run_id), passed: None, duration_ms: None })
+}
+
+// Step 2: Frontend polls this to get updates
+#[tauri::command]
+pub async fn get_test_run_updates(
+    run_id: String,
+    from_index: usize,
+) -&gt; Result&lt;serde_json::Value, String&gt; {
+    let store = TEST_RUN_STORE.lock().unwrap();
+    let data = store.get(&amp;run_id)
+        .ok_or_else(|| format!("Run ID '{}' not found", run_id))?;
+    
+    Ok(json!({
+        "updates": &amp;data.updates[from_index..],
+        "done": data.done,
+        "error": data.error,
+    }))
+}</code></pre>
+
+    <div class="callout">This is a <em>long polling</em> pattern. An alternative is Tauri events (covered in Lesson 19) which push updates to the webview without polling. Events are simpler; the poll pattern is used here because it was migrated from a REST sidecar design.</div>
+
+    <!-- QUIZ 5 -->
+    <div class="quiz predict" id="q18-5">
+      <div class="quiz-label">🔮 Predict &amp; Reveal</div>
+      <div class="quiz-q">What happens if you call <code>run_test_case</code> from TypeScript and the test has 10 steps each taking 2 seconds?</div>
+      <pre class="language-typescript"><code>// TypeScript:
+const response = await invoke('run_test_case', { request });
+console.log('Got response:', response);
+// ... how long does this await take?</code></pre>
+      <button class="btn-reveal" onclick="reveal('q18-5')">Reveal Answer</button>
+      <div class="quiz-exp" id="q18-5-exp">
+        <strong>The await completes almost instantly!</strong> The command spawns a <code>tokio::spawn</code> background task and immediately returns <code>{ runId: "tc-123-abc" }</code> — before any steps execute. The 10 steps run asynchronously in the background, storing results in <code>TEST_RUN_STORE</code>. The TypeScript side then polls <code>get_test_run_updates</code> every ~500ms to show per-step progress. The total wall time is ~20 seconds, but the command responds in &lt;1ms.
+      </div>
+    </div>
+  </section>
+
+  <nav class="lesson-nav">
+    <a href="lesson-17.html">← Lesson 17: Tauri Architecture</a>
+    <a href="index.html" class="nav-center">All Lessons</a>
+    <a href="lesson-19.html">Lesson 19: IPC & Events →</a>
+  </nav>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
+<script src="quiz.js"></script>
+</body>
+</html>
