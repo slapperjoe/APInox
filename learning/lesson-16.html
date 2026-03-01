@@ -29,6 +29,9 @@
   <!-- ================================================ -->
   <section>
     <h2>1. Unit Tests — Built In, Zero Setup</h2>
+
+    <div class="callout-java">JUnit has had 5 major versions, each with different annotations, runners, and config files. JUnit 4 uses <code>@Test</code> from one package. JUnit 5 uses <code>@Test</code> from a different package — same name, different import, different behaviour. The test for a correct JUnit 5 setup is whether your tests actually run. Rust ships <code>#[test]</code> built into the language. No dependencies, no config, no JAR files. Just write the test.</div>
+
     <pre class="language-rust"><code>// src/math.rs
 pub fn add(a: i32, b: i32) -&gt; i32 { a + b }
 pub fn divide(a: f64, b: f64) -&gt; Option&lt;f64&gt; {
@@ -88,6 +91,8 @@ cargo test -- --test-threads=1      # run serially (no parallelism)</code></pre>
         <strong>should_panic</strong> — the test passes if the function panics, fails if it returns normally. You can be more specific: <code>#[should_panic(expected = "divide by zero")]</code> — the panic message must contain that string. This tests your error paths explicitly, unlike C# where you'd use <code>Assert.Throws&lt;Exception&gt;()</code>.
       </div>
     </div>
+
+    <div class="callout-sec">A well-tested codebase with <code>#[test]</code> coverage, property tests, and integration tests is genuinely more secure — you catch logic errors before attackers do. Enterprise security's parallel contribution: require the dev team to complete annual 'Cyber Security Awareness Training' (a 40-minute click-through module), mandate that all passwords contain a symbol, and block USB drives on developer laptops. The CVE from last year is still open. It was in a third-party library. The library was updated 8 months ago. The upgrade ticket is in backlog.</div>
   </section>
 
   <!-- ================================================ -->
@@ -140,6 +145,8 @@ pub fn add(a: i32, b: i32) -&gt; i32 { a + b }
     </div>
   </section>
 
+  <div class="callout-agile">In Agile, 100% test coverage is a metric that proves nothing except that your tests run. The coverage report shows green. Production goes down because the test mocked the database and the real database has a column type mismatch from a migration that was 'just a small change'. The PM shows the coverage graph to the client during the sprint review. Everyone claps.</div>
+
   <!-- ================================================ -->
   <section>
     <h2>3. Assert Macros</h2>
@@ -168,6 +175,8 @@ assert_eq!(
     actual_status, endpoint
 );</code></pre>
   </section>
+
+  <div class="callout-salesforce">Salesforce requires 75% test coverage to deploy to production. Not 75% useful test coverage — just 75% lines touched. The result: thousands of Apex test methods that call every method with <code>null</code>, assert <code>result != null</code>, and exist only to satisfy the deployment gate. One codebase I've seen has a <code>TestHelper.coverEverything()</code> method that calls 400 private methods via reflection. It has 97% coverage. It tests nothing.</div>
 
   <!-- ================================================ -->
   <section>
@@ -201,6 +210,8 @@ mod metrics {
 // cargo build --features "metrics,dev-tools"
 // cargo build --all-features
 // cargo build --no-default-features</code></pre>
+
+    <div class="callout-sap">SAP's testing story: there isn't one. ABAP Unit exists since NW 7.0, but the vast majority of SAP customising is tested by clicking through the transaction in DEV and saying 'looks fine'. The transport moves to QA. QA does the same clicking. The transport moves to PROD on a Friday. The MD07 transaction crashes Monday morning and everyone acts surprised.</div>
 
     <!-- QUIZ 3 -->
     <div class="quiz" id="q16-3">

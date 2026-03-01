@@ -69,6 +69,8 @@ println!("{}", req);     // POST https://... [MyAction]
         <strong>True!</strong> The standard library has a blanket implementation: <em>for any type that implements Display, ToString is also implemented</em>. So <code>impl Display</code> gives you <code>.to_string()</code> for free. This is why you call <code>error.to_string()</code> on errors — errors implement <code>Display</code>.
       </div>
     </div>
+
+  <div class="callout-java">Java achieves the same dynamic dispatch with interfaces — fine. Then Spring gets involved. Your <code>interface UserService</code> has: <code>UserServiceImpl</code>, <code>UserServiceProxy</code>, <code>UserServiceInterceptor</code>, <code>UserServiceAdvice</code>, and a <code>@Qualifier</code> annotation because there are two beans. None of this is in the same package. You find the actual implementation by clicking "Go to Implementation" 4 times.</div>
   </section>
 
   <!-- ================================================ -->
@@ -178,6 +180,8 @@ let config = Config {
         <strong>..Config::default()</strong> (or <code>..Default::default()</code>) — the <code>..</code> syntax is "struct update" — fill remaining fields from this expression. It must come last. It's similar to object spread in JavaScript: <code>{ endpoint, ...defaults }</code>. The values are <em>moved</em> from the source, so this is zero-cost — no copying of the whole struct.
       </div>
     </div>
+
+  <div class="callout-oracle">Oracle ADF achieves polymorphism through managed beans registered in faces-config.xml, with scope declared in adfc-config.xml, behaviour overridden in the binding layer, and the actual logic in a ViewObject query attribute. You change one method. You redeploy the entire EAR. WebLogic takes 4 minutes to restart. This is called "enterprise architecture".</div>
   </section>
 
   <!-- ================================================ -->
@@ -209,6 +213,8 @@ trait Tweetable: Summary {   // Supertrait — requires Summary
 }</code></pre>
 
     <div class="callout"><strong>Supertraits</strong> — a trait can require other traits. <code>trait Tweetable: Summary</code> means: to implement <code>Tweetable</code>, you must also implement <code>Summary</code>. Like interface inheritance in C#.</div>
+
+  <div class="callout-industry">The microservices version of trait composition: extract each trait into a separate service, communicate via REST, add a service discovery layer, add a circuit breaker, add distributed tracing, add a message bus for the events, and write a 40-page ADR explaining why you split a 200-line module into 8 services that now have 400 lines of network code between them.</div>
 
     <!-- QUIZ 4 -->
     <div class="quiz" id="q11-4">
@@ -256,6 +262,8 @@ println!("{:?}", p1);</code></pre>
         <code>#[derive(Clone)]</code> gives <code>.clone()</code>. <code>#[derive(PartialEq)]</code> gives <code>==</code> (compares field by field). <code>#[derive(Debug)]</code> gives <code>{:?}</code> formatting. All three are generated at compile time — no runtime overhead compared to hand-writing them.
       </div>
     </div>
+
+    <div class="callout-agile">Dynamic dispatch via trait objects was 'nice to have' on the backlog for two sprints. Sprint 3: promoted to 'this sprint'. Sprint 3 day 1: architect asks for an ADR. Day 3: ADR written, 4 pages, includes a section on 'future extensibility'. Day 5: ADR approved with comments. Day 8: implementation done in 45 minutes. The ADR lives in Confluence where it will never be read again. The commit message is 'add dyn dispatch'.</div>
   </section>
 
   <nav class="lesson-nav">

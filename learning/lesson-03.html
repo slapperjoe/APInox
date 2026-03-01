@@ -186,6 +186,10 @@ class SoapClient : IGreet {
       </tbody>
     </table>
 
+    <div class="callout-arch">The Gang of Four Design Patterns book was written in 1994 for C++. Every pattern in it that isn't "use a function" is between 3 and 47 classes. Strategy Pattern: 4 classes. Observer Pattern: 6 classes. Visitor Pattern: the author is in therapy. In Rust, these are traits and closures. One file. Zero <code>AbstractStrategyObserverVisitorFactoryBean</code>.</div>
+
+    <div class="callout-oracle">Oracle ADF (Application Development Framework) achieves the same thing as Rust traits with: a managed bean, a backing bean, a model bean, a data control, a binding layer, a page definition XML file, and a <code>faces-config.xml</code> entry. The equivalent of <code>impl Display for MyType</code> takes 2 hours and a JDeveloper license. JDeveloper takes 20 minutes to start. On a good day.</div>
+
     <!-- QUIZ 3: Multiple choice -->
     <div class="quiz" id="q3-3">
       <div class="quiz-label">🔘 Multiple Choice</div>
@@ -200,6 +204,10 @@ class SoapClient : IGreet {
         <strong>✓ Yes, with the orphan rule!</strong> Either the trait or the type must be local to your crate. You can implement <code>Display</code> (foreign trait) for <code>SoapClient</code> (your type). You CAN'T implement <code>Display</code> (foreign) for <code>Vec&lt;String&gt;</code> (also foreign). This prevents conflicting implementations across crates.
       </div>
     </div>
+
+    <div class="callout-salesforce">Salesforce's equivalent of a trait is an Apex Interface — fine in isolation. But then you need to store a <code>List&lt;MyInterface&gt;</code> in a custom metadata type, and Apex custom metadata doesn't support interfaces, so you store the class name as a String and use <code>Type.forName()</code> to instantiate it dynamically. This is called "enterprise flexibility." It is called this by people who have never had to debug it at 2am.</div>
+
+    <div class="callout-pm">The PM reviewed the trait definition and said 'can we make it more configurable? The client wants to be able to change the behaviour without a deployment.' You explain traits are compile-time abstractions. They ask if that means 'a release is needed for every change'. You say yes. They schedule a 'flexibility strategy session'. You are not invited. The outcome is a YAML-driven plugin architecture that ships 6 months later and is never used.</div>
   </section>
 
   <!-- ================================================ -->
@@ -207,6 +215,7 @@ class SoapClient : IGreet {
     <h2>5. The Builder Pattern</h2>
     <p>Rust doesn't have optional/default parameters like C#. The Builder pattern solves this elegantly. Open <code>soap/ws_security.rs</code>:</p>
 
+    <div class="callout-java">The Java equivalent is <code>AbstractSingletonProxyFactoryBean</code>. That's a real class in Spring Framework. The Rust equivalent is <code>WsSecurityConfig::new()</code>. One of these names describes what the thing does. Enterprise architects get very upset when you point this out.</div>
     <pre class="language-rust"><code>#[derive(Debug, Clone, Default)]
 pub struct WsSecurityConfig {
     pub username_token: Option&lt;UsernameToken&gt;,  // None by default

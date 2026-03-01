@@ -143,6 +143,10 @@ async Task Process&lt;T&gt;(T item)
       </tbody>
     </table>
 
+    <div class="callout-arch">Show an architect a generic function and they'll ask if you've considered making it configurable at runtime via a strategy pattern loaded from a YAML file so "we can change the behaviour without redeployment." This is how you end up with a <code>GenericHandlerConfigurationFactoryServiceLocator</code> that takes 40 minutes to boot and requires a PhD to configure. The original function was 8 lines.</div>
+
+    <div class="callout-salesforce">Apex "generics" are <code>Object</code>. Cast it. Hope. <code>((MyClass)someObject).doThing()</code> — if it fails you get a <code>System.TypeException</code> at runtime, not compile time. Salesforce introduced typed collections in API v29. That was 2014. The org you're maintaining was written in API v20 and nobody's touched it since. The developer who wrote it is now a Salesforce consultant billing at £1,200/day.</div>
+
     <!-- QUIZ 3: True/False -->
     <div class="quiz" id="q5-3">
       <div class="quiz-label">✅ True or False</div>
@@ -189,6 +193,8 @@ pub async fn execute_soap_request(
 const response = await invoke('execute_soap_request', {
     request: { endpoint, body, headers }
 });</code></pre>
+
+    <div class="callout-pm">The PM has looked at your generic <code>fn process&lt;T: Serialize&gt;(items: Vec&lt;T&gt;)</code> and asked: "can we add a flag to make it non-generic for the simple cases? The client wants it by Thursday. It's Wednesday." You will spend Thursday explaining what type erasure is. The meeting will be rescheduled. A Jira ticket will be created titled "Investigate non-generic mode (spike, 2 points)".</div>
 
     <!-- QUIZ 4: Fill in the blank -->
     <div class="quiz" id="q5-4">

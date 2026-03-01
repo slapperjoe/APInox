@@ -49,6 +49,8 @@ let make_url = |path: &amp;str| format!("{}/{}", base_url, path);
 
 println!("{}", make_url("users"));  // https://api.example.com/users</code></pre>
 
+  <div class="callout-npm">The npm ecosystem has: <code>lodash</code>, <code>ramda</code>, <code>underscore</code>, <code>rambda</code>, <code>immutable</code>, <code>lazy.js</code>, and <code>rxjs</code> — each offering map/filter/reduce in slightly different ways. The <code>is-odd</code> package (84 lines to check if a number is odd) has 600,000 weekly downloads and is a transitive dependency of your test runner. Rust has iterators. They're in the standard library. This is it.</div>
+
     <pre class="language-csharp"><code>// C# equivalent — lambda expressions
 var double = (int x) => x * 2;
 var makeUrl = (string path) => $"{baseUrl}/{path}"; // captures baseUrl
@@ -108,6 +110,8 @@ tokio::spawn(async move {
         <strong>✓ move!</strong> A spawned task can run after the current function returns — meaning the stack frame with your String would be gone. Borrowing into a task that outlives the lender is a compile error. <code>move</code> transfers ownership into the closure, giving the task its own copy of the data. If you need to share the data (keep it usable after spawning), wrap in <code>Arc::clone</code> first, then <code>move</code> the clone.
       </div>
     </div>
+
+  <div class="callout-ai">Ask ChatGPT to write a Rust iterator chain. It will write something plausible. It will compile 40% of the time. The other 60%, it will use <code>.iter()</code> when it needs <code>.into_iter()</code>, borrow when it should move, and add a lifetime annotation that's syntactically valid but semantically nonsense. Then it will confidently explain why the code is correct. The explanation will also be wrong.</div>
   </section>
 
   <!-- ================================================ -->
@@ -217,6 +221,8 @@ println!("{}", result);</code></pre>
         <code>"rust"</code> is filtered out (len 4, not &gt; 4). The remaining two are uppercased. <code>.collect::&lt;Vec&lt;_&gt;&gt;()</code> materialises into a Vec, then <code>.join(", ")</code> joins with a comma separator. Note: <code>join</code> is a method on slices/Vecs of strings — it's not an iterator adapter.
       </div>
     </div>
+
+  <div class="callout-salesforce">Apex doesn't have first-class functions. There are no lambdas. "Iterating with a callback" means: create an Interface, create a class that implements it, pass the class instance, call the method. For a map operation. This is why every Apex codebase has a <code>CollectionUtils</code> class with 400 lines of for-loops that should be three iterator chains.</div>
   </section>
 
   <!-- ================================================ -->
@@ -286,6 +292,8 @@ let doubled: Vec&lt;u32&gt; = Counter::new(3)
       </div>
     </div>
   </section>
+
+  <div class="callout-xml">The Rust crate ecosystem has <code>serde_xml_rs</code>, <code>quick-xml</code>, <code>roxmltree</code>, <code>minidom</code>, and <code>xml-rs</code> for XML parsing — each with different trade-offs, all of them better than the Java ecosystem's JAXB, which requires annotating every class, generating 400 lines of boilerplate, and then discovering the namespace prefix in the real SOAP response doesn't match the one in the WSDL. Enterprise Java XML: where <code>&lt;ns2:Response xmlns:ns2="http://schemas.example.com/v1"&gt;</code> shows up differently every time.</div>
 
   <nav class="lesson-nav">
     <a href="lesson-09.html">← Lesson 9: Modules</a>

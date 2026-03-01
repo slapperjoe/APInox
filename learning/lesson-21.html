@@ -91,6 +91,8 @@
     </div>
   </section>
 
+  <div class="callout-arch">Upon seeing the 15-line capabilities file, an architect will ask if permissions should be managed by a centralised Policy Engine, fed by a Rules Service, with an Audit Trail Service, behind an API Gateway, governed by a Security Review Board that meets bi-weekly. The capabilities file takes 10 minutes to write. The Policy Engine Architecture takes 6 months to spec, never gets built, and the team goes back to the capabilities file.</div>
+
   <!-- ================================================ -->
   <section>
     <h2>3. CSP — Content Security Policy</h2>
@@ -131,6 +133,8 @@
       </div>
     </div>
   </section>
+
+  <div class="callout-sec">Enterprise security theater: your app passes the pen test. The pen test report has 47 findings. Finding #1 is 'TLS 1.0 enabled' — been in the report for 3 years. Finding #3 is 'password complexity below policy' — the policy was written in 2009 when the minimum was 6 characters. The dev team fixed it 18 months ago. The pen testers are using last year's report. Finding #12 is 'X-Frame-Options not set' — for an internal desktop tool with no browser access. The CIO presents the report to the board as evidence of 'ongoing security diligence'.</div>
 
   <!-- ================================================ -->
   <section>
@@ -181,6 +185,8 @@
       </div>
     </div>
   </section>
+
+  <div class="callout-salesforce">Salesforce's permission model is: Profiles (baseline access), Permission Sets (additive), Permission Set Groups (bundled sets), Muting Permission Sets (take away from groups), Field-Level Security, Object-Level Security, Record-Level Security (Sharing Rules, Sharing Sets, Manual Sharing), and Restriction Rules. It is possible to give a user access to an object but not to any of its records. This is called 'enterprise security'. It took 3 years of Trailhead to understand. The consultants bill hourly.</div>
 
   <!-- ================================================ -->
   <section>

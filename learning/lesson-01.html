@@ -50,6 +50,47 @@ fn main() {
     <h2>2. Variables and Immutability</h2>
     <p>In Rust, <strong>variables are immutable by default</strong>. This is the opposite of C# and JS:</p>
 
+    <div class="diagram">
+<svg viewBox="0 0 700 220" xmlns="http://www.w3.org/2000/svg" font-family="monospace,sans-serif" font-size="13">
+  <!-- Background -->
+  <rect width="700" height="220" fill="#1e1e2e" rx="8"/>
+  <!-- Stack panel -->
+  <rect x="20" y="10" width="300" height="200" rx="6" fill="#2a2a3e" stroke="#555" stroke-width="1"/>
+  <text x="170" y="32" text-anchor="middle" fill="#888" font-size="11" font-weight="bold">STACK (fast, fixed size)</text>
+  <!-- Stack frames -->
+  <rect x="35" y="42" width="270" height="36" rx="4" fill="#1a6ebd" opacity="0.8"/>
+  <text x="100" y="56" fill="#fff" font-size="12">let x: i32 = 42;</text>
+  <text x="270" y="56" fill="#aef" font-size="11">value: 42</text>
+  <text x="100" y="70" fill="#adf" font-size="11">size known at compile time ✓</text>
+  <rect x="35" y="85" width="270" height="36" rx="4" fill="#1a6ebd" opacity="0.6"/>
+  <text x="100" y="99" fill="#fff" font-size="12">let s: &amp;str = "hi";</text>
+  <text x="245" y="99" fill="#aef" font-size="11">ptr → </text>
+  <text x="100" y="113" fill="#adf" font-size="11">pointer + length (fixed) ✓</text>
+  <rect x="35" y="128" width="270" height="36" rx="4" fill="#555" opacity="0.5"/>
+  <text x="100" y="142" fill="#ccc" font-size="12">let v: Vec&lt;T&gt;</text>
+  <text x="220" y="142" fill="#aef" font-size="11">ptr ──────→</text>
+  <text x="100" y="156" fill="#adf" font-size="11">ptr + len + capacity (fixed) →heap</text>
+  <!-- Heap panel -->
+  <rect x="380" y="10" width="300" height="200" rx="6" fill="#2a2a3e" stroke="#555" stroke-width="1"/>
+  <text x="530" y="32" text-anchor="middle" fill="#888" font-size="11" font-weight="bold">HEAP (flexible, owned)</text>
+  <rect x="395" y="42" width="270" height="100" rx="4" fill="#7c3aed" opacity="0.5"/>
+  <text x="530" y="68" text-anchor="middle" fill="#e2d9f3" font-size="12">Vec / String data lives here</text>
+  <text x="530" y="88" text-anchor="middle" fill="#e2d9f3" font-size="12">[H][e][l][l][o][ ][W]...</text>
+  <text x="530" y="108" text-anchor="middle" fill="#c4b5fd" font-size="11">grows dynamically</text>
+  <text x="530" y="126" text-anchor="middle" fill="#c4b5fd" font-size="11">freed when owner drops</text>
+  <!-- Arrow from stack vec to heap -->
+  <line x1="305" y1="146" x2="393" y2="92" stroke="#f59e0b" stroke-width="2" marker-end="url(#arrow)"/>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#f59e0b"/>
+    </marker>
+  </defs>
+  <!-- Labels -->
+  <text x="350" y="210" text-anchor="middle" fill="#666" font-size="10">Rust guarantees exactly one owner — no GC needed</text>
+</svg>
+<div class="diagram-caption">Stack vs Heap — Rust knows at compile time what goes where</div>
+</div>
+
     <pre class="language-rust"><code>let x = 5;         // immutable — you CANNOT reassign x
 let mut y = 5;     // mutable — you CAN reassign y
 y = 10;            // ✅ fine
@@ -126,6 +167,8 @@ let also_borrowed: &str = &owned;           // view into the owned string</code>
     println!("{}", s2); // ✅ fine
 }</code></pre>
 
+    <div class="callout-arch">An architect will hear "ownership model" and immediately schedule a 2-hour workshop to rename it the "Resource Lifecycle Governance Framework". The resulting diagram will have 14 boxes. Three will say "TBD". One will say "Event Bus?" with a question mark. The outcome will be a Confluence page nobody reads and a follow-up meeting to "align on next steps".</div>
+
     <div class="callout"><strong>C# comparison:</strong> In C#, <code>s2 = s1</code> gives you two references to the same heap object. In Rust, the value <em>moves</em> — only one variable owns it at a time.</div>
 
     <!-- QUIZ 3: Spot the bug -->
@@ -154,6 +197,8 @@ fn main() {
     println!("{}", owned);  // ✅ still valid!
 }</code></pre>
 
+    <div class="callout-maui">.NET MAUI's approach to memory management is "the GC will handle it." And it does. Eventually. After your app has consumed 1.8GB of RAM displaying a login screen. There's a known issue open since 2022 where <code>CollectionView</code> leaks memory on scroll. The workaround is to not use <code>CollectionView</code>. The alternative workaround is to reconsider your career.</div>
+
     <!-- QUIZ 4: Multiple choice -->
     <div class="quiz" id="q1-4">
       <div class="quiz-label">🔘 Multiple Choice</div>
@@ -168,6 +213,8 @@ fn main() {
         <strong>✓ Borrow!</strong> <code>&amp;T</code> is an immutable reference. The function can read the value but not modify or free it. The original owner retains ownership — the value is still valid after the call.
       </div>
     </div>
+
+    <div class="callout-sec">Rust eliminates an entire class of memory vulnerabilities at compile time — buffer overflows, use-after-free, null pointer dereferences. This is the stuff that fills CVE databases. Enterprise security's response to this news: mandate a 90-day password rotation policy and call it 'hardening'. The pen test still flags jQuery as outdated on the marketing site. It's been there for 4 years.</div>
   </section>
 
   <!-- ================================================ -->
@@ -192,6 +239,8 @@ pub mod parsers;</code></pre>
     <p>To use items from another module:</p>
     <pre class="language-rust"><code>use crate::soap::SoapClient;              // absolute — from crate root
 use super::ws_security::WsSecurityConfig; // relative — up one level</code></pre>
+
+    <div class="callout-oracle">Oracle Siebel manages object lifecycles by writing intermediate state to 47 database tables on every user interaction. Memory is someone else's problem when you have Oracle Exadata. The Siebel "ownership model" is: BC owns the BO, the BO owns the Applet, the Applet owns your evenings. You do not own any of this. Siebel owns you.</div>
 
     <!-- QUIZ 5: Predict output -->
     <div class="quiz predict" id="q1-5">

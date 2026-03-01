@@ -51,6 +51,8 @@ let handlers: Vec&lt;Box&lt;dyn Fn()&gt;&gt; = vec![
 ];</code></pre>
 
     <div class="callout"><strong>C# analogy:</strong> In C#, all objects are on the heap by default. In Rust, values are on the stack by default. <code>Box</code> is the explicit "put this on the heap" wrapper.</div>
+
+  <div class="callout-arch">Enterprise thread-safety theater: the architect mandates that all shared state go through an Event Bus "to decouple the components". The Event Bus is a <code>synchronized</code> singleton. The singleton holds a <code>HashMap</code> of listener lists. The listeners are called on the emitter's thread. You've rebuilt a worse version of what you started with, but now it has a diagram.</div>
   </section>
 
   <!-- ================================================ -->
@@ -104,6 +106,36 @@ tokio::spawn(async move {
     <h2>3. <code>Mutex&lt;T&gt;</code> — Shared Mutable State</h2>
     <p><code>Arc&lt;T&gt;</code> alone is read-only — you need <code>Mutex</code> for shared mutable state:</p>
 
+    <div class="diagram">
+<svg viewBox="0 0 700 230" xmlns="http://www.w3.org/2000/svg" font-family="monospace,sans-serif" font-size="13">
+  <rect width="700" height="230" fill="#1e1e2e" rx="8"/>
+  <!-- Central heap box -->
+  <rect x="260" y="75" width="180" height="80" rx="8" fill="#1a6ebd" opacity="0.85"/>
+  <text x="350" y="100" text-anchor="middle" fill="#fff" font-weight="bold">Arc&lt;Mutex&lt;T&gt;&gt;</text>
+  <text x="350" y="118" text-anchor="middle" fill="#bfdbfe" font-size="11">ref_count: 3</text>
+  <text x="350" y="135" text-anchor="middle" fill="#bfdbfe" font-size="11">🔒 data: T</text>
+  <!-- Thread boxes -->
+  <rect x="20" y="30" width="160" height="60" rx="6" fill="#2a2a3e" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="100" y="55" text-anchor="middle" fill="#a78bfa">Thread 1</text>
+  <text x="100" y="73" text-anchor="middle" fill="#888" font-size="11">arc.lock().unwrap()</text>
+  <rect x="20" y="135" width="160" height="60" rx="6" fill="#2a2a3e" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="100" y="160" text-anchor="middle" fill="#a78bfa">Thread 2</text>
+  <text x="100" y="178" text-anchor="middle" fill="#888" font-size="11">arc.lock().unwrap()</text>
+  <rect x="520" y="82" width="160" height="60" rx="6" fill="#2a2a3e" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="600" y="107" text-anchor="middle" fill="#a78bfa">Thread 3</text>
+  <text x="600" y="125" text-anchor="middle" fill="#888" font-size="11">arc.clone() → ptr</text>
+  <!-- Arrows -->
+  <defs><marker id="arr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#f59e0b"/></marker></defs>
+  <line x1="180" y1="60" x2="258" y2="100" stroke="#f59e0b" stroke-width="2" marker-end="url(#arr2)"/>
+  <line x1="180" y1="165" x2="258" y2="140" stroke="#f59e0b" stroke-width="2" marker-end="url(#arr2)"/>
+  <line x1="520" y1="112" x2="442" y2="112" stroke="#f59e0b" stroke-width="2" marker-end="url(#arr2)"/>
+  <!-- Labels -->
+  <text x="350" y="195" text-anchor="middle" fill="#16a34a" font-size="11">✓ Arc: multiple owners across threads (ref counted)</text>
+  <text x="350" y="213" text-anchor="middle" fill="#16a34a" font-size="11">✓ Mutex: only ONE thread holds the lock at a time</text>
+</svg>
+<div class="diagram-caption">Arc lets multiple threads share ownership; Mutex ensures only one has write access at a time</div>
+</div>
+
     <pre class="language-rust"><code>use std::sync::{Arc, Mutex};
 
 // The classic pattern — shared mutable counter across threads:
@@ -129,6 +161,8 @@ let final_results = results.lock().await.clone();</code></pre>
 
     <div class="callout"><strong>Deadlock prevention:</strong> Keep locks as short-lived as possible. Never hold two locks at once. Tokio's async <code>Mutex</code> (<code>tokio::sync::Mutex</code>) doesn't block the thread — it yields to other tasks instead.</div>
 
+  <div class="callout-salesforce">Salesforce's concurrency model: you get one thread. One. Per transaction. Apex is strictly single-threaded. Want parallelism? Queueable Apex — 50 jobs per transaction. Future methods — fire and forget, good luck. Batch Apex — 5 million records, 200 at a time, over 2 hours, might timeout. Platform Events — async, eventually consistent, "eventually" being the operative word. This is called "the Salesforce execution model".</div>
+
     <!-- QUIZ 2 -->
     <div class="quiz" id="q13-2">
       <div class="quiz-label">🐛 Spot the Bug</div>
@@ -143,6 +177,8 @@ let final_results = results.lock().await.clone();</code></pre>
         <strong>Line 3!</strong> <code>guard1</code> holds the lock. Line 3 tries to acquire the same lock — but <code>guard1</code> hasn't been dropped yet (it's still in scope). The thread blocks forever waiting for itself to release the lock. Fix: use a block scope to drop <code>guard1</code> before locking again, or use <code>RwLock</code> if you need multiple concurrent readers.
       </div>
     </div>
+
+    <div class="callout-agile">Thread safety was marked 'won't fix' for three sprints because 'it only happens under load and we don't have load'. Sprint 12: production goes down. It was the race condition. The post-mortem action item: 'add thread safety'. Story points: 13. It was the <code>Arc&lt;Mutex&lt;T&gt;&gt;</code> pattern. One line change. The 13 points were for 'investigation and risk assessment'. The risk was: not doing it sooner.</div>
   </section>
 
   <!-- ================================================ -->
@@ -188,6 +224,8 @@ tokio::spawn(async move {
         <strong>✓ Read-heavy workloads!</strong> <code>RwLock</code> allows multiple concurrent readers. If reads are 95% of operations (like reading config or a cache), <code>RwLock</code> significantly reduces contention. If writes are frequent, the overhead of <code>RwLock</code>'s tracking logic can make it <em>slower</em> than a simple <code>Mutex</code>. For write-heavy or equal read/write patterns, <code>Mutex</code> is often better.
       </div>
     </div>
+
+  <div class="callout-oracle">Oracle's concurrency solution is row-level locking. Fine. Until you SELECT FOR UPDATE and forget to commit. Or two processes lock rows in opposite order. You get a deadlock. Oracle detects it and kills one session — which one is "implementation-defined". Siebel adds a workflow layer on top of this that locks rows you didn't know existed. Production deadlocks every Friday at 5pm. The DBA blames the devs. The devs blame Siebel. Siebel blames Oracle. Oracle sends an invoice.</div>
   </section>
 
   <!-- ================================================ -->

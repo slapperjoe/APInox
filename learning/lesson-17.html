@@ -49,22 +49,39 @@
   <section>
     <h2>The Three-Layer Architecture</h2>
 
-    <pre><code>┌─────────────────────────────────────────────────────┐
-│                  Tauri Desktop App                   │
-├─────────────────────────────────────────────────────┤
-│  🌐 Webview Layer (React / HTML / CSS / TypeScript) │
-│  • Renders your UI — isolated in an OS sandbox      │
-│  • Calls Rust via invoke() — can't touch OS directly│
-├─────────────────────────────────────────────────────┤
-│  🦀 Tauri Core Layer (Rust)                         │
-│  • Event loop, window management                    │
-│  • Exposes #[tauri::command] functions to webview   │
-│  • Manages plugins, file system, native APIs        │
-├─────────────────────────────────────────────────────┤
-│  🔌 OS / Native APIs                               │
-│  • File system, clipboard, notifications            │
-│  • System tray, dialogs, shell commands             │
-└─────────────────────────────────────────────────────┘</code></pre>
+    <div class="diagram">
+<svg viewBox="0 0 700 260" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif" font-size="14">
+  <rect width="700" height="260" fill="#1e1e2e" rx="8"/>
+  <!-- Layer 3: Webview -->
+  <rect x="20" y="15" width="660" height="65" rx="6" fill="#1a6ebd" opacity="0.85"/>
+  <text x="50" y="38" fill="#fff" font-weight="bold">🌐  Webview Layer</text>
+  <text x="50" y="56" fill="#bfdbfe" font-size="12">React / HTML / CSS / TypeScript</text>
+  <text x="400" y="38" fill="#bfdbfe" font-size="12">Sandboxed OS browser component</text>
+  <text x="400" y="56" fill="#bfdbfe" font-size="12">calls Rust via invoke() · listens for events</text>
+  <!-- Arrow down -->
+  <line x1="350" y1="80" x2="350" y2="100" stroke="#f59e0b" stroke-width="2" marker-end="url(#a3)"/>
+  <text x="370" y="94" fill="#f59e0b" font-size="11">IPC bridge</text>
+  <!-- Layer 2: Tauri Core -->
+  <rect x="20" y="100" width="660" height="65" rx="6" fill="#7c3aed" opacity="0.75"/>
+  <text x="50" y="123" fill="#fff" font-weight="bold">🦀  Tauri Core (Rust)</text>
+  <text x="50" y="141" fill="#ddd6fe" font-size="12">Event loop · Window management · #[tauri::command] dispatch</text>
+  <text x="430" y="123" fill="#ddd6fe" font-size="12">Plugins · Capabilities</text>
+  <text x="430" y="141" fill="#ddd6fe" font-size="12">State&lt;T&gt; · AppHandle</text>
+  <!-- Arrow down -->
+  <line x1="350" y1="165" x2="350" y2="185" stroke="#f59e0b" stroke-width="2" marker-end="url(#a3)"/>
+  <text x="370" y="179" fill="#f59e0b" font-size="11">system calls</text>
+  <!-- Layer 1: OS -->
+  <rect x="20" y="185" width="660" height="60" rx="6" fill="#374151" opacity="0.9"/>
+  <text x="50" y="208" fill="#fff" font-weight="bold">🖥️  Operating System</text>
+  <text x="50" y="226" fill="#9ca3af" font-size="12">File system · Clipboard · Dialogs · Notifications · Tray</text>
+  <text x="430" y="208" fill="#9ca3af" font-size="12">macOS · Windows · Linux</text>
+  <!-- Defs -->
+  <defs><marker id="a3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#f59e0b"/></marker></defs>
+</svg>
+<div class="diagram-caption">Tauri's three-layer architecture — webview renders UI, Rust handles native operations, OS provides APIs</div>
+</div>
+
+    <div class="callout-arch">An architect reviewing this diagram will note that the webview and the sidecar are 'too tightly coupled' and suggest extracting the sidecar into a separately deployable microservice behind an API gateway, with a message bus for events, a service registry for discovery, and distributed tracing. For a desktop app. That one person uses. To parse SOAP envelopes.</div>
 
     <p>In APInox's case there's also a legacy <strong>sidecar</strong> (a Node.js process), though the codebase is actively migrating that logic into the Rust layer:</p>
 
@@ -239,6 +256,8 @@ pub fn run() {
     </ul>
   </section>
 
+  <div class="callout-maui">The .NET MAUI equivalent of this architecture: XAML (UI), ViewModel (business logic), and a service layer — the MVVM pattern. Clean in theory. In practice: the XAML hot reload doesn't work half the time, the ViewModel bindings fail silently on iOS, and the service layer needs <code>MauiProgram.cs</code> DI registration that's different from every other .NET DI setup you've used. For enterprise, add: a Maui CommunityToolkit, a dependency on a NuGet package last updated in 2022, and a MAUI Bug filed that's 'by design'.</div>
+
   <!-- ================================================ -->
   <section>
     <h2>Compare: Electron vs Tauri</h2>
@@ -255,6 +274,8 @@ pub fn run() {
         <tr><td>Security model</td><td>Capability-based (app decides)</td><td>Permissions required (strict)</td></tr>
       </tbody>
     </table>
+
+    <div class="callout-salesforce">The Salesforce equivalent of Tauri's three layers is: LWC (webview), Apex (backend), and SOQL (data) — sensible enough. Except LWC can only talk to Apex via <code>@wire</code> or <code>@AuraEnabled</code> methods. Apex can't push to LWC without Platform Events. Platform Events are eventually consistent. There are governor limits on all of it. And it all runs on infrastructure you don't control, can't debug, and which goes down during Salesforce's quarterly maintenance windows.</div>
 
     <!-- QUIZ 4 -->
     <div class="quiz" id="q17-4">
