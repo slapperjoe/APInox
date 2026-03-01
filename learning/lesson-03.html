@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 3 — impl, Traits &amp; OO Patterns | Rust for C#/JS Devs</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-one-dark.min.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a href="index.html" class="back-link">← All Lessons</a>
+  <span class="lesson-badge">Lesson 3 · ~30 min</span>
+</header>
+
+<main class="lesson">
+  <div class="lesson-hero">
+    <h1>impl, Traits &amp; OO Patterns</h1>
+    <div class="lesson-meta">
+      <span>⏱ ~30 min</span>
+      <span>📁 <code>soap/client.rs</code>, <code>soap/ws_security.rs</code>, <code>soap/envelope_builder.rs</code>, <code>testing/test_runner.rs</code></span>
+    </div>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:0%"></div></div>
+  <p class="progress-label">0 of 5 questions answered</p>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>1. Separating Data from Behaviour</h2>
+    <p>In C#, a class contains both fields and methods in one block. In Rust, data (<code>struct</code>) and behaviour (<code>impl</code>) are written separately. Open <code>soap/client.rs</code>:</p>
+
+    <pre class="language-rust"><code>// DATA: what a SoapClient IS
+pub struct SoapClient {
+    http_client: Client,   // private field (no pub)
+}
+
+// BEHAVIOUR: what a SoapClient DOES
+impl SoapClient {
+    pub fn new() -&gt; Self { ... }
+    pub fn with_client(client: Client) -&gt; Self { ... }
+    pub async fn execute(&amp;self, ...) -&gt; Result&lt;SoapResponse&gt; { ... }
+}</code></pre>
+
+    <pre class="language-csharp"><code>// C# combines these in one class block
+public class SoapClient {
+    private readonly HttpClient _httpClient;
+
+    public SoapClient() { ... }
+    public async Task&lt;SoapResponse&gt; Execute(...) { ... }
+}</code></pre>
+
+    <div class="callout"><strong>You can have multiple <code>impl</code> blocks</strong> for the same type — they merge. This lets you split functionality across files or group by feature area.</div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>2. Constructors — The <code>new()</code> Convention</h2>
+    <p>Rust has <strong>no <code>new</code> keyword</strong>. The convention is an associated function named <code>new()</code> that returns <code>Self</code>:</p>
+
+    <pre class="language-rust"><code>impl SoapClient {
+    /// Create a new SOAP client
+    pub fn new() -&gt; Self {
+        Self {
+            http_client: Client::new(),
+        }
+    }
+
+    /// Alternative constructor — with a custom HTTP client
+    pub fn with_client(client: Client) -&gt; Self {
+        Self {
+            http_client: client,
+        }
+    }
+}
+
+// Usage — :: for associated functions, . for methods:
+let client = SoapClient::new();
+let client = SoapClient::with_client(my_client);</code></pre>
+
+    <!-- QUIZ 1: True/False -->
+    <div class="quiz" id="q3-1">
+      <div class="quiz-label">✅ True or False</div>
+      <div class="quiz-q">Rust has a <code>new</code> keyword that you use to create struct instances, just like C#.</div>
+      <div class="quiz-options tf">
+        <button data-answer="false" onclick="tf('q3-1', this, true, false)">True</button>
+        <button data-answer="false" onclick="tf('q3-1', this, false, false)">False</button>
+      </div>
+      <div class="quiz-exp" id="q3-1-exp">
+        <strong>False!</strong> Rust has no <code>new</code> keyword. <code>new()</code> is just a regular associated function — a convention, not a language feature. You can name constructors anything: <code>with_client()</code>, <code>from_config()</code>, <code>default()</code>. They all just return <code>Self</code>.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>3. <code>self</code>, <code>&amp;self</code>, <code>&amp;mut self</code></h2>
+    <p>The first parameter of a method declares its relationship to the instance:</p>
+
+    <table>
+      <thead><tr><th>Parameter</th><th>Meaning</th><th>C# equivalent</th></tr></thead>
+      <tbody>
+        <tr><td><code>self</code></td><td>Takes ownership — instance is consumed</td><td>(unusual in C#)</td></tr>
+        <tr><td><code>&amp;self</code></td><td>Borrows immutably — read-only</td><td><code>this</code> in a normal method</td></tr>
+        <tr><td><code>&amp;mut self</code></td><td>Borrows mutably — can modify struct</td><td><code>this</code> in a method that modifies state</td></tr>
+      </tbody>
+    </table>
+
+    <p>From <code>testing/test_runner.rs</code>:</p>
+    <pre class="language-rust"><code>impl TestRunner {
+    pub fn new() -&gt; Self { ... }                           // no self — associated fn
+
+    pub fn set_variable(&amp;mut self, name: String, value: String) {
+        self.variables.insert(name, value);                // needs &amp;mut
+    }
+
+    pub fn get_variable(&amp;self, name: &amp;str) -&gt; Option&lt;&amp;String&gt; {
+        self.variables.get(name)                           // read-only, &amp;self
+    }
+
+    fn replace_variables(&amp;self, text: &amp;str) -&gt; String { ... } // private, read-only
+
+    pub async fn run_test_case(&amp;mut self, ...) -&gt; Result&lt;...&gt; {
+        // needs &amp;mut because it modifies variables during execution
+    }
+}</code></pre>
+
+    <!-- QUIZ 2: Fill in the blank -->
+    <div class="quiz" id="q3-2">
+      <div class="quiz-label">✍️ Fill in the Blank</div>
+      <div class="quiz-q">This method needs to modify the struct's fields. What goes in the blank?</div>
+      <div class="fill-wrap">
+        pub fn set_port(&amp;<input class="fill-input" id="q3-2-in" placeholder="???" style="width:8ch"> self, port: u16) {<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;self.port = port;<br>
+        }
+      </div>
+      <button class="btn-check" onclick="fillCheck('q3-2', 'mut')">Check</button>
+      <div class="quiz-exp" id="q3-2-exp">
+        <strong>mut</strong> — the signature is <code>&amp;mut self</code>. Without <code>mut</code>, the compiler rejects any attempt to modify <code>self.port</code>. Start with <code>&amp;self</code> and only add <code>mut</code> when the compiler tells you you need it.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>4. Traits — Rust's Interfaces</h2>
+    <p>A <code>trait</code> defines methods a type must implement. Just like a C# <code>interface</code>, but with superpowers:</p>
+
+    <pre class="language-rust"><code>// Define a trait (like an interface)
+trait Greet {
+    fn hello(&amp;self) -&gt; String;              // required — must implement
+
+    fn goodbye(&amp;self) -&gt; String {          // default implementation
+        format!("Goodbye from {}", self.hello())
+    }
+}
+
+// Implement the trait for a type
+impl Greet for SoapClient {
+    fn hello(&amp;self) -&gt; String {
+        "Hello from SoapClient".to_string()
+    }
+    // goodbye() is inherited automatically
+}</code></pre>
+
+    <pre class="language-csharp"><code>// C# equivalent
+interface IGreet {
+    string Hello();
+    string Goodbye() =&gt; $"Goodbye from {Hello()}";  // default method
+}
+class SoapClient : IGreet {
+    public string Hello() =&gt; "Hello from SoapClient";
+}</code></pre>
+
+    <h3>Key traits you'll see in this codebase</h3>
+    <table>
+      <thead><tr><th>Trait</th><th>C# equivalent</th><th>Gives you</th></tr></thead>
+      <tbody>
+        <tr><td><code>Debug</code></td><td><code>ToString()</code> override</td><td><code>println!("{:?}", val)</code></td></tr>
+        <tr><td><code>Clone</code></td><td><code>ICloneable</code></td><td><code>.clone()</code></td></tr>
+        <tr><td><code>Default</code></td><td>Default constructor</td><td><code>MyStruct::default()</code></td></tr>
+        <tr><td><code>PartialEq</code></td><td><code>IEquatable&lt;T&gt;</code></td><td><code>==</code> operator</td></tr>
+        <tr><td><code>Serialize</code></td><td><code>[JsonSerializable]</code></td><td>serde JSON output</td></tr>
+        <tr><td><code>Deserialize</code></td><td><code>[JsonSerializable]</code></td><td>serde JSON parsing</td></tr>
+      </tbody>
+    </table>
+
+    <!-- QUIZ 3: Multiple choice -->
+    <div class="quiz" id="q3-3">
+      <div class="quiz-label">🔘 Multiple Choice</div>
+      <div class="quiz-q">In Rust, can you implement a trait for a type that was defined in a third-party crate?</div>
+      <div class="quiz-options">
+        <button data-correct="false" onclick="mc('q3-3', this, false)">No — you can only implement traits for your own types</button>
+        <button data-correct="true"  onclick="mc('q3-3', this, true)">Yes — as long as either the trait OR the type is defined in your crate</button>
+        <button data-correct="false" onclick="mc('q3-3', this, false)">Yes — always, with no restrictions</button>
+        <button data-correct="false" onclick="mc('q3-3', this, false)">Only if the type is marked <code>pub</code></button>
+      </div>
+      <div class="quiz-exp" id="q3-3-exp">
+        <strong>✓ Yes, with the orphan rule!</strong> Either the trait or the type must be local to your crate. You can implement <code>Display</code> (foreign trait) for <code>SoapClient</code> (your type). You CAN'T implement <code>Display</code> (foreign) for <code>Vec&lt;String&gt;</code> (also foreign). This prevents conflicting implementations across crates.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>5. The Builder Pattern</h2>
+    <p>Rust doesn't have optional/default parameters like C#. The Builder pattern solves this elegantly. Open <code>soap/ws_security.rs</code>:</p>
+
+    <pre class="language-rust"><code>#[derive(Debug, Clone, Default)]
+pub struct WsSecurityConfig {
+    pub username_token: Option&lt;UsernameToken&gt;,  // None by default
+    pub timestamp: Option&lt;Timestamp&gt;,
+    pub add_nonce: bool,                         // false by default
+}
+
+impl WsSecurityConfig {
+    pub fn new() -&gt; Self {
+        Self::default()   // all fields are None / false
+    }
+
+    // Builder methods: take ownership of self, mutate, return self
+    pub fn with_username_token(mut self, token: UsernameToken) -&gt; Self {
+        self.username_token = Some(token);
+        self   // ownership returned to caller — enables chaining
+    }
+
+    pub fn with_timestamp(mut self, ts: Timestamp) -&gt; Self {
+        self.timestamp = Some(ts);
+        self
+    }
+
+    pub fn with_nonce(mut self) -&gt; Self {
+        self.add_nonce = true;
+        self
+    }
+}
+
+// Usage — fluent chaining:
+let security = WsSecurityConfig::new()
+    .with_username_token(UsernameToken::text("admin".into(), "pass".into()))
+    .with_default_timestamp()
+    .with_nonce();</code></pre>
+
+    <!-- QUIZ 4: Predict output -->
+    <div class="quiz predict" id="q3-4">
+      <div class="quiz-label">🤔 Predict the Output</div>
+      <div class="quiz-q">Builder methods take <code>mut self</code> (by value). What would happen if you tried to use the config variable after calling a builder method?</div>
+      <pre class="language-rust"><code>let config = WsSecurityConfig::new();
+let with_token = config.with_username_token(token);
+// Can we still use `config` here?
+println!("{:?}", config);</code></pre>
+      <button class="btn-reveal" onclick="reveal('q3-4')">Reveal Answer</button>
+      <div class="quiz-exp" id="q3-4-exp">
+        <strong>💥 Compile error!</strong> <code>with_username_token</code> takes <code>self</code> by value (ownership), so <code>config</code> is <em>moved</em> into the method. After the call, <code>config</code> is gone — only <code>with_token</code> exists. This is intentional: it prevents you from accidentally using a half-configured object. The builder pattern works by chaining all the calls together before assigning to a final variable.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>6. Destructors — The <code>Drop</code> Trait</h2>
+    <p>Rust has no <code>~Foo()</code> destructor syntax. Instead, implement the <code>Drop</code> trait:</p>
+
+    <pre class="language-rust"><code>impl Drop for SidecarProcess {
+    fn drop(&amp;mut self) {
+        // called automatically when value goes out of scope
+        self.stop();
+        log::info!("Sidecar process stopped");
+    }
+}</code></pre>
+
+    <p>In practice, you rarely write <code>Drop</code> in application code. The compiler automatically frees memory when values go out of scope. You only implement <code>Drop</code> for external resources like OS handles, network connections, or file locks.</p>
+
+    <!-- QUIZ 5: Spot the bug -->
+    <div class="quiz" id="q3-5">
+      <div class="quiz-label">🐛 Spot the Bug</div>
+      <div class="quiz-q">This impl block has a mistake. Click the problematic line:</div>
+      <div class="bug-pre">
+        <span class="bug-line" onclick="bugLine('q3-5', this, false)">impl Counter {</span>
+        <span class="bug-line" onclick="bugLine('q3-5', this, true)">    pub fn increment(&amp;self) {</span>
+        <span class="bug-line" onclick="bugLine('q3-5', this, false)">        self.count += 1;</span>
+        <span class="bug-line" onclick="bugLine('q3-5', this, false)">    }</span>
+        <span class="bug-line" onclick="bugLine('q3-5', this, false)">}</span>
+      </div>
+      <div class="quiz-exp" id="q3-5-exp">
+        <strong>Line 2!</strong> The method signature says <code>&amp;self</code> (immutable borrow) but the body tries to modify <code>self.count</code>. To mutate a field, the signature must be <code>&amp;mut self</code>: <code>pub fn increment(&amp;mut self)</code>. Rust enforces this at compile time — no accidental mutation through a "read-only" reference.
+      </div>
+    </div>
+  </section>
+
+  <nav class="lesson-nav">
+    <a href="lesson-02.html">← Lesson 2: Structs &amp; Enums</a>
+    <a href="index.html" class="nav-center">All Lessons</a>
+    <a href="lesson-04.html">Lesson 4: Error Handling →</a>
+  </nav>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-csharp.min.js"></script>
+<script src="quiz.js"></script>
+</body>
+</html>

@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 5 — Async, Generics &amp; Tauri Commands | Rust for C#/JS Devs</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-one-dark.min.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a href="index.html" class="back-link">← All Lessons</a>
+  <span class="lesson-badge">Lesson 5 · ~30 min</span>
+</header>
+
+<main class="lesson">
+  <div class="lesson-hero">
+    <h1>Async, Generics &amp; Tauri Commands</h1>
+    <div class="lesson-meta">
+      <span>⏱ ~30 min</span>
+      <span>📁 <code>lib.rs</code>, <code>soap/commands.rs</code>, <code>testing/test_runner.rs</code>, <code>workflow/engine.rs</code></span>
+    </div>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:0%"></div></div>
+  <p class="progress-label">0 of 5 questions answered</p>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>1. Rust <code>async</code>/<code>await</code> — Familiar Syntax, Different Execution</h2>
+    <p>The syntax looks just like C# and JavaScript. The big difference is that Rust's async is <strong>zero-cost and requires a runtime</strong> — futures don't execute at all until they're polled by an executor.</p>
+
+    <pre class="language-rust"><code>// Rust
+pub async fn execute(&amp;self, request: SoapRequest) -&gt; Result&lt;SoapResponse&gt; {
+    let response = self.http_client
+        .post(&amp;endpoint)
+        .send()
+        .await?;       // await suspends here until the HTTP response arrives
+    Ok(response)
+}</code></pre>
+
+    <pre class="language-csharp"><code>// C# — almost identical syntax
+public async Task&lt;SoapResponse&gt; ExecuteAsync(SoapRequest request) {
+    var response = await _httpClient.PostAsync(endpoint, content);
+    return response;
+}</code></pre>
+
+    <table>
+      <thead><tr><th>Concept</th><th>C#</th><th>Rust</th></tr></thead>
+      <tbody>
+        <tr><td>Async function return type</td><td><code>Task&lt;T&gt;</code></td><td><code>impl Future&lt;Output = T&gt;</code> (written as just the return type)</td></tr>
+        <tr><td>Awaiting</td><td><code>await expression</code></td><td><code>expression.await</code> (suffix)</td></tr>
+        <tr><td>Runtime / executor</td><td>CLR + task scheduler built in</td><td>Must add one — Tauri uses <strong>Tokio</strong></td></tr>
+        <tr><td>Cancellation</td><td><code>CancellationToken</code></td><td>Select crates (<code>tokio::select!</code>)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout"><strong>Key difference:</strong> In C#, calling an async method starts it immediately. In Rust, calling an async function returns a <em>Future</em> that does nothing until <code>.await</code>ed or spawned onto an executor. It's like having all your async methods be lazy by default.</div>
+
+    <!-- QUIZ 1: Fill in the blank -->
+    <div class="quiz" id="q5-1">
+      <div class="quiz-label">✍️ Fill in the Blank</div>
+      <div class="quiz-q">Complete the call to suspend execution until the async operation completes:</div>
+      <div class="fill-wrap">
+        let response = self.http_client.post(&amp;url).send().<input class="fill-input" id="q5-1-in" placeholder="????" style="width:7ch">?;
+      </div>
+      <button class="btn-check" onclick="fillCheck('q5-1', 'await')">Check</button>
+      <div class="quiz-exp" id="q5-1-exp">
+        <strong>await</strong> — note the <em>suffix</em> position in Rust: <code>.await</code> comes after the expression, not before it like in C#. This makes chaining much cleaner: <code>client.post(url).send().await?.json().await?</code>. The <code>?</code> after handles any error from the send.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>2. Tokio — The Async Runtime</h2>
+    <p>Tauri uses Tokio under the hood. You'll see it in <code>Cargo.toml</code> and <code>lib.rs</code>:</p>
+
+    <pre class="language-toml"><code>[dependencies]
+tokio = { version = "1", features = ["full"] }</code></pre>
+
+    <pre class="language-rust"><code>// lib.rs — Tauri bootstraps a Tokio runtime automatically.
+// In standalone Rust apps, you'd use:
+#[tokio::main]
+async fn main() {
+    // Now you can .await here
+}</code></pre>
+
+    <p>Tokio provides:</p>
+    <ul>
+      <li>A thread pool to execute async tasks</li>
+      <li><code>tokio::spawn()</code> — run a Future in the background (like <code>Task.Run</code>)</li>
+      <li><code>tokio::time::sleep()</code> — async sleep</li>
+      <li><code>tokio::sync::Mutex</code> — async-safe locking</li>
+    </ul>
+
+    <!-- QUIZ 2: Multiple choice -->
+    <div class="quiz" id="q5-2">
+      <div class="quiz-label">🔘 Multiple Choice</div>
+      <div class="quiz-q">What happens if you call an <code>async fn</code> in Rust without <code>.await</code>?</div>
+      <div class="quiz-options">
+        <button data-correct="false" onclick="mc('q5-2', this, false)">It runs immediately in a background thread</button>
+        <button data-correct="false" onclick="mc('q5-2', this, false)">It returns <code>null</code></button>
+        <button data-correct="true"  onclick="mc('q5-2', this, true)">It returns a <code>Future</code> that hasn't started yet — you'll get a compiler warning</button>
+        <button data-correct="false" onclick="mc('q5-2', this, false)">It blocks the current thread until complete</button>
+      </div>
+      <div class="quiz-exp" id="q5-2-exp">
+        <strong>✓ A dormant Future!</strong> Rust will even warn: <em>"unused Future that must be used"</em>. Futures are lazy — nothing happens until you <code>.await</code> them (or spawn them with <code>tokio::spawn()</code>). This is unlike C# where calling an async method starts it immediately, whether you await it or not.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>3. Generics — Parameterising Over Types</h2>
+    <p>Rust generics look like C# generics but with more expressive constraints. From <code>testing/test_runner.rs</code>:</p>
+
+    <pre class="language-rust"><code>// T must implement the Serialize trait
+async fn send_request&lt;T: Serialize&gt;(body: T) -&gt; Result&lt;Response&gt; { ... }
+
+// Multiple bounds with +
+async fn process&lt;T: Serialize + Debug + Clone&gt;(item: T) { ... }
+
+// Where clause — same thing, cleaner syntax for complex bounds
+async fn process&lt;T&gt;(item: T) -&gt; Result&lt;()&gt;
+where
+    T: Serialize + Debug + Clone,
+{ ... }</code></pre>
+
+    <pre class="language-csharp"><code>// C# generics with constraints
+async Task Process&lt;T&gt;(T item)
+    where T : ISerializable, ICloneable
+{ ... }</code></pre>
+
+    <table>
+      <thead><tr><th>C# constraint</th><th>Rust equivalent</th></tr></thead>
+      <tbody>
+        <tr><td><code>where T : IFoo</code></td><td><code>T: Foo</code></td></tr>
+        <tr><td><code>where T : class</code></td><td>(no direct equivalent — everything can be a reference)</td></tr>
+        <tr><td><code>where T : new()</code></td><td><code>T: Default</code></td></tr>
+        <tr><td>Multiple: <code>T : IFoo, IBar</code></td><td><code>T: Foo + Bar</code></td></tr>
+      </tbody>
+    </table>
+
+    <!-- QUIZ 3: True/False -->
+    <div class="quiz" id="q5-3">
+      <div class="quiz-label">✅ True or False</div>
+      <div class="quiz-q">An <code>async fn</code> in Rust must always return a <code>Result&lt;T, E&gt;</code>.</div>
+      <div class="quiz-options tf">
+        <button data-answer="false" onclick="tf('q5-3', this, true, false)">True</button>
+        <button data-answer="false" onclick="tf('q5-3', this, false, false)">False</button>
+      </div>
+      <div class="quiz-exp" id="q5-3-exp">
+        <strong>False!</strong> An <code>async fn</code> can return anything: <code>async fn greet() -&gt; String</code>, <code>async fn compute() -&gt; u32</code>, or even <code>async fn fire_and_forget() { }</code> (returns <code>()</code>). The <code>async</code> keyword just means the function returns a <code>Future</code> — the actual output type is whatever you declare after <code>-&gt;</code>.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>4. Tauri Commands — Rust Functions Called from JavaScript</h2>
+    <p>The <code>#[tauri::command]</code> attribute exposes a Rust function to the Tauri webview. These are the RPC boundary between your React frontend and Rust backend. Look at <code>soap/commands.rs</code>:</p>
+
+    <pre class="language-rust"><code>#[tauri::command]
+pub async fn execute_soap_request(
+    request: SoapRequest,       // auto-deserialized from JS object
+    app_handle: AppHandle,      // Tauri injects this — no JS needed
+) -&gt; Result&lt;SoapResponse, String&gt;
+//                         ↑ must serialize to JS — String works, custom types work
+{
+    let client = SoapClient::new();
+    client.execute(request).await
+        .map_err(|e| e.to_string())
+}</code></pre>
+
+    <p>Register commands in <code>lib.rs</code> <code>tauri::Builder</code>:</p>
+    <pre class="language-rust"><code>tauri::Builder::default()
+    .invoke_handler(tauri::generate_handler![
+        execute_soap_request,
+        save_project,
+        load_project,
+    ])
+    .run(tauri::generate_context!())?;</code></pre>
+
+    <p>Call from JavaScript:</p>
+    <pre class="language-javascript"><code>import { invoke } from '@tauri-apps/api';
+
+const response = await invoke('execute_soap_request', {
+    request: { endpoint, body, headers }
+});</code></pre>
+
+    <!-- QUIZ 4: Fill in the blank -->
+    <div class="quiz" id="q5-4">
+      <div class="quiz-label">✍️ Fill in the Blank</div>
+      <div class="quiz-q">What attribute exposes a Rust function to Tauri's JavaScript bridge? Fill in just the crate name:</div>
+      <div class="fill-wrap">
+        #[<input class="fill-input" id="q5-4-in" placeholder="????" style="width:6ch">::command]
+      </div>
+      <button class="btn-check" onclick="fillCheck('q5-4', 'tauri')">Check</button>
+      <div class="quiz-exp" id="q5-4-exp">
+        <strong>tauri</strong> — the full attribute is <code>#[tauri::command]</code>. Tauri uses this to generate the serialization/deserialization glue code automatically. Arguments from JS are deserialized from JSON, and the return value is serialized back to JSON. The <code>AppHandle</code> and <code>State</code> parameters are special — Tauri injects them automatically without the caller needing to pass them.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>5. Conditional Compilation with <code>#[cfg(...)]</code></h2>
+    <p>You'll see this throughout the codebase for platform-specific code:</p>
+
+    <pre class="language-rust"><code>// Only compile on Windows
+#[cfg(target_os = "windows")]
+fn get_windows_cert_store() -&gt; CertStore { ... }
+
+// Only compile on macOS or Linux
+#[cfg(not(target_os = "windows"))]
+fn get_unix_keyring() -&gt; Keyring { ... }
+
+// Include code only when a feature flag is enabled:
+#[cfg(feature = "dangerous-test-mode")]
+pub fn bypass_auth() { ... }
+
+// Different imports per platform
+#[cfg(target_os = "macos")]
+use security_framework::passwords::*;</code></pre>
+
+    <p>In <code>secret_storage.rs</code>:</p>
+    <pre class="language-rust"><code>#[cfg(target_os = "linux")]
+fn store_secret_linux(key: &amp;str, secret: &amp;str) -&gt; Result&lt;()&gt; {
+    // Linux secret-service implementation
+}
+
+#[cfg(not(target_os = "linux"))]
+fn store_secret_keychain(key: &amp;str, secret: &amp;str) -&gt; Result&lt;()&gt; {
+    // macOS/Windows implementation
+}</code></pre>
+
+    <!-- QUIZ 5: Match It -->
+    <div class="quiz" id="q5-5">
+      <div class="quiz-label">🔗 Match It</div>
+      <div class="quiz-q">Match each Rust concept to its C# / ecosystem equivalent:</div>
+      <div class="match-grid">
+        <div class="match-col">
+          <button class="match-item" data-id="a" onclick="matchClick('q5-5', 'a', 'left', this)"><code>#[tokio::main]</code></button>
+          <button class="match-item" data-id="b" onclick="matchClick('q5-5', 'b', 'left', this)"><code>tokio::spawn()</code></button>
+          <button class="match-item" data-id="c" onclick="matchClick('q5-5', 'c', 'left', this)"><code>T: Serialize + Clone</code></button>
+          <button class="match-item" data-id="d" onclick="matchClick('q5-5', 'd', 'left', this)"><code>#[tauri::command]</code></button>
+        </div>
+        <div class="match-col">
+          <button class="match-item" data-id="b" onclick="matchClick('q5-5', 'b', 'right', this)"><code>Task.Run(() =&gt; ...)</code></button>
+          <button class="match-item" data-id="d" onclick="matchClick('q5-5', 'd', 'right', this)">[WebMethod] / [ApiController]</button>
+          <button class="match-item" data-id="a" onclick="matchClick('q5-5', 'a', 'right', this)">Program.cs async entrypoint</button>
+          <button class="match-item" data-id="c" onclick="matchClick('q5-5', 'c', 'right', this)"><code>where T : ISerializable, ICloneable</code></button>
+        </div>
+      </div>
+      <div class="quiz-exp" id="q5-5-exp">
+        <strong>All matched!</strong><br>
+        • <code>#[tokio::main]</code> → sets up the async runtime, like Program.cs bootstrapping the async host<br>
+        • <code>tokio::spawn()</code> → fire-and-forget like <code>Task.Run()</code><br>
+        • <code>T: Serialize + Clone</code> → multi-interface generic constraint<br>
+        • <code>#[tauri::command]</code> → exposes Rust to JavaScript, like WebMethod or ApiController Action
+      </div>
+    </div>
+  </section>
+
+  <nav class="lesson-nav">
+    <a href="lesson-04.html">← Lesson 4: Error Handling</a>
+    <a href="index.html" class="nav-center">All Lessons</a>
+    <a href="lesson-06.html">Lesson 6: What's Next →</a>
+  </nav>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-csharp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-toml.min.js"></script>
+<script src="quiz.js"></script>
+</body>
+</html>

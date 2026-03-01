@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 0 — What Is Rust? | Rust for C#/JS Devs</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-one-dark.min.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a href="index.html" class="back-link">← All Lessons</a>
+  <span class="lesson-badge">Lesson 0 · ~20 min</span>
+</header>
+
+<main class="lesson">
+  <div class="lesson-hero">
+    <h1>What Is Rust, and Why Should You Care?</h1>
+    <div class="lesson-meta">
+      <span>⏱ ~20 min</span>
+      <span>📋 Conceptual — no code files needed</span>
+      <span>🎯 Language overview, Cargo, interview prep</span>
+    </div>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:0%"></div></div>
+  <p class="progress-label">0 of 5 questions answered</p>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>1. What Is Rust?</h2>
+    <p>Rust is a <strong>systems programming language</strong> created at Mozilla Research, released in 2015. It's now governed by the independent <a href="https://foundation.rust-lang.org/" target="_blank">Rust Foundation</a> (backed by AWS, Google, Microsoft, Meta).</p>
+    <p>It exists to answer one question:</p>
+    <div class="callout"><strong>"Can we have the performance of C/C++ without the memory bugs?"</strong><br>The answer: yes — by making memory safety a <em>compile-time</em> guarantee, not a runtime check.</div>
+
+    <h3>Where Rust sits in the landscape</h3>
+    <pre class="language-bash"><code>High-level (managed, GC)
+  Python, JavaScript, Ruby
+  C#, Java, Go
+  ─────────────────────────────
+  Rust  ← sits here
+  ─────────────────────────────
+  C, C++
+Low-level (manual memory, no GC)</code></pre>
+
+    <!-- QUIZ 1: True/False -->
+    <div class="quiz" id="q0-1">
+      <div class="quiz-label">✅ True or False</div>
+      <div class="quiz-q">Rust uses a garbage collector to manage memory.</div>
+      <div class="quiz-options tf">
+        <button data-answer="false" onclick="tf('q0-1', this, true, false)">True</button>
+        <button data-answer="false" onclick="tf('q0-1', this, false, false)">False</button>
+      </div>
+      <div class="quiz-exp" id="q0-1-exp">
+        <strong>False!</strong> Rust has <em>no</em> garbage collector. Memory is managed by the ownership system — the compiler proves at compile time that memory is freed at the right moment. No runtime cost, no GC pauses.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>2. The Three Core Promises</h2>
+
+    <h3>① Performance</h3>
+    <p>No GC means no GC pauses. Zero-cost abstractions — high-level code compiles down to the same machine code as hand-written C. Rust uses the same <strong>LLVM</strong> backend as Clang (C/C++), so it gets decades of optimisation for free.</p>
+
+    <h3>② Memory Safety</h3>
+    <p>No null pointer dereferences. No dangling references. No buffer overflows. No data races. <em>None of these are checked at runtime — the compiler rejects unsafe code.</em></p>
+
+    <h3>③ Fearless Concurrency</h3>
+    <p>Thread-safety is enforced at compile time via the <code>Send</code> and <code>Sync</code> traits. If your multithreaded code compiles, it is guaranteed to be free of data races.</p>
+
+    <!-- QUIZ 2: Multiple choice -->
+    <div class="quiz" id="q0-2">
+      <div class="quiz-label">🔘 Multiple Choice</div>
+      <div class="quiz-q">What guarantees Rust's memory safety?</div>
+      <div class="quiz-options">
+        <button data-correct="false" onclick="mc('q0-2', this, false)">A runtime garbage collector</button>
+        <button data-correct="true"  onclick="mc('q0-2', this, true)">The borrow checker — a compile-time analysis</button>
+        <button data-correct="false" onclick="mc('q0-2', this, false)">Manual malloc/free calls</button>
+        <button data-correct="false" onclick="mc('q0-2', this, false)">Reference counting at runtime</button>
+      </div>
+      <div class="quiz-exp" id="q0-2-exp">
+        <strong>✓ The borrow checker!</strong> It's a compile-time pass that enforces ownership rules. If your code compiles, the memory is safe. There's no runtime overhead — no GC, no ref-count updates, nothing.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>3. Real-World Usage</h2>
+    <table>
+      <thead><tr><th>Company / Project</th><th>What they use Rust for</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Microsoft</strong></td><td>Windows kernel components, Azure services</td></tr>
+        <tr><td><strong>Google</strong></td><td>Android OS (replacing C/C++), Chromium</td></tr>
+        <tr><td><strong>Amazon / AWS</strong></td><td>Firecracker (VM behind Lambda), S3 internals</td></tr>
+        <tr><td><strong>Discord</strong></td><td>Replaced Go services — 10x latency improvement</td></tr>
+        <tr><td><strong>Linux Kernel</strong></td><td>2nd supported language in the Linux kernel (since 2022)</td></tr>
+        <tr><td><strong>Cloudflare</strong></td><td>Network proxies, edge computing</td></tr>
+        <tr><td><strong>WebAssembly</strong></td><td>Rust is a first-class WASM target</td></tr>
+      </tbody>
+    </table>
+    <div class="callout tip"><strong>Fun fact:</strong> Rust has been the most <em>admired</em> programming language in Stack Overflow's Developer Survey for <strong>9 consecutive years</strong> (2016–2024).</div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>4. What Is Cargo?</h2>
+    <p>Cargo is Rust's official <strong>build tool and package manager</strong>. It does everything in one tool:</p>
+    <pre class="language-bash"><code>cargo  =  npm  +  tsc  +  webpack  +  jest  +  nuget</code></pre>
+
+    <table>
+      <thead><tr><th>Command</th><th>What it does</th><th>npm/dotnet equiv</th></tr></thead>
+      <tbody>
+        <tr><td><code>cargo new my-app</code></td><td>Create a new project</td><td><code>npm init</code> / <code>dotnet new</code></td></tr>
+        <tr><td><code>cargo build</code></td><td>Compile (debug)</td><td><code>tsc</code> / <code>dotnet build</code></td></tr>
+        <tr><td><code>cargo build --release</code></td><td>Optimised production build</td><td>build in Release config</td></tr>
+        <tr><td><code>cargo run</code></td><td>Build and run</td><td><code>node index.js</code> / <code>dotnet run</code></td></tr>
+        <tr><td><code>cargo test</code></td><td>Run all tests</td><td><code>npm test</code> / <code>dotnet test</code></td></tr>
+        <tr><td><code>cargo add serde</code></td><td>Add a dependency</td><td><code>npm install</code> / <code>dotnet add package</code></td></tr>
+        <tr><td><code>cargo fmt</code></td><td>Format code</td><td><code>prettier</code></td></tr>
+        <tr><td><code>cargo clippy</code></td><td>Lint code</td><td><code>eslint</code> / Roslyn analyzers</td></tr>
+        <tr><td><code>cargo doc --open</code></td><td>Generate &amp; open docs</td><td>docfx / JSDoc</td></tr>
+      </tbody>
+    </table>
+
+    <!-- QUIZ 3: Fill in the blank -->
+    <div class="quiz" id="q0-3">
+      <div class="quiz-label">✍️ Fill in the Blank</div>
+      <div class="quiz-q">Which cargo command runs the project without a separate build step?</div>
+      <div class="fill-wrap">
+        $ cargo <input class="fill-input" id="q0-3-in" placeholder="???">
+      </div>
+      <button class="btn-check" onclick="fillCheck('q0-3', 'run')">Check</button>
+      <div class="quiz-exp" id="q0-3-exp">
+        <strong>cargo run</strong> — builds (if needed) then immediately executes. Equivalent to <code>dotnet run</code> or <code>node index.js</code>. The compiled binary ends up in <code>target/debug/</code>.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>5. Project Structure</h2>
+    <pre class="language-bash"><code>my-project/
+├── Cargo.toml          ← package.json + .csproj (metadata, dependencies)
+├── Cargo.lock          ← package-lock.json (exact resolved versions)
+├── src/
+│   ├── main.rs         ← entry point for a binary
+│   ├── lib.rs          ← entry point for a library
+│   └── some_module.rs  ← additional modules
+└── tests/
+    └── integration.rs  ← integration tests (outside src/)</code></pre>
+
+    <p>Dependencies live in <code>Cargo.toml</code> and are downloaded from <a href="https://crates.io" target="_blank">crates.io</a> (the npm registry of Rust):</p>
+
+    <pre class="language-toml"><code>[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+reqwest = "0.12"
+tokio = { version = "1.45", features = ["full"] }</code></pre>
+
+    <div class="callout"><strong>features = [...]</strong> — Feature flags let you opt into optional functionality of a crate. Without <code>features = ["derive"]</code> on serde, the <code>#[derive(Serialize)]</code> macro simply doesn't exist. You only compile what you need.</div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>6. The Compilation Pipeline</h2>
+    <pre class="language-bash"><code>Your .rs files
+     ↓
+  rustc (Rust compiler)
+     ↓  type checking + borrow checking
+     ↓  macro expansion
+     ↓  MIR (Mid-level IR)
+     ↓
+  LLVM backend
+     ↓  full optimisation passes
+     ↓
+  Native binary (.exe / ELF / .dylib)</code></pre>
+
+    <p>The binary is <strong>self-contained</strong> — no runtime needed (unlike .NET which requires the CLR, or Node.js apps which need the runtime). Debug builds compile fast but run slower. Release builds (<code>--release</code>) compile slowly but run at full speed.</p>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>7. Interview / Exam Quick-Fire</h2>
+
+    <!-- QUIZ 4: Match it -->
+    <div class="quiz" id="q0-4">
+      <div class="quiz-label">🔗 Match It</div>
+      <div class="quiz-q">Match each Cargo command to its closest equivalent in another ecosystem:</div>
+      <div class="match-grid">
+        <div>
+          <div class="match-col-label">Cargo Command</div>
+          <div class="match-col">
+            <button class="match-item" onclick="matchClick('q0-4','a','left',this)">cargo fmt</button>
+            <button class="match-item" onclick="matchClick('q0-4','b','left',this)">cargo clippy</button>
+            <button class="match-item" onclick="matchClick('q0-4','c','left',this)">cargo add serde</button>
+          </div>
+        </div>
+        <div>
+          <div class="match-col-label">Equivalent</div>
+          <div class="match-col">
+            <button class="match-item" onclick="matchClick('q0-4','c','right',this)">npm install serde</button>
+            <button class="match-item" onclick="matchClick('q0-4','a','right',this)">prettier --write</button>
+            <button class="match-item" onclick="matchClick('q0-4','b','right',this)">eslint src/</button>
+          </div>
+        </div>
+      </div>
+      <div class="quiz-exp" id="q0-4-exp">
+        <strong>All matched!</strong> <code>fmt</code> → prettier, <code>clippy</code> → eslint, <code>cargo add</code> → npm install. Cargo handles the whole toolchain in one place.
+      </div>
+    </div>
+
+    <h3>Key Interview Questions</h3>
+    <details style="margin:.75rem 0; cursor:pointer;">
+      <summary style="font-weight:600; color:var(--blue); padding:.5rem 0;">Q: What is ownership? ▸</summary>
+      <p style="margin:.5rem 0 .5rem 1rem;">Every value has exactly one owner. When the owner goes out of scope, the value is dropped (freed). This eliminates the need for a GC.</p>
+    </details>
+    <details style="margin:.75rem 0; cursor:pointer;">
+      <summary style="font-weight:600; color:var(--blue); padding:.5rem 0;">Q: What is the borrow checker? ▸</summary>
+      <p style="margin:.5rem 0 .5rem 1rem;">A compile-time analysis that enforces: at any given time, you can have either <em>one mutable reference</em> OR <em>any number of immutable references</em> — never both. This prevents data races and use-after-free.</p>
+    </details>
+    <details style="margin:.75rem 0; cursor:pointer;">
+      <summary style="font-weight:600; color:var(--blue); padding:.5rem 0;">Q: What is a trait? ▸</summary>
+      <p style="margin:.5rem 0 .5rem 1rem;">An interface definition. Types implement traits. Unlike C# interfaces, you can implement a trait for a type you didn't define (called an "orphan rule" exception).</p>
+    </details>
+    <details style="margin:.75rem 0; cursor:pointer;">
+      <summary style="font-weight:600; color:var(--blue); padding:.5rem 0;">Q: What is monomorphisation? ▸</summary>
+      <p style="margin:.5rem 0 .5rem 1rem;">When a generic function <code>fn foo&lt;T&gt;()</code> is called with multiple concrete types, Rust generates separate compiled functions for each. Faster than virtual dispatch (no vtable lookup), but can increase binary size.</p>
+    </details>
+    <details style="margin:.75rem 0; cursor:pointer;">
+      <summary style="font-weight:600; color:var(--blue); padding:.5rem 0;">Q: String vs &amp;str? ▸</summary>
+      <p style="margin:.5rem 0 .5rem 1rem;"><code>String</code> is owned, heap-allocated, growable. <code>&amp;str</code> is a borrowed string slice — a view into some string data (often a literal or a slice of a <code>String</code>). You can't grow a <code>&amp;str</code>.</p>
+    </details>
+
+    <!-- QUIZ 5: True/False -->
+    <div class="quiz" id="q0-5">
+      <div class="quiz-label">✅ True or False</div>
+      <div class="quiz-q">Rust can compile to WebAssembly (WASM) and run in a browser.</div>
+      <div class="quiz-options tf">
+        <button data-answer="true" onclick="tf('q0-5', this, true, true)">True</button>
+        <button data-answer="true" onclick="tf('q0-5', this, false, true)">False</button>
+      </div>
+      <div class="quiz-exp" id="q0-5-exp">
+        <strong>True!</strong> Rust is a first-class WASM target. Tools like <code>wasm-pack</code> and <code>wasm-bindgen</code> let you compile Rust to WASM and call it from JavaScript. It's one of the most popular use cases for Rust.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>8. Rust vs C# &amp; JavaScript at a Glance</h2>
+    <table>
+      <thead><tr><th></th><th>C#</th><th>Rust</th></tr></thead>
+      <tbody>
+        <tr><td>Memory</td><td>GC (CLR)</td><td>Ownership (compile-time)</td></tr>
+        <tr><td>Null safety</td><td>Nullable ref types (warnings)</td><td><code>Option&lt;T&gt;</code> — null doesn't exist</td></tr>
+        <tr><td>Errors</td><td>Exceptions</td><td><code>Result&lt;T, E&gt;</code> (values)</td></tr>
+        <tr><td>Runtime</td><td>.NET CLR + JIT</td><td>None — native binary</td></tr>
+        <tr><td>OOP</td><td>Classes, inheritance</td><td>Structs + traits (no inheritance)</td></tr>
+        <tr><td>Package mgr</td><td>NuGet</td><td>Cargo / crates.io</td></tr>
+        <tr><td>Compile time</td><td>Fast</td><td>Slow (biggest complaint)</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <nav class="lesson-nav">
+    <span class="nav-center"><a href="index.html">All Lessons</a></span>
+    <a href="lesson-01.html">Lesson 1: Syntax &amp; Ownership →</a>
+  </nav>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-toml.min.js"></script>
+<script src="quiz.js"></script>
+</body>
+</html>

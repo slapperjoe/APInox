@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 11 — Traits Deep Dive | Rust for C#/JS Devs</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-one-dark.min.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a href="index.html" class="back-link">← All Lessons</a>
+  <span class="lesson-badge">Lesson 11 · ~30 min</span>
+</header>
+
+<main class="lesson">
+  <div class="lesson-hero">
+    <h1>Traits Deep Dive</h1>
+    <div class="lesson-meta">
+      <span>⏱ ~30 min</span>
+      <span>📁 <code>parsers/wsdl/types.rs</code>, <code>settings_manager.rs</code></span>
+    </div>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:0%"></div></div>
+  <p class="progress-label">0 of 5 questions answered</p>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>1. <code>Display</code> and <code>Debug</code> — Two Ways to Print</h2>
+    <table>
+      <thead><tr><th>Trait</th><th>Format</th><th>For</th><th>C# analogy</th></tr></thead>
+      <tbody>
+        <tr><td><code>Debug</code></td><td><code>{:?}</code> / <code>{:#?}</code></td><td>Developers — verbose, automatic</td><td>Debugger watch window</td></tr>
+        <tr><td><code>Display</code></td><td><code>{}</code></td><td>End users — curated output</td><td><code>ToString()</code></td></tr>
+      </tbody>
+    </table>
+
+    <pre class="language-rust"><code>// Debug — just derive it:
+#[derive(Debug)]
+struct SoapRequest {
+    endpoint: String,
+    action: String,
+}
+println!("{:?}", req);   // SoapRequest { endpoint: "...", action: "..." }
+println!("{:#?}", req);  // pretty-printed with newlines
+
+// Display — implement it yourself:
+use std::fmt;
+
+impl fmt::Display for SoapRequest {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter) -&gt; fmt::Result {
+        write!(f, "POST {} [{}]", self.endpoint, self.action)
+    }
+}
+println!("{}", req);     // POST https://... [MyAction]
+// Also enables: req.to_string(), format!("{}", req)</code></pre>
+
+    <!-- QUIZ 1 -->
+    <div class="quiz" id="q11-1">
+      <div class="quiz-label">✅ True or False</div>
+      <div class="quiz-q">Implementing <code>Display</code> for a type automatically gives it a <code>.to_string()</code> method.</div>
+      <div class="quiz-options tf">
+        <button data-answer="true" onclick="tf('q11-1', this, true, true)">True</button>
+        <button data-answer="true" onclick="tf('q11-1', this, false, true)">False</button>
+      </div>
+      <div class="quiz-exp" id="q11-1-exp">
+        <strong>True!</strong> The standard library has a blanket implementation: <em>for any type that implements Display, ToString is also implemented</em>. So <code>impl Display</code> gives you <code>.to_string()</code> for free. This is why you call <code>error.to_string()</code> on errors — errors implement <code>Display</code>.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>2. <code>From</code> and <code>Into</code> — Conversion Traits</h2>
+    <p>These are the idiomatic way to convert between types. Implement one, get the other free:</p>
+
+    <pre class="language-rust"><code">// Implement From:
+impl From&lt;String&gt; for SoapEndpoint {
+    fn from(url: String) -&gt; Self {
+        SoapEndpoint { url, timeout_ms: 30_000 }
+    }
+}
+
+// You get Into for free via a blanket impl:
+// impl&lt;T, U: From&lt;T&gt;&gt; Into&lt;U&gt; for T
+
+// Both of these now work:
+let ep = SoapEndpoint::from("https://...".to_string());
+let ep: SoapEndpoint = "https://...".to_string().into();
+
+// Very common in function signatures — accept anything convertible:
+fn connect(endpoint: impl Into&lt;SoapEndpoint&gt;) {
+    let ep = endpoint.into();  // convert at call site
+}
+connect("https://api.example.com".to_string());  // works
+connect(my_endpoint);                             // works — no-op From</code></pre>
+
+    <h3>TryFrom / TryInto — Fallible Conversions</h3>
+    <pre class="language-rust"><code">use std::convert::TryFrom;
+
+impl TryFrom&lt;&amp;str&gt; for Port {
+    type Error = String;
+    fn try_from(s: &amp;str) -&gt; Result&lt;Self, String&gt; {
+        let n: u16 = s.parse().map_err(|_| format!("Not a valid port: {}", s))?;
+        if n == 0 { return Err("Port 0 is reserved".to_string()); }
+        Ok(Port(n))
+    }
+}
+
+let p = Port::try_from("8080")?;
+let p: Port = "8080".try_into()?;  // TryInto provided automatically</code></pre>
+
+    <!-- QUIZ 2 -->
+    <div class="quiz" id="q11-2">
+      <div class="quiz-label">🔘 Multiple Choice</div>
+      <div class="quiz-q">If you implement <code>From&lt;String&gt;</code> for <code>MyType</code>, what do you get for free?</div>
+      <div class="quiz-options">
+        <button data-correct="false" onclick="mc('q11-2', this, false)">Nothing — you must also implement <code>Into</code> separately</button>
+        <button data-correct="true"  onclick="mc('q11-2', this, true)"><code>Into&lt;MyType&gt;</code> for <code>String</code> — via a blanket implementation in std</button>
+        <button data-correct="false" onclick="mc('q11-2', this, false)"><code>Display</code> for <code>MyType</code></button>
+        <button data-correct="false" onclick="mc('q11-2', this, false)"><code>Default</code> for <code>MyType</code></button>
+      </div>
+      <div class="quiz-exp" id="q11-2-exp">
+        <strong>✓ Into&lt;MyType&gt; for String!</strong> The standard library has: <code>impl&lt;T, U&gt; Into&lt;U&gt; for T where U: From&lt;T&gt;</code>. This means: "for any T, if U can be created From T, then T can be converted Into U." So implement <code>From</code>, get <code>Into</code> free. The standard advice: always implement <code>From</code>, never directly implement <code>Into</code>.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>3. <code>Default</code> — Zero-Argument Construction</h2>
+    <pre class="language-rust"><code">// Derive Default — uses Default for each field:
+#[derive(Default)]
+struct Config {
+    timeout_ms: u64,       // default: 0
+    retries: u32,          // default: 0
+    verbose: bool,         // default: false
+    name: String,          // default: ""
+    endpoint: Option&lt;String&gt;, // default: None
+}
+
+// Custom Default:
+impl Default for Config {
+    fn default() -&gt; Self {
+        Self {
+            timeout_ms: 30_000,  // 30 seconds — not zero!
+            retries: 3,
+            verbose: false,
+            name: String::new(),
+            endpoint: None,
+        }
+    }
+}
+
+// Usage:
+let config = Config::default();
+
+// Or use struct update syntax — fill in what you need, default the rest:
+let config = Config {
+    endpoint: Some("https://api.example.com".to_string()),
+    ..Config::default()   // fill in timeout, retries, etc. from default
+};</code></pre>
+
+    <!-- QUIZ 3 -->
+    <div class="quiz" id="q11-3">
+      <div class="quiz-label">✍️ Fill in the Blank</div>
+      <div class="quiz-q">Create a <code>Config</code> with a custom endpoint but default values for all other fields, using struct update syntax:</div>
+      <div class="fill-wrap">
+        let config = Config {<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;endpoint: Some("https://api.example.com".to_string()),<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<input class="fill-input" id="q11-3-in" placeholder="????" style="width:20ch"><br>
+        };
+      </div>
+      <button class="btn-check" onclick="fillCheck('q11-3', ['..Config::default()', '..Default::default()'])">Check</button>
+      <div class="quiz-exp" id="q11-3-exp">
+        <strong>..Config::default()</strong> (or <code>..Default::default()</code>) — the <code>..</code> syntax is "struct update" — fill remaining fields from this expression. It must come last. It's similar to object spread in JavaScript: <code>{ endpoint, ...defaults }</code>. The values are <em>moved</em> from the source, so this is zero-cost — no copying of the whole struct.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>4. Blanket Implementations — Traits for All Types</h2>
+    <p>A blanket implementation implements a trait for <em>all types</em> meeting some bound. The standard library does this extensively:</p>
+
+    <pre class="language-rust"><code">// From std — if you impl Display, you get ToString free:
+impl&lt;T: fmt::Display&gt; ToString for T {
+    fn to_string(&amp;self) -&gt; String {
+        format!("{}", self)
+    }
+}
+
+// From std — if U implements From&lt;T&gt;, T gets Into&lt;U&gt; free:
+impl&lt;T, U: From&lt;T&gt;&gt; Into&lt;U&gt; for T {
+    fn into(self) -&gt; U { U::from(self) }
+}
+
+// You can write your own:
+trait Summary {
+    fn summary(&amp;self) -&gt; String;
+}
+// Blanket — give all Summary types a tweet() method:
+trait Tweetable: Summary {   // Supertrait — requires Summary
+    fn tweet(&amp;self) -&gt; String {
+        format!("📢 {}", self.summary())
+    }
+}</code></pre>
+
+    <div class="callout"><strong>Supertraits</strong> — a trait can require other traits. <code>trait Tweetable: Summary</code> means: to implement <code>Tweetable</code>, you must also implement <code>Summary</code>. Like interface inheritance in C#.</div>
+
+    <!-- QUIZ 4 -->
+    <div class="quiz" id="q11-4">
+      <div class="quiz-label">🔗 Match It</div>
+      <div class="quiz-q">Match each standard library trait to what it enables:</div>
+      <div class="match-grid">
+        <div class="match-col">
+          <button class="match-item" data-id="a" onclick="matchClick('q11-4', 'a', 'left', this)"><code>Clone</code></button>
+          <button class="match-item" data-id="b" onclick="matchClick('q11-4', 'b', 'left', this)"><code>PartialEq</code></button>
+          <button class="match-item" data-id="c" onclick="matchClick('q11-4', 'c', 'left', this)"><code>Hash</code></button>
+          <button class="match-item" data-id="d" onclick="matchClick('q11-4', 'd', 'left', this)"><code>PartialOrd</code></button>
+        </div>
+        <div class="match-col">
+          <button class="match-item" data-id="b" onclick="matchClick('q11-4', 'b', 'right', this)">Use <code>==</code> and <code>!=</code></button>
+          <button class="match-item" data-id="d" onclick="matchClick('q11-4', 'd', 'right', this)">Use <code>&lt;</code>, <code>&gt;</code>, <code>.sort()</code></button>
+          <button class="match-item" data-id="a" onclick="matchClick('q11-4', 'a', 'right', this)">Call <code>.clone()</code></button>
+          <button class="match-item" data-id="c" onclick="matchClick('q11-4', 'c', 'right', this)">Use as <code>HashMap</code> key</button>
+        </div>
+      </div>
+      <div class="quiz-exp" id="q11-4-exp">
+        <strong>All matched!</strong><br>
+        • <code>Clone</code> → <code>.clone()</code> — explicit deep copy<br>
+        • <code>PartialEq</code> → <code>==</code> and <code>!=</code> operators<br>
+        • <code>Hash</code> → use as HashMap or HashSet key (requires <code>PartialEq</code> too)<br>
+        • <code>PartialOrd</code> → comparison operators, <code>.sort()</code>
+      </div>
+    </div>
+
+    <!-- QUIZ 5 -->
+    <div class="quiz" id="q11-5">
+      <div class="quiz-label">🤔 Predict the Output</div>
+      <div class="quiz-q">Will this compile? If so, what prints?</div>
+      <pre class="language-rust"><code>#[derive(Debug, Clone, PartialEq)]
+struct Point { x: i32, y: i32 }
+
+let p1 = Point { x: 1, y: 2 };
+let p2 = p1.clone();
+println!("{}", p1 == p2);
+println!("{:?}", p1);</code></pre>
+      <button class="btn-reveal" onclick="reveal('q11-5')">Reveal Answer</button>
+      <div class="quiz-exp" id="q11-5-exp">
+        <strong>Yes, it compiles!</strong> Output:<br>
+        <code>true</code><br>
+        <code>Point { x: 1, y: 2 }</code><br><br>
+        <code>#[derive(Clone)]</code> gives <code>.clone()</code>. <code>#[derive(PartialEq)]</code> gives <code>==</code> (compares field by field). <code>#[derive(Debug)]</code> gives <code>{:?}</code> formatting. All three are generated at compile time — no runtime overhead compared to hand-writing them.
+      </div>
+    </div>
+  </section>
+
+  <nav class="lesson-nav">
+    <a href="lesson-10.html">← Lesson 10: Closures &amp; Iterators</a>
+    <a href="index.html" class="nav-center">All Lessons</a>
+    <a href="lesson-12.html">Lesson 12: Lifetimes →</a>
+  </nav>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+<script src="quiz.js"></script>
+</body>
+</html>

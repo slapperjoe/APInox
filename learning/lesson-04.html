@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 4 — Error Handling | Rust for C#/JS Devs</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-one-dark.min.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a href="index.html" class="back-link">← All Lessons</a>
+  <span class="lesson-badge">Lesson 4 · ~25 min</span>
+</header>
+
+<main class="lesson">
+  <div class="lesson-hero">
+    <h1>Error Handling</h1>
+    <div class="lesson-meta">
+      <span>⏱ ~25 min</span>
+      <span>📁 <code>project_storage.rs</code>, <code>secret_storage.rs</code>, <code>soap/client.rs</code></span>
+    </div>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:0%"></div></div>
+  <p class="progress-label">0 of 5 questions answered</p>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>1. Rust Has No Exceptions</h2>
+    <p>In C# and JavaScript, errors propagate via thrown exceptions caught with <code>try/catch</code>. Rust has <strong>no exceptions</strong>. Functions that can fail return a <code>Result&lt;T, E&gt;</code> value instead. The compiler forces you to handle it.</p>
+
+    <table>
+      <thead><tr><th>C#</th><th>Rust</th></tr></thead>
+      <tbody>
+        <tr><td><code>throw new Exception("Failed")</code></td><td><code>return Err("Failed".to_string())</code></td></tr>
+        <tr><td><code>try { } catch (Exception e) { }</code></td><td><code>match result { Ok(v) =&gt; ..., Err(e) =&gt; ... }</code></td></tr>
+        <tr><td>Function might throw — no type indication</td><td>Function returns <code>Result&lt;T,E&gt;</code> — always explicit</td></tr>
+      </tbody>
+    </table>
+
+    <pre class="language-rust"><code>// Result is just this enum:
+enum Result&lt;T, E&gt; {
+    Ok(T),    // success — contains the value
+    Err(E),   // failure — contains the error
+}
+
+// A function that can fail:
+pub async fn save_project(project: serde_json::Value, dir_path: String)
+    -&gt; Result&lt;(), String&gt;
+//            ↑   ↑
+//  success: ()   error: String message
+</code></pre>
+
+    <!-- QUIZ 1: True/False -->
+    <div class="quiz" id="q4-1">
+      <div class="quiz-label">✅ True or False</div>
+      <div class="quiz-q">In Rust, a function can silently throw an exception that the caller doesn't know about.</div>
+      <div class="quiz-options tf">
+        <button data-answer="false" onclick="tf('q4-1', this, true, false)">True</button>
+        <button data-answer="false" onclick="tf('q4-1', this, false, false)">False</button>
+      </div>
+      <div class="quiz-exp" id="q4-1-exp">
+        <strong>False!</strong> Rust has no exceptions. If a function can fail, it <em>must</em> return <code>Result&lt;T, E&gt;</code> — that failure possibility is part of the function's type signature. The caller always knows a function can fail because the return type says so.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>2. The <code>?</code> Operator — Early Return on Error</h2>
+    <p>Writing <code>match</code> for every error gets verbose fast. The <code>?</code> operator is shorthand for "if this failed, return the error immediately":</p>
+
+    <pre class="language-rust"><code>// Verbose — using match explicitly:
+let dir_result = fs::create_dir_all(&amp;dir);
+match dir_result {
+    Ok(()) =&gt; { /* continue */ },
+    Err(e) =&gt; return Err(format!("Failed to create dir: {}", e)),
+}
+
+// Same thing with ? — much cleaner:
+fs::create_dir_all(&amp;dir)
+    .map_err(|e| format!("Failed to create dir: {}", e))?;
+//                                                      ↑ if Err, return early</code></pre>
+
+    <p>From <code>project_storage.rs</code> — notice how <code>?</code> chains through the whole function:</p>
+    <pre class="language-rust"><code>pub async fn save_project(project: serde_json::Value, dir_path: String)
+    -&gt; Result&lt;(), String&gt;
+{
+    let dir = PathBuf::from(&amp;dir_path);
+
+    fs::create_dir_all(&amp;dir)
+        .map_err(|e| format!("Failed to create directory: {}", e))?;
+
+    let props_json = serde_json::to_string_pretty(&amp;props)
+        .map_err(|e| format!("Failed to serialize: {}", e))?;
+
+    fs::write(&amp;props_path, props_json)
+        .map_err(|e| format!("Failed to write: {}", e))?;
+
+    Ok(())   // ← explicit success return
+}</code></pre>
+
+    <!-- QUIZ 2: Fill in the blank -->
+    <div class="quiz" id="q4-2">
+      <div class="quiz-label">✍️ Fill in the Blank</div>
+      <div class="quiz-q">Add the operator that propagates the error if <code>read_file()</code> fails:</div>
+      <div class="fill-wrap">
+        let contents = fs::read_to_string(&amp;path)<input class="fill-input" id="q4-2-in" placeholder="?" style="width:3ch">;
+      </div>
+      <button class="btn-check" onclick="fillCheck('q4-2', '?')">Check</button>
+      <div class="quiz-exp" id="q4-2-exp">
+        <strong>?</strong> — <code>fs::read_to_string(&amp;path)?</code>. If the read fails (<code>Err</code>), the <code>?</code> immediately returns that error from the current function. If it succeeds (<code>Ok</code>), it unwraps the value and assigns it to <code>contents</code>. The function must return <code>Result</code> for this to work.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>3. <code>map_err</code> — Converting Error Types</h2>
+    <p><code>?</code> requires compatible error types. <code>map_err</code> transforms one error type into another:</p>
+
+    <pre class="language-rust"><code>// fs::create_dir_all returns Result&lt;(), std::io::Error&gt;
+// But our function returns    Result&lt;(), String&gt;
+// map_err bridges the gap:
+fs::create_dir_all(&amp;dir)
+    .map_err(|e| format!("Failed: {}", e))?;
+//  ^-- io::Error → String                ↑ then propagate</code></pre>
+
+    <div class="callout"><strong>C# analogy:</strong> It's like catching a specific exception and re-throwing a different one — except it's all done as a method chain with no try/catch syntax.</div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>4. <code>anyhow</code> — Flexible Error Handling</h2>
+    <p>The soap client uses the <code>anyhow</code> crate for a more flexible error type:</p>
+
+    <pre class="language-rust"><code>use anyhow::{Result, anyhow};
+
+// anyhow::Result&lt;T&gt; = Result&lt;T, anyhow::Error&gt;
+// anyhow::Error can wrap ANY error type
+pub async fn execute(&amp;self, ...) -&gt; Result&lt;SoapResponse&gt; {
+
+    let endpoint = endpoint_override
+        .or_else(|| operation.original_endpoint.clone())
+        .ok_or_else(|| anyhow!("No endpoint specified for operation"))?;
+    //                  ↑ creates an anyhow::Error from a string message
+}</code></pre>
+
+    <table>
+      <thead><tr><th>Use</th><th>When</th></tr></thead>
+      <tbody>
+        <tr><td><code>anyhow::Result&lt;T&gt;</code></td><td>Application code, "just make it work", Tauri commands</td></tr>
+        <tr><td><code>Result&lt;T, String&gt;</code></td><td>Simple cases, Tauri commands (String serializes to JS)</td></tr>
+        <tr><td><code>thiserror</code></td><td>Library code with typed, matchable error variants</td></tr>
+      </tbody>
+    </table>
+
+    <!-- QUIZ 3: Spot the bug -->
+    <div class="quiz" id="q4-3">
+      <div class="quiz-label">🐛 Spot the Bug</div>
+      <div class="quiz-q">This code compiles but will crash at runtime. Click the dangerous line:</div>
+      <div class="bug-pre">
+        <span class="bug-line" onclick="bugLine('q4-3', this, false)">fn get_first_user(users: &amp;Vec&lt;String&gt;) -&gt; String {</span>
+        <span class="bug-line" onclick="bugLine('q4-3', this, true)">    users.first().unwrap().clone()</span>
+        <span class="bug-line" onclick="bugLine('q4-3', this, false)">}</span>
+      </div>
+      <div class="quiz-exp" id="q4-3-exp">
+        <strong>Line 2!</strong> <code>.first()</code> returns <code>Option&lt;&amp;String&gt;</code> — it's <code>None</code> if the vec is empty. <code>.unwrap()</code> on <code>None</code> <em>panics</em> (crashes the program). Safer alternatives:<br>
+        <code>users.first().cloned().unwrap_or_default()</code> — returns empty string if empty<br>
+        <code>users.first().map(|s| s.clone()).ok_or("No users")?</code> — propagate as error
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>5. Option Methods — Chaining Without Unwrapping</h2>
+    <p>You'll see Option chains like this in <code>secret_storage.rs</code>:</p>
+
+    <pre class="language-rust"><code>let config_dir = std::env::var("APINOX_CONFIG_DIR")
+    .ok()                        // Result → Option (discard error kind)
+    .and_then(|dir|              // transform if Some, propagate None
+        if dir.trim().is_empty() { None }
+        else { Some(PathBuf::from(dir)) }
+    )
+    .or_else(|| {               // fallback if still None
+        let home = std::env::var("HOME").ok()?;
+        Some(PathBuf::from(home).join(".apinox"))
+    })
+    .ok_or("Could not determine config directory")?; // Option → Result</code></pre>
+
+    <table>
+      <thead><tr><th>Method</th><th>What it does</th><th>C# equivalent</th></tr></thead>
+      <tbody>
+        <tr><td><code>.unwrap()</code></td><td>Get value, panic if None</td><td><code>.Value</code> on null → NullRef</td></tr>
+        <tr><td><code>.unwrap_or(def)</code></td><td>Get value, or use default</td><td><code>?? default</code></td></tr>
+        <tr><td><code>.map(|v| ...)</code></td><td>Transform the Some value</td><td><code>.Select(v =&gt; ...)</code></td></tr>
+        <tr><td><code>.and_then(|v| ...)</code></td><td>Chain Option-returning operation</td><td><code>.SelectMany()</code></td></tr>
+        <tr><td><code>.or_else(|| ...)</code></td><td>Try fallback if None</td><td><code>?? fallback()</code></td></tr>
+        <tr><td><code>.ok_or(err)</code></td><td>Convert Option to Result</td><td><code>?? throw new Exception(err)</code></td></tr>
+      </tbody>
+    </table>
+
+    <!-- QUIZ 4: Multiple choice -->
+    <div class="quiz" id="q4-4">
+      <div class="quiz-label">🔘 Multiple Choice</div>
+      <div class="quiz-q">What does <code>.ok_or("error message")</code> do when called on an <code>Option&lt;T&gt;</code>?</div>
+      <div class="quiz-options">
+        <button data-correct="false" onclick="mc('q4-4', this, false)">Panics with the message if the Option is None</button>
+        <button data-correct="true"  onclick="mc('q4-4', this, true)">Converts <code>Some(v)</code> → <code>Ok(v)</code> and <code>None</code> → <code>Err("error message")</code></button>
+        <button data-correct="false" onclick="mc('q4-4', this, false)">Logs the error message and returns None</button>
+        <button data-correct="false" onclick="mc('q4-4', this, false)">Returns the String message regardless</button>
+      </div>
+      <div class="quiz-exp" id="q4-4-exp">
+        <strong>✓ Converts Option to Result!</strong> This is the bridge between the two types. <code>Some(v) → Ok(v)</code>, <code>None → Err(your_message)</code>. Combined with <code>?</code>, it lets you write: <code>maybe_value.ok_or("Was missing")?</code> — which reads as "give me the value or return early with this error."
+      </div>
+    </div>
+
+    <!-- QUIZ 5: True/False -->
+    <div class="quiz" id="q4-5">
+      <div class="quiz-label">✅ True or False</div>
+      <div class="quiz-q">The <code>?</code> operator can only be used in functions that return <code>Result&lt;T, E&gt;</code>.</div>
+      <div class="quiz-options tf">
+        <button data-answer="false" onclick="tf('q4-5', this, true, false)">True</button>
+        <button data-answer="false" onclick="tf('q4-5', this, false, false)">False</button>
+      </div>
+      <div class="quiz-exp" id="q4-5-exp">
+        <strong>False — almost!</strong> <code>?</code> works in functions returning <em>either</em> <code>Result&lt;T, E&gt;</code> <em>or</em> <code>Option&lt;T&gt;</code>. When used in an <code>Option</code>-returning function, <code>?</code> on a <code>None</code> returns <code>None</code> from the function. This is great for short-circuiting optional value chains without a ton of <code>if let</code> nesting.
+      </div>
+    </div>
+  </section>
+
+  <nav class="lesson-nav">
+    <a href="lesson-03.html">← Lesson 3: impl &amp; Traits</a>
+    <a href="index.html" class="nav-center">All Lessons</a>
+    <a href="lesson-05.html">Lesson 5: Async &amp; Tauri →</a>
+  </nav>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-csharp.min.js"></script>
+<script src="quiz.js"></script>
+</body>
+</html>
