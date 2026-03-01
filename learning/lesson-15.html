@@ -30,6 +30,8 @@
     Serde (Serialise/Deserialise) is the de-facto standard for JSON in Rust. APInox uses it extensively — the Tauri command bridge relies on it entirely for passing data between Rust and JavaScript.
   </div>
 
+  <div class="callout-xml">XML was designed in 1996 to be a "simple" data format. It now has: namespaces, schema (XSD), validation (Schematron), transformation (XSLT), querying (XPath), querying with updates (XQuery), signatures (XML-DSig), encryption (XML-Enc), and a 900-page specification. SOAP adds a mandatory envelope, a body, optional headers, and a WSDL that may or may not agree with the actual service. APInox exists because someone had to interact with all of this in 2024. They wept. Then they wrote a GUI for it.</div>
+
   <!-- ================================================ -->
   <section>
     <h2>1. The Basics — <code>derive</code> Macros</h2>
@@ -146,6 +148,8 @@ pub struct ServiceOperation {
         <strong>rename_all = "camelCase"</strong> — applied at the struct level, it converts snake_case Rust field names to camelCase for JSON. Options include: <code>"camelCase"</code>, <code>"PascalCase"</code>, <code>"snake_case"</code>, <code>"SCREAMING_SNAKE_CASE"</code>, <code>"kebab-case"</code>. APInox uses <code>camelCase</code> on <code>ServiceOperation</code> so its JSON matches JavaScript naming conventions.
       </div>
     </div>
+
+  <div class="callout-sap">SAP's data interchange format is IDoc — Intermediate Document. It's fixed-width, segment-based, and dates to the early 1990s. Each IDoc type has segments, each segment has fields, each field is padded to a fixed length. The <code>MATNR</code> field (material number) is 18 characters, left-padded with zeros. You will spend an entire day writing a parser for the leading zeros. Then you'll find the SAP BAPI that does it wrong anyway. There's also ALE, EDI, IDEX, and XI/PI/PO — all different ways to say "we're sending you an IDoc". Sorry.</div>
   </section>
 
   <!-- ================================================ -->
@@ -236,6 +240,8 @@ let payload = json!({
         <strong>Line 2!</strong> <code>std::sync::Mutex</code> doesn't implement <code>Serialize</code>, so <code>#[derive(Serialize)]</code> fails on a struct containing it. Serde can only serialise types that implement <code>Serialize</code>. The fix: don't put a <code>Mutex</code> in a data structure you want to serialise. Serialise the inner value: <code>let data: Vec&lt;String&gt; = mutex_vec.iter().map(|m| m.lock().unwrap().clone()).collect();</code>
       </div>
     </div>
+
+  <div class="callout-oracle">Oracle's approach to data serialisation: if it's going to another Oracle system, use database links. If it's going somewhere else, generate XML via <code>DBMS_XMLGEN</code>, wrap it in a SOAP envelope using <code>UTL_HTTP</code>, and POST it manually from PL/SQL. The HTTP client in PL/SQL (<code>UTL_HTTP</code>) requires a wallet for HTTPS. The wallet setup involves a 14-step OSS document, an OWM binary, and a call to your DBA who is on holiday.</div>
   </section>
 
   <!-- ================================================ -->
@@ -295,6 +301,8 @@ pub struct WorkflowStep {
       </div>
     </div>
   </section>
+
+  <div class="callout-xml">Serde handles JSON beautifully. XML is where things get philosophical. SOAP XML has: an envelope, a body, optional headers, namespaces that may or may not match the WSDL, elements that appear in the schema as optional but the server requires, and a Content-Type of <code>text/xml</code> (SOAP 1.1) or <code>application/soap+xml</code> (SOAP 1.2) which the server may or may not enforce. The XSD says the date format is ISO 8601. The server sends <code>DD/MM/YYYY</code>. The XSD is wrong. This is normal.</div>
 
   <nav class="lesson-nav">
     <a href="lesson-14.html">← Lesson 14: Concurrency</a>

@@ -58,6 +58,41 @@
   <section>
     <h2>2. invoke() — Calling Rust from TypeScript</h2>
 
+    <div class="diagram">
+<svg viewBox="0 0 700 170" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif" font-size="13">
+  <rect width="700" height="170" fill="#1e1e2e" rx="8"/>
+  <defs>
+    <marker id="a5" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#60a5fa"/></marker>
+    <marker id="a5b" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#f59e0b"/></marker>
+  </defs>
+  <!-- Webview -->
+  <rect x="20" y="20" width="180" height="130" rx="8" fill="#1a6ebd" opacity="0.7"/>
+  <text x="110" y="45" text-anchor="middle" fill="#fff" font-weight="bold">Webview</text>
+  <text x="110" y="63" text-anchor="middle" fill="#bfdbfe" font-size="11">TypeScript / React</text>
+  <rect x="35" y="75" width="150" height="30" rx="4" fill="#fff" opacity="0.15"/>
+  <text x="110" y="95" text-anchor="middle" fill="#fff" font-size="11">await invoke('cmd')</text>
+  <rect x="35" y="115" width="150" height="24" rx="4" fill="#fff" opacity="0.15"/>
+  <text x="110" y="131" text-anchor="middle" fill="#fff" font-size="11">listen('event', cb)</text>
+  <!-- Rust -->
+  <rect x="500" y="20" width="180" height="130" rx="8" fill="#7c3aed" opacity="0.7"/>
+  <text x="590" y="45" text-anchor="middle" fill="#fff" font-weight="bold">Rust Backend</text>
+  <text x="590" y="63" text-anchor="middle" fill="#ddd6fe" font-size="11">#[tauri::command]</text>
+  <rect x="515" y="75" width="150" height="30" rx="4" fill="#fff" opacity="0.15"/>
+  <text x="590" y="95" text-anchor="middle" fill="#ddd6fe" font-size="11">pub async fn cmd()</text>
+  <rect x="515" y="115" width="150" height="24" rx="4" fill="#fff" opacity="0.15"/>
+  <text x="590" y="131" text-anchor="middle" fill="#ddd6fe" font-size="11">app.emit("event", data)</text>
+  <!-- invoke arrow (request/response) -->
+  <line x1="200" y1="90" x2="498" y2="90" stroke="#60a5fa" stroke-width="2" marker-end="url(#a5)"/>
+  <text x="350" y="83" text-anchor="middle" fill="#60a5fa" font-size="11">invoke() request ──→</text>
+  <line x1="498" y1="100" x2="200" y2="100" stroke="#60a5fa" stroke-width="2" marker-end="url(#a5)"/>
+  <text x="350" y="115" text-anchor="middle" fill="#60a5fa" font-size="11">←── JSON response</text>
+  <!-- event arrow (one-way push) -->
+  <line x1="513" y1="127" x2="202" y2="127" stroke="#f59e0b" stroke-width="2" marker-end="url(#a5b)"/>
+  <text x="350" y="145" text-anchor="middle" fill="#f59e0b" font-size="11">←── emit() push (anytime, no request needed)</text>
+</svg>
+<div class="diagram-caption">invoke() is request/response (like HTTP); emit/listen is one-way push from Rust to the webview</div>
+</div>
+
     <pre class="language-typescript"><code>// webview/src/utils/bridge.ts — APInox's real invoke wrapper:
 import { invoke } from '@tauri-apps/api/core';
 
@@ -168,6 +203,8 @@ await listen('operation-complete', (event) =&gt; {
 // Trigger the operation
 await invoke('start_long_operation', { params: { ... } });</code></pre>
 
+    <div class="callout-salesforce">Salesforce Platform Events are Salesforce's answer to real-time IPC. Publish an event from Apex, subscribe in LWC with <code>@wire</code>. Clean concept. Except: 250,000 event deliveries per day (org-wide limit), no guaranteed ordering, 24-hour retention, and if your subscriber LWC is on a page the user navigated away from, you missed it. Enterprise workaround: poll every 5 seconds from a Schedulable Apex job that writes to a custom object. This is called 'CDC'.</div>
+
     <!-- QUIZ 2 -->
     <div class="quiz" id="q19-2">
       <div class="quiz-label">✅ True or False</div>
@@ -181,6 +218,8 @@ await invoke('start_long_operation', { params: { ... } });</code></pre>
       </div>
     </div>
   </section>
+
+  <div class="callout-arch">Show this event-driven IPC to an architect and they'll ask if you've considered replacing it with an Enterprise Service Bus. 'We use MuleSoft at the enterprise level — can this connect to MuleSoft?' You are writing a desktop tool for one developer. MuleSoft's cheapest tier is $50,000/year. The architect has already sent a calendar invite for a 'MuleSoft Integration Discovery Session'.</div>
 
   <!-- ================================================ -->
   <section>
@@ -268,6 +307,8 @@ pub fn open_project_from_args(
       </div>
     </div>
   </section>
+
+  <div class="callout-oracle">Oracle ADF's event model: ActionEvent, ValueChangeEvent, LaunchEvent, ReturnEvent, PollEvent, ServerListener. Each has its own handler method signature. Each goes through the JSF lifecycle. A page roundtrip for a dropdown change takes 400ms because it re-renders the entire binding container. Partial Page Rendering (<code>partialTriggers</code>) helps. Setting it up correctly requires reading the ADF Developer's Guide (1,400 pages). Chapter 47.</div>
 
   <!-- ================================================ -->
   <section>

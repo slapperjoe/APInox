@@ -69,6 +69,8 @@ pub use commands::execute_soap_request;</code></pre>
         <strong>False!</strong> Rust's module system is <em>explicit</em>. You must declare <code>mod database;</code> in <code>lib.rs</code> (or the parent module) for the file to be compiled. Files that aren't declared are completely ignored by the compiler. This is intentional — it prevents accidental inclusion of abandoned files and makes the module tree visible in one place.
       </div>
     </div>
+
+  <div class="callout-npm">NPM modules: you add <code>left-pad</code> (1 function, 11 lines). It gets unpublished. Half the internet breaks. You add it back. Now your project has a transitive dependency chain 847 packages deep for a feature that's one line of <code>str.padStart()</code>. The <code>node_modules</code> folder is 340MB. Rust crates have <code>cargo audit</code>. npm has <code>npm audit --production</code> which returns 47 HIGH severity issues from packages you've never heard of.</div>
   </section>
 
   <!-- ================================================ -->
@@ -153,6 +155,10 @@ use crate::settings_manager;    // from the crate root</code></pre>
         <strong>HashMap, HashSet</strong> (order doesn't matter) — the <code>{ }</code> syntax lets you import multiple items from one path. This is called a "use tree" and you can nest them: <code>use std::{collections::HashMap, path::PathBuf, fs};</code> — all from one <code>use</code> statement.
       </div>
     </div>
+
+  <div class="callout-ai">Ask ChatGPT to write a Rust iterator chain. It will write something plausible. It will compile 40% of the time. The other 60%, it will use <code>.iter()</code> when it needs <code>.into_iter()</code>, borrow when it should move, and add a lifetime annotation that's syntactically valid but semantically nonsense. Then it will confidently explain why the code is correct. The explanation will also be wrong.</div>
+
+  <div class="callout-agile">The iterator refactor was estimated at 2 points. It touched 8 files. The PR had 340 lines changed. It broke two tests that were testing the wrong thing. Fixing the tests added another day. The PM asked why a '2-pointer took a week'. The Scrum Master added 'improve estimation accuracy' to the retro board. It joined the 14 other 'improve estimation accuracy' stickies from previous retros.</div>
   </section>
 
   <!-- ================================================ -->
@@ -197,6 +203,8 @@ use super::client::SoapClient;  // go up to soap/, then into client</code></pre>
         <strong>Line 2!</strong> <code>load_from_disk</code> has no <code>pub</code> — it's private to <code>project_storage</code>. Even though it's accessible within that module, no other module can import it. Fix: add <code>pub fn</code> if it's meant to be shared, or <code>pub(crate) fn</code> to limit it to this crate. Private functions are a form of encapsulation — they protect internal implementation details.
       </div>
     </div>
+
+  <div class="callout-arch">An architect reviewing your module structure will suggest splitting each module into its own microservice "for independent deployability". You will point out these are compile-time modules sharing memory. They will ask if you can add an API gateway anyway. The meeting will last 2 hours. Nothing will be decided. A follow-up meeting will be scheduled.</div>
   </section>
 
   <!-- ================================================ -->
@@ -239,6 +247,8 @@ mod tests {
         <strong>It imports everything from the parent module</strong> — all functions, structs, and types defined in the file that contains the test module. Since the test module is a child of the file's module, <code>super</code> refers to that parent. This gives tests access to <em>private</em> functions (not just <code>pub</code> ones) — because parent-child module relationships allow access to private items. It's intentional: tests should be able to test internals.
       </div>
     </div>
+
+  <div class="callout-salesforce">Apex doesn't have first-class functions. There are no lambdas. "Iterating with a callback" means: create an Interface, create a class that implements it, pass the class instance, call the method. For a map operation. This is why every Apex codebase has a <code>CollectionUtils</code> class with 400 lines of for-loops that should be three iterator chains.</div>
   </section>
 
   <nav class="lesson-nav">

@@ -74,6 +74,8 @@ match (x, y) {
     (0, y) => println!("on y-axis at {y}"),
     (x, y) => println!("at ({x}, {y})"),
 }</code></pre>
+
+  <div class="callout-java">Java's equivalent: <code>ArrayList&lt;T&gt;</code> when you want a list, <code>LinkedList&lt;T&gt;</code> when you've read a blog post, <code>Vector&lt;T&gt;</code> when you're maintaining code from 2001, <code>CopyOnWriteArrayList&lt;T&gt;</code> when you've been burned by concurrency, and <code>Collections.unmodifiableList()</code> when you want immutability but you're using Java. In Rust: <code>Vec&lt;T&gt;</code>. Done.</div>
   </section>
 
   <!-- ================================================ -->
@@ -107,6 +109,8 @@ match point {
         <strong>if max_ms &gt; 0</strong> — guards are written as <code>if condition</code> after the pattern: <code>AssertionType::ResponseTime { max_ms } if max_ms &gt; 0 =&gt; { ... }</code>. If the guard is false, the match continues to the next arm. If no arm matches, the compiler will remind you to add a catch-all.
       </div>
     </div>
+
+  <div class="callout-sap">SAP's equivalent of a HashMap is a HASHED TABLE — an internal table type in ABAP with a hash key. You declare it with <code>TYPE HASHED TABLE OF ty_record WITH UNIQUE KEY field1</code>. It's fine. But you'll spend 45 minutes in the ABAP documentation discovering it exists, because the default you've been using for 5 years is a STANDARD TABLE with an O(n) linear scan. Your SAP report has been doing O(n²) lookups since 2009.</div>
   </section>
 
   <!-- ================================================ -->
@@ -195,6 +199,8 @@ while let Ok(update) = rx.try_recv() {
         It's essentially a <code>match</code> with one pattern arm and an implicit <code>_ =&gt; {}</code>.
       </div>
     </div>
+
+  <div class="callout-agile">The story for "implement efficient data lookups" was estimated at 3 points. An architect reviewed the PR and suggested the HashMap should be externalized to Redis "for scalability". That's now a separate epic. The 3-pointer has been in the backlog for two sprints. The O(n²) loop is in production.</div>
   </section>
 
   <!-- ================================================ -->

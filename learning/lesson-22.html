@@ -56,6 +56,8 @@ npx tauri build
 }</code></pre>
   </section>
 
+  <div class="callout-arch">After seeing the 3MB Tauri installer, an architect will ask: 'Should we containerize this? The enterprise standard is Docker.' You will explain it's a desktop application. They will ask if it could be a web app instead. You will explain users need local file access. They will ask if files should be in S3. You will schedule a follow-up. The installer is still 3MB. Their laptop needs 15GB of Docker Desktop to run a container that also doesn't need to exist.</div>
+
   <!-- ================================================ -->
   <section>
     <h2>2. Bundle Targets — APInox's Config</h2>
@@ -110,6 +112,10 @@ npx tauri build
       </div>
     </div>
   </section>
+
+  <div class="callout-agile">The release sprint: 2 weeks of 'we don't add features, we just stabilise'. Day 1: bug fixes. Day 3: PM adds 'just one small thing'. Day 5: small thing breaks something else. Day 8: emergency fix. Day 10: someone finds a regression. Day 14: 'we need another stabilisation sprint'. The release burns down to -12 points. The velocity chart is shown to stakeholders as 'team capacity planning data'.</div>
+
+  <div class="callout-pm">The PM asked if the installer could be available as a web app 'so users don't have to install anything'. You explain the app needs local filesystem access. They ask if that could be done in the browser. You explain sandboxing. They ask if users could just 'upload their files to a server'. You explain that defeats the purpose. They ask if we could 'do both'. The desktop installer is 3MB and takes 20 seconds to install. The web version is now on the Q4 roadmap.</div>
 
   <!-- ================================================ -->
   <section>
@@ -224,6 +230,8 @@ jobs:
       </div>
     </div>
   </section>
+
+  <div class="callout-oracle">Oracle WebLogic deployment: package your app as an EAR file (ZIP of WARs of JARs), upload via the WebLogic console, undeploy the old version (4 minutes), deploy the new one (4 minutes), restart if you changed a shared library (12 minutes), discover you needed to restart anyway (restart: 12 minutes). A config change requires a redeploy. A property file change requires a redeploy. Breathing near the server may require a redeploy. This is 'enterprise application server architecture'.</div>
 
   <!-- ================================================ -->
   <section>
@@ -342,6 +350,8 @@ npm run prepare:sidecar   # pkg bundles into apinox-sidecar binary
       </div>
     </div>
   </section>
+
+  <div class="callout-maui">Distributing a MAUI enterprise app: you need a Mac to build for iOS (no exceptions), a Windows machine for WinUI, Android works on both. The enterprise MDM team needs the app signed with a certificate that expires annually and requires manual renewal from a developer account paid by a credit card that belongs to someone who left. Mac App Store distribution requires notarisation, sandboxing, and an Apple Developer Enterprise Program account at $299/year. The Linux version doesn't exist. It was on the roadmap. It's been 'coming soon' since 2022.</div>
 
   <!-- ================================================ -->
   <section>

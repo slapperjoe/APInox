@@ -51,6 +51,8 @@ fn first_word(s: &amp;str) -&gt; &amp;str {
 }</code></pre>
 
     <div class="callout"><strong>The rule:</strong> A reference can't outlive the data it points to. Lifetimes are how the compiler tracks this.</div>
+
+  <div class="callout-arch">An architect will look at <code>Box&lt;T&gt;</code> and ask if this is the Repository Pattern. It is not. They will then ask if we should wrap it in a factory. You will explain it's a heap allocation. They will ask if the heap should be its own service. You will go home.</div>
   </section>
 
   <!-- ================================================ -->
@@ -133,6 +135,8 @@ let result;
         <strong>✓ The shorter lifetime!</strong> <code>'a</code> is substituted with the overlap — the shorter of the two actual lifetimes. The returned reference is only valid while <em>both</em> inputs are still alive. Lifetimes are purely a compile-time concept — they have zero runtime cost. They generate no code; they're just annotations that let the compiler check safety.
       </div>
     </div>
+
+  <div class="callout-maui">MAUI's memory story: everything is managed by the .NET GC, which works beautifully until you have a <code>CollectionView</code> binding to an <code>ObservableCollection</code> on a page that isn't fully disposed because the navigation stack held a reference. Memory climbs. The GC eventually collects. In the meantime your enterprise iPad app has been killed by iOS for using too much memory. The GitHub issue has 847 thumbs-up and is labelled "help wanted".</div>
   </section>
 
   <!-- ================================================ -->
@@ -162,6 +166,8 @@ let parser = XmlParser::new(&amp;xml);
 let tag = parser.parse_tag();  // valid while xml exists</code></pre>
 
     <div class="callout"><strong>APInox avoids this</strong> by using owned <code>String</code> fields instead of <code>&amp;str</code>. Most application code makes the same choice — lifetime-annotated structs are more common in high-performance library code (parsers, lexers) where you want to avoid copying large strings.</div>
+
+  <div class="callout-java">Java developers: <code>synchronized</code>. Also <code>ReentrantLock</code>. Also <code>ReadWriteLock</code>. Also <code>StampedLock</code> (Java 8, "better performance"). Also <code>volatile</code>. Also <code>AtomicReference</code>. Also <code>ConcurrentHashMap</code>. Choose wrong: data corruption. Choose right: you still chose wrong but it works by accident. The Stack Overflow answer for "when to use which" has 47 upvotes and ends with "it depends".</div>
 
     <!-- QUIZ 3 -->
     <div class="quiz" id="q12-3">
@@ -227,6 +233,8 @@ fn register_handler(handler: Box&lt;dyn Fn() + 'static&gt;) {
         <strong>Line 3!</strong> <code>greeting</code> is a local <code>String</code> that gets dropped when the function returns. Returning <code>&amp;greeting</code> would be a dangling reference — pointing to freed memory. The fix: return the owned <code>String</code> instead: <code>fn get_greeting() -&gt; String { String::from("Hello!") }</code>. Or use a string literal: <code>fn get_greeting() -&gt; &amp;'static str { "Hello!" }</code> — string literals live forever.
       </div>
     </div>
+
+    <div class="callout-sec">Rust's <code>Box&lt;T&gt;</code>, <code>Rc&lt;T&gt;</code>, and <code>Arc&lt;T&gt;</code> give you explicit, auditable control over allocation and sharing. No dangling pointers. No use-after-free. The enterprise security team's reaction to this: require that all pointers be documented in the Security Design Document, reviewed by the Architecture Board, and approved before implementation. The Security Design Document template is 22 pages. The pointer is 1 line of code.</div>
   </section>
 
   <nav class="lesson-nav">

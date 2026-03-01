@@ -82,6 +82,8 @@ tauri-plugin-store = "2"</code></pre>
     </div>
   </section>
 
+  <div class="callout-sap">SAP Fiori's 'native' capabilities: it runs in a browser. Want camera access? The Fiori Client app (a wrapped browser, basically Cordova). Want file access? The Fiori Client with the File plugin. Want push notifications? The Fiori Client with the FCM plugin. Is the Fiori Client installed on your user's device? No. Does your BASIS team know how to distribute it? Also no. SAP's MDM story is 'use SAP Mobile Services', which requires another BASIS ticket and a 3-day setup.</div>
+
   <!-- ================================================ -->
   <section>
     <h2>2. File Dialogs — Open &amp; Save</h2>
@@ -130,6 +132,8 @@ const savePath = await save({
       </div>
     </div>
   </section>
+
+    <div class="callout-salesforce">In Salesforce, accessing the local filesystem means: a connected app (OAuth setup), a Heroku proxy (because Apex can't call localhost), a Named Credential (to store the Heroku URL), a Remote Site Setting (to whitelist it), and a callout from Apex that counts toward your 100 callouts/transaction limit. Or you use the Files API and upload the file to Salesforce first. To read a file the user just selected. On their machine.</div>
 
   <!-- ================================================ -->
   <section>
@@ -224,6 +228,8 @@ await store.delete('temporaryKey');</code></pre>
       </div>
     </div>
   </section>
+
+  <div class="callout-maui">MAUI Essentials gives you cross-platform access to: file system, camera, GPS, sensors, secure storage. Mostly works. The <code>FilePicker</code> on Mac Catalyst has a known bug where it ignores the <code>FileTypes</code> filter. The <code>SecureStorage</code> on Android clears on app reinstall. The <code>Accelerometer</code> on some Samsung devices fires at half the requested frequency. These are all known issues. They have workarounds in the comments. The comments were written by other developers who also found the workarounds by accident.</div>
 
   <!-- ================================================ -->
   <section>

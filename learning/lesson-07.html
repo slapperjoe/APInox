@@ -45,6 +45,35 @@
       </tbody>
     </table>
 
+    <div class="diagram">
+<svg viewBox="0 0 700 200" xmlns="http://www.w3.org/2000/svg" font-family="monospace,sans-serif" font-size="13">
+  <rect width="700" height="200" fill="#1e1e2e" rx="8"/>
+  <!-- &str box -->
+  <rect x="20" y="20" width="300" height="160" rx="6" fill="#2a2a3e" stroke="#1a6ebd" stroke-width="2"/>
+  <text x="170" y="42" text-anchor="middle" fill="#60a5fa" font-weight="bold">&amp;str  (borrowed slice)</text>
+  <rect x="40" y="55" width="260" height="50" rx="4" fill="#1a6ebd" opacity="0.3"/>
+  <text x="170" y="74" text-anchor="middle" fill="#bfdbfe">ptr  ──────────────→</text>
+  <text x="170" y="92" text-anchor="middle" fill="#bfdbfe">len  = 5</text>
+  <text x="170" y="130" text-anchor="middle" fill="#888" font-size="11">• Reference to existing data</text>
+  <text x="170" y="148" text-anchor="middle" fill="#888" font-size="11">• Cannot grow/change</text>
+  <text x="170" y="165" text-anchor="middle" fill="#888" font-size="11">• Used in function params: fn f(s: &amp;str)</text>
+  <!-- String box -->
+  <rect x="380" y="20" width="300" height="160" rx="6" fill="#2a2a3e" stroke="#7c3aed" stroke-width="2"/>
+  <text x="530" y="42" text-anchor="middle" fill="#a78bfa" font-weight="bold">String  (owned, heap)</text>
+  <rect x="400" y="55" width="260" height="50" rx="4" fill="#7c3aed" opacity="0.3"/>
+  <text x="530" y="74" text-anchor="middle" fill="#ddd6fe">ptr → [H][e][l][l][o]</text>
+  <text x="530" y="92" text-anchor="middle" fill="#ddd6fe">len=5  cap=8</text>
+  <text x="530" y="130" text-anchor="middle" fill="#888" font-size="11">• Owns the data (heap allocated)</text>
+  <text x="530" y="148" text-anchor="middle" fill="#888" font-size="11">• Can push_str(), grow</text>
+  <text x="530" y="165" text-anchor="middle" fill="#888" font-size="11">• &amp;String coerces to &amp;str automatically</text>
+  <!-- Shared data -->
+  <rect x="200" y="110" width="60" height="24" rx="3" fill="#f59e0b" opacity="0.6"/>
+  <text x="230" y="126" text-anchor="middle" fill="#fff" font-size="11">"Hello"</text>
+  <line x1="170" y1="75" x2="220" y2="115" stroke="#60a5fa" stroke-width="1.5" stroke-dasharray="4"/>
+</svg>
+<div class="diagram-caption">String owns heap memory; &amp;str is a view into existing data (stack literal, String, or anywhere)</div>
+</div>
+
     <pre class="language-rust"><code>let owned: String = String::from("hello");     // owns heap memory
 let owned: String = "hello".to_string();        // same thing
 let owned: String = "hello".to_owned();         // also same
@@ -71,6 +100,8 @@ greet(my_string.as_str());         // explicit — also works</code></pre>
 
     <div class="callout"><strong>From <code>project_storage.rs</code>:</strong> Functions take <code>&amp;str</code> or <code>String</code> at the Tauri command boundary where JSON deserialization gives you owned <code>String</code>s. Inside the function, <code>&amp;str</code> slices are used freely.</div>
 
+    <div class="callout-sap">ABAP has one string type: <code>STRING</code>. And also <code>CHAR</code>. And <code>NUMC</code>. And <code>CLOB</code>. And <code>SSTRING</code>. And <code>RAWSTRING</code>. And <code>XSTRING</code>. They're all subtly different, none of them interoperate cleanly, and the documentation for when to use which is a SAP Note from 2008 that contradicts a different SAP Note from 2011. The consultant will tell you to "just use <code>STRING</code>." The consultant is wrong. The BASIS team will explain why at 3am during a P1 incident.</div>
+
     <!-- QUIZ 1 -->
     <div class="quiz" id="q7-1">
       <div class="quiz-label">🔘 Multiple Choice</div>
@@ -85,12 +116,15 @@ greet(my_string.as_str());         // explicit — also works</code></pre>
         <strong>✓ Flexibility!</strong> A <code>&amp;str</code> parameter accepts string literals directly (<code>"hello"</code>), borrows of <code>String</code> via auto-deref (<code>&amp;my_string</code>), and string slices. A <code>String</code> parameter forces callers to either already own a <code>String</code> or call <code>.to_string()</code> just to call your function — unnecessary allocation.
       </div>
     </div>
+
+    <div class="callout-xml">Working with XML strings in Rust is pleasant. Working with SOAP XML strings in any language is not. A SOAP envelope for 'give me the weather in London' is 47 lines of XML, two namespace declarations, a mustUnderstand attribute that most servers ignore, and a WSDL file that says the element is called WeatherRequest but the server actually expects GetWeatherRequest. APInox exists because someone had to deal with this and decided to make it less awful.</div>
   </section>
 
   <!-- ================================================ -->
   <section>
     <h2>2. String Conversions — The Most Common Operations</h2>
 
+    <div class="callout-java">Java has <code>String</code> (immutable), <code>StringBuilder</code> (mutable, single-thread), <code>StringBuffer</code> (mutable, thread-safe, slower), <code>StringJoiner</code> (Java 8, because apparently <code>String.join()</code> wasn't enough), and <code>CharSequence</code> (interface for all of the above). Rust has <code>String</code> and <code>&amp;str</code>. You'll get it in a day.</div>
     <pre class="language-rust"><code>let s: String = "hello".to_string();
 let s: String = "hello".to_owned();
 let s: String = String::from("hello");
@@ -224,6 +258,8 @@ let lines: Vec&lt;&amp;str&gt; = text.lines().collect();</code></pre>
         <code>s.as_bytes()[2]</code> → <code>u8</code> — explicit byte access
       </div>
     </div>
+
+    <div class="callout-oracle">In Oracle, string concatenation is <code>||</code>. Fine. String functions are <code>SUBSTR</code>, <code>INSTR</code>, <code>RPAD</code>, <code>LTRIM</code> — all fine, all PL/SQL. But if you need Unicode beyond Latin-1, you need to check your <code>NLS_CHARACTERSET</code>, your <code>NLS_NCHAR_CHARACTERSET</code>, file a BASIS ticket, and then find out the DB was installed in <code>WE8ISO8859P1</code> in 1999 and changing it requires a full export/import. Your data displays as <code>?????</code>. It has always displayed as <code>?????</code>. Nobody noticed because the users are in Latin America and nobody localised the UI.</div>
   </section>
 
   <!-- ================================================ -->
@@ -261,6 +297,8 @@ println!("Welcome to {} v{:03}!", name, version);</code></pre>
         <code>{:03}</code> formats the integer with a minimum width of 3, zero-padded. So <code>2</code> becomes <code>002</code>. Format specifiers go after <code>:</code> inside the braces: <code>{value:specifier}</code>.
       </div>
     </div>
+
+    <div class="callout-salesforce">Salesforce SOQL strings are injection-safe if you use bind variables: <code>WHERE Id = :recordId</code>. Half the legacy Apex code in your org does string concatenation into SOQL queries because "it was quicker." The AppExchange security scanner will flag every single one. The fix is left as an exercise for the consultant billing at £1,200/day, who will also introduce three new ones while fixing the original five.</div>
   </section>
 
   <nav class="lesson-nav">

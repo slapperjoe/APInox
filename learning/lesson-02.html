@@ -56,6 +56,8 @@ public class SchemaNode {
 }</code></pre>
 
     <div class="callout"><strong>Field visibility:</strong> Fields are <em>private by default</em> in Rust. You need <code>pub</code> to expose them — the opposite of C# where fields are private unless you add <code>public</code>... wait, that's the same! The difference is Rust <em>never</em> has a default-public field.</div>
+
+    <div class="callout-salesforce">The Salesforce equivalent of a Rust struct is an Apex class with: a no-arg constructor, a 3-arg constructor, a static factory method, 12 <code>@AuraEnabled</code> annotations, and a <code>get</code>/<code>set</code> for every property because LWC won't bind to public fields. Oh, and it counts toward your 6MB heap limit per transaction. If you go over, you get a <code>System.LimitException</code> at runtime. Not at compile time. At 11pm on a Friday.</div>
   </section>
 
   <!-- ================================================ -->
@@ -99,8 +101,12 @@ if let Some(val) = x {
     <h2>3. Derive Attributes — Free Code Generation</h2>
     <p><code>#[derive(...)]</code> tells the compiler to auto-generate trait implementations. Zero overhead — it's compile-time code generation, not reflection.</p>
 
+    <div class="callout-java">In Java, auto-generating <code>equals()</code>, <code>hashCode()</code>, and <code>toString()</code> requires: (a) your IDE, (b) Lombok annotations, (c) a Record (Java 16+), or (d) writing it by hand and getting it subtly wrong. Rust derives these from a single attribute line. Java added Records in 2021 after 25 years. Better late than never.</div>
+
     <pre class="language-rust"><code>#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SchemaNode { ... }</code></pre>
+
+    <div class="callout-arch">Upon seeing <code>#[derive(Debug, Clone, Serialize)]</code>, an architect will ask if these should be separate microservices — one for debug formatting, one for cloning, one for serialisation — "for separation of concerns." You will not be able to explain why this is insane fast enough. A Miro board will be created. It will have swimlanes.</div>
 
     <!-- QUIZ 2: Match it -->
     <div class="quiz" id="q2-2">
@@ -217,6 +223,10 @@ pub enum TestStepType {
     }
 }</code></pre>
     <div class="callout rule"><strong>The exhaustive match rule:</strong> If you forget to handle a variant, Rust <em>won't compile</em>. No silent runtime crashes. Add a new enum variant? Every match in the codebase that doesn't have a <code>_ =&gt;</code> wildcard arm will fail to compile, pointing you to every place you need to update.</div>
+
+    <div class="callout-maui">MAUI has an enum for device platform: <code>DevicePlatform.Android</code>, <code>DevicePlatform.iOS</code>, <code>DevicePlatform.WinUI</code>, <code>DevicePlatform.macOS</code>, <code>DevicePlatform.Tizen</code>. Tizen. Enterprise developers in 2024 are writing <code>if platform == Tizen</code> branches that have never, and will never, execute. Somewhere a Samsung smart fridge is the target platform and nobody will admit it.</div>
+
+    <div class="callout-agile">The data modelling story was 3 points. The architect reviewed the struct layout in the PR and asked if each field should be its own microservice 'for independent scalability'. That's now a separate epic titled 'Field Extraction Initiative'. It was added to the Q3 roadmap. It's Q1. The original struct shipped. The epic is still in backlog, status: 'Refinement Needed'.</div>
   </section>
 
   <!-- ================================================ -->

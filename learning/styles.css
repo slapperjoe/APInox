@@ -170,7 +170,7 @@ main.lesson {
   font-size: .93rem;
 }
 .callout.tip  { border-color: var(--green);  background: var(--green-bg); }
-.callout.warn { border-color: var(--yellow); background: var(--yellow-bg); }
+.callout.warn, .callout.callout-warn { border-color: var(--yellow); background: var(--yellow-bg); }
 .callout.rule { border-color: #7c3aed;       background: #f5f3ff; }
 .callout strong { display: block; margin-bottom: .2rem; }
 
@@ -549,4 +549,310 @@ hr.section-break {
   padding: .2rem .7rem;
   border-radius: 99px;
   margin-bottom: .75rem;
+}
+
+/* === DIAGRAMS ======================================= */
+.diagram {
+  margin: 1.5rem 0;
+  background: #f8f9fb;
+  border: 1px solid #dde3ec;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.diagram svg {
+  display: block;
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto;
+}
+.diagram-caption {
+  font-size: .8rem;
+  color: #666;
+  text-align: center;
+  padding: .5rem 1rem .75rem;
+  font-style: italic;
+}
+
+/* === JAVA CORNER ===================================== */
+.callout-java {
+  border-left: 4px solid #7c5c2e;
+  background: #f5ede0;
+  border-radius: 0 8px 8px 0;
+  padding: .75rem 1rem;
+  margin: 1.25rem 0;
+  font-size: .9rem;
+  color: #3a2a1a;
+  position: relative;
+}
+.callout-java::before {
+  content: '☕ Java Corner';
+  display: block;
+  font-weight: 700;
+  font-size: .75rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #5a3e1b;
+  margin-bottom: .35rem;
+}
+
+/* === ARCHITECT'S CORNER ============================= */
+.callout-arch {
+  border-left: 4px solid #6b7280;
+  background: #f9fafb;
+  border-radius: 0 8px 8px 0;
+  padding: .75rem 1rem;
+  margin: 1.25rem 0;
+  font-size: .9rem;
+  color: #444;
+}
+.callout-arch::before {
+  content: '🏛️ Architect\'s Corner';
+  display: block;
+  font-weight: 700;
+  font-size: .75rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #374151;
+  margin-bottom: .35rem;
+}
+
+/* === node_modules CORNER ============================ */
+.callout-npm {
+  border-left: 4px solid #166534;
+  background: #f0fdf4;
+  border-radius: 0 8px 8px 0;
+  padding: .75rem 1rem;
+  margin: 1.25rem 0;
+  font-size: .9rem;
+  color: #14532d;
+  position: relative;
+}
+.callout-npm::before {
+  content: '💀 node\_modules Corner';
+  display: block;
+  font-weight: 700;
+  font-size: .75rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #166534;
+  margin-bottom: .35rem;
+}
+
+/* === AGILE THEATER ================================== */
+.callout-agile {
+  border-left: 4px solid #c2410c;
+  background: #fff7ed;
+  border-radius: 0 8px 8px 0;
+  padding: .75rem 1rem;
+  margin: 1.25rem 0;
+  font-size: .9rem;
+  color: #431407;
+  position: relative;
+}
+.callout-agile::before {
+  content: '🏃 Agile Theater';
+  display: block;
+  font-weight: 700;
+  font-size: .75rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #c2410c;
+  margin-bottom: .35rem;
+}
+
+/* === AI HYPE CORNER ================================= */
+.callout-ai {
+  border-left: 4px solid #7c3aed;
+  background: #faf5ff;
+  border-radius: 0 8px 8px 0;
+  padding: .75rem 1rem;
+  margin: 1.25rem 0;
+  font-size: .9rem;
+  color: #3b0764;
+  position: relative;
+}
+.callout-ai::before {
+  content: '🤖 AI Hype Corner';
+  display: block;
+  font-weight: 700;
+  font-size: .75rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #7c3aed;
+  margin-bottom: .35rem;
+}
+
+/* === XML CRIMES ===================================== */
+.callout-xml {
+  border-left: 4px solid #9c3528;
+  background: #fef2f0;
+  border-radius: 0 8px 8px 0;
+  padding: .75rem 1rem;
+  margin: 1.25rem 0;
+  font-size: .9rem;
+  color: #450a02;
+  position: relative;
+}
+.callout-xml::before {
+  content: '📜 XML Crimes';
+  display: block;
+  font-weight: 700;
+  font-size: .75rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #9c3528;
+  margin-bottom: .35rem;
+}
+
+/* === PM CORNER ====================================== */
+.callout-pm {
+  border-left: 4px solid #65a30d;
+  background: #f7fee7;
+  border-radius: 0 8px 8px 0;
+  padding: .75rem 1rem;
+  margin: 1.25rem 0;
+  font-size: .9rem;
+  color: #1a2e05;
+  position: relative;
+}
+.callout-pm::before {
+  content: '📋 PM Corner';
+  display: block;
+  font-weight: 700;
+  font-size: .75rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #4d7c0f;
+  margin-bottom: .35rem;
+}
+
+/* === SALESFORCE LIGHTNING ============================ */
+.callout-salesforce {
+  border-left: 4px solid #0070d2;
+  background: #eff8ff;
+  border-radius: 0 8px 8px 0;
+  padding: .75rem 1rem;
+  margin: 1.25rem 0;
+  font-size: .9rem;
+  color: #0c2340;
+  position: relative;
+}
+.callout-salesforce::before {
+  content: '⚡ Salesforce Lightning';
+  display: block;
+  font-weight: 700;
+  font-size: .75rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #0070d2;
+  margin-bottom: .35rem;
+}
+
+/* === SAP CORNER ===================================== */
+.callout-sap {
+  border-left: 4px solid #005b7f;
+  background: #f0f9ff;
+  border-radius: 0 8px 8px 0;
+  padding: .75rem 1rem;
+  margin: 1.25rem 0;
+  font-size: .9rem;
+  color: #0c2233;
+  position: relative;
+}
+.callout-sap::before {
+  content: '🏭 SAP Corner';
+  display: block;
+  font-weight: 700;
+  font-size: .75rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #005b7f;
+  margin-bottom: .35rem;
+}
+
+/* === ORACLE / SIEBEL ================================ */
+.callout-oracle {
+  border-left: 4px solid #c74634;
+  background: #fff0ee;
+  border-radius: 0 8px 8px 0;
+  padding: .75rem 1rem;
+  margin: 1.25rem 0;
+  font-size: .9rem;
+  color: #3d0c06;
+  position: relative;
+}
+.callout-oracle::before {
+  content: '🏺 Oracle / Siebel';
+  display: block;
+  font-weight: 700;
+  font-size: .75rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #c74634;
+  margin-bottom: .35rem;
+}
+
+/* === MAUI MOMENT ==================================== */
+.callout-maui {
+  border-left: 4px solid #5e72a8;
+  background: #f4f5fb;
+  border-radius: 0 8px 8px 0;
+  padding: .75rem 1rem;
+  margin: 1.25rem 0;
+  font-size: .9rem;
+  color: #1e2a4a;
+  position: relative;
+}
+.callout-maui::before {
+  content: '🦋 MAUI Moment';
+  display: block;
+  font-weight: 700;
+  font-size: .75rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #5e72a8;
+  margin-bottom: .35rem;
+}
+
+/* === SECURITY THEATER ================================ */
+.callout-sec {
+  border-left: 4px solid #991b1b;
+  background: #fef2f2;
+  border-radius: 0 8px 8px 0;
+  padding: .75rem 1rem;
+  margin: 1.25rem 0;
+  font-size: .9rem;
+  color: #450a0a;
+  position: relative;
+}
+.callout-sec::before {
+  content: '🔒 Security Theater';
+  display: block;
+  font-weight: 700;
+  font-size: .75rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #991b1b;
+  margin-bottom: .35rem;
+}
+
+/* === INDUSTRY CORNER (misc snark) =================== */
+.callout-industry {
+  border-left: 4px solid #dc2626;
+  background: #fff5f5;
+  border-radius: 0 8px 8px 0;
+  padding: .75rem 1rem;
+  margin: 1.25rem 0;
+  font-size: .9rem;
+  color: #444;
+}
+.callout-industry::before {
+  content: '🔥 Hot Take';
+  display: block;
+  font-weight: 700;
+  font-size: .75rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #b91c1c;
+  margin-bottom: .35rem;
 }

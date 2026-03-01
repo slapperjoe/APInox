@@ -111,6 +111,8 @@ Low-level (manual memory, no GC)</code></pre>
     <p>Cargo is Rust's official <strong>build tool and package manager</strong>. It does everything in one tool:</p>
     <pre class="language-bash"><code>cargo  =  npm  +  tsc  +  webpack  +  jest  +  nuget</code></pre>
 
+    <div class="callout-java">In Java you'd need Maven <em>or</em> Gradle (pick a religion), then a separate test runner, a separate linter, a separate formatter… all with config files in three different syntaxes. Cargo does all of it, and it ships with the language. The Java community calls this "flexibility."</div>
+
     <table>
       <thead><tr><th>Command</th><th>What it does</th><th>npm/dotnet equiv</th></tr></thead>
       <tbody>
@@ -125,6 +127,8 @@ Low-level (manual memory, no GC)</code></pre>
         <tr><td><code>cargo doc --open</code></td><td>Generate &amp; open docs</td><td>docfx / JSDoc</td></tr>
       </tbody>
     </table>
+
+    <div class="callout-npm">Rust's entire toolchain — compiler, package manager, formatter, linter, test runner — ships as a single ~500MB download. Your average enterprise React app's <code>node_modules</code> weighs more than the Apollo 11 guidance computer code, times several thousand. A fresh <code>create-react-app</code> installs 1,400 packages to render "Hello World". <code>npm install</code> is a torrent client wearing a build tool costume.</div>
 
     <!-- QUIZ 3: Fill in the blank -->
     <div class="quiz" id="q0-3">
@@ -161,6 +165,8 @@ reqwest = "0.12"
 tokio = { version = "1.45", features = ["full"] }</code></pre>
 
     <div class="callout"><strong>features = [...]</strong> — Feature flags let you opt into optional functionality of a crate. Without <code>features = ["derive"]</code> on serde, the <code>#[derive(Serialize)]</code> macro simply doesn't exist. You only compile what you need.</div>
+
+    <div class="callout-salesforce">In Salesforce, the equivalent of <code>cargo new my-app</code> is: create a scratch org, install the SFDX CLI, authenticate, create a project, push metadata, pray the daily org limit hasn't expired, file a Change Set, get it approved by someone who left the company, and deploy on a Saturday at 3am. Then it fails and rolls back silently. The error message is "UNKNOWN_EXCEPTION". Good luck.</div>
   </section>
 
   <!-- ================================================ -->
@@ -179,6 +185,8 @@ tokio = { version = "1.45", features = ["full"] }</code></pre>
   Native binary (.exe / ELF / .dylib)</code></pre>
 
     <p>The binary is <strong>self-contained</strong> — no runtime needed (unlike .NET which requires the CLR, or Node.js apps which need the runtime). Debug builds compile fast but run slower. Release builds (<code>--release</code>) compile slowly but run at full speed.</p>
+
+    <div class="callout-sap">In the SAP world, you don't "start a project." You raise a BASIS ticket, wait 3 business days for a transport request to be created in SE09, write ABAP in the 1980s-era SE80 workbench, and hope the QA system was refreshed sometime this decade. <code>Cargo.toml</code> is 10 lines. SAP's equivalent is 400 customising tables you can't see without a consultant, spread across clients 100, 200, and 300 for reasons lost to time.</div>
   </section>
 
   <!-- ================================================ -->

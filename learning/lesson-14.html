@@ -77,6 +77,8 @@ while let Some(result) = set.join_next().await {
         <strong>move</strong> — the <code>move</code> keyword transfers ownership of <code>step</code> into the async block. Without it, the closure borrows <code>step</code>, but the spawned task can outlive the current stack frame where <code>step</code> lives. Tokio requires spawned tasks to be <code>'static</code> — meaning they can't borrow short-lived values. <code>move</code> is the fix.
       </div>
     </div>
+
+  <div class="callout-npm">JavaScript async evolution: callbacks (2010) → callback hell → Promises (2012) → Promise hell → async/await (2017) → now you have async/await hell. The error from 3 awaits ago silently swallowed because someone forgot <code>await</code>. The fix is <code>Promise.allSettled()</code>. You will learn about <code>Promise.allSettled()</code> from a 3am production incident. It has 6 lines of documentation and 4 Stack Overflow answers that contradict each other.</div>
   </section>
 
   <!-- ================================================ -->
@@ -125,6 +127,9 @@ var orders = await ordersTask;
   <!-- ================================================ -->
   <section>
     <h2>3. Channels — Communicating Between Tasks</h2>
+
+    <div class="callout-java">Java's answer to inter-thread communication: <code>wait()</code>, <code>notify()</code>, <code>notifyAll()</code> — introduced in 1995, documented with the caveat "this is really hard to use correctly." Thirty years later, Stack Overflow's most-upvoted Java threading answers still start with "don't use wait/notify." Tokio channels work first time.</div>
+
     <pre class="language-rust"><code>use tokio::sync::mpsc;  // multi-producer, single-consumer
 
 // Create a channel with buffer size 32:
@@ -214,6 +219,8 @@ loop {
         <strong>False!</strong> <code>select!</code> cancels the other branches as soon as one completes. That's the whole point — it's a race. The losing futures are <em>dropped</em> (cancelled). This is how timeouts work: <code>select!</code> between your operation and a timer — if the timer wins, the operation future is dropped and the operation stops. Be careful with non-cancellation-safe operations.
       </div>
     </div>
+
+  <div class="callout-maui">MAUI async: <code>async void</code> event handlers are necessary for the UI layer. <code>async void</code> cannot be awaited, so exceptions are unobservable, so your <code>Button.Clicked</code> handler silently fails and the user thinks the button is broken. The fix is to wrap everything in try/catch and call <code>MainThread.BeginInvokeOnMainThread()</code>. On iOS. On Android it's different. On Windows it doesn't need it. The documentation says "follow platform best practices". The platform best practices are different for each platform.</div>
   </section>
 
   <!-- ================================================ -->
@@ -272,6 +279,8 @@ some_async_call().await;  // OK — tokio's guard is Send</code></pre>
         • <code>JoinSet</code> → dynamic collection of spawned tasks, results collected as they arrive
       </div>
     </div>
+
+  <div class="callout-salesforce">Salesforce async options: Future Method (can't be called from batch, can't be chained), Queueable (can be chained, limit 50 per transaction), Batch Apex (for bulk, 2-hour timeout, 5 concurrent max), Scheduled Apex (cron, 100 scheduled jobs max per org). Pick wrong: governor limit exceptions at 3am. Pick right: you still hit the limit eventually because some admin added a process builder that calls a flow that calls a queueable. This is called "clicks not code".</div>
   </section>
 
   <nav class="lesson-nav">

@@ -50,6 +50,10 @@ struct Parser&lt;'a&gt; {
 let s: &amp;'static str = "hello";   // string literals are always static</code></pre>
 
     <div class="callout"><strong>Why APInox avoids them:</strong> The Tauri command boundary (de)serializes everything from JSON. So the codebase owns all its data and rarely needs to hold raw references for extended periods. In parsing, networking, or embedded code, lifetimes become essential.</div>
+
+    <div class="callout-arch">Upon seeing <code>'a</code> lifetime annotations, an architect will suggest that "we should abstract the lifetime concept behind a service so it's configurable." You will explain that lifetimes are compile-time constructs that don't exist at runtime. They will ask if that means "we can't change them in prod." You will take a long walk. The walk will not help.</div>
+
+    <div class="callout-pm">The PM asked how long lifetimes last. You explained they're a compile-time concept — they don't exist at runtime. They asked for a Gantt chart showing each lifetime's start and end date. You sent them the Rust Reference chapter on lifetimes. They forwarded it to the client as 'our technical documentation'. The client said it looked 'very thorough'.</div>
   </section>
 
   <!-- ================================================ -->
@@ -184,6 +188,8 @@ tokio::spawn(async move {
     guard.insert("key", "value");
     // lock released when guard drops
 });</code></pre>
+
+    <div class="callout-maui">MAUI's approach to object lifetimes is dependency injection with a service locator — everything is Singleton, Transient, or Scoped. On iOS, your Singleton might be silently re-created after a memory warning. Your Transient might be the same instance twice in the same request. The documentation acknowledges this and calls it "platform-specific lifecycle behaviour." It has been this way since Xamarin. You inherited Xamarin. Congratulations.</div>
 
     <!-- QUIZ 2: Match It -->
     <div class="quiz" id="q6-2">
@@ -329,6 +335,8 @@ unsafe {
 // 5. Implement unsafe traits (e.g., Send, Sync)</code></pre>
 
     <div class="callout"><strong>Common misconception:</strong> <code>unsafe</code> doesn't disable the borrow checker. Memory leaks aren't possible just from <code>unsafe</code>. It's a narrow escape hatch for FFI and low-level code — not a "turn off Rust" mode. You still have types, lifetimes (mostly), and all the other guarantees.</div>
+
+    <div class="callout-npm">The NPM ecosystem solves lifetime management by not managing it. Callbacks hold references forever, event listeners are never removed, Promises float in the void. The browser's GC sorts it out, unless it doesn't, in which case your tab uses 4GB RAM and your users think the site is "heavy." This is called "the JavaScript programming model." There are 47 npm packages that claim to fix this. They each depend on 12 others.</div>
 
     <!-- QUIZ 5: True/False -->
     <div class="quiz" id="q6-5">
