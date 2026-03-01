@@ -24,8 +24,8 @@
     "build:sidecar": "cd sidecar && npm install && npm run build",
     "increment-build": "node scripts/increment-build.js",
     "prepare:sidecar": "cd sidecar && npm install && npm run binary && cd .. && node scripts/prepare-sidecar-binary.js",
-    "tauri:dev": "npm run prepare:sidecar && npm run build:packages && cd src-tauri/webview && npm install && cd ../.. && npx tauri dev",
-    "tauri:build": "npm run increment-build && npm run sync-version && npm run prepare:sidecar && npm run build:packages && cd src-tauri/webview && npm install && cd ../.. && npx tauri build"
+    "tauri:dev": "npm run build:packages && cd src-tauri/webview && npm install && cd ../.. && npx tauri dev",
+    "tauri:build": "npm run increment-build && npm run sync-version && npm run build:packages && cd src-tauri/webview && npm install && cd ../.. && npx tauri build"
   },
   "simple-git-hooks": {
     "pre-commit": ""
