@@ -9,7 +9,8 @@
   "license": "MIT",
   "version": "0.16.114",
   "scripts": {
-    "build:packages": "cd packages/request-editor && npm install && npm run build",
+    "build:wsdl-parser": "cd packages/wsdl-parser && npm install && npm run build",
+    "build:packages": "npm run build:wsdl-parser && cd packages/request-editor && npm install && npm run build",
     "compile-webview": "npm run build:packages && cd src-tauri/webview && npm install && npm run build:skip-check",
     "test": "vitest run",
     "test:watch": "vitest",

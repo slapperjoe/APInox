@@ -1,0 +1,40 @@
+{
+  "name": "@apinox/wsdl-parser",
+  "version": "0.1.0",
+  "description": "Standalone WSDL/SOAP parsing library for APInox – parses a WSDL document and returns structured service/operation/schema data suitable for building mock servers or test tooling",
+  "type": "commonjs",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "wsdl",
+    "soap",
+    "parser",
+    "mock-server",
+    "apinox"
+  ],
+  "author": "APInox Team",
+  "license": "MIT",
+  "dependencies": {
+    "https-proxy-agent": "^7.0.6",
+    "soap": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.1.3",
+    "vitest": "^4.0.16"
+  }
+}
