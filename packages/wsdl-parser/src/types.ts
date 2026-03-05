@@ -85,6 +85,22 @@ export interface ApiService {
 }
 
 /**
+ * Options for the WsdlParser constructor.
+ */
+export interface WsdlParserOptions {
+    /**
+     * Override proxy URL for WSDL fetching.
+     * Falls back to HTTPS_PROXY / HTTP_PROXY environment variables when omitted.
+     */
+    proxyUrl?: string;
+    /**
+     * When false, TLS certificate validation is disabled.
+     * Defaults to true (secure).  Only set to false for internal/air-gapped networks.
+     */
+    strictSSL?: boolean;
+}
+
+/**
  * Diff result comparing two versions of the same WSDL.
  * Useful for detecting breaking changes when a remote WSDL is refreshed.
  */
