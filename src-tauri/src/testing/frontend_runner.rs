@@ -1,7 +1,7 @@
 /// Frontend Test Runner
 ///
 /// Executes test cases in the TypeScript format (FrontendTestCase) that the
-/// webview sends. This mirrors the logic in sidecar/src/services/TestRunnerService.ts.
+/// webview sends.
 
 use anyhow::Result;
 use reqwest::Client;

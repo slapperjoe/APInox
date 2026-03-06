@@ -157,7 +157,7 @@ pub async fn run_test_case(request: RunTestCaseRequest) -> Result<RunTestCaseRes
                         }));
 
                         if !result.passed {
-                            break; // Stop on first failure (matches sidecar behaviour)
+                            break; // Stop on first failure
                         }
                     }
                     Err(e) => {

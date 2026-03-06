@@ -311,18 +311,8 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
                     });
                     console.log(`[ProjectContext] Deleted project files via Rust: ${projectPath}`);
                 } catch (error: any) {
-                    console.error('[ProjectContext] Rust delete_project failed:', error);
-                    // Fallback to sidecar
-                    try {
-                        await bridge.sendMessageAsync({ 
-                            command: 'deleteProjectFiles', 
-                            path: projectPath 
-                        });
-                        console.log(`[ProjectContext] Deleted project files via sidecar: ${projectPath}`);
-                    } catch (fallbackError: any) {
-                        console.error('[ProjectContext] Failed to delete project files (both Rust and sidecar):', fallbackError);
-                        alert(`Failed to delete project files: ${fallbackError.message || 'Unknown error'}`);
-                    }
+                    console.error('[ProjectContext] Failed to delete project files:', error);
+                    alert(`Failed to delete project files: ${error.message || 'Unknown error'}`);
                 }
             }
 
@@ -492,10 +482,8 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
                 
                 console.log('[ProjectContext] Project loaded successfully via Rust:', loadedProject.name);
             } catch (error: any) {
-                console.error('[ProjectContext] Rust load_project failed:', error);
-                // Fallback to sidecar if Rust fails
-                console.warn('[ProjectContext] Falling back to sidecar load');
-                bridge.sendMessage({ command: 'loadProject', path: targetPath });
+                console.error('[ProjectContext] load_project failed:', error);
+                throw error;
             }
         }
     }, [debugLog]);
@@ -582,14 +570,11 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
                 });
                 console.log('[ProjectContext] Project saved successfully via Rust:', filePath);
             } catch (error: any) {
-                console.error('[ProjectContext] Rust save_project failed:', error);
-                // Fallback to sidecar if Rust fails
-                console.warn('[ProjectContext] Falling back to sidecar save');
-                bridge.sendMessage({ command: 'saveProject', project });
+                console.error('[ProjectContext] save_project failed:', error);
+                alert(`Failed to save project: ${error.message || 'Unknown error'}`);
             }
         } else {
-            // No file path - shouldn't happen for existing projects, but fallback to sidecar
-            bridge.sendMessage({ command: 'saveProject', project });
+            console.error('[ProjectContext] Cannot save project: no file path set');
         }
     }, [debugLog, setProjects]);
     // -------------------------------------------------------------------------
