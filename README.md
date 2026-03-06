@@ -112,6 +112,80 @@ A desktop application for SOAP web service testing and API development, inspired
 
 See **APIprox** [README](../APIprox/README.md) and [manual](../APIprox/manual.md) for full documentation.
 
+## Reusable Packages
+
+### `apinox-wsdl-parser` — Standalone WSDL Parser
+
+The WSDL/SOAP parsing logic lives in [`packages/wsdl-parser/`](./packages/wsdl-parser/) as a standalone Rust library, separate from the Tauri desktop application. It can be used by any Rust project that needs to understand WSDL files — for example, to build a SOAP mock server — without pulling in Tauri or other desktop-app dependencies.
+
+#### What it does
+
+- Parses WSDL 1.1 XML documents and extracts services, bindings, port types, and operations
+- Recursively fetches and resolves remote schema imports (`<xsd:import>`, `<xsd:include>`, `<wsdl:import>`)
+- Builds typed XSD schema trees for generating SOAP request envelopes
+- Detects SOAP 1.1 and SOAP 1.2 bindings automatically
+- Provides all the information a mock server needs: operation names, `SOAPAction` headers, endpoint URLs, and input schemas
+
+#### Adding to your project
+
+```toml
+# Cargo.toml
+[dependencies]
+apinox-wsdl-parser = { path = "../APInox/packages/wsdl-parser" }
+```
+
+#### Usage
+
+**Parse a WSDL string:**
+
+```rust
+use apinox_wsdl_parser::WsdlParser;
+
+let wsdl_xml = std::fs::read_to_string("service.wsdl")?;
+let services = WsdlParser::parse(&wsdl_xml)?;
+
+for service in &services {
+    println!("Service: {} (namespace: {:?})", service.name, service.target_namespace);
+    for op in &service.operations {
+        println!("  Operation  : {}", op.name);
+        println!("  SOAP Action: {:?}", op.action);
+        println!("  Endpoint   : {:?}", op.original_endpoint);
+    }
+}
+```
+
+**Fetch and parse from a URL with full import resolution:**
+
+```rust
+use apinox_wsdl_parser::{WsdlParser, ImportResolver};
+
+let mut resolver = ImportResolver::new()?;
+let wsdl_xml = resolver
+    .fetch_document("http://example.com/Service.svc?wsdl", None)
+    .await?;
+
+// Resolve all schema imports (up to 10 levels deep)
+let services = WsdlParser::parse_with_imports(
+    "http://example.com/Service.svc?wsdl",
+    &wsdl_xml,
+    10,
+).await?;
+```
+
+**Building a mock server from parsed output:**
+
+Each `ServiceOperation` contains the fields a SOAP mock server needs to match and respond to requests:
+
+| Field | Description |
+|-------|-------------|
+| `op.name` | Operation name |
+| `op.action` | `SOAPAction` header value to match incoming requests |
+| `op.original_endpoint` | Endpoint URL defined in the WSDL |
+| `op.target_namespace` | XML namespace for the SOAP envelope |
+| `op.full_schema` | XSD schema tree of the input message (use this to validate or generate responses) |
+
+See [`packages/wsdl-parser/README.md`](./packages/wsdl-parser/README.md) for the full API reference.
+
 ## Roadmap & Planned Features
 
 We are constantly working to improve APInox for C# developers. Here is what we are planning next:

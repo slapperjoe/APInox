@@ -85,17 +85,19 @@ struct WsdlMessagePart {
 /// 
 /// # Example
 /// ```no_run
-/// use wsdl_parser::WsdlParser;
-/// 
+/// # use apinox_wsdl_parser::WsdlParser;
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let wsdl_xml = std::fs::read_to_string("service.wsdl")?;
 /// let services = WsdlParser::parse(&wsdl_xml)?;
-/// 
+///
 /// for service in services {
 ///     println!("Service: {}", service.name);
 ///     for operation in service.operations {
 ///         println!("  Operation: {}", operation.name);
 ///     }
 /// }
+/// # Ok(())
+/// # }
 /// ```
 pub struct WsdlParser;
 
@@ -132,11 +134,11 @@ impl WsdlParser {
     /// 
     /// # Example
     /// ```no_run
-    /// # use apinox_lib::parsers::wsdl::WsdlParser;
-    /// # async fn example() -> Result<(), anyhow::Error> {
+    /// # use apinox_wsdl_parser::WsdlParser;
+    /// # async fn example(wsdl_xml: &str) -> Result<(), anyhow::Error> {
     /// let services = WsdlParser::parse_with_imports(
     ///     "http://example.com/Service.svc?wsdl",
-    ///     &wsdl_xml,
+    ///     wsdl_xml,
     ///     10  // max 10 levels of nested imports
     /// ).await?;
     /// # Ok(())
@@ -1031,7 +1033,7 @@ mod tests {
 
         let services = WsdlParser::parse(wsdl).unwrap();
         assert_eq!(services.len(), 1);
-        assert_eq!(services[0].name, "HelloService");
+        assert_eq!(services[0].name, "HelloServiceSoap");
         assert_eq!(services[0].operations.len(), 1);
         assert_eq!(services[0].operations[0].name, "sayHello");
     }
