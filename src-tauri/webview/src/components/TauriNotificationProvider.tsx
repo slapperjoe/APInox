@@ -1,7 +1,7 @@
 /**
  * TauriNotificationProvider
  * 
- * Listens for notification events from the sidecar and displays
+ * Listens for notification events from the Tauri backend and displays
  * toast notifications in the UI. Used in Tauri mode only.
  */
 

@@ -15,7 +15,6 @@ const rootDir = path.join(__dirname, '..');
 // Files to update
 const files = {
     rootPackage: path.join(rootDir, 'package.json'),
-    sidecarPackage: path.join(rootDir, 'sidecar', 'package.json'),
     webviewPackage: path.join(rootDir, 'src-tauri', 'webview', 'package.json'),
     cargo: path.join(rootDir, 'src-tauri', 'Cargo.toml'),
     tauriConfig: path.join(rootDir, 'src-tauri', 'tauri.conf.json'),
@@ -76,11 +75,6 @@ const rootPackage = JSON.parse(fs.readFileSync(files.rootPackage, 'utf8'));
 rootPackage.version = targetVersion;
 fs.writeFileSync(files.rootPackage, JSON.stringify(rootPackage, null, 2) + '\n');
 console.log(`✓ Updated root package.json to ${targetVersion}`);
-
-const sidecarPackage = JSON.parse(fs.readFileSync(files.sidecarPackage, 'utf8'));
-sidecarPackage.version = targetVersion;
-fs.writeFileSync(files.sidecarPackage, JSON.stringify(sidecarPackage, null, 2) + '\n');
-console.log(`✓ Updated sidecar/package.json to ${targetVersion}`);
 
 const webviewPackage = JSON.parse(fs.readFileSync(files.webviewPackage, 'utf8'));
 webviewPackage.version = targetVersion;

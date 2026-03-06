@@ -2,7 +2,7 @@
  * DebugModal.tsx
  * 
  * Debug and diagnostics modal for APInox.
- * Shows sidecar logs, frontend logs, system debug information, and connection testing.
+ * Shows Tauri backend logs, frontend logs, system debug information, and connection testing.
  * Opens with Ctrl+Shift+D keyboard shortcut.
  */
 
@@ -80,11 +80,11 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
     const [activeTab, setActiveTab] = useState<'logs' | 'diagnostics'>('logs');
 
     // Debug screen state
-    const [sidecarLogs, setSidecarLogs] = useState<string[]>([]);
+    const [tauriLogs, setTauriLogs] = useState<string[]>([]);
     const [frontendLogState, setFrontendLogState] = useState<Array<{ timestamp: number; level: string; message: string }>>([]);
     const [settingsDebug, setSettingsDebug] = useState<any>(null);
     const [fetchError, setFetchError] = useState<string | null>(null);
-    const [showSidecarLogs, setShowSidecarLogs] = useState(false);
+    const [showTauriLogs, setShowTauriLogs] = useState(false);
     const [showFrontendLogs, setShowFrontendLogs] = useState(false);
     const [showSystemInfo, setShowSystemInfo] = useState(true); // Start expanded
     const [showDebugInfo, setShowDebugInfo] = useState(false);
@@ -95,29 +95,25 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
     
     // Tauri-specific state
     const [configDir, setConfigDir] = useState<string | null>(null);
-    const [sidecarReady, setSidecarReady] = useState<boolean | null>(null);
-    const [sidecarPort, setSidecarPort] = useState<number | null>(null);
-    const [sidecarDiagnostics, setSidecarDiagnostics] = useState<any>(null);
-    const [debugEndpointInfo, setDebugEndpointInfo] = useState<any>(null);
 
     // Refs for auto-scrolling log containers
-    const sidecarLogsRef = React.useRef<HTMLDivElement>(null);
+    const tauriLogsRef = React.useRef<HTMLDivElement>(null);
     const frontendLogsRef = React.useRef<HTMLDivElement>(null);
 
     // Helper function to close all accordions
     const closeAllAccordions = () => {
-        setShowSidecarLogs(false);
+        setShowTauriLogs(false);
         setShowFrontendLogs(false);
         setShowSystemInfo(false);
         setShowDebugInfo(false);
     };
 
     // Helper function to toggle accordion (closes others)
-    const toggleAccordion = (section: 'sidecar' | 'frontend' | 'system' | 'debug') => {
-        if (section === 'sidecar') {
-            const wasOpen = showSidecarLogs;
+    const toggleAccordion = (section: 'tauri' | 'frontend' | 'system' | 'debug') => {
+        if (section === 'tauri') {
+            const wasOpen = showTauriLogs;
             closeAllAccordions();
-            setShowSidecarLogs(!wasOpen);
+            setShowTauriLogs(!wasOpen);
         } else if (section === 'frontend') {
             const wasOpen = showFrontendLogs;
             closeAllAccordions();
@@ -133,16 +129,16 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
         }
     };
 
-    // Auto-scroll sidecar logs to bottom when opened
+    // Auto-scroll Tauri logs to bottom when opened
     React.useEffect(() => {
-        if (showSidecarLogs && sidecarLogsRef.current) {
+        if (showTauriLogs && tauriLogsRef.current) {
             setTimeout(() => {
-                if (sidecarLogsRef.current) {
-                    sidecarLogsRef.current.scrollTop = sidecarLogsRef.current.scrollHeight;
+                if (tauriLogsRef.current) {
+                    tauriLogsRef.current.scrollTop = tauriLogsRef.current.scrollHeight;
                 }
             }, 0);
         }
-    }, [showSidecarLogs]);
+    }, [showTauriLogs]);
 
     // Auto-scroll frontend logs to bottom when opened
     React.useEffect(() => {
@@ -167,40 +163,14 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                 const { invoke } = await import('@tauri-apps/api/core');
                 const dir = await invoke<string | null>('get_config_dir');
                 setConfigDir(dir);
-                const ready = await invoke<boolean>('is_sidecar_ready');
-                setSidecarReady(ready);
-                const port = await invoke<number>('get_sidecar_port');
-                setSidecarPort(port);
                 
-                // Load comprehensive diagnostics
+                // Load Tauri logs from the log file
                 try {
-                    const diagnostics = await invoke<any>('get_sidecar_diagnostics');
-                    setSidecarDiagnostics(diagnostics);
-                    console.log('[DebugModal] Sidecar diagnostics:', diagnostics);
-                } catch (e) {
-                    console.warn('[DebugModal] Failed to get sidecar diagnostics:', e);
-                }
-                
-                // Fetch debug endpoint info if sidecar is ready
-                if (ready && port) {
-                    try {
-                        const response = await fetch(`http://127.0.0.1:${port}/debug`);
-                        if (response.ok) {
-                            const debugInfo = await response.json();
-                            setDebugEndpointInfo(debugInfo);
-                        }
-                    } catch (e) {
-                        console.warn('[DebugModal] Failed to fetch debug endpoint:', e);
-                    }
-                }
-                
-                // Load sidecar logs - always read from the actual log file for consistency
-                try {
-                    const tauriLogs = await invoke<string[]>('get_tauri_logs', { lines: 2000 });
-                    setSidecarLogs(tauriLogs);
+                    const logs = await invoke<string[]>('get_tauri_logs', { lines: 2000 });
+                    setTauriLogs(logs);
                 } catch (e) {
                     console.warn('[DebugModal] Failed to get logs:', e);
-                    setSidecarLogs(['Unable to retrieve logs: ' + String(e)]);
+                    setTauriLogs(['Unable to retrieve logs: ' + String(e)]);
                 }
 
                 // Update frontend logs state
@@ -238,11 +208,11 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
         }
     }, [isOpen]);
 
-    // Clear sidecar logs handler
-    const clearSidecarLogs = async () => {
+    // Clear Tauri logs handler
+    const clearTauriLogs = async () => {
         try {
             await bridge.sendMessageAsync({ command: 'clearSidecarLogs' });
-            setSidecarLogs([]);
+            setTauriLogs([]);
             setFetchError(null);
         } catch (error: any) {
             setFetchError(error.message || 'Failed to clear logs');
@@ -279,7 +249,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
             if (response.debugInfo) {
                 setConnectionTest({
                     status: 'success',
-                    message: `✓ Connection successful (${duration}ms)\nMode: ${response.debugInfo.mode || response.debugInfo.sidecar ? 'Tauri/Sidecar' : 'Unknown'}`
+                    message: `✓ Connection successful (${duration}ms)\nMode: ${response.debugInfo.mode || 'Tauri'}`
                 });
             } else {
                 setConnectionTest({
@@ -309,46 +279,12 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
             // System Information
             lines.push('--- System Information ---');
             if (configDir) lines.push(`Settings Location: ${configDir}`);
-            if (sidecarReady !== null) lines.push(`Sidecar Status: ${sidecarReady ? '✓ Ready' : '✗ Not Ready'}`);
-            if (sidecarPort && sidecarReady) lines.push(`Sidecar Port: ${sidecarPort}`);
             
-            // Sidecar Diagnostics
-            if (sidecarDiagnostics) {
-                lines.push('');
-                lines.push('--- Sidecar Diagnostics ---');
-                if (sidecarDiagnostics.binaryInfo) {
-                    lines.push(`Binary Type: ${sidecarDiagnostics.binaryInfo.type} (${sidecarDiagnostics.binaryInfo.embeddedNodeVersion})`);
-                    lines.push(`Description: ${sidecarDiagnostics.binaryInfo.description}`);
-                }
-                if (sidecarDiagnostics.processRunning !== undefined) {
-                    lines.push(`Sidecar Process: ${sidecarDiagnostics.processRunning ? '✓ Running' : '✗ Not Running'}`);
-                }
-                if (sidecarDiagnostics.startupError) {
-                    lines.push(`Startup Error: ${sidecarDiagnostics.startupError}`);
-                }
-                if (sidecarDiagnostics.logFilePath) {
-                    lines.push(`Log File: ${sidecarDiagnostics.logFilePath}`);
-                }
-            }
-            
-            // Debug Endpoint Info
-            if (debugEndpointInfo) {
-                lines.push('');
-                lines.push('--- Sidecar Runtime Info ---');
-                if (debugEndpointInfo.nodeVersion) lines.push(`Embedded Node.js: ${debugEndpointInfo.nodeVersion}`);
-                if (debugEndpointInfo.platform) lines.push(`Platform: ${debugEndpointInfo.platform} (${debugEndpointInfo.arch})`);
-                if (debugEndpointInfo.pid) lines.push(`Process ID: ${debugEndpointInfo.pid}`);
-                if (debugEndpointInfo.uptime !== undefined) lines.push(`Uptime: ${Math.floor(debugEndpointInfo.uptime)}s`);
-                if (debugEndpointInfo.memoryUsage) {
-                    lines.push(`Memory: ${Math.round(debugEndpointInfo.memoryUsage.heapUsed / 1024 / 1024)}MB / ${Math.round(debugEndpointInfo.memoryUsage.heapTotal / 1024 / 1024)}MB`);
-                }
-            }
-            
-            // Sidecar Logs (last 1000 lines)
-            if (sidecarLogs.length > 0) {
+            // Tauri Logs (last 1000 lines)
+            if (tauriLogs.length > 0) {
                 lines.push('');
                 lines.push('--- Recent Logs (last 1000 lines) ---');
-                const recentLogs = sidecarLogs.slice(-1000);
+                const recentLogs = tauriLogs.slice(-1000);
                 recentLogs.forEach(log => lines.push(log));
             }
             
@@ -584,185 +520,6 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                                 <span>{configDir}</span>
                             </div>
                         )}
-                        {sidecarReady !== null && (
-                            <div>
-                                <span style={{ opacity: 0.7 }}>Sidecar Status:</span>{' '}
-                                <span style={{ color: sidecarReady ? 'var(--apinox-testing-iconPassed)' : 'var(--apinox-editorWarning-foreground)' }}>
-                                    {sidecarReady ? '✓ Ready' : '✗ Not Ready'}
-                                    {sidecarPort && sidecarReady && ` (port ${sidecarPort})`}
-                                </span>
-                            </div>
-                        )}
-                        
-                        {/* Available Endpoints */}
-                        {sidecarPort && sidecarReady && (
-                            <div style={{ marginTop: '8px' }}>
-                                <div style={{ opacity: 0.7, fontSize: '0.85em', marginBottom: '4px' }}>Available Endpoints:</div>
-                                <div style={{ paddingLeft: '12px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                    <a 
-                                        href={`http://127.0.0.1:${sidecarPort}/health`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        style={{ 
-                                            color: 'var(--apinox-textLink-foreground)',
-                                            textDecoration: 'none',
-                                        }}
-                                        onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
-                                        onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
-                                    >
-                                        http://127.0.0.1:{sidecarPort}/health
-                                    </a>
-                                    <a 
-                                        href={`http://127.0.0.1:${sidecarPort}/debug`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        style={{ 
-                                            color: 'var(--apinox-textLink-foreground)',
-                                            textDecoration: 'none',
-                                        }}
-                                        onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
-                                        onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
-                                    >
-                                        http://127.0.0.1:{sidecarPort}/debug
-                                    </a>
-                                    <a 
-                                        href={`http://127.0.0.1:${sidecarPort}/logs`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        style={{ 
-                                            color: 'var(--apinox-textLink-foreground)',
-                                            textDecoration: 'none',
-                                        }}
-                                        onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
-                                        onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
-                                    >
-                                        http://127.0.0.1:{sidecarPort}/logs
-                                    </a>
-                                </div>
-                            </div>
-                        )}
-                        
-                        {/* Standalone Binary Info */}
-                        {sidecarDiagnostics?.binaryInfo && (
-                            <div>
-                                <span style={{ opacity: 0.7 }}>Binary Type:</span>{' '}
-                                <span style={{ color: 'var(--apinox-testing-iconPassed)' }}>
-                                    ✓ Standalone ({sidecarDiagnostics.binaryInfo.embeddedNodeVersion})
-                                </span>
-                            </div>
-                        )}
-                        
-                        {/* Sidecar Process */}
-                        {sidecarDiagnostics?.processRunning !== undefined && (
-                            <div>
-                                <span style={{ opacity: 0.7 }}>Sidecar Process:</span>{' '}
-                                <span style={{ color: sidecarDiagnostics.processRunning ? 'var(--apinox-testing-iconPassed)' : 'var(--apinox-editorWarning-foreground)' }}>
-                                    {sidecarDiagnostics.processRunning ? '✓ Running' : '✗ Not Running'}
-                                </span>
-                            </div>
-                        )}
-                        
-                        {/* Startup Error */}
-                        {sidecarDiagnostics?.startupError && (
-                            <div style={{ marginTop: '8px' }}>
-                                <span style={{ opacity: 0.7 }}>Startup Error:</span>{' '}
-                                <span style={{ color: 'var(--apinox-editorError-foreground)', fontWeight: 'bold' }}>
-                                    {sidecarDiagnostics.startupError}
-                                </span>
-                            </div>
-                        )}
-                        
-                        {/* Log File Path */}
-                        {sidecarDiagnostics?.logFilePath && (
-                            <div style={{ marginTop: '8px' }}>
-                                <span style={{ opacity: 0.7 }}>Log File:</span>{' '}
-                                <span 
-                                    style={{ 
-                                        fontSize: '0.85em', 
-                                        wordBreak: 'break-all',
-                                        color: 'var(--apinox-textLink-foreground)',
-                                        cursor: 'pointer',
-                                        textDecoration: 'underline'
-                                    }}
-                                    onClick={() => {
-                                        bridge.sendMessage({ 
-                                            command: 'openFile', 
-                                            filePath: sidecarDiagnostics.logFilePath 
-                                        });
-                                    }}
-                                    title="Click to open log file"
-                                >
-                                    {sidecarDiagnostics.logFilePath}
-                                </span>
-                            </div>
-                        )}
-                        
-                        {/* Debug Endpoint Info */}
-                        {debugEndpointInfo && (
-                            <>
-                                <div style={{ marginTop: '8px', opacity: 0.7, fontSize: '0.85em' }}>
-                                    Sidecar Runtime Info:
-                                </div>
-                                {debugEndpointInfo.nodeVersion && (
-                                    <div style={{ paddingLeft: '12px' }}>
-                                        <span style={{ opacity: 0.7 }}>Embedded Node.js:</span>{' '}
-                                        <span>{debugEndpointInfo.nodeVersion}</span>
-                                    </div>
-                                )}
-                                {debugEndpointInfo.platform && (
-                                    <div style={{ paddingLeft: '12px' }}>
-                                        <span style={{ opacity: 0.7 }}>Platform:</span>{' '}
-                                        <span>{debugEndpointInfo.platform} ({debugEndpointInfo.arch})</span>
-                                    </div>
-                                )}
-                                {debugEndpointInfo.pid && (
-                                    <div style={{ paddingLeft: '12px' }}>
-                                        <span style={{ opacity: 0.7 }}>Process ID:</span>{' '}
-                                        <span>{debugEndpointInfo.pid}</span>
-                                    </div>
-                                )}
-                                {debugEndpointInfo.uptime !== undefined && (
-                                    <div style={{ paddingLeft: '12px' }}>
-                                        <span style={{ opacity: 0.7 }}>Uptime:</span>{' '}
-                                        <span>{Math.floor(debugEndpointInfo.uptime)}s</span>
-                                    </div>
-                                )}
-                                {debugEndpointInfo.memoryUsage && (
-                                    <div style={{ paddingLeft: '12px' }}>
-                                        <span style={{ opacity: 0.7 }}>Memory:</span>{' '}
-                                        <span>{Math.round(debugEndpointInfo.memoryUsage.heapUsed / 1024 / 1024)}MB / {Math.round(debugEndpointInfo.memoryUsage.heapTotal / 1024 / 1024)}MB</span>
-                                    </div>
-                                )}
-                            </>
-                        )}
-                        
-                        {!sidecarReady && (
-                            <div style={{ 
-                                marginTop: '12px',
-                                padding: '12px',
-                                background: 'var(--apinox-inputValidation-warningBackground)',
-                                border: '1px solid var(--apinox-inputValidation-warningBorder)',
-                                borderRadius: '4px',
-                                fontSize: '0.9em'
-                            }}>
-                                <div style={{ fontWeight: 'bold', marginBottom: '8px', color: 'var(--apinox-inputValidation-warningForeground)' }}>
-                                    ⚠ Sidecar Not Ready
-                                </div>
-                                <div style={{ marginBottom: '6px' }}>Possible causes:</div>
-                                <ul style={{ margin: '4px 0', paddingLeft: '20px', lineHeight: '1.6' }}>
-                                    {!sidecarDiagnostics?.processRunning && (
-                                        <li>Standalone binary failed to start - Check logs below for errors</li>
-                                    )}
-                                    <li>Standalone binary not built - Run: <code style={{ background: 'var(--apinox-textCodeBlock-background)', padding: '2px 4px' }}>npm run tauri:build</code></li>
-                                    <li>Port conflict or firewall blocking localhost</li>
-                                    <li>Permissions issue with config directory</li>
-                                    <li>Binary corrupted or wrong architecture</li>
-                                </ul>
-                                <div style={{ marginTop: '8px', fontSize: '0.95em' }}>
-                                    📋 Check <strong>Sidecar Logs</strong> tab below for detailed error messages
-                                </div>
-                            </div>
-                        )}
                             </div>
                         </div>
                     )}
@@ -782,10 +539,10 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                     </div>
                 )}
 
-                {/* Sidecar Console Logs */}
+                {/* All Logs */}
                 <div>
                     <div 
-                        onClick={() => toggleAccordion('sidecar')}
+                        onClick={() => toggleAccordion('tauri')}
                         style={{ 
                             display: 'flex', 
                             justifyContent: 'space-between', 
@@ -798,11 +555,11 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                     >
                         <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span style={{ fontSize: '0.85em', opacity: 0.7 }}>
-                                {showSidecarLogs ? '▼' : '▶'}
+                                {showTauriLogs ? '▼' : '▶'}
                             </span>
-                            All Logs (Tauri + Sidecar)
+                            All Logs (Tauri)
                             <span style={{ fontSize: '0.85em', color: 'var(--apinox-descriptionForeground)', fontWeight: 'normal' }}>
-                                ({sidecarLogs.length} {sidecarLogs.length === 1 ? 'entry' : 'entries'})
+                                ({tauriLogs.length} {tauriLogs.length === 1 ? 'entry' : 'entries'})
                                 {isLoadingLogs && ' - Loading...'}
                             </span>
                         </div>
@@ -810,9 +567,9 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    clearSidecarLogs();
+                                    clearTauriLogs();
                                 }}
-                                disabled={sidecarLogs.length === 0}
+                                disabled={tauriLogs.length === 0}
                                 style={{
                                     padding: '4px 12px',
                                     fontSize: '0.9em',
@@ -820,8 +577,8 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                                     color: 'var(--apinox-button-secondaryForeground)',
                                     border: '1px solid var(--apinox-button-border)',
                                     borderRadius: '2px',
-                                    cursor: sidecarLogs.length === 0 ? 'not-allowed' : 'pointer',
-                                    opacity: sidecarLogs.length === 0 ? 0.5 : 1,
+                                    cursor: tauriLogs.length === 0 ? 'not-allowed' : 'pointer',
+                                    opacity: tauriLogs.length === 0 ? 0.5 : 1,
                                 }}
                             >
                                 Clear
@@ -829,9 +586,9 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                         </div>
                     </div>
 
-                    {showSidecarLogs && (
+                    {showTauriLogs && (
                         <div 
-                            ref={sidecarLogsRef}
+                            ref={tauriLogsRef}
                             style={{
                             maxHeight: '300px',
                             overflowY: 'auto',
@@ -843,7 +600,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                             lineHeight: '1.4',
                             borderRadius: '3px',
                         }}>
-                            {sidecarLogs.length === 0 ? (
+                            {tauriLogs.length === 0 ? (
                                 <div style={{
                                     color: 'var(--apinox-descriptionForeground)',
                                     textAlign: 'center',
@@ -853,7 +610,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                                     No logs available
                                 </div>
                             ) : (
-                                sidecarLogs.map((log, i) => (
+                                tauriLogs.map((log, i) => (
                                     <div
                                         key={i}
                                         style={{
