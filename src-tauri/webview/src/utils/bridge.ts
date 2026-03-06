@@ -3,7 +3,7 @@
  * 
  * Provides unified communication between the React webview and the Rust/Tauri backend.
  * 
- * ## Architecture (Hybrid Approach)
+ * ## Architecture
  * 
  * This bridge serves two purposes:
  * 
@@ -32,12 +32,6 @@
  * import { invoke } from '@tauri-apps/api/core';
  * await invoke('save_project', { project, dirPath });
  * ```
- * 
- * ## Sidecar Status
- * 
- * ✅ Node.js sidecar has been completely removed
- * ✅ All functionality now implemented in Rust
- * ✅ All commands route through Rust via `tryRustCommand()`
  */
 
 declare global {
@@ -106,7 +100,7 @@ export interface BackendMessage {
 // ============== Tauri Command Helpers ==============
 
 /**
- * Call a Tauri command directly (bypassing sidecar)
+ * Call a Tauri command directly
  * Use this for commands implemented in Rust (file I/O, config, etc.)
  */
 export async function invokeTauriCommand<T = any>(command: string, args?: Record<string, any>): Promise<T> {
@@ -234,12 +228,12 @@ function gqlTypeName(typeRef: any): string {
 }
 
 /**
- * Routes commands to Rust Tauri backend instead of Node.js sidecar
- * Returns null if command should fallback to sidecar (for unimplemented features)
+ * Routes commands to Rust Tauri backend
+ * Returns null if command is not implemented
  */
 async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
     if (!tauriInvoke) {
-        return null; // Tauri not initialized, fallback to sidecar
+        return null; // Tauri not initialized
     }
 
     try {
@@ -980,7 +974,7 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
             }
         }
 
-        // Command not implemented in Rust, fallback to sidecar
+        // Command not implemented in Rust
         return null;
 
     } catch (error: any) {
@@ -993,7 +987,6 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
 
 /**
  * Invoke a Rust backend command
- * All commands now route through Rust - sidecar has been removed
  */
 async function invokeRustCommand(message: BridgeMessage): Promise<any> {
     await ensureTauriInitialized();
@@ -1022,8 +1015,7 @@ async function invokeRustCommand(message: BridgeMessage): Promise<any> {
 // ============== Response to Event Mapping ==============
 
 /**
- * Maps sidecar HTTP responses to BackendCommand events
- * This allows the frontend to receive events just like in VS Code mode
+ * Maps backend responses to BackendCommand events
  */
 function mapResponseToBackendEvent(command: string, data: any): BackendMessage | null {
     // Map frontend commands to their corresponding backend response events
@@ -1085,7 +1077,7 @@ function mapResponseToBackendEvent(command: string, data: any): BackendMessage |
         //     command: BackendCommand.MockStatus,
         //     ...data
         // }),
-        ['webviewReady']: (data) => data, // Pass through sidecar response with samplesProject and changelog
+        ['webviewReady']: (data) => data, // Pass through response with samplesProject and changelog
         // Add more mappings as needed
     };
 

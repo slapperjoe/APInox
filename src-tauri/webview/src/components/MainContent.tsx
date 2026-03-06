@@ -209,7 +209,7 @@ const MainContent: React.FC = () => {
     // Notify backend that the Webview is ready and load initial data (Samples, Changelog)
     useEffect(() => {
         const initializeApp = async () => {
-            // Retry logic to wait for sidecar to be ready
+            // Retry logic to wait for backend to be ready
             let retries = 0;
             const maxRetries = 10;
             const retryDelay = 500; // ms
@@ -224,7 +224,7 @@ const MainContent: React.FC = () => {
                         throw new Error('webviewReady response invalid or empty');
                     }
 
-                    // In Tauri mode, sidecar returns samples and changelog in the response
+                    // In Tauri mode, backend returns samples and changelog in the response
                     if (response?.samplesProject) {
                         console.log('[MainContent] Received samples project:', response.samplesProject.name);
                         bridge.emit({
@@ -793,8 +793,8 @@ const MainContent: React.FC = () => {
                 return;
             }
 
-            // Send export command to sidecar with the full project data
-            console.log('[Export] Sending to sidecar:', {
+            // Send export command to backend
+            console.log('[Export] Sending export command:', {
                 command: FrontendCommand.ExportWorkspace,
                 projectCount: selectedProjects.length,
                 projectNames: selectedProjects.map(p => p.name),
