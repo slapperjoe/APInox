@@ -30,6 +30,9 @@ src-tauri/target/
 src-tauri/WixTools/
 src-tauri/gen/
 
+# Rust workspace build artifacts (root-level target/ from workspace Cargo.toml)
+target/
+
 # APInox User Data & Configuration
 .apinox/
 __blobstorage__/
