@@ -1,0 +1,22 @@
+[package]
+name = "apinox-wsdl-parser"
+version = "0.1.0"
+edition = "2021"
+description = "Standalone WSDL 1.1 parser for SOAP web services"
+license = "MIT"
+keywords = ["wsdl", "soap", "xml", "webservices", "parser"]
+categories = ["parsing", "web-programming"]
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+log = "0.4"
+quick-xml = { version = "0.31", features = ["serialize"] }
+anyhow = "1.0"
+async-recursion = "1.1"
+url = "2.5"
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+tokio = { version = "1", features = ["full"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
