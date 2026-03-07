@@ -230,28 +230,21 @@ If you are an agent or developer setting this up from scratch:
 1.  **Install Dependencies**:
     ```bash
     npm install
-    cd sidecar && npm install && cd ..
     cd src-tauri/webview && npm install && cd ../..
     ```
 
-2.  **Build Sidecar Binary**:
-    The sidecar must be built and bundled before Tauri can launch it.
-    ```bash
-    npm run prepare:sidecar
-    ```
-
-3.  **Run Tauri Application**:
+2.  **Run Tauri Application**:
     ```bash
     npm run tauri:dev
     ```
 
-4.  **Build for Production**:
+3.  **Build for Production**:
     ```bash
     npm run tauri:build
     ```
     Output: Installers in `src-tauri/target/release/bundle/`
 
-5.  **Verification**:
+4.  **Verification**:
     -   Launch the application
     -   Create or open a project
     -   Load a WSDL (e.g. `http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso?WSDL`).
