@@ -36,6 +36,8 @@ export interface ApiRequest {
   contentType?: string;
   request: string;
   headers?: Record<string, string>;
+  queryParams?: Record<string, string>;
+  graphqlConfig?: { variables?: Record<string, any>; operationName?: string };
   assertions?: any[];
   extractors?: any[];
   wsSecurity?: any;
@@ -80,6 +82,10 @@ export interface RequestWorkspaceProps {
   // Display options
   showBreadcrumb?: boolean;
   breadcrumbPath?: string[];
+
+  // Layout persistence
+  initialLayoutMode?: 'vertical' | 'horizontal';
+  onLayoutModeChange?: (mode: 'vertical' | 'horizontal') => void;
 
   // Event handlers for response actions
   onCreateExtractor?: (xpath: string, value: string) => void;
@@ -131,17 +137,21 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
   onCreateAssertion,
   onCreateExistenceAssertion,
   onLog,
-  onPickFile
+  onPickFile,
+  initialLayoutMode,
+  onLayoutModeChange
 }) => {
   // Editor settings from context
   const editorSettings = useEditorSettings();
   
   // State
-  const [activeTab, setActiveTab] = useState<TabType>('request');
+  const [activeTab, setActiveTab] = useState<TabType>(() =>
+    request.bodyType === 'none' ? 'params' : 'request'
+  );
   const [showVariables, setShowVariables] = useState(false);
   const [showEditorSettings, setShowEditorSettings] = useState(false);
   const [menuPosition, setMenuPosition] = useState<{ top: number; right: number } | null>(null);
-  const [layoutMode, setLayoutMode] = useState<'vertical' | 'horizontal'>('vertical');
+  const [layoutMode, setLayoutMode] = useState<'vertical' | 'horizontal'>(initialLayoutMode ?? 'vertical');
   const [splitRatio, setSplitRatio] = useState(0.5);
   const [isResizing, setIsResizing] = useState(false);
   const [selection, setSelection] = useState<{ text: string; offset: number } | null>(null);
@@ -180,6 +190,13 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [showEditorSettings]);
+
+  // When switching to a request with no body, jump to Params tab
+  useEffect(() => {
+    if (request.bodyType === 'none') {
+      setActiveTab(prev => prev === 'request' ? 'params' : prev);
+    }
+  }, [request.id, request.bodyType]);
 
   // Detect installed fonts on mount
   useEffect(() => {
@@ -256,8 +273,12 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
 
   // Handle layout toggle
   const handleToggleLayout = useCallback(() => {
-    setLayoutMode(prev => prev === 'vertical' ? 'horizontal' : 'vertical');
-  }, []);
+    setLayoutMode(prev => {
+      const next = prev === 'vertical' ? 'horizontal' : 'vertical';
+      onLayoutModeChange?.(next);
+      return next;
+    });
+  }, [onLayoutModeChange]);
 
   // Handle split view resizing
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -333,7 +354,52 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
         
         // Default: Monaco editor for text-based bodies (XML, JSON, GraphQL, text)
         const editorLanguage = request.bodyType === 'json' ? 'json' : request.bodyType === 'graphql' ? 'graphql' : 'xml';
-        
+
+        // GraphQL: split layout — query editor (67%) + variables panel (33%)
+        if (request.bodyType === 'graphql') {
+          const graphqlVars: Record<string, string> = (() => {
+            const raw = request.graphqlConfig?.variables;
+            if (!raw) return {};
+            // Convert any non-string values to strings for the panel
+            return Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, String(v ?? '')]));
+          })();
+          return (
+            <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
+              {/* GraphQL query editor — 67% */}
+              <div style={{ flex: '0 0 67%', minWidth: 0, borderRight: '1px solid var(--apinox-widget-border)', overflow: 'hidden' }}>
+                <MonacoRequestEditor
+                  ref={requestEditorRef}
+                  value={request.request || ''}
+                  onChange={(value) => onUpdateRequest({ ...request, request: value })}
+                  language="graphql"
+                  readOnly={readOnly}
+                  availableVariables={availableVariables}
+                  requestId={request.id || request.name}
+                  fontSize={editorSettings.settings.fontSize}
+                  fontFamily={editorSettings.settings.fontFamily}
+                  showLineNumbers={editorSettings.settings.showLineNumbers}
+                  showMinimap={editorSettings.settings.showMinimap}
+                  forceUpdateKey={editorForceUpdateKey}
+                  onLog={onLog}
+                />
+              </div>
+              {/* Variables panel — 33% */}
+              <div style={{ flex: '0 0 33%', minWidth: 0, overflow: 'hidden' }}>
+                <QueryParamsPanel
+                  params={graphqlVars}
+                  onChange={(vars) => onUpdateRequest({
+                    ...request,
+                    graphqlConfig: { ...request.graphqlConfig, variables: vars }
+                  })}
+                  title="Variables"
+                  paramLabel="Variable"
+                  readOnly={readOnly}
+                />
+              </div>
+            </div>
+          );
+        }
+
         return (
           <MonacoRequestEditor
             ref={requestEditorRef}
@@ -372,10 +438,8 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
       case 'params':
         return (
           <QueryParamsPanel
-            params={{}}
-            onChange={() => {
-              // TODO: Implement query params handling
-            }}
+            params={request.queryParams || {}}
+            onChange={(params) => onUpdateRequest({ ...request, queryParams: params })}
           />
         );
 
@@ -551,6 +615,9 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
         </S.TabButton>
         <S.TabButton $active={activeTab === 'params'} onClick={() => setActiveTab('params')}>
           Params
+          {request.queryParams && Object.keys(request.queryParams).length > 0 && (
+            <S.TabMeta>{Object.keys(request.queryParams).length}</S.TabMeta>
+          )}
         </S.TabButton>
         <S.TabButton $active={activeTab === 'assertions'} onClick={() => setActiveTab('assertions')}>
           Assertions

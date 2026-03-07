@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rust for C# / JS Developers</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .index-hero { background: linear-gradient(135deg, #1a6ebd 0%, #0d4a8a 100%); }
+    .cheatsheet { max-width: 900px; margin: 0 auto 3rem; padding: 0 1.5rem; }
+    .cheatsheet h2 { color: var(--blue); border-bottom: 2px solid var(--blue-mid); padding-bottom: .4rem; margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+
+<div class="index-hero">
+  <h1>🦀 Rust for C# / JS Developers</h1>
+  <p>A practical guide using the APInox codebase as your real-world reference. Built for developers who already know how to code — just not in Rust.</p>
+  <p class="index-tagline">23 lessons · ~11 hours · 3 phases · interactive quizzes throughout</p>
+</div>
+
+<div class="lessons-grid">
+
+  <a href="lesson-00.html" class="lesson-card intro">
+    <div class="card-num">Lesson 0 · ~20 min</div>
+    <div class="card-title">What Is Rust &amp; Why Does It Exist?</div>
+    <div class="card-time">Start here — no code needed</div>
+    <div class="card-tags">
+      <span class="card-tag">Language Overview</span>
+      <span class="card-tag">Cargo</span>
+      <span class="card-tag">Interview Q&amp;A</span>
+      <span class="card-tag">Ecosystem</span>
+    </div>
+    <div class="card-progress">
+      <div class="card-progress-bar"><div class="card-progress-fill" id="p-lesson-00" style="width:0%"></div></div>
+      <div class="card-progress-label" id="pl-lesson-00">Not started</div>
+    </div>
+  </a>
+
+  <a href="lesson-01.html" class="lesson-card">
+    <div class="card-num">Lesson 1 · ~25 min</div>
+    <div class="card-title">Syntax &amp; Ownership</div>
+    <div class="card-time">Files: <code>main.rs</code>, <code>lib.rs</code></div>
+    <div class="card-tags">
+      <span class="card-tag">Variables</span>
+      <span class="card-tag">Ownership</span>
+      <span class="card-tag">Borrowing</span>
+      <span class="card-tag">Modules</span>
+    </div>
+    <div class="card-progress">
+      <div class="card-progress-bar"><div class="card-progress-fill" id="p-lesson-01" style="width:0%"></div></div>
+      <div class="card-progress-label" id="pl-lesson-01">Not started</div>
+    </div>
+  </a>
+
+  <a href="lesson-02.html" class="lesson-card">
+    <div class="card-num">Lesson 2 · ~25 min</div>
+    <div class="card-title">Structs, Enums &amp; Derive Attributes</div>
+    <div class="card-time">Files: <code>parsers/wsdl/types.rs</code>, <code>settings_manager.rs</code></div>
+    <div class="card-tags">
+      <span class="card-tag">Structs</span>
+      <span class="card-tag">Enums</span>
+      <span class="card-tag">#[derive]</span>
+      <span class="card-tag">serde</span>
+    </div>
+    <div class="card-progress">
+      <div class="card-progress-bar"><div class="card-progress-fill" id="p-lesson-02" style="width:0%"></div></div>
+      <div class="card-progress-label" id="pl-lesson-02">Not started</div>
+    </div>
+  </a>
+
+  <a href="lesson-03.html" class="lesson-card">
+    <div class="card-num">Lesson 3 · ~30 min</div>
+    <div class="card-title">impl, Traits &amp; OO Patterns</div>
+    <div class="card-time">Files: <code>soap/client.rs</code>, <code>soap/ws_security.rs</code></div>
+    <div class="card-tags">
+      <span class="card-tag">impl</span>
+      <span class="card-tag">Constructors</span>
+      <span class="card-tag">Traits</span>
+      <span class="card-tag">Builder Pattern</span>
+    </div>
+    <div class="card-progress">
+      <div class="card-progress-bar"><div class="card-progress-fill" id="p-lesson-03" style="width:0%"></div></div>
+      <div class="card-progress-label" id="pl-lesson-03">Not started</div>
+    </div>
+  </a>
+
+  <a href="lesson-04.html" class="lesson-card">
+    <div class="card-num">Lesson 4 · ~25 min</div>
+    <div class="card-title">Error Handling</div>
+    <div class="card-time">Files: <code>project_storage.rs</code>, <code>secret_storage.rs</code></div>
+    <div class="card-tags">
+      <span class="card-tag">Result&lt;T,E&gt;</span>
+      <span class="card-tag">Option&lt;T&gt;</span>
+      <span class="card-tag">? operator</span>
+      <span class="card-tag">anyhow</span>
+    </div>
+    <div class="card-progress">
+      <div class="card-progress-bar"><div class="card-progress-fill" id="p-lesson-04" style="width:0%"></div></div>
+      <div class="card-progress-label" id="pl-lesson-04">Not started</div>
+    </div>
+  </a>
+
+  <a href="lesson-05.html" class="lesson-card">
+    <div class="card-num">Lesson 5 · ~30 min</div>
+    <div class="card-title">Async, Generics &amp; Tauri Commands</div>
+    <div class="card-time">Files: <code>lib.rs</code>, <code>soap/commands.rs</code></div>
+    <div class="card-tags">
+      <span class="card-tag">async/await</span>
+      <span class="card-tag">tokio</span>
+      <span class="card-tag">Generics</span>
+      <span class="card-tag">#[tauri::command]</span>
+    </div>
+    <div class="card-progress">
+      <div class="card-progress-bar"><div class="card-progress-fill" id="p-lesson-05" style="width:0%"></div></div>
+      <div class="card-progress-label" id="pl-lesson-05">Not started</div>
+    </div>
+  </a>
+
+  <a href="lesson-06.html" class="lesson-card outro">
+    <div class="card-num">Lesson 6 · ~20 min</div>
+    <div class="card-title">What This Codebase Doesn't Cover</div>
+    <div class="card-time">Your roadmap for what's next</div>
+    <div class="card-tags">
+      <span class="card-tag">Lifetimes</span>
+      <span class="card-tag">Smart Pointers</span>
+      <span class="card-tag">dyn Trait</span>
+      <span class="card-tag">Testing</span>
+      <span class="card-tag">Iterators</span>
+    </div>
+    <div class="card-progress">
+      <div class="card-progress-bar"><div class="card-progress-fill" id="p-lesson-06" style="width:0%"></div></div>
+      <div class="card-progress-label" id="pl-lesson-06">Not started</div>
+    </div>
+  </a>
+
+  <!-- ======== PHASE 2 DIVIDER ======== -->
+  <div class="phase-divider">
+    <span>Phase 2 — Deeper Rust</span>
+  </div>
+
+  <a href="lesson-07.html" class="lesson-card">
+    <div class="card-num">Lesson 7 · ~25 min</div>
+    <div class="card-title">String Types &amp; Text Handling</div>
+    <div class="card-time">Files: <code>project_storage.rs</code>, <code>settings_manager.rs</code></div>
+    <div class="card-tags">
+      <span class="card-tag">String vs &amp;str</span>
+      <span class="card-tag">PathBuf</span>
+      <span class="card-tag">format!</span>
+      <span class="card-tag">Conversions</span>
+    </div>
+    <div class="card-progress">
+      <div class="card-progress-bar"><div class="card-progress-fill" id="p-lesson-07" style="width:0%"></div></div>
+      <div class="card-progress-label" id="pl-lesson-07">Not started</div>
+    </div>
+  </a>
+
+  <a href="lesson-08.html" class="lesson-card">
+    <div class="card-num">Lesson 8 · ~25 min</div>
+    <div class="card-title">Pattern Matching Deep Dive</div>
+    <div class="card-time">Files: <code>testing/assertion_runner.rs</code>, <code>workflow/engine.rs</code></div>
+    <div class="card-tags">
+      <span class="card-tag">match guards</span>
+      <span class="card-tag">@ bindings</span>
+      <span class="card-tag">if let</span>
+      <span class="card-tag">let-else</span>
+    </div>
+    <div class="card-progress">
+      <div class="card-progress-bar"><div class="card-progress-fill" id="p-lesson-08" style="width:0%"></div></div>
+      <div class="card-progress-label" id="pl-lesson-08">Not started</div>
+    </div>
+  </a>
+
+  <a href="lesson-09.html" class="lesson-card">
+    <div class="card-num">Lesson 9 · ~20 min</div>
+    <div class="card-title">Modules &amp; Visibility</div>
+    <div class="card-time">Files: <code>lib.rs</code>, <code>soap/mod.rs</code></div>
+    <div class="card-tags">
+      <span class="card-tag">mod</span>
+      <span class="card-tag">pub(crate)</span>
+      <span class="card-tag">use</span>
+      <span class="card-tag">File layout</span>
+    </div>
+    <div class="card-progress">
+      <div class="card-progress-bar"><div class="card-progress-fill" id="p-lesson-09" style="width:0%"></div></div>
+      <div class="card-progress-label" id="pl-lesson-09">Not started</div>
+    </div>
+  </a>
+
+  <a href="lesson-10.html" class="lesson-card">
+    <div class="card-num">Lesson 10 · ~30 min</div>
+    <div class="card-title">Closures &amp; Iterators</div>
+    <div class="card-time">Files: <code>testing/test_runner.rs</code>, <code>workflow/engine.rs</code></div>
+    <div class="card-tags">
+      <span class="card-tag">Fn / FnMut / FnOnce</span>
+      <span class="card-tag">move</span>
+      <span class="card-tag">map / filter / fold</span>
+      <span class="card-tag">collect</span>
+    </div>
+    <div class="card-progress">
+      <div class="card-progress-bar"><div class="card-progress-fill" id="p-lesson-10" style="width:0%"></div></div>
+      <div class="card-progress-label" id="pl-lesson-10">Not started</div>
+    </div>
+  </a>
+
+  <a href="lesson-11.html" class="lesson-card">
+    <div class="card-num">Lesson 11 · ~25 min</div>
+    <div class="card-title">Traits Deep Dive</div>
+    <div class="card-time">Files: <code>parsers/wsdl/types.rs</code>, <code>settings_manager.rs</code></div>
+    <div class="card-tags">
+      <span class="card-tag">Display / Debug</span>
+      <span class="card-tag">From / Into</span>
+      <span class="card-tag">Default</span>
+      <span class="card-tag">Blanket impls</span>
+    </div>
+    <div class="card-progress">
+      <div class="card-progress-bar"><div class="card-progress-fill" id="p-lesson-11" style="width:0%"></div></div>
+      <div class="card-progress-label" id="pl-lesson-11">Not started</div>
+    </div>
+  </a>
+
+  <a href="lesson-12.html" class="lesson-card">
+    <div class="card-num">Lesson 12 · ~20 min</div>
+    <div class="card-title">Lifetimes 😴</div>
+    <div class="card-time">Elision, named lifetimes, 'static</div>
+    <div class="card-tags">
+      <span class="card-tag">'a syntax</span>
+      <span class="card-tag">Elision</span>
+      <span class="card-tag">'static</span>
+      <span class="card-tag">Struct refs</span>
+    </div>
+    <div class="card-progress">
+      <div class="card-progress-bar"><div class="card-progress-fill" id="p-lesson-12" style="width:0%"></div></div>
+      <div class="card-progress-label" id="pl-lesson-12">Not started</div>
+    </div>
+  </a>
+
+  <a href="lesson-13.html" class="lesson-card">
+    <div class="card-num">Lesson 13 · ~25 min</div>
+    <div class="card-title">Smart Pointers &amp; Interior Mutability</div>
+    <div class="card-time">Files: <code>workflow/engine.rs</code>, <code>lib.rs</code></div>
+    <div class="card-tags">
+      <span class="card-tag">Box</span>
+      <span class="card-tag">Arc</span>
+      <span class="card-tag">Mutex / RwLock</span>
+      <span class="card-tag">RefCell</span>
+    </div>
+    <div class="card-progress">
+      <div class="card-progress-bar"><div class="card-progress-fill" id="p-lesson-13" style="width:0%"></div></div>
+      <div class="card-progress-label" id="pl-lesson-13">Not started</div>
+    </div>
+  </a>
+
+  <a href="lesson-14.html" class="lesson-card">
+    <div class="card-num">Lesson 14 · ~30 min</div>
+    <div class="card-title">Concurrency &amp; Async Patterns</div>
+    <div class="card-time">Files: <code>workflow/engine.rs</code>, <code>testing/test_runner.rs</code></div>
+    <div class="card-tags">
+      <span class="card-tag">tokio::spawn</span>
+      <span class="card-tag">mpsc channels</span>
+      <span class="card-tag">join! / select!</span>
+      <span class="card-tag">Send / Sync</span>
+    </div>
+    <div class="card-progress">
+      <div class="card-progress-bar"><div class="card-progress-fill" id="p-lesson-14" style="width:0%"></div></div>
+      <div class="card-progress-label" id="pl-lesson-14">Not started</div>
+    </div>
+  </a>
+
+  <a href="lesson-15.html" class="lesson-card">
+    <div class="card-num">Lesson 15 · ~25 min</div>
+    <div class="card-title">Serde &amp; Serialization</div>
+    <div class="card-time">Files: <code>parsers/wsdl/types.rs</code>, <code>testing/commands.rs</code></div>
+    <div class="card-tags">
+      <span class="card-tag">#[derive(Serialize)]</span>
+      <span class="card-tag">rename_all</span>
+      <span class="card-tag">skip_serializing_if</span>
+      <span class="card-tag">flatten</span>
+    </div>
+    <div class="card-progress">
+      <div class="card-progress-bar"><div class="card-progress-fill" id="p-lesson-15" style="width:0%"></div></div>
+      <div class="card-progress-label" id="pl-lesson-15">Not started</div>
+    </div>
+  </a>
+
+  <a href="lesson-16.html" class="lesson-card">
+    <div class="card-num">Lesson 16 · ~25 min</div>
+    <div class="card-title">Testing &amp; the Cargo Ecosystem</div>
+    <div class="card-time">Files: <code>Cargo.toml</code>, <code>soap/commands.rs</code></div>
+    <div class="card-tags">
+      <span class="card-tag">#[test]</span>
+      <span class="card-tag">assert_eq!</span>
+      <span class="card-tag">Features</span>
+      <span class="card-tag">Workspaces</span>
+    </div>
+    <div class="card-progress">
+      <div class="card-progress-bar"><div class="card-progress-fill" id="p-lesson-16" style="width:0%"></div></div>
+      <div class="card-progress-label" id="pl-lesson-16">Not started</div>
+    </div>
+  </a>
+
+  <!-- ======== PHASE 3 DIVIDER ======== -->
+  <div class="phase-divider phase-3">
+    <span>Phase 3 — Tauri v2</span>
+  </div>
+
+  <a href="lesson-17.html" class="lesson-card tauri-card">
+    <div class="card-num">Lesson 17 · ~25 min</div>
+    <div class="card-title">Tauri Architecture</div>
+    <div class="card-time">Files: <code>lib.rs</code>, <code>tauri.conf.json</code></div>
+    <div class="card-tags">
+      <span class="card-tag">Process model</span>
+      <span class="card-tag">Webview</span>
+      <span class="card-tag">Builder pattern</span>
+      <span class="card-tag">Platform cfg</span>
+    </div>
+    <div class="card-progress">
+      <div class="card-progress-bar"><div class="card-progress-fill" id="p-lesson-17" style="width:0%"></div></div>
+      <div class="card-progress-label" id="pl-lesson-17">Not started</div>
+    </div>
+  </a>
+
+  <a href="lesson-18.html" class="lesson-card tauri-card">
+    <div class="card-num">Lesson 18 · ~30 min</div>
+    <div class="card-title">Commands &amp; Managed State</div>
+    <div class="card-time">Files: <code>soap/commands.rs</code>, <code>testing/commands.rs</code></div>
+    <div class="card-tags">
+      <span class="card-tag">#[tauri::command]</span>
+      <span class="card-tag">State&lt;T&gt;</span>
+      <span class="card-tag">AppHandle</span>
+      <span class="card-tag">Streaming</span>
+    </div>
+    <div class="card-progress">
+      <div class="card-progress-bar"><div class="card-progress-fill" id="p-lesson-18" style="width:0%"></div></div>
+      <div class="card-progress-label" id="pl-lesson-18">Not started</div>
+    </div>
+  </a>
+
+  <a href="lesson-19.html" class="lesson-card tauri-card">
+    <div class="card-num">Lesson 19 · ~25 min</div>
+    <div class="card-title">IPC &amp; Events</div>
+    <div class="card-time">Files: <code>bridge.ts</code>, <code>lib.rs</code></div>
+    <div class="card-tags">
+      <span class="card-tag">invoke()</span>
+      <span class="card-tag">emit / listen</span>
+      <span class="card-tag">Window events</span>
+      <span class="card-tag">Cleanup</span>
+    </div>
+    <div class="card-progress">
+      <div class="card-progress-bar"><div class="card-progress-fill" id="p-lesson-19" style="width:0%"></div></div>
+      <div class="card-progress-label" id="pl-lesson-19">Not started</div>
+    </div>
+  </a>
+
+  <a href="lesson-20.html" class="lesson-card tauri-card">
+    <div class="card-num">Lesson 20 · ~25 min</div>
+    <div class="card-title">Plugins &amp; Native APIs</div>
+    <div class="card-time">Files: <code>lib.rs</code>, <code>Cargo.toml</code></div>
+    <div class="card-tags">
+      <span class="card-tag">dialog</span>
+      <span class="card-tag">clipboard</span>
+      <span class="card-tag">opener</span>
+      <span class="card-tag">store</span>
+    </div>
+    <div class="card-progress">
+      <div class="card-progress-bar"><div class="card-progress-fill" id="p-lesson-20" style="width:0%"></div></div>
+      <div class="card-progress-label" id="pl-lesson-20">Not started</div>
+    </div>
+  </a>
+
+  <a href="lesson-21.html" class="lesson-card tauri-card">
+    <div class="card-num">Lesson 21 · ~25 min</div>
+    <div class="card-title">Capabilities &amp; Security</div>
+    <div class="card-time">Files: <code>capabilities/default.json</code>, <code>tauri.conf.json</code></div>
+    <div class="card-tags">
+      <span class="card-tag">Permissions</span>
+      <span class="card-tag">CSP</span>
+      <span class="card-tag">Path scoping</span>
+      <span class="card-tag">XSS defense</span>
+    </div>
+    <div class="card-progress">
+      <div class="card-progress-bar"><div class="card-progress-fill" id="p-lesson-21" style="width:0%"></div></div>
+      <div class="card-progress-label" id="pl-lesson-21">Not started</div>
+    </div>
+  </a>
+
+  <a href="lesson-22.html" class="lesson-card tauri-card outro">
+    <div class="card-num">Lesson 22 · ~25 min</div>
+    <div class="card-title">Packaging &amp; Distribution</div>
+    <div class="card-time">Files: <code>tauri.conf.json</code>, GitHub Actions</div>
+    <div class="card-tags">
+      <span class="card-tag">Installers</span>
+      <span class="card-tag">Code signing</span>
+      <span class="card-tag">CI matrix</span>
+      <span class="card-tag">Auto-updater</span>
+    </div>
+    <div class="card-progress">
+      <div class="card-progress-bar"><div class="card-progress-fill" id="p-lesson-22" style="width:0%"></div></div>
+      <div class="card-progress-label" id="pl-lesson-22">Not started</div>
+    </div>
+  </a>
+
+
+</div>
+
+<div class="cheatsheet">
+  <h2>Quick Reference Cheat Sheet</h2>
+  <table>
+    <thead><tr><th>C# / JS concept</th><th>Rust equivalent</th></tr></thead>
+    <tbody>
+      <tr><td><code>class Foo { }</code></td><td><code>struct Foo { }</code> + <code>impl Foo { }</code></td></tr>
+      <tr><td>Constructor <code>new Foo()</code></td><td><code>Foo::new()</code> static method (convention)</td></tr>
+      <tr><td><code>interface IFoo</code></td><td><code>trait Foo</code></td></tr>
+      <tr><td><code>: IFoo</code> (implements)</td><td><code>impl Foo for MyType</code></td></tr>
+      <tr><td><code>null</code></td><td><code>None</code> (inside <code>Option&lt;T&gt;</code>)</td></tr>
+      <tr><td><code>try/catch</code></td><td><code>Result&lt;T, E&gt;</code> + <code>match</code> or <code>?</code></td></tr>
+      <tr><td><code>async Task&lt;T&gt;</code></td><td><code>async fn foo() -&gt; T</code></td></tr>
+      <tr><td><code>await foo()</code></td><td><code>foo().await</code> (postfix!)</td></tr>
+      <tr><td><code>List&lt;T&gt;</code></td><td><code>Vec&lt;T&gt;</code></td></tr>
+      <tr><td><code>Dictionary&lt;K,V&gt;</code></td><td><code>HashMap&lt;K,V&gt;</code></td></tr>
+      <tr><td><code>[JsonPropertyName("x")]</code></td><td><code>#[serde(rename = "x")]</code></td></tr>
+      <tr><td><code>[JsonIgnore]</code></td><td><code>#[serde(skip_serializing_if = "Option::is_none")]</code></td></tr>
+      <tr><td><code>public</code></td><td><code>pub</code></td></tr>
+      <tr><td>private (default in C#)</td><td>private (default in Rust — no keyword)</td></tr>
+      <tr><td><code>string</code></td><td><code>String</code> (owned) or <code>&amp;str</code> (borrowed slice)</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const stored = JSON.parse(localStorage.getItem('rlg_card_progress') || '{}');
+  ['lesson-00','lesson-01','lesson-02','lesson-03','lesson-04','lesson-05','lesson-06','lesson-07','lesson-08','lesson-09','lesson-10','lesson-11','lesson-12','lesson-13','lesson-14','lesson-15','lesson-16','lesson-17','lesson-18','lesson-19','lesson-20','lesson-21','lesson-22'].forEach(id => {
+    const pct = stored[id] || 0;
+    const bar = document.getElementById('p-' + id);
+    const label = document.getElementById('pl-' + id);
+    if (bar) bar.style.width = pct + '%';
+    if (label) label.textContent = pct > 0 ? pct + '% complete' : 'Not started';
+  });
+});
+</script>
+</body>
+</html>

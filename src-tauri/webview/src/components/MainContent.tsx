@@ -209,7 +209,7 @@ const MainContent: React.FC = () => {
     // Notify backend that the Webview is ready and load initial data (Samples, Changelog)
     useEffect(() => {
         const initializeApp = async () => {
-            // Retry logic to wait for sidecar to be ready
+            // Retry logic to wait for backend to be ready
             let retries = 0;
             const maxRetries = 10;
             const retryDelay = 500; // ms
@@ -224,7 +224,7 @@ const MainContent: React.FC = () => {
                         throw new Error('webviewReady response invalid or empty');
                     }
 
-                    // In Tauri mode, sidecar returns samples and changelog in the response
+                    // In Tauri mode, backend returns samples and changelog in the response
                     if (response?.samplesProject) {
                         console.log('[MainContent] Received samples project:', response.samplesProject.name);
                         bridge.emit({
@@ -793,8 +793,8 @@ const MainContent: React.FC = () => {
                 return;
             }
 
-            // Send export command to sidecar with the full project data
-            console.log('[Export] Sending to sidecar:', {
+            // Send export command to backend
+            console.log('[Export] Sending export command:', {
                 command: FrontendCommand.ExportWorkspace,
                 projectCount: selectedProjects.length,
                 projectNames: selectedProjects.map(p => p.name),
@@ -842,10 +842,10 @@ const MainContent: React.FC = () => {
 
             // Workflows are now global - reload config
             const response = await bridge.sendMessageAsync({ command: FrontendCommand.GetSettings });
-            console.log('[MainContent] Updated config workflows:', response?.config?.workflows);
+            console.log('[MainContent] Updated config workflows:', response?.workflows);
 
-            if (response?.config) {
-                setConfig(response.config);
+            if (response) {
+                setConfig(response);
             }
 
             setWorkspaceDirty(true);
@@ -888,6 +888,11 @@ const MainContent: React.FC = () => {
                 workflowId: workflow.id
             });
 
+            // Clear the workspace if this workflow was selected
+            if (selectedWorkflowStep?.workflow.id === workflow.id) {
+                setSelectedWorkflowStep(null);
+            }
+
             // Reload config
             const updatedConfig: any = await bridge.sendMessageAsync({ command: FrontendCommand.GetSettings });
             if (updatedConfig) {
@@ -898,7 +903,7 @@ const MainContent: React.FC = () => {
         } catch (error) {
             console.error('Failed to delete workflow:', error);
         }
-    }, [setConfig, setWorkspaceDirty]);
+    }, [setConfig, setWorkspaceDirty, selectedWorkflowStep, setSelectedWorkflowStep]);
 
     const handleDuplicateWorkflow = useCallback((workflow: Workflow) => {
         const { v4: uuidv4 } = require('uuid');
@@ -959,11 +964,9 @@ const MainContent: React.FC = () => {
 
             // Reload config to get updated workflows
             const response = await bridge.sendMessageAsync({ command: FrontendCommand.GetSettings });
-            if (response?.config) {
-                setConfig(response.config);
+            if (response) {
+                setConfig(response);
             }
-
-            // Update the selected workflow step to reflect changes
             setSelectedWorkflowStep({ workflow: updatedWorkflow, step: updatedStep });
 
             console.log('[MainContent] Workflow step updated successfully');
@@ -984,11 +987,9 @@ const MainContent: React.FC = () => {
 
             // Reload config to get updated workflows
             const response = await bridge.sendMessageAsync({ command: FrontendCommand.GetSettings });
-            if (response?.config) {
-                setConfig(response.config);
+            if (response) {
+                setConfig(response);
             }
-
-            // Update the selected workflow if we're still viewing it
             if (selectedWorkflowStep?.workflow.id === updatedWorkflow.id) {
                 setSelectedWorkflowStep({
                     workflow: updatedWorkflow,
@@ -1093,13 +1094,18 @@ const MainContent: React.FC = () => {
     }, []);
 
     const handleApplyWsdlSync = useCallback((diff: WsdlDiff) => {
+        // Find project dirPath from projects context
+        const project = projects.find(p => p.id === diff.projectId);
+        const dirPath = project?.dirPath || '';
+        
         bridge.sendMessage({
             command: FrontendCommand.ApplyWsdlSync,
             projectId: diff.projectId,
-            diff
+            diff,
+            dirPath
         });
         setWsdlDiff(null);
-    }, []);
+    }, [projects]);
 
 
 

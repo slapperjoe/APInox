@@ -64,16 +64,6 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange }) => {
                     )}
 
                     <FormGroup>
-                        <Label>Layout Mode</Label>
-                        <Select
-                            value={config.ui?.layoutMode ?? 'vertical'}
-                            onChange={e => onChange('ui', 'layoutMode', e.target.value)}
-                        >
-                            <option value="vertical">Vertical (Two Columns)</option>
-                            <option value="horizontal">Horizontal (Stacked)</option>
-                        </Select>
-                    </FormGroup>
-                    <FormGroup>
                         <CheckboxLabel>
                             <input
                                 type="checkbox"

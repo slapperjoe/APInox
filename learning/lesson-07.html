@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 7 — String Types | Rust for C#/JS Devs</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-one-dark.min.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a href="index.html" class="back-link">← All Lessons</a>
+  <span class="lesson-badge">Lesson 7 · ~25 min</span>
+</header>
+
+<main class="lesson">
+  <div class="lesson-hero">
+    <h1>String Types</h1>
+    <div class="lesson-meta">
+      <span>⏱ ~25 min</span>
+      <span>📁 <code>project_storage.rs</code>, <code>secret_storage.rs</code>, <code>settings_manager.rs</code></span>
+    </div>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:0%"></div></div>
+  <p class="progress-label">0 of 5 questions answered</p>
+
+  <div class="callout">
+    Strings are where most C# developers hit their first Rust wall. The reason there are <em>two</em> string types is ownership — once you understand that, it all clicks.
+  </div>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>1. <code>String</code> vs <code>&amp;str</code> — The Core Split</h2>
+
+    <table>
+      <thead><tr><th></th><th><code>String</code></th><th><code>&amp;str</code></th></tr></thead>
+      <tbody>
+        <tr><td>Ownership</td><td>Owned — heap allocated</td><td>Borrowed — just a view</td></tr>
+        <tr><td>Mutable?</td><td>Yes (if declared <code>mut</code>)</td><td>No</td></tr>
+        <tr><td>C# analogy</td><td><code>StringBuilder</code> + <code>string</code></td><td><code>ReadOnlySpan&lt;char&gt;</code></td></tr>
+        <tr><td>Size</td><td>3 words on stack (ptr, len, capacity)</td><td>2 words on stack (ptr, len)</td></tr>
+        <tr><td>Create from literal</td><td><code>"hello".to_string()</code></td><td><code>"hello"</code> (already a <code>&amp;str</code>)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="diagram">
+<svg viewBox="0 0 700 200" xmlns="http://www.w3.org/2000/svg" font-family="monospace,sans-serif" font-size="13">
+  <rect width="700" height="200" fill="#1e1e2e" rx="8"/>
+  <!-- &str box -->
+  <rect x="20" y="20" width="300" height="160" rx="6" fill="#2a2a3e" stroke="#1a6ebd" stroke-width="2"/>
+  <text x="170" y="42" text-anchor="middle" fill="#60a5fa" font-weight="bold">&amp;str  (borrowed slice)</text>
+  <rect x="40" y="55" width="260" height="50" rx="4" fill="#1a6ebd" opacity="0.3"/>
+  <text x="170" y="74" text-anchor="middle" fill="#bfdbfe">ptr  ──────────────→</text>
+  <text x="170" y="92" text-anchor="middle" fill="#bfdbfe">len  = 5</text>
+  <text x="170" y="130" text-anchor="middle" fill="#888" font-size="11">• Reference to existing data</text>
+  <text x="170" y="148" text-anchor="middle" fill="#888" font-size="11">• Cannot grow/change</text>
+  <text x="170" y="165" text-anchor="middle" fill="#888" font-size="11">• Used in function params: fn f(s: &amp;str)</text>
+  <!-- String box -->
+  <rect x="380" y="20" width="300" height="160" rx="6" fill="#2a2a3e" stroke="#7c3aed" stroke-width="2"/>
+  <text x="530" y="42" text-anchor="middle" fill="#a78bfa" font-weight="bold">String  (owned, heap)</text>
+  <rect x="400" y="55" width="260" height="50" rx="4" fill="#7c3aed" opacity="0.3"/>
+  <text x="530" y="74" text-anchor="middle" fill="#ddd6fe">ptr → [H][e][l][l][o]</text>
+  <text x="530" y="92" text-anchor="middle" fill="#ddd6fe">len=5  cap=8</text>
+  <text x="530" y="130" text-anchor="middle" fill="#888" font-size="11">• Owns the data (heap allocated)</text>
+  <text x="530" y="148" text-anchor="middle" fill="#888" font-size="11">• Can push_str(), grow</text>
+  <text x="530" y="165" text-anchor="middle" fill="#888" font-size="11">• &amp;String coerces to &amp;str automatically</text>
+  <!-- Shared data -->
+  <rect x="200" y="110" width="60" height="24" rx="3" fill="#f59e0b" opacity="0.6"/>
+  <text x="230" y="126" text-anchor="middle" fill="#fff" font-size="11">"Hello"</text>
+  <line x1="170" y1="75" x2="220" y2="115" stroke="#60a5fa" stroke-width="1.5" stroke-dasharray="4"/>
+</svg>
+<div class="diagram-caption">String owns heap memory; &amp;str is a view into existing data (stack literal, String, or anywhere)</div>
+</div>
+
+    <pre class="language-rust"><code>let owned: String = String::from("hello");     // owns heap memory
+let owned: String = "hello".to_string();        // same thing
+let owned: String = "hello".to_owned();         // also same
+
+let borrowed: &amp;str = "hello";                  // pointer into read-only memory
+let borrowed: &amp;str = &amp;owned;                   // borrow from a String
+let borrowed: &amp;str = &amp;owned[0..3];             // slice — "hel"</code></pre>
+
+    <h3>The golden rule: prefer <code>&amp;str</code> in function parameters</h3>
+    <pre class="language-rust"><code>// ✅ Good — accepts both String and &amp;str
+fn greet(name: &amp;str) {
+    println!("Hello, {}!", name);
+}
+
+// ❌ Restrictive — only accepts owned String
+fn greet(name: String) {
+    println!("Hello, {}!", name);
+}
+
+// Calling the good version with either type:
+greet("literal");                  // &amp;str literal — works
+greet(&amp;my_string);                // &amp;String auto-coerces to &amp;str — works
+greet(my_string.as_str());         // explicit — also works</code></pre>
+
+    <div class="callout"><strong>From <code>project_storage.rs</code>:</strong> Functions take <code>&amp;str</code> or <code>String</code> at the Tauri command boundary where JSON deserialization gives you owned <code>String</code>s. Inside the function, <code>&amp;str</code> slices are used freely.</div>
+
+    <div class="callout-sap">ABAP has one string type: <code>STRING</code>. And also <code>CHAR</code>. And <code>NUMC</code>. And <code>CLOB</code>. And <code>SSTRING</code>. And <code>RAWSTRING</code>. And <code>XSTRING</code>. They're all subtly different, none of them interoperate cleanly, and the documentation for when to use which is a SAP Note from 2008 that contradicts a different SAP Note from 2011. The consultant will tell you to "just use <code>STRING</code>." The consultant is wrong. The BASIS team will explain why at 3am during a P1 incident.</div>
+
+    <!-- QUIZ 1 -->
+    <div class="quiz" id="q7-1">
+      <div class="quiz-label">🔘 Multiple Choice</div>
+      <div class="quiz-q">Why should function parameters usually take <code>&amp;str</code> rather than <code>String</code>?</div>
+      <div class="quiz-options">
+        <button data-correct="false" onclick="mc('q7-1', this, false)"><code>&amp;str</code> is faster to allocate</button>
+        <button data-correct="true"  onclick="mc('q7-1', this, true)">It's more flexible — accepts both <code>&amp;str</code> literals and borrows of <code>String</code></button>
+        <button data-correct="false" onclick="mc('q7-1', this, false)"><code>String</code> parameters can't be passed from other functions</button>
+        <button data-correct="false" onclick="mc('q7-1', this, false)"><code>&amp;str</code> is mutable, <code>String</code> is not</button>
+      </div>
+      <div class="quiz-exp" id="q7-1-exp">
+        <strong>✓ Flexibility!</strong> A <code>&amp;str</code> parameter accepts string literals directly (<code>"hello"</code>), borrows of <code>String</code> via auto-deref (<code>&amp;my_string</code>), and string slices. A <code>String</code> parameter forces callers to either already own a <code>String</code> or call <code>.to_string()</code> just to call your function — unnecessary allocation.
+      </div>
+    </div>
+
+    <div class="callout-xml">Working with XML strings in Rust is pleasant. Working with SOAP XML strings in any language is not. A SOAP envelope for 'give me the weather in London' is 47 lines of XML, two namespace declarations, a mustUnderstand attribute that most servers ignore, and a WSDL file that says the element is called WeatherRequest but the server actually expects GetWeatherRequest. APInox exists because someone had to deal with this and decided to make it less awful.</div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>2. String Conversions — The Most Common Operations</h2>
+
+    <div class="callout-java">Java has <code>String</code> (immutable), <code>StringBuilder</code> (mutable, single-thread), <code>StringBuffer</code> (mutable, thread-safe, slower), <code>StringJoiner</code> (Java 8, because apparently <code>String.join()</code> wasn't enough), and <code>CharSequence</code> (interface for all of the above). Rust has <code>String</code> and <code>&amp;str</code>. You'll get it in a day.</div>
+    <pre class="language-rust"><code>let s: String = "hello".to_string();
+let s: String = "hello".to_owned();
+let s: String = String::from("hello");
+let s: String = format!("hello {}", name);      // like String.Format or $""
+
+// String → &amp;str
+let slice: &amp;str = &amp;s;
+let slice: &amp;str = s.as_str();
+
+// Number → String
+let n = 42;
+let s: String = n.to_string();
+let s: String = format!("{}", n);
+
+// String → Number
+let n: i32 = "42".parse().unwrap();
+let n: i32 = "42".parse::&lt;i32&gt;().unwrap();     // turbofish syntax
+
+// Concatenation
+let combined = format!("{} {}", first, last);   // ✅ preferred
+let combined = first + " " + &amp;last;             // ✅ moves first, borrows last
+// combined = first + last;                     // ❌ type error — + needs &amp;str rhs</code></pre>
+
+    <!-- QUIZ 2 -->
+    <div class="quiz" id="q7-2">
+      <div class="quiz-label">✍️ Fill in the Blank</div>
+      <div class="quiz-q">Convert the number <code>port</code> to a <code>String</code> for use in a URL:</div>
+      <div class="fill-wrap">
+        let url = format!("http://localhost:{}", port<input class="fill-input" id="q7-2-in" placeholder="???" style="width:14ch">);
+      </div>
+      <button class="btn-check" onclick="fillCheck('q7-2', ['', '.to_string()'])">Check</button>
+      <div class="quiz-exp" id="q7-2-exp">
+        <strong>Nothing needed!</strong> <code>format!</code> accepts any type that implements <code>Display</code> — numbers, booleans, floats — directly. You don't need to call <code>.to_string()</code> first. <code>format!("http://localhost:{}", port)</code> is the idiomatic way. If you answered <code>.to_string()</code>, that also works but is redundant here.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>3. <code>PathBuf</code> and <code>Path</code> — Strings for File Paths</h2>
+    <p>File paths are their own type pair in Rust — analogous to <code>String</code>/<code>&amp;str</code>:</p>
+
+    <table>
+      <thead><tr><th></th><th><code>PathBuf</code></th><th><code>Path</code> (<code>&amp;Path</code>)</th></tr></thead>
+      <tbody>
+        <tr><td>Relation</td><td>Like <code>String</code> — owned</td><td>Like <code>&amp;str</code> — borrowed view</td></tr>
+        <tr><td>C# analogy</td><td><code>new FileInfo("path")</code></td><td><code>string path</code></td></tr>
+      </tbody>
+    </table>
+
+    <p>From <code>project_storage.rs</code>:</p>
+    <pre class="language-rust"><code>use std::path::PathBuf;
+
+// Build paths cross-platform (handles / and \ automatically):
+let config_dir = PathBuf::from(&amp;dir_path);
+let props_path = config_dir.join("properties.json");   // appends segment
+let sub_dir    = config_dir.join("interfaces").join("MyService");
+
+// Check existence:
+if props_path.exists() { ... }
+if props_path.is_file() { ... }
+if config_dir.is_dir() { ... }
+
+// Get parts:
+let name = path.file_name().unwrap().to_string_lossy();
+let ext  = path.extension().unwrap().to_str().unwrap();
+let dir  = path.parent().unwrap();
+
+// Convert back to string when needed (e.g., for logging):
+let s: &amp;str = path.to_str().unwrap();              // fails if non-UTF8
+let s: String = path.to_string_lossy().into_owned(); // always works</code></pre>
+
+    <!-- QUIZ 3 -->
+    <div class="quiz" id="q7-3">
+      <div class="quiz-label">✅ True or False</div>
+      <div class="quiz-q">You should use <code>String</code> and manual <code>"/"</code> concatenation to build file paths in cross-platform Rust code.</div>
+      <div class="quiz-options tf">
+        <button data-answer="false" onclick="tf('q7-3', this, true, false)">True</button>
+        <button data-answer="false" onclick="tf('q7-3', this, false, false)">False</button>
+      </div>
+      <div class="quiz-exp" id="q7-3-exp">
+        <strong>False!</strong> Always use <code>PathBuf::join()</code>. Windows uses <code>\</code>, Unix uses <code>/</code>. <code>join()</code> uses the correct separator automatically. <code>format!("{}/{}", dir, file)</code> will break on Windows. <code>PathBuf::from(dir).join(file)</code> works everywhere — which matters for a cross-platform Tauri app like APInox.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>4. Common String Methods</h2>
+
+    <pre class="language-rust"><code>let s = String::from("  Hello, World!  ");
+
+// Trimming
+s.trim()                    // "Hello, World!" — both ends
+s.trim_start()              // "Hello, World!  "
+s.trim_end()                // "  Hello, World!"
+
+// Searching
+s.contains("World")         // true
+s.starts_with("Hello")      // false — whitespace!
+s.find("World")             // Some(9) — byte index
+
+// Splitting
+let parts: Vec&lt;&amp;str&gt; = "a,b,c".split(',').collect();
+let parts: Vec&lt;&amp;str&gt; = "a,b,c".splitn(2, ',').collect(); // ["a", "b,c"]
+
+// Replacing
+s.replace("World", "Rust")
+s.replacen("l", "L", 1)    // replace first occurrence only
+
+// Case
+s.to_lowercase()
+s.to_uppercase()
+
+// Lines
+let lines: Vec&lt;&amp;str&gt; = text.lines().collect();</code></pre>
+
+    <!-- QUIZ 4 -->
+    <div class="quiz" id="q7-4">
+      <div class="quiz-label">🐛 Spot the Bug</div>
+      <div class="quiz-q">This code tries to get the 3rd character of a string. Click the buggy line:</div>
+      <div class="bug-pre">
+        <span class="bug-line" onclick="bugLine('q7-4', this, false)">let s = String::from("hello");</span>
+        <span class="bug-line" onclick="bugLine('q7-4', this, true)">let ch = s[2];</span>
+        <span class="bug-line" onclick="bugLine('q7-4', this, false)">println!("{}", ch);</span>
+      </div>
+      <div class="quiz-exp" id="q7-4-exp">
+        <strong>Line 2!</strong> Rust <strong>does not allow indexing into a <code>String</code> with <code>[]</code></strong>. This is intentional — a String is UTF-8, and <code>s[2]</code> would be a byte index, not a character index. For multi-byte characters (e.g., emoji, accented letters), this would give you a partial character. Instead:<br><br>
+        <code>s.chars().nth(2)</code> → <code>Option&lt;char&gt;</code> — correct, counts characters<br>
+        <code>&amp;s[0..3]</code> → <code>&amp;str</code> slice — byte range, panics on non-char boundary<br>
+        <code>s.as_bytes()[2]</code> → <code>u8</code> — explicit byte access
+      </div>
+    </div>
+
+    <div class="callout-oracle">In Oracle, string concatenation is <code>||</code>. Fine. String functions are <code>SUBSTR</code>, <code>INSTR</code>, <code>RPAD</code>, <code>LTRIM</code> — all fine, all PL/SQL. But if you need Unicode beyond Latin-1, you need to check your <code>NLS_CHARACTERSET</code>, your <code>NLS_NCHAR_CHARACTERSET</code>, file a BASIS ticket, and then find out the DB was installed in <code>WE8ISO8859P1</code> in 1999 and changing it requires a full export/import. Your data displays as <code>?????</code>. It has always displayed as <code>?????</code>. Nobody noticed because the users are in Latin America and nobody localised the UI.</div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>5. The <code>format!</code> Macro — Your Swiss Army Knife</h2>
+
+    <pre class="language-rust"><code>// Basic — like C# $"" strings
+let msg = format!("Port: {}", port);
+let msg = format!("Host: {host}");          // Rust 1.58+ — variable name directly
+
+// Debug output
+let msg = format!("{:?}", my_struct);       // requires #[derive(Debug)]
+let msg = format!("{:#?}", my_struct);      // pretty-printed (multiline)
+
+// Number formatting
+format!("{:05}", 42)       // "00042" — zero-padded to width 5
+format!("{:.2}", 3.14159)  // "3.14" — 2 decimal places
+format!("{:>10}", "hi")    // "        hi" — right-aligned in 10 chars
+format!("{:x}", 255)       // "ff" — hex
+format!("{:b}", 7)         // "111" — binary
+
+// From secret_storage.rs — building error messages:
+return Err(format!("Could not determine config directory for platform: {}", std::env::consts::OS));</code></pre>
+
+    <!-- QUIZ 5 -->
+    <div class="quiz predict" id="q7-5">
+      <div class="quiz-label">🤔 Predict the Output</div>
+      <div class="quiz-q">What does this print?</div>
+      <pre class="language-rust"><code>let name = "APInox";
+let version = 2;
+println!("Welcome to {} v{:03}!", name, version);</code></pre>
+      <button class="btn-reveal" onclick="reveal('q7-5')">Reveal Answer</button>
+      <div class="quiz-exp" id="q7-5-exp">
+        <strong>Welcome to APInox v002!</strong><br>
+        <code>{:03}</code> formats the integer with a minimum width of 3, zero-padded. So <code>2</code> becomes <code>002</code>. Format specifiers go after <code>:</code> inside the braces: <code>{value:specifier}</code>.
+      </div>
+    </div>
+
+    <div class="callout-salesforce">Salesforce SOQL strings are injection-safe if you use bind variables: <code>WHERE Id = :recordId</code>. Half the legacy Apex code in your org does string concatenation into SOQL queries because "it was quicker." The AppExchange security scanner will flag every single one. The fix is left as an exercise for the consultant billing at £1,200/day, who will also introduce three new ones while fixing the original five.</div>
+  </section>
+
+  <nav class="lesson-nav">
+    <a href="lesson-06.html">← Lesson 6: Gaps</a>
+    <a href="index.html" class="nav-center">All Lessons</a>
+    <a href="lesson-08.html">Lesson 8: Pattern Matching →</a>
+  </nav>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-csharp.min.js"></script>
+<script src="quiz.js"></script>
+</body>
+</html>

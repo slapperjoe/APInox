@@ -215,6 +215,8 @@ export interface ApiRequest {
     requestType?: RequestType;
     /** Body content type - defaults based on requestType */
     bodyType?: BodyType;
+    /** Query parameters for REST requests */
+    queryParams?: Record<string, string>;
     /** REST-specific configuration (query params, path params, auth) */
     restConfig?: RestConfig;
     /** GraphQL-specific configuration (variables, operation name) */

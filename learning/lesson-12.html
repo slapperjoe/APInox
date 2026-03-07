@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 12 — Lifetimes | Rust for C#/JS Devs</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-one-dark.min.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a href="index.html" class="back-link">← All Lessons</a>
+  <span class="lesson-badge">Lesson 12 · ~35 min</span>
+</header>
+
+<main class="lesson">
+  <div class="lesson-hero">
+    <h1>Lifetimes</h1>
+    <div class="lesson-meta">
+      <span>⏱ ~35 min</span>
+      <span>⚠️ Honest warning: this is the dry one</span>
+    </div>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:0%"></div></div>
+  <p class="progress-label">0 of 5 questions answered</p>
+
+  <div class="callout" style="border-left-color: #f59e0b; background: #fffbeb;">
+    <strong>⚠️ Fair warning:</strong> Lifetimes are the most conceptually heavy part of Rust. This lesson is intentionally straightforward, not jazzy. You rarely write them in application code (APInox barely uses any) — but you <em>will</em> encounter them in library code, and the compiler will occasionally demand them. Skim it now, return when the compiler yells at you.
+  </div>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>1. Why Lifetimes Exist</h2>
+    <p>Lifetimes are Rust's way of proving at compile time that a reference never outlives the data it points to. In C#, the GC handles this at runtime. Rust does it at compile time — no GC needed.</p>
+
+    <pre class="language-rust"><code>// This is the problem lifetimes prevent:
+fn bad() -&gt; &amp;String {
+    let s = String::from("hello");
+    &amp;s  // ERROR: s is dropped at end of function
+        // returning a reference to freed memory — use after free
+}
+// In C++, this compiles and causes undefined behaviour.
+// In Rust, it's a compile error.</code></pre>
+
+    <pre class="language-rust"><code>// This is fine — the reference lives as long as the value:
+fn first_word(s: &amp;str) -&gt; &amp;str {
+    &amp;s[..s.find(' ').unwrap_or(s.len())]
+    // returned slice borrows FROM s — valid as long as s is valid
+}</code></pre>
+
+    <div class="callout"><strong>The rule:</strong> A reference can't outlive the data it points to. Lifetimes are how the compiler tracks this.</div>
+
+  <div class="callout-arch">An architect will look at <code>Box&lt;T&gt;</code> and ask if this is the Repository Pattern. It is not. They will then ask if we should wrap it in a factory. You will explain it's a heap allocation. They will ask if the heap should be its own service. You will go home.</div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>2. Lifetime Elision — Why You Don't Usually Write Them</h2>
+    <p>The compiler can infer lifetimes in most common patterns via three elision rules:</p>
+
+    <pre class="language-rust"><code>// Rule 1: Each reference parameter gets its own lifetime
+fn foo(x: &amp;str, y: &amp;str) -&gt; ...
+// compiler sees: fn foo&lt;'a, 'b&gt;(x: &amp;'a str, y: &amp;'b str) -&gt; ...
+
+// Rule 2: If there's exactly one input reference, the output gets that lifetime
+fn first_word(s: &amp;str) -&gt; &amp;str
+// compiler sees: fn first_word&lt;'a&gt;(s: &amp;'a str) -&gt; &amp;'a str
+// — returned &amp;str lives as long as s
+
+// Rule 3: If one input is &amp;self or &amp;mut self, output gets that lifetime
+impl MyStruct {
+    fn get_name(&amp;self) -&gt; &amp;str { &amp;self.name }
+    // compiler sees: fn get_name&lt;'a&gt;(&amp;'a self) -&gt; &amp;'a str
+}</code></pre>
+
+    <div class="callout">When these rules resolve all lifetimes, the compiler doesn't ask you to annotate anything. You only need explicit lifetime syntax when the rules are ambiguous.</div>
+
+    <!-- QUIZ 1 -->
+    <div class="quiz" id="q12-1">
+      <div class="quiz-label">✅ True or False</div>
+      <div class="quiz-q">Most Rust functions that take and return references require explicit lifetime annotations written by the programmer.</div>
+      <div class="quiz-options tf">
+        <button data-answer="false" onclick="tf('q12-1', this, true, false)">True</button>
+        <button data-answer="false" onclick="tf('q12-1', this, false, false)">False</button>
+      </div>
+      <div class="quiz-exp" id="q12-1-exp">
+        <strong>False!</strong> Lifetime elision rules handle the common cases automatically. You typically only need to write lifetime annotations when: (1) a function takes multiple references and returns one — the compiler doesn't know which input the output borrows from; (2) a struct holds a reference; (3) you're implementing certain traits. In application code like APInox, you rarely write <code>'a</code>.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>3. When You DO Need Explicit Lifetimes</h2>
+    <p>The compiler asks for a lifetime when it can't determine which input a returned reference borrows from:</p>
+
+    <pre class="language-rust"><code">// PROBLEM: two input references — which does the return borrow from?
+fn longest(x: &amp;str, y: &amp;str) -&gt; &amp;str {
+//                                 ^ ERROR: missing lifetime specifier
+    if x.len() &gt; y.len() { x } else { y }  // could be either!
+}
+
+// SOLUTION: name the lifetime, tie all three together
+fn longest&lt;'a&gt;(x: &amp;'a str, y: &amp;'a str) -&gt; &amp;'a str {
+//          ^       ^               ^          ^
+//     declare    both inputs    output lives as long as
+//     lifetime   share 'a      the SHORTER of x or y
+
+    if x.len() &gt; y.len() { x } else { y }
+}
+
+// Usage:
+let s1 = String::from("long string");
+let result;
+{
+    let s2 = String::from("xyz");
+    result = longest(s1.as_str(), s2.as_str());
+    println!("{}", result);  // OK — both s1 and s2 alive here
+}
+// println!("{}", result);  // ERROR — s2 dropped, result might ref s2</code></pre>
+
+    <!-- QUIZ 2 -->
+    <div class="quiz" id="q12-2">
+      <div class="quiz-label">🔘 Multiple Choice</div>
+      <div class="quiz-q">In <code>fn longest&lt;'a&gt;(x: &amp;'a str, y: &amp;'a str) -&gt; &amp;'a str</code>, what does <code>'a</code> actually mean at runtime?</div>
+      <div class="quiz-options">
+        <button data-correct="false" onclick="mc('q12-2', this, false)">Both inputs must have exactly equal lifetimes</button>
+        <button data-correct="true"  onclick="mc('q12-2', this, true)">The output lives at most as long as the <em>shorter</em> of x's and y's lifetimes</button>
+        <button data-correct="false" onclick="mc('q12-2', this, false)">The function allocates memory for duration <code>'a</code></button>
+        <button data-correct="false" onclick="mc('q12-2', this, false)">The inputs are cloned to ensure equal lifetime</button>
+      </div>
+      <div class="quiz-exp" id="q12-2-exp">
+        <strong>✓ The shorter lifetime!</strong> <code>'a</code> is substituted with the overlap — the shorter of the two actual lifetimes. The returned reference is only valid while <em>both</em> inputs are still alive. Lifetimes are purely a compile-time concept — they have zero runtime cost. They generate no code; they're just annotations that let the compiler check safety.
+      </div>
+    </div>
+
+  <div class="callout-maui">MAUI's memory story: everything is managed by the .NET GC, which works beautifully until you have a <code>CollectionView</code> binding to an <code>ObservableCollection</code> on a page that isn't fully disposed because the navigation stack held a reference. Memory climbs. The GC eventually collects. In the meantime your enterprise iPad app has been killed by iOS for using too much memory. The GitHub issue has 847 thumbs-up and is labelled "help wanted".</div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>4. Lifetime Annotations in Structs</h2>
+    <p>If a struct holds a <em>reference</em> (not an owned value), it needs a lifetime annotation:</p>
+
+    <pre class="language-rust"><code>// Struct that borrows rather than owns:
+struct XmlParser&lt;'a&gt; {
+    input: &amp;'a str,    // borrows the input string — doesn't copy it
+}
+
+impl&lt;'a&gt; XmlParser&lt;'a&gt; {
+    fn new(input: &amp;'a str) -&gt; Self {
+        XmlParser { input }
+    }
+
+    fn parse_tag(&amp;self) -&gt; &amp;'a str {
+        // returned &amp;str is a slice of self.input
+        // lives as long as 'a — as long as the original string
+        &amp;self.input[1..self.input.find('&gt;').unwrap_or(self.input.len())]
+    }
+}
+
+let xml = String::from("&lt;root&gt;data&lt;/root&gt;");
+let parser = XmlParser::new(&amp;xml);
+let tag = parser.parse_tag();  // valid while xml exists</code></pre>
+
+    <div class="callout"><strong>APInox avoids this</strong> by using owned <code>String</code> fields instead of <code>&amp;str</code>. Most application code makes the same choice — lifetime-annotated structs are more common in high-performance library code (parsers, lexers) where you want to avoid copying large strings.</div>
+
+  <div class="callout-java">Java developers: <code>synchronized</code>. Also <code>ReentrantLock</code>. Also <code>ReadWriteLock</code>. Also <code>StampedLock</code> (Java 8, "better performance"). Also <code>volatile</code>. Also <code>AtomicReference</code>. Also <code>ConcurrentHashMap</code>. Choose wrong: data corruption. Choose right: you still chose wrong but it works by accident. The Stack Overflow answer for "when to use which" has 47 upvotes and ends with "it depends".</div>
+
+    <!-- QUIZ 3 -->
+    <div class="quiz" id="q12-3">
+      <div class="quiz-label">✍️ Fill in the Blank</div>
+      <div class="quiz-q">Add the lifetime annotation to make this struct compile. The struct borrows a slice of bytes:</div>
+      <div class="fill-wrap">
+        struct Buffer<input class="fill-input" id="q12-3-in" placeholder="????" style="width:5ch"> {<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;data: &amp;'a [u8],<br>
+        }
+      </div>
+      <button class="btn-check" onclick="fillCheck('q12-3', [\"<'a>\"])">Check</button>
+      <div class="quiz-exp" id="q12-3-exp">
+        <strong>&lt;'a&gt;</strong> — the struct declaration must name the lifetime parameter: <code>struct Buffer&lt;'a&gt;</code>. The apostrophe is mandatory — it distinguishes lifetime parameters from type parameters (<code>&lt;T&gt;</code>). By convention, single-letter names like <code>'a</code>, <code>'b</code>, <code>'r</code> are used, or descriptive names like <code>'input</code> for clarity.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>5. <code>'static</code> — The Special Lifetime</h2>
+    <pre class="language-rust"><code>// 'static means: lives for the entire program duration
+
+// String literals are always 'static — they're compiled into the binary:
+let s: &amp;'static str = "hello world";
+
+// Required by tokio::spawn — spawned tasks can run indefinitely:
+tokio::spawn(async move {
+    // data used here must be 'static (owned, not borrowed)
+});
+
+// Boxed trait objects often require 'static:
+fn register_handler(handler: Box&lt;dyn Fn() + 'static&gt;) {
+    // handler stored long-term — must not hold short-lived borrows
+}
+
+// You'll see this in error messages:
+// error: `data` does not live long enough, expected 'static lifetime</code></pre>
+
+    <!-- QUIZ 4 -->
+    <div class="quiz" id="q12-4">
+      <div class="quiz-label">✅ True or False</div>
+      <div class="quiz-q">A <code>'static</code> reference always points to read-only data that can never be modified.</div>
+      <div class="quiz-options tf">
+        <button data-answer="false" onclick="tf('q12-4', this, true, false)">True</button>
+        <button data-answer="false" onclick="tf('q12-4', this, false, false)">False</button>
+      </div>
+      <div class="quiz-exp" id="q12-4-exp">
+        <strong>False!</strong> <code>'static</code> means the reference is valid for the entire program — it says nothing about mutability. An owned <code>String</code> wrapped in <code>Arc</code> and stored in a lazy static satisfies <code>'static</code> and is mutable (behind a <code>Mutex</code>). String <em>literals</em> (<code>&amp;'static str</code>) happen to be immutable, but that's because they're in read-only memory — not because of the lifetime.
+      </div>
+    </div>
+
+    <!-- QUIZ 5 -->
+    <div class="quiz" id="q12-5">
+      <div class="quiz-label">🐛 Spot the Bug</div>
+      <div class="quiz-q">This won't compile. Click the line that causes the lifetime violation:</div>
+      <div class="bug-pre">
+        <span class="bug-line" onclick="bugLine('q12-5', this, false)">fn get_greeting() -&gt; &amp;str {</span>
+        <span class="bug-line" onclick="bugLine('q12-5', this, false)">    let greeting = String::from("Hello!");</span>
+        <span class="bug-line" onclick="bugLine('q12-5', this, true)">    &amp;greeting</span>
+        <span class="bug-line" onclick="bugLine('q12-5', this, false)">}</span>
+      </div>
+      <div class="quiz-exp" id="q12-5-exp">
+        <strong>Line 3!</strong> <code>greeting</code> is a local <code>String</code> that gets dropped when the function returns. Returning <code>&amp;greeting</code> would be a dangling reference — pointing to freed memory. The fix: return the owned <code>String</code> instead: <code>fn get_greeting() -&gt; String { String::from("Hello!") }</code>. Or use a string literal: <code>fn get_greeting() -&gt; &amp;'static str { "Hello!" }</code> — string literals live forever.
+      </div>
+    </div>
+
+    <div class="callout-sec">Rust's <code>Box&lt;T&gt;</code>, <code>Rc&lt;T&gt;</code>, and <code>Arc&lt;T&gt;</code> give you explicit, auditable control over allocation and sharing. No dangling pointers. No use-after-free. The enterprise security team's reaction to this: require that all pointers be documented in the Security Design Document, reviewed by the Architecture Board, and approved before implementation. The Security Design Document template is 22 pages. The pointer is 1 line of code.</div>
+  </section>
+
+  <nav class="lesson-nav">
+    <a href="lesson-11.html">← Lesson 11: Traits</a>
+    <a href="index.html" class="nav-center">All Lessons</a>
+    <a href="lesson-13.html">Lesson 13: Smart Pointers →</a>
+  </nav>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+<script src="quiz.js"></script>
+</body>
+</html>

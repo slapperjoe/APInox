@@ -36,41 +36,15 @@ export const useAppLifecycle = ({
     // Initial Load & Backend Sync
     useEffect(() => {
         const loadSettings = async () => {
-            if (!isTauri()) {
-                bridge.sendMessage({ command: 'getSettings' });
-                return;
-            }
-
-            const { invoke } = await import('@tauri-apps/api/core');
-
-            const waitForSidecar = async () => {
-                const maxAttempts = 40;
-                for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-                    try {
-                        const ready = await invoke<boolean>('is_sidecar_ready');
-                        if (ready) return true;
-                    } catch (e) {
-                        // ignore and retry
-                    }
-                    await new Promise(resolve => setTimeout(resolve, 250));
-                }
-                return false;
-            };
-
-            const ready = await waitForSidecar();
-            if (!ready) return;
-
+            // Load settings from Rust backend
             try {
-                const data: any = await bridge.sendMessageAsync({ command: FrontendCommand.GetSettings });
-                bridge.emit({
-                    command: 'settingsUpdate',
-                    config: data?.config ?? data,
-                    raw: data?.raw,
-                    configDir: data?.configDir,
-                    configPath: data?.configPath
-                } as any);
-            } catch (e) {
-                // ignore; no settings available
+                const config = await bridge.invokeTauriCommand('get_settings', {});
+                if (config) {
+                    // Emit settings update event so ConfigContext can update
+                    bridge.emit({ command: 'settingsUpdate', config } as any);
+                }
+            } catch (error) {
+                console.error('[useAppLifecycle] Failed to load settings:', error);
             }
         };
 
@@ -100,6 +74,36 @@ export const useAppLifecycle = ({
                         bridge.sendMessage({ command: 'loadProject', path: p.fileName });
                     }
                 });
+            }
+        }
+
+        // Restore previously open projects from localStorage (Rust backend)
+        if (isTauri()) {
+            try {
+                const savedPaths = localStorage.getItem('apinox:openProjects');
+                if (savedPaths) {
+                    const paths = JSON.parse(savedPaths) as string[];
+                    console.log('[useAppLifecycle] Restoring', paths.length, 'open projects');
+                    
+                    // Load each project from disk
+                    paths.forEach(async (path) => {
+                        try {
+                            const project = await bridge.invokeTauriCommand('load_project', { dirPath: path });
+                            (project as any).fileName = path;
+                            
+                            // Add to projects list via bridge event
+                            bridge.emit({
+                                command: 'projectLoaded',
+                                project,
+                                filename: path
+                            } as any);
+                        } catch (error) {
+                            console.error('[useAppLifecycle] Failed to restore project:', path, error);
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('[useAppLifecycle] Failed to restore open projects:', error);
             }
         }
 

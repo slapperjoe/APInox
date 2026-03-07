@@ -313,7 +313,7 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
                                             }
                                         </StepStat>
                                     )}
-                                    {status?.response?.rawResponse !== undefined && (
+                                    {status?.response?.rawResponse != null && (
                                         <StepStatWide title="Response Size">
                                             {(status.response.rawResponse.length / 1024).toFixed(2)} KB
                                         </StepStatWide>
