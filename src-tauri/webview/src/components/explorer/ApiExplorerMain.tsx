@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import {
     Upload, ArrowRight, X
 } from 'lucide-react';
@@ -35,6 +35,24 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
     selectedOperation
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isDragOver, setIsDragOver] = useState(false);
+
+    const handleFilePath = (path: string) => {
+        setWsdlUrl(path);
+        setInputType('file');
+        loadWsdl(path, 'file');
+    };
+
+    const handleDropZoneDrop = async (e: React.DragEvent<HTMLButtonElement>) => {
+        e.preventDefault();
+        setIsDragOver(false);
+        const files = e.dataTransfer.files;
+        if (files.length === 0) return;
+        const file = files[0];
+        // In Tauri, Chromium exposes the full path via webkitRelativePath or file.path
+        const path: string = (file as any).path || file.name;
+        handleFilePath(path);
+    };
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         // In Tauri mode, use Tauri's file dialog to get the full path
@@ -369,26 +387,64 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
                             <span style={{ fontWeight: 500 }}>Petstore YAML</span>
                             <span style={{ fontSize: 11, color: 'var(--apinox-descriptionForeground)' }}>OpenAPI 2.0 (YAML)</span>
                         </button>
+                        <button
+                            onClick={() => {
+                                setWsdlUrl('https://spacex-production.up.railway.app/graphql');
+                                setInputType('url');
+                            }}
+                            style={{
+                                textAlign: 'left', padding: '12px',
+                                backgroundColor: 'var(--apinox-editor-background)',
+                                border: '1px solid var(--apinox-widget-border)',
+                                borderRadius: 6, cursor: 'pointer',
+                                color: 'var(--apinox-foreground)',
+                                display: 'flex', flexDirection: 'column', gap: 4
+                            }}
+                        >
+                            <span style={{ fontWeight: 500 }}>SpaceX</span>
+                            <span style={{ fontSize: 11, color: 'var(--apinox-descriptionForeground)' }}>GraphQL</span>
+                        </button>
+
+                        <button
+                            onClick={() => {
+                                setWsdlUrl('https://rickandmortyapi.com/graphql');
+                                setInputType('url');
+                            }}
+                            style={{
+                                textAlign: 'left', padding: '12px',
+                                backgroundColor: 'var(--apinox-editor-background)',
+                                border: '1px solid var(--apinox-widget-border)',
+                                borderRadius: 6, cursor: 'pointer',
+                                color: 'var(--apinox-foreground)',
+                                display: 'flex', flexDirection: 'column', gap: 4
+                            }}
+                        >
+                            <span style={{ fontWeight: 500 }}>Rick & Morty</span>
+                            <span style={{ fontSize: 11, color: 'var(--apinox-descriptionForeground)' }}>GraphQL</span>
+                        </button>
                     </div>
                 </div>
 
                 {/* Import File Button */}
                 <button
                     onClick={handleImportFile}
+                    onDrop={handleDropZoneDrop}
+                    onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                    onDragLeave={() => setIsDragOver(false)}
                     style={{
-                        border: '2px dashed var(--apinox-widget-border)',
+                        border: `2px dashed ${isDragOver ? 'var(--apinox-focusBorder)' : 'var(--apinox-widget-border)'}`,
                         borderRadius: 8,
                         padding: 40,
                         textAlign: 'center',
                         cursor: 'pointer',
-                        backgroundColor: 'transparent',
+                        backgroundColor: isDragOver ? 'var(--apinox-list-hoverBackground)' : 'transparent',
                         transition: 'all 0.2s ease',
                         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
                         width: '100%',
                         color: 'var(--apinox-foreground)'
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--apinox-list-hoverBackground)'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    onMouseEnter={(e) => { if (!isDragOver) e.currentTarget.style.backgroundColor = 'var(--apinox-list-hoverBackground)'; }}
+                    onMouseLeave={(e) => { if (!isDragOver) e.currentTarget.style.backgroundColor = 'transparent'; }}
                 >
                     <input
                         ref={fileInputRef}
@@ -399,10 +455,10 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
                     />
                     <Upload size={32} color="var(--apinox-descriptionForeground)" />
                     <div style={{ fontWeight: 500 }}>
-                        Import File
+                        {isDragOver ? 'Drop to import' : 'Import File'}
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--apinox-descriptionForeground)' }}>
-                        Support for WSDL, OpenAPI (JSON/YAML)
+                        Drag & drop or click — WSDL, OpenAPI (JSON/YAML)
                     </div>
                 </button>
 

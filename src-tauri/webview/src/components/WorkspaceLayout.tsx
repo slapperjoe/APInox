@@ -1021,15 +1021,12 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     if (!effectiveRequest) {
         if (selectedStep && selectedStep.type === 'script' && onUpdateStep) {
             return (
-                <div style={{ padding: '20px', color: 'var(--text-secondary)' }}>
-                    Script editor temporarily disabled during package migration
-                </div>
-                // <ScriptEditor
-                //     step={selectedStep}
-                //     onUpdate={onUpdateStep}
-                //     isReadOnly={isReadOnly}
-                //     onBack={onBackToCase}
-                // />
+                <ScriptEditor
+                    step={selectedStep}
+                    onUpdate={onUpdateStep}
+                    isReadOnly={isReadOnly}
+                    onBack={onBackToCase}
+                />
             );
         }
         return <WelcomePanel changelog={changelog} />;
@@ -1192,6 +1189,16 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                     alignAttributes: config?.ui?.alignAttributes ?? false,
                     inlineValues: config?.ui?.inlineElementValues ?? true,
                     hideCausality: false
+                }}
+                initialLayoutMode={(config?.ui?.layoutMode as 'vertical' | 'horizontal') ?? 'vertical'}
+                onLayoutModeChange={(mode) => {
+                    bridge.sendMessage({
+                        command: 'saveUiState',
+                        ui: {
+                            ...config?.ui,
+                            layoutMode: mode
+                        }
+                    });
                 }}
                 onEditorSettingsChange={(settings) => {
                     bridge.sendMessage({

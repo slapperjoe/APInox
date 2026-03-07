@@ -47,9 +47,6 @@
     "resources": {
       "../CHANGELOG.md": "CHANGELOG.md"
     },
-    "externalBin": [
-      "../sidecar-bundle/sidecar"
-    ],
     "windows": {
       "nsis": {
         "compression": "lzma"

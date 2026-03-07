@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 6 — What This Codebase Doesn't Cover | Rust for C#/JS Devs</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-one-dark.min.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a href="index.html" class="back-link">← All Lessons</a>
+  <span class="lesson-badge">Lesson 6 · ~25 min</span>
+</header>
+
+<main class="lesson">
+  <div class="lesson-hero">
+    <h1>What This Codebase Doesn't Cover</h1>
+    <div class="lesson-meta">
+      <span>⏱ ~25 min</span>
+      <span>📚 The Rust Book &amp; wider ecosystem</span>
+    </div>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:0%"></div></div>
+  <p class="progress-label">0 of 5 questions answered</p>
+
+  <div class="callout">
+    You've seen a real-world Tauri app. But Rust is a much larger language. Here's what APInox doesn't need — but you absolutely will encounter in other Rust code.
+  </div>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>1. Lifetimes — "How Long Does This Reference Live?"</h2>
+    <p>Lifetimes are Rust's way of proving at compile time that references never outlive the data they point to. APInox mostly avoids them by owning data (using <code>String</code> instead of <code>&amp;str</code>) but you'll see them in other Rust code:</p>
+
+    <pre class="language-rust"><code>// The apostrophe syntax:
+fn longest&lt;'a&gt;(x: &amp;'a str, y: &amp;'a str) -&gt; &amp;'a str {
+    if x.len() &gt; y.len() { x } else { y }
+}
+// Reads: "the returned reference lives as long as the shorter of x or y"
+
+// In structs that hold references:
+struct Parser&lt;'a&gt; {
+    input: &amp;'a str,   // this struct can't outlive the string it's parsing
+}
+
+// 'static — lives for the entire program duration
+let s: &amp;'static str = "hello";   // string literals are always static</code></pre>
+
+    <div class="callout"><strong>Why APInox avoids them:</strong> The Tauri command boundary (de)serializes everything from JSON. So the codebase owns all its data and rarely needs to hold raw references for extended periods. In parsing, networking, or embedded code, lifetimes become essential.</div>
+
+    <div class="callout-arch">Upon seeing <code>'a</code> lifetime annotations, an architect will suggest that "we should abstract the lifetime concept behind a service so it's configurable." You will explain that lifetimes are compile-time constructs that don't exist at runtime. They will ask if that means "we can't change them in prod." You will take a long walk. The walk will not help.</div>
+
+    <div class="callout-pm">The PM asked how long lifetimes last. You explained they're a compile-time concept — they don't exist at runtime. They asked for a Gantt chart showing each lifetime's start and end date. You sent them the Rust Reference chapter on lifetimes. They forwarded it to the client as 'our technical documentation'. The client said it looked 'very thorough'.</div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>2. Closures &amp; the Fn Traits</h2>
+    <p>Closures are inline anonymous functions that can <em>capture</em> variables from their surrounding scope:</p>
+
+    <pre class="language-rust"><code>let base = 10;
+
+// Captures `base` from the outer scope
+let add_base = |x| x + base;
+
+println!("{}", add_base(5));  // 15
+
+// Iterator pipelines — closures shine here:
+let results: Vec&lt;i32&gt; = numbers
+    .iter()
+    .filter(|&&amp;n| n &gt; 0)
+    .map(|&amp;n| n * 2)
+    .collect();</code></pre>
+
+    <h3>The Fn Traits — What a closure can do:</h3>
+    <table>
+      <thead><tr><th>Trait</th><th>Captured vars</th><th>Can call</th><th>C# analogy</th></tr></thead>
+      <tbody>
+        <tr><td><code>Fn</code></td><td>borrows immutably</td><td>many times</td><td><code>Func&lt;T,R&gt;</code></td></tr>
+        <tr><td><code>FnMut</code></td><td>borrows mutably</td><td>many times</td><td><code>Action&lt;T&gt;</code> with state</td></tr>
+        <tr><td><code>FnOnce</code></td><td>takes ownership</td><td>exactly once</td><td>(no direct equivalent)</td></tr>
+      </tbody>
+    </table>
+
+    <pre class="language-rust"><code>// move keyword — take OWNERSHIP of captured variables
+// Needed when the closure outlives the current stack frame (e.g., threads):
+let name = String::from("Alice");
+tokio::spawn(async move {
+    println!("Hello, {}!", name);  // name is moved INTO the async block
+    // original `name` is gone after this point
+});</code></pre>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>3. Iterators — LINQ for Rust</h2>
+    <p>Rust's iterator chain is the equivalent of C# LINQ — lazy, composable, zero-cost:</p>
+
+    <table>
+      <thead><tr><th>C# LINQ</th><th>Rust Iterator</th></tr></thead>
+      <tbody>
+        <tr><td><code>.Where(x =&gt; x &gt; 0)</code></td><td><code>.filter(|&amp;x| x &gt; 0)</code></td></tr>
+        <tr><td><code>.Select(x =&gt; x * 2)</code></td><td><code>.map(|x| x * 2)</code></td></tr>
+        <tr><td><code>.SelectMany(x =&gt; x.Items)</code></td><td><code>.flat_map(|x| x.items)</code></td></tr>
+        <tr><td><code>.Aggregate(seed, (acc, x) =&gt; ...)</code></td><td><code>.fold(seed, |acc, x| ...)</code></td></tr>
+        <tr><td><code>.Take(n)</code></td><td><code>.take(n)</code></td></tr>
+        <tr><td><code>.Skip(n)</code></td><td><code>.skip(n)</code></td></tr>
+        <tr><td><code>.ToList()</code></td><td><code>.collect::&lt;Vec&lt;_&gt;&gt;()</code></td></tr>
+        <tr><td><code>.Count()</code></td><td><code>.count()</code></td></tr>
+        <tr><td><code>.Any(x =&gt; ...)</code></td><td><code>.any(|x| ...)</code></td></tr>
+        <tr><td><code>.All(x =&gt; ...)</code></td><td><code>.all(|x| ...)</code></td></tr>
+      </tbody>
+    </table>
+
+    <pre class="language-rust"><code>// Three ways to iterate a Vec:
+let v = vec![1, 2, 3];
+
+v.iter()          // borrows — yields &amp;T — v still usable after
+v.iter_mut()      // mutably borrows — yields &amp;mut T
+v.into_iter()     // MOVES v — yields T — v is consumed
+
+// Enumerate (index + value):
+for (i, name) in names.iter().enumerate() {
+    println!("{}: {}", i, name);
+}
+
+// Zip two collections:
+let pairs: Vec&lt;_&gt; = names.iter().zip(scores.iter()).collect();
+
+// Real usage in this codebase pattern:
+let failing: Vec&lt;_&gt; = results
+    .iter()
+    .filter(|r| !r.passed)
+    .map(|r| r.name.clone())
+    .collect();</code></pre>
+
+    <!-- QUIZ 1: Multiple choice -->
+    <div class="quiz" id="q6-1">
+      <div class="quiz-label">🔘 Multiple Choice</div>
+      <div class="quiz-q">You have a <code>Vec&lt;String&gt;</code> and want to iterate over it and then use the Vec again afterwards. Which method should you use?</div>
+      <div class="quiz-options">
+        <button data-correct="false" onclick="mc('q6-1', this, false)"><code>.into_iter()</code></button>
+        <button data-correct="true"  onclick="mc('q6-1', this, true)"><code>.iter()</code></button>
+        <button data-correct="false" onclick="mc('q6-1', this, false)"><code>.iter_mut()</code></button>
+        <button data-correct="false" onclick="mc('q6-1', this, false)">Doesn't matter — they're all the same</button>
+      </div>
+      <div class="quiz-exp" id="q6-1-exp">
+        <strong>✓ .iter()</strong> — it borrows the Vec immutably, yielding <code>&amp;String</code> references. The Vec is still yours after the loop. <code>.into_iter()</code> <em>moves</em> the Vec — it's consumed and no longer accessible. <code>.iter_mut()</code> borrows mutably so you can modify elements in place, but you still can't use the Vec concurrently.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>4. Smart Pointers</h2>
+    <p>These types from the standard library give you flexible memory management without a garbage collector:</p>
+
+    <table>
+      <thead><tr><th>Type</th><th>What it does</th><th>Use when</th></tr></thead>
+      <tbody>
+        <tr><td><code>Box&lt;T&gt;</code></td><td>Single owner, heap allocated</td><td>Recursive types, large data, trait objects</td></tr>
+        <tr><td><code>Rc&lt;T&gt;</code></td><td>Reference counted (single-thread)</td><td>Multiple owners in one thread</td></tr>
+        <tr><td><code>Arc&lt;T&gt;</code></td><td>Atomic reference counted (thread-safe)</td><td>Sharing data across threads/tasks</td></tr>
+        <tr><td><code>Mutex&lt;T&gt;</code></td><td>Mutual exclusion lock</td><td>Shared mutable state between threads</td></tr>
+        <tr><td><code>RwLock&lt;T&gt;</code></td><td>Many readers OR one writer</td><td>Read-heavy shared state</td></tr>
+        <tr><td><code>Cell&lt;T&gt;</code> / <code>RefCell&lt;T&gt;</code></td><td>Interior mutability</td><td>Mutating through a shared reference</td></tr>
+      </tbody>
+    </table>
+
+    <pre class="language-rust"><code>// Sharing config across async tasks:
+let config = Arc::new(AppConfig::load()?);
+
+// clone() just increments the reference count — cheap!
+let config_for_task = Arc::clone(&amp;config);
+tokio::spawn(async move {
+    // config_for_task is a second reference to the same data
+    println!("{}", config_for_task.server_url);
+});
+
+// Shared mutable state:
+let store = Arc::new(Mutex::new(HashMap::new()));
+let store_clone = Arc::clone(&amp;store);
+tokio::spawn(async move {
+    let mut guard = store_clone.lock().await;
+    guard.insert("key", "value");
+    // lock released when guard drops
+});</code></pre>
+
+    <div class="callout-maui">MAUI's approach to object lifetimes is dependency injection with a service locator — everything is Singleton, Transient, or Scoped. On iOS, your Singleton might be silently re-created after a memory warning. Your Transient might be the same instance twice in the same request. The documentation acknowledges this and calls it "platform-specific lifecycle behaviour." It has been this way since Xamarin. You inherited Xamarin. Congratulations.</div>
+
+    <!-- QUIZ 2: Match It -->
+    <div class="quiz" id="q6-2">
+      <div class="quiz-label">🔗 Match It</div>
+      <div class="quiz-q">Match each smart pointer to its best use case:</div>
+      <div class="match-grid">
+        <div class="match-col">
+          <button class="match-item" data-id="a" onclick="matchClick('q6-2', 'a', 'left', this)"><code>Box&lt;T&gt;</code></button>
+          <button class="match-item" data-id="b" onclick="matchClick('q6-2', 'b', 'left', this)"><code>Arc&lt;T&gt;</code></button>
+          <button class="match-item" data-id="c" onclick="matchClick('q6-2', 'c', 'left', this)"><code>Mutex&lt;T&gt;</code></button>
+        </div>
+        <div class="match-col">
+          <button class="match-item" data-id="b" onclick="matchClick('q6-2', 'b', 'right', this)">Config shared across async tasks</button>
+          <button class="match-item" data-id="c" onclick="matchClick('q6-2', 'c', 'right', this)">Counter that multiple threads increment</button>
+          <button class="match-item" data-id="a" onclick="matchClick('q6-2', 'a', 'right', this)">Recursive tree node type</button>
+        </div>
+      </div>
+      <div class="quiz-exp" id="q6-2-exp">
+        <strong>All matched!</strong><br>
+        • <code>Box&lt;T&gt;</code> → recursive types need heap allocation (a tree node can't contain itself on the stack — unknown size)<br>
+        • <code>Arc&lt;T&gt;</code> → shared read-only config across tasks/threads (cheap clone, thread-safe reference count)<br>
+        • <code>Mutex&lt;T&gt;</code> → mutable shared state — only one task writes at a time
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>5. <code>dyn Trait</code> vs <code>impl Trait</code> — Dynamic Dispatch</h2>
+    <p>Two ways to work with trait-typed values, with very different performance characteristics:</p>
+
+    <pre class="language-rust"><code>// impl Trait — compile-time, monomorphized, zero overhead
+fn process(item: impl Serialize) { ... }
+// The compiler generates a concrete version of this function for each T
+
+// dyn Trait — runtime dispatch, stores a vtable pointer
+fn process(item: &amp;dyn Serialize) { ... }
+// Works when you don't know the type at compile time
+
+// When you NEED dyn — storing different types in one Vec:
+let processors: Vec&lt;Box&lt;dyn Processor&gt;&gt; = vec![
+    Box::new(XmlProcessor::new()),
+    Box::new(JsonProcessor::new()),
+    Box::new(CsvProcessor::new()),
+];</code></pre>
+
+    <table>
+      <thead><tr><th></th><th><code>impl Trait</code></th><th><code>dyn Trait</code></th></tr></thead>
+      <tbody>
+        <tr><td>Dispatch</td><td>Compile-time (monomorphised)</td><td>Runtime (vtable pointer)</td></tr>
+        <tr><td>Performance</td><td>Zero overhead</td><td>Small overhead per call</td></tr>
+        <tr><td>Heterogeneous collections</td><td>❌ All same concrete type</td><td>✅ Different types, same trait</td></tr>
+        <tr><td>Syntax</td><td><code>fn foo(x: impl Trait)</code></td><td><code>fn foo(x: &amp;dyn Trait)</code> or <code>Box&lt;dyn Trait&gt;</code></td></tr>
+        <tr><td>C# analogy</td><td>Generic method: <code>Foo&lt;T&gt; where T : ITrait</code></td><td>Interface reference: <code>ITrait x</code></td></tr>
+      </tbody>
+    </table>
+
+    <!-- QUIZ 3: Multiple choice -->
+    <div class="quiz" id="q6-3">
+      <div class="quiz-label">🔘 Multiple Choice</div>
+      <div class="quiz-q">You're building a plugin system where users can register different processor types at runtime. Which approach do you need?</div>
+      <div class="quiz-options">
+        <button data-correct="false" onclick="mc('q6-3', this, false)"><code>impl Trait</code> — it's always better</button>
+        <button data-correct="true"  onclick="mc('q6-3', this, true)"><code>dyn Trait</code> — you need runtime polymorphism with a heterogeneous collection</button>
+        <button data-correct="false" onclick="mc('q6-3', this, false)">Generics with a where clause</button>
+        <button data-correct="false" onclick="mc('q6-3', this, false)">Neither — Rust doesn't support plugins</button>
+      </div>
+      <div class="quiz-exp" id="q6-3-exp">
+        <strong>✓ dyn Trait!</strong> Plugins are registered at runtime, and you need to store <code>Box&lt;dyn Plugin&gt;</code> in a Vec. The concrete types are different (XmlPlugin, JsonPlugin…) so you can't use a generic <code>Vec&lt;T&gt;</code> — all elements of a Vec must be the same type. <code>dyn Trait</code> + <code>Box</code> erases the concrete type, letting you mix and match. This is the exact same mechanism as C# interface references.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>6. Testing</h2>
+    <p>Rust has first-class built-in testing — no separate test framework needed:</p>
+
+    <pre class="language-rust"><code>// Unit tests live in the same file they test
+// cargo test runs them all
+fn add(a: i32, b: i32) -&gt; i32 { a + b }
+
+#[cfg(test)]  // only compiles during test runs
+mod tests {
+    use super::*;  // import the module's functions
+
+    #[test]
+    fn it_adds_correctly() {
+        assert_eq!(add(2, 3), 5);
+    }
+
+    #[test]
+    #[should_panic]
+    fn it_panics_on_overflow() {
+        let _ = i32::MAX + 1;  // debug builds panic on overflow
+    }
+
+    #[test]
+    fn returns_error_when_empty() {
+        let result = parse("");
+        assert!(result.is_err());
+    }
+}
+
+// Integration tests — in tests/ folder at crate root:
+// tests/integration_test.rs
+// These test the public API from outside</code></pre>
+
+    <!-- QUIZ 4: Fill in the blank -->
+    <div class="quiz" id="q6-4">
+      <div class="quiz-label">✍️ Fill in the Blank</div>
+      <div class="quiz-q">What attribute marks a function as a test that <code>cargo test</code> should run?</div>
+      <div class="fill-wrap">
+        <input class="fill-input" id="q6-4-in" placeholder="???" style="width:8ch"><br>
+        fn it_works() {<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;assert_eq!(2 + 2, 4);<br>
+        }
+      </div>
+      <button class="btn-check" onclick="fillCheck('q6-4', ['#[test]', '#[test]'])">Check</button>
+      <div class="quiz-exp" id="q6-4-exp">
+        <strong>#[test]</strong> — that's all you need. No test class, no test runner setup, no framework. Add <code>#[test]</code> above any function and <code>cargo test</code> will find and run it. If the function panics or an assertion fails, the test fails. Return types are ignored — just panic to fail.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>7. <code>unsafe</code> Rust</h2>
+    <p><code>unsafe</code> blocks opt out of certain compiler guarantees — but not all of them:</p>
+
+    <pre class="language-rust"><code>// unsafe unlocks 5 superpowers:
+unsafe {
+    let raw = &amp;x as *const i32;       // 1. Raw pointer dereference
+    let val = *raw;
+
+    some_c_function(ptr);              // 2. Call extern "C" functions
+
+    MY_GLOBAL_MUT.push(5);             // 3. Mutate static variables
+
+    let s = slice::from_raw_parts(p, len); // 4. Create slices from raw parts
+}
+
+// 5. Implement unsafe traits (e.g., Send, Sync)</code></pre>
+
+    <div class="callout"><strong>Common misconception:</strong> <code>unsafe</code> doesn't disable the borrow checker. Memory leaks aren't possible just from <code>unsafe</code>. It's a narrow escape hatch for FFI and low-level code — not a "turn off Rust" mode. You still have types, lifetimes (mostly), and all the other guarantees.</div>
+
+    <div class="callout-npm">The NPM ecosystem solves lifetime management by not managing it. Callbacks hold references forever, event listeners are never removed, Promises float in the void. The browser's GC sorts it out, unless it doesn't, in which case your tab uses 4GB RAM and your users think the site is "heavy." This is called "the JavaScript programming model." There are 47 npm packages that claim to fix this. They each depend on 12 others.</div>
+
+    <!-- QUIZ 5: True/False -->
+    <div class="quiz" id="q6-5">
+      <div class="quiz-label">✅ True or False</div>
+      <div class="quiz-q"><code>unsafe</code> blocks completely disable Rust's borrow checker and memory safety guarantees.</div>
+      <div class="quiz-options tf">
+        <button data-answer="false" onclick="tf('q6-5', this, true, false)">True</button>
+        <button data-answer="false" onclick="tf('q6-5', this, false, false)">False</button>
+      </div>
+      <div class="quiz-exp" id="q6-5-exp">
+        <strong>False!</strong> <code>unsafe</code> is surgical, not a sledgehammer. It unlocks exactly 5 things: dereferencing raw pointers, calling <code>unsafe</code> functions, accessing/modifying mutable statics, implementing <code>unsafe</code> traits, and accessing fields of <code>union</code> types. Everything else — the borrow checker, type system, ownership rules — still applies. The vast majority of safe Rust code inside an <code>unsafe</code> block is still checked normally.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>8. Macros</h2>
+    <p>Macros look like functions but work at the <em>syntax</em> level — they generate code at compile time:</p>
+
+    <pre class="language-rust"><code>// Declarative macros — pattern-matching code templates:
+macro_rules! say_hello {
+    () =&gt; { println!("Hello!") };
+    ($name:expr) =&gt; { println!("Hello, {}!", $name) };
+}
+say_hello!();           // Hello!
+say_hello!("Alice");    // Hello, Alice!
+
+// Procedural macros — full Rust code that transforms the AST
+// Examples from this codebase:
+#[derive(Debug, Clone, Serialize, Deserialize)]  // proc macro
+pub struct Config { ... }
+
+// vec!, format!, println! are all built-in declarative macros
+// tauri::generate_handler! is a proc macro that scans your functions</code></pre>
+
+    <div class="callout"><strong>C# analogy:</strong> Procedural macros are similar to C# source generators — they inspect your code and generate more code at compile time. Declarative macros are more like sophisticated text templating.</div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>9. Patterns Not Seen Here — Quick Reference</h2>
+
+    <table>
+      <thead><tr><th>Concept</th><th>Where to learn</th><th>You'll see it in...</th></tr></thead>
+      <tbody>
+        <tr><td>Workspaces</td><td>Cargo Book — Workspaces</td><td>Monorepos with multiple crates</td></tr>
+        <tr><td>Concurrency primitives</td><td>Rustbook ch. 16</td><td>Channels, Mutex, rayon</td></tr>
+        <tr><td>WASM compilation</td><td>wasm-bindgen docs</td><td>Running Rust in the browser</td></tr>
+        <tr><td>Embedded / <code>no_std</code></td><td>Embedded Rust Book</td><td>Microcontrollers</td></tr>
+        <tr><td>FFI / C interop</td><td>Rustonomicon</td><td>Wrapping C libraries</td></tr>
+        <tr><td>Custom derive</td><td>proc-macro2 docs</td><td>Writing your own #[derive(…)]</td></tr>
+        <tr><td><code>thiserror</code> crate</td><td>docs.rs/thiserror</td><td>Typed, matchable error enums</td></tr>
+        <tr><td>Rayon</td><td>docs.rs/rayon</td><td>Data parallelism — easy parallel iterators</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Suggested Learning Path After This Course</h3>
+    <ol>
+      <li><strong>The Rust Book</strong> (doc.rust-lang.org/book) — chapters 10 (generics/traits/lifetimes) and 16 (concurrency)</li>
+      <li><strong>Rustlings</strong> — bite-sized exercises that cover exactly what you're uncertain about</li>
+      <li><strong>Zero to Production in Rust</strong> — build a real web API; excellent for former C# devs</li>
+      <li><strong>Rust for Rustaceans</strong> (Jon Gjengset) — intermediate patterns including lifetimes, smart pointers, and unsafe</li>
+      <li><strong>Build something</strong> — pick a CLI tool and write it. Real usage teaches faster than reading.</li>
+    </ol>
+  </section>
+
+  <nav class="lesson-nav">
+    <a href="lesson-05.html">← Lesson 5: Async &amp; Tauri</a>
+    <a href="index.html" class="nav-center">All Lessons</a>
+    <span class="nav-end">🎉 Course Complete!</span>
+  </nav>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-csharp.min.js"></script>
+<script src="quiz.js"></script>
+</body>
+</html>

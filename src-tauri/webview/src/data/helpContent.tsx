@@ -1,4 +1,4 @@
-import { MonitorPlay, Eye, FileJson, Network, Radio, Layout, FlaskConical, Activity, Compass, FolderOpen, Settings, Cloud, Clock, ListChecks } from 'lucide-react';
+import { MonitorPlay, Eye, FileJson, Network, Radio, Layout, FlaskConical, Activity, Compass, FolderOpen, Settings, Cloud, Clock, ListChecks, Braces } from 'lucide-react';
 
 const normalizeContent = (text: string) => {
     const trimmed = text.replace(/^\n/, '').replace(/\n\s*$/, '');
@@ -19,7 +19,7 @@ const HELP_SECTIONS_RAW = [
         content: `
     # Core
 
-    Start by loading a WSDL or OpenAPI file, add items to a project, then build and run requests in the editor.
+    APInox supports SOAP, REST, and GraphQL. Load an API definition in the Explorer, add items to a project, then build and run requests in the editor.
     `,
         children: [
             {
@@ -30,28 +30,41 @@ const HELP_SECTIONS_RAW = [
                 content: `
     # Request Editor
 
-    The Request Editor is where you build SOAP requests and inspect responses.
+    The Request Editor is where you build and execute requests and inspect responses. It adapts based on the request type.
 
-    ## Editing
+    ## Tabs
 
-    - **Default XML** is generated from the WSDL and is fully editable.
-    - **Headers**: Use the Headers tab to view/edit request headers and view response headers.
-    - **Assertions**: Use the Assertions tab to add checks for a request.
+    - **Body**: The main request body editor. Adapts per request type:
+      - *SOAP*: XML editor with formatting tools.
+      - *REST (JSON/XML/text)*: Monaco editor with syntax highlighting.
+      - *REST (None)*: Shows "No request body" — GET/DELETE/HEAD auto-switch here.
+      - *GraphQL*: Split layout — query editor (left, 67%) + Variables panel (right, 33%).
+    - **Params**: Key-value editor for URL query parameters. Auto-populated from OpenAPI definitions. GET/DELETE/HEAD requests open this tab by default. Shows a count badge when params are present.
+    - **Headers**: View/edit request headers. Shows a count badge when headers are set.
+    - **Assertions**: Add automated checks to validate responses.
+    - **Extractors**: Extract values from responses into variables.
+    - **WS-Security**: Configure WS-Security credentials for SOAP requests.
 
-    ## Toolbar Actions
+    ## GraphQL Body Tab
+
+    The GraphQL body tab shows a split pane:
+    - **Left (67%)**: Monaco editor in GraphQL syntax mode — write clean query syntax directly.
+    - **Right (33%)**: Variables panel — key-value pairs for \`$variable\` substitutions.
+
+    At send time, APInox automatically wraps the query as \`{"query":"...","variables":{...},"operationName":"..."}\`. The \`operationName\` is extracted from the query text. If you prefer to write the full JSON payload manually, that works too — any body starting with \`{\` is sent as-is.
+
+    ## Toolbar Actions (SOAP)
 
     - **Run / Cancel**: Execute or stop the current request.
     - **Reset**: Restore the default XML template.
     - **Format XML**: Reformat the current XML.
     - **Toggle Attribute Alignment**: Align attributes vertically.
     - **Toggle Inline Values**: Compact simple element values onto one line.
-    - **Hide Debugger Causality Data**: Remove VS debugger markers from the XML (when available).
     - **Code**: Generate a code snippet for the request.
 
     ## Variables & Environments
 
-    - Use \`{{variable}}\` syntax in XML or headers.
-    - Environments are managed in **Settings → Environments** and switched from the sidebar ENV selector.
+    Use \`{{variable}}\` syntax in the body or headers. Switch environments from the sidebar ENV selector. Manage environments in **Settings → Environments**.
 
     ## User Scripts
 
@@ -66,18 +79,26 @@ const HELP_SECTIONS_RAW = [
                 content: `
     # Workspace & Projects
 
-    APInox organizes your work into a structured hierarchy so you can save and reuse requests.
+    APInox organizes your work into a structured hierarchy.
 
     ## Structure
 
-    - **Project**: Top-level container stored in your workspace (folder-based format).
-    - **Interface**: A WSDL service/port definition.
-    - **Operation**: A single SOAP action.
-    - **Request**: A saved request instance for an operation.
+    - **Project**: Top-level container, stored as a folder on disk (git-friendly).
+    - **Interface**: A service/API definition — SOAP port, REST tag group, or GraphQL Query/Mutation.
+    - **Operation**: A single endpoint or action within an interface.
+    - **Request**: A saved, editable instance of an operation.
+
+    ## Request Types
+
+    | Type | Interface Source | Body |
+    |------|-----------------|------|
+    | **SOAP** | WSDL | XML |
+    | **REST** | OpenAPI JSON/YAML | JSON / XML / form-data / binary / none |
+    | **GraphQL** | GraphQL endpoint introspection | GraphQL query + variables |
 
     ## Context Actions
 
-    Use right-click menus in the Explorer to clone, rename, or delete items.
+    Right-click items in the sidebar to clone, rename, delete, or add requests.
     `
             },
             {
@@ -88,20 +109,23 @@ const HELP_SECTIONS_RAW = [
                 content: `
     # Interfaces
 
-    An **Interface** represents a WSDL service/port definition and groups related operations.
+    An **Interface** groups related operations. Its type depends on the source API.
 
-    ## Summary
+    ## SOAP Interfaces
 
-    The Interface summary shows key details when available:
+    - Shows a **1.1** or **1.2** badge next to the name indicating the SOAP version.
+    - Displays WSDL URL, binding name, and endpoint.
 
-    - **WSDL URL/File**
-    - **SOAP Version**
-    - **Binding**
-    - **Endpoint**
+    ## REST Interfaces
 
-    ## Navigation
+    - Grouped by OpenAPI tag (one interface per tag).
+    - Each operation has a method badge (GET, POST, PUT, etc.).
+    - Query parameters are pre-populated from the OpenAPI definition.
 
-    Expand/collapse the interface in the sidebar to see operations. Re-import the WSDL when the definition changes.
+    ## GraphQL Interfaces
+
+    - One **Query** interface and one **Mutation** interface per endpoint.
+    - Each field from the schema becomes an operation with a starter query.
     `
             },
             {
@@ -112,11 +136,9 @@ const HELP_SECTIONS_RAW = [
                 content: `
     # Operations
 
-    An **Operation** is a single SOAP action defined in the WSDL.
+    An **Operation** is a single action or endpoint. Each operation can have multiple saved requests. Use context menu actions in the sidebar to clone, rename, or delete requests.
 
-    ## Requests
-
-    Each operation can have multiple saved requests. Use context actions in the sidebar to clone, rename, or delete a request.
+    For REST operations, the HTTP method is shown inline. For SOAP, the SOAP action is used. For GraphQL, each schema field is its own operation.
     `
             }
         ]
@@ -127,45 +149,125 @@ const HELP_SECTIONS_RAW = [
         icon: Compass,
         order: 2,
         content: `
-    # Explorer
+    # API Explorer
 
-    Use the Explorer to load WSDL/OpenAPI definitions and inspect operations before saving them into projects.
+    Load any API definition — SOAP WSDL, OpenAPI (REST), or a GraphQL endpoint — and browse its operations before importing into a project.
     `,
         children: [
             {
-                id: 'wsdl-explorer',
-                label: 'WSDL / OpenAPI',
+                id: 'api-explorer',
+                label: 'Loading APIs',
                 icon: Compass,
                 order: 1,
                 content: `
-    # WSDL / OpenAPI Explorer
+    # API Explorer — Loading APIs
 
-    Load a WSDL or OpenAPI (JSON/YAML) from URL or file, then browse interfaces and operations.
+    The Explorer detects the API type automatically based on the URL or file.
 
-    ## Actions
+    ## Supported Formats
 
-    - **Load API** to fetch a definition.
-    - Use **Add to Project** to import selected items.
-    - **Add All** imports everything currently loaded.
-    - **Clear Explorer** removes the loaded definitions.
+    | Format | Detection | Notes |
+    |--------|-----------|-------|
+    | **SOAP WSDL** | \`.wsdl\`, \`.xml\`, or any other URL | Parsed via WSDL parser |
+    | **OpenAPI JSON** | URL ends in \`.json\` | Swagger 2.0 and OAS3 |
+    | **OpenAPI YAML** | URL ends in \`.yaml\` or \`.yml\` | Swagger 2.0 and OAS3 |
+    | **GraphQL** | URL path contains \`graphql\` or \`gql\` | Introspection query sent automatically |
+
+    ## Loading Methods
+
+    - **URL**: Paste a URL and click **Load API**.
+    - **File**: Click the import zone or drag and drop a file (WSDL, JSON, YAML) onto it.
+
+    ## Sample APIs
+
+    Click any sample card to pre-fill the URL:
+
+    | Sample | Type |
+    |--------|------|
+    | Swagger Petstore | OpenAPI 2.0 (JSON) |
+    | Petstore YAML | OpenAPI 2.0 (YAML) |
+    | Country Info | SOAP WSDL |
+    | Calculator | SOAP WSDL |
+    | SpaceX | GraphQL |
+    | Rick & Morty | GraphQL |
+
+    ## GraphQL Introspection
+
+    For GraphQL URLs, APInox sends an introspection query and builds a **Query** interface and a **Mutation** interface from the schema. Each field becomes an operation with a starter query body (using \`__typename\` for object types).
+
+    ## After Loading
+
+    - Browse interfaces and operations in the Explorer sidebar.
+    - Click **Add to Project** on an operation to save it.
+    - Click **Add All** to import everything.
+    - Click **Clear** to reset the Explorer.
     `
             },
             {
-                id: 'collections',
-                label: 'Collections (REST/GraphQL)',
-                icon: FolderOpen,
+                id: 'explorer-rest',
+                label: 'REST (OpenAPI)',
+                icon: Braces,
                 order: 2,
                 content: `
-    # Collections
+    # REST — OpenAPI Explorer
 
-    Collections organize REST and GraphQL requests.
+    When loading an OpenAPI (Swagger) definition, APInox:
 
-    ## Actions
+    1. Groups paths by their first **tag** — each tag becomes an Interface.
+    2. Generates a **Sample** request for each path with:
+       - The correct HTTP method (GET, POST, PUT, PATCH, DELETE, etc.)
+       - Query parameters pre-populated (empty values, edit in the Params tab).
+       - A sample JSON body for POST/PUT/PATCH (generated from the schema).
+       - GET/DELETE/HEAD requests open the **Params** tab by default (no body).
 
-    - Create collections from the Collections sidebar.
-    - Add requests and folders to organize APIs.
-    - Select a request to edit it in the Request Editor.
-    - Use delete/rename actions from the collection list.
+    ## Executing REST Requests
+
+    - URL query parameters are appended automatically from the Params tab.
+    - Body is sent as-is for POST/PUT/PATCH.
+    - The result appears in the Response panel with status code and timing.
+    `
+            },
+            {
+                id: 'explorer-graphql',
+                label: 'GraphQL',
+                icon: Network,
+                order: 3,
+                content: `
+    # GraphQL Explorer
+
+    Paste any GraphQL endpoint URL (containing \`/graphql\` or \`/gql\`) and click **Load API**.
+
+    APInox sends an introspection query to discover the schema, then builds:
+
+    - A **Query** interface with one operation per query field.
+    - A **Mutation** interface with one operation per mutation field (if mutations exist).
+
+    ## Starter Queries
+
+    Each generated sample query uses this pattern:
+
+    \`\`\`graphql
+    query {
+      fieldName {
+        __typename
+      }
+    }
+    \`\`\`
+
+    Object/interface/union return types get \`{ __typename }\` as a minimal valid subfield selection. Scalar and enum return types are queried directly.
+
+    ## Writing Queries
+
+    Edit the query in the **Body** tab (left pane). Add variable values in the **Variables** panel (right pane). Variables use the GraphQL \`$name: Type\` syntax in the query definition.
+
+    At send time, APInox builds the HTTP payload:
+    \`\`\`json
+    {
+      "query": "...",
+      "variables": { "name": "value" },
+      "operationName": "OperationName"
+    }
+    \`\`\`
     `
             }
         ]
@@ -210,7 +312,7 @@ const HELP_SECTIONS_RAW = [
                 content: `
     # Tests & Assertions
 
-    APInox includes a test runner for automated SOAP validation.
+    APInox includes a test runner for automated validation.
 
     ## Hierarchy
 
@@ -222,7 +324,7 @@ const HELP_SECTIONS_RAW = [
 
     1. Create a suite from the Tests sidebar.
     2. Add cases to the suite.
-    3. Add steps by dragging operations from the Explorer or using the add button inside a case.
+    3. Add steps using the add button inside a case.
 
     ## Assertions
 
@@ -249,7 +351,7 @@ const HELP_SECTIONS_RAW = [
 
     ## Variables & Extractors
 
-    Select text in the Response viewer and click **Extract** to save it as a variable. Use \`{{variableName}}\` in XML or headers.
+    Select text in the Response viewer and click **Extract** to save it as a variable. Use \`{{variableName}}\` in the body or headers.
     `
             },
             {
@@ -265,7 +367,7 @@ const HELP_SECTIONS_RAW = [
     ## Create & Run
 
     1. Add a suite from the Performance sidebar.
-    2. Add requests to the suite (use **Add Request**).
+    2. Add requests to the suite.
     3. Click **Run Suite** to execute.
 
     ## Configuration
@@ -274,19 +376,6 @@ const HELP_SECTIONS_RAW = [
     - **Iterations**: How many times to run the full request list.
     - **Concurrency**: Parallelism (1 = sequential).
     - **Warmup Runs**: Runs excluded from stats.
-
-    ## Requests
-
-    - Drag to reorder.
-    - Use the context menu to rename or delete.
-
-    ## Scheduling
-
-    Add cron-based schedules to run suites automatically.
-
-    ## Distributed Workers
-
-    Optionally start a coordinator and connect workers for distributed execution.
 
     ## Results
 
@@ -323,7 +412,7 @@ const HELP_SECTIONS_RAW = [
     | Mode | Description |
     |------|-------------|
     | **Off** | Server stopped |
-    | **Moxy** | Mock responses from rules (sidebar label) |
+    | **Moxy** | Mock responses from rules |
     | **Proxy** | Traffic logging with breakpoints + replace rules |
     | **Both** | Mock + Proxy combined |
 
@@ -333,17 +422,11 @@ const HELP_SECTIONS_RAW = [
     2. Click **Play** to start or **Square** to stop.
     3. Traffic history shows combined Proxy + Mock events.
 
-    ## Mode-Specific Sections
-
-    - **Moxy/Both**: Mock Rules section (add, edit, toggle, delete).
-    - **Proxy/Both**: Breakpoints section (add, edit, toggle, delete).
-
     ## Controls
 
     - **Gear** opens Server settings.
     - **Trash** clears traffic history.
-    - **Plus** adds a rule or breakpoint in the active section.
-    - **Record Mode** is configured in Server settings.
+    - **Plus** adds a rule or breakpoint.
     `
             },
             {
@@ -365,18 +448,11 @@ const HELP_SECTIONS_RAW = [
 
     ## Breakpoints
 
-    Breakpoints pause requests/responses so you can edit them:
-
-    - **Match On**: URL, body, or header (regex optional).
-    - **Target**: request, response, or both.
-    - **Timeout**: Auto-resumes after 45s.
+    Breakpoints pause requests/responses so you can edit them live.
 
     ## Replace Rules
 
-    Replace Rules apply automatic replacements in-flight:
-
-    - Configure in **Settings → Replace Rules**.
-    - XPath-scoped and can target request, response, or both.
+    Replace Rules apply automatic replacements in-flight (XPath-scoped, regex or plain text). Configure in **Settings → Replace Rules**.
 
     ## HTTPS Support
 
@@ -401,20 +477,15 @@ const HELP_SECTIONS_RAW = [
 
     ## Mock Rules
 
-    Rules match requests and return canned responses. Supported match conditions include:
+    Rules match requests and return canned responses. Supported match conditions:
 
-    - **URL Path**
-    - **SOAPAction**
-    - **Operation Name**
-    - **Body Contains**
-    - **XPath**
-    - **Header**
+    - URL Path, SOAPAction, Operation Name, Body Contains, XPath, Header.
 
     Response configuration includes status code, body, headers, and optional delay.
 
     ## Record Mode & Passthrough
 
-    - **Record Mode** (Settings → Server) captures real responses as rules.
+    - **Record Mode** captures real responses as rules automatically.
     - **Forward unmatched requests** sends misses to the target server.
     `
             }
@@ -444,15 +515,14 @@ const HELP_SECTIONS_RAW = [
     ## Setup
 
     1. Configure file paths in **Settings → JSON (Advanced)** under \`fileWatcher.requestPath\` and \`fileWatcher.responsePath\`.
-    2. Defaults are OS temp paths with \`requestXML.xml\` and \`responseXML.xml\` (Windows defaults to \`C:\\temp\`).
-    3. Click **Start Watcher** in the sidebar.
+    2. Click **Start Watcher** in the sidebar.
 
     ## Functionality
 
-    - **Real-time Updates**: New file changes appear in the history list.
-    - **Smart Naming**: Events are labeled from the SOAP body root when possible.
-    - **Read-Only View**: Watcher items can be inspected but not edited.
-    - **Export**: Export history to CSV from the watcher header.
+    - Real-time updates as files change.
+    - Smart naming from the SOAP body root element.
+    - Read-only view — inspect but not edit.
+    - Export history to CSV.
     `
             },
             {
@@ -463,7 +533,7 @@ const HELP_SECTIONS_RAW = [
                 content: `
     # Request History
 
-    History stores recent manual executions so you can replay or inspect them.
+    History stores recent manual executions (SOAP, REST, and GraphQL) so you can replay or inspect them.
 
     ## Actions
 
@@ -508,6 +578,7 @@ const HELP_SECTIONS_RAW = [
     Manage environment profiles used in \`{{variable}}\` substitution.
 
     - Set **Endpoint URL**, **Short Code**, and **Color**.
+    - Each environment has a saved **Color** — shown in the sidebar ENV selector and tabs. Colors are persisted and do not change between restarts.
     - Mark a profile as **Active**.
     - Import/export environments as JSON.
     `
@@ -572,39 +643,15 @@ const HELP_SECTIONS_RAW = [
 
     ## Recommended Fonts
 
-    Popular coding fonts with ligature support:
-
     - **Fira Code** - [Download](https://github.com/tonsky/FiraCode/releases)
     - **JetBrains Mono** - [Download](https://www.jetbrains.com/lp/mono/)
     - **Cascadia Code** - [Download](https://github.com/microsoft/cascadia-code/releases)
 
     ## System Fonts
 
-    These fonts are typically pre-installed:
+    - **Consolas** (Windows) · **Monaco** / **Menlo** (macOS) · **Courier New** (cross-platform)
 
-    - **Consolas** (Windows)
-    - **Courier New** (Cross-platform)
-    - **Monaco** (macOS)
-    - **Menlo** (macOS)
-    - **Lucida Console** (Windows)
-
-    ## Additional Options
-
-    Other quality monospace fonts:
-
-    - **Source Code Pro** - [Download](https://adobe-fonts.github.io/source-code-pro/)
-    - **Roboto Mono** - [Download](https://fonts.google.com/specimen/Roboto+Mono)
-    - **Ubuntu Mono** - [Download](https://fonts.google.com/specimen/Ubuntu+Mono)
-    - **SF Mono** (macOS system font)
-
-    ## Installation
-
-    After installing a new font:
-    1. Install the font on your operating system
-    2. Restart APInox
-    3. The font will appear in the font selector dropdown
-
-    The font selector automatically detects which fonts are available on your system.
+    After installing a font, restart APInox — it will appear in the font selector automatically.
     `
             }
         ]
@@ -650,3 +697,4 @@ const normalizeSection = (section: any) => ({
 export const HELP_SECTIONS = [...HELP_SECTIONS_RAW]
     .sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
     .map(normalizeSection);
+

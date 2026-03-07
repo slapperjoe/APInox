@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 21 — Capabilities & Security | Rust for C#/JS Devs</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-one-dark.min.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a href="index.html" class="back-link">← All Lessons</a>
+  <span class="lesson-badge">Lesson 21 · Phase 3: Tauri v2 · ~25 min</span>
+</header>
+
+<main class="lesson">
+  <div class="lesson-hero">
+    <div class="phase-banner">🦀 Phase 3 — Tauri v2</div>
+    <h1>Capabilities &amp; Security</h1>
+    <div class="lesson-meta">
+      <span>⏱ ~25 min</span>
+      <span>📁 <code>capabilities/default.json</code>, <code>tauri.conf.json</code></span>
+    </div>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:0%"></div></div>
+  <p class="progress-label">0 of 5 questions answered</p>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>1. Tauri v2's Security Philosophy</h2>
+    <p>Tauri's #1 design goal is <strong>security by default</strong>. The webview is a browser — and browsers have had decades of vulnerabilities. Tauri's answer is the <strong>capabilities system</strong>: every native API call must be explicitly allowed before the webview can use it.</p>
+
+    <p>This is different from Electron, where the webview has Node.js access by default. In Tauri:</p>
+    <ul>
+      <li>❌ The webview <em>cannot</em> read files, run shell commands, or access the clipboard unless you declare it</li>
+      <li>✅ You declare what each window is allowed to do in <code>capabilities/*.json</code></li>
+      <li>✅ Permissions can be scoped (e.g., only allow reading from <code>$HOME/Documents/**</code>)</li>
+    </ul>
+
+    <div class="callout callout-warn">⚡ <strong>Why this matters:</strong> If a malicious script is injected into the webview (via XSS), it can only do what the capabilities allow. In an app that never needs file system access, the attacker's injected script literally cannot read your files — the capability doesn't exist.</div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>2. Capabilities Files — APInox's Real Config</h2>
+
+    <pre class="language-json"><code>// src-tauri/capabilities/default.json — APInox's actual permissions:
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "enables the default permissions",
+  "windows": ["main"],          // applies to the "main" window
+  "permissions": [
+    "core:default",             // basic window operations (title, size, etc.)
+    "core:window:allow-close",
+    "core:window:allow-minimize",
+    "core:window:allow-maximize",
+    "core:window:allow-set-focus",
+    "core:window:allow-start-dragging",
+    "core:window:allow-toggle-maximize",
+    "decorum:allow-show-snap-overlay",  // 3rd party plugin permission
+    "dialog:default",           // standard dialog operations
+    "dialog:allow-save",        // specifically allow save dialogs
+    "opener:default",
+    {
+      "identifier": "opener:allow-open-path",
+      "allow": [
+        { "path": "$TEMP/**" }  // scoped: can only open files in temp dir
+      ]
+    }
+  ]
+}</code></pre>
+
+    <p>The <code>windows</code> array says which windows this capability applies to. With multiple windows, you can have different permission sets per window — your main editor window might have file access; a sandboxed preview window might have nothing.</p>
+
+    <!-- QUIZ 1 -->
+    <div class="quiz" id="q21-1">
+      <div class="quiz-label">🔘 Multiple Choice</div>
+      <div class="quiz-q">In Tauri v2, what happens if the webview calls a plugin API (like <code>open()</code> from <code>plugin-dialog</code>) but the permission hasn't been declared in the capabilities file?</div>
+      <div class="quiz-options">
+        <button data-correct="false" onclick="mc('q21-1', this, false)">The call succeeds but shows a user confirmation prompt first</button>
+        <button data-correct="true"  onclick="mc('q21-1', this, true)">The call throws an error — the permission is denied at runtime</button>
+        <button data-correct="false" onclick="mc('q21-1', this, false)">The call silently does nothing</button>
+        <button data-correct="false" onclick="mc('q21-1', this, false)">The app crashes with a Rust panic</button>
+      </div>
+      <div class="quiz-exp" id="q21-1-exp">
+        <strong>Runtime error!</strong> Tauri enforces permissions at the IPC layer. If the permission isn't declared, the command returns an error that propagates to your TypeScript as a rejected Promise. You'll see something like: <code>"Permission denied: dialog:open-file is not allowed"</code>. This is intentional — the failure is loud so you notice it during development, rather than silently leaking access.
+      </div>
+    </div>
+  </section>
+
+  <div class="callout-arch">Upon seeing the 15-line capabilities file, an architect will ask if permissions should be managed by a centralised Policy Engine, fed by a Rules Service, with an Audit Trail Service, behind an API Gateway, governed by a Security Review Board that meets bi-weekly. The capabilities file takes 10 minutes to write. The Policy Engine Architecture takes 6 months to spec, never gets built, and the team goes back to the capabilities file.</div>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>3. CSP — Content Security Policy</h2>
+    <p>The Content Security Policy in <code>tauri.conf.json</code> controls what the webview HTML/JS can do — what scripts can run, where network requests can go, etc. APInox's CSP:</p>
+
+    <pre class="language-json"><code>{
+  "app": {
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' https: http://localhost:* http://127.0.0.1:*; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-eval'; worker-src blob:; font-src 'self' data:; img-src 'self' data:;"
+    }
+  }
+}</code></pre>
+
+    <p>Breaking down APInox's CSP:</p>
+    <table>
+      <thead><tr><th>Directive</th><th>Value</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><code>default-src</code></td><td><code>'self'</code></td><td>Default: only load from app bundle</td></tr>
+        <tr><td><code>connect-src</code></td><td><code>https: http://localhost:*</code></td><td>Can make HTTP requests to any HTTPS URL + localhost (for SOAP calls!)</td></tr>
+        <tr><td><code>style-src</code></td><td><code>'unsafe-inline'</code></td><td>Inline <code>style</code> attributes allowed (styled-components needs this)</td></tr>
+        <tr><td><code>script-src</code></td><td><code>'unsafe-eval'</code></td><td>Dynamic eval allowed (some bundlers need this)</td></tr>
+        <tr><td><code>img-src</code></td><td><code>'self' data:</code></td><td>Images from bundle + data URIs (base64)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-warn">⚠️ <code>'unsafe-inline'</code> and <code>'unsafe-eval'</code> weaken CSP. APInox needs them for styled-components and the bundler. For maximum security, avoid these — use hashes instead of inline styles and avoid eval. For an internal tool like APInox, the tradeoff is acceptable.</div>
+
+    <!-- QUIZ 2 -->
+    <div class="quiz" id="q21-2">
+      <div class="quiz-label">✍️ Fill in the Blank</div>
+      <div class="quiz-q">APInox can make SOAP requests to <code>https://api.company.com/soap</code> from the webview because which CSP directive allows it?</div>
+      <div class="fill-wrap">
+        The <input class="fill-input" id="q21-2-in" placeholder="????" style="width:14ch">-src directive includes <code>https:</code>, which permits outbound HTTP connections to any HTTPS URL.
+      </div>
+      <button class="btn-check" onclick="fillCheck('q21-2', ['connect', 'connect-src'])">Check</button>
+      <div class="quiz-exp" id="q21-2-exp">
+        <strong>connect-src</strong> — this CSP directive controls where <code>fetch()</code>, <code>XMLHttpRequest</code>, and WebSocket connections can go. <code>https:</code> is a broad wildcard allowing all HTTPS origins. Without this, every external SOAP endpoint would be blocked by the browser's CSP enforcement. This is also why <code>http://localhost:*</code> is included — APInox needs to talk to its local sidecar process.
+      </div>
+    </div>
+  </section>
+
+  <div class="callout-sec">Enterprise security theater: your app passes the pen test. The pen test report has 47 findings. Finding #1 is 'TLS 1.0 enabled' — been in the report for 3 years. Finding #3 is 'password complexity below policy' — the policy was written in 2009 when the minimum was 6 characters. The dev team fixed it 18 months ago. The pen testers are using last year's report. Finding #12 is 'X-Frame-Options not set' — for an internal desktop tool with no browser access. The CIO presents the report to the board as evidence of 'ongoing security diligence'.</div>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>4. Permission Scoping — Fine-Grained Access</h2>
+    <p>Some permissions support <code>allow</code> and <code>deny</code> scopes for path-based restrictions:</p>
+
+    <pre class="language-json"><code>// capabilities/default.json — path-scoped permissions:
+{
+  "permissions": [
+    // Allow reading files ONLY from specific paths:
+    {
+      "identifier": "fs:allow-read-file",
+      "allow": [
+        { "path": "$HOME/Documents/**" },  // home directory docs
+        { "path": "$APPDATA/**" }           // app data directory
+      ]
+    },
+    // Allow writing ONLY to the app data dir:
+    {
+      "identifier": "fs:allow-write-file",
+      "allow": [
+        { "path": "$APPDATA/**" }
+      ]
+    },
+    // Explicitly deny access to sensitive paths:
+    {
+      "identifier": "fs:allow-read-file",
+      "deny": [
+        { "path": "$HOME/.ssh/**" },        // never touch SSH keys
+        { "path": "$HOME/.aws/**" }         // never touch AWS credentials
+      ]
+    }
+  ]
+}</code></pre>
+
+    <p>Path variables like <code>$HOME</code>, <code>$APPDATA</code>, <code>$TEMP</code> are resolved by Tauri at runtime for the current platform.</p>
+
+    <!-- QUIZ 3 -->
+    <div class="quiz" id="q21-3">
+      <div class="quiz-label">✅ True or False</div>
+      <div class="quiz-q">Tauri v2's capabilities system makes it impossible for a successful XSS attack in the webview to access files that aren't declared in the permissions.</div>
+      <div class="quiz-options tf">
+        <button data-answer="true" onclick="tf('q21-3', this, true, true)">True</button>
+        <button data-answer="true" onclick="tf('q21-3', this, false, true)">False</button>
+      </div>
+      <div class="quiz-exp" id="q21-3-exp">
+        <strong>True!</strong> This is the core value proposition of Tauri's security model. The capabilities system is enforced at the IPC boundary in Rust — injected JavaScript can only call what's been declared. If APInox never declares <code>fs:allow-read-file</code>, no JS code (malicious or otherwise) can read arbitrary files. Compare to Electron where a successful XSS attack often gets full Node.js access to the whole OS.
+      </div>
+    </div>
+  </section>
+
+  <div class="callout-salesforce">Salesforce's permission model is: Profiles (baseline access), Permission Sets (additive), Permission Set Groups (bundled sets), Muting Permission Sets (take away from groups), Field-Level Security, Object-Level Security, Record-Level Security (Sharing Rules, Sharing Sets, Manual Sharing), and Restriction Rules. It is possible to give a user access to an object but not to any of its records. This is called 'enterprise security'. It took 3 years of Trailhead to understand. The consultants bill hourly.</div>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>5. Custom Command Permissions</h2>
+    <p>Your own <code>#[tauri::command]</code> functions can also be wrapped in the permissions system. Tauri generates permission descriptors automatically during build:</p>
+
+    <pre class="language-rust"><code">// Annotate commands with their permission identifier:
+#[tauri::command]
+// Permission: "my-plugin:allow-save-project" (auto-generated)
+pub async fn save_project(
+    project: ApinoxProject,
+    dir_path: String,
+) -&gt; Result&lt;(), String&gt; {
+    FolderProjectStorage::save(&amp;PathBuf::from(dir_path), &amp;project)
+        .map_err(|e| e.to_string())
+}</code></pre>
+
+    <pre class="language-json"><code>// Then in capabilities:
+{
+  "permissions": [
+    "my-plugin:allow-save-project",
+    "my-plugin:allow-load-project"
+    // "my-plugin:allow-delete-project" — not listed = not allowed
+  ]
+}</code></pre>
+
+    <div class="callout">APInox currently doesn't use per-command permissions (all commands are implicitly allowed). For an internal desktop tool, this is fine. For a Tauri app distributed to untrusted users (browser-like threat model), you'd want per-command granularity.</div>
+
+    <!-- QUIZ 4 -->
+    <div class="quiz" id="q21-4">
+      <div class="quiz-label">🔗 Match It</div>
+      <div class="quiz-q">Match the security mechanism to what it protects against:</div>
+      <div class="match-grid">
+        <div class="match-col">
+          <button class="match-item" data-id="a" onclick="matchClick('q21-4', 'a', 'left', this)">Capabilities system</button>
+          <button class="match-item" data-id="b" onclick="matchClick('q21-4', 'b', 'left', this)">CSP <code>connect-src</code></button>
+          <button class="match-item" data-id="c" onclick="matchClick('q21-4', 'c', 'left', this)">CSP <code>script-src</code></button>
+          <button class="match-item" data-id="d" onclick="matchClick('q21-4', 'd', 'left', this)">Path scope in permissions</button>
+        </div>
+        <div class="match-col">
+          <button class="match-item" data-id="c" onclick="matchClick('q21-4', 'c', 'right', this)">Prevents inline script injection (XSS)</button>
+          <button class="match-item" data-id="a" onclick="matchClick('q21-4', 'a', 'right', this)">Limits which native APIs the webview can call</button>
+          <button class="match-item" data-id="d" onclick="matchClick('q21-4', 'd', 'right', this)">Restricts file access to specific directories</button>
+          <button class="match-item" data-id="b" onclick="matchClick('q21-4', 'b', 'right', this)">Controls which servers the app can make HTTP requests to</button>
+        </div>
+      </div>
+      <div class="quiz-exp" id="q21-4-exp">
+        All matched! These are layered defenses: CSP operates at the HTML/JS level (browser's built-in security), while capabilities operate at the IPC level (Rust-enforced security). Even if CSP is bypassed, capabilities are still enforced. Even if capabilities are overly broad, path scoping limits the blast radius.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>6. withGlobalTauri — Convenient but Risky</h2>
+
+    <pre class="language-json"><code>// tauri.conf.json — APInox uses this:
+{
+  "app": {
+    "withGlobalTauri": true
+  }
+}</code></pre>
+
+    <p>When <code>withGlobalTauri: true</code>, Tauri injects <code>window.__TAURI__</code> into every page load. This means your webview JavaScript can call <code>window.__TAURI__.core.invoke()</code> directly without importing from <code>@tauri-apps/api</code>.</p>
+
+    <p>The tradeoff:</p>
+    <ul>
+      <li>✅ Convenient for quick calls</li>
+      <li>✅ No import overhead in the bundle</li>
+      <li>❌ <code>window.__TAURI__</code> is accessible to ANY injected script (XSS can call it directly)</li>
+      <li>❌ Less type-safe than explicit imports</li>
+    </ul>
+
+    <pre class="language-typescript"><code>// How APInox handles the withGlobalTauri scenario:
+// App.tsx — check if Tauri is available:
+try {
+    const { invoke } = await import('@tauri-apps/api/core');
+    const os = await invoke&lt;string&gt;('get_platform_os');
+    setPlatform(os);
+} catch {
+    console.log('⚠️ Tauri not detected (running in browser or invoke failed)');
+}</code></pre>
+
+    <!-- QUIZ 5 -->
+    <div class="quiz predict" id="q21-5">
+      <div class="quiz-label">🔮 Predict &amp; Reveal</div>
+      <div class="quiz-q">If you set <code>"withGlobalTauri": false</code> in <code>tauri.conf.json</code> but your TypeScript code uses <code>window.__TAURI__.core.invoke()</code> directly — what happens?</div>
+      <button class="btn-reveal" onclick="reveal('q21-5')">Reveal Answer</button>
+      <div class="quiz-exp" id="q21-5-exp">
+        <strong>Runtime error: Cannot read properties of undefined (reading 'core').</strong> With <code>withGlobalTauri: false</code>, <code>window.__TAURI__</code> is <code>undefined</code>. Accessing <code>.core</code> on it throws. The fix is to use the proper module import: <code>import { invoke } from '@tauri-apps/api/core'</code> — this works regardless of the <code>withGlobalTauri</code> setting because it imports from the NPM package at bundle time, not from the runtime global. APInox's bridge.ts does exactly this — it dynamically imports the module rather than relying on the global.
+      </div>
+    </div>
+  </section>
+
+  <nav class="lesson-nav">
+    <a href="lesson-20.html">← Lesson 20: Plugins & Native APIs</a>
+    <a href="index.html" class="nav-center">All Lessons</a>
+    <a href="lesson-22.html">Lesson 22: Packaging & Distribution →</a>
+  </nav>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="quiz.js"></script>
+</body>
+</html>

@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 15 — Serde & Serialization | Rust for C#/JS Devs</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-one-dark.min.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a href="index.html" class="back-link">← All Lessons</a>
+  <span class="lesson-badge">Lesson 15 · ~25 min</span>
+</header>
+
+<main class="lesson">
+  <div class="lesson-hero">
+    <h1>Serde &amp; Serialization</h1>
+    <div class="lesson-meta">
+      <span>⏱ ~25 min</span>
+      <span>📁 <code>parsers/wsdl/types.rs</code>, <code>testing/assertion_runner.rs</code>, <code>workflow/engine.rs</code></span>
+    </div>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:0%"></div></div>
+  <p class="progress-label">0 of 5 questions answered</p>
+
+  <div class="callout">
+    Serde (Serialise/Deserialise) is the de-facto standard for JSON in Rust. APInox uses it extensively — the Tauri command bridge relies on it entirely for passing data between Rust and JavaScript.
+  </div>
+
+  <div class="callout-xml">XML was designed in 1996 to be a "simple" data format. It now has: namespaces, schema (XSD), validation (Schematron), transformation (XSLT), querying (XPath), querying with updates (XQuery), signatures (XML-DSig), encryption (XML-Enc), and a 900-page specification. SOAP adds a mandatory envelope, a body, optional headers, and a WSDL that may or may not agree with the actual service. APInox exists because someone had to interact with all of this in 2024. They wept. Then they wrote a GUI for it.</div>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>1. The Basics — <code>derive</code> Macros</h2>
+
+    <pre class="language-rust"><code>use serde::{Deserialize, Serialize};
+
+// That's all you need for 90% of cases:
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SchemaNode {
+    pub name: String,
+    pub kind: String,
+    pub children: Option&lt;Vec&lt;SchemaNode&gt;&gt;,
+}
+
+// Serialise to JSON:
+let node = SchemaNode { name: "Root".to_string(), kind: "complex".to_string(), children: None };
+let json = serde_json::to_string(&amp;node)?;
+// {"name":"Root","kind":"complex","children":null}
+
+let pretty = serde_json::to_string_pretty(&amp;node)?;
+// {
+//   "name": "Root",
+//   "kind": "complex",
+//   "children": null
+// }
+
+// Deserialise from JSON:
+let json_str = r#"{"name":"Root","kind":"complex","children":null}"#;
+let node: SchemaNode = serde_json::from_str(json_str)?;</code></pre>
+
+    <pre class="language-csharp"><code>// C# equivalent with System.Text.Json:
+[JsonSerializable(typeof(SchemaNode))]
+public class SchemaNode {
+    public string Name { get; set; }
+    public string Kind { get; set; }
+    public List&lt;SchemaNode&gt;? Children { get; set; }
+}
+var json = JsonSerializer.Serialize(node);
+var node = JsonSerializer.Deserialize&lt;SchemaNode&gt;(json);
+</code></pre>
+
+    <!-- QUIZ 1 -->
+    <div class="quiz" id="q15-1">
+      <div class="quiz-label">✅ True or False</div>
+      <div class="quiz-q">Serde's <code>#[derive(Serialize, Deserialize)]</code> works on enums as well as structs.</div>
+      <div class="quiz-options tf">
+        <button data-answer="true" onclick="tf('q15-1', this, true, true)">True</button>
+        <button data-answer="true" onclick="tf('q15-1', this, false, true)">False</button>
+      </div>
+      <div class="quiz-exp" id="q15-1-exp">
+        <strong>True!</strong> Serde handles enums extremely well — far better than most other languages. From <code>assertion_runner.rs</code>: <code>#[derive(Serialize, Deserialize)] pub enum AssertionType { XPath { xpath: String, expected: String }, StatusCode { code: u16 } }</code>. By default, enum variants are serialised with a <code>type</code> tag. This is controlled with <code>#[serde(tag = "type")]</code>.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>2. Essential Serde Attributes — Real Examples from the Codebase</h2>
+    <p>From <code>parsers/wsdl/types.rs</code>:</p>
+
+    <pre class="language-rust"><code>#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SchemaNode {
+    pub name: String,
+
+    #[serde(rename = "type")]
+    pub node_type: String,
+    //   ↑ field is called node_type in Rust (reserved keyword clash)
+    //     but serialises as "type" in JSON
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub min_occurs: Option&lt;String&gt;,
+    //   ↑ omit from JSON entirely if None (not "min_occurs":null)
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub children: Option&lt;Vec&lt;SchemaNode&gt;&gt;,
+}
+
+// rename_all — applies a naming convention to ALL fields:
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ServiceOperation {
+    pub target_namespace: Option&lt;String&gt;,   // → "targetNamespace" in JSON
+    pub original_endpoint: Option&lt;String&gt;,  // → "originalEndpoint" in JSON
+    pub port_name: Option&lt;String&gt;,          // → "portName" in JSON
+}</code></pre>
+
+    <table>
+      <thead><tr><th>Attribute</th><th>Effect</th><th>C# equivalent</th></tr></thead>
+      <tbody>
+        <tr><td><code>#[serde(rename = "foo")]</code></td><td>Use "foo" in JSON</td><td><code>[JsonPropertyName("foo")]</code></td></tr>
+        <tr><td><code>#[serde(rename_all = "camelCase")]</code></td><td>Convert all fields to camelCase</td><td><code>JsonNamingPolicy.CamelCase</code></td></tr>
+        <tr><td><code>#[serde(skip_serializing_if = "Option::is_none")]</code></td><td>Omit field if None</td><td><code>[JsonIgnore(Condition = WhenWritingNull)]</code></td></tr>
+        <tr><td><code>#[serde(default)]</code></td><td>Use Default if field missing from JSON</td><td><code>[JsonIgnore(Condition = WhenWritingDefault)]</code></td></tr>
+        <tr><td><code>#[serde(skip)]</code></td><td>Never serialise this field</td><td><code>[JsonIgnore]</code></td></tr>
+        <tr><td><code>#[serde(flatten)]</code></td><td>Inline struct fields into parent</td><td>(no direct equivalent)</td></tr>
+        <tr><td><code>#[serde(tag = "type")]</code></td><td>Enum uses "type" field for variant</td><td><code>[JsonDerivedType]</code> (polymorphism)</td></tr>
+      </tbody>
+    </table>
+
+    <!-- QUIZ 2 -->
+    <div class="quiz" id="q15-2">
+      <div class="quiz-label">✍️ Fill in the Blank</div>
+      <div class="quiz-q">What attribute makes all fields of this struct serialise as camelCase JSON keys?</div>
+      <div class="fill-wrap">
+        #[derive(Serialize, Deserialize)]<br>
+        #[serde(<input class="fill-input" id="q15-2-in" placeholder='rename_all = "???"' style="width:22ch">)]<br>
+        pub struct Config {<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;pub server_url: String,    // → "serverUrl"<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;pub max_retries: u32,      // → "maxRetries"<br>
+        }
+      </div>
+      <button class="btn-check" onclick="fillCheck('q15-2', ['rename_all = \"camelCase\"', 'rename_all=\"camelCase\"'])">Check</button>
+      <div class="quiz-exp" id="q15-2-exp">
+        <strong>rename_all = "camelCase"</strong> — applied at the struct level, it converts snake_case Rust field names to camelCase for JSON. Options include: <code>"camelCase"</code>, <code>"PascalCase"</code>, <code>"snake_case"</code>, <code>"SCREAMING_SNAKE_CASE"</code>, <code>"kebab-case"</code>. APInox uses <code>camelCase</code> on <code>ServiceOperation</code> so its JSON matches JavaScript naming conventions.
+      </div>
+    </div>
+
+  <div class="callout-sap">SAP's data interchange format is IDoc — Intermediate Document. It's fixed-width, segment-based, and dates to the early 1990s. Each IDoc type has segments, each segment has fields, each field is padded to a fixed length. The <code>MATNR</code> field (material number) is 18 characters, left-padded with zeros. You will spend an entire day writing a parser for the leading zeros. Then you'll find the SAP BAPI that does it wrong anyway. There's also ALE, EDI, IDEX, and XI/PI/PO — all different ways to say "we're sending you an IDoc". Sorry.</div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>3. Enum Serialisation with Tags</h2>
+    <p>From <code>testing/assertion_runner.rs</code>:</p>
+
+    <pre class="language-rust"><code>#[derive(Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "lowercase")]
+pub enum AssertionType {
+    XPath {
+        xpath: String,
+        expected: String,
+    },
+    StatusCode {
+        code: u16,
+    },
+}</code></pre>
+
+    <p>This serialises to JSON like:</p>
+    <pre class="language-json"><code>{ "type": "xpath", "xpath": "//Name", "expected": "Alice" }
+{ "type": "statuscode", "code": 200 }</code></pre>
+
+    <p>Without <code>#[serde(tag)]</code>, serde wraps in variant name:</p>
+    <pre class="language-json"><code>{ "XPath": { "xpath": "//Name", "expected": "Alice" } }</code></pre>
+
+    <!-- QUIZ 3 -->
+    <div class="quiz" id="q15-3">
+      <div class="quiz-label">🔘 Multiple Choice</div>
+      <div class="quiz-q">A <code>None</code> field with <code>#[serde(skip_serializing_if = "Option::is_none")]</code> serialises as:</div>
+      <div class="quiz-options">
+        <button data-correct="false" onclick="mc('q15-3', this, false)"><code>"field_name": null</code></button>
+        <button data-correct="false" onclick="mc('q15-3', this, false)"><code>"field_name": ""</code></button>
+        <button data-correct="true"  onclick="mc('q15-3', this, true)">The field is omitted entirely from the JSON output</button>
+        <button data-correct="false" onclick="mc('q15-3', this, false)">An error is thrown</button>
+      </div>
+      <div class="quiz-exp" id="q15-3-exp">
+        <strong>✓ Omitted entirely!</strong> This is important for clean API responses — you don't litter the JSON with dozens of <code>null</code> fields. APInox's <code>SchemaNode</code> has 6 optional fields that are only included when present. Without <code>skip_serializing_if</code>, <code>None</code> serialises as <code>null</code> in JSON. With it, the key disappears. When deserialising, a missing field becomes <code>None</code> automatically.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>4. <code>serde_json::Value</code> — Untyped JSON</h2>
+    <p>Sometimes you need to work with arbitrary JSON you don't know the shape of:</p>
+
+    <pre class="language-rust"><code>use serde_json::Value;
+
+// Parse any JSON without knowing the structure:
+let raw: Value = serde_json::from_str(json_str)?;
+
+// Navigate with indexing (returns &amp;Value or Value::Null if missing):
+let name = &amp;raw["user"]["name"];
+let first_tag = &amp;raw["tags"][0];
+
+// Pattern match on the type:
+match &amp;raw {
+    Value::Object(map) =&gt; println!("{} keys", map.len()),
+    Value::Array(arr)  =&gt; println!("{} items", arr.len()),
+    Value::String(s)   =&gt; println!("String: {}", s),
+    Value::Number(n)   =&gt; println!("Number: {}", n),
+    Value::Bool(b)     =&gt; println!("Bool: {}", b),
+    Value::Null        =&gt; println!("null"),
+}
+
+// Build JSON dynamically:
+use serde_json::json;
+let payload = json!({
+    "name": "Alice",
+    "age": 30,
+    "tags": ["rust", "tauri"],
+    "active": true
+});</code></pre>
+
+    <!-- QUIZ 4 -->
+    <div class="quiz" id="q15-4">
+      <div class="quiz-label">🐛 Spot the Bug</div>
+      <div class="quiz-q">This serialisation won't work as expected. Click the problem line:</div>
+      <div class="bug-pre">
+        <span class="bug-line" onclick="bugLine('q15-4', this, false)">use serde::Serialize;</span>
+        <span class="bug-line" onclick="bugLine('q15-4', this, true)">#[derive(Serialize)]</span>
+        <span class="bug-line" onclick="bugLine('q15-4', this, false)">struct Response {</span>
+        <span class="bug-line" onclick="bugLine('q15-4', this, false)">&nbsp;&nbsp;&nbsp;&nbsp;pub data: Vec&lt;std::sync::Mutex&lt;String&gt;&gt;,</span>
+        <span class="bug-line" onclick="bugLine('q15-4', this, false)">}</span>
+      </div>
+      <div class="quiz-exp" id="q15-4-exp">
+        <strong>Line 2!</strong> <code>std::sync::Mutex</code> doesn't implement <code>Serialize</code>, so <code>#[derive(Serialize)]</code> fails on a struct containing it. Serde can only serialise types that implement <code>Serialize</code>. The fix: don't put a <code>Mutex</code> in a data structure you want to serialise. Serialise the inner value: <code>let data: Vec&lt;String&gt; = mutex_vec.iter().map(|m| m.lock().unwrap().clone()).collect();</code>
+      </div>
+    </div>
+
+  <div class="callout-oracle">Oracle's approach to data serialisation: if it's going to another Oracle system, use database links. If it's going somewhere else, generate XML via <code>DBMS_XMLGEN</code>, wrap it in a SOAP envelope using <code>UTL_HTTP</code>, and POST it manually from PL/SQL. The HTTP client in PL/SQL (<code>UTL_HTTP</code>) requires a wallet for HTTPS. The wallet setup involves a 14-step OSS document, an OWM binary, and a call to your DBA who is on holiday.</div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>5. <code>serde(flatten)</code> — Inline a Nested Struct</h2>
+    <pre class="language-rust"><code>#[derive(Serialize, Deserialize)]
+struct Metadata {
+    created_at: String,
+    updated_at: String,
+}
+
+#[derive(Serialize, Deserialize)]
+struct User {
+    name: String,
+    email: String,
+    #[serde(flatten)]
+    meta: Metadata,  // fields merged into the parent JSON object
+}
+
+// Serialises as:
+// { "name": "Alice", "email": "...", "created_at": "...", "updated_at": "..." }
+// NOT:
+// { "name": "Alice", "meta": { "created_at": "..." } }
+
+// Also seen in workflow/engine.rs for WorkflowStep:
+#[derive(Serialize, Deserialize)]
+pub struct WorkflowStep {
+    pub name: String,
+    #[serde(flatten)]
+    pub node: WorkflowNode,   // WorkflowNode's fields merged in
+}</code></pre>
+
+    <!-- QUIZ 5 -->
+    <div class="quiz" id="q15-5">
+      <div class="quiz-label">🔗 Match It</div>
+      <div class="quiz-q">Match the serde attribute to what it does in JSON:</div>
+      <div class="match-grid">
+        <div class="match-col">
+          <button class="match-item" data-id="a" onclick="matchClick('q15-5', 'a', 'left', this)"><code>rename = "type"</code></button>
+          <button class="match-item" data-id="b" onclick="matchClick('q15-5', 'b', 'left', this)"><code>skip_serializing_if = "Option::is_none"</code></button>
+          <button class="match-item" data-id="c" onclick="matchClick('q15-5', 'c', 'left', this)"><code>flatten</code></button>
+          <button class="match-item" data-id="d" onclick="matchClick('q15-5', 'd', 'left', this)"><code>tag = "type"</code></button>
+        </div>
+        <div class="match-col">
+          <button class="match-item" data-id="c" onclick="matchClick('q15-5', 'c', 'right', this)">Merge child struct fields into parent JSON</button>
+          <button class="match-item" data-id="a" onclick="matchClick('q15-5', 'a', 'right', this)">Use a different key name in JSON</button>
+          <button class="match-item" data-id="d" onclick="matchClick('q15-5', 'd', 'right', this)">Enum variants identified by a "type" field</button>
+          <button class="match-item" data-id="b" onclick="matchClick('q15-5', 'b', 'right', this)">Drop the field if value is None</button>
+        </div>
+      </div>
+      <div class="quiz-exp" id="q15-5-exp">
+        <strong>All matched!</strong><br>
+        • <code>rename = "type"</code> → key is "type" in JSON (not the Rust field name)<br>
+        • <code>skip_serializing_if = "Option::is_none"</code> → omit key when None<br>
+        • <code>flatten</code> → inline child struct's fields into the parent object<br>
+        • <code>tag = "type"</code> → enum variant identified by <code>{"type":"variantname",...}</code>
+      </div>
+    </div>
+  </section>
+
+  <div class="callout-xml">Serde handles JSON beautifully. XML is where things get philosophical. SOAP XML has: an envelope, a body, optional headers, namespaces that may or may not match the WSDL, elements that appear in the schema as optional but the server requires, and a Content-Type of <code>text/xml</code> (SOAP 1.1) or <code>application/soap+xml</code> (SOAP 1.2) which the server may or may not enforce. The XSD says the date format is ISO 8601. The server sends <code>DD/MM/YYYY</code>. The XSD is wrong. This is normal.</div>
+
+  <nav class="lesson-nav">
+    <a href="lesson-14.html">← Lesson 14: Concurrency</a>
+    <a href="index.html" class="nav-center">All Lessons</a>
+    <a href="lesson-16.html">Lesson 16: Testing &amp; Cargo →</a>
+  </nav>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-csharp.min.js"></script>
+<script src="quiz.js"></script>
+</body>
+</html>

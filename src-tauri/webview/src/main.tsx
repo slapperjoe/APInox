@@ -4,6 +4,10 @@ import App from './App'
 import './index.css'
 import { ErrorBoundary } from './components/ErrorBoundary';
 import 'monaco-editor/min/vs/editor/editor.main.css';
+import { attachConsole } from '@tauri-apps/plugin-log';
+
+// Attach Tauri console to capture Rust logs in DevTools
+attachConsole();
 
 // Configure Monaco Environment for web workers
 (window as any).MonacoEnvironment = {

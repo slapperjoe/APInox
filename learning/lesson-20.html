@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 20 — Plugins & Native APIs | Rust for C#/JS Devs</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-one-dark.min.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a href="index.html" class="back-link">← All Lessons</a>
+  <span class="lesson-badge">Lesson 20 · Phase 3: Tauri v2 · ~25 min</span>
+</header>
+
+<main class="lesson">
+  <div class="lesson-hero">
+    <div class="phase-banner">🦀 Phase 3 — Tauri v2</div>
+    <h1>Plugins &amp; Native APIs</h1>
+    <div class="lesson-meta">
+      <span>⏱ ~25 min</span>
+      <span>📁 <code>lib.rs</code>, <code>tauri.conf.json</code>, <code>capabilities/default.json</code></span>
+    </div>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:0%"></div></div>
+  <p class="progress-label">0 of 5 questions answered</p>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>1. The Plugin Architecture</h2>
+    <p>Tauri v2 ships OS integrations as <strong>optional plugins</strong> rather than bundling everything. You only include what you need, keeping binary size small. In APInox's <code>lib.rs</code>:</p>
+
+    <pre class="language-rust"><code>tauri::Builder::default()
+    .plugin(tauri_plugin_process::init())       // app.exit(), restart()
+    .plugin(tauri_plugin_dialog::init())         // file open/save dialogs
+    .plugin(tauri_plugin_clipboard_manager::init()) // copy/paste
+    .plugin(tauri_plugin_store::Builder::default().build()) // key/value store
+    .plugin(tauri_plugin_opener::init())         // open URLs in browser
+    .plugin(tauri_plugin_shell::init())          // run shell commands
+    // ...
+    .invoke_handler(tauri::generate_handler![...])</code></pre>
+
+    <p>Each plugin:</p>
+    <ol>
+      <li>Adds Rust-side capabilities</li>
+      <li>Exposes TypeScript bindings via <code>@tauri-apps/plugin-X</code> NPM packages</li>
+      <li>Requires permissions declared in <code>capabilities/</code> files (covered in Lesson 21)</li>
+    </ol>
+
+    <pre class="language-toml"><code># Cargo.toml — Rust side of plugins
+[dependencies]
+tauri-plugin-dialog = "2"
+tauri-plugin-clipboard-manager = "2"
+tauri-plugin-shell = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-store = "2"</code></pre>
+
+    <pre class="language-json"><code>// package.json — TypeScript side (in webview)
+{
+  "dependencies": {
+    "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/plugin-dialog": "^2.0.0",
+    "@tauri-apps/plugin-clipboard-manager": "^2.0.0",
+    "@tauri-apps/plugin-shell": "^2.0.0",
+    "@tauri-apps/plugin-store": "^2.0.0"
+  }
+}</code></pre>
+
+    <!-- QUIZ 1 -->
+    <div class="quiz" id="q20-1">
+      <div class="quiz-label">✅ True or False</div>
+      <div class="quiz-q">In Tauri v2, adding a plugin like <code>tauri_plugin_dialog</code> in Rust is enough — you don't need to add anything to <code>Cargo.toml</code> or the NPM packages.</div>
+      <div class="quiz-options tf">
+        <button data-answer="false" onclick="tf('q20-1', this, true, false)">True</button>
+        <button data-answer="false" onclick="tf('q20-1', this, false, false)">False</button>
+      </div>
+      <div class="quiz-exp" id="q20-1-exp">
+        <strong>False!</strong> You need three things: (1) The Rust crate in <code>Cargo.toml</code> (<code>tauri-plugin-dialog = "2"</code>), (2) <code>.plugin(tauri_plugin_dialog::init())</code> in your builder chain, and (3) the NPM package in your webview's <code>package.json</code> (<code>@tauri-apps/plugin-dialog</code>). Plus permissions in the capabilities file (Lesson 21). It's a bit verbose, but it's explicit — you can't accidentally ship features you didn't intend to include.
+      </div>
+    </div>
+  </section>
+
+  <div class="callout-sap">SAP Fiori's 'native' capabilities: it runs in a browser. Want camera access? The Fiori Client app (a wrapped browser, basically Cordova). Want file access? The Fiori Client with the File plugin. Want push notifications? The Fiori Client with the FCM plugin. Is the Fiori Client installed on your user's device? No. Does your BASIS team know how to distribute it? Also no. SAP's MDM story is 'use SAP Mobile Services', which requires another BASIS ticket and a 3-day setup.</div>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>2. File Dialogs — Open &amp; Save</h2>
+    <p>The dialog plugin provides native OS file pickers. APInox uses these to open/save project folders:</p>
+
+    <pre class="language-typescript"><code>import { open, save } from '@tauri-apps/plugin-dialog';
+
+// Open a folder picker
+const selectedPath = await open({
+    directory: true,        // folder picker, not file
+    multiple: false,
+    title: 'Select project folder',
+});
+// selectedPath: string | null (null if cancelled)
+
+// Open a file picker with filters
+const filePath = await open({
+    multiple: false,
+    filters: [
+        { name: 'WSDL Files', extensions: ['wsdl', 'xml'] },
+        { name: 'All Files', extensions: ['*'] },
+    ],
+    title: 'Open WSDL file',
+});
+
+// Save dialog
+const savePath = await save({
+    defaultPath: '~/Documents/my-project',
+    filters: [{ name: 'APInox Project', extensions: ['apinox'] }],
+});</code></pre>
+
+    <div class="callout">Unlike a browser's <code>&lt;input type="file"&gt;</code>, Tauri's dialog returns the <strong>actual file path</strong> on disk — not a sandboxed File object. You can then pass this path to a Rust command that reads/writes the file directly.</div>
+
+    <!-- QUIZ 2 -->
+    <div class="quiz" id="q20-2">
+      <div class="quiz-label">🔘 Multiple Choice</div>
+      <div class="quiz-q">A user picks a file in Tauri's open dialog and the path <code>"/Users/mark/wsdl/service.wsdl"</code> is returned. What's the best next step?</div>
+      <div class="quiz-options">
+        <button data-correct="false" onclick="mc('q20-2', this, false)">Use the browser's <code>fetch()</code> with a <code>file://</code> URL to read the file</button>
+        <button data-correct="true"  onclick="mc('q20-2', this, true)">Pass the path to a Rust command via <code>invoke('read_wsdl_file', { path })</code> — Rust reads the file from disk</button>
+        <button data-correct="false" onclick="mc('q20-2', this, false)">Use <code>fs.readFileSync()</code> in JavaScript — the webview has Node.js access</button>
+        <button data-correct="false" onclick="mc('q20-2', this, false)">The dialog already returns the file content, not just the path</button>
+      </div>
+      <div class="quiz-exp" id="q20-2-exp">
+        <strong>Pass to Rust via invoke!</strong> The webview is a sandboxed browser — it can't read arbitrary file paths directly (no Node.js, no filesystem access by default). The pattern is: dialog → path string → <code>invoke('my_command', { path })</code> → Rust reads the file → returns data back to TypeScript. Rust has unrestricted OS access; the webview goes through Rust for anything system-level.
+      </div>
+    </div>
+  </section>
+
+    <div class="callout-salesforce">In Salesforce, accessing the local filesystem means: a connected app (OAuth setup), a Heroku proxy (because Apex can't call localhost), a Named Credential (to store the Heroku URL), a Remote Site Setting (to whitelist it), and a callout from Apex that counts toward your 100 callouts/transaction limit. Or you use the Files API and upload the file to Salesforce first. To read a file the user just selected. On their machine.</div>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>3. Shell Plugin — Opening URLs &amp; Running Commands</h2>
+
+    <pre class="language-typescript"><code>// @tauri-apps/plugin-opener — open URLs in the default browser:
+import { openUrl } from '@tauri-apps/plugin-opener';
+await openUrl('https://docs.apinox.dev');
+
+// @tauri-apps/plugin-shell — run shell commands (needs allowlist!):
+import { Command } from '@tauri-apps/plugin-shell';
+const output = await Command.create('curl', ['-s', 'https://api.example.com'])
+    .execute();
+console.log(output.stdout);  // response body</code></pre>
+
+    <pre class="language-json"><code>// capabilities/default.json — must explicitly allow shell commands:
+{
+  "permissions": [
+    "opener:default",
+    {
+      "identifier": "opener:allow-open-path",
+      "allow": [{ "path": "$TEMP/**" }]
+    }
+  ]
+}</code></pre>
+
+    <div class="callout callout-warn">⚠️ The shell plugin is <strong>powerful and dangerous</strong> — it runs arbitrary OS commands. In Tauri v2, you must whitelist each allowed command in the capabilities config. Never expose user-controlled input to shell commands (injection risk). APInox uses the opener plugin for URLs and the dialog plugin for files — not raw shell access.</div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>4. Clipboard Manager</h2>
+
+    <pre class="language-typescript"><code>import { writeText, readText } from '@tauri-apps/plugin-clipboard-manager';
+
+// Copy to clipboard
+await writeText('SOAPAction: "http://example.com/GetUser"');
+
+// Read from clipboard
+const text = await readText();
+if (text) {
+    pasteIntoRequestEditor(text);
+}</code></pre>
+
+    <p>APInox uses this to let users copy request XML or SOAP endpoints. The plugin handles OS-level clipboard access cleanly — on macOS it requests the <code>NSPasteboardUsage</code> permission automatically.</p>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>5. Plugin Store — Persistent Key-Value Storage</h2>
+    <p>The store plugin provides a simple JSON-backed key-value store — useful for persisting UI state, preferences, and window position between sessions:</p>
+
+    <pre class="language-typescript"><code>import { load } from '@tauri-apps/plugin-store';
+
+// Load (or create) a store file
+const store = await load('settings.json', { autoSave: true });
+
+// Write values
+await store.set('theme', 'dark');
+await store.set('lastProject', '/Users/mark/Projects/APInox');
+await store.set('windowBounds', { x: 100, y: 200, width: 1400, height: 900 });
+
+// Read values
+const theme = await store.get&lt;string&gt;('theme');
+const lastProject = await store.get&lt;string&gt;('lastProject');
+
+// Delete
+await store.delete('temporaryKey');</code></pre>
+
+    <div class="callout">The store file lives in the app's data directory (<code>~/.local/share/com.apinox.dev/</code> on Linux, <code>~/Library/Application Support/app.apinox.dev1/</code> on macOS). For more complex persistence (structured project data), APInox uses the <code>FolderProjectStorage</code> Rust module — the store plugin is better for lightweight settings.</div>
+
+    <!-- QUIZ 3 -->
+    <div class="quiz" id="q20-3">
+      <div class="quiz-label">🔗 Match It</div>
+      <div class="quiz-q">Match the Tauri plugin to its primary use case:</div>
+      <div class="match-grid">
+        <div class="match-col">
+          <button class="match-item" data-id="a" onclick="matchClick('q20-3', 'a', 'left', this)"><code>tauri-plugin-dialog</code></button>
+          <button class="match-item" data-id="b" onclick="matchClick('q20-3', 'b', 'left', this)"><code>tauri-plugin-store</code></button>
+          <button class="match-item" data-id="c" onclick="matchClick('q20-3', 'c', 'left', this)"><code>tauri-plugin-opener</code></button>
+          <button class="match-item" data-id="d" onclick="matchClick('q20-3', 'd', 'left', this)"><code>tauri-plugin-clipboard-manager</code></button>
+        </div>
+        <div class="match-col">
+          <button class="match-item" data-id="b" onclick="matchClick('q20-3', 'b', 'right', this)">Persist user preferences between sessions</button>
+          <button class="match-item" data-id="c" onclick="matchClick('q20-3', 'c', 'right', this)">Open a URL in the default web browser</button>
+          <button class="match-item" data-id="d" onclick="matchClick('q20-3', 'd', 'right', this)">Copy text or read text from the system clipboard</button>
+          <button class="match-item" data-id="a" onclick="matchClick('q20-3', 'a', 'right', this)">Show native OS file open/save pickers</button>
+        </div>
+      </div>
+      <div class="quiz-exp" id="q20-3-exp">
+        All matched! Tauri's plugin separation keeps each dependency optional. A simple note-taking app might only need the store plugin. A SOAP API tester like APInox needs dialog (project folders), store (recent files), opener (doc links), and clipboard (copy endpoints/XML). None of these require custom Rust code — they're pre-built integrations.
+      </div>
+    </div>
+  </section>
+
+  <div class="callout-maui">MAUI Essentials gives you cross-platform access to: file system, camera, GPS, sensors, secure storage. Mostly works. The <code>FilePicker</code> on Mac Catalyst has a known bug where it ignores the <code>FileTypes</code> filter. The <code>SecureStorage</code> on Android clears on app reinstall. The <code>Accelerometer</code> on some Samsung devices fires at half the requested frequency. These are all known issues. They have workarounds in the comments. The comments were written by other developers who also found the workarounds by accident.</div>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>6. App Directories — Where to Store Data</h2>
+
+    <pre class="language-rust"><code>// In Rust commands — access standard OS directories:
+use tauri::Manager;
+
+#[tauri::command]
+pub fn get_config_dir(app: tauri::AppHandle) -&gt; Result&lt;String, String&gt; {
+    let path = app.path().app_config_dir()
+        .map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().to_string())
+}
+
+// Available path types:
+// app.path().app_config_dir()   → ~/.config/app.apinox.dev1/
+// app.path().app_data_dir()     → ~/.local/share/app.apinox.dev1/
+// app.path().app_log_dir()      → ~/.local/share/app.apinox.dev1/logs/
+// app.path().home_dir()         → /Users/mark/
+// app.path().download_dir()     → /Users/mark/Downloads/</code></pre>
+
+    <p>APInox stores its config in <code>~/.apinox/</code> — a custom path, not the standard app config dir. In <code>lib.rs</code>:</p>
+    <pre class="language-rust"><code>// lib.rs — APInox uses its own ~/.apinox/ folder:
+static CONFIG_DIR: Mutex&lt;Option&lt;String&gt;&gt; = Mutex::new(None);
+
+fn get_apinox_config_dir() -&gt; PathBuf {
+    let home = dirs::home_dir().unwrap_or_default();
+    home.join(".apinox")
+}</code></pre>
+
+    <!-- QUIZ 4 -->
+    <div class="quiz" id="q20-4">
+      <div class="quiz-label">✍️ Fill in the Blank</div>
+      <div class="quiz-q">To access standard OS paths in a Rust command, which trait must be in scope?</div>
+      <div class="fill-wrap">
+        use tauri::<input class="fill-input" id="q20-4-in" placeholder="????" style="width:12ch">;<br><br>
+        #[tauri::command]<br>
+        pub fn get_data_dir(app: tauri::AppHandle) -&gt; String {<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;app.path().app_data_dir().unwrap().to_string_lossy().to_string()<br>
+        }
+      </div>
+      <button class="btn-check" onclick="fillCheck('q20-4', 'Manager')">Check</button>
+      <div class="quiz-exp" id="q20-4-exp">
+        <strong>Manager</strong> — <code>tauri::Manager</code> is a trait that adds the <code>.path()</code> method (and others like <code>.get_webview_window()</code>, <code>.manage()</code>, <code>.emit()</code>) to <code>AppHandle</code>, <code>App</code>, and window types. Without <code>use tauri::Manager;</code> in scope, calling <code>app.path()</code> gives a "method not found" error.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>7. Writing Your Own Plugin (Brief Overview)</h2>
+    <p>If an official plugin doesn't cover your need, you can write custom plugins. For APInox, most custom functionality is implemented as plain <code>#[tauri::command]</code> functions rather than full plugins — plugins are better when you want to package reusable functionality for multiple apps:</p>
+
+    <pre class="language-rust"><code">// Skeleton of a custom plugin
+pub fn init&lt;R: tauri::Runtime&gt;() -&gt; tauri::plugin::TauriPlugin&lt;R&gt; {
+    tauri::plugin::Builder::new("my-plugin")
+        .invoke_handler(tauri::generate_handler![
+            my_plugin_command_one,
+            my_plugin_command_two,
+        ])
+        .setup(|app, _api| {
+            // Plugin initialization
+            Ok(())
+        })
+        .build()
+}
+
+// Then in main app:
+.plugin(my_plugin::init())</code></pre>
+
+    <!-- QUIZ 5 -->
+    <div class="quiz predict" id="q20-5">
+      <div class="quiz-label">🔮 Predict &amp; Reveal</div>
+      <div class="quiz-q">APInox calls <code>app.exit(0)</code> in the <code>quit_app</code> command. If instead you called the TypeScript equivalent <code>process.exit()</code> from the webview — what would happen?</div>
+      <button class="btn-reveal" onclick="reveal('q20-5')">Reveal Answer</button>
+      <div class="quiz-exp" id="q20-5-exp">
+        <strong>It wouldn't work.</strong> <code>process</code> is a Node.js global — it doesn't exist in the webview's browser environment (Tauri's webview is not a Node.js environment). You'd get a <code>ReferenceError: process is not defined</code>. To quit the app from the webview you must call <code>invoke('quit_app')</code> which runs the Rust <code>app.exit(0)</code>. Tauri maintains a strict separation: the webview is a sandboxed browser, the Rust layer has OS access.
+      </div>
+    </div>
+  </section>
+
+  <nav class="lesson-nav">
+    <a href="lesson-19.html">← Lesson 19: IPC & Events</a>
+    <a href="index.html" class="nav-center">All Lessons</a>
+    <a href="lesson-21.html">Lesson 21: Capabilities & Security →</a>
+  </nav>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-toml.min.js"></script>
+<script src="quiz.js"></script>
+</body>
+</html>

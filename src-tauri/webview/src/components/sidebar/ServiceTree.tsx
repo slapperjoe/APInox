@@ -59,6 +59,20 @@ const DragHandle = styled.div<{ $visible: boolean }>`
     }
 `;
 
+const SoapVersionBadge = styled.span`
+    font-size: 9px;
+    font-weight: 600;
+    padding: 1px 3px;
+    border-radius: 3px;
+    margin-left: 4px;
+    flex-shrink: 0;
+    opacity: 0.7;
+    background: var(--apinox-badge-background, rgba(128,128,128,0.2));
+    color: var(--apinox-badge-foreground, inherit);
+    letter-spacing: 0.3px;
+    line-height: 1.4;
+`;
+
 const RenameInput = styled.input`
     background: var(--apinox-input-background);
     color: var(--apinox-input-foreground);
@@ -222,9 +236,16 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
                                 onClick={(e) => e.stopPropagation()}
                             />
                         ) : (
-                            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {(iface as any).displayName || iface.name} {isExplorer ? '(Preview)' : ''}
-                            </span>
+                            <>
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                                    {(iface as any).displayName || iface.name} {isExplorer ? '(Preview)' : ''}
+                                </span>
+                                {iface.soapVersion && (
+                                    <SoapVersionBadge title={`SOAP ${iface.soapVersion}`}>
+                                        {iface.soapVersion}
+                                    </SoapVersionBadge>
+                                )}
+                            </>
                         )}
                         {isExplorer && selectedInterface?.name === iface.name && onAddToProject && onRemoveFromExplorer && (
                             <div style={{ display: 'flex', alignItems: 'center' }}>

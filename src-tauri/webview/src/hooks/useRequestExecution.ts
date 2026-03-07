@@ -263,6 +263,10 @@ export function useRequestExecution({
                 assertions: selectedRequest?.assertions,
                 headers: fixedHeaders,
                 contextVariables,
+                // SOAP metadata from operation
+                targetNamespace: selectedOperation?.targetNamespace || '',
+                soapAction: selectedOperation?.action || '',
+                soapVersion: selectedInterface?.soapVersion || '1.1',
                 // Environment for variable resolution
                 environment: config?.activeEnvironment,
                 // History context fields
@@ -277,6 +281,7 @@ export function useRequestExecution({
                 requestType: selectedRequest?.requestType,
                 method: selectedRequest?.method,
                 bodyType: selectedRequest?.bodyType,
+                queryParams: selectedRequest?.queryParams,
                 restConfig: selectedRequest?.restConfig,
                 graphqlConfig: selectedRequest?.graphqlConfig
             });

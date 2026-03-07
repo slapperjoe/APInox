@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 13 — Smart Pointers & Interior Mutability | Rust for C#/JS Devs</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-one-dark.min.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a href="index.html" class="back-link">← All Lessons</a>
+  <span class="lesson-badge">Lesson 13 · ~30 min</span>
+</header>
+
+<main class="lesson">
+  <div class="lesson-hero">
+    <h1>Smart Pointers &amp; Interior Mutability</h1>
+    <div class="lesson-meta">
+      <span>⏱ ~30 min</span>
+      <span>📁 <code>workflow/engine.rs</code>, <code>lib.rs</code></span>
+    </div>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:0%"></div></div>
+  <p class="progress-label">0 of 5 questions answered</p>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>1. <code>Box&lt;T&gt;</code> — Single Owner on the Heap</h2>
+    <p>A <code>Box</code> allocates its value on the heap and gives you one owner of it:</p>
+
+    <pre class="language-rust"><code>// Most values live on the stack — Box puts them on the heap:
+let x: Box&lt;i32&gt; = Box::new(42);
+println!("{}", *x);   // deref to get the value
+
+// Main use case 1 — recursive types (size unknown at compile time):
+enum Tree {
+    Leaf(i32),
+    Node(Box&lt;Tree&gt;, Box&lt;Tree&gt;),  // without Box this is infinite size
+}
+
+// Main use case 2 — large data you don't want to copy:
+let big_data = Box::new([0u8; 1_000_000]);  // 1MB on heap, not stack
+
+// Main use case 3 — trait objects (dyn Trait):
+let handlers: Vec&lt;Box&lt;dyn Fn()&gt;&gt; = vec![
+    Box::new(|| println!("handler 1")),
+    Box::new(|| println!("handler 2")),
+];</code></pre>
+
+    <div class="callout"><strong>C# analogy:</strong> In C#, all objects are on the heap by default. In Rust, values are on the stack by default. <code>Box</code> is the explicit "put this on the heap" wrapper.</div>
+
+  <div class="callout-arch">Enterprise thread-safety theater: the architect mandates that all shared state go through an Event Bus "to decouple the components". The Event Bus is a <code>synchronized</code> singleton. The singleton holds a <code>HashMap</code> of listener lists. The listeners are called on the emitter's thread. You've rebuilt a worse version of what you started with, but now it has a diagram.</div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>2. <code>Rc&lt;T&gt;</code> and <code>Arc&lt;T&gt;</code> — Reference Counting</h2>
+    <p>Multiple owners of the same data — without a garbage collector:</p>
+
+    <pre class="language-rust"><code>use std::rc::Rc;          // single-threaded
+use std::sync::Arc;       // multi-threaded (Atomic reference count)
+
+// Arc — sharing config across async tasks in APInox-style code:
+let config = Arc::new(AppConfig::load()?);
+
+let c1 = Arc::clone(&amp;config);   // increment ref count — cheap
+let c2 = Arc::clone(&amp;config);   // increment again
+
+tokio::spawn(async move {
+    println!("{}", c1.server_url);  // c1 dropped here → ref count -1
+});
+tokio::spawn(async move {
+    println!("{}", c2.server_url);  // c2 dropped here → ref count -1
+});
+// config dropped here → ref count -1 → if 0, memory freed</code></pre>
+
+    <table>
+      <thead><tr><th></th><th><code>Rc&lt;T&gt;</code></th><th><code>Arc&lt;T&gt;</code></th></tr></thead>
+      <tbody>
+        <tr><td>Thread safety</td><td>❌ Single thread only</td><td>✅ Multi-thread safe</td></tr>
+        <tr><td>Performance</td><td>Slightly faster (no atomic ops)</td><td>Small overhead for atomic ref count</td></tr>
+        <tr><td>Use when</td><td>Complex ownership in one thread</td><td>Sharing across threads/tasks</td></tr>
+        <tr><td>C# analogy</td><td>Weak reference (sort of)</td><td>Most C# objects (GC tracks refs)</td></tr>
+      </tbody>
+    </table>
+
+    <!-- QUIZ 1 -->
+    <div class="quiz" id="q13-1">
+      <div class="quiz-label">✅ True or False</div>
+      <div class="quiz-q"><code>Arc::clone(&amp;value)</code> makes a deep copy of the data inside the Arc.</div>
+      <div class="quiz-options tf">
+        <button data-answer="false" onclick="tf('q13-1', this, true, false)">True</button>
+        <button data-answer="false" onclick="tf('q13-1', this, false, false)">False</button>
+      </div>
+      <div class="quiz-exp" id="q13-1-exp">
+        <strong>False!</strong> <code>Arc::clone</code> just increments the atomic reference counter — it creates a new pointer to the <em>same data</em>. No copying of T occurs. This is why Arc is used for sharing large data structures across threads — you pass cheap pointer copies, not copies of the data. This is exactly what happens with C# object references, but made explicit.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>3. <code>Mutex&lt;T&gt;</code> — Shared Mutable State</h2>
+    <p><code>Arc&lt;T&gt;</code> alone is read-only — you need <code>Mutex</code> for shared mutable state:</p>
+
+    <div class="diagram">
+<svg viewBox="0 0 700 230" xmlns="http://www.w3.org/2000/svg" font-family="monospace,sans-serif" font-size="13">
+  <rect width="700" height="230" fill="#1e1e2e" rx="8"/>
+  <!-- Central heap box -->
+  <rect x="260" y="75" width="180" height="80" rx="8" fill="#1a6ebd" opacity="0.85"/>
+  <text x="350" y="100" text-anchor="middle" fill="#fff" font-weight="bold">Arc&lt;Mutex&lt;T&gt;&gt;</text>
+  <text x="350" y="118" text-anchor="middle" fill="#bfdbfe" font-size="11">ref_count: 3</text>
+  <text x="350" y="135" text-anchor="middle" fill="#bfdbfe" font-size="11">🔒 data: T</text>
+  <!-- Thread boxes -->
+  <rect x="20" y="30" width="160" height="60" rx="6" fill="#2a2a3e" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="100" y="55" text-anchor="middle" fill="#a78bfa">Thread 1</text>
+  <text x="100" y="73" text-anchor="middle" fill="#888" font-size="11">arc.lock().unwrap()</text>
+  <rect x="20" y="135" width="160" height="60" rx="6" fill="#2a2a3e" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="100" y="160" text-anchor="middle" fill="#a78bfa">Thread 2</text>
+  <text x="100" y="178" text-anchor="middle" fill="#888" font-size="11">arc.lock().unwrap()</text>
+  <rect x="520" y="82" width="160" height="60" rx="6" fill="#2a2a3e" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="600" y="107" text-anchor="middle" fill="#a78bfa">Thread 3</text>
+  <text x="600" y="125" text-anchor="middle" fill="#888" font-size="11">arc.clone() → ptr</text>
+  <!-- Arrows -->
+  <defs><marker id="arr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#f59e0b"/></marker></defs>
+  <line x1="180" y1="60" x2="258" y2="100" stroke="#f59e0b" stroke-width="2" marker-end="url(#arr2)"/>
+  <line x1="180" y1="165" x2="258" y2="140" stroke="#f59e0b" stroke-width="2" marker-end="url(#arr2)"/>
+  <line x1="520" y1="112" x2="442" y2="112" stroke="#f59e0b" stroke-width="2" marker-end="url(#arr2)"/>
+  <!-- Labels -->
+  <text x="350" y="195" text-anchor="middle" fill="#16a34a" font-size="11">✓ Arc: multiple owners across threads (ref counted)</text>
+  <text x="350" y="213" text-anchor="middle" fill="#16a34a" font-size="11">✓ Mutex: only ONE thread holds the lock at a time</text>
+</svg>
+<div class="diagram-caption">Arc lets multiple threads share ownership; Mutex ensures only one has write access at a time</div>
+</div>
+
+    <pre class="language-rust"><code>use std::sync::{Arc, Mutex};
+
+// The classic pattern — shared mutable counter across threads:
+let counter = Arc::new(Mutex::new(0u32));
+
+let c1 = Arc::clone(&amp;counter);
+tokio::spawn(async move {
+    let mut guard = c1.lock().await;  // blocks until lock acquired
+    *guard += 1;
+    // guard dropped here → lock released automatically
+});
+
+// From workflow/engine.rs — shared results accumulator:
+let results = Arc::new(Mutex::new(Vec::new()));
+let r = Arc::clone(&amp;results);
+tokio::spawn(async move {
+    let mut vec = r.lock().await;
+    vec.push(step_result);
+});
+
+// Read the accumulated results:
+let final_results = results.lock().await.clone();</code></pre>
+
+    <div class="callout"><strong>Deadlock prevention:</strong> Keep locks as short-lived as possible. Never hold two locks at once. Tokio's async <code>Mutex</code> (<code>tokio::sync::Mutex</code>) doesn't block the thread — it yields to other tasks instead.</div>
+
+  <div class="callout-salesforce">Salesforce's concurrency model: you get one thread. One. Per transaction. Apex is strictly single-threaded. Want parallelism? Queueable Apex — 50 jobs per transaction. Future methods — fire and forget, good luck. Batch Apex — 5 million records, 200 at a time, over 2 hours, might timeout. Platform Events — async, eventually consistent, "eventually" being the operative word. This is called "the Salesforce execution model".</div>
+
+    <!-- QUIZ 2 -->
+    <div class="quiz" id="q13-2">
+      <div class="quiz-label">🐛 Spot the Bug</div>
+      <div class="quiz-q">This code will deadlock. Click the problematic line:</div>
+      <div class="bug-pre">
+        <span class="bug-line" onclick="bugLine('q13-2', this, false)">let m = Arc::new(Mutex::new(0));</span>
+        <span class="bug-line" onclick="bugLine('q13-2', this, false)">let guard1 = m.lock().unwrap();</span>
+        <span class="bug-line" onclick="bugLine('q13-2', this, true)">let guard2 = m.lock().unwrap();</span>
+        <span class="bug-line" onclick="bugLine('q13-2', this, false)">println!("{} {}", *guard1, *guard2);</span>
+      </div>
+      <div class="quiz-exp" id="q13-2-exp">
+        <strong>Line 3!</strong> <code>guard1</code> holds the lock. Line 3 tries to acquire the same lock — but <code>guard1</code> hasn't been dropped yet (it's still in scope). The thread blocks forever waiting for itself to release the lock. Fix: use a block scope to drop <code>guard1</code> before locking again, or use <code>RwLock</code> if you need multiple concurrent readers.
+      </div>
+    </div>
+
+    <div class="callout-agile">Thread safety was marked 'won't fix' for three sprints because 'it only happens under load and we don't have load'. Sprint 12: production goes down. It was the race condition. The post-mortem action item: 'add thread safety'. Story points: 13. It was the <code>Arc&lt;Mutex&lt;T&gt;&gt;</code> pattern. One line change. The 13 points were for 'investigation and risk assessment'. The risk was: not doing it sooner.</div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>4. <code>RwLock&lt;T&gt;</code> — Many Readers, One Writer</h2>
+    <pre class="language-rust"><code">use tokio::sync::RwLock;
+
+// Great for shared config — read often, write rarely:
+let config = Arc::new(RwLock::new(AppConfig::default()));
+
+// Multiple concurrent readers — no blocking each other:
+let reader1 = Arc::clone(&amp;config);
+let reader2 = Arc::clone(&amp;config);
+
+tokio::spawn(async move {
+    let cfg = reader1.read().await;  // read lock — shared with others
+    println!("{}", cfg.endpoint);
+});
+
+tokio::spawn(async move {
+    let cfg = reader2.read().await;  // both can hold read locks simultaneously
+    println!("{}", cfg.timeout);
+});
+
+// Exclusive writer — blocks until all readers are done:
+let writer = Arc::clone(&amp;config);
+tokio::spawn(async move {
+    let mut cfg = writer.write().await;  // exclusive lock
+    cfg.endpoint = "https://new-url.com".to_string();
+});</code></pre>
+
+    <!-- QUIZ 3 -->
+    <div class="quiz" id="q13-3">
+      <div class="quiz-label">🔘 Multiple Choice</div>
+      <div class="quiz-q">When should you prefer <code>RwLock</code> over <code>Mutex</code>?</div>
+      <div class="quiz-options">
+        <button data-correct="false" onclick="mc('q13-3', this, false)">Always — RwLock is strictly better</button>
+        <button data-correct="false" onclick="mc('q13-3', this, false)">When writes are frequent and reads are rare</button>
+        <button data-correct="true"  onclick="mc('q13-3', this, true)">When reads are frequent and writes are rare — multiple readers don't block each other</button>
+        <button data-correct="false" onclick="mc('q13-3', this, false)">When the data is large — RwLock avoids copying</button>
+      </div>
+      <div class="quiz-exp" id="q13-3-exp">
+        <strong>✓ Read-heavy workloads!</strong> <code>RwLock</code> allows multiple concurrent readers. If reads are 95% of operations (like reading config or a cache), <code>RwLock</code> significantly reduces contention. If writes are frequent, the overhead of <code>RwLock</code>'s tracking logic can make it <em>slower</em> than a simple <code>Mutex</code>. For write-heavy or equal read/write patterns, <code>Mutex</code> is often better.
+      </div>
+    </div>
+
+  <div class="callout-oracle">Oracle's concurrency solution is row-level locking. Fine. Until you SELECT FOR UPDATE and forget to commit. Or two processes lock rows in opposite order. You get a deadlock. Oracle detects it and kills one session — which one is "implementation-defined". Siebel adds a workflow layer on top of this that locks rows you didn't know existed. Production deadlocks every Friday at 5pm. The DBA blames the devs. The devs blame Siebel. Siebel blames Oracle. Oracle sends an invoice.</div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>5. <code>RefCell&lt;T&gt;</code> — Interior Mutability (Single Thread)</h2>
+    <p>Sometimes you need to mutate data through a shared reference. <code>RefCell</code> moves borrow checking to runtime:</p>
+
+    <pre class="language-rust"><code">use std::cell::RefCell;
+
+// Normally you can't mutate through a shared reference:
+let data = Rc::new(vec![1, 2, 3]);
+// data.borrow_mut().push(4);  // ERROR with Rc alone
+
+// RefCell enables it — borrow checked at RUNTIME (not compile time):
+let data = Rc::new(RefCell::new(vec![1, 2, 3]));
+
+let d1 = Rc::clone(&amp;data);
+let d2 = Rc::clone(&amp;data);
+
+d1.borrow_mut().push(4);   // runtime borrow check — OK
+d2.borrow().len();         // read — OK (after d1's borrow released)
+
+// PANICS at runtime if you try two mutable borrows:
+// let _a = data.borrow_mut();
+// let _b = data.borrow_mut();  // panic! already mutably borrowed</code></pre>
+
+    <table>
+      <thead><tr><th>Type</th><th>Thread safe</th><th>Borrow check</th><th>Use case</th></tr></thead>
+      <tbody>
+        <tr><td><code>RefCell&lt;T&gt;</code></td><td>❌</td><td>Runtime</td><td>Single-thread shared mutable state</td></tr>
+        <tr><td><code>Mutex&lt;T&gt;</code></td><td>✅</td><td>Runtime (blocking)</td><td>Multi-thread shared mutable state</td></tr>
+        <tr><td><code>RwLock&lt;T&gt;</code></td><td>✅</td><td>Runtime (blocking)</td><td>Multi-thread read-heavy state</td></tr>
+      </tbody>
+    </table>
+
+    <!-- QUIZ 4 -->
+    <div class="quiz" id="q13-4">
+      <div class="quiz-label">🔗 Match It</div>
+      <div class="quiz-q">Match the combination to its typical use case:</div>
+      <div class="match-grid">
+        <div class="match-col">
+          <button class="match-item" data-id="a" onclick="matchClick('q13-4', 'a', 'left', this)"><code>Box&lt;dyn Trait&gt;</code></button>
+          <button class="match-item" data-id="b" onclick="matchClick('q13-4', 'b', 'left', this)"><code>Arc&lt;Mutex&lt;T&gt;&gt;</code></button>
+          <button class="match-item" data-id="c" onclick="matchClick('q13-4', 'c', 'left', this)"><code>Arc&lt;T&gt;</code></button>
+          <button class="match-item" data-id="d" onclick="matchClick('q13-4', 'd', 'left', this)"><code>Rc&lt;RefCell&lt;T&gt;&gt;</code></button>
+        </div>
+        <div class="match-col">
+          <button class="match-item" data-id="c" onclick="matchClick('q13-4', 'c', 'right', this)">Read-only shared config across async tasks</button>
+          <button class="match-item" data-id="a" onclick="matchClick('q13-4', 'a', 'right', this)">Heterogeneous collection of plugins</button>
+          <button class="match-item" data-id="d" onclick="matchClick('q13-4', 'd', 'right', this)">Graph node shared between siblings (single thread)</button>
+          <button class="match-item" data-id="b" onclick="matchClick('q13-4', 'b', 'right', this)">Shared mutable results across tokio tasks</button>
+        </div>
+      </div>
+      <div class="quiz-exp" id="q13-4-exp">
+        <strong>All matched!</strong><br>
+        • <code>Box&lt;dyn Trait&gt;</code> → type-erased heap object — mix different types in a Vec<br>
+        • <code>Arc&lt;Mutex&lt;T&gt;&gt;</code> → the workhorse for shared mutable state across async tasks<br>
+        • <code>Arc&lt;T&gt;</code> → read-only shared data — no lock needed, just cheap pointer clones<br>
+        • <code>Rc&lt;RefCell&lt;T&gt;&gt;</code> → single-thread graph/tree nodes that need interior mutability
+      </div>
+    </div>
+
+    <!-- QUIZ 5 -->
+    <div class="quiz" id="q13-5">
+      <div class="quiz-label">✍️ Fill in the Blank</div>
+      <div class="quiz-q">Complete the idiomatic pattern for shared mutable state across async Tokio tasks:</div>
+      <div class="fill-wrap">
+        let store = <input class="fill-input" id="q13-5-in" placeholder="????(Mutex::new(HashMap::new()))" style="width:34ch">;<br>
+        let store_clone = Arc::clone(&amp;store);<br>
+        tokio::spawn(async move {<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;let mut guard = store_clone.lock().await;<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;guard.insert("key", "value");<br>
+        });
+      </div>
+      <button class="btn-check" onclick="fillCheck('q13-5', ['Arc::new(Mutex::new(HashMap::new()))', 'Arc::new'])">Check</button>
+      <div class="quiz-exp" id="q13-5-exp">
+        <strong>Arc::new(Mutex::new(HashMap::new()))</strong> — the classic layered pattern: <code>Mutex</code> provides the lock, <code>Arc</code> allows multiple owners across tasks. You'll see this pattern constantly in async Rust. Read it inside-out: create a HashMap, wrap it in a Mutex for thread safety, wrap that in Arc for shared ownership.
+      </div>
+    </div>
+  </section>
+
+  <nav class="lesson-nav">
+    <a href="lesson-12.html">← Lesson 12: Lifetimes</a>
+    <a href="index.html" class="nav-center">All Lessons</a>
+    <a href="lesson-14.html">Lesson 14: Concurrency →</a>
+  </nav>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+<script src="quiz.js"></script>
+</body>
+</html>

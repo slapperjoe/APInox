@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 8 — Pattern Matching | Rust for C#/JS Devs</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-one-dark.min.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a href="index.html" class="back-link">← All Lessons</a>
+  <span class="lesson-badge">Lesson 8 · ~30 min</span>
+</header>
+
+<main class="lesson">
+  <div class="lesson-hero">
+    <h1>Pattern Matching Deep Dive</h1>
+    <div class="lesson-meta">
+      <span>⏱ ~30 min</span>
+      <span>📁 <code>testing/assertion_runner.rs</code>, <code>workflow/engine.rs</code></span>
+    </div>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:0%"></div></div>
+  <p class="progress-label">0 of 5 questions answered</p>
+
+  <div class="callout">
+    Pattern matching is one of Rust's most powerful features — and one of the most enjoyable. C# has basic <code>switch</code> expressions, but Rust's <code>match</code> goes much further. Once it clicks, you'll miss it in every other language.
+  </div>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>1. <code>match</code> — Exhaustive Switch on Steroids</h2>
+    <p>From <code>testing/assertion_runner.rs</code> — matching an enum with data in each variant:</p>
+
+    <pre class="language-rust"><code>match assertion {
+    // Destructure struct variants right in the pattern:
+    AssertionType::XPath { xpath, expected } => {
+        run_xpath_assertion(response, &amp;xpath, &amp;expected)
+    }
+    AssertionType::JsonPath { path, expected } => {
+        run_jsonpath_assertion(response, &amp;path, &amp;expected)
+    }
+    AssertionType::Regex { pattern, expected } => {
+        run_regex_assertion(response, &amp;pattern, expected.as_deref())
+    }
+    AssertionType::Contains { value } => {
+        run_contains_assertion(response, &amp;value)
+    }
+    AssertionType::StatusCode { code } => {
+        run_status_code_assertion(actual_status, code)
+    }
+    AssertionType::ResponseTime { max_ms } => {
+        run_response_time_assertion(elapsed_ms, max_ms)
+    }
+}</code></pre>
+
+    <p>The compiler <strong>refuses to compile</strong> if you miss a variant. No fall-through bugs.</p>
+
+    <pre class="language-rust"><code>// Catch-all patterns:
+match value {
+    1 => println!("one"),
+    2 | 3 => println!("two or three"),   // OR pattern
+    4..=9 => println!("four to nine"),   // inclusive range
+    _ => println!("something else"),     // wildcard — must be last
+}
+
+// Matching a tuple:
+match (x, y) {
+    (0, 0) => println!("origin"),
+    (x, 0) => println!("on x-axis at {x}"),
+    (0, y) => println!("on y-axis at {y}"),
+    (x, y) => println!("at ({x}, {y})"),
+}</code></pre>
+
+  <div class="callout-java">Java's equivalent: <code>ArrayList&lt;T&gt;</code> when you want a list, <code>LinkedList&lt;T&gt;</code> when you've read a blog post, <code>Vector&lt;T&gt;</code> when you're maintaining code from 2001, <code>CopyOnWriteArrayList&lt;T&gt;</code> when you've been burned by concurrency, and <code>Collections.unmodifiableList()</code> when you want immutability but you're using Java. In Rust: <code>Vec&lt;T&gt;</code>. Done.</div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>2. Guards — Adding <code>if</code> Conditions to Arms</h2>
+    <pre class="language-rust"><code>match temperature {
+    t if t &lt; 0   => println!("Freezing"),
+    t if t &lt; 15  => println!("Cold"),
+    t if t &lt; 25  => println!("Comfortable"),
+    _            => println!("Hot"),
+}
+
+// Guards also work with destructuring:
+match point {
+    (x, y) if x == y => println!("On the diagonal"),
+    (x, y) if x &gt; 0 &amp;&amp; y &gt; 0 => println!("First quadrant"),
+    _ => println!("Elsewhere"),
+}</code></pre>
+
+    <!-- QUIZ 1 -->
+    <div class="quiz" id="q8-1">
+      <div class="quiz-label">✍️ Fill in the Blank</div>
+      <div class="quiz-q">Add a guard to this arm so it only matches when <code>max_ms</code> is greater than zero:</div>
+      <div class="fill-wrap">
+        AssertionType::ResponseTime { max_ms } <input class="fill-input" id="q8-1-in" placeholder="??? max_ms > 0" style="width:20ch"> => {<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;run_response_time_assertion(elapsed, max_ms)<br>
+        }
+      </div>
+      <button class="btn-check" onclick="fillCheck('q8-1', ['if max_ms > 0', 'if max_ms > 0'])">Check</button>
+      <div class="quiz-exp" id="q8-1-exp">
+        <strong>if max_ms &gt; 0</strong> — guards are written as <code>if condition</code> after the pattern: <code>AssertionType::ResponseTime { max_ms } if max_ms &gt; 0 =&gt; { ... }</code>. If the guard is false, the match continues to the next arm. If no arm matches, the compiler will remind you to add a catch-all.
+      </div>
+    </div>
+
+  <div class="callout-sap">SAP's equivalent of a HashMap is a HASHED TABLE — an internal table type in ABAP with a hash key. You declare it with <code>TYPE HASHED TABLE OF ty_record WITH UNIQUE KEY field1</code>. It's fine. But you'll spend 45 minutes in the ABAP documentation discovering it exists, because the default you've been using for 5 years is a STANDARD TABLE with an O(n) linear scan. Your SAP report has been doing O(n²) lookups since 2009.</div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>3. <code>@</code> Bindings — Name and Test at Once</h2>
+    <pre class="language-rust"><code>match status_code {
+    // Bind the value to `code` AND test it's in range:
+    code @ 200..=299 => println!("Success: {}", code),
+    code @ 400..=499 => println!("Client error: {}", code),
+    code @ 500..=599 => println!("Server error: {}", code),
+    code => println!("Unexpected: {}", code),
+}
+
+// Without @, you'd need a guard:
+// 200..=299 if true => ... (can't access the value in the arm body)
+
+// Useful with nested patterns too:
+match user {
+    User { name: n @ "admin", .. } => println!("Admin: {}", n),
+    User { name, .. } => println!("User: {}", name),
+}</code></pre>
+
+    <!-- QUIZ 2 -->
+    <div class="quiz" id="q8-2">
+      <div class="quiz-label">🔘 Multiple Choice</div>
+      <div class="quiz-q">What does the <code>@</code> binding let you do that a range pattern alone cannot?</div>
+      <div class="quiz-options">
+        <button data-correct="false" onclick="mc('q8-2', this, false)">Match multiple values in one arm</button>
+        <button data-correct="true"  onclick="mc('q8-2', this, true)">Both test the value against a pattern AND bind it to a name for use in the arm body</button>
+        <button data-correct="false" onclick="mc('q8-2', this, false)">Skip the match and continue to the next arm</button>
+        <button data-correct="false" onclick="mc('q8-2', this, false)">Match by reference instead of by value</button>
+      </div>
+      <div class="quiz-exp" id="q8-2-exp">
+        <strong>✓ Test AND bind!</strong> <code>code @ 200..=299</code> does two things: it checks that the value is in the range, AND binds the matched value to <code>code</code> so you can use it in the arm body. Without <code>@</code>, a range pattern tests the value but gives you no way to refer to it. You'd have to use a guard (<code>c if c &gt;= 200 &amp;&amp; c &lt;= 299</code>) and lose the range syntax.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>4. <code>if let</code> and <code>while let</code> — Single-Arm Matching</h2>
+    <p>When you only care about one pattern, <code>if let</code> is cleaner than a full <code>match</code>:</p>
+
+    <pre class="language-rust"><code>// Full match — verbose when you only care about Some:
+match config.timeout {
+    Some(t) => apply_timeout(t),
+    None => {},
+}
+
+// if let — much cleaner:
+if let Some(t) = config.timeout {
+    apply_timeout(t);
+}
+
+// Chaining (Rust 1.64+):
+if let Some(user) = get_user()
+    &amp;&amp; let Some(perm) = user.get_permission("admin")
+    &amp;&amp; perm.is_active() {
+    // all three conditions true
+}
+
+// while let — loop until pattern fails:
+while let Some(item) = queue.pop() {
+    process(item);
+}
+
+// From workflow/engine.rs pattern:
+while let Ok(update) = rx.try_recv() {
+    results.push(update);
+}</code></pre>
+
+    <!-- QUIZ 3 -->
+    <div class="quiz" id="q8-3">
+      <div class="quiz-label">✅ True or False</div>
+      <div class="quiz-q"><code>if let</code> can only be used with <code>Option&lt;T&gt;</code>.</div>
+      <div class="quiz-options tf">
+        <button data-answer="false" onclick="tf('q8-3', this, true, false)">True</button>
+        <button data-answer="false" onclick="tf('q8-3', this, false, false)">False</button>
+      </div>
+      <div class="quiz-exp" id="q8-3-exp">
+        <strong>False!</strong> <code>if let</code> works with any pattern against any value. Common uses:<br>
+        <code>if let Some(v) = option { }</code> — Option<br>
+        <code>if let Ok(v) = result { }</code> — Result<br>
+        <code>if let MyEnum::Variant(x) = value { }</code> — any enum<br>
+        <code>if let (a, b, 0) = tuple { }</code> — tuples with specific values<br>
+        It's essentially a <code>match</code> with one pattern arm and an implicit <code>_ =&gt; {}</code>.
+      </div>
+    </div>
+
+  <div class="callout-agile">The story for "implement efficient data lookups" was estimated at 3 points. An architect reviewed the PR and suggested the HashMap should be externalized to Redis "for scalability". That's now a separate epic. The 3-pointer has been in the backlog for two sprints. The O(n²) loop is in production.</div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>5. <code>let-else</code> — The Defensive Pattern</h2>
+    <p>A cleaner alternative to nested <code>if let</code> for early returns:</p>
+
+    <pre class="language-rust"><code>// Old way — pyramid of doom:
+fn process(config: Option&lt;Config&gt;) -&gt; Result&lt;()&gt; {
+    if let Some(c) = config {
+        if let Some(endpoint) = c.endpoint {
+            // now actually do something, 2 levels deep
+            send_request(&amp;endpoint)
+        } else {
+            Err("No endpoint".into())
+        }
+    } else {
+        Err("No config".into())
+    }
+}
+
+// let-else — stays flat:
+fn process(config: Option&lt;Config&gt;) -&gt; Result&lt;()&gt; {
+    let Some(c) = config else {
+        return Err("No config".into());
+    };
+    // c is now in scope, no extra nesting
+    let Some(endpoint) = c.endpoint else {
+        return Err("No endpoint".into());
+    };
+    send_request(&amp;endpoint)
+}</code></pre>
+
+    <div class="callout"><strong>Rule:</strong> The <code>else</code> block in <code>let-else</code> must diverge — it must <code>return</code>, <code>break</code>, <code>continue</code>, or <code>panic!</code>. You can't fall through. This is what makes it safe — the variable is guaranteed to be bound if execution continues past the <code>let-else</code>.</div>
+
+    <!-- QUIZ 4 -->
+    <div class="quiz" id="q8-4">
+      <div class="quiz-label">🐛 Spot the Bug</div>
+      <div class="quiz-q">This <code>let-else</code> won't compile. Click the problematic line:</div>
+      <div class="bug-pre">
+        <span class="bug-line" onclick="bugLine('q8-4', this, false)">fn get_name(user: Option&lt;User&gt;) -&gt; String {</span>
+        <span class="bug-line" onclick="bugLine('q8-4', this, false)">    let Some(u) = user else {</span>
+        <span class="bug-line" onclick="bugLine('q8-4', this, true)">        println!("No user found");</span>
+        <span class="bug-line" onclick="bugLine('q8-4', this, false)">    };</span>
+        <span class="bug-line" onclick="bugLine('q8-4', this, false)">    u.name</span>
+        <span class="bug-line" onclick="bugLine('q8-4', this, false)">}</span>
+      </div>
+      <div class="quiz-exp" id="q8-4-exp">
+        <strong>Line 3!</strong> The <code>else</code> block must <em>diverge</em> — it cannot fall through. <code>println!</code> just prints and returns <code>()</code>; the block continues executing, which would leave <code>u</code> unbound but not stop the function. Fix it by adding a return: <code>println!("No user"); return String::new();</code> or just use <code>return "Unknown".to_string();</code>.
+      </div>
+    </div>
+
+    <!-- QUIZ 5 -->
+    <div class="quiz" id="q8-5">
+      <div class="quiz-label">🔗 Match It</div>
+      <div class="quiz-q">Match each pattern construct to its best use case:</div>
+      <div class="match-grid">
+        <div class="match-col">
+          <button class="match-item" data-id="a" onclick="matchClick('q8-5', 'a', 'left', this)"><code>match</code></button>
+          <button class="match-item" data-id="b" onclick="matchClick('q8-5', 'b', 'left', this)"><code>if let</code></button>
+          <button class="match-item" data-id="c" onclick="matchClick('q8-5', 'c', 'left', this)"><code>let-else</code></button>
+          <button class="match-item" data-id="d" onclick="matchClick('q8-5', 'd', 'left', this)"><code>while let</code></button>
+        </div>
+        <div class="match-col">
+          <button class="match-item" data-id="b" onclick="matchClick('q8-5', 'b', 'right', this)">Unwrap one Optional value, ignore None</button>
+          <button class="match-item" data-id="d" onclick="matchClick('q8-5', 'd', 'right', this)">Drain a queue until it's empty</button>
+          <button class="match-item" data-id="a" onclick="matchClick('q8-5', 'a', 'right', this)">Handle every variant of an enum exhaustively</button>
+          <button class="match-item" data-id="c" onclick="matchClick('q8-5', 'c', 'right', this)">Early return if a value doesn't match, keep it flat</button>
+        </div>
+      </div>
+      <div class="quiz-exp" id="q8-5-exp">
+        <strong>All matched!</strong><br>
+        • <code>match</code> → exhaustive enum handling — compiler checks all cases<br>
+        • <code>if let</code> → "I only care about the <code>Some</code> case" — clean one-liner<br>
+        • <code>let-else</code> → guard clause / early return — keeps code flat<br>
+        • <code>while let</code> → loop until pattern fails — perfect for draining channels or queues
+      </div>
+    </div>
+  </section>
+
+  <nav class="lesson-nav">
+    <a href="lesson-07.html">← Lesson 7: String Types</a>
+    <a href="index.html" class="nav-center">All Lessons</a>
+    <a href="lesson-09.html">Lesson 9: Modules →</a>
+  </nav>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+<script src="quiz.js"></script>
+</body>
+</html>

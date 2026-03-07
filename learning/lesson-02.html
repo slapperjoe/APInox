@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 2 — Structs, Enums &amp; Attributes | Rust for C#/JS Devs</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-one-dark.min.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a href="index.html" class="back-link">← All Lessons</a>
+  <span class="lesson-badge">Lesson 2 · ~25 min</span>
+</header>
+
+<main class="lesson">
+  <div class="lesson-hero">
+    <h1>Structs, Enums &amp; Derive Attributes</h1>
+    <div class="lesson-meta">
+      <span>⏱ ~25 min</span>
+      <span>📁 <code>parsers/wsdl/types.rs</code>, <code>settings_manager.rs</code>, <code>testing/test_runner.rs</code></span>
+    </div>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:0%"></div></div>
+  <p class="progress-label">0 of 5 questions answered</p>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>1. Structs — Data Without Behaviour</h2>
+    <p>In C#, a class holds both data AND methods. In Rust, they're <em>separated</em>: <strong><code>struct</code></strong> holds data, <strong><code>impl</code></strong> adds behaviour (covered in Lesson 3).</p>
+
+    <p>Open <code>parsers/wsdl/types.rs</code>:</p>
+    <pre class="language-rust"><code>pub struct SchemaNode {
+    pub name: String,
+    #[serde(rename = "type")]
+    pub node_type: String,
+    pub kind: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub min_occurs: Option&lt;String&gt;,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub children: Option&lt;Vec&lt;SchemaNode&gt;&gt;,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_optional: Option&lt;bool&gt;,
+}</code></pre>
+
+    <pre class="language-csharp"><code>// C# equivalent
+public class SchemaNode {
+    public string Name { get; set; }
+    [JsonPropertyName("type")]
+    public string NodeType { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? MinOccurs { get; set; }
+    public List&lt;SchemaNode&gt;? Children { get; set; }
+}</code></pre>
+
+    <div class="callout"><strong>Field visibility:</strong> Fields are <em>private by default</em> in Rust. You need <code>pub</code> to expose them — the opposite of C# where fields are private unless you add <code>public</code>... wait, that's the same! The difference is Rust <em>never</em> has a default-public field.</div>
+
+    <div class="callout-salesforce">The Salesforce equivalent of a Rust struct is an Apex class with: a no-arg constructor, a 3-arg constructor, a static factory method, 12 <code>@AuraEnabled</code> annotations, and a <code>get</code>/<code>set</code> for every property because LWC won't bind to public fields. Oh, and it counts toward your 6MB heap limit per transaction. If you go over, you get a <code>System.LimitException</code> at runtime. Not at compile time. At 11pm on a Friday.</div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>2. Option&lt;T&gt; — No Such Thing as null</h2>
+    <p>Rust has <strong>no null</strong>. Instead, a value that might be absent is wrapped in <code>Option&lt;T&gt;</code>:</p>
+
+    <pre class="language-rust"><code>// Option&lt;T&gt; is just this enum under the hood:
+enum Option&lt;T&gt; {
+    Some(T),   // value is present
+    None,      // value is absent
+}
+
+// Using it:
+let x: Option&lt;String&gt; = Some("hello".to_string());
+let y: Option&lt;String&gt; = None;
+
+// Reading it safely:
+if let Some(val) = x {
+    println!("{}", val);   // only runs if Some
+}</code></pre>
+
+    <!-- QUIZ 1: Multiple choice -->
+    <div class="quiz" id="q2-1">
+      <div class="quiz-label">🔘 Multiple Choice</div>
+      <div class="quiz-q">What is <code>Option::None</code> equivalent to in C#?</div>
+      <div class="quiz-options">
+        <button data-correct="false" onclick="mc('q2-1', this, false)">An empty string <code>""</code></button>
+        <button data-correct="false" onclick="mc('q2-1', this, false)">The number <code>0</code></button>
+        <button data-correct="true"  onclick="mc('q2-1', this, true)"><code>null</code> on a nullable type (<code>string?</code>)</button>
+        <button data-correct="false" onclick="mc('q2-1', this, false)">A thrown <code>NullReferenceException</code></button>
+      </div>
+      <div class="quiz-exp" id="q2-1-exp">
+        <strong>✓ null on a nullable type!</strong> <code>Option&lt;String&gt;</code> ≈ <code>string?</code> in C#. The key difference: in Rust, the compiler <em>forces</em> you to handle the <code>None</code> case before you can use the value. In C# you can accidentally dereference a null.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>3. Derive Attributes — Free Code Generation</h2>
+    <p><code>#[derive(...)]</code> tells the compiler to auto-generate trait implementations. Zero overhead — it's compile-time code generation, not reflection.</p>
+
+    <div class="callout-java">In Java, auto-generating <code>equals()</code>, <code>hashCode()</code>, and <code>toString()</code> requires: (a) your IDE, (b) Lombok annotations, (c) a Record (Java 16+), or (d) writing it by hand and getting it subtly wrong. Rust derives these from a single attribute line. Java added Records in 2021 after 25 years. Better late than never.</div>
+
+    <pre class="language-rust"><code>#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SchemaNode { ... }</code></pre>
+
+    <div class="callout-arch">Upon seeing <code>#[derive(Debug, Clone, Serialize)]</code>, an architect will ask if these should be separate microservices — one for debug formatting, one for cloning, one for serialisation — "for separation of concerns." You will not be able to explain why this is insane fast enough. A Miro board will be created. It will have swimlanes.</div>
+
+    <!-- QUIZ 2: Match it -->
+    <div class="quiz" id="q2-2">
+      <div class="quiz-label">🔗 Match It</div>
+      <div class="quiz-q">Match each <code>derive</code> macro to what it provides:</div>
+      <div class="match-grid">
+        <div>
+          <div class="match-col-label">Derive</div>
+          <div class="match-col">
+            <button class="match-item" onclick="matchClick('q2-2','a','left',this)">Debug</button>
+            <button class="match-item" onclick="matchClick('q2-2','b','left',this)">Clone</button>
+            <button class="match-item" onclick="matchClick('q2-2','c','left',this)">PartialEq</button>
+          </div>
+        </div>
+        <div>
+          <div class="match-col-label">What you get</div>
+          <div class="match-col">
+            <button class="match-item" onclick="matchClick('q2-2','b','right',this)">.clone() — deep copy the value</button>
+            <button class="match-item" onclick="matchClick('q2-2','c','right',this)">== operator comparison</button>
+            <button class="match-item" onclick="matchClick('q2-2','a','right',this)">println!("{:?}", val) formatting</button>
+          </div>
+        </div>
+      </div>
+      <div class="quiz-exp" id="q2-2-exp">
+        <strong>All matched!</strong> Debug → <code>{:?}</code> formatting. Clone → <code>.clone()</code>. PartialEq → <code>==</code> operator. These are equivalent to implementing <code>ToString()</code>, <code>ICloneable</code>, and <code>IEquatable&lt;T&gt;</code> in C#.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>4. Serde Attributes — JSON Serialization</h2>
+    <p>Open <code>settings_manager.rs</code>. You'll see serde annotations that work just like <code>System.Text.Json</code> attributes:</p>
+
+    <pre class="language-rust"><code>#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]       // ← converts snake_case to camelCase in JSON
+pub struct ApinoxConfig {
+    pub version: i32,
+    #[serde(skip_serializing_if = "Option::is_none")]  // ← omit from JSON when None
+    pub network: Option&lt;NetworkConfig&gt;,
+    pub active_environment: Option&lt;String&gt;,  // → "activeEnvironment" in JSON
+    pub open_projects: Option&lt;Vec&lt;String&gt;&gt;,  // → "openProjects" in JSON
+}</code></pre>
+
+    <!-- QUIZ 3: Fill in the blank -->
+    <div class="quiz" id="q2-3">
+      <div class="quiz-label">✍️ Fill in the Blank</div>
+      <div class="quiz-q">To make all fields serialize as camelCase in JSON (e.g., <code>min_occurs</code> → <code>"minOccurs"</code>), what value goes in the serde attribute?</div>
+      <div class="fill-wrap">
+        #[serde(rename_all = "<input class="fill-input" id="q2-3-in" placeholder="???" style="width:12ch">")]
+      </div>
+      <button class="btn-check" onclick="fillCheck('q2-3', 'camelCase')">Check</button>
+      <div class="quiz-exp" id="q2-3-exp">
+        <strong>camelCase</strong> — <code>#[serde(rename_all = "camelCase")]</code>. Other options include <code>"snake_case"</code>, <code>"PascalCase"</code>, <code>"SCREAMING_SNAKE_CASE"</code>. This saves you from adding <code>#[serde(rename = "...")]</code> to every single field.
+      </div>
+    </div>
+
+    <h3>Why <code>rename = "type"</code>?</h3>
+    <pre class="language-rust"><code>#[serde(rename = "type")]
+pub node_type: String,</code></pre>
+    <p><code>type</code> is a <strong>reserved keyword</strong> in Rust — you can't name a field <code>type</code>. So the Rust field is <code>node_type</code> but serde maps it to <code>"type"</code> in JSON automatically.</p>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>5. Enums — Much More Powerful Than C#</h2>
+    <p>In C#, an enum is a named integer. In Rust, <strong>each variant can hold different data</strong>. This is called an algebraic data type.</p>
+
+    <p>From <code>testing/test_runner.rs</code>:</p>
+    <pre class="language-rust"><code>#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "lowercase")]
+pub enum TestStepType {
+    Soap {
+        operation: ServiceOperation,
+        soap_version: String,
+        values: HashMap&lt;String, String&gt;,
+        endpoint: Option&lt;String&gt;,
+    },
+    Http {
+        method: String,
+        url: String,
+        headers: HashMap&lt;String, String&gt;,
+        body: Option&lt;String&gt;,
+    },
+    Delay {
+        ms: u64,
+    },
+}</code></pre>
+
+    <!-- QUIZ 4: True/False -->
+    <div class="quiz" id="q2-4">
+      <div class="quiz-label">✅ True or False</div>
+      <div class="quiz-q">Rust enums can hold different data in each variant (like a union type).</div>
+      <div class="quiz-options tf">
+        <button data-answer="true" onclick="tf('q2-4', this, true, true)">True</button>
+        <button data-answer="true" onclick="tf('q2-4', this, false, true)">False</button>
+      </div>
+      <div class="quiz-exp" id="q2-4-exp">
+        <strong>True!</strong> Rust enums are <em>algebraic data types</em> — each variant can carry completely different fields. <code>Soap</code> carries an operation and headers, <code>Delay</code> just carries a millisecond count. This is impossible with C# enums (you'd need a class hierarchy). The JSON representation uses a <code>"type"</code> discriminator field to tell them apart.
+      </div>
+    </div>
+
+    <h3>Using enums: exhaustive match</h3>
+    <pre class="language-rust"><code>match &amp;step.step_type {
+    TestStepType::Soap { operation, soap_version, .. } =&gt; {
+        // ".." ignores remaining fields
+        execute_soap(operation, soap_version).await?;
+    }
+    TestStepType::Http { method, url, .. } =&gt; {
+        execute_http(method, url).await?;
+    }
+    TestStepType::Delay { ms } =&gt; {
+        tokio::time::sleep(Duration::from_millis(*ms)).await;
+    }
+}</code></pre>
+    <div class="callout rule"><strong>The exhaustive match rule:</strong> If you forget to handle a variant, Rust <em>won't compile</em>. No silent runtime crashes. Add a new enum variant? Every match in the codebase that doesn't have a <code>_ =&gt;</code> wildcard arm will fail to compile, pointing you to every place you need to update.</div>
+
+    <div class="callout-maui">MAUI has an enum for device platform: <code>DevicePlatform.Android</code>, <code>DevicePlatform.iOS</code>, <code>DevicePlatform.WinUI</code>, <code>DevicePlatform.macOS</code>, <code>DevicePlatform.Tizen</code>. Tizen. Enterprise developers in 2024 are writing <code>if platform == Tizen</code> branches that have never, and will never, execute. Somewhere a Samsung smart fridge is the target platform and nobody will admit it.</div>
+
+    <div class="callout-agile">The data modelling story was 3 points. The architect reviewed the struct layout in the PR and asked if each field should be its own microservice 'for independent scalability'. That's now a separate epic titled 'Field Extraction Initiative'. It was added to the Q3 roadmap. It's Q1. The original struct shipped. The epic is still in backlog, status: 'Refinement Needed'.</div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>6. The <code>#[serde(tag = "type")]</code> Pattern</h2>
+    <p>This attribute makes serde include a discriminator field in the JSON output:</p>
+
+    <pre class="language-json"><code>{ "type": "soap", "operation": {...}, "soap_version": "1.1" }
+{ "type": "http", "method": "GET", "url": "https://..." }
+{ "type": "delay", "ms": 1000 }</code></pre>
+
+    <!-- QUIZ 5: Predict output -->
+    <div class="quiz predict" id="q2-5">
+      <div class="quiz-label">🤔 Predict the Output</div>
+      <div class="quiz-q">What JSON key does the Rust field <code>original_endpoint</code> become when the struct has <code>#[serde(rename_all = "camelCase")]</code>?</div>
+      <button class="btn-reveal" onclick="reveal('q2-5')">Reveal Answer</button>
+      <div class="quiz-exp" id="q2-5-exp">
+        <strong><code>"originalEndpoint"</code></strong> — serde converts <code>snake_case</code> field names to <code>camelCase</code> automatically. Each <code>_</code> followed by a lowercase letter becomes an uppercase letter. No per-field annotation needed.
+      </div>
+    </div>
+  </section>
+
+  <nav class="lesson-nav">
+    <a href="lesson-01.html">← Lesson 1: Syntax &amp; Ownership</a>
+    <a href="index.html" class="nav-center">All Lessons</a>
+    <a href="lesson-03.html">Lesson 3: impl &amp; Traits →</a>
+  </nav>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-csharp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="quiz.js"></script>
+</body>
+</html>

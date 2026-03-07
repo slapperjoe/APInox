@@ -128,26 +128,31 @@ impl ApinoxConfig {
         let mut build = HashMap::new();
         build.insert("endpoint_url".to_string(), Value::String("http://bld02.acme.com".to_string()));
         build.insert("env".to_string(), Value::String("bld02".to_string()));
+        build.insert("color".to_string(), Value::String("#58A6FF".to_string()));
         envs.insert("Build".to_string(), build);
         
         let mut dit = HashMap::new();
         dit.insert("endpoint_url".to_string(), Value::String("http://dit.example.com".to_string()));
         dit.insert("env".to_string(), Value::String("dit01".to_string()));
+        dit.insert("color".to_string(), Value::String("#7EE787".to_string()));
         envs.insert("DIT".to_string(), dit);
         
         let mut sit = HashMap::new();
         sit.insert("endpoint_url".to_string(), Value::String("http://sit.example.com".to_string()));
         sit.insert("env".to_string(), Value::String("sit01".to_string()));
+        sit.insert("color".to_string(), Value::String("#FFA657".to_string()));
         envs.insert("SIT".to_string(), sit);
         
         let mut perf = HashMap::new();
         perf.insert("endpoint_url".to_string(), Value::String("http://perf.example.com".to_string()));
         perf.insert("env".to_string(), Value::String("pft01".to_string()));
+        perf.insert("color".to_string(), Value::String("#D29922".to_string()));
         envs.insert("Perf".to_string(), perf);
         
         let mut prod = HashMap::new();
         prod.insert("endpoint_url".to_string(), Value::String("http://prod.example.com".to_string()));
         prod.insert("env".to_string(), Value::String("prd01".to_string()));
+        prod.insert("color".to_string(), Value::String("#FF7B72".to_string()));
         envs.insert("Prod".to_string(), prod);
         
         envs
@@ -256,7 +261,24 @@ pub async fn save_settings(config: ApinoxConfig) -> Result<(), String> {
 #[tauri::command]
 pub async fn update_ui_settings(ui: UiConfig) -> Result<(), String> {
     let mut config = load_config()?;
-    config.ui = Some(ui);
+    
+    // Merge with existing UI settings instead of replacing
+    if let Some(existing_ui) = &config.ui {
+        config.ui = Some(UiConfig {
+            layout_mode: ui.layout_mode.or(existing_ui.layout_mode.clone()),
+            show_line_numbers: ui.show_line_numbers.or(existing_ui.show_line_numbers),
+            align_attributes: ui.align_attributes.or(existing_ui.align_attributes),
+            inline_element_values: ui.inline_element_values.or(existing_ui.inline_element_values),
+            show_debug_indicator: ui.show_debug_indicator.or(existing_ui.show_debug_indicator),
+            split_ratio: ui.split_ratio.or(existing_ui.split_ratio),
+            auto_fold_elements: ui.auto_fold_elements.or_else(|| existing_ui.auto_fold_elements.clone()),
+            editor_font_size: ui.editor_font_size.or(existing_ui.editor_font_size),
+            editor_font_family: ui.editor_font_family.or_else(|| existing_ui.editor_font_family.clone()),
+        });
+    } else {
+        config.ui = Some(ui);
+    }
+    
     save_config(&config)
 }
 
@@ -279,6 +301,47 @@ pub async fn update_open_projects(paths: Vec<String>) -> Result<(), String> {
 /// Update workflows
 #[tauri::command]
 pub async fn update_workflows(workflows: Vec<Value>) -> Result<(), String> {
+    let mut config = load_config()?;
+    config.workflows = Some(workflows);
+    save_config(&config)
+}
+
+/// Internal function to get workflows (callable from other modules)
+pub(crate) fn get_workflows_internal() -> Result<Vec<Value>, String> {
+    let config = load_config()?;
+    Ok(config.workflows.unwrap_or_default())
+}
+
+/// Internal function to save a workflow (callable from other modules)
+pub(crate) fn save_workflow_internal(workflow: Value) -> Result<(), String> {
+    let mut workflows = get_workflows_internal()?;
+    
+    let workflow_id = workflow.get("id")
+        .and_then(|v| v.as_str())
+        .ok_or("Workflow must have an id")?;
+    
+    // Find and update existing, or append new
+    if let Some(index) = workflows.iter().position(|w| {
+        w.get("id").and_then(|v| v.as_str()) == Some(workflow_id)
+    }) {
+        workflows[index] = workflow;
+    } else {
+        workflows.push(workflow);
+    }
+    
+    let mut config = load_config()?;
+    config.workflows = Some(workflows);
+    save_config(&config)
+}
+
+/// Internal function to delete a workflow (callable from other modules)
+pub(crate) fn delete_workflow_internal(workflow_id: &str) -> Result<(), String> {
+    let mut workflows = get_workflows_internal()?;
+    
+    workflows.retain(|w| {
+        w.get("id").and_then(|v| v.as_str()) != Some(workflow_id)
+    });
+    
     let mut config = load_config()?;
     config.workflows = Some(workflows);
     save_config(&config)

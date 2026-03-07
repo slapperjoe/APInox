@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 1 — Syntax &amp; Ownership | Rust for C#/JS Devs</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-one-dark.min.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a href="index.html" class="back-link">← All Lessons</a>
+  <span class="lesson-badge">Lesson 1 · ~25 min</span>
+</header>
+
+<main class="lesson">
+  <div class="lesson-hero">
+    <h1>Syntax &amp; Ownership</h1>
+    <div class="lesson-meta">
+      <span>⏱ ~25 min</span>
+      <span>📁 <code>src-tauri/src/main.rs</code>, <code>lib.rs</code></span>
+    </div>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:0%"></div></div>
+  <p class="progress-label">0 of 5 questions answered</p>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>1. The Entry Point</h2>
+    <p>Open <code>src-tauri/src/main.rs</code> — it's just 4 lines:</p>
+    <pre class="language-rust"><code>// Prevents additional console window on Windows in release, DO NOT REMOVE!!
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
+fn main() {
+    apinox_lib::run();
+}</code></pre>
+
+    <p><code>#![cfg_attr(...)]</code> is a <strong>crate-level attribute</strong> (the <code>!</code> means "apply to the whole file"). It's a conditional compilation directive:</p>
+    <ul>
+      <li><code>debug_assertions</code> is <code>true</code> in debug builds, <code>false</code> in release</li>
+      <li>When in release mode: apply <code>windows_subsystem = "windows"</code> → hides the terminal window</li>
+    </ul>
+    <div class="callout"><strong>C# equivalent:</strong> <code>#if !DEBUG</code> / <code>#endif</code> or <code>&lt;OutputType&gt;WinExe&lt;/OutputType&gt;</code> in .csproj</div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>2. Variables and Immutability</h2>
+    <p>In Rust, <strong>variables are immutable by default</strong>. This is the opposite of C# and JS:</p>
+
+    <div class="diagram">
+<svg viewBox="0 0 700 220" xmlns="http://www.w3.org/2000/svg" font-family="monospace,sans-serif" font-size="13">
+  <!-- Background -->
+  <rect width="700" height="220" fill="#1e1e2e" rx="8"/>
+  <!-- Stack panel -->
+  <rect x="20" y="10" width="300" height="200" rx="6" fill="#2a2a3e" stroke="#555" stroke-width="1"/>
+  <text x="170" y="32" text-anchor="middle" fill="#888" font-size="11" font-weight="bold">STACK (fast, fixed size)</text>
+  <!-- Stack frames -->
+  <rect x="35" y="42" width="270" height="36" rx="4" fill="#1a6ebd" opacity="0.8"/>
+  <text x="100" y="56" fill="#fff" font-size="12">let x: i32 = 42;</text>
+  <text x="270" y="56" fill="#aef" font-size="11">value: 42</text>
+  <text x="100" y="70" fill="#adf" font-size="11">size known at compile time ✓</text>
+  <rect x="35" y="85" width="270" height="36" rx="4" fill="#1a6ebd" opacity="0.6"/>
+  <text x="100" y="99" fill="#fff" font-size="12">let s: &amp;str = "hi";</text>
+  <text x="245" y="99" fill="#aef" font-size="11">ptr → </text>
+  <text x="100" y="113" fill="#adf" font-size="11">pointer + length (fixed) ✓</text>
+  <rect x="35" y="128" width="270" height="36" rx="4" fill="#555" opacity="0.5"/>
+  <text x="100" y="142" fill="#ccc" font-size="12">let v: Vec&lt;T&gt;</text>
+  <text x="220" y="142" fill="#aef" font-size="11">ptr ──────→</text>
+  <text x="100" y="156" fill="#adf" font-size="11">ptr + len + capacity (fixed) →heap</text>
+  <!-- Heap panel -->
+  <rect x="380" y="10" width="300" height="200" rx="6" fill="#2a2a3e" stroke="#555" stroke-width="1"/>
+  <text x="530" y="32" text-anchor="middle" fill="#888" font-size="11" font-weight="bold">HEAP (flexible, owned)</text>
+  <rect x="395" y="42" width="270" height="100" rx="4" fill="#7c3aed" opacity="0.5"/>
+  <text x="530" y="68" text-anchor="middle" fill="#e2d9f3" font-size="12">Vec / String data lives here</text>
+  <text x="530" y="88" text-anchor="middle" fill="#e2d9f3" font-size="12">[H][e][l][l][o][ ][W]...</text>
+  <text x="530" y="108" text-anchor="middle" fill="#c4b5fd" font-size="11">grows dynamically</text>
+  <text x="530" y="126" text-anchor="middle" fill="#c4b5fd" font-size="11">freed when owner drops</text>
+  <!-- Arrow from stack vec to heap -->
+  <line x1="305" y1="146" x2="393" y2="92" stroke="#f59e0b" stroke-width="2" marker-end="url(#arrow)"/>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#f59e0b"/>
+    </marker>
+  </defs>
+  <!-- Labels -->
+  <text x="350" y="210" text-anchor="middle" fill="#666" font-size="10">Rust guarantees exactly one owner — no GC needed</text>
+</svg>
+<div class="diagram-caption">Stack vs Heap — Rust knows at compile time what goes where</div>
+</div>
+
+    <pre class="language-rust"><code>let x = 5;         // immutable — you CANNOT reassign x
+let mut y = 5;     // mutable — you CAN reassign y
+y = 10;            // ✅ fine
+x = 10;            // ❌ compile error!</code></pre>
+
+    <pre class="language-csharp"><code>int x = 5;        // mutable by default in C#
+const int c = 5;  // immutable</code></pre>
+
+    <!-- QUIZ 1: Fill in the blank -->
+    <div class="quiz" id="q1-1">
+      <div class="quiz-label">✍️ Fill in the Blank</div>
+      <div class="quiz-q">This code won't compile. Add the missing keyword to fix it:</div>
+      <div class="fill-wrap">
+        let <input class="fill-input" id="q1-1-in" placeholder="???" style="width:5ch"> count = 0;
+        &nbsp;&nbsp;&nbsp;count += 1;
+      </div>
+      <button class="btn-check" onclick="fillCheck('q1-1', 'mut')">Check</button>
+      <div class="quiz-exp" id="q1-1-exp">
+        <strong>mut</strong> — <code>let mut count = 0;</code>. Without <code>mut</code>, Rust treats the binding as immutable and rejects the <code>+= 1</code> at compile time. This is intentional — it forces you to be explicit about what changes.
+      </div>
+    </div>
+
+    <h3>Shadowing — a twist you won't see in C#</h3>
+    <p>You can re-declare a variable with the same name (shadowing). This is <em>different</em> from mutation:</p>
+    <pre class="language-rust"><code>let x = 5;
+let x = x + 1;    // shadows previous x — creates a NEW binding
+let x = x * 2;    // shadows again
+
+println!("{}", x); // 12</code></pre>
+    <p>Useful when you want to transform a value and reuse the name — e.g., parsing a string into a number without a different variable name.</p>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>3. Types</h2>
+
+    <h3>Strings — the most confusing part for newcomers</h3>
+    <table>
+      <thead><tr><th>Type</th><th>Description</th><th>C# analogy</th></tr></thead>
+      <tbody>
+        <tr><td><code>String</code></td><td>Owned, heap-allocated, growable</td><td><code>string</code> (System.String)</td></tr>
+        <tr><td><code>&amp;str</code></td><td>Borrowed slice — a view into string data</td><td><code>ReadOnlySpan&lt;char&gt;</code></td></tr>
+      </tbody>
+    </table>
+    <pre class="language-rust"><code>let owned: String = String::from("hello");   // heap-allocated, you own it
+let borrowed: &str = "hello";                // string literal — lives in binary
+let also_borrowed: &str = &owned;           // view into the owned string</code></pre>
+    <div class="callout warn"><strong>Rule of thumb:</strong> Functions that receive strings usually take <code>&amp;str</code> (flexible, no ownership transfer). Functions that create or return strings usually return <code>String</code> (caller can own it).</div>
+
+    <!-- QUIZ 2: True/False -->
+    <div class="quiz" id="q1-2">
+      <div class="quiz-label">✅ True or False</div>
+      <div class="quiz-q"><code>&amp;str</code> and <code>String</code> are the same type in Rust.</div>
+      <div class="quiz-options tf">
+        <button data-answer="false" onclick="tf('q1-2', this, true, false)">True</button>
+        <button data-answer="false" onclick="tf('q1-2', this, false, false)">False</button>
+      </div>
+      <div class="quiz-exp" id="q1-2-exp">
+        <strong>False!</strong> <code>String</code> is an owned, growable heap string. <code>&amp;str</code> is a borrowed <em>view</em> — it doesn't own the data, and you can't grow it. You can borrow a <code>&amp;str</code> from a <code>String</code> with <code>&amp;my_string</code>, but they are distinct types.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>4. Ownership — Rust's Big Idea</h2>
+    <p>Rust has <strong>no garbage collector and no manual free()</strong>. Instead, every value has exactly one <em>owner</em>. When the owner goes out of scope, the value is automatically freed.</p>
+
+    <pre class="language-rust"><code>fn main() {
+    let s1 = String::from("hello");
+    let s2 = s1;    // s1 is MOVED into s2 — s1 is no longer valid!
+
+    println!("{}", s1); // ❌ compile error: value borrowed after move
+    println!("{}", s2); // ✅ fine
+}</code></pre>
+
+    <div class="callout-arch">An architect will hear "ownership model" and immediately schedule a 2-hour workshop to rename it the "Resource Lifecycle Governance Framework". The resulting diagram will have 14 boxes. Three will say "TBD". One will say "Event Bus?" with a question mark. The outcome will be a Confluence page nobody reads and a follow-up meeting to "align on next steps".</div>
+
+    <div class="callout"><strong>C# comparison:</strong> In C#, <code>s2 = s1</code> gives you two references to the same heap object. In Rust, the value <em>moves</em> — only one variable owns it at a time.</div>
+
+    <!-- QUIZ 3: Spot the bug -->
+    <div class="quiz" id="q1-3">
+      <div class="quiz-label">🐛 Spot the Bug</div>
+      <div class="quiz-q">Click the line that causes a compile error:</div>
+      <div class="bug-pre">
+        <span class="bug-line" onclick="bugLine('q1-3', this, false)">let name = String::from("Alice");</span>
+        <span class="bug-line" onclick="bugLine('q1-3', this, false)">let greeting = name;</span>
+        <span class="bug-line" onclick="bugLine('q1-3', this, true)">println!("Hello, {}", name);</span>
+      </div>
+      <div class="quiz-exp" id="q1-3-exp">
+        <strong>Line 3!</strong> <code>name</code> was <em>moved</em> into <code>greeting</code> on line 2. After the move, <code>name</code> is invalid — you can't use it. Fixes: <code>let greeting = name.clone()</code> (deep copy) or <code>let greeting = &amp;name</code> (borrow instead).
+      </div>
+    </div>
+
+    <h3>Borrowing with &amp;</h3>
+    <p>To use a value in a function <em>without</em> giving up ownership, you <strong>borrow</strong> it:</p>
+    <pre class="language-rust"><code>fn print_length(s: &String) {   // borrows — doesn't take ownership
+    println!("Length: {}", s.len());
+}   // s drops here, but we didn't own it — nothing freed
+
+fn main() {
+    let owned = String::from("hello");
+    print_length(&owned);   // borrow with &
+    println!("{}", owned);  // ✅ still valid!
+}</code></pre>
+
+    <div class="callout-maui">.NET MAUI's approach to memory management is "the GC will handle it." And it does. Eventually. After your app has consumed 1.8GB of RAM displaying a login screen. There's a known issue open since 2022 where <code>CollectionView</code> leaks memory on scroll. The workaround is to not use <code>CollectionView</code>. The alternative workaround is to reconsider your career.</div>
+
+    <!-- QUIZ 4: Multiple choice -->
+    <div class="quiz" id="q1-4">
+      <div class="quiz-label">🔘 Multiple Choice</div>
+      <div class="quiz-q">What does the <code>&amp;</code> symbol mean in a function parameter like <code>fn foo(s: &amp;String)</code>?</div>
+      <div class="quiz-options">
+        <button data-correct="false" onclick="mc('q1-4', this, false)">Take ownership of the String</button>
+        <button data-correct="true"  onclick="mc('q1-4', this, true)">Borrow the String — read it without taking ownership</button>
+        <button data-correct="false" onclick="mc('q1-4', this, false)">Create a new String on the heap</button>
+        <button data-correct="false" onclick="mc('q1-4', this, false)">Convert the String to a &amp;str</button>
+      </div>
+      <div class="quiz-exp" id="q1-4-exp">
+        <strong>✓ Borrow!</strong> <code>&amp;T</code> is an immutable reference. The function can read the value but not modify or free it. The original owner retains ownership — the value is still valid after the call.
+      </div>
+    </div>
+
+    <div class="callout-sec">Rust eliminates an entire class of memory vulnerabilities at compile time — buffer overflows, use-after-free, null pointer dereferences. This is the stuff that fills CVE databases. Enterprise security's response to this news: mandate a 90-day password rotation policy and call it 'hardening'. The pen test still flags jQuery as outdated on the marketing site. It's been there for 4 years.</div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>5. The Module System</h2>
+    <p>In <code>lib.rs</code> you'll see module declarations at the top:</p>
+    <pre class="language-rust"><code>mod project_storage;          // loads src/project_storage.rs
+mod history_storage;
+pub mod settings_manager;     // public module
+pub mod utils;                // loads src/utils/mod.rs
+pub mod soap;                 // loads src/soap/mod.rs
+pub mod parsers;</code></pre>
+
+    <table>
+      <thead><tr><th>Declaration</th><th>File it loads</th></tr></thead>
+      <tbody>
+        <tr><td><code>mod project_storage;</code></td><td><code>src/project_storage.rs</code></td></tr>
+        <tr><td><code>pub mod soap;</code></td><td><code>src/soap/mod.rs</code> (folder module)</td></tr>
+      </tbody>
+    </table>
+
+    <p>To use items from another module:</p>
+    <pre class="language-rust"><code>use crate::soap::SoapClient;              // absolute — from crate root
+use super::ws_security::WsSecurityConfig; // relative — up one level</code></pre>
+
+    <div class="callout-oracle">Oracle Siebel manages object lifecycles by writing intermediate state to 47 database tables on every user interaction. Memory is someone else's problem when you have Oracle Exadata. The Siebel "ownership model" is: BC owns the BO, the BO owns the Applet, the Applet owns your evenings. You do not own any of this. Siebel owns you.</div>
+
+    <!-- QUIZ 5: Predict output -->
+    <div class="quiz predict" id="q1-5">
+      <div class="quiz-label">🤔 Predict the Output</div>
+      <div class="quiz-q">What happens when you try to compile this code? Think before revealing.</div>
+      <pre class="language-rust"><code>fn main() {
+    let s = String::from("hello");
+    let r1 = &s;
+    let r2 = &s;
+    println!("{} and {}", r1, r2);
+}</code></pre>
+      <button class="btn-reveal" onclick="reveal('q1-5')">Reveal Answer</button>
+      <div class="quiz-exp" id="q1-5-exp">
+        <strong>✅ It compiles and prints: <code>hello and hello</code></strong><br><br>
+        You can have <em>multiple</em> immutable references (<code>&amp;</code>) at the same time — that's fine! The borrow rule only prevents having a mutable reference (<code>&amp;mut</code>) at the same time as any other reference.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>6. Attributes at a Glance</h2>
+    <p>Attributes use <code>#[...]</code> syntax. You'll see them on almost everything:</p>
+    <pre class="language-rust"><code>#[tauri::command]               // marks a function as a Tauri IPC command
+pub async fn quit_app(...) { }
+
+#[cfg(target_os = "macos")]     // only compile the next item on macOS
+use tauri_plugin_decorum::...;
+
+#[cfg(windows)]                 // only on Windows
+use windows::Win32::...;
+
+#[derive(Debug, Clone)]         // auto-generate Debug and Clone implementations
+pub struct Foo { }</code></pre>
+    <p><code>#[cfg(...)]</code> is Rust's compile-time conditional — the excluded code is <em>completely absent</em> from the binary. Zero overhead.</p>
+  </section>
+
+  <nav class="lesson-nav">
+    <a href="lesson-00.html">← Lesson 0: Overview</a>
+    <a href="index.html" class="nav-center">All Lessons</a>
+    <a href="lesson-02.html">Lesson 2: Structs &amp; Enums →</a>
+  </nav>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-csharp.min.js"></script>
+<script src="quiz.js"></script>
+</body>
+</html>

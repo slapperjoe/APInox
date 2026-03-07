@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 17 — Tauri Architecture | Rust for C#/JS Devs</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-one-dark.min.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a href="index.html" class="back-link">← All Lessons</a>
+  <span class="lesson-badge">Lesson 17 · Phase 3: Tauri v2 · ~25 min</span>
+</header>
+
+<main class="lesson">
+  <div class="lesson-hero">
+    <div class="phase-banner">🦀 Phase 3 — Tauri v2</div>
+    <h1>Tauri Architecture</h1>
+    <div class="lesson-meta">
+      <span>⏱ ~25 min</span>
+      <span>📁 <code>src-tauri/src/lib.rs</code>, <code>tauri.conf.json</code></span>
+    </div>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:0%"></div></div>
+  <p class="progress-label">0 of 5 questions answered</p>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>What Is Tauri?</h2>
+    <p>Tauri is a framework for building desktop apps with a web frontend (React, Vue, etc.) and a Rust backend. Think of it as <strong>Electron, but written in Rust</strong> — the result is smaller binaries (often 10-20MB vs 100MB+), better security, and native performance for backend work.</p>
+    <p>Rather than bundling a full Chromium runtime like Electron does, Tauri uses <strong>the OS's native webview</strong>:</p>
+
+    <table>
+      <thead><tr><th>Platform</th><th>Webview engine</th></tr></thead>
+      <tbody>
+        <tr><td>macOS</td><td>WKWebView (same as Safari)</td></tr>
+        <tr><td>Windows</td><td>WebView2 (Chromium-based, from Edge)</td></tr>
+        <tr><td>Linux</td><td>WebKitGTK</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-warn">⚡ <strong>CSS consistency caveat:</strong> Because each platform uses a different engine, edge cases in CSS can look different. Test on your target platforms — especially scroll behavior, animations, and newer CSS features.</div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>The Three-Layer Architecture</h2>
+
+    <div class="diagram">
+<svg viewBox="0 0 700 260" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif" font-size="14">
+  <rect width="700" height="260" fill="#1e1e2e" rx="8"/>
+  <!-- Layer 3: Webview -->
+  <rect x="20" y="15" width="660" height="65" rx="6" fill="#1a6ebd" opacity="0.85"/>
+  <text x="50" y="38" fill="#fff" font-weight="bold">🌐  Webview Layer</text>
+  <text x="50" y="56" fill="#bfdbfe" font-size="12">React / HTML / CSS / TypeScript</text>
+  <text x="400" y="38" fill="#bfdbfe" font-size="12">Sandboxed OS browser component</text>
+  <text x="400" y="56" fill="#bfdbfe" font-size="12">calls Rust via invoke() · listens for events</text>
+  <!-- Arrow down -->
+  <line x1="350" y1="80" x2="350" y2="100" stroke="#f59e0b" stroke-width="2" marker-end="url(#a3)"/>
+  <text x="370" y="94" fill="#f59e0b" font-size="11">IPC bridge</text>
+  <!-- Layer 2: Tauri Core -->
+  <rect x="20" y="100" width="660" height="65" rx="6" fill="#7c3aed" opacity="0.75"/>
+  <text x="50" y="123" fill="#fff" font-weight="bold">🦀  Tauri Core (Rust)</text>
+  <text x="50" y="141" fill="#ddd6fe" font-size="12">Event loop · Window management · #[tauri::command] dispatch</text>
+  <text x="430" y="123" fill="#ddd6fe" font-size="12">Plugins · Capabilities</text>
+  <text x="430" y="141" fill="#ddd6fe" font-size="12">State&lt;T&gt; · AppHandle</text>
+  <!-- Arrow down -->
+  <line x1="350" y1="165" x2="350" y2="185" stroke="#f59e0b" stroke-width="2" marker-end="url(#a3)"/>
+  <text x="370" y="179" fill="#f59e0b" font-size="11">system calls</text>
+  <!-- Layer 1: OS -->
+  <rect x="20" y="185" width="660" height="60" rx="6" fill="#374151" opacity="0.9"/>
+  <text x="50" y="208" fill="#fff" font-weight="bold">🖥️  Operating System</text>
+  <text x="50" y="226" fill="#9ca3af" font-size="12">File system · Clipboard · Dialogs · Notifications · Tray</text>
+  <text x="430" y="208" fill="#9ca3af" font-size="12">macOS · Windows · Linux</text>
+  <!-- Defs -->
+  <defs><marker id="a3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#f59e0b"/></marker></defs>
+</svg>
+<div class="diagram-caption">Tauri's three-layer architecture — webview renders UI, Rust handles native operations, OS provides APIs</div>
+</div>
+
+    <div class="callout-arch">An architect reviewing this diagram will note that the webview and the sidecar are 'too tightly coupled' and suggest extracting the sidecar into a separately deployable microservice behind an API gateway, with a message bus for events, a service registry for discovery, and distributed tracing. For a desktop app. That one person uses. To parse SOAP envelopes.</div>
+
+    <p>In APInox's case there's also a legacy <strong>sidecar</strong> (a Node.js process), though the codebase is actively migrating that logic into the Rust layer:</p>
+
+    <pre class="language-rust"><code>// src-tauri/src/lib.rs — sidecar process management
+static SIDECAR_PORT: AtomicU16 = AtomicU16::new(0);
+static SIDECAR_PROCESS: Mutex&lt;Option&lt;Child&gt;&gt; = Mutex::new(None);
+
+fn spawn_sidecar(app_handle: &amp;tauri::AppHandle) -&gt; Result&lt;(), String&gt; {
+    // Launches Node.js as a child process — a separate OS process
+    let mut cmd = Command::new("node");
+    cmd.arg("sidecar/dist/index.js")
+       .stdout(Stdio::piped());
+    // ...
+}</code></pre>
+
+    <div class="callout">The sidecar pattern is unusual — most Tauri apps don't need it. APInox used it to port existing Node.js SOAP logic before rewriting in Rust. <strong>New Tauri apps: put logic in Rust directly.</strong></div>
+
+    <!-- QUIZ 1 -->
+    <div class="quiz" id="q17-1">
+      <div class="quiz-label">🔘 Multiple Choice</div>
+      <div class="quiz-q">What does Tauri use to render the UI on Windows, instead of bundling Chromium?</div>
+      <div class="quiz-options">
+        <button data-correct="false" onclick="mc('q17-1', this, false)">The Rust <code>egui</code> crate (immediate mode GUI)</button>
+        <button data-correct="true"  onclick="mc('q17-1', this, true)">WebView2 — the same Chromium-based engine used by Microsoft Edge</button>
+        <button data-correct="false" onclick="mc('q17-1', this, false)">WKWebView (WebKit)</button>
+        <button data-correct="false" onclick="mc('q17-1', this, false)">A bundled copy of Firefox</button>
+      </div>
+      <div class="quiz-exp" id="q17-1-exp">
+        <strong>WebView2</strong> — on Windows, Tauri uses the WebView2 runtime that ships with Microsoft Edge and Windows 11. This is why Tauri installers are so small — the rendering engine is already on the machine. On macOS it's WKWebView (Safari's engine), on Linux it's WebKitGTK. The downside is slight CSS behavior differences across platforms.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>The Entry Point — <code>run()</code></h2>
+    <p>Tauri apps start in <code>main.rs</code> which immediately calls into <code>lib.rs</code>:</p>
+
+    <pre class="language-rust"><code>// src-tauri/src/main.rs
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+// ↑ On Windows release builds, don't spawn a console window
+
+fn main() {
+    apinox_lib::run();
+}
+
+// src-tauri/src/lib.rs — the actual setup:
+pub fn run() {
+    tauri::Builder::default()
+        // Register plugins (file dialog, clipboard, etc.)
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_shell::init())
+        // Register all Rust functions callable from the webview
+        .invoke_handler(tauri::generate_handler![
+            quit_app,
+            get_app_version,
+            project_storage::save_project,
+            soap::commands::execute_soap_request,
+            testing::commands::run_test_case,
+            // ... 40+ more commands
+        ])
+        // Setup callback — runs before the window appears
+        .setup(|app| {
+            // Initialize logging, spawn sidecar, etc.
+            Ok(())
+        })
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}</code></pre>
+
+    <p>The <code>generate_handler!</code> macro generates a dispatch table. When the webview calls <code>invoke('save_project', { ... })</code>, Tauri looks up <code>project_storage::save_project</code> in that table and calls it with the provided JSON arguments deserialized into Rust types.</p>
+
+    <!-- QUIZ 2 -->
+    <div class="quiz" id="q17-2">
+      <div class="quiz-label">✍️ Fill in the Blank</div>
+      <div class="quiz-q">Complete the macro that registers Rust functions so the webview can call them via <code>invoke()</code>:</div>
+      <div class="fill-wrap">
+        .invoke_handler(tauri::<input class="fill-input" id="q17-2-in" placeholder="????" style="width:22ch">![<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;my_command,<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;another_command,<br>
+        ])
+      </div>
+      <button class="btn-check" onclick="fillCheck('q17-2', 'generate_handler')">Check</button>
+      <div class="quiz-exp" id="q17-2-exp">
+        <strong>generate_handler!</strong> — this macro takes a list of function names (all annotated with <code>#[tauri::command]</code>) and produces the runtime dispatch table. If you forget to add a command here, calling it from the webview returns an error even though the Rust function exists. This is how Tauri creates the "allowed commands" surface area.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>Window Configuration — <code>tauri.conf.json</code></h2>
+    <p>The window and app configuration lives in <code>src-tauri/tauri.conf.json</code>. Here's APInox's actual config:</p>
+
+    <pre class="language-json"><code>{
+  "productName": "APInox",
+  "version": "0.16.114",
+  "identifier": "app.apinox.dev1",
+  "build": {
+    "frontendDist": "webview/dist",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "cd src-tauri/webview &amp;&amp; npm run dev",
+    "beforeBuildCommand": "cd src-tauri/webview &amp;&amp; npm run build:skip-check"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "APInox",
+        "width": 1400, "height": 900,
+        "minWidth": 800, "minHeight": 600,
+        "titleBarStyle": "Overlay",   // ← macOS traffic lights in content
+        "decorations": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' https: http://localhost:*;"
+    }
+  },
+  "bundle": {
+    "targets": ["nsis", "dmg"],       // Windows NSIS installer + macOS disk image
+    "icon": ["icons/32x32.png", "icons/icon.icns", "icons/icon.ico"]
+  }
+}</code></pre>
+
+    <p>The <code>beforeDevCommand</code> and <code>beforeBuildCommand</code> are shell commands run by Tauri before starting — used to compile the React frontend with Vite.</p>
+
+    <!-- QUIZ 3 -->
+    <div class="quiz" id="q17-3">
+      <div class="quiz-label">✅ True or False</div>
+      <div class="quiz-q">A Tauri app's window configuration (size, title bar style, etc.) can be changed by editing <code>tauri.conf.json</code> without touching Rust code.</div>
+      <div class="quiz-options tf">
+        <button data-answer="true" onclick="tf('q17-3', this, true, true)">True</button>
+        <button data-answer="true" onclick="tf('q17-3', this, false, true)">False</button>
+      </div>
+      <div class="quiz-exp" id="q17-3-exp">
+        <strong>True!</strong> Most window settings are data-driven via <code>tauri.conf.json</code>. You can also configure multiple windows, specify which URLs are allowed, set the minimum dimensions, and toggle decorations — all without touching Rust. Some dynamic things (like programmatically creating windows at runtime) do require Rust code, but static configuration is purely JSON.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>The Setup Callback — Running Before the Window Shows</h2>
+
+    <pre class="language-rust"><code>.setup(|app| {
+    // ← 'app' is &amp;mut tauri::App — you get one shot at this
+
+    // Register managed state (shared data accessible in commands)
+    app.manage(MyState { counter: Mutex::new(0) });
+
+    // Get the app's data directory
+    let data_dir = app.path().app_data_dir()?;
+
+    // Show the window only after we're ready
+    let window = app.get_webview_window("main").unwrap();
+    window.show()?;
+
+    // Platform-specific tweaks
+    #[cfg(target_os = "macos")]
+    window.set_traffic_lights_position(14.0, 22.0);
+
+    Ok(())
+})</code></pre>
+
+    <p>The setup closure runs synchronously before the event loop starts. If it returns an <code>Err</code>, the app exits. This is where you:</p>
+    <ul>
+      <li>Register shared state with <code>app.manage()</code></li>
+      <li>Set up logging</li>
+      <li>Start background services</li>
+      <li>Apply platform-specific customisations</li>
+    </ul>
+  </section>
+
+  <div class="callout-maui">The .NET MAUI equivalent of this architecture: XAML (UI), ViewModel (business logic), and a service layer — the MVVM pattern. Clean in theory. In practice: the XAML hot reload doesn't work half the time, the ViewModel bindings fail silently on iOS, and the service layer needs <code>MauiProgram.cs</code> DI registration that's different from every other .NET DI setup you've used. For enterprise, add: a Maui CommunityToolkit, a dependency on a NuGet package last updated in 2022, and a MAUI Bug filed that's 'by design'.</div>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>Compare: Electron vs Tauri</h2>
+
+    <table>
+      <thead><tr><th>Aspect</th><th>Electron</th><th>Tauri v2</th></tr></thead>
+      <tbody>
+        <tr><td>Backend language</td><td>Node.js (JS)</td><td>Rust</td></tr>
+        <tr><td>Renderer</td><td>Bundled Chromium</td><td>OS native webview</td></tr>
+        <tr><td>Binary size</td><td>~100-200MB</td><td>~5-20MB</td></tr>
+        <tr><td>Memory usage</td><td>~200-500MB</td><td>~20-100MB</td></tr>
+        <tr><td>Frontend</td><td>Any web tech</td><td>Any web tech</td></tr>
+        <tr><td>CSS consistency</td><td>✅ Always Chromium</td><td>⚠️ Platform differences</td></tr>
+        <tr><td>Security model</td><td>Capability-based (app decides)</td><td>Permissions required (strict)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout-salesforce">The Salesforce equivalent of Tauri's three layers is: LWC (webview), Apex (backend), and SOQL (data) — sensible enough. Except LWC can only talk to Apex via <code>@wire</code> or <code>@AuraEnabled</code> methods. Apex can't push to LWC without Platform Events. Platform Events are eventually consistent. There are governor limits on all of it. And it all runs on infrastructure you don't control, can't debug, and which goes down during Salesforce's quarterly maintenance windows.</div>
+
+    <!-- QUIZ 4 -->
+    <div class="quiz" id="q17-4">
+      <div class="quiz-label">🔗 Match It</div>
+      <div class="quiz-q">Match the Tauri concept to its role:</div>
+      <div class="match-grid">
+        <div class="match-col">
+          <button class="match-item" data-id="a" onclick="matchClick('q17-4', 'a', 'left', this)"><code>tauri.conf.json</code></button>
+          <button class="match-item" data-id="b" onclick="matchClick('q17-4', 'b', 'left', this)"><code>generate_handler!</code></button>
+          <button class="match-item" data-id="c" onclick="matchClick('q17-4', 'c', 'left', this)"><code>.setup(|app| {...})</code></button>
+          <button class="match-item" data-id="d" onclick="matchClick('q17-4', 'd', 'left', this)">Webview</button>
+        </div>
+        <div class="match-col">
+          <button class="match-item" data-id="c" onclick="matchClick('q17-4', 'c', 'right', this)">Runs once before the window opens to initialize state &amp; services</button>
+          <button class="match-item" data-id="a" onclick="matchClick('q17-4', 'a', 'right', this)">App name, window size, bundle targets, security policy</button>
+          <button class="match-item" data-id="d" onclick="matchClick('q17-4', 'd', 'right', this)">The sandboxed OS browser component that renders your React app</button>
+          <button class="match-item" data-id="b" onclick="matchClick('q17-4', 'b', 'right', this)">Registers which Rust functions the frontend is allowed to call</button>
+        </div>
+      </div>
+      <div class="quiz-exp" id="q17-4-exp">
+        All matched! These four pieces are the core pillars of any Tauri app: config file for static settings, setup callback for runtime initialization, the handler registration for defining the allowed IPC surface, and the webview as the UI layer.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ -->
+  <section>
+    <h2>Platform-Specific Code</h2>
+    <p>Tauri apps frequently need to behave differently per OS. Rust's <code>#[cfg(target_os = "...")]</code> makes this clean:</p>
+
+    <pre class="language-rust"><code>// lib.rs — real APInox patterns:
+#[cfg(target_os = "macos")]
+use tauri_plugin_decorum::WebviewWindowExt;  // macOS-only traffic lights
+
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;  // Windows-only process flags
+
+#[cfg(windows)]
+use windows::Win32::Graphics::Dwm::{DwmSetWindowAttribute, DWMWA_BORDER_COLOR};
+
+// Inside setup:
+#[cfg(target_os = "macos")]
+{
+    window.make_vibrancy(...);  // macOS frosted glass effect
+}
+
+#[cfg(windows)]
+{
+    // Set custom window border color via DWM
+    set_window_border(&window, "#1a6ebd");
+}
+
+// In Cargo.toml — OS-specific dependencies:
+// [target.'cfg(windows)'.dependencies]
+// windows = { version = "0.58", features = ["Win32_Graphics_Dwm"] }</code></pre>
+
+    <!-- QUIZ 5 -->
+    <div class="quiz predict" id="q17-5">
+      <div class="quiz-label">🔮 Predict &amp; Reveal</div>
+      <div class="quiz-q">Given this code, what happens when you build this app for macOS?</div>
+      <pre class="language-rust"><code>#[cfg(windows)]
+fn apply_custom_chrome(window: &amp;Window) {
+    set_window_border(window, "#1a6ebd");
+    set_rounded_corners(window);
+}
+
+#[cfg(not(windows))]
+fn apply_custom_chrome(_window: &amp;Window) {
+    // no-op
+}
+
+// In setup:
+apply_custom_chrome(&amp;main_window);</code></pre>
+      <p><em>Think about it — then reveal.</em></p>
+      <button class="btn-reveal" onclick="reveal('q17-5')">Reveal Answer</button>
+      <div class="quiz-exp" id="q17-5-exp">
+        The <code>#[cfg(not(windows))]</code> version compiles — the no-op function. <code>apply_custom_chrome</code> is called, does nothing, and that's fine. The Windows-specific DWM code is <strong>entirely absent from the macOS binary</strong> — it doesn't exist, it doesn't need to link, and macOS users never see it. This is conditional compilation at the function level, not runtime <code>if/else</code>. Both functions have the same signature so the call site is identical on all platforms.
+      </div>
+    </div>
+  </section>
+
+  <nav class="lesson-nav">
+    <a href="lesson-16.html">← Lesson 16: Testing & Cargo</a>
+    <a href="index.html" class="nav-center">All Lessons</a>
+    <a href="lesson-18.html">Lesson 18: Commands & State →</a>
+  </nav>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="quiz.js"></script>
+</body>
+</html>

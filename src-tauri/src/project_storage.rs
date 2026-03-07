@@ -425,7 +425,12 @@ fn save_test_case(tc: &serde_json::Value, suite_dir: &Path) -> Result<(), String
 /// Load a project from disk
 #[tauri::command]
 pub async fn load_project(dir_path: String) -> Result<serde_json::Value, String> {
-    let dir = PathBuf::from(&dir_path);
+    load_project_internal(&dir_path).await
+}
+
+/// Internal function to load a project (callable from other modules)
+pub(crate) async fn load_project_internal(dir_path: &str) -> Result<serde_json::Value, String> {
+    let dir = PathBuf::from(dir_path);
     
     if !dir.exists() || !dir.is_dir() {
         return Err(format!("Project directory does not exist: {}", dir_path));
@@ -665,4 +670,14 @@ pub async fn delete_project(dir_path: String) -> Result<(), String> {
         .map_err(|e| format!("Failed to delete project: {}", e))?;
     
     Ok(())
+}
+
+/// Close a project
+/// 
+/// This command doesn't need to do anything on the backend since we don't maintain
+/// project "open" state in Rust. The frontend handles clearing selection/state.
+/// This command exists for consistency and to avoid "not implemented" errors.
+#[tauri::command]
+pub async fn close_project(_project_id: String) -> Result<serde_json::Value, String> {
+    Ok(serde_json::json!({ "success": true }))
 }
