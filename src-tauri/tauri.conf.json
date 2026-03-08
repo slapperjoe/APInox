@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "APInox",
-  "version": "0.16.114",
+  "version": "0.16.116",
   "identifier": "app.apinox.dev1",
   "build": {
     "frontendDist": "webview/dist",
@@ -22,7 +22,20 @@
         "decorations": true,
         "hiddenTitle": true,
         "titleBarStyle": "Overlay",
-        "transparent": false
+        "transparent": false,
+        "visible": false
+      },
+      {
+        "label": "splashscreen",
+        "title": "APInox",
+        "width": 688,
+        "height": 736,
+        "decorations": false,
+        "resizable": false,
+        "center": true,
+        "url": "/splashscreen.html",
+        "visible": true,
+        "shadow": false
       }
     ],
     "withGlobalTauri": true,
@@ -35,7 +48,9 @@
     "active": true,
     "targets": [
       "nsis",
-      "dmg"
+      "dmg",
+      "deb",
+      "rpm"
     ],
     "icon": [
       "icons/32x32.png",

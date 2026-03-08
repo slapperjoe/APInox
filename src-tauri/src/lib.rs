@@ -31,6 +31,19 @@ static CONFIG_DIR: Mutex<Option<String>> = Mutex::new(None);
 static LOG_FILE_PATH: Mutex<Option<String>> = Mutex::new(None);
 
 #[tauri::command]
+fn close_splashscreen(app: tauri::AppHandle) {
+    if let Some(splash) = app.get_webview_window("splashscreen") {
+        splash.close().ok();
+        log::info!("Splashscreen closed");
+    }
+    if let Some(main) = app.get_webview_window("main") {
+        main.show().ok();
+        main.set_focus().ok();
+        log::info!("Main window shown");
+    }
+}
+
+#[tauri::command]
 fn quit_app(app: tauri::AppHandle) {
     log::info!("Quit command received, exiting...");
     app.exit(0);
@@ -170,6 +183,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
+            close_splashscreen,
             quit_app,
             set_border_color,
             get_app_version,
@@ -291,6 +305,29 @@ pub fn run() {
                         log::error!("Failed to remove Windows decorations: {:?}", e);
                     }
                     apply_window_styling(&window);
+                }
+            }
+
+            // Set window icon explicitly (required on Linux for taskbar/dock)
+            #[cfg(target_os = "linux")]
+            {
+                if let Some(window) = app.get_webview_window("main") {
+                    let icon_bytes = include_bytes!("../icons/128x128.png");
+                    if let Ok(icon) = tauri::image::Image::from_bytes(icon_bytes) {
+                        if let Err(e) = window.set_icon(icon) {
+                            log::error!("Failed to set window icon: {:?}", e);
+                        }
+                    }
+                }
+            }
+
+            // Remove native titlebar on Linux - we use our own custom React titlebar
+            #[cfg(target_os = "linux")]
+            {
+                if let Some(window) = app.get_webview_window("main") {
+                    if let Err(e) = window.set_decorations(false) {
+                        log::error!("Failed to remove Linux decorations: {:?}", e);
+                    }
                 }
             }
             

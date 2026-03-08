@@ -1,6 +1,6 @@
 [package]
 name = "apinox"
-version = "0.16.114"
+version = "0.16.116"
 description = "APInox - API Testing & Development Tool"
 authors = ["Dev1"]
 license = "MIT"
@@ -28,7 +28,7 @@ aes-gcm = "0.10"
 rand = "0.8"
 hex = "0.4"
 json5 = "0.4"
-tauri = { version = "2.10.3", features = ["macos-private-api"] }
+tauri = { version = "2.10.3", features = ["macos-private-api", "image-png"] }
 tauri-plugin-log = "2"
 tauri-plugin-dialog = "2.6.0"
 tauri-plugin-clipboard-manager = "2"
