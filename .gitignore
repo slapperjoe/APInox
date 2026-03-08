@@ -107,3 +107,4 @@ temp/
 .env.production.local
 batch-wsdl.zip
 batch-wsdl/**
+apinox-0.16.114-1-x86_64.pkg.tar.zst

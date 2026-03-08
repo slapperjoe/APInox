@@ -11,7 +11,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const buildNoFile = path.join(__dirname, '.buildno');
+const buildNoFile = path.join(__dirname, '..', '.buildno');
 
 try {
     // Read current build number

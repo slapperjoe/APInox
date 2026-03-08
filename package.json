@@ -7,7 +7,7 @@
     "url": "https://github.com/slapperjoe/apinox.git"
   },
   "license": "MIT",
-  "version": "0.16.114",
+  "version": "0.16.116",
   "scripts": {
     "build:packages": "cd packages/request-editor && npm install && npm run build",
     "compile-webview": "npm run build:packages && cd src-tauri/webview && npm install && npm run build:skip-check",
@@ -23,7 +23,8 @@
     "prepare": "npx simple-git-hooks",
     "increment-build": "node scripts/increment-build.js",
     "tauri:dev": "npm run build:packages && cd src-tauri/webview && npm install && cd ../.. && npx tauri dev",
-    "tauri:build": "npm run increment-build && npm run sync-version && npm run build:packages && cd src-tauri/webview && npm install && cd ../.. && npx tauri build"
+    "tauri:build": "npm run increment-build && npm run sync-version && npm run build:packages && cd src-tauri/webview && npm install && cd ../.. && npx tauri build && node -e \"if(process.platform==='linux'){require('child_process').execSync('npm run package:arch',{stdio:'inherit'})}\"",
+    "package:arch": "mkdir -p target/release/bundle/arch && PKGDEST=$(pwd)/target/release/bundle/arch makepkg -f --nodeps --nocheck --noconfirm && node scripts/gen-arch-install.js"
   },
   "simple-git-hooks": {
     "pre-commit": ""

@@ -50,6 +50,11 @@ export default function App() {
                 const os = await invoke<string>('get_platform_os');
                 console.log('🔍 Platform detected:', os);
                 setPlatformOS(os as any);
+
+                // Close splashscreen and show main window once app is ready
+                invoke('close_splashscreen').catch(() => {
+                    // No splashscreen in dev/browser context, ignore
+                });
             } catch (err) {
                 console.log('⚠️ Tauri not detected (running in browser or invoke failed)');
                 console.error('❌ Error:', err);
