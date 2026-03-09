@@ -1297,6 +1297,9 @@ const MainContent: React.FC = () => {
                 />
             )}
 
+            {/* Content row: sidebar + main workspace side by side */}
+            <div className="content-row">
+
             {/* Sidebar with consolidated props */}
             <Sidebar
                 projectProps={{
@@ -2017,6 +2020,8 @@ const MainContent: React.FC = () => {
                     return newInterfaces;
                 }}
             />
+
+            </div>{/* end content-row */}
 
             {wsdlDiff && (
                 <WsdlSyncModal
