@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    APInox network security configuration.
+    Permits cleartext (HTTP) traffic to all domains so users can reach HTTP-only
+    SOAP endpoints. APInox is a developer/QA tool and handles its own certificate
+    trust for HTTPS interception, so broad cleartext permission is intentional.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <!-- Trust the system CA store -->
+            <certificates src="system" />
+            <!-- Trust user-installed CAs (needed for proxy/interception scenarios) -->
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
