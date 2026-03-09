@@ -11,9 +11,5 @@
         "transparent": false
       }
     ]
-  },
-  "build": {
-    "devUrl": "",
-    "beforeDevCommand": ""
   }
 }
