@@ -288,24 +288,50 @@ code,
   }
 }
 
-/* Hamburger button — only visible on mobile */
-.mobile-hamburger {
+/* Mobile header bar — shown on Android/iOS instead of desktop TitleBar */
+.mobile-header {
   display: none;
 }
 
 @media (max-width: 899px) {
-  .mobile-hamburger {
+  .mobile-header {
     display: flex;
     align-items: center;
-    justify-content: center;
-    min-height: 44px;
-    min-width: 44px;
-    padding: 0 var(--space-sm);
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    color: var(--apinox-icon-foreground, #c5c5c5);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 44px;
+    z-index: 1001;
+    background: var(--apinox-titleBar-activeBackground, #1e1e1e);
+    border-bottom: 1px solid var(--apinox-titleBar-border, rgba(255,255,255,0.08));
+    gap: 8px;
+    padding-right: 12px;
   }
+}
+
+/* Hamburger button inside mobile header */
+.mobile-hamburger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--apinox-icon-foreground, #c5c5c5);
+  flex-shrink: 0;
+}
+
+.mobile-header-title {
+  font-size: 15px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 /* iOS safe area insets */

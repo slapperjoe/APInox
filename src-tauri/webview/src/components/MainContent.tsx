@@ -136,7 +136,7 @@ const MainContent: React.FC = () => {
     // ==========================================================================
     // PLATFORM DETECTION
     // ==========================================================================
-    const [platformOS, setPlatformOS] = useState<'macos' | 'windows' | 'linux' | 'unknown'>('unknown');
+    const [platformOS, setPlatformOS] = useState<'macos' | 'windows' | 'linux' | 'android' | 'ios' | 'unknown'>('unknown');
     const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
     const { isMobile } = useMobileLayout();
     
@@ -155,7 +155,8 @@ const MainContent: React.FC = () => {
         detectPlatform();
     }, []);
     
-    const showCustomTitleBar = platformOS !== 'macos';
+    const isMobilePlatform = platformOS === 'android' || platformOS === 'ios';
+    const showCustomTitleBar = platformOS !== 'macos' && !isMobilePlatform;
     
     // ==========================================================================
     // CONTEXT - Project state from ProjectContext
@@ -1270,19 +1271,23 @@ const MainContent: React.FC = () => {
 
 
     return (
-        <Container onClick={closeContextMenu} $showCustomTitleBar={showCustomTitleBar} $isMacOS={platformOS === 'macos'}>
-            {/* Hamburger button — only visible on mobile (CSS hides it on desktop) */}
-            <button
-                className="mobile-hamburger"
-                onClick={(e) => { e.stopPropagation(); setIsMobileDrawerOpen(true); }}
-                title="Open sidebar"
-                aria-label="Open sidebar"
-                style={{ position: 'fixed', top: 0, left: 0, zIndex: 1001 }}
-            >
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M2 4h16v2H2zM2 9h16v2H2zM2 14h16v2H2z"/>
-                </svg>
-            </button>
+        <Container onClick={closeContextMenu} $showCustomTitleBar={showCustomTitleBar} $isMacOS={platformOS === 'macos'} $isMobile={isMobilePlatform}>
+            {/* Mobile header bar — replaces desktop TitleBar on Android/iOS */}
+            {isMobilePlatform && (
+                <div className="mobile-header">
+                    <button
+                        className="mobile-hamburger"
+                        onClick={(e) => { e.stopPropagation(); setIsMobileDrawerOpen(true); }}
+                        title="Open sidebar"
+                        aria-label="Open sidebar"
+                    >
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M2 4h16v2H2zM2 9h16v2H2zM2 14h16v2H2z"/>
+                        </svg>
+                    </button>
+                    <span className="mobile-header-title">APInox</span>
+                </div>
+            )}
 
             {/* Backdrop — closes sidebar on mobile when tapping outside */}
             {isMobile && isMobileDrawerOpen && (
