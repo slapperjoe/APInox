@@ -17,6 +17,7 @@ import styled from 'styled-components';
  */
 export const Container = styled.div<{ $showCustomTitleBar?: boolean; $isMacOS?: boolean; $isMobile?: boolean }>`
     display: flex;
+    flex-direction: ${props => props.$isMobile ? 'column' : 'row'};
     height: 100dvh;
     width: 100vw;
     overflow: hidden;
@@ -25,9 +26,9 @@ export const Container = styled.div<{ $showCustomTitleBar?: boolean; $isMacOS?: 
     font-family: var(--apinox-font-family);
     font-size: var(--apinox-font-size);
     padding-top: ${props => {
-        if (props.$isMobile) return 'calc(44px + env(safe-area-inset-top, 0px))'; // Mobile header + status bar
-        if (props.$isMacOS) return '40px';          // macOS custom titlebar
-        if (props.$showCustomTitleBar) return '40px'; // Custom titlebar on Windows/Linux
+        if (props.$isMobile) return '0';                // Mobile: header is in-flow, handles safe area itself
+        if (props.$isMacOS) return '40px';              // macOS custom titlebar
+        if (props.$showCustomTitleBar) return '40px';   // Custom titlebar on Windows/Linux
         return '0';
     }};
     padding-bottom: ${props => props.$isMobile ? 'env(safe-area-inset-bottom, 0px)' : '0'};

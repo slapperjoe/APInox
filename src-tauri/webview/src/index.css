@@ -266,11 +266,21 @@ code,
 
 /* Sidebar drawer on phone portrait */
 @media (max-width: 899px) {
+  /* Row that holds Sidebar + main workspace — fills remaining space below mobile header */
+  .content-row {
+    display: flex;
+    flex-direction: row;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    position: relative;
+  }
+
   .sidebar-drawer {
     position: fixed !important;
-    top: 0;
+    top: calc(44px + env(safe-area-inset-top, 0px));
     left: 0;
-    height: 100%;
+    height: calc(100dvh - 44px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
     z-index: 1000;
     transform: translateX(-100%);
     transition: transform 0.25s ease;
@@ -284,14 +294,21 @@ code,
   .sidebar-backdrop {
     display: block;
     position: fixed;
-    inset: 0;
+    top: calc(44px + env(safe-area-inset-top, 0px));
+    left: 0;
+    right: 0;
+    bottom: 0;
     background: rgba(0, 0, 0, 0.5);
     z-index: 999;
   }
 }
 
-/* Hide backdrop on desktop */
+/* Hide backdrop on desktop; content-row is normal row layout */
 @media (min-width: 900px) {
+  .content-row {
+    display: contents; /* on desktop, don't add extra flex wrapper */
+  }
+
   .sidebar-backdrop {
     display: none !important;
   }
@@ -311,17 +328,17 @@ code,
 @media (max-width: 899px) {
   .mobile-header {
     display: flex;
-    align-items: center;
-    position: fixed;
-    top: env(safe-area-inset-top, 0px);
-    left: 0;
-    right: 0;
-    height: 44px;
+    align-items: flex-end;         /* align content to bottom so it sits below the safe area padding */
+    flex-shrink: 0;
+    width: 100%;
+    padding-top: env(safe-area-inset-top, 0px);  /* push below Dynamic Island */
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+    height: calc(44px + env(safe-area-inset-top, 0px));
     z-index: 1001;
     background: var(--apinox-titleBar-activeBackground, #1e1e1e);
     border-bottom: 1px solid var(--apinox-titleBar-border, rgba(255,255,255,0.08));
     gap: 8px;
-    padding-right: 12px;
   }
 }
 
