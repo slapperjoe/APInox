@@ -24,7 +24,7 @@
     "increment-build": "node scripts/increment-build.js",
     "tauri:dev": "npm run build:packages && cd src-tauri/webview && npm install && cd ../.. && npx tauri dev",
     "tauri:build": "node scripts/tauri-build.js",
-    "tauri:ios": "npm run compile-webview && (cd src-tauri/webview && npx vite preview --port 5173 &) && sleep 2 && npx tauri ios dev; kill %1 2>/dev/null",
+    "tauri:ios": "npm run compile-webview && npx tauri ios dev",
     "tauri:android": "npx tauri android dev --target aarch64",
     "tauri:android:build": "npx tauri android build --debug --target aarch64",
     "tauri": "tauri",
