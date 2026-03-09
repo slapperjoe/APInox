@@ -29,6 +29,7 @@ use windows::Win32::Foundation::HWND;
 
 static LOG_FILE_PATH: Mutex<Option<String>> = Mutex::new(None);
 
+#[cfg(desktop)]
 #[tauri::command]
 fn close_splashscreen(app: tauri::AppHandle) {
     if let Some(splash) = app.get_webview_window("splashscreen") {
@@ -223,6 +224,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
+            #[cfg(desktop)]
             close_splashscreen,
             quit_app,
             set_border_color,
