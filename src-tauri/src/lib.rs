@@ -19,7 +19,7 @@ pub mod parsers;
 pub mod testing;
 pub mod workflow;
 
-#[cfg(target_os = "macos")]
+#[cfg(desktop)]
 use tauri_plugin_decorum::WebviewWindowExt;
 
 #[cfg(windows)]
@@ -208,7 +208,6 @@ fn apply_window_styling(window: &tauri::WebviewWindow) {
 }
 
 #[cfg(not(windows))]
-#[cfg(target_os = "macos")]
 fn apply_window_styling(_window: &tauri::WebviewWindow) {
     // No-op on non-Windows platforms
 }
@@ -216,7 +215,7 @@ fn apply_window_styling(_window: &tauri::WebviewWindow) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_decorum::init()) // Initialize decorum plugin
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
@@ -323,12 +322,15 @@ pub fn run() {
                         ),
                         tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
                         // Add Webview target for DevTools console
-                        tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Webview),
-                    ])
+                        tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Webview),                    ])
                     .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll)
                     .max_file_size(5_000_000) // 5 MB
                     .build(),
             )?;
+
+            // Initialize decorum plugin on desktop only (mobile doesn't support it)
+            #[cfg(desktop)]
+            app.handle().plugin(tauri_plugin_decorum::init())?;
 
             log::info!("APInox starting (version: {})", env!("CARGO_PKG_VERSION"));
             log::info!("Debug mode: {}", cfg!(debug_assertions));
@@ -338,10 +340,22 @@ pub fn run() {
                 }
             }
 
+            // On Android, set APINOX_CONFIG_DIR to app data dir so all storage modules
+            // use the correct sandboxed path (they all check this env var first).
+            #[cfg(target_os = "android")]
+            {
+                if let Ok(data_dir) = app.path().app_data_dir() {
+                    let config_dir = data_dir.join("apinox");
+                    std::env::set_var("APINOX_CONFIG_DIR", config_dir.to_string_lossy().as_ref());
+                    log::info!("Android: APINOX_CONFIG_DIR set to {:?}", config_dir);
+                }
+            }
+
             // Size and center the splashscreen to half the primary monitor dimensions.
             // The window is hidden (visible: false in config) and will be shown by the
             // splashscreen HTML once the image has finished loading, ensuring the image
             // is visible the instant the window appears.
+            #[cfg(desktop)]
             if let Some(splash) = app.get_webview_window("splashscreen") {
                 if let Ok(Some(monitor)) = splash.primary_monitor() {
                     let scale = monitor.scale_factor();
@@ -360,6 +374,14 @@ pub fn run() {
                     // No monitor info — just center with default size and show immediately
                     let _ = splash.center();
                     let _ = splash.show();
+                }
+            }
+
+            // Set minimum window size on desktop only (mobile has no concept of min size)
+            #[cfg(desktop)]
+            if let Some(window) = app.get_webview_window("main") {
+                if let Err(e) = window.set_min_size(Some(tauri::LogicalSize::new(800.0_f64, 600.0_f64))) {
+                    log::warn!("Failed to set minimum window size: {:?}", e);
                 }
             }
 

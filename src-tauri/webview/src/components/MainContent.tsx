@@ -39,6 +39,7 @@ import { useWorkspaceCallbacks } from '../hooks/useWorkspaceCallbacks';
 import { useAppLifecycle } from '../hooks/useAppLifecycle';
 import { useLayoutHandler } from '../hooks/useLayoutHandler';
 import { useFolderManager } from '../hooks/useFolderManager';
+import { useMobileLayout } from '../hooks/useMobileLayout';
 
 interface ConfirmationState {
     title: string;
@@ -136,6 +137,8 @@ const MainContent: React.FC = () => {
     // PLATFORM DETECTION
     // ==========================================================================
     const [platformOS, setPlatformOS] = useState<'macos' | 'windows' | 'linux' | 'unknown'>('unknown');
+    const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+    const { isMobile } = useMobileLayout();
     
     useEffect(() => {
         async function detectPlatform() {
@@ -1268,6 +1271,27 @@ const MainContent: React.FC = () => {
 
     return (
         <Container onClick={closeContextMenu} $showCustomTitleBar={showCustomTitleBar} $isMacOS={platformOS === 'macos'}>
+            {/* Hamburger button — only visible on mobile (CSS hides it on desktop) */}
+            <button
+                className="mobile-hamburger"
+                onClick={(e) => { e.stopPropagation(); setIsMobileDrawerOpen(true); }}
+                title="Open sidebar"
+                aria-label="Open sidebar"
+                style={{ position: 'fixed', top: 0, left: 0, zIndex: 1001 }}
+            >
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M2 4h16v2H2zM2 9h16v2H2zM2 14h16v2H2z"/>
+                </svg>
+            </button>
+
+            {/* Backdrop — closes sidebar on mobile when tapping outside */}
+            {isMobile && isMobileDrawerOpen && (
+                <div
+                    className="sidebar-backdrop"
+                    onClick={() => setIsMobileDrawerOpen(false)}
+                />
+            )}
+
             {/* Sidebar with consolidated props */}
             <Sidebar
                 projectProps={{
@@ -1405,6 +1429,8 @@ const MainContent: React.FC = () => {
                 activeEnvironment={config?.activeEnvironment}
                 environments={config?.environments}
                 onChangeEnvironment={(env) => bridge.sendMessage({ command: 'setActiveEnvironment', env })}
+                isMobileOpen={isMobileDrawerOpen}
+                onMobileClose={() => setIsMobileDrawerOpen(false)}
             />
 
             {/* WorkspaceLayout with consolidated props */}

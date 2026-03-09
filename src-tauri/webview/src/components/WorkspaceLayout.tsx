@@ -8,6 +8,7 @@ import { SidebarView, RequestType, BodyType, HttpMethod, WorkflowStep, ApiReques
 import { bridge } from '../utils/bridge';
 import { CustomXPathEvaluator } from '../utils/xpathEvaluator';
 import { XPathGenerator } from '../utils/xpathGenerator';
+import { useMobileLayout } from '../hooks/useMobileLayout';
 
 // Import Monaco editor components from @apinox/request-editor package
 import { RequestWorkspace, ErrorBoundary } from '@apinox/request-editor';
@@ -222,6 +223,8 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     } = viewState;
     
     const { config, defaultEndpoint, changelog, isReadOnly: isHistoryMode } = configState;
+
+    const { isMobile } = useMobileLayout();
 
     // For WORKFLOWS view, create a request object from the workflow step
     // We use a single "activeRequest" variable throughout the component
@@ -1190,7 +1193,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                     inlineValues: config?.ui?.inlineElementValues ?? true,
                     hideCausality: false
                 }}
-                initialLayoutMode={(config?.ui?.layoutMode as 'vertical' | 'horizontal') ?? 'vertical'}
+                initialLayoutMode={isMobile ? 'vertical' : ((config?.ui?.layoutMode as 'vertical' | 'horizontal') ?? 'vertical')}
                 onLayoutModeChange={(mode) => {
                     bridge.sendMessage({
                         command: 'saveUiState',
