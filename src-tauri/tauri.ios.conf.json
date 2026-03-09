@@ -1,0 +1,15 @@
+{
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "APInox",
+        "visible": true,
+        "fullscreen": false,
+        "resizable": true,
+        "decorations": true,
+        "transparent": false
+      }
+    ]
+  }
+}
