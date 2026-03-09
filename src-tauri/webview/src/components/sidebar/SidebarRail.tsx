@@ -11,6 +11,7 @@ interface SidebarRailProps {
     activeEnvironment?: string;
     environments?: Record<string, any>;
     onChangeEnvironment?: (env: string) => void;
+    onMobileClose?: () => void;
 }
 
 const NavItem = ({ icon: Icon, active, onClick, title }: any) => (
@@ -38,7 +39,8 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
     onOpenHelp,
     activeEnvironment,
     environments,
-    onChangeEnvironment
+    onChangeEnvironment,
+    onMobileClose
 }) => {
     return (
         <div style={{
@@ -98,6 +100,18 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
             <div style={{ paddingBottom: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
                 <NavItem icon={Settings} onClick={onOpenSettings} title="Settings" />
                 <NavItem icon={HelpCircle} onClick={onOpenHelp} title="Help" />
+                {onMobileClose && (
+                    <div
+                        onClick={onMobileClose}
+                        className="touch-compact"
+                        style={{ cursor: 'pointer', padding: '6px', display: 'flex', justifyContent: 'center', color: 'var(--apinox-icon-foreground)' }}
+                        title="Close sidebar"
+                    >
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/>
+                        </svg>
+                    </div>
+                )}
             </div>
         </div>
     );
