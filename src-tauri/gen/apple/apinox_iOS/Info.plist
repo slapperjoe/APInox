@@ -42,7 +42,6 @@
 	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<!-- Allow HTTP SOAP endpoints; APInox is a developer/QA tool -->
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>

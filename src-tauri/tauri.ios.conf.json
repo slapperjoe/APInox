@@ -1,4 +1,7 @@
 {
+  "build": {
+    "beforeDevCommand": "cd src-tauri/webview && npx vite preview --port 5173"
+  },
   "app": {
     "windows": [
       {
