@@ -18,17 +18,23 @@ import styled from 'styled-components';
 export const Container = styled.div<{ $showCustomTitleBar?: boolean; $isMacOS?: boolean; $isMobile?: boolean }>`
     display: flex;
     flex-direction: ${props => props.$isMobile ? 'column' : 'row'};
-    height: 100dvh;
-    width: 100vw;
     overflow: hidden;
     background-color: var(--apinox-editor-background);
     color: var(--apinox-editor-foreground);
     font-family: var(--apinox-font-family);
     font-size: var(--apinox-font-size);
+    /* Mobile: position:fixed fills the exact WKWebView frame (more reliable than height:100dvh) */
+    position: ${props => props.$isMobile ? 'fixed' : 'static'};
+    top: ${props => props.$isMobile ? '0' : 'auto'};
+    left: ${props => props.$isMobile ? '0' : 'auto'};
+    right: ${props => props.$isMobile ? '0' : 'auto'};
+    bottom: ${props => props.$isMobile ? '0' : 'auto'};
+    height: ${props => props.$isMobile ? 'auto' : '100dvh'};
+    width: ${props => props.$isMobile ? 'auto' : '100vw'};
     padding-top: ${props => {
-        if (props.$isMobile) return '0';                // Mobile: header is in-flow, handles safe area itself
-        if (props.$isMacOS) return '40px';              // macOS custom titlebar
-        if (props.$showCustomTitleBar) return '40px';   // Custom titlebar on Windows/Linux
+        if (props.$isMobile) return '0';
+        if (props.$isMacOS) return '40px';
+        if (props.$showCustomTitleBar) return '40px';
         return '0';
     }};
     padding-bottom: ${props => props.$isMobile ? 'env(safe-area-inset-bottom, 0px)' : '0'};
