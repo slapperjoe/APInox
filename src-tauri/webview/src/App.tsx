@@ -57,6 +57,7 @@ export default function App() {
                 // iOS WKWebView: prevent the native UIScrollView from scrolling the
                 // whole page. We prevent touchmove on the document unless the touch
                 // is inside an element that actually has scrollable overflow.
+                // Also reset any UIScrollView drift that happens without touch input.
                 if (os === 'ios') {
                     const isScrollable = (el: Element): boolean => {
                         const style = window.getComputedStyle(el);
@@ -72,6 +73,10 @@ export default function App() {
                         }
                         e.preventDefault();
                     }, { passive: false });
+                    // Reset any UIScrollView scroll drift (happens on initial load)
+                    window.addEventListener('scroll', () => window.scrollTo(0, 0), { passive: true });
+                    // Snap back immediately in case iOS already scrolled
+                    window.scrollTo(0, 0);
                 }
 
                 // Close splashscreen and show main window once app is ready

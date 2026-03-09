@@ -74,9 +74,10 @@ body {
   color: var(--apinox-editor-foreground);
 }
 
-/* iOS WKWebView: keep content within the safe area (Dynamic Island at top,
-   home indicator at bottom). Scrolling is handled via JS touchmove prevention
-   so the native UIScrollView doesn't consume gestures. */
+/* iOS WKWebView: scrolling is handled via JS touchmove prevention
+   so the native UIScrollView doesn't consume gestures from HTML elements.
+   Safe area insets are applied directly on the fixed mobile-header and
+   Container's padding-top via env(safe-area-inset-*) (requires viewport-fit=cover). */
 body[data-platform="ios"] {
   overflow: hidden;
 }
@@ -85,16 +86,6 @@ body[data-platform="ios"] {
   height: 100%;
   width: 100%;
   overflow: hidden;
-}
-
-/* Apply safe area insets on the root container for iOS (viewport-fit=cover is set) */
-body[data-platform="ios"] #root {
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  padding-left: env(safe-area-inset-left, 0px);
-  padding-right: env(safe-area-inset-right, 0px);
-  box-sizing: border-box;
-  height: 100dvh;
 }
 
 * {
@@ -322,7 +313,7 @@ code,
     display: flex;
     align-items: center;
     position: fixed;
-    top: 0;
+    top: env(safe-area-inset-top, 0px);
     left: 0;
     right: 0;
     height: 44px;
