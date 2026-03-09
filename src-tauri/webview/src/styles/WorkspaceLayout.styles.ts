@@ -54,6 +54,7 @@ export const Logo = styled.img`
 
 export const Content = styled.div`
     flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -92,6 +93,7 @@ export const WorkspaceBody = styled.div`
     display: flex;
     flex-direction: column;
     flex: 1;
+    min-height: 0;
     overflow: hidden;
 `;
 
@@ -299,6 +301,7 @@ export const HeadersEmpty = styled.div`
 
 export const ResponseHeadersContainer = styled.div`
     flex: 1;
+    min-height: 0;
     border-top: 1px solid var(--apinox-panel-border);
     padding: 10px;
     overflow: auto;
@@ -574,6 +577,7 @@ export const ProjectContainer = styled.div`
     color: var(--apinox-foreground);
     overflow-y: auto;
     flex: 1;
+    min-height: 0;
 `;
 
 export const ProjectHeader = styled.div`

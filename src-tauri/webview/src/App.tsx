@@ -51,6 +51,9 @@ export default function App() {
                 console.log('🔍 Platform detected:', os);
                 setPlatformOS(os as any);
 
+                // Apply platform class to body for platform-specific CSS targeting
+                document.body.dataset.platform = os;
+
                 // Close splashscreen and show main window once app is ready
                 invoke('close_splashscreen').catch(() => {
                     // No splashscreen in dev/browser context, ignore
