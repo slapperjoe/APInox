@@ -15,15 +15,29 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      opacity: 0;
-      animation: fadeIn 0.3s ease 0.05s forwards;
-    }
-    @keyframes fadeIn {
-      to { opacity: 1; }
+      display: block;
     }
   </style>
 </head>
 <body>
-  <img src="/app-title-dark.jpg" alt="APInox" />
+  <img id="splash" src="/app-title-dark.jpg" alt="APInox" />
+  <script>
+    async function showWindow() {
+      try {
+        const { getCurrentWebviewWindow } = window.__TAURI__.webviewWindow;
+        await getCurrentWebviewWindow().show();
+      } catch (e) {
+        console.error('Failed to show splashscreen window:', e);
+      }
+    }
+
+    const img = document.getElementById('splash');
+    if (img.complete && img.naturalWidth > 0) {
+      showWindow();
+    } else {
+      img.addEventListener('load', showWindow);
+      img.addEventListener('error', showWindow);
+    }
+  </script>
 </body>
 </html>

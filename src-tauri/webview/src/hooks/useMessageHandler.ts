@@ -471,25 +471,14 @@ export function useMessageHandler(state: MessageHandlerState) {
                             ts.testCases?.forEach((tc: any) => {
                                 tc.steps?.forEach((step: any) => {
                                     if (step.type === 'script') {
-                                        try {
-                                            bridge.sendMessage({
-                                                command: 'log',
-                                                message: `[useMessageHandler] Received Script Step: ${step.name}. Content Length: ${step.config?.scriptContent?.length || 0}`
-                                            });
-                                        } catch (error) {
-                                            console.error('[useMessageHandler] Failed to log script step:', error);
-                                        }
+                                        console.log(`[useMessageHandler] Received Script Step: ${step.name}. Content Length: ${step.config?.scriptContent?.length || 0}`);
                                     }
                                 });
                             });
                         });
                     }
 
-                    try {
-                        bridge.sendMessage({ command: 'log', message: `[useMessageHandler] ProjectLoaded for: ${message.project?.name}. FileName: ${message.filename}` });
-                    } catch (error) {
-                        console.error('[useMessageHandler] Failed to log project loaded:', error);
-                    }
+                    console.log(`[useMessageHandler] ProjectLoaded for: ${message.project?.name}. FileName: ${message.filename}`);
                     const newProj = message.project;
                     setProjects(prev => {
                         const existingIndex = prev.findIndex(p => (p.id && p.id === newProj.id) || p.name === newProj.name);

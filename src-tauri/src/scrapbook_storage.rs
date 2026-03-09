@@ -1,37 +1,10 @@
-use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
-/// Scrapbook request (API Explorer quick request)
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ScrapbookRequest {
-    pub id: String,
-    pub name: String,
-    pub method: String,
-    pub url: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub headers: Option<serde_json::Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub body: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub created_at: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub last_modified: Option<String>,
-}
-
-/// Scrapbook state
-#[derive(Debug, Serialize, Deserialize)]
+/// Scrapbook state — stores requests as raw JSON to preserve all frontend fields
+#[derive(Debug, serde::Serialize, serde::Deserialize, Default)]
 struct ScrapbookState {
-    requests: Vec<ScrapbookRequest>,
-}
-
-impl Default for ScrapbookState {
-    fn default() -> Self {
-        Self {
-            requests: Vec::new(),
-        }
-    }
+    requests: Vec<serde_json::Value>,
 }
 
 /// Get path to scrapbook.json file
@@ -91,7 +64,7 @@ fn save_scrapbook(scrapbook_path: &PathBuf, data: &ScrapbookState) -> Result<(),
 
 /// Get all scrapbook requests
 #[tauri::command]
-pub async fn get_scrapbook() -> Result<Vec<ScrapbookRequest>, String> {
+pub async fn get_scrapbook() -> Result<Vec<serde_json::Value>, String> {
     let scrapbook_path = get_scrapbook_path()?;
     let data = load_scrapbook(&scrapbook_path);
     Ok(data.requests)
@@ -99,77 +72,61 @@ pub async fn get_scrapbook() -> Result<Vec<ScrapbookRequest>, String> {
 
 /// Add a new request to scrapbook
 #[tauri::command]
-pub async fn add_scrapbook_request(request: ScrapbookRequest) -> Result<Vec<ScrapbookRequest>, String> {
+pub async fn add_scrapbook_request(request: serde_json::Value) -> Result<Vec<serde_json::Value>, String> {
     let scrapbook_path = get_scrapbook_path()?;
     let mut data = load_scrapbook(&scrapbook_path);
-    
-    // Ensure timestamps are set
+
+    let mut req = request;
     let now = chrono::Utc::now().to_rfc3339();
-    let new_request = ScrapbookRequest {
-        created_at: Some(request.created_at.unwrap_or_else(|| now.clone())),
-        last_modified: Some(now),
-        ..request
-    };
-    
-    data.requests.push(new_request);
+    if req.get("createdAt").is_none() {
+        req["createdAt"] = serde_json::Value::String(now.clone());
+    }
+    req["lastModified"] = serde_json::Value::String(now);
+
+    data.requests.push(req);
     save_scrapbook(&scrapbook_path, &data)?;
-    
     Ok(data.requests)
 }
 
-/// Update an existing scrapbook request
+/// Update an existing scrapbook request (merges fields)
 #[tauri::command]
 pub async fn update_scrapbook_request(
     id: String,
     updates: serde_json::Value,
-) -> Result<Vec<ScrapbookRequest>, String> {
+) -> Result<Vec<serde_json::Value>, String> {
     let scrapbook_path = get_scrapbook_path()?;
     let mut data = load_scrapbook(&scrapbook_path);
-    
-    let request = data.requests.iter_mut()
-        .find(|r| r.id == id)
+
+    let req = data.requests.iter_mut()
+        .find(|r| r.get("id").and_then(|v| v.as_str()) == Some(&id))
         .ok_or_else(|| format!("Request with id {} not found", id))?;
-    
-    // Apply updates (merge with existing)
-    if let Some(name) = updates.get("name").and_then(|v| v.as_str()) {
-        request.name = name.to_string();
+
+    if let (serde_json::Value::Object(req_map), serde_json::Value::Object(updates_map)) = (req, &updates) {
+        for (k, v) in updates_map {
+            req_map.insert(k.clone(), v.clone());
+        }
+        req_map.insert("lastModified".to_string(), serde_json::Value::String(chrono::Utc::now().to_rfc3339()));
     }
-    if let Some(method) = updates.get("method").and_then(|v| v.as_str()) {
-        request.method = method.to_string();
-    }
-    if let Some(url) = updates.get("url").and_then(|v| v.as_str()) {
-        request.url = url.to_string();
-    }
-    if let Some(headers) = updates.get("headers") {
-        request.headers = Some(headers.clone());
-    }
-    if let Some(body) = updates.get("body").and_then(|v| v.as_str()) {
-        request.body = Some(body.to_string());
-    }
-    
-    // Update lastModified
-    request.last_modified = Some(chrono::Utc::now().to_rfc3339());
-    
+
     save_scrapbook(&scrapbook_path, &data)?;
     Ok(data.requests)
 }
 
 /// Delete a scrapbook request
 #[tauri::command]
-pub async fn delete_scrapbook_request(id: String) -> Result<Vec<ScrapbookRequest>, String> {
+pub async fn delete_scrapbook_request(id: String) -> Result<Vec<serde_json::Value>, String> {
     let scrapbook_path = get_scrapbook_path()?;
     let mut data = load_scrapbook(&scrapbook_path);
-    
-    data.requests.retain(|r| r.id != id);
+
+    data.requests.retain(|r| r.get("id").and_then(|v| v.as_str()) != Some(&id));
     save_scrapbook(&scrapbook_path, &data)?;
-    
     Ok(data.requests)
 }
 
 /// Get a specific scrapbook request by ID
 #[tauri::command]
-pub async fn get_scrapbook_request(id: String) -> Result<Option<ScrapbookRequest>, String> {
+pub async fn get_scrapbook_request(id: String) -> Result<Option<serde_json::Value>, String> {
     let scrapbook_path = get_scrapbook_path()?;
     let data = load_scrapbook(&scrapbook_path);
-    Ok(data.requests.into_iter().find(|r| r.id == id))
+    Ok(data.requests.into_iter().find(|r| r.get("id").and_then(|v| v.as_str()) == Some(&id)))
 }

@@ -178,32 +178,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
     const [saveErrors, setSaveErrors] = useState<Map<string, string>>(new Map());
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
-    // Sync projects to backend when they change
-    useEffect(() => {
-        // Debounce sync to avoid spamming bridge on rapid state changes
-        const timer = setTimeout(() => {
-            if (projects.length > 0) {
-                // debugLog('Syncing projects to backend', { count: projects.length });
-                bridge.sendMessage({ command: 'log', message: `[ProjectContext] Syncing projects. Count: ${projects.length}` });
-                bridge.sendMessage({ command: 'syncProjects', projects });
-
-                // Save the list of open project paths to settings
-                // Filter out projects that don't have a file path yet or are the Samples project
-                const openProjectPaths = projects
-                    .filter(p => (p as any).fileName && p.name !== 'Samples' && p.id !== 'samples-project-read-only')
-                    .map(p => (p as any).fileName as string);
-
-                if (openProjectPaths.length > 0) {
-                    bridge.sendMessage({
-                        command: 'saveOpenProjects',
-                        projectPaths: openProjectPaths
-                    });
-                }
-            }
-        }, 500);
-
-        return () => clearTimeout(timer);
-    }, [projects]);
+    // Sync projects to backend when they change — removed (no sidecar)
 
     // -------------------------------------------------------------------------
     // AUTO-SAVE
@@ -215,7 +190,6 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
         if (dirtyProjects.length > 0) {
             const timer = setTimeout(() => {
                 dirtyProjects.forEach(p => {
-                    // bridge.sendMessage({ command: 'log', message: `[ProjectContext] Auto-saving project: ${p.name}` });
                     // We call the internal save logic directly
                     // Only auto-save if project is already saved to disk (has path)
                     if ((p as any).fileName) {
@@ -235,7 +209,6 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
 
     const debugLog = useCallback((action: string, data?: any) => {
         console.log(`[ProjectContext] ${action}`, data || '');
-        bridge.sendMessage({ command: 'log', message: `[ProjectContext] ${action}`, data: JSON.stringify(data || {}) });
     }, []);
 
     // -------------------------------------------------------------------------
@@ -544,13 +517,10 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
                 }
             } catch (e) {
                 console.error('[ProjectContext] Failed to open save dialog:', e);
-                bridge.sendMessage({ command: 'log', message: `[ProjectContext] Error opening save dialog: ${e}` });
             }
             return;
         }
 
-        bridge.sendMessage({ command: 'log', message: `[ProjectContext] saveProject called for: ${project.name}` });
-        
         // Log interface displayNames for debugging
         const interfacesWithDisplayNames = project.interfaces.filter(i => (i as any).displayName);
         if (interfacesWithDisplayNames.length > 0) {

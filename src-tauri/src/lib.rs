@@ -27,7 +27,6 @@ use windows::Win32::Graphics::Dwm::{DwmSetWindowAttribute, DWMWA_BORDER_COLOR};
 #[cfg(windows)]
 use windows::Win32::Foundation::HWND;
 
-static CONFIG_DIR: Mutex<Option<String>> = Mutex::new(None);
 static LOG_FILE_PATH: Mutex<Option<String>> = Mutex::new(None);
 
 #[tauri::command]
@@ -113,9 +112,51 @@ fn get_platform_os() -> String {
     return "unknown".to_string();
 }
 
+/// Compute the config directory path using the same logic as settings_manager.
+fn resolve_config_dir() -> Option<String> {
+    std::env::var("APINOX_CONFIG_DIR")
+        .ok()
+        .and_then(|dir| if dir.trim().is_empty() { None } else { Some(dir) })
+        .or_else(|| {
+            let home = std::env::var("HOME")
+                .or_else(|_| std::env::var("USERPROFILE"))
+                .ok()?;
+            Some(format!("{}/.apinox", home))
+        })
+}
+
 #[tauri::command]
 fn get_config_dir() -> Option<String> {
-    CONFIG_DIR.lock().ok().and_then(|dir| dir.clone())
+    resolve_config_dir()
+}
+
+#[tauri::command]
+fn get_debug_info() -> serde_json::Value {
+    let config_dir = resolve_config_dir();
+    let log_path = LOG_FILE_PATH.lock().ok().and_then(|p| p.clone());
+
+    let platform = {
+        #[cfg(target_os = "macos")]
+        { "macos" }
+        #[cfg(target_os = "windows")]
+        { "windows" }
+        #[cfg(target_os = "linux")]
+        { "linux" }
+        #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+        { "unknown" }
+    };
+
+    let arch = std::env::consts::ARCH;
+
+    serde_json::json!({
+        "mode": "Tauri",
+        "version": env!("CARGO_PKG_VERSION"),
+        "platform": platform,
+        "arch": arch,
+        "configDir": config_dir,
+        "logPath": log_path,
+        "debug": cfg!(debug_assertions),
+    })
 }
 
 #[tauri::command]
@@ -189,6 +230,7 @@ pub fn run() {
             get_app_version,
             get_platform_os,
             get_config_dir,
+            get_debug_info,
             get_tauri_logs,
             project_storage::save_project,
             project_storage::load_project,
@@ -293,6 +335,31 @@ pub fn run() {
             if let Ok(guard) = LOG_FILE_PATH.lock() {
                 if let Some(ref path) = *guard {
                     log::info!("Logs will be written to: {}", path);
+                }
+            }
+
+            // Size and center the splashscreen to half the primary monitor dimensions.
+            // The window is hidden (visible: false in config) and will be shown by the
+            // splashscreen HTML once the image has finished loading, ensuring the image
+            // is visible the instant the window appears.
+            if let Some(splash) = app.get_webview_window("splashscreen") {
+                if let Ok(Some(monitor)) = splash.primary_monitor() {
+                    let scale = monitor.scale_factor();
+                    let phys = monitor.size();
+                    let logical_w = (phys.width as f64 / scale / 2.0) as u32;
+                    let logical_h = (phys.height as f64 / scale / 2.0) as u32;
+                    if let Err(e) = splash.set_size(tauri::LogicalSize::new(logical_w, logical_h)) {
+                        log::warn!("Failed to resize splashscreen: {:?}", e);
+                    }
+                    if let Err(e) = splash.center() {
+                        log::warn!("Failed to center splashscreen: {:?}", e);
+                    }
+                    log::info!("Splashscreen sized to {}x{} logical px (monitor: {}x{} physical, scale: {})",
+                        logical_w, logical_h, phys.width, phys.height, scale);
+                } else {
+                    // No monitor info — just center with default size and show immediately
+                    let _ = splash.center();
+                    let _ = splash.show();
                 }
             }
 

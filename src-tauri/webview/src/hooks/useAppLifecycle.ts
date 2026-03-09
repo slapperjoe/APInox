@@ -50,8 +50,6 @@ export const useAppLifecycle = ({
 
         // Request settings on load
         loadSettings();
-        bridge.sendMessage({ command: 'getAutosave' });
-        bridge.sendMessage({ command: 'getWatcherHistory' });
         
         // Load history from Rust
         bridge.invokeTauriCommand('get_history', {})
@@ -106,14 +104,6 @@ export const useAppLifecycle = ({
                 console.error('[useAppLifecycle] Failed to restore open projects:', error);
             }
         }
-
-        // Test Backend Connection (Keep-alive)
-        bridge.sendMessage({ command: 'echo', message: 'ping' });
-        // Retry every 60 seconds
-        const interval = setInterval(() => {
-            bridge.sendMessage({ command: 'echo', message: 'ping' });
-        }, 60000);
-        return () => clearInterval(interval);
     }, []); // Run once on mount
 
     // Tauri window persistence (size/position)
@@ -125,6 +115,7 @@ export const useAppLifecycle = ({
 
         const setupWindowPersistence = async () => {
             const windowApi = await import('@tauri-apps/api/window');
+            const { LogicalSize, LogicalPosition } = await import('@tauri-apps/api/dpi');
             const appWindow = (windowApi as any).getCurrentWindow
                 ? (windowApi as any).getCurrentWindow()
                 : (windowApi as any).appWindow;
@@ -159,11 +150,11 @@ export const useAppLifecycle = ({
                             const x = Math.max(monitorX, Math.min(parsed.x, maxX));
                             const y = Math.max(monitorY, Math.min(parsed.y, maxY));
 
-                            await appWindow.setSize(new windowApi.LogicalSize(width, height));
-                            await appWindow.setPosition(new windowApi.LogicalPosition(x, y));
+                            await appWindow.setSize(new LogicalSize(width, height));
+                            await appWindow.setPosition(new LogicalPosition(x, y));
                         } else {
-                            await appWindow.setSize(new windowApi.LogicalSize(parsed.width, parsed.height));
-                            await appWindow.setPosition(new windowApi.LogicalPosition(parsed.x, parsed.y));
+                            await appWindow.setSize(new LogicalSize(parsed.width, parsed.height));
+                            await appWindow.setPosition(new LogicalPosition(parsed.x, parsed.y));
                         }
                     }
                 }
@@ -213,15 +204,7 @@ export const useAppLifecycle = ({
             lastSelectedProject: selectedProjectName
         };
         bridge.setState(state);
-
-        // Autosave to file (debounced)
-        const timer = setTimeout(() => {
-            bridge.sendMessage({ command: 'autoSaveWorkspace', content: JSON.stringify(state) });
-        }, 2000);
-        return () => clearTimeout(timer);
     }, [projects, exploredInterfaces, explorerExpanded, wsdlUrl, selectedProjectName]);
-
-    // Ctrl+S keyboard shortcut to save all dirty projects
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
@@ -250,16 +233,5 @@ export const useAppLifecycle = ({
         };
         window.addEventListener('beforeunload', handleBeforeUnload);
         return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-    }, [projects]);
-
-    // Auto-save Open Projects (Project Paths)
-    useEffect(() => {
-        // Collect file names of all open projects
-        const paths = projects.map(p => p.fileName).filter(Boolean) as string[];
-        // Debounce slightly to avoid excessive writes
-        const timer = setTimeout(() => {
-            bridge.sendMessage({ command: 'saveOpenProjects', paths });
-        }, 1000);
-        return () => clearTimeout(timer);
     }, [projects]);
 };
