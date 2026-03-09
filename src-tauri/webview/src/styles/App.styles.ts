@@ -17,7 +17,7 @@ import styled from 'styled-components';
  */
 export const Container = styled.div<{ $showCustomTitleBar?: boolean; $isMacOS?: boolean; $isMobile?: boolean }>`
     display: flex;
-    height: 100vh;
+    height: 100dvh;
     width: 100vw;
     overflow: hidden;
     background-color: var(--apinox-editor-background);
@@ -25,11 +25,12 @@ export const Container = styled.div<{ $showCustomTitleBar?: boolean; $isMacOS?: 
     font-family: var(--apinox-font-family);
     font-size: var(--apinox-font-size);
     padding-top: ${props => {
-        if (props.$isMobile) return '44px';         // Mobile header bar
+        if (props.$isMobile) return 'calc(44px + env(safe-area-inset-top, 0px))'; // Mobile header + status bar
         if (props.$isMacOS) return '40px';          // macOS custom titlebar
         if (props.$showCustomTitleBar) return '40px'; // Custom titlebar on Windows/Linux
         return '0';
     }};
+    padding-bottom: ${props => props.$isMobile ? 'env(safe-area-inset-bottom, 0px)' : '0'};
 `;
 
 // =============================================================================
