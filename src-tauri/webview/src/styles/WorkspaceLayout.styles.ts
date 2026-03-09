@@ -254,12 +254,14 @@ export const RequestEditorWrapper = styled.div`
 export const PanelColumn = styled.div`
     display: flex;
     flex-direction: column;
-    height: 100%;
+    flex: 1;
+    min-height: 0;
     overflow: hidden;
 `;
 
 export const PanelBody = styled.div<{ $padded?: boolean }>`
     flex: 1;
+    min-height: 0;
     overflow: hidden;
     padding: ${props => props.$padded ? '10px' : '0'};
 `;

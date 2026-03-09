@@ -51,8 +51,28 @@ export default function App() {
                 console.log('🔍 Platform detected:', os);
                 setPlatformOS(os as any);
 
-                // Apply platform class to body for platform-specific CSS targeting
+                // Apply platform attribute to body for platform-specific CSS targeting
                 document.body.dataset.platform = os;
+
+                // iOS WKWebView: prevent the native UIScrollView from scrolling the
+                // whole page. We prevent touchmove on the document unless the touch
+                // is inside an element that actually has scrollable overflow.
+                if (os === 'ios') {
+                    const isScrollable = (el: Element): boolean => {
+                        const style = window.getComputedStyle(el);
+                        const overflow = style.overflow + style.overflowY + style.overflowX;
+                        if (!/(auto|scroll)/.test(overflow)) return false;
+                        return el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth;
+                    };
+                    document.addEventListener('touchmove', (e) => {
+                        let target = e.target as Element | null;
+                        while (target && target !== document.documentElement) {
+                            if (isScrollable(target)) return; // let the element handle it
+                            target = target.parentElement;
+                        }
+                        e.preventDefault();
+                    }, { passive: false });
+                }
 
                 // Close splashscreen and show main window once app is ready
                 invoke('close_splashscreen').catch(() => {
