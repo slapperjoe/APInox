@@ -48,7 +48,16 @@ if (result.status !== 0) {
     process.exit(result.status ?? 1);
 }
 
-// 4. On Linux, also produce an Arch Linux package
+// 4. On Linux, produce an Arch Linux package only when makepkg is available
 if (process.platform === 'linux') {
-    run('npm run package:arch');
+    let hasMakepkg = false;
+    try {
+        execSync('which makepkg', { stdio: 'ignore' });
+        hasMakepkg = true;
+    } catch {
+        console.log('ℹ️  makepkg not found, skipping Arch Linux packaging.');
+    }
+    if (hasMakepkg) {
+        run('npm run package:arch');
+    }
 }
