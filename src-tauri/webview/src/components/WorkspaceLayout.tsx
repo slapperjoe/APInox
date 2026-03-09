@@ -1193,7 +1193,8 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                     inlineValues: config?.ui?.inlineElementValues ?? true,
                     hideCausality: false
                 }}
-                initialLayoutMode={isMobile ? 'vertical' : ((config?.ui?.layoutMode as 'vertical' | 'horizontal') ?? 'vertical')}
+                initialLayoutMode={config?.ui?.layoutMode as 'vertical' | 'horizontal' ?? 'vertical'}
+                layoutMode={isMobile ? 'vertical' : undefined}
                 onLayoutModeChange={(mode) => {
                     bridge.sendMessage({
                         command: 'saveUiState',
