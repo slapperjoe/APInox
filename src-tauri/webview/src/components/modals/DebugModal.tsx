@@ -8,7 +8,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { Modal } from './Modal';
-import { useTheme } from '@apinox/request-editor'; // Use package ThemeContext
 import { bridge } from '../../utils/bridge';
 import { DiagnosticsTab } from './DiagnosticsTab';
 
@@ -74,7 +73,6 @@ console.error = (...args: any[]) => {
 };
 
 export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
-    const { isStandalone } = useTheme();
 
     // Tab state
     const [activeTab, setActiveTab] = useState<'logs' | 'diagnostics'>('logs');
@@ -87,10 +85,8 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
     const [showTauriLogs, setShowTauriLogs] = useState(false);
     const [showFrontendLogs, setShowFrontendLogs] = useState(false);
     const [showSystemInfo, setShowSystemInfo] = useState(true); // Start expanded
-    const [showDebugInfo, setShowDebugInfo] = useState(false);
     const [isLoadingLogs, setIsLoadingLogs] = useState(false);
     const [debugIndicatorVisible, setDebugIndicatorVisible] = useState(false);
-    const [connectionTest, setConnectionTest] = useState<{ status: string; message: string } | null>(null);
     const [copyStatus, setCopyStatus] = useState<string | null>(null);
     
     // Tauri-specific state
@@ -105,11 +101,10 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
         setShowTauriLogs(false);
         setShowFrontendLogs(false);
         setShowSystemInfo(false);
-        setShowDebugInfo(false);
     };
 
     // Helper function to toggle accordion (closes others)
-    const toggleAccordion = (section: 'tauri' | 'frontend' | 'system' | 'debug') => {
+    const toggleAccordion = (section: 'tauri' | 'frontend' | 'system') => {
         if (section === 'tauri') {
             const wasOpen = showTauriLogs;
             closeAllAccordions();
@@ -122,10 +117,6 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
             const wasOpen = showSystemInfo;
             closeAllAccordions();
             setShowSystemInfo(!wasOpen);
-        } else if (section === 'debug') {
-            const wasOpen = showDebugInfo;
-            closeAllAccordions();
-            setShowDebugInfo(!wasOpen);
         }
     };
 
@@ -153,7 +144,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
 
     // Load logs and debug info when modal opens in Tauri mode
     useEffect(() => {
-        if (!isOpen || !isStandalone) return;
+        if (!isOpen) return;
 
         const loadLogsAndDebugInfo = async () => {
             try {
@@ -176,10 +167,12 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                 // Update frontend logs state
                 setFrontendLogState([...frontendLogs]);
 
-                // Load debug info
-                const debugResponse = await bridge.sendMessageAsync({ command: 'getDebugInfo' });
-                if (debugResponse.debugInfo) {
-                    setSettingsDebug(debugResponse.debugInfo);
+                // Load debug info directly via Tauri invoke
+                try {
+                    const debugInfo = await invoke<any>('get_debug_info');
+                    setSettingsDebug(debugInfo);
+                } catch (e) {
+                    console.warn('[DebugModal] Failed to get debug info:', e);
                 }
 
                 setFetchError(null);
@@ -195,7 +188,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
 
         // Only poll if explicitly requested (don't auto-poll to avoid UI freezing)
         // User can manually refresh if needed
-    }, [isOpen, isStandalone]);
+    }, [isOpen]);
 
     // Check debug indicator visibility on mount
     useEffect(() => {
@@ -208,16 +201,9 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
         }
     }, [isOpen]);
 
-    // Clear Tauri logs handler
-    const clearTauriLogs = async () => {
-        try {
-            await bridge.sendMessageAsync({ command: 'clearSidecarLogs' });
-            setTauriLogs([]);
-            setFetchError(null);
-        } catch (error: any) {
-            setFetchError(error.message || 'Failed to clear logs');
-            console.error('[DebugModal] Failed to clear logs:', error);
-        }
+    const clearTauriLogs = () => {
+        setTauriLogs([]);
+        setFetchError(null);
     };
 
     // Clear frontend logs handler
@@ -233,35 +219,6 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
             const newVisibility = !debugIndicatorVisible;
             indicator.style.display = newVisibility ? 'block' : 'none';
             setDebugIndicatorVisible(newVisibility);
-        }
-    };
-
-    // Test connection between frontend and backend
-    const testConnection = async () => {
-        try {
-            setConnectionTest({ status: 'testing', message: 'Testing connection...' });
-            const startTime = Date.now();
-            
-            // Send a test command
-            const response = await bridge.sendMessageAsync({ command: 'getDebugInfo' });
-            const duration = Date.now() - startTime;
-            
-            if (response.debugInfo) {
-                setConnectionTest({
-                    status: 'success',
-                    message: `✓ Connection successful (${duration}ms)\nMode: ${response.debugInfo.mode || 'Tauri'}`
-                });
-            } else {
-                setConnectionTest({
-                    status: 'error',
-                    message: '✗ No response data received'
-                });
-            }
-        } catch (error: any) {
-            setConnectionTest({
-                status: 'error',
-                message: `✗ Connection failed: ${error.message}`
-            });
         }
     };
 
@@ -313,16 +270,6 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
             setTimeout(() => setCopyStatus(null), 2000);
         }
     };
-
-    if (!isStandalone) {
-        return (
-            <Modal isOpen={isOpen} onClose={onClose} title="Debug & Diagnostics" width={800}>
-                <div style={{ padding: '20px', textAlign: 'center', color: 'var(--apinox-descriptionForeground)' }}>
-                    Debug diagnostics are only available in Tauri standalone mode.
-                </div>
-            </Modal>
-        );
-    }
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Debug & Diagnostics" width={900}>
@@ -386,21 +333,6 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                         >
                             {debugIndicatorVisible ? '👁️ Hide' : '👁️‍🗨️ Show'} Debug Indicator
                         </button>
-                        <button
-                            onClick={testConnection}
-                            style={{
-                                padding: '8px 16px',
-                                fontSize: '0.9em',
-                                background: 'var(--apinox-button-background)',
-                                color: 'var(--apinox-button-foreground)',
-                                border: '1px solid var(--apinox-button-border)',
-                                cursor: 'pointer',
-                                borderRadius: '2px',
-                            }}
-                            disabled={connectionTest?.status === 'testing'}
-                        >
-                            {connectionTest?.status === 'testing' ? '⏳ Testing...' : '🔌 Test Connection'}
-                        </button>
                     </div>
                     <div style={{ display: 'flex', gap: '10px' }}>
                         <button
@@ -410,7 +342,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                                     const { invoke } = await import('@tauri-apps/api/core');
                                     // Always read from the actual log file for consistency with file contents
                                     const tauriLogs = await invoke<string[]>('get_tauri_logs', { lines: 2000 });
-                                    setSidecarLogs(tauriLogs);
+                                    setTauriLogs(tauriLogs);
                                 } catch (e) {
                                     console.error('[DebugModal] Failed to refresh logs:', e);
                                 } finally {
@@ -465,25 +397,6 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                     </div>
                 </div>
                 
-                {/* Connection Test Result */}
-                {connectionTest && (
-                    <div style={{
-                        padding: '8px 12px',
-                        background: connectionTest.status === 'success' 
-                            ? 'var(--apinox-testing-iconPassed)' 
-                            : connectionTest.status === 'error'
-                            ? 'var(--apinox-inputValidation-errorBackground)'
-                            : 'var(--apinox-badge-background)',
-                        border: '1px solid var(--apinox-panel-border)',
-                        borderRadius: '3px',
-                        fontSize: '0.9em',
-                        whiteSpace: 'pre-line',
-                        color: 'var(--apinox-editor-foreground)',
-                    }}>
-                        {connectionTest.message}
-                    </div>
-                )}
-                
                 {/* System Information */}
                 <div>
                     <div 
@@ -514,12 +427,42 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                             fontSize: '0.9em',
                         }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontFamily: 'var(--apinox-editor-font-family, monospace)' }}>
-                        {configDir && (
-                            <div>
-                                <span style={{ opacity: 0.7 }}>Settings Location:</span>{' '}
-                                <span>{configDir}</span>
-                            </div>
-                        )}
+                                {settingsDebug?.version && (
+                                    <div>
+                                        <span style={{ opacity: 0.7 }}>Version:</span>{' '}
+                                        <span>{settingsDebug.version}</span>
+                                    </div>
+                                )}
+                                {settingsDebug?.platform && (
+                                    <div>
+                                        <span style={{ opacity: 0.7 }}>Platform:</span>{' '}
+                                        <span>{settingsDebug.platform}</span>
+                                    </div>
+                                )}
+                                {settingsDebug?.arch && (
+                                    <div>
+                                        <span style={{ opacity: 0.7 }}>Architecture:</span>{' '}
+                                        <span>{settingsDebug.arch}</span>
+                                    </div>
+                                )}
+                                {settingsDebug?.mode && (
+                                    <div>
+                                        <span style={{ opacity: 0.7 }}>Mode:</span>{' '}
+                                        <span>{settingsDebug.mode}{settingsDebug?.debug ? ' (debug)' : ''}</span>
+                                    </div>
+                                )}
+                                {configDir && (
+                                    <div>
+                                        <span style={{ opacity: 0.7 }}>Settings Location:</span>{' '}
+                                        <span>{configDir}</span>
+                                    </div>
+                                )}
+                                {settingsDebug?.logPath && (
+                                    <div>
+                                        <span style={{ opacity: 0.7 }}>Log File:</span>{' '}
+                                        <span>{settingsDebug.logPath}</span>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
@@ -723,46 +666,8 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                     )}
                 </div>
 
-                {/* Settings Debug Information */}
-                {settingsDebug && (
-                    <div>
-                        <div 
-                            onClick={() => toggleAccordion('debug')}
-                            style={{ 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: '8px',
-                                cursor: 'pointer',
-                                userSelect: 'none',
-                                padding: '4px 0',
-                                marginBottom: '8px',
-                                fontWeight: 'bold',
-                            }}
-                        >
-                            <span style={{ fontSize: '0.85em', opacity: 0.7 }}>
-                                {showDebugInfo ? '▼' : '▶'}
-                            </span>
-                            System Debug Information
-                        </div>
-                        
-                        {showDebugInfo && (
-                            <div style={{
-                                background: 'var(--apinox-editor-background)',
-                                border: '1px solid var(--apinox-panel-border)',
-                                padding: '12px',
-                                fontFamily: 'var(--apinox-editor-font-family, monospace)',
-                                fontSize: '0.8em',
-                                whiteSpace: 'pre-wrap',
-                                overflowX: 'auto',
-                                maxHeight: '400px',
-                                overflowY: 'auto',
-                                borderRadius: '3px',
-                                lineHeight: '1.5',
-                            }}>
-                                {JSON.stringify(settingsDebug, null, 2)}
-                            </div>
-                        )}
-                    </div>
+                {!settingsDebug && !configDir && isLoadingLogs && (
+                    <div style={{ opacity: 0.5, fontSize: '0.9em' }}>Loading system information...</div>
                 )}
             </div>
             )}

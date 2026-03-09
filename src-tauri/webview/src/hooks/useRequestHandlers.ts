@@ -65,9 +65,6 @@ export function useRequestHandlers({
 
             console.log('[useRequestHandlers] Sending executeRequest message. URL:', url, 'Op:', opName);
 
-            const logToOutput = (msg: string) => bridge.sendMessage({ command: 'log', message: msg });
-            logToOutput(`Starting execution of step: ${selectedStep?.name || selectedRequest?.name}`);
-
             // Calculate context variables if running a test step
             const contextVariables: Record<string, string> = {};
             if (selectedTestCase && selectedStep) {
@@ -89,13 +86,13 @@ export function useRequestHandlers({
                                                 const val = CustomXPathEvaluator.evaluate(rawResp, ext.path);
                                                 if (val) {
                                                     contextVariables[ext.variable] = val;
-                                                    logToOutput(`[Context] Extracted '${ext.variable}' = '${val}' from step '${step.name}'`);
+                                                    console.log(`[Context] Extracted '${ext.variable}' = '${val}' from step '${step.name}'`);
                                                 } else {
-                                                    logToOutput(`[Context] Warning: Extractor for '${ext.variable}' in step '${step.name}' returned null.`);
+                                                    console.log(`[Context] Warning: Extractor for '${ext.variable}' in step '${step.name}' returned null.`);
                                                 }
                                             } catch (e) {
                                                 console.warn('[useRequestHandlers] Extractor failed for variable ' + ext.variable, e);
-                                                logToOutput(`[Context] Error evaluating extractor for '${ext.variable}': ${e}`);
+                                                console.log(`[Context] Error evaluating extractor for '${ext.variable}': ${e}`);
                                             }
                                         }
                                     });
@@ -108,7 +105,7 @@ export function useRequestHandlers({
 
             console.log('[useRequestHandlers] Context Variables:', contextVariables);
             if (Object.keys(contextVariables).length > 0) {
-                logToOutput(`[Context] Sending ${Object.keys(contextVariables).length} context variables to backend.`);
+                console.log(`[Context] Sending ${Object.keys(contextVariables).length} context variables to backend.`);
             }
 
             bridge.sendMessage({

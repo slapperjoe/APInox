@@ -187,9 +187,6 @@ export function useRequestExecution({
 
             console.log('[App] Sending executeRequest message. URL:', url, 'Op:', opName);
 
-            const logToOutput = (msg: string) => bridge.sendMessage({ command: 'log', message: msg });
-            logToOutput(`Starting execution of step: ${selectedStep?.name || selectedRequest?.name}`);
-
             // Calculate context variables if running a test step
             const contextVariables: Record<string, string> = {};
             if (selectedTestCase && selectedStep) {
@@ -215,28 +212,28 @@ export function useRequestExecution({
                                             const val = CustomXPathEvaluator.evaluate(rawResp, ext.path);
                                             if (val) {
                                                 contextVariables[ext.variable] = val;
-                                                logToOutput(`[Context] Extracted '${ext.variable}' = '${val}' from step '${step.name}'`);
+                                                console.log(`[Context] Extracted '${ext.variable}' = '${val}' from step '${step.name}'`);
                                             } else if (ext.defaultValue) {
                                                 // Extraction returned null, use default
                                                 contextVariables[ext.variable] = ext.defaultValue;
-                                                logToOutput(`[Context] Using default value for '${ext.variable}' = '${ext.defaultValue}' (extraction returned null)`);
+                                                console.log(`[Context] Using default value for '${ext.variable}' = '${ext.defaultValue}' (extraction returned null)`);
                                             } else {
-                                                logToOutput(`[Context] Warning: Extractor for '${ext.variable}' in step '${step.name}' returned null.`);
+                                                console.log(`[Context] Warning: Extractor for '${ext.variable}' in step '${step.name}' returned null.`);
                                             }
                                         } catch (e) {
                                             console.warn('[App] Extractor failed for variable ' + ext.variable, e);
                                             if (ext.defaultValue) {
                                                 contextVariables[ext.variable] = ext.defaultValue;
-                                                logToOutput(`[Context] Using default value for '${ext.variable}' = '${ext.defaultValue}' (extraction error)`);
+                                                console.log(`[Context] Using default value for '${ext.variable}' = '${ext.defaultValue}' (extraction error)`);
                                             } else {
-                                                logToOutput(`[Context] Error evaluating extractor for '${ext.variable}': ${e}`);
+                                                console.log(`[Context] Error evaluating extractor for '${ext.variable}': ${e}`);
                                             }
                                         }
                                     }
                                 } else if (ext.defaultValue) {
                                     // Step hasn't been run yet, use default value
                                     contextVariables[ext.variable] = ext.defaultValue;
-                                    logToOutput(`[Context] Using default value for '${ext.variable}' = '${ext.defaultValue}' (step '${step.name}' not run)`);
+                                    console.log(`[Context] Using default value for '${ext.variable}' = '${ext.defaultValue}' (step '${step.name}' not run)`);
                                 }
                             });
                         }
@@ -246,7 +243,7 @@ export function useRequestExecution({
 
             console.log('[App] Context Variables:', contextVariables);
             if (Object.keys(contextVariables).length > 0) {
-                logToOutput(`[Context] Sending ${Object.keys(contextVariables).length} context variables to backend.`);
+                console.log(`[Context] Sending ${Object.keys(contextVariables).length} context variables to backend.`);
             }
 
             // Regression fix: Ensure content-type matches body type
@@ -318,7 +315,6 @@ export function useRequestExecution({
         }
 
         console.log('[handleRequestUpdate] Called with:', logContext);
-        // bridge.sendMessage({ command: 'log', message: '[handleRequestUpdate] START', data: JSON.stringify(logContext) });
 
         const dirtyUpdated = { ...updated, dirty: true };
 
@@ -326,7 +322,6 @@ export function useRequestExecution({
         setSelectedRequest(dirtyUpdated);
         setWorkspaceDirty(true);
 
-        // bridge.sendMessage({ command: 'log', message: '[handleRequestUpdate] Set dirty: true on request', data: JSON.stringify({ requestId: updated.id }) });
 
         // 0. Scrapbook Request Modification (via callback)
         if (onScrapbookAutoSave) {
@@ -348,7 +343,6 @@ export function useRequestExecution({
         }
 
         projectUpdateTimer.current = setTimeout(() => {
-            // bridge.sendMessage({ command: 'log', message: '[handleRequestUpdate] PROJECT PATH - Debounced update executing' });
 
             // EXPLORER PATH: Update exploredInterfaces if viewing Explorer (no project selected)
             if (!selectedProjectName && setExploredInterfaces && exploredInterfaces) {
@@ -368,7 +362,6 @@ export function useRequestExecution({
             }
 
             setProjects(prev => {
-                // bridge.sendMessage({ command: 'log', message: '[handleRequestUpdate] setProjects callback', data: JSON.stringify({ count: prev.length }) });
 
                 const updatedProjects = prev.map(p => {
                     // 1. Is it a Test Case modification?

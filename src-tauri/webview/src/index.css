@@ -153,6 +153,33 @@ body {
   border-bottom: 2px wavy var(--apinox-editorWarning-foreground, #cca700);
 }
 
+/* Native select elements - override OS/GTK appearance and apply theme */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: var(--apinox-dropdown-background, #3c3c3c);
+  color: var(--apinox-dropdown-foreground, #cccccc);
+  border: 1px solid var(--apinox-dropdown-border, #3c3c3c);
+  font-family: var(--apinox-font-family, "Segoe UI", system-ui, sans-serif);
+  font-size: var(--apinox-font-size, 13px);
+  padding-right: 22px;
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M0 0L5 6L10 0' fill='%23888888'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  background-size: 10px 6px;
+  cursor: pointer;
+}
+
+select:focus {
+  outline: none;
+  border-color: var(--apinox-focusBorder, #007fd4);
+}
+
+select option {
+  background-color: var(--apinox-dropdown-listBackground, var(--apinox-dropdown-background, #3c3c3c));
+  color: var(--apinox-dropdown-foreground, #cccccc);
+}
+
 /* Theme-specific visibility for title images */
 body.vscode-light .dark-only,
 body[data-theme="light"] .dark-only {

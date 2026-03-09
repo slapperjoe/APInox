@@ -206,73 +206,9 @@ const MainContent: React.FC = () => {
         setSelectedTestSuite
     } = useSelection();
 
-    // Notify backend that the Webview is ready and load initial data (Samples, Changelog)
+    // Notify backend that the Webview is ready and load initial data
     useEffect(() => {
-        const initializeApp = async () => {
-            // Retry logic to wait for backend to be ready
-            let retries = 0;
-            const maxRetries = 10;
-            const retryDelay = 500; // ms
-            while (retries < maxRetries) {
-                try {
-                    console.log(`[MainContent] Attempt ${retries + 1}/${maxRetries}: Sending webviewReady...`);
-                    const response = await bridge.sendMessageAsync({ command: 'webviewReady' }) as any;
-                    console.log('[MainContent] webviewReady response:', response);
-
-                    // Validate response - throw error if invalid to trigger retry
-                    if (!response || (!response.samplesProject && !response.changelog && !response.acknowledged)) {
-                        throw new Error('webviewReady response invalid or empty');
-                    }
-
-                    // In Tauri mode, backend returns samples and changelog in the response
-                    if (response?.samplesProject) {
-                        console.log('[MainContent] Received samples project:', response.samplesProject.name);
-                        bridge.emit({
-                            command: 'projectLoaded',
-                            project: response.samplesProject,
-                            filename: 'Samples',
-                            isReadOnly: true
-                        });
-                    }
-
-                    if (response?.projects && Array.isArray(response.projects)) {
-                        console.log(`[MainContent] Received ${response.projects.length} persisted projects`);
-                        response.projects.forEach((proj: any) => {
-                            bridge.emit({
-                                command: 'projectLoaded',
-                                project: proj,
-                                filename: proj.fileName || proj.name, // Fallback to name if fileName missing
-                                isReadOnly: false
-                            });
-                        });
-                    }
-
-                    if (response?.changelog) {
-                        console.log('[MainContent] Received changelog, length:', response.changelog.length);
-                        setChangelog(response.changelog);
-                    }
-
-                    console.log('[MainContent] Initialization successful');
-                    break; // Success! Exit retry loop
-                } catch (error: any) {
-                    const shouldRetry = (
-                        error?.message?.includes('Sidecar not ready') ||
-                        error?.message?.includes('invalid or empty')
-                    ) && retries < maxRetries - 1;
-
-                    if (shouldRetry) {
-                        console.log(`[MainContent] Sidecar not ready or invalid response, retrying in ${retryDelay}ms... (attempt ${retries + 1}/${maxRetries})`);
-                        await new Promise(resolve => setTimeout(resolve, retryDelay));
-                        retries++;
-                    } else {
-                        console.error('[MainContent] Failed to initialize app:', error);
-                        break;
-                    }
-                }
-            }
-        };
-
-        initializeApp();
+        console.log('[MainContent] App initialized');
     }, []);
 
     // ==========================================================================

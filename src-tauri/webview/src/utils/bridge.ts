@@ -665,51 +665,6 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
             return response.result || {};
         }
 
-        // Stub implementations for non-critical commands (return empty/default data)
-        if (message.command === 'webviewReady' || message.command === 'echo') {
-            return { success: true }; // Simple acknowledgment
-        }
-
-        if (message.command === 'log') {
-            // Log messages - could forward to Rust logger, for now just acknowledge
-            console.log('[Bridge] Log:', message.message || message);
-            return { success: true };
-        }
-
-        if (message.command === 'syncProjects') {
-            // Project sync - not needed with Rust backend (direct file I/O)
-            return { success: true };
-        }
-
-        if (message.command === 'getAutosave') {
-            return null; // No autosave data
-        }
-
-        if (message.command === 'getWatcherHistory') {
-            return []; // Empty history
-        }
-
-        if (message.command === 'getScrapbook') {
-            return { entries: [] }; // Empty scrapbook
-        }
-
-        if (message.command === 'saveOpenProjects') {
-            // Persist open project paths to localStorage
-            try {
-                const paths = (message as any).projectPaths || (message as any).paths || [];
-                localStorage.setItem('apinox:openProjects', JSON.stringify(paths));
-                console.log('[Bridge] Saved open projects:', paths.length);
-                return { success: true };
-            } catch (error) {
-                console.error('[Bridge] Failed to save open projects:', error);
-                return { success: false };
-            }
-        }
-
-        if (message.command === 'autoSaveWorkspace') {
-            return { success: true }; // Acknowledge save (could implement later)
-        }
-
         if (message.command === 'saveUiState') {
             // Save UI state via Rust
             try {
@@ -972,6 +927,33 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                 console.error('[Bridge] Cancel request failed:', error);
                 throw new Error(`Failed to cancel request: ${error.message || error}`);
             }
+        }
+
+        // Route GetDebugInfo to Rust get_debug_info command
+        if (message.command === FrontendCommand.GetDebugInfo) {
+            const debugInfo = await tauriInvoke('get_debug_info', {});
+            return { debugInfo };
+        }
+
+        // Scrapbook commands — backed by ~/.apinox/scrapbook.json via Rust
+        if (message.command === FrontendCommand.GetScrapbook) {
+            const requests = await tauriInvoke('get_scrapbook');
+            return { state: { requests } };
+        }
+
+        if (message.command === FrontendCommand.AddScrapbookRequest) {
+            const requests = await tauriInvoke('add_scrapbook_request', { request: message.request });
+            return { state: { requests } };
+        }
+
+        if (message.command === FrontendCommand.UpdateScrapbookRequest) {
+            const requests = await tauriInvoke('update_scrapbook_request', { id: message.id, updates: message.updates });
+            return { state: { requests } };
+        }
+
+        if (message.command === FrontendCommand.DeleteScrapbookRequest) {
+            const requests = await tauriInvoke('delete_scrapbook_request', { id: message.id });
+            return { state: { requests } };
         }
 
         // Command not implemented in Rust

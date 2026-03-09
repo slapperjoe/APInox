@@ -192,9 +192,7 @@ export function useWorkspaceCallbacks({
     }, [selectedTestCase, setProjects, saveProject]);
 
     const handleUpdateStep = useCallback((updatedStep: TestStep) => {
-        bridge.sendMessage({ command: 'log', message: `[handleUpdateStep] Called with: ${updatedStep.id}` });
         if (!selectedTestCase) {
-            bridge.sendMessage({ command: 'log', message: '[handleUpdateStep] No selectedTestCase!' });
             return;
         }
         setProjects(prev => prev.map(p => {

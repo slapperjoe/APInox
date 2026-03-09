@@ -233,7 +233,7 @@ const WindowControls = styled.div`
   -webkit-app-region: no-drag;
 `;
 
-const WindowButton = styled.button<{ isClose?: boolean }>`
+const WindowButton = styled.button<{ $isClose?: boolean }>`
   width: 46px;
   height: 100%;
   border: none;
@@ -248,16 +248,16 @@ const WindowButton = styled.button<{ isClose?: boolean }>`
 
   &:hover {
     background: ${props => 
-      props.isClose 
+      props.$isClose 
         ? '#e81123' 
         : 'var(--apinox-toolbar-hoverBackground)'
     };
-    color: ${props => props.isClose ? '#fff' : 'inherit'};
+    color: ${props => props.$isClose ? '#fff' : 'inherit'};
   }
 
   &:active {
     background: ${props => 
-      props.isClose 
+      props.$isClose 
         ? '#c50e1f' 
         : 'var(--apinox-toolbar-activeBackground, rgba(128, 128, 128, 0.3))'
     };
@@ -472,7 +472,7 @@ const TitleBar: React.FC = () => {
                 </svg>
               )}
             </WindowButton>
-            <WindowButton onClick={handleClose} isClose title="Close">
+            <WindowButton onClick={handleClose} $isClose title="Close">
               <svg viewBox="0 0 10 10" fill="currentColor">
                 <path d="M0,0 L10,10 M10,0 L0,10" stroke="currentColor" strokeWidth="1.2" />
               </svg>

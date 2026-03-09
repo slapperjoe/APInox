@@ -346,7 +346,6 @@ export function useTestCaseHandlers({
 
     const handleRunTestCaseWrapper = useCallback((caseId: string) => {
         console.log('[handleRunTestCaseWrapper] CALLED with caseId:', caseId);
-        bridge.sendMessage({ command: 'log', message: `[Run Test Case] Starting: ${caseId}` });
 
         // Find case
         let testCase: TestCase | null = null;
@@ -426,7 +425,6 @@ export function useTestCaseHandlers({
 
     const handleRunTestSuiteWrapper = useCallback((suiteId: string) => {
         console.log('[handleRunTestSuiteWrapper] CALLED with suiteId:', suiteId);
-        bridge.sendMessage({ command: 'log', message: `[Run Test Suite] Starting: ${suiteId}` });
 
         // Send runTestSuite command to backend (matches RunTestSuiteCommand in TestCommands.ts)
         bridge.sendMessage({

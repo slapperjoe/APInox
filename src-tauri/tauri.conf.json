@@ -34,7 +34,7 @@
         "resizable": false,
         "center": true,
         "url": "/splashscreen.html",
-        "visible": true,
+        "visible": false,
         "shadow": false
       }
     ],
