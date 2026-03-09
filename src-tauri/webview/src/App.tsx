@@ -36,7 +36,7 @@ function saveEditorSettings(settings: EditorSettings): void {
 
 export default function App() {
     // TEMPORARY: Hardcode macOS detection since Tauri API isn't loading properly
-    const [platformOS, setPlatformOS] = useState<'macos' | 'windows' | 'linux' | 'unknown'>('macos');
+    const [platformOS, setPlatformOS] = useState<'macos' | 'windows' | 'linux' | 'android' | 'ios' | 'unknown'>('macos');
     
     useEffect(() => {
         async function detectPlatform() {
@@ -63,8 +63,9 @@ export default function App() {
         detectPlatform();
     }, []);
     
-    // Hide custom titlebar on macOS (use native), but show search bar overlay
-    const showCustomTitleBar = platformOS !== 'macos';
+    // Mobile platforms don't need the custom desktop titlebar (no window controls, no drag region)
+    const isMobilePlatform = platformOS === 'android' || platformOS === 'ios';
+    const showCustomTitleBar = platformOS !== 'macos' && !isMobilePlatform;
     const showMacOSSearchBar = platformOS === 'macos';
     
     console.log('📱 App render - platformOS:', platformOS, 'showCustomTitleBar:', showCustomTitleBar, 'showMacOSSearchBar:', showMacOSSearchBar);
@@ -82,7 +83,7 @@ export default function App() {
                             <ScrapbookProvider>
                                 <TestRunnerProvider>
                                         <SearchProvider>
-                                            <TitleBar />
+                                            {showCustomTitleBar && <TitleBar />}
                                             <DebugIndicator />
                                             <ErrorBoundary
                                                 onError={(error, errorInfo) => {

@@ -108,8 +108,14 @@ fn get_platform_os() -> String {
     
     #[cfg(target_os = "linux")]
     return "linux".to_string();
-    
-    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+
+    #[cfg(target_os = "android")]
+    return "android".to_string();
+
+    #[cfg(target_os = "ios")]
+    return "ios".to_string();
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux", target_os = "android", target_os = "ios")))]
     return "unknown".to_string();
 }
 
