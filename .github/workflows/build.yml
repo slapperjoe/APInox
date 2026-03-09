@@ -27,6 +27,10 @@ jobs:
             target: aarch64-apple-darwin
             rust_target: aarch64-apple-darwin
             artifact_name: macos-arm64
+          - platform: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            rust_target: x86_64-unknown-linux-gnu
+            artifact_name: linux-x64
 
     runs-on: ${{ matrix.platform }}
 
@@ -54,7 +58,7 @@ jobs:
         if: matrix.platform == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf rpm
 
       - name: Install root dependencies
         run: npm ci
@@ -84,8 +88,96 @@ jobs:
           path: target/${{ matrix.target }}/release/bundle/dmg/*.dmg
           if-no-files-found: error
 
+      - name: Upload Linux artifacts
+        if: matrix.platform == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: apinox-${{ matrix.artifact_name }}
+          path: |
+            target/${{ matrix.target }}/release/bundle/deb/*.deb
+            target/${{ matrix.target }}/release/bundle/rpm/*.rpm
+          if-no-files-found: error
+
+  build-arch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    container:
+      image: archlinux/archlinux:latest
+
+    steps:
+      - name: Install git (required for checkout in Arch container)
+        run: pacman -Sy --noconfirm git
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Update system and install build dependencies
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm \
+            base-devel \
+            nodejs \
+            npm \
+            rust \
+            webkit2gtk-4.1 \
+            gtk3 \
+            libsoup3 \
+            openssl \
+            patchelf \
+            dpkg \
+            rpm-tools
+
+      - name: Install root Node.js dependencies
+        run: npm ci
+
+      - name: Install webview Node.js dependencies
+        run: cd src-tauri/webview && npm ci
+
+      - name: Pre-build steps
+        run: |
+          node scripts/increment-build.js
+          node scripts/sync-version.js
+          npm run build:packages
+
+      - name: Build Tauri app
+        run: npx tauri build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - name: Package for Arch Linux
+        run: |
+          # makepkg cannot run as root; create a temporary build user
+          useradd -m builder
+          WORKDIR="$(pwd)"
+          chown -R builder:builder "$WORKDIR"
+          # Write a helper script so the workspace path is not interpolated
+          # inside a shell string passed to su, avoiding potential quoting issues
+          cat > /tmp/run-makepkg.sh << SCRIPT
+          #!/bin/bash
+          set -e
+          cd "$WORKDIR"
+          mkdir -p target/release/bundle/arch
+          # --nodeps: dependencies already installed in the previous step
+          # --nocheck: the PKGBUILD has no check() function
+          PKGDEST="$WORKDIR/target/release/bundle/arch" makepkg -f --nodeps --nocheck --noconfirm
+          SCRIPT
+          chmod +x /tmp/run-makepkg.sh
+          su -s /bin/bash builder /tmp/run-makepkg.sh
+          node scripts/gen-arch-install.js
+
+      - name: Upload Arch Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: apinox-linux-arch
+          path: |
+            target/release/bundle/arch/*.pkg.tar.zst
+            target/release/bundle/arch/install.sh
+          if-no-files-found: error
+
   release:
-    needs: build
+    needs: [build, build-arch]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
@@ -106,6 +198,9 @@ jobs:
           files: |
             artifacts/**/*.exe
             artifacts/**/*.dmg
+            artifacts/**/*.deb
+            artifacts/**/*.rpm
+            artifacts/**/*.pkg.tar.zst
           draft: true
           generate_release_notes: true
         env:
