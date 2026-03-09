@@ -83,6 +83,7 @@ export const SidebarContainer = styled.div`
  */
 export const SidebarContent = styled.div`
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
     padding: 10px;
 `;

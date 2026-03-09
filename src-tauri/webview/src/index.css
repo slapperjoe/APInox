@@ -74,6 +74,12 @@ body {
   color: var(--apinox-editor-foreground);
 }
 
+/* iOS WKWebView scroll fix: position:fixed on body prevents WKWebView's
+   UIScrollView from consuming touch gestures before they reach overflow:auto divs */
+body[data-platform="ios"] {
+  position: fixed;
+}
+
 #root {
   height: 100%;
   width: 100%;
@@ -83,6 +89,13 @@ body {
 * {
   box-sizing: border-box;
 }
+
+/* iOS/Android: enable momentum scrolling on all overflow containers */
+body[data-platform="ios"] *,
+body[data-platform="android"] * {
+  -webkit-overflow-scrolling: touch;
+}
+
 
 /* Scrollbar styling for a native feel */
 ::-webkit-scrollbar {
