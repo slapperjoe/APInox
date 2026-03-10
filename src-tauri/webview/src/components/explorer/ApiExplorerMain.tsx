@@ -124,7 +124,7 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
     // If something is selected, show details
     if (selectedOperation) {
         return (
-            <div style={{ padding: 20, height: '100%', overflow: 'auto' }}>
+            <div style={{ padding: 20, flex: 1, minHeight: 0, width: '100%', overflow: 'auto', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
                 <button
                     onClick={onClearSelection}
                     style={{
@@ -189,7 +189,7 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
 
     if (selectedInterface) {
         return (
-            <div style={{ padding: 20, height: '100%', overflow: 'auto' }}>
+            <div style={{ padding: 20, flex: 1, minHeight: 0, width: '100%', overflow: 'auto', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
                 <button
                     onClick={onClearSelection}
                     style={{
@@ -222,10 +222,15 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
     // Default: Load Screen
     return (
         <div style={{
-            height: '100%', display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center',
-            padding: 40
-        }}>
+            flex: 1, minHeight: 0, width: '100%', display: 'flex', flexDirection: 'column',
+            overflow: 'auto', WebkitOverflowScrolling: 'touch'
+        } as React.CSSProperties}>
+            {/* Centered inner wrapper — scrolls if content overflows on small screens */}
+            <div style={{
+                display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center',
+                minHeight: '100%', padding: 40
+            }}>
             {/* Load Section */}
             <div style={{ padding: 40, maxWidth: '800px', width: '100%', margin: '0 auto' }}> {/* Centered Container */}
                 <h1 style={{ fontSize: 24, fontWeight: 500, marginBottom: 10, color: 'var(--apinox-foreground)' }}>
@@ -463,6 +468,7 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
                 </button>
 
             </div>
+            </div>{/* end centering wrapper */}
         </div>
     );
 };
