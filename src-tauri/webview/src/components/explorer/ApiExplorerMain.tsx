@@ -223,16 +223,17 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
     return (
         <div style={{
             flex: 1, minHeight: 0, width: '100%', display: 'flex', flexDirection: 'column',
-            overflow: 'auto', WebkitOverflowScrolling: 'touch'
+            overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch'
         } as React.CSSProperties}>
-            {/* Centered inner wrapper — scrolls if content overflows on small screens */}
+            {/* Content wrapper — horizontally centred, always starts at the top so
+                content is never pushed above scrollTop:0 on small screens (iOS fix) */}
             <div style={{
                 display: 'flex', flexDirection: 'column',
-                alignItems: 'center', justifyContent: 'center',
-                minHeight: '100%', padding: 40
+                alignItems: 'center',
+                width: '100%', padding: '32px 24px'
             }}>
             {/* Load Section */}
-            <div style={{ padding: 40, maxWidth: '800px', width: '100%', margin: '0 auto' }}> {/* Centered Container */}
+            <div style={{ maxWidth: '720px', width: '100%' }}> {/* Centred Container */}
                 <h1 style={{ fontSize: 24, fontWeight: 500, marginBottom: 10, color: 'var(--apinox-foreground)' }}>
                     API Explorer
                 </h1>
@@ -468,7 +469,7 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
                 </button>
 
             </div>
-            </div>{/* end centering wrapper */}
+            </div>{/* end content wrapper */}
         </div>
     );
 };

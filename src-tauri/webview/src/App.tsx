@@ -12,6 +12,7 @@ import { ScrapbookProvider } from './contexts/ScrapbookContext';
 import MainContent from './components/MainContent';
 import { DebugIndicator } from './components/DebugIndicator';
 import TitleBar from './components/TitleBar';
+import { MacOSTitleBarSearch } from './components/MacOSTitleBarSearch';
 
 // Editor settings persistence
 const EDITOR_SETTINGS_KEY = 'apinox-editor-settings';
@@ -59,16 +60,19 @@ export default function App() {
                 // is inside an element that actually has scrollable overflow.
                 // Also reset any UIScrollView drift that happens without touch input.
                 if (os === 'ios') {
-                    const isScrollable = (el: Element): boolean => {
+                    const canScroll = (el: Element): boolean => {
                         const style = window.getComputedStyle(el);
-                        const overflow = style.overflow + style.overflowY + style.overflowX;
-                        if (!/(auto|scroll)/.test(overflow)) return false;
-                        return el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth;
+                        const overflowY = style.overflowY;
+                        const overflowX = style.overflowX;
+                        // Accept elements that have scroll/auto overflow in either axis
+                        const scrollsY = /(auto|scroll)/.test(overflowY) && el.scrollHeight > el.clientHeight;
+                        const scrollsX = /(auto|scroll)/.test(overflowX) && el.scrollWidth > el.clientWidth;
+                        return scrollsY || scrollsX;
                     };
                     document.addEventListener('touchmove', (e) => {
                         let target = e.target as Element | null;
                         while (target && target !== document.documentElement) {
-                            if (isScrollable(target)) return; // let the element handle it
+                            if (canScroll(target)) return; // let the element handle it
                             target = target.parentElement;
                         }
                         e.preventDefault();
@@ -112,6 +116,7 @@ export default function App() {
                                 <TestRunnerProvider>
                                         <SearchProvider>
                                             {showCustomTitleBar && <TitleBar />}
+                                            {showMacOSSearchBar && <MacOSTitleBarSearch />}
                                             <DebugIndicator />
                                             <ErrorBoundary
                                                 onError={(error, errorInfo) => {

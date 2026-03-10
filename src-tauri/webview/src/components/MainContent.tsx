@@ -1271,15 +1271,15 @@ const MainContent: React.FC = () => {
 
 
     return (
-        <Container onClick={closeContextMenu} $showCustomTitleBar={showCustomTitleBar} $isMacOS={platformOS === 'macos'} $isMobile={isMobilePlatform}>
+        <Container onClick={closeContextMenu} $showCustomTitleBar={showCustomTitleBar} $isMacOS={platformOS === 'macos'} $isMobile={isMobilePlatform} $isAndroid={platformOS === 'android'}>
             {/* Mobile header bar — replaces desktop TitleBar on Android/iOS */}
             {isMobilePlatform && (
                 <div className="mobile-header">
                     <button
                         className="mobile-hamburger"
-                        onClick={(e) => { e.stopPropagation(); setIsMobileDrawerOpen(true); }}
-                        title="Open sidebar"
-                        aria-label="Open sidebar"
+                        onClick={(e) => { e.stopPropagation(); setIsMobileDrawerOpen(prev => !prev); }}
+                        title={isMobileDrawerOpen ? "Close sidebar" : "Open sidebar"}
+                        aria-label={isMobileDrawerOpen ? "Close sidebar" : "Open sidebar"}
                     >
                         <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
                             <path d="M2 4h16v2H2zM2 9h16v2H2zM2 14h16v2H2z"/>

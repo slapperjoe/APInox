@@ -18,7 +18,13 @@ const ModalOverlay = styled.div`
   background-color: ${MODAL_DEFAULTS.OVERLAY_BG};
   display: flex;
   justify-content: center;
-  align-items: center;
+  /* flex-start so overflow goes downward (scrollable), not above scrollTop:0 */
+  align-items: flex-start;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  /* padding gives breathing room and lets the overlay detect scroll correctly */
+  padding: 20px;
+  box-sizing: border-box;
   z-index: ${MODAL_DEFAULTS.Z_INDEX};
   animation: ${overlayEnter} ${MODAL_DEFAULTS.ANIMATION_DURATION} ease-out;
 `;
@@ -48,6 +54,9 @@ const ModalContent = styled.div<{ $width?: string | number; $size?: ModalSize }>
   max-height: ${props => props.$size === 'fullscreen' ? MODAL_CONSTRAINTS.FULLSCREEN_MAX_HEIGHT : MODAL_CONSTRAINTS.MAX_HEIGHT};
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  /* vertical centering via auto margins — collapses to 0 when modal overflows overlay */
+  margin: auto 0;
   animation: ${modalEnter} ${MODAL_DEFAULTS.ANIMATION_DURATION} ease-out;
 `;
 
@@ -72,7 +81,9 @@ const ModalHeaderExtra = styled.div`
 const ModalBody = styled.div`
     padding: ${MODAL_DEFAULTS.BODY_PADDING};
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     flex: 1;
+    min-height: 0;
 `;
 
 const ModalFooter = styled.div<{ $align?: 'left' | 'center' | 'right' }>`

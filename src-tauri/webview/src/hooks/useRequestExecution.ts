@@ -81,7 +81,21 @@ function fixContentType(request: ApiRequest): { contentType: string; headers: Re
         }
     }
     
-    // No fix needed
+    // For SOAP requests: ensure header matches the contentType field (dropdown is authoritative)
+    if (request.requestType === 'soap' && currentContentType) {
+        // If header doesn't match the contentType field, fix it
+        if (currentHeaderContentType !== currentContentType) {
+            return {
+                contentType: currentContentType,
+                headers: {
+                    ...(request.headers || {}),
+                    'Content-Type': currentContentType
+                }
+            };
+        }
+    }
+    
+    // No fix needed - header already matches
     return {
         contentType: currentContentType,
         headers: request.headers || {}
