@@ -32,7 +32,8 @@ const fillMissingEnvColors = (config: ApinoxConfig): [ApinoxConfig, boolean] => 
 const ModalWrapper = styled.div`
     display: flex;
     flex-direction: column;
-    height: calc(95vh - 120px);
+    flex: 1;
+    min-height: 0;
     overflow: hidden;
 `;
 

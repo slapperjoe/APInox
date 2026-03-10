@@ -280,11 +280,16 @@ code,
     position: fixed !important;
     top: calc(44px + env(safe-area-inset-top, 0px));
     left: 0;
-    bottom: env(safe-area-inset-bottom, 0px); /* anchor to bottom instead of height calc */
+    bottom: 0; /* fill to bottom - no safe area needed */
     z-index: 1000;
     transform: translateX(-100%);
     transition: transform 0.25s ease;
     box-shadow: 4px 0 16px rgba(0, 0, 0, 0.5);
+  }
+
+  /* Android-specific sidebar positioning */
+  body[data-platform="android"] .sidebar-drawer {
+    top: 68px;  /* 44px header + 24px status bar */
   }
 
   .sidebar-drawer.sidebar-open {
@@ -300,6 +305,11 @@ code,
     bottom: 0;
     background: rgba(0, 0, 0, 0.5);
     z-index: 999;
+  }
+
+  /* Android-specific backdrop positioning */
+  body[data-platform="android"] .sidebar-backdrop {
+    top: 68px;  /* 44px header + 24px status bar */
   }
 }
 
@@ -328,17 +338,25 @@ code,
 @media (max-width: 899px) {
   .mobile-header {
     display: flex;
-    align-items: flex-end;         /* align content to bottom so it sits below the safe area padding */
+    align-items: center;         /* center content vertically */
     flex-shrink: 0;
     width: 100%;
-    padding-top: env(safe-area-inset-top, 0px);  /* push below Dynamic Island */
+    padding-top: env(safe-area-inset-top, 0px);  /* iOS notch/Dynamic Island only */
     padding-left: env(safe-area-inset-left, 0px);
     padding-right: env(safe-area-inset-right, 0px);
-    height: calc(44px + env(safe-area-inset-top, 0px));
+    min-height: calc(44px + env(safe-area-inset-top, 0px));
     z-index: 1001;
     background: var(--apinox-titleBar-activeBackground, #1e1e1e);
     border-bottom: 1px solid var(--apinox-titleBar-border, rgba(255,255,255,0.08));
     gap: 8px;
+  }
+}
+
+/* Android-specific: add extra padding for status bar on mobile header */
+@media (max-width: 899px) {
+  body[data-platform="android"] .mobile-header {
+    padding-top: 24px;  /* Android status bar clearance */
+    min-height: 68px;   /* 44px base + 24px status bar */
   }
 }
 
@@ -366,12 +384,4 @@ code,
   background-clip: text;
 }
 
-/* iOS safe area insets */
-@supports (padding-top: env(safe-area-inset-top)) {
-  .app-root {
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
-  }
-}
+/* iOS safe area insets - handled via Container component props */

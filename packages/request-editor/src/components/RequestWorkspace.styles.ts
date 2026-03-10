@@ -258,8 +258,10 @@ export const ContentArea = styled.div`
 export const EditorSplitContainer = styled.div<{ $layoutMode: 'vertical' | 'horizontal' }>`
   display: flex;
   flex-direction: ${props => props.$layoutMode === 'vertical' ? 'row' : 'column'};
-  width: 100%;
-  height: 100%;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 `;
 
 export const RequestPane = styled.div<{ $ratio: number }>`

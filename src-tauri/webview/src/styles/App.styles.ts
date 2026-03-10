@@ -15,7 +15,7 @@ import styled from 'styled-components';
  * Main container for the application.
  * Uses VS Code theme variables for consistent appearance.
  */
-export const Container = styled.div<{ $showCustomTitleBar?: boolean; $isMacOS?: boolean; $isMobile?: boolean }>`
+export const Container = styled.div<{ $showCustomTitleBar?: boolean; $isMacOS?: boolean; $isMobile?: boolean; $isAndroid?: boolean }>`
     display: flex;
     flex-direction: ${props => props.$isMobile ? 'column' : 'row'};
     overflow: hidden;
@@ -32,12 +32,12 @@ export const Container = styled.div<{ $showCustomTitleBar?: boolean; $isMacOS?: 
     height: ${props => props.$isMobile ? 'auto' : '100dvh'};
     width: ${props => props.$isMobile ? 'auto' : '100vw'};
     padding-top: ${props => {
-        if (props.$isMobile) return '0';
-        if (props.$isMacOS) return '40px';
-        if (props.$showCustomTitleBar) return '40px';
+        if (props.$isMobile) return '0';  /* Mobile header handles its own clearance */
+        if (props.$isMacOS) return '40px';  /* macOS native title bar with overlay - need space for traffic lights */
+        if (props.$showCustomTitleBar) return '40px';  /* Windows/Linux custom title bar */
         return '0';
     }};
-    padding-bottom: ${props => props.$isMobile ? 'env(safe-area-inset-bottom, 0px)' : '0'};
+    padding-bottom: 0;
 `;
 
 // =============================================================================
