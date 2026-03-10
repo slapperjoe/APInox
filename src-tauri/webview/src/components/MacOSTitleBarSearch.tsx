@@ -6,6 +6,7 @@ import { useUI } from '../contexts/UIContext';
 import { SearchDropdown } from './SearchDropdown';
 import { SearchResult } from '../utils/workspaceSearch';
 import apinoxIcon from '../assets/apinox-icon.png';
+import pkg from '../../package.json';
 
 const SearchBarContainer = styled.div`
   position: fixed;
@@ -224,7 +225,7 @@ export const MacOSTitleBarSearch: React.FC = () => {
       <SearchBarContainer>
         <AppLogo onClick={handleLogoClick} title="Double-click to open Debug Console">
           <LogoIcon src={apinoxIcon} alt="APInox" />
-          <AppTitle>APInox</AppTitle>
+          <AppTitle>APInox {pkg.version}</AppTitle>
         </AppLogo>
         
         <SearchWrapper>

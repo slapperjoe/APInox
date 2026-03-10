@@ -48,8 +48,11 @@ export const MODAL_SIZES = {
  */
 export const MODAL_CONSTRAINTS = {
     MAX_WIDTH: '90%',
-    MAX_HEIGHT: '80vh',
-    FULLSCREEN_MAX_HEIGHT: '95vh',
+    /** svh = "small viewport height" — stable value that excludes the iOS address bar,
+     *  so the modal is never taller than the visible area. Falls back to 80vh on
+     *  browsers that don't support svh (equivalent behaviour). */
+    MAX_HEIGHT: 'min(80svh, 80vh)',
+    FULLSCREEN_MAX_HEIGHT: 'min(95svh, 95vh)',
 } as const;
 
 export type ModalSize = keyof typeof MODAL_SIZES;

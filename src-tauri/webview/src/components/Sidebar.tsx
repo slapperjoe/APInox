@@ -71,6 +71,10 @@ interface SidebarProps {
     activeEnvironment?: string;
     environments?: Record<string, any>;
     onChangeEnvironment?: (env: string) => void;
+
+    // Mobile drawer
+    isMobileOpen?: boolean;
+    onMobileClose?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -90,7 +94,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     sidebarExpanded,
     activeEnvironment,
     environments,
-    onChangeEnvironment
+    onChangeEnvironment,
+    isMobileOpen,
+    onMobileClose
 }) => {
     // Destructure for passing to legacy children (can be cleaned up later by moving groups down)
     const { projects, savedProjects, loadProject, saveProject, onUpdateProject, closeProject, onAddProject, toggleProjectExpand, toggleInterfaceExpand, toggleOperationExpand, expandAll, collapseAll, reorderItems, onDeleteInterface, onDeleteOperation, onAddFolder, onAddRequestToFolder, onDeleteFolder, onToggleFolderExpand, onRefreshInterface, onExportWorkspace, onBulkImport } = projectProps;
@@ -108,7 +114,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const hideContent = !sidebarExpanded || activeView === SidebarView.HOME;
 
     return (
-        <SidebarContainer $collapsed={hideContent}>
+        <SidebarContainer
+            $collapsed={hideContent}
+            className={`sidebar-drawer${isMobileOpen ? ' sidebar-open' : ''}`}
+        >
             <SidebarRail
                 activeView={activeView}
                 onChangeView={onChangeView}
@@ -117,6 +126,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 activeEnvironment={activeEnvironment}
                 environments={environments}
                 onChangeEnvironment={onChangeEnvironment}
+                onMobileClose={onMobileClose}
             />
 
             {/* Content Area */}

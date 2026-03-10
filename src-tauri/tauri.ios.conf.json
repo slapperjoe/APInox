@@ -1,0 +1,18 @@
+{
+  "build": {
+    "beforeDevCommand": "cd src-tauri/webview && npx vite preview --port 5173"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "APInox",
+        "visible": true,
+        "fullscreen": false,
+        "resizable": true,
+        "decorations": true,
+        "transparent": false
+      }
+    ]
+  }
+}

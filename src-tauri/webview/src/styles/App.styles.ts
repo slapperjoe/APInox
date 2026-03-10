@@ -15,20 +15,29 @@ import styled from 'styled-components';
  * Main container for the application.
  * Uses VS Code theme variables for consistent appearance.
  */
-export const Container = styled.div<{ $showCustomTitleBar?: boolean; $isMacOS?: boolean }>`
+export const Container = styled.div<{ $showCustomTitleBar?: boolean; $isMacOS?: boolean; $isMobile?: boolean; $isAndroid?: boolean }>`
     display: flex;
-    height: 100vh;
-    width: 100vw;
+    flex-direction: ${props => props.$isMobile ? 'column' : 'row'};
     overflow: hidden;
     background-color: var(--apinox-editor-background);
     color: var(--apinox-editor-foreground);
     font-family: var(--apinox-font-family);
     font-size: var(--apinox-font-size);
+    /* Mobile: position:fixed fills the exact WKWebView frame (more reliable than height:100dvh) */
+    position: ${props => props.$isMobile ? 'fixed' : 'static'};
+    top: ${props => props.$isMobile ? '0' : 'auto'};
+    left: ${props => props.$isMobile ? '0' : 'auto'};
+    right: ${props => props.$isMobile ? '0' : 'auto'};
+    bottom: ${props => props.$isMobile ? '0' : 'auto'};
+    height: ${props => props.$isMobile ? 'auto' : '100dvh'};
+    width: ${props => props.$isMobile ? 'auto' : '100vw'};
     padding-top: ${props => {
-        if (props.$isMacOS) return '40px';  // macOS custom titlebar (increased for traffic light alignment)
-        if (props.$showCustomTitleBar) return '40px';  // Custom titlebar on Windows/Linux
+        if (props.$isMobile) return '0';  /* Mobile header handles its own clearance */
+        if (props.$isMacOS) return '40px';  /* macOS native title bar with overlay - need space for traffic lights */
+        if (props.$showCustomTitleBar) return '40px';  /* Windows/Linux custom title bar */
         return '0';
     }};
+    padding-bottom: 0;
 `;
 
 // =============================================================================

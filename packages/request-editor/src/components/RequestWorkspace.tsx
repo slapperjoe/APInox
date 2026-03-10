@@ -85,6 +85,8 @@ export interface RequestWorkspaceProps {
 
   // Layout persistence
   initialLayoutMode?: 'vertical' | 'horizontal';
+  /** When provided, overrides internal layout state (e.g. force vertical on mobile) */
+  layoutMode?: 'vertical' | 'horizontal';
   onLayoutModeChange?: (mode: 'vertical' | 'horizontal') => void;
 
   // Event handlers for response actions
@@ -139,6 +141,7 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
   onLog,
   onPickFile,
   initialLayoutMode,
+  layoutMode: controlledLayoutMode,
   onLayoutModeChange
 }) => {
   // Editor settings from context
@@ -150,8 +153,15 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
   );
   const [showVariables, setShowVariables] = useState(false);
   const [showEditorSettings, setShowEditorSettings] = useState(false);
-  const [menuPosition, setMenuPosition] = useState<{ top: number; right: number } | null>(null);
-  const [layoutMode, setLayoutMode] = useState<'vertical' | 'horizontal'>(initialLayoutMode ?? 'vertical');
+  const [menuPosition, setMenuPosition] = useState<{ top: number; right: number; maxHeight: number } | null>(null);
+  const [layoutMode, setLayoutMode] = useState<'vertical' | 'horizontal'>(controlledLayoutMode ?? initialLayoutMode ?? 'vertical');
+
+  // Sync controlled layoutMode prop (e.g. forced vertical on mobile)
+  useEffect(() => {
+    if (controlledLayoutMode !== undefined) {
+      setLayoutMode(controlledLayoutMode);
+    }
+  }, [controlledLayoutMode]);
   const [splitRatio, setSplitRatio] = useState(0.5);
   const [isResizing, setIsResizing] = useState(false);
   const [selection, setSelection] = useState<{ text: string; offset: number } | null>(null);
@@ -170,9 +180,11 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
   const handleToggleSettings = useCallback(() => {
     if (!showEditorSettings && settingsButtonRef.current) {
       const rect = settingsButtonRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom - 4 - 16; // available px below button
       setMenuPosition({
         top: rect.bottom + 4,
-        right: window.innerWidth - rect.right
+        right: window.innerWidth - rect.right,
+        maxHeight: Math.max(200, spaceBelow) // at least 200px, capped to available space
       });
     }
     setShowEditorSettings(!showEditorSettings);
@@ -799,7 +811,14 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
             zIndex: 999999
           }}
         >
-          <S.EditorSettingsMenu>
+          {/* maxHeight + overflow on the menu itself, NOT the wrapper, because
+              EditorSettingsMenu is position:absolute so overflow on the parent
+              wrapper would clip it entirely */}
+          <S.EditorSettingsMenu style={{
+            maxHeight: `${menuPosition.maxHeight}px`,
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch' as any,
+          }}>
             {/* Font Settings */}
             <S.MenuSection>
               <S.MenuSectionTitle>Font Settings</S.MenuSectionTitle>
@@ -964,6 +983,7 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
                 </S.MenuIconButton>
               </S.MenuRow>
 
+              {controlledLayoutMode === undefined && (
               <S.MenuRow>
                 <S.MenuLabel>
                   <LayoutIcon size={14} />
@@ -976,6 +996,7 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
                   {layoutMode === 'vertical' ? 'Vertical' : 'Horizontal'}
                 </S.MenuIconButton>
               </S.MenuRow>
+              )}
             </S.MenuSection>
           </S.EditorSettingsMenu>
         </div>,

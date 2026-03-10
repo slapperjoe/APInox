@@ -124,7 +124,7 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
     // If something is selected, show details
     if (selectedOperation) {
         return (
-            <div style={{ padding: 20, height: '100%', overflow: 'auto' }}>
+            <div style={{ padding: 20, flex: 1, minHeight: 0, width: '100%', overflow: 'auto', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
                 <button
                     onClick={onClearSelection}
                     style={{
@@ -189,7 +189,7 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
 
     if (selectedInterface) {
         return (
-            <div style={{ padding: 20, height: '100%', overflow: 'auto' }}>
+            <div style={{ padding: 20, flex: 1, minHeight: 0, width: '100%', overflow: 'auto', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
                 <button
                     onClick={onClearSelection}
                     style={{
@@ -222,12 +222,18 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
     // Default: Load Screen
     return (
         <div style={{
-            height: '100%', display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center',
-            padding: 40
-        }}>
+            flex: 1, minHeight: 0, width: '100%', display: 'flex', flexDirection: 'column',
+            overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch'
+        } as React.CSSProperties}>
+            {/* Content wrapper — horizontally centred, always starts at the top so
+                content is never pushed above scrollTop:0 on small screens (iOS fix) */}
+            <div style={{
+                display: 'flex', flexDirection: 'column',
+                alignItems: 'center',
+                width: '100%', padding: '32px 24px'
+            }}>
             {/* Load Section */}
-            <div style={{ padding: 40, maxWidth: '800px', width: '100%', margin: '0 auto' }}> {/* Centered Container */}
+            <div style={{ maxWidth: '720px', width: '100%' }}> {/* Centred Container */}
                 <h1 style={{ fontSize: 24, fontWeight: 500, marginBottom: 10, color: 'var(--apinox-foreground)' }}>
                     API Explorer
                 </h1>
@@ -463,6 +469,7 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
                 </button>
 
             </div>
+            </div>{/* end content wrapper */}
         </div>
     );
 };

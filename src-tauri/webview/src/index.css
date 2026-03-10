@@ -74,6 +74,14 @@ body {
   color: var(--apinox-editor-foreground);
 }
 
+/* iOS WKWebView: scrolling is handled via JS touchmove prevention
+   so the native UIScrollView doesn't consume gestures from HTML elements.
+   Safe area insets are applied directly on the fixed mobile-header and
+   Container's padding-top via env(safe-area-inset-*) (requires viewport-fit=cover). */
+body[data-platform="ios"] {
+  overflow: hidden;
+}
+
 #root {
   height: 100%;
   width: 100%;
@@ -83,6 +91,13 @@ body {
 * {
   box-sizing: border-box;
 }
+
+/* iOS/Android: enable momentum scrolling on all overflow containers */
+body[data-platform="ios"] *,
+body[data-platform="android"] * {
+  -webkit-overflow-scrolling: touch;
+}
+
 
 /* Scrollbar styling for a native feel */
 ::-webkit-scrollbar {
@@ -193,3 +208,180 @@ body[data-theme="dark"] .light-only,
 body[data-theme="high-contrast"] .light-only {
   display: none !important;
 }
+
+/* ==========================================================================
+   Responsive Breakpoints
+   Phone portrait:          < 600px
+   Phone landscape / small: 600px – 899px
+   Tablet portrait:         900px – 1199px
+   Tablet landscape / desktop: ≥ 1200px
+   ========================================================================== */
+
+/* Minimum touch target size (Apple HIG / Material Design: 44px) */
+button,
+[role="button"],
+[role="menuitem"],
+[role="tab"],
+[role="treeitem"],
+a {
+  min-height: 44px;
+}
+
+/* Narrow override — elements that are intentionally compact (icon rail, etc.)
+   use this class to opt out of the 44px floor */
+.touch-compact {
+  min-height: unset;
+}
+
+/* Responsive modal sizing */
+[role="dialog"],
+.modal-container {
+  width: min(95vw, 800px) !important;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* XML / code response viewer — horizontal scroll instead of overflow */
+pre,
+code,
+.response-body,
+.xml-viewer,
+.code-viewer {
+  overflow-x: auto;
+  word-break: normal;
+  white-space: pre;
+}
+
+/* On phone portrait, stack request/response panels vertically */
+@media (max-width: 899px) {
+  .request-response-split {
+    flex-direction: column !important;
+  }
+
+  .request-response-split > * {
+    width: 100% !important;
+    height: auto !important;
+  }
+}
+
+/* Sidebar drawer on phone portrait */
+@media (max-width: 899px) {
+  /* Row that holds Sidebar + main workspace — fills remaining space below mobile header */
+  .content-row {
+    display: flex;
+    flex-direction: row;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .sidebar-drawer {
+    position: fixed !important;
+    top: calc(44px + env(safe-area-inset-top, 0px));
+    left: 0;
+    bottom: 0; /* fill to bottom - no safe area needed */
+    z-index: 1000;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    box-shadow: 4px 0 16px rgba(0, 0, 0, 0.5);
+  }
+
+  /* Android-specific sidebar positioning */
+  body[data-platform="android"] .sidebar-drawer {
+    top: 68px;  /* 44px header + 24px status bar */
+  }
+
+  .sidebar-drawer.sidebar-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    top: calc(44px + env(safe-area-inset-top, 0px));
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+  }
+
+  /* Android-specific backdrop positioning */
+  body[data-platform="android"] .sidebar-backdrop {
+    top: 68px;  /* 44px header + 24px status bar */
+  }
+}
+
+/* Hide backdrop on desktop; content-row is normal row layout */
+@media (min-width: 900px) {
+  .content-row {
+    display: contents; /* on desktop, don't add extra flex wrapper */
+  }
+
+  .sidebar-backdrop {
+    display: none !important;
+  }
+
+  .sidebar-drawer {
+    position: relative !important;
+    transform: none !important;
+    box-shadow: none !important;
+  }
+}
+
+/* Mobile header bar — shown on Android/iOS instead of desktop TitleBar */
+.mobile-header {
+  display: none;
+}
+
+@media (max-width: 899px) {
+  .mobile-header {
+    display: flex;
+    align-items: center;         /* center content vertically */
+    flex-shrink: 0;
+    width: 100%;
+    padding-top: env(safe-area-inset-top, 0px);  /* iOS notch/Dynamic Island only */
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+    min-height: calc(44px + env(safe-area-inset-top, 0px));
+    z-index: 1001;
+    background: var(--apinox-titleBar-activeBackground, #1e1e1e);
+    border-bottom: 1px solid var(--apinox-titleBar-border, rgba(255,255,255,0.08));
+    gap: 8px;
+  }
+}
+
+/* Android-specific: add extra padding for status bar on mobile header */
+@media (max-width: 899px) {
+  body[data-platform="android"] .mobile-header {
+    padding-top: 24px;  /* Android status bar clearance */
+    min-height: 68px;   /* 44px base + 24px status bar */
+  }
+}
+
+/* Hamburger button inside mobile header */
+.mobile-hamburger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--apinox-icon-foreground, #c5c5c5);
+  flex-shrink: 0;
+}
+
+.mobile-header-title {
+  font-size: 15px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* iOS safe area insets - handled via Container component props */

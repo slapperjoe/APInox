@@ -28,7 +28,11 @@ sidecar/dist/
 # Tauri Build Artifacts
 src-tauri/target/
 src-tauri/WixTools/
-src-tauri/gen/
+# src-tauri/gen/ is intentionally committed (Android/iOS project files)
+src-tauri/gen/android/.gradle/
+src-tauri/gen/android/app/build/
+src-tauri/gen/android/build/
+src-tauri/gen/apple/build/
 
 # Rust workspace build artifacts (root-level target/ from workspace Cargo.toml)
 target/

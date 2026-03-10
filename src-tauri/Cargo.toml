@@ -1,6 +1,6 @@
 [package]
 name = "apinox"
-version = "0.16.116"
+version = "0.16.119"
 description = "APInox - API Testing & Development Tool"
 authors = ["Dev1"]
 license = "MIT"
@@ -40,7 +40,7 @@ raw-window-handle = "0.6"
 tauri-plugin-decorum = "1.1.1"
 
 # HTTP client and networking
-reqwest = { version = "0.12", features = ["json", "cookies", "gzip", "rustls-tls"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "cookies", "gzip", "rustls-tls", "charset", "http2"] }
 tokio = { version = "1.45", features = ["full"] }
 
 # XML parsing and XPath
