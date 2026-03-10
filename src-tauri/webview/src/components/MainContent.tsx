@@ -39,6 +39,7 @@ import { useWorkspaceCallbacks } from '../hooks/useWorkspaceCallbacks';
 import { useAppLifecycle } from '../hooks/useAppLifecycle';
 import { useLayoutHandler } from '../hooks/useLayoutHandler';
 import { useFolderManager } from '../hooks/useFolderManager';
+import { useMobileLayout } from '../hooks/useMobileLayout';
 
 interface ConfirmationState {
     title: string;
@@ -135,7 +136,9 @@ const MainContent: React.FC = () => {
     // ==========================================================================
     // PLATFORM DETECTION
     // ==========================================================================
-    const [platformOS, setPlatformOS] = useState<'macos' | 'windows' | 'linux' | 'unknown'>('unknown');
+    const [platformOS, setPlatformOS] = useState<'macos' | 'windows' | 'linux' | 'android' | 'ios' | 'unknown'>('unknown');
+    const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+    const { isMobile } = useMobileLayout();
     
     useEffect(() => {
         async function detectPlatform() {
@@ -152,7 +155,8 @@ const MainContent: React.FC = () => {
         detectPlatform();
     }, []);
     
-    const showCustomTitleBar = platformOS !== 'macos';
+    const isMobilePlatform = platformOS === 'android' || platformOS === 'ios';
+    const showCustomTitleBar = platformOS !== 'macos' && !isMobilePlatform;
     
     // ==========================================================================
     // CONTEXT - Project state from ProjectContext
@@ -1267,7 +1271,35 @@ const MainContent: React.FC = () => {
 
 
     return (
-        <Container onClick={closeContextMenu} $showCustomTitleBar={showCustomTitleBar} $isMacOS={platformOS === 'macos'}>
+        <Container onClick={closeContextMenu} $showCustomTitleBar={showCustomTitleBar} $isMacOS={platformOS === 'macos'} $isMobile={isMobilePlatform} $isAndroid={platformOS === 'android'}>
+            {/* Mobile header bar — replaces desktop TitleBar on Android/iOS */}
+            {isMobilePlatform && (
+                <div className="mobile-header">
+                    <button
+                        className="mobile-hamburger"
+                        onClick={(e) => { e.stopPropagation(); setIsMobileDrawerOpen(prev => !prev); }}
+                        title={isMobileDrawerOpen ? "Close sidebar" : "Open sidebar"}
+                        aria-label={isMobileDrawerOpen ? "Close sidebar" : "Open sidebar"}
+                    >
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M2 4h16v2H2zM2 9h16v2H2zM2 14h16v2H2z"/>
+                        </svg>
+                    </button>
+                    <span className="mobile-header-title">APInox</span>
+                </div>
+            )}
+
+            {/* Backdrop — closes sidebar on mobile when tapping outside */}
+            {isMobile && isMobileDrawerOpen && (
+                <div
+                    className="sidebar-backdrop"
+                    onClick={() => setIsMobileDrawerOpen(false)}
+                />
+            )}
+
+            {/* Content row: sidebar + main workspace side by side */}
+            <div className="content-row">
+
             {/* Sidebar with consolidated props */}
             <Sidebar
                 projectProps={{
@@ -1405,6 +1437,8 @@ const MainContent: React.FC = () => {
                 activeEnvironment={config?.activeEnvironment}
                 environments={config?.environments}
                 onChangeEnvironment={(env) => bridge.sendMessage({ command: 'setActiveEnvironment', env })}
+                isMobileOpen={isMobileDrawerOpen}
+                onMobileClose={() => setIsMobileDrawerOpen(false)}
             />
 
             {/* WorkspaceLayout with consolidated props */}
@@ -1986,6 +2020,8 @@ const MainContent: React.FC = () => {
                     return newInterfaces;
                 }}
             />
+
+            </div>{/* end content-row */}
 
             {wsdlDiff && (
                 <WsdlSyncModal

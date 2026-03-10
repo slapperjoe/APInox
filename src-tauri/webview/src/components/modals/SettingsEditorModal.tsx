@@ -32,7 +32,8 @@ const fillMissingEnvColors = (config: ApinoxConfig): [ApinoxConfig, boolean] => 
 const ModalWrapper = styled.div`
     display: flex;
     flex-direction: column;
-    height: calc(95vh - 120px);
+    flex: 1;
+    min-height: 0;
     overflow: hidden;
 `;
 
@@ -40,6 +41,17 @@ const TabContainer = styled.div`
     display: flex;
     border-bottom: 1px solid var(--apinox-panel-border);
     background: var(--apinox-sideBar-background);
+    overflow-x: auto;
+    overflow-y: hidden;
+
+    &::-webkit-scrollbar {
+        height: 4px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: var(--apinox-scrollbarSlider-background, #555);
+        border-radius: 2px;
+    }
 `;
 
 const Tab = styled.div<{ $active: boolean }>`
@@ -49,6 +61,8 @@ const Tab = styled.div<{ $active: boolean }>`
     display: flex;
     align-items: center;
     gap: 6px;
+    flex-shrink: 0;
+    white-space: nowrap;
     border-top: 1px solid transparent;
     border-right: 1px solid var(--apinox-panel-border);
     background: ${props => props.$active ? 'var(--apinox-editor-background)' : 'transparent'};
