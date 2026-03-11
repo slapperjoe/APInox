@@ -121,7 +121,7 @@ export const WorkflowsUi: React.FC<WorkflowsUiProps> = ({
                 <SidebarHeaderTitle>Workflows ({workflows.length})</SidebarHeaderTitle>
                 <SidebarHeaderActions>
                     <HeaderButton onClick={() => onAdd?.()} title="Create Workflow">
-                        <Plus size={14} />
+                        <Plus size={16} />
                     </HeaderButton>
                 </SidebarHeaderActions>
             </SidebarHeader>
