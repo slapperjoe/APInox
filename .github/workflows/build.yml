@@ -189,14 +189,14 @@ jobs:
         run: cd src-tauri/webview && npm ci
 
       - name: Import Apple code signing certificate
-        if: secrets.APPLE_CERTIFICATE != ''
+        if: ${{ secrets.APPLE_CERTIFICATE != '' }}
         uses: apple-actions/import-codesign-certs@v3
         with:
           p12-file-base64: ${{ secrets.APPLE_CERTIFICATE }}
           p12-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
 
       - name: Install provisioning profile
-        if: secrets.APPLE_PROVISIONING_PROFILE != ''
+        if: ${{ secrets.APPLE_PROVISIONING_PROFILE != '' }}
         run: |
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           echo "${{ secrets.APPLE_PROVISIONING_PROFILE }}" | base64 --decode \
