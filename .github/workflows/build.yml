@@ -185,13 +185,13 @@ jobs:
     #   APPLE_CERTIFICATE_PASSWORD   – password for the .p12
     #   APPLE_PROVISIONING_PROFILE   – base64-encoded .mobileprovision file
     #   APPLE_TEAM_ID                – Apple Developer Team ID
-    # Signing steps are skipped gracefully when those secrets are absent.
-    continue-on-error: true
+    # Build and upload steps are skipped gracefully when those secrets are absent.
     # Map secrets to env vars so they can be checked in `if:` conditions.
     # (The `secrets` context is not accessible in `if:` expressions.)
     env:
       APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
       APPLE_PROVISIONING_PROFILE: ${{ secrets.APPLE_PROVISIONING_PROFILE }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
     steps:
       - name: Checkout repository
@@ -234,22 +234,101 @@ jobs:
             > ~/Library/MobileDevice/Provisioning\ Profiles/apinox.mobileprovision
 
       - name: Build iOS IPA
+        if: env.APPLE_TEAM_ID != ''
         run: npx tauri ios build
         env:
           APPLE_DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
 
       - name: Upload iOS IPA artifact
+        if: env.APPLE_TEAM_ID != ''
         uses: actions/upload-artifact@v4
         with:
           name: apinox-ios
           path: src-tauri/gen/apple/build/**/*.ipa
           if-no-files-found: warn
 
+  build-android:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # Android builds produce an unsigned APK by default.
+    # To enable signed release APKs, add these repository secrets:
+    #   ANDROID_KEYSTORE            – base64-encoded .jks / .keystore file
+    #   ANDROID_KEYSTORE_PASSWORD   – keystore store password
+    #   ANDROID_KEY_ALIAS           – key alias inside the keystore
+    #   ANDROID_KEY_PASSWORD        – key password
+    # Signing steps are skipped gracefully when those secrets are absent.
+    # Map secrets to env vars so they can be checked in `if:` conditions.
+    # (The `secrets` context is not accessible in `if:` expressions.)
+    env:
+      ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: '. -> target'
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install webview dependencies
+        run: cd src-tauri/webview && npm ci
+
+      - name: Decode signing keystore
+        if: env.ANDROID_KEYSTORE != ''
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE }}" | base64 --decode \
+            > "$RUNNER_TEMP/release.keystore"
+
+      - name: Build Android APK (signed release)
+        if: env.ANDROID_KEYSTORE != ''
+        run: npx tauri android build
+        env:
+          NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
+          TAURI_ANDROID_SIGNING_KEY_STORE: ${{ runner.temp }}/release.keystore
+          TAURI_ANDROID_SIGNING_KEY_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          TAURI_ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          TAURI_ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      - name: Build Android APK (unsigned debug)
+        if: env.ANDROID_KEYSTORE == ''
+        run: npx tauri android build --debug
+        env:
+          NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
+
+      - name: Upload Android APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: apinox-android
+          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          if-no-files-found: warn
+
   release:
-    needs: [build, build-arch, build-ios]
-    # build-ios has continue-on-error:true so it never blocks the release;
-    # listing it in needs ensures any available iOS IPA is uploaded before
-    # the release artifact collection step runs.
+    needs: [build, build-arch, build-ios, build-android]
+    # build-ios and build-android list in needs so any available mobile artifacts
+    # are collected before the release step runs. Neither blocks the release —
+    # the condition below only requires the desktop jobs to succeed.
     if: |
       startsWith(github.ref, 'refs/tags/v') &&
       needs.build.result == 'success' &&
@@ -277,6 +356,7 @@ jobs:
             artifacts/**/*.rpm
             artifacts/**/*.pkg.tar.zst
             artifacts/**/*.ipa
+            artifacts/**/*.apk
           draft: true
           generate_release_notes: true
         env:
