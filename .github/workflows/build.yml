@@ -176,9 +176,84 @@ jobs:
             target/release/bundle/arch/install.sh
           if-no-files-found: error
 
+  build-ios:
+    runs-on: macos-latest
+    permissions:
+      contents: read
+    # iOS builds require Apple Developer signing credentials configured as repository secrets:
+    #   APPLE_CERTIFICATE            – base64-encoded .p12 certificate
+    #   APPLE_CERTIFICATE_PASSWORD   – password for the .p12
+    #   APPLE_PROVISIONING_PROFILE   – base64-encoded .mobileprovision file
+    #   APPLE_TEAM_ID                – Apple Developer Team ID
+    # Signing steps are skipped gracefully when those secrets are absent.
+    continue-on-error: true
+    # Map secrets to env vars so they can be checked in `if:` conditions.
+    # (The `secrets` context is not accessible in `if:` expressions.)
+    env:
+      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+      APPLE_PROVISIONING_PROFILE: ${{ secrets.APPLE_PROVISIONING_PROFILE }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: '. -> target'
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install webview dependencies
+        run: cd src-tauri/webview && npm ci
+
+      - name: Import Apple code signing certificate
+        if: env.APPLE_CERTIFICATE != ''
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.APPLE_CERTIFICATE }}
+          p12-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+
+      - name: Install provisioning profile
+        if: env.APPLE_PROVISIONING_PROFILE != ''
+        run: |
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          echo "${{ secrets.APPLE_PROVISIONING_PROFILE }}" | base64 --decode \
+            > ~/Library/MobileDevice/Provisioning\ Profiles/apinox.mobileprovision
+
+      - name: Build iOS IPA
+        run: npx tauri ios build
+        env:
+          APPLE_DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: Upload iOS IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: apinox-ios
+          path: src-tauri/gen/apple/build/**/*.ipa
+          if-no-files-found: warn
+
   release:
-    needs: [build, build-arch]
-    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build, build-arch, build-ios]
+    # build-ios has continue-on-error:true so it never blocks the release;
+    # listing it in needs ensures any available iOS IPA is uploaded before
+    # the release artifact collection step runs.
+    if: |
+      startsWith(github.ref, 'refs/tags/v') &&
+      needs.build.result == 'success' &&
+      needs.build-arch.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -193,7 +268,7 @@ jobs:
         run: ls -R artifacts
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: |
             artifacts/**/*.exe
@@ -201,6 +276,7 @@ jobs:
             artifacts/**/*.deb
             artifacts/**/*.rpm
             artifacts/**/*.pkg.tar.zst
+            artifacts/**/*.ipa
           draft: true
           generate_release_notes: true
         env:
