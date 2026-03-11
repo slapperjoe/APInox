@@ -2,6 +2,19 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { SidebarView, ApiInterface } from '@shared/models';
 import { BackendCommand } from '@shared/messages';
 
+declare const __APP_VERSION__: string;
+
+const LAST_OPENED_VERSION_KEY = 'apinox:lastOpenedVersion';
+
+function shouldShowWelcomeOnStartup(): boolean {
+    const current = __APP_VERSION__; // e.g. "0.17.122"
+    const currentPatch = parseInt(current.split('.')[2] ?? '0', 10);
+    const stored = localStorage.getItem(LAST_OPENED_VERSION_KEY) ?? '';
+    const storedPatch = parseInt(stored.split('.')[2] ?? '0', 10);
+    localStorage.setItem(LAST_OPENED_VERSION_KEY, current);
+    return currentPatch > storedPatch;
+}
+
 interface NavigationContextType {
     activeView: SidebarView;
     setActiveView: React.Dispatch<React.SetStateAction<SidebarView>>;
@@ -23,7 +36,9 @@ export const useNavigation = () => {
 };
 
 export const NavigationProvider = ({ children }: { children: ReactNode }) => {
-    const [activeView, setActiveView] = useState<SidebarView>(SidebarView.EXPLORER);
+    const [activeView, setActiveView] = useState<SidebarView>(
+        () => shouldShowWelcomeOnStartup() ? SidebarView.HOME : SidebarView.EXPLORER
+    );
     const [sidebarExpanded, setSidebarExpanded] = useState<boolean>(true);
     const [exploredInterfaces, setExploredInterfaces] = useState<ApiInterface[]>([]);
 

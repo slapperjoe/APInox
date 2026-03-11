@@ -35,7 +35,7 @@ export const SidebarHeader = styled.div`
     align-items: center;
     justify-content: space-between;
     padding: 4px 10px;
-    min-height: 28px;
+    height: 44px;
     border-bottom: 1px solid var(--apinox-sideBarSectionHeader-border);
     user-select: none;
 `;

@@ -6,6 +6,8 @@ import titleDark from '../../assets/app-title-dark.png';
 import titleLight from '../../assets/app-title-light.jpg';
 import { SPACING_XL } from '../../styles/spacing';
 
+declare const __CHANGELOG__: string;
+
 interface WelcomePanelProps {
     changelog?: string;
 }
@@ -21,15 +23,16 @@ const WelcomeContainer = styled.div`
 `;
 
 export const WelcomePanel: React.FC<WelcomePanelProps> = ({ changelog }) => {
+    const content = changelog || __CHANGELOG__;
     return (
         <WelcomeContainer>
             <Logo src={titleDark} className="dark-only" alt="APInox" />
             <Logo src={titleLight} className="light-only" alt="APInox" />
             <h1>Welcome to APInox</h1>
             <p>Load a WSDL to see available operations.</p>
-            {changelog && (
+            {content && (
                 <MarkdownContainer>
-                    <ReactMarkdown>{changelog}</ReactMarkdown>
+                    <ReactMarkdown>{content}</ReactMarkdown>
                 </MarkdownContainer>
             )}
         </WelcomeContainer>

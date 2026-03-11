@@ -4,7 +4,7 @@ import { Play, Plus, Trash2, ChevronDown, ChevronRight, FlaskConical, FolderOpen
 import { ApinoxProject, TestSuite } from '@shared/models';
 import { OperationItem, RequestItem, SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle } from './shared/SidebarStyles';
 import { EmptyState } from '../common/EmptyState';
-import { HeaderButton, IconButton } from '../common/Button';
+import { HeaderButton } from '../common/Button';
 import { InlineFormInput } from '../common/Form';
 import { SPACING_SM, SPACING_XS } from '../../styles/spacing';
 
@@ -321,12 +321,12 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                     </SidebarHeaderTitle>
                     <SidebarHeaderActions>
                         <HeaderActions>
-                            <IconButton
+                            <HeaderButton
                                 onClick={() => setShowAddSuiteMenu(!showAddSuiteMenu)}
                                 title="Add Test Suite"
                             >
-                                <Plus size={14} />
-                            </IconButton>
+                                <Plus size={16} />
+                            </HeaderButton>
 
                             {/* Project Selection Dropdown */}
                             {showAddSuiteMenu && (

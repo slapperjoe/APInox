@@ -1,13 +1,51 @@
 # Changelog
 
 
-## [0.17.1] - 2026-03-10
-### Changes
-- No commit messages found.
+## [0.17.122] - 2026-03-10
+### Changed
+- **Sidebar consistency**: All sidebar section headers are now a fixed 44px height — titles without action buttons no longer render shorter than those with buttons
+- **Icon consistency**: Standardised all sidebar header action icons to 16px across Workflows, Tests, Collections, Quick Requests and API Explorer panels
 
-## [0.17.0] - 2026-03-10
-### Changes
-- Test changelog entry
+### Added
+- **Changelog in Welcome panel**: Release notes are now embedded at build time and displayed directly in the Welcome panel — no backend message required
+- **Auto-show Welcome on update**: If the application patch number has increased since last launch, the Welcome panel is shown automatically on startup so users see what changed
+
+
+## [0.17.1] - 2026-03-10
+### Added
+- **Android & iOS Support**: Full mobile platform support via Tauri Mobile
+  - Phase 1–5 implementation: project init, network security config, bundled assets, mobile header bar
+  - Vertical layout forced on mobile; tab overflow fixed on small screens
+  - Android: ARM64-only builds, Gradle task fixes, switched to rustls-only (drops OpenSSL dependency)
+  - iOS: bundled assets for simulator (no dev server needed), safe-area inset handling, scroll prevention via JS touchmove
+  - Desktop titlebar/controls hidden on Android/iOS; proper mobile header shown instead
+  - Added `npm run android` / `npm run ios` convenience scripts
+
+### Fixed
+- iOS layout: `flex:1` on WSDL Explorer container for reliable full-height layout
+- iOS layout: `position:fixed inset:0` on root container
+- iOS: mobile header made in-flow (not fixed) to prevent content offset
+- iOS: hamburger button safe-area and scroll prevention refined
+- iOS: viewport-fit=cover with correct safe-area insets
+
+
+## [0.17.0] - 2026-02-10
+### Added
+- **Linux Distribution Packages**: CI pipeline now builds `.deb`, `.rpm`, and Arch `.pkg.tar.zst` packages alongside Windows and macOS (#17)
+- **Splashscreen**: Application launch now shows a branded splashscreen that hides once initialisation completes
+- **SOAP Version Badge**: `SoapVersionBadge` component displayed in the service tree for quick SOAP 1.1/1.2 identification
+- **Deterministic Environment Colors**: Environments are now assigned consistent colors across sessions; settings editor enhanced accordingly
+- **Build Number Tracking**: `.buildno` file introduced for fine-grained build versioning
+
+### Changed
+- **Standalone WSDL/SOAP Parser**: Extracted parser logic into a dedicated `apinox-wsdl-parser` Rust crate for reuse and testability (#12)
+- **Tauri upgraded to 2.10.3**: Synced `tauri`, `tauri-plugin-dialog` and related packages to latest stable versions (#15)
+- **Removed Node.js sidecar**: Deprecated sidecar process fully removed from source and CI — all backend logic now runs in the Tauri Rust core (#11)
+
+### Fixed
+- CI artifact paths corrected for Cargo workspace at repo root (#16)
+- CI build failure with `--target` flag in `tauri:build` script
+
 
 ## [0.16.0] - 2026-02-05
 ### Added
@@ -18,9 +56,6 @@
   - Type dropdown in Extractor UI (XPath, Regex, JSONPath, Header)
   - Enhanced documentation with real-world examples
   - Complementary to existing XPath extractors for non-XML responses
-
-### Auto-Generated Changes
-- No Commit messages found.
 
 ## [0.15.105] - 2026-02-04
 ### Changed

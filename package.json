@@ -7,7 +7,7 @@
     "url": "https://github.com/slapperjoe/apinox.git"
   },
   "license": "MIT",
-  "version": "0.17.1",
+  "version": "0.17.122",
   "scripts": {
     "build:packages": "cd packages/request-editor && npm install && npm run build",
     "compile-webview": "npm run build:packages && cd src-tauri/webview && npm install && npm run build:skip-check",
@@ -22,6 +22,7 @@
     "sync-version": "node scripts/sync-version.js",
     "prepare": "npx simple-git-hooks",
     "increment-build": "node scripts/increment-build.js",
+    "tauri:test": "npm run build:packages && cd src-tauri/webview && npm install && cd ../.. && npx tauri dev",
     "tauri:dev": "node scripts/increment-build.js && node scripts/sync-version.js && npm run build:packages && cd src-tauri/webview && npm install && cd ../.. && npx tauri dev",
     "tauri:build": "node scripts/tauri-build.js",
     "tauri:ios": "node scripts/increment-build.js && node scripts/sync-version.js && npm run compile-webview && npx tauri ios dev",
