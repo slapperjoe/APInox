@@ -219,6 +219,9 @@ jobs:
       - name: Install webview dependencies
         run: cd src-tauri/webview && npm ci
 
+      - name: Install request-editor dependencies
+        run: cd packages/request-editor && npm install
+
       - name: Import Apple code signing certificate
         if: env.APPLE_CERTIFICATE != ''
         uses: apple-actions/import-codesign-certs@v3
@@ -294,6 +297,9 @@ jobs:
 
       - name: Install webview dependencies
         run: cd src-tauri/webview && npm ci
+
+      - name: Install request-editor dependencies
+        run: cd packages/request-editor && npm install
 
       - name: Decode signing keystore
         if: env.ANDROID_KEYSTORE != ''
