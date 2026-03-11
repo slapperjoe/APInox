@@ -98,6 +98,122 @@ jobs:
             target/${{ matrix.target }}/release/bundle/rpm/*.rpm
           if-no-files-found: error
 
+  build-android:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Install Android NDK
+        run: echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "ndk;27.0.12077973"
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: '. -> target'
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install webview dependencies
+        run: cd src-tauri/webview && npm ci
+
+      - name: Build Android APK
+        run: npx tauri android build --apk
+        env:
+          NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.0.12077973
+
+      - name: Upload Android APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: apinox-android
+          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
+
+  build-ios:
+    runs-on: macos-latest
+    permissions:
+      contents: read
+    # iOS builds require Apple Developer signing credentials configured as secrets:
+    #   APPLE_CERTIFICATE            – base64-encoded .p12 certificate
+    #   APPLE_CERTIFICATE_PASSWORD   – password for the .p12
+    #   APPLE_PROVISIONING_PROFILE   – base64-encoded .mobileprovision file
+    #   APPLE_TEAM_ID                – Apple Developer Team ID
+    # The job always runs; signing steps are skipped when those secrets are absent.
+    continue-on-error: true
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: '. -> target'
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install webview dependencies
+        run: cd src-tauri/webview && npm ci
+
+      - name: Import Apple code signing certificate
+        if: secrets.APPLE_CERTIFICATE != ''
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.APPLE_CERTIFICATE }}
+          p12-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+
+      - name: Install provisioning profile
+        if: secrets.APPLE_PROVISIONING_PROFILE != ''
+        run: |
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          echo "${{ secrets.APPLE_PROVISIONING_PROFILE }}" | base64 --decode \
+            > ~/Library/MobileDevice/Provisioning\ Profiles/apinox.mobileprovision
+
+      - name: Build iOS IPA
+        run: npx tauri ios build
+        env:
+          APPLE_DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: Upload iOS IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: apinox-ios
+          path: src-tauri/gen/apple/build/**/*.ipa
+          if-no-files-found: warn
+
   build-arch:
     runs-on: ubuntu-latest
     permissions:
@@ -177,8 +293,14 @@ jobs:
           if-no-files-found: error
 
   release:
-    needs: [build, build-arch]
-    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build, build-arch, build-android, build-ios]
+    # Run when a version tag is pushed. Desktop and Android must succeed;
+    # iOS is allowed to fail (continue-on-error) without blocking the release.
+    if: |
+      startsWith(github.ref, 'refs/tags/v') &&
+      needs.build.result == 'success' &&
+      needs.build-arch.result == 'success' &&
+      needs.build-android.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -201,6 +323,8 @@ jobs:
             artifacts/**/*.deb
             artifacts/**/*.rpm
             artifacts/**/*.pkg.tar.zst
+            artifacts/**/*.apk
+            artifacts/**/*.ipa
           draft: true
           generate_release_notes: true
         env:
