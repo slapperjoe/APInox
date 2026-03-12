@@ -182,13 +182,36 @@ jobs:
       contents: read
     #
     # ── Unsigned simulator build ──────────────────────────────────────────────
-    # An unsigned iOS build targets the iOS Simulator and requires NO secrets.
-    # It always runs and produces a .app bundle that can be loaded into
-    # Xcode Simulator without an Apple Developer account.
+    # Runs whenever APPLE_CERTIFICATE is NOT set (i.e. no signing cert exists).
+    # Targets the iOS Simulator; no Apple Developer account is required.
+    # The .app bundle produced can be dragged into Xcode Simulator directly.
     #
     # ── Signed device build (IPA) ────────────────────────────────────────────
-    # A signed IPA for real devices requires four repository secrets.
-    # The signed steps are skipped gracefully when the secrets are absent.
+    # Runs whenever APPLE_CERTIFICATE IS set.
+    # Requires all four secrets listed below; skipped gracefully when absent.
+    #
+    # ── Which secrets do you need? ───────────────────────────────────────────
+    #
+    # Scenario                                Set these secrets
+    # ─────────────────────────────────────── ──────────────────────────────────
+    # Simulator / unsigned build only         (none — just leave all four unset)
+    # Signed IPA for real devices             All four: APPLE_CERTIFICATE,
+    #                                         APPLE_CERTIFICATE_PASSWORD,
+    #                                         APPLE_PROVISIONING_PROFILE,
+    #                                         APPLE_TEAM_ID
+    #
+    # ── FAQ: "I have a Team ID from Xcode — should I set APPLE_TEAM_ID?" ────
+    # Short answer: only if you also have APPLE_CERTIFICATE.
+    #
+    # Every Xcode installation — even a free personal account — shows a Team ID.
+    # That ID alone does NOT enable signing in CI.  Code signing requires a
+    # certificate (.p12) AND a provisioning profile (.mobileprovision) that are
+    # tied to a paid Apple Developer Program membership.
+    # If you set APPLE_TEAM_ID without APPLE_CERTIFICATE, the workflow will
+    # still fall through to the UNSIGNED simulator build (which is gated on
+    # APPLE_CERTIFICATE, not APPLE_TEAM_ID), so it is safe to leave unset.
+    #
+    # ── Secret reference table ───────────────────────────────────────────────
     #
     # Secret                       What it is                  Where to get it
     # ─────────────────────────────────────────────────────────────────────────
@@ -197,6 +220,8 @@ jobs:
     #                              Distribution or Developer    "iPhone Developer" cert →
     #                              signing certificate +        Export → save as .p12 → then:
     #                              private key.                 base64 -i cert.p12 | pbcopy
+    #                              Requires paid Apple
+    #                              Developer Program ($99/yr).
     #
     # APPLE_CERTIFICATE_PASSWORD   Passphrase chosen when       You set this when exporting
     #                              exporting the .p12 above.    the .p12 from Keychain Access.
@@ -205,11 +230,14 @@ jobs:
     #                              .mobileprovision file that   Certificates, Identifiers &
     #                              links your App ID, devices,  Profiles → Profiles → download
     #                              and certificate together.    the .mobileprovision → then:
-    #                                                           base64 -i profile.mobileprovision | pbcopy
+    #                              Requires paid Apple          base64 -i profile.mobileprovision | pbcopy
+    #                              Developer Program ($99/yr).
     #
     # APPLE_TEAM_ID                10-character alphanumeric    developer.apple.com →
     #                              string identifying your      Account → Membership details →
     #                              Apple Developer team.        "Team ID" field.
+    #                              Only needed alongside        (Also visible in Xcode →
+    #                              APPLE_CERTIFICATE above.     Settings → Accounts → team row)
     #
     # (The `secrets` context is not accessible in `if:` conditions, so secrets
     #  are mapped to env vars and those are tested instead.)
@@ -247,20 +275,20 @@ jobs:
       - name: Install request-editor dependencies
         run: cd packages/request-editor && npm install
 
-      # ── Unsigned simulator build (always runs, no secrets required) ─────────
+      # ── Unsigned simulator build (runs when no signing certificate is set) ───
       - name: Build unsigned iOS (simulator)
-        if: env.APPLE_TEAM_ID == ''
+        if: env.APPLE_CERTIFICATE == ''
         run: npx tauri ios build --target aarch64-apple-ios-sim -- CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
 
       - name: Upload unsigned iOS simulator artifact
-        if: env.APPLE_TEAM_ID == ''
+        if: env.APPLE_CERTIFICATE == ''
         uses: actions/upload-artifact@v4
         with:
           name: apinox-ios-simulator
           path: src-tauri/gen/apple/build/**/*.app
           if-no-files-found: warn
 
-      # ── Signed device build (runs only when signing secrets are configured) ─
+      # ── Signed device build (runs only when signing certificate is configured) ─
       - name: Import Apple code signing certificate
         if: env.APPLE_CERTIFICATE != ''
         uses: apple-actions/import-codesign-certs@v3
@@ -276,13 +304,13 @@ jobs:
             > ~/Library/MobileDevice/Provisioning\ Profiles/apinox.mobileprovision
 
       - name: Build signed iOS IPA (device)
-        if: env.APPLE_TEAM_ID != ''
+        if: env.APPLE_CERTIFICATE != ''
         run: npx tauri ios build
         env:
           APPLE_DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
 
       - name: Upload signed iOS IPA artifact
-        if: env.APPLE_TEAM_ID != ''
+        if: env.APPLE_CERTIFICATE != ''
         uses: actions/upload-artifact@v4
         with:
           name: apinox-ios
