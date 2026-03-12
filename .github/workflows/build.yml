@@ -180,14 +180,39 @@ jobs:
     runs-on: macos-latest
     permissions:
       contents: read
-    # iOS builds require Apple Developer signing credentials configured as repository secrets:
-    #   APPLE_CERTIFICATE            – base64-encoded .p12 certificate
-    #   APPLE_CERTIFICATE_PASSWORD   – password for the .p12
-    #   APPLE_PROVISIONING_PROFILE   – base64-encoded .mobileprovision file
-    #   APPLE_TEAM_ID                – Apple Developer Team ID
-    # Build and upload steps are skipped gracefully when those secrets are absent.
-    # Map secrets to env vars so they can be checked in `if:` conditions.
-    # (The `secrets` context is not accessible in `if:` expressions.)
+    #
+    # ── Unsigned simulator build ──────────────────────────────────────────────
+    # An unsigned iOS build targets the iOS Simulator and requires NO secrets.
+    # It always runs and produces a .app bundle that can be loaded into
+    # Xcode Simulator without an Apple Developer account.
+    #
+    # ── Signed device build (IPA) ────────────────────────────────────────────
+    # A signed IPA for real devices requires four repository secrets.
+    # The signed steps are skipped gracefully when the secrets are absent.
+    #
+    # Secret                       What it is                  Where to get it
+    # ─────────────────────────────────────────────────────────────────────────
+    # APPLE_CERTIFICATE            Base64-encoded .p12 file    Keychain Access → right-click
+    #                              containing your Apple        your "Apple Distribution" or
+    #                              Distribution or Developer    "iPhone Developer" cert →
+    #                              signing certificate +        Export → save as .p12 → then:
+    #                              private key.                 base64 -i cert.p12 | pbcopy
+    #
+    # APPLE_CERTIFICATE_PASSWORD   Passphrase chosen when       You set this when exporting
+    #                              exporting the .p12 above.    the .p12 from Keychain Access.
+    #
+    # APPLE_PROVISIONING_PROFILE   Base64-encoded               developer.apple.com →
+    #                              .mobileprovision file that   Certificates, Identifiers &
+    #                              links your App ID, devices,  Profiles → Profiles → download
+    #                              and certificate together.    the .mobileprovision → then:
+    #                                                           base64 -i profile.mobileprovision | pbcopy
+    #
+    # APPLE_TEAM_ID                10-character alphanumeric    developer.apple.com →
+    #                              string identifying your      Account → Membership details →
+    #                              Apple Developer team.        "Team ID" field.
+    #
+    # (The `secrets` context is not accessible in `if:` conditions, so secrets
+    #  are mapped to env vars and those are tested instead.)
     env:
       APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
       APPLE_PROVISIONING_PROFILE: ${{ secrets.APPLE_PROVISIONING_PROFILE }}
@@ -222,6 +247,20 @@ jobs:
       - name: Install request-editor dependencies
         run: cd packages/request-editor && npm install
 
+      # ── Unsigned simulator build (always runs, no secrets required) ─────────
+      - name: Build unsigned iOS (simulator)
+        if: env.APPLE_TEAM_ID == ''
+        run: npx tauri ios build --target aarch64-apple-ios-sim -- CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+
+      - name: Upload unsigned iOS simulator artifact
+        if: env.APPLE_TEAM_ID == ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: apinox-ios-simulator
+          path: src-tauri/gen/apple/build/**/*.app
+          if-no-files-found: warn
+
+      # ── Signed device build (runs only when signing secrets are configured) ─
       - name: Import Apple code signing certificate
         if: env.APPLE_CERTIFICATE != ''
         uses: apple-actions/import-codesign-certs@v3
@@ -236,13 +275,13 @@ jobs:
           echo "${{ secrets.APPLE_PROVISIONING_PROFILE }}" | base64 --decode \
             > ~/Library/MobileDevice/Provisioning\ Profiles/apinox.mobileprovision
 
-      - name: Build iOS IPA
+      - name: Build signed iOS IPA (device)
         if: env.APPLE_TEAM_ID != ''
         run: npx tauri ios build
         env:
           APPLE_DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
 
-      - name: Upload iOS IPA artifact
+      - name: Upload signed iOS IPA artifact
         if: env.APPLE_TEAM_ID != ''
         uses: actions/upload-artifact@v4
         with:
