@@ -283,7 +283,7 @@ jobs:
       # ── Path 1: Simulator .app (no secrets set) ─────────────────────────────
       - name: Build unsigned iOS (simulator)
         if: env.APPLE_CERTIFICATE == '' && env.APPLE_TEAM_ID == ''
-        run: npx tauri ios build --target aarch64-apple-ios-sim -- CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+        run: npx tauri ios build --target aarch64-sim -- CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
 
       - name: Upload unsigned iOS simulator artifact
         if: env.APPLE_CERTIFICATE == '' && env.APPLE_TEAM_ID == ''
@@ -298,7 +298,7 @@ jobs:
       # re-signed and installed via AltStore or Sideloadly using a free Apple ID.
       - name: Build unsigned iOS (device — sideload)
         if: env.APPLE_CERTIFICATE == '' && env.APPLE_TEAM_ID != ''
-        run: npx tauri ios build --target aarch64-apple-ios -- CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" EXPANDED_CODE_SIGN_IDENTITY=""
+        run: npx tauri ios build --target aarch64 -- CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" EXPANDED_CODE_SIGN_IDENTITY=""
         env:
           APPLE_DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
 
