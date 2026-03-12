@@ -296,11 +296,21 @@ jobs:
       # ── Path 2: Sideload .ipa (APPLE_TEAM_ID set, no certificate) ───────────
       # Builds for real-device ARM64 without signing so the artifact can be
       # re-signed and installed via AltStore or Sideloadly using a free Apple ID.
+      # APPLE_DEVELOPMENT_TEAM is intentionally NOT set here: passing it via env
+      # causes Tauri to embed DEVELOPMENT_TEAM in the Xcode project, which makes
+      # xcodebuild attempt account/profile lookup even with CODE_SIGNING_ALLOWED=NO.
+      # AltStore/Sideloadly handle all re-signing, so no team is needed at build time.
       - name: Build unsigned iOS (device — sideload)
         if: env.APPLE_CERTIFICATE == '' && env.APPLE_TEAM_ID != ''
-        run: npx tauri ios build --target aarch64 -- CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" EXPANDED_CODE_SIGN_IDENTITY=""
-        env:
-          APPLE_DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
+        run: >
+          npx tauri ios build --target aarch64 --
+          CODE_SIGNING_ALLOWED=NO
+          CODE_SIGNING_REQUIRED=NO
+          CODE_SIGN_IDENTITY=""
+          EXPANDED_CODE_SIGN_IDENTITY=""
+          CODE_SIGN_STYLE=Manual
+          DEVELOPMENT_TEAM=""
+          PROVISIONING_PROFILE_SPECIFIER=""
 
       - name: Package sideload IPA
         if: env.APPLE_CERTIFICATE == '' && env.APPLE_TEAM_ID != ''
