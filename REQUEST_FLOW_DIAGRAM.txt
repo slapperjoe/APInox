@@ -1,0 +1,327 @@
+╔═════════════════════════════════════════════════════════════════════════════════════╗
+║                 APInox REQUEST/RESPONSE FLOW WITH LOGGING POINTS                    ║
+╚═════════════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│ 1. ROUTER (router.js, lines 99-216)                                                │
+│ ─────────────────────────────────────────────────────────────────────────────────── │
+│                                                                                       │
+│  User sends ExecuteRequest                                                          │
+│      ↓                                                                               │
+│  [112-122] ✅ LOG: Resolves environment variables                                  │
+│      │     ⚠️  LOGS errors only, not the resolved values                          │
+│      │                                                                               │
+│      ├─→ getResolvedEnvironment()                                                  │
+│      ├─→ getGlobalVariables()                                                      │
+│      └─→ contextVariables from payload                                             │
+│      ↓                                                                               │
+│  [126-133] ❌ NO LOG: Process wildcards in body and endpoint                       │
+│      │     ❌ WildcardProcessor.process() called silently                         │
+│      │     ❌ No before/after logging                                             │
+│      │     Substitutes: {{uuid}}, {{now}}, {{env}}, ${#TestCase#var}, etc.       │
+│      │                                                                               │
+│      ├─→ WildcardProcessor.process(args, envVars, globalVars, ...)               │
+│      └─→ WildcardProcessor.process(endpoint, envVars, globalVars, ...)           │
+│      ↓                                                                               │
+│  [136-153] ✅ Calls either SoapClient.executeRequest() or HttpClient.execute()   │
+│      │                                                                               │
+│      └─→ For SOAP: SoapClient.executeRequest()                                    │
+│          For REST/GraphQL: HttpClient.execute()                                   │
+│                                                                                       │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+
+                                      ↓
+                                      │
+                    ┌─────────────────┴─────────────────┐
+                    │                                   │
+                    ↓ SOAP Path                         ↓ REST/GraphQL Path
+                    │                                   │
+
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│ 2a. SOAPCLIENT (soapClient.js, lines 117-400)                                      │
+│ ─────────────────────────────────────────────────────────────────────────────────── │
+│                                                                                       │
+│  [117-127] Body preparation (XML formatting)                                       │
+│      │     ❌ NO LOG: Which path taken (string vs WSDL vs JSON.stringify)          │
+│      └─→ formatRequestBody()                                                       │
+│      ↓                                                                               │
+│  [132-200] executeRawRequest()                                                     │
+│      │                                                                               │
+│      ├─ [138-154] Find endpoint from WSDL definitions                             │
+│      ├─ [156-162] Find SOAPAction from WSDL definitions                           │
+│      │                                                                               │
+│      ├─ [174-176] 🔒 Apply WS-Security if configured                             │
+│      │            ✅ LOG: "Applied UsernameToken" (line 223)                      │
+│      │            ⚠️  LOGS: UsernameToken applied (line 210 if missing creds)     │
+│      │            ❌ NO LOG: Generated security header XML                         │
+│      │            ❌ NO LOG: Injection point                                       │
+│      │                                                                               │
+│      ├─ [178-179] 📎 Handle attachments if configured                             │
+│      │            ✅ LOG: Base64 inlining details (line 284)                      │
+│      │            ✅ LOG: Multipart additions (line 328)                          │
+│      │                                                                               │
+│      ├─ [182-188] 📝 Prepare request headers                                       │
+│      │            ├─ Content-Type: text/xml;charset=UTF-8                         │
+│      │            └─ SOAPAction header                                            │
+│      │                                                                               │
+│      ├─ [189-191] ✅ LOG to console:                                              │
+│      │            ✅ "Methods: POST ${endpoint}"                                  │
+│      │            ✅ "Headers:" with all headers                                  │
+│      │            ✅ "Body:" with full XML payload                                │
+│      │                                                                               │
+│      └─→ [192-199] this.httpClient.execute(request) ──────┐                      │
+│                                                           │
+└──────────────────────────────────────────────────────────┼────────────────────────┘
+                                                            │
+                                       ┌────────────────────┘
+                                       │
+┌──────────────────────────────────────┴───────────────────────────────────────────────┐
+│ 2b. HTTPCLIENT (HttpClient.js, lines 43-370)                                        │
+│ ─────────────────────────────────────────────────────────────────────────────────── │
+│                                                                                       │
+│  [75-105] executeRest() for REST requests                                          │
+│      ├─ [80-84] Apply path parameters                                             │
+│      ├─ [87-90] Apply query parameters                                            │
+│      ├─ [92-99] Prepare headers                                                   │
+│      ├─ [101] 🔒 Apply authentication                                             │
+│      │       ✅ Logged: "Authorization: Bearer <token>" or "Basic <hash>"        │
+│      │       ⚠️  No logging of which auth type selected                          │
+│      └─ [105] sendRequest()                                                       │
+│                                                                                       │
+│  [110-126] executeGraphQL() for GraphQL requests                                   │
+│      ├─ [113-116] Build GraphQL body with query + variables                       │
+│      ├─ [118-120] Set Content-Type: application/json                              │
+│      ├─ [123] Apply auth if present                                               │
+│      ├─ [125] ✅ LOG: "[HttpClient] executeGraphQL Body: " + jsonBody             │
+│      └─ [126] sendRequest()                                                       │
+│                                                                                       │
+│  [131-145] executeSoap() for SOAP requests                                         │
+│      ├─ [133-135] Prepare headers (Content-Type, etc.)                            │
+│      ├─ [139-140] ✅ LOG DEBUG: Write to dirty_debug.txt file (hidden logging)   │
+│      │            Shows: endpoint, body, headers (not visible in normal logs)     │
+│      └─ [145] sendRequest()                                                       │
+│                                                                                       │
+│  [159-250] sendRequest() - CORE HTTP EXECUTION                                     │
+│      │                                                                               │
+│      ├─ [160] formatBodyForLog(body) - Format for display                         │
+│      │        ├─ ✅ Shows string content                                          │
+│      │        ├─ ✅ Shows buffer size                                             │
+│      │        └─ ✅ Shows "[form-data stream]" for FormData                       │
+│      │                                                                               │
+│      ├─ [171] getProxySettings()                                                  │
+│      ├─ [172] createAgents(endpoint, proxyUrl, strictSSL)                         │
+│      │        ❌ NO LOG: Proxy agent creation                                      │
+│      │        ❌ NO LOG: SSL settings                                              │
+│      │                                                                               │
+│      ├─ [177-183] ✅ LOG to console:                                              │
+│      │            ✅ "${method} ${endpoint}"                                      │
+│      │            ✅ "Headers:" (with all request headers)                        │
+│      │            ✅ "Body:" (formatted for display)                              │
+│      │                                                                               │
+│      ├─ [184-207] Execute fetch request with timeout                              │
+│      │            ✅ Added timeout handling                                        │
+│      │            ❌ NO LOG: Timeout values                                        │
+│      │                                                                               │
+│      ├─ [209-215] 📊 Parse response                                                │
+│      │            ✅ response.status obtained                                      │
+│      │            ✅ response.headers obtained (as Headers object)                │
+│      │            ✅ Convert headers to plain object (NOT logged)                 │
+│      │                                                                               │
+│      ├─ [216-217] ✅ LOG to console:                                              │
+│      │            ✅ "Response Status:" + response.status                         │
+│      │            ✅ "Response Body:" + responseData                              │
+│      │            ❌ NO LOG: "Response Headers:" (captured but not logged!)       │
+│      │                                                                               │
+│      └─ [219-226] 📦 Return response object:                                       │
+│               {                                                                     │
+│                   success: boolean,                                                │
+│                   status: statusCode,                                              │
+│                   headers: responseHeaders,  ← Has data but wasn't logged         │
+│                   rawResponse: responseData,                                       │
+│                   rawRequest: formattedRequestBody,                                │
+│                   timeTaken: ms                                                    │
+│               }                                                                     │
+│                                                                                       │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+
+                                      ↓
+                            Response returned to Router
+                            Router returns to User
+
+═════════════════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│ 3. PROXY PATH (ProxyService.js, lines 290-641) - OPTIONAL                          │
+│ ─────────────────────────────────────────────────────────────────────────────────── │
+│ (Only if proxy server is enabled - alternate path)                                 │
+│                                                                                       │
+│  [396-641] async handleRequest(req, res) - Main proxy handler                      │
+│      │                                                                               │
+│      ├─ [398-400] Capture request body as it arrives                              │
+│      │            req.on('data', chunk => reqBody += chunk)                       │
+│      │                                                                               │
+│      ├─ [402-410] 📋 Build event object with request details                      │
+│      │            {                                                                │
+│      │                id: eventId,                                                 │
+│      │                timestamp: startTime,                                        │
+│      │                method: req.method,                                          │
+│      │                url: req.url,                                                │
+│      │                requestHeaders: req.headers,  ❌ NOT logged (event only)    │
+│      │                requestBody: reqBody          ❌ NOT logged (event only)    │
+│      │            }                                                                │
+│      │                                                                               │
+│      ├─ [411] ❌ this.emit('log', { ...event, type: 'request' })                  │
+│      │         Events emitted to listeners, not console logged                    │
+│      │                                                                               │
+│      ├─ [412-437] 🎭 MOCK MIDDLEWARE: Check mock rules (if enabled)               │
+│      │            Skip proxy if mock rule matches                                 │
+│      │                                                                               │
+│      ├─ [439-557] 🔗 PROXY FORWARD: Proxy to target server                        │
+│      │    │                                                                         │
+│      │    ├─ [440-442] Build target URL                                           │
+│      │    │                                                                         │
+│      │    ├─ [443-456] 🔒 SSL/TLS configuration                                   │
+│      │    │            ✅ LOG: strictSSL setting (line 447)                       │
+│      │    │            ✅ LOG: Proxy URL if configured                            │
+│      │    │            ✅ LOG: nodeEnv setting changed (line 452, 456)            │
+│      │    │                                                                         │
+│      │    ├─ [458-499] 📤 Configure HTTP agent (proxy & TLS)                      │
+│      │    │            ❌ NO LOG: Agent creation details                          │
+│      │    │            ✅ LOG: Message if ignoring proxy (line 493)               │
+│      │    │                                                                         │
+│      │    ├─ [500-540] 📝 Prepare outgoing request                                │
+│      │    │            ├─ [501-505] Strip conflicting headers                    │
+│      │    │            │    - transfer-encoding, connection, content-length, host│
+│      │    │            │                                                           │
+│      │    │            ├─ [507-516] 🔄 APPLY REPLACE RULES TO REQUEST             │
+│      │    │            │    ├─ [510] ReplaceRuleApplier.apply(requestData, ...) │
+│      │    │            │    │        Replaces text based on enabled rules        │
+│      │    │            │    │        Target: 'request' or 'both'                 │
+│      │    │            │    │                                                     │
+│      │    │            │    └─ [514] ✅ IF CHANGED:                              │
+│      │    │            │        LOG: "[Proxy] ✓ Applied replace rules to request:│
+│      │    │            │              ${ruleNames}"                              │
+│      │    │            │                                                         │
+│      │    │            ├─ [518-524] 🔴 CHECK BREAKPOINTS                         │
+│      │    │            │    If request body/headers match breakpoint pattern     │
+│      │    │            │    ✅ Emit breakpoint event, wait for user edit        │
+│      │    │            │                                                         │
+│      │    │            ├─ [525] ✅ LOG: "[Proxy] Sending Request to: ${URL}"    │
+│      │    │            │                                                         │
+│      │    │            ├─ [527-540] 📋 Build final request headers               │
+│      │    │            │    ├─ [533] Set host header                            │
+│      │    │            │    ├─ [534] Set user-agent                             │
+│      │    │            │    ├─ [535] Set connection                             │
+│      │    │            │    └─ [539] Set content-length                         │
+│      │    │            │                                                         │
+│      │    ├─ [541] ✅ LOG: "[Proxy] Outgoing Headers: ${JSON.stringify(...)}"   │
+│      │    │         Shows MODIFIED headers, NOT original                        │
+│      │    │                                                                      │
+│      │    ├─ [543-549] 📤 makeHttpRequest() to target server                    │
+│      │    │            (native http/https modules with agent support)           │
+│      │    │                                                                      │
+│      │    ├─ [550-555] 📊 Capture response:                                      │
+│      │    │            event.status = response.statusCode                       │
+│      │    │            event.responseHeaders = response.headers  ❌ NOT logged  │
+│      │    │            event.responseBody = response.body        ❌ NOT logged  │
+│      │    │            event.duration = (endTime - startTime) / 1000             │
+│      │    │            event.success = statusCode >= 200 && < 300              │
+│      │    │                                                                      │
+│      │    ├─ [556-560] 📈 DIAGNOSTICS: If 503, run diagnostics                 │
+│      │    │                                                                      │
+│      │    ├─ [562-572] 🔄 APPLY REPLACE RULES TO RESPONSE                       │
+│      │    │            ├─ [566] ReplaceRuleApplier.apply(responseData, ...)    │
+│      │    │            │        Target: 'response' or 'both'                   │
+│      │    │            │                                                        │
+│      │    │            └─ [569] ✅ IF CHANGED:                                 │
+│      │    │                LOG: "[Proxy] ✓ Applied replace rules: ${names}"   │
+│      │    │                UPDATE: event.responseBody = finalResponseData      │
+│      │    │                                                                     │
+│      │    ├─ [575-582] 🔴 CHECK RESPONSE BREAKPOINTS                            │
+│      │    │            If response body/headers match breakpoint pattern        │
+│      │    │            ✅ Emit breakpoint event, wait for user edit            │
+│      │    │                                                                     │
+│      │    ├─ [583-584] 📨 Write response to client                              │
+│      │    │            res.writeHead(response.statusCode, response.headers)    │
+│      │    │            res.end(finalResponseData)                             │
+│      │    │                                                                     │
+│      │    ├─ [585] ✅ this.emit('log', event) - EMIT COMPLETE EVENT             │
+│      │    │         Contains: original request, final response, timing, etc.    │
+│      │    │                                                                     │
+│      │    └─ [586-597] 📽️ RECORD MODE: Save to mock rules if enabled           │
+│      │                                                                           │
+│      └─ [598-640] ❌ ERROR HANDLING: If any error occurred                       │
+│                   ✅ LOG: Event with error details                             │
+│                   ✅ Generate SOAP fault if SOAP request                       │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+
+═════════════════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│ 4. REPLACEMENT RULES APPLICATION - ReplaceRuleApplier.js (lines 10-131)            │
+│ ─────────────────────────────────────────────────────────────────────────────────── │
+│                                                                                       │
+│  static apply(xml, rules, target) - Main entry point                               │
+│      ├─ [18] Filter rules by:                                                     │
+│      │        ├─ r.enabled === true                                              │
+│      │        └─ r.target === target || r.target === 'both'                      │
+│      │                                                                               │
+│      ├─ [23-29] Loop through applicable rules:                                    │
+│      │           for (const rule of applicableRules) {                            │
+│      │               modifiedXml = this.applyRule(modifiedXml, rule);             │
+│      │               ❌ NO LOG on success                                          │
+│      │               ✅ Line 28: console.error on failure                         │
+│      │           }                                                                 │
+│      │                                                                               │
+│      └─ Return modifiedXml                                                        │
+│                                                                                       │
+│  applyRule(xml, rule) - Apply single rule                                          │
+│      ├─ [38] getTargetElementFromXPath(rule.xpath)                                │
+│      │        ├─ [54-72] Extract element name from XPath                          │
+│      │        │          Examples: //Customer/Name → "Name"                       │
+│      │        │                    /Response/Item[1] → "Item"                     │
+│      │        └─ Strip namespace prefix, index notation                           │
+│      │                                                                               │
+│      ├─ [45] createElementPattern(elementName)                                    │
+│      │        Creates regex to match: <Name>content</Name>                        │
+│      │        Or with namespace: <ns:Name>content</ns:Name>                       │
+│      │                                                                               │
+│      ├─ [46-48] xml.replace(elementPattern, callback for each match)              │
+│      │          ❌ NO LOG: How many matches found                                  │
+│      │          ❌ NO LOG: Before/after content                                    │
+│      │                                                                               │
+│      └─ replaceInContent(match, rule) for each element found                      │
+│            ├─ [94-108] Apply replacement (regex or literal)                       │
+│            │           ❌ NO LOG: Number of replacements in this element         │
+│            │           ❌ NO LOG: What was replaced                              │
+│            └─ Return: openTag + newContent + closeTag                           │
+│                                                                                       │
+│  globalReplace(xml, rule) - Fallback if XPath invalid                              │
+│      ├─ [116-128] Global text replacement in entire XML                          │
+│      │           ❌ NO LOG: Number of matches                                    │
+│      │           ✅ Line 122: console.error on regex error                      │
+│      └─ Return modified XML                                                       │
+│                                                                                       │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+
+═════════════════════════════════════════════════════════════════════════════════════════
+
+LEGEND:
+  ✅ = Logged to console/debug
+  ❌ = NOT logged (silent)
+  ⚠️  = Partially logged or conditional
+  🔒 = Security-related
+  📝 = Data capture
+  📤 = Data send
+  📊 = Data parse
+  📋 = Data format
+  🎭 = Special mode
+  🔗 = Forwarding
+  🔄 = Transformation
+  🔴 = Breakpoints
+  📈 = Diagnostics
+  📨 = Response
+  📽️ = Recording
+  🔵 = Context
+

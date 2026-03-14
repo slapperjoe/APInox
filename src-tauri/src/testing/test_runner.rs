@@ -120,12 +120,22 @@ impl TestRunner {
     /// Replace variables in a string (e.g., "User {{userId}}" -> "User 12345")
     fn replace_variables(&self, text: &str) -> String {
         let mut result = text.to_string();
-        
+        let mut substituted = Vec::new();
+
         for (name, value) in &self.variables {
             let placeholder = format!("{{{{{}}}}}", name);
-            result = result.replace(&placeholder, value);
+            if result.contains(&placeholder) {
+                result = result.replace(&placeholder, value);
+                substituted.push(name.as_str());
+            }
         }
-        
+
+        if !substituted.is_empty() {
+            log::debug!("Variable substitution: replaced [{}]", substituted.join(", "));
+            log::debug!("  Before: {}", text);
+            log::debug!("  After:  {}", result);
+        }
+
         result
     }
     

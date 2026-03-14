@@ -29,6 +29,7 @@ impl WildcardProcessor {
             return text.to_string();
         }
 
+        let original = text;
         let mut processed = text.to_string();
 
         // 0. Context Variables (Workflow Variables - SoapUI Style)
@@ -71,6 +72,12 @@ impl WildcardProcessor {
         for (key, value) in globals.iter() {
             let pattern = format!("{{{{{}}}}}", regex::escape(key));
             processed = processed.replace(&pattern, value);
+        }
+
+        if processed != original {
+            log::debug!("Wildcard substitution applied:");
+            log::debug!("  Before: {}", original);
+            log::debug!("  After:  {}", processed);
         }
 
         processed
