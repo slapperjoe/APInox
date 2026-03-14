@@ -330,6 +330,43 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
     };
   }, [isResizing, layoutMode]);
 
+  const handleTogglePrettyPrint = useCallback(() => {
+    editorSettings.togglePrettyPrint();
+    const newPrettyPrint = !editorSettings.settings.prettyPrint;
+    if (request.request && request.bodyType) {
+      const language = request.bodyType === 'json' ? 'json'
+        : request.bodyType === 'xml' ? 'xml'
+        : request.bodyType === 'graphql' ? 'graphql'
+        : 'text';
+      const formatted = formatContent(request.request, language, editorSettings.settings, newPrettyPrint);
+      if (formatted !== request.request) {
+        onUpdateRequest({ ...request, request: formatted });
+      }
+    }
+    setEditorForceUpdateKey(prev => prev + 1);
+  }, [editorSettings, onUpdateRequest, request]);
+
+  const renderRequestEditorToolbar = () => (
+    <S.RequestEditorToolbar>
+      <S.CompactIconButton
+        title={editorSettings.settings.prettyPrint ? 'Minify (Compress)' : 'Pretty Print (Format)'}
+        onClick={handleTogglePrettyPrint}
+      >
+        {editorSettings.settings.prettyPrint ? <Minus size={14} /> : <Braces size={14} />}
+      </S.CompactIconButton>
+      <S.SettingsMenuWrapper>
+        <S.CompactIconButton
+          ref={settingsButtonRef}
+          title="Editor Settings"
+          onClick={handleToggleSettings}
+          className={showEditorSettings ? 'active' : ''}
+        >
+          <Settings size={14} />
+        </S.CompactIconButton>
+      </S.SettingsMenuWrapper>
+    </S.RequestEditorToolbar>
+  );
+
   // Render tab content
   const renderTabContent = () => {
     switch (activeTab) {
@@ -376,58 +413,68 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
             return Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, String(v ?? '')]));
           })();
           return (
-            <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
-              {/* GraphQL query editor — 67% */}
-              <div style={{ flex: '0 0 67%', minWidth: 0, borderRight: '1px solid var(--apinox-widget-border)', overflow: 'hidden' }}>
-                <MonacoRequestEditor
-                  ref={requestEditorRef}
-                  value={request.request || ''}
-                  onChange={(value) => onUpdateRequest({ ...request, request: value })}
-                  language="graphql"
-                  readOnly={readOnly}
-                  availableVariables={availableVariables}
-                  requestId={request.id || request.name}
-                  fontSize={editorSettings.settings.fontSize}
-                  fontFamily={editorSettings.settings.fontFamily}
-                  showLineNumbers={editorSettings.settings.showLineNumbers}
-                  showMinimap={editorSettings.settings.showMinimap}
-                  forceUpdateKey={editorForceUpdateKey}
-                  onLog={onLog}
-                />
-              </div>
-              {/* Variables panel — 33% */}
-              <div style={{ flex: '0 0 33%', minWidth: 0, overflow: 'hidden' }}>
-                <QueryParamsPanel
-                  params={graphqlVars}
-                  onChange={(vars) => onUpdateRequest({
-                    ...request,
-                    graphqlConfig: { ...request.graphqlConfig, variables: vars }
-                  })}
-                  title="Variables"
-                  paramLabel="Variable"
-                  readOnly={readOnly}
-                />
-              </div>
-            </div>
+            <S.RequestEditorContainer>
+              {renderRequestEditorToolbar()}
+              <S.RequestEditorSurface>
+                <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
+                  {/* GraphQL query editor — 67% */}
+                  <div style={{ flex: '0 0 67%', minWidth: 0, borderRight: '1px solid var(--apinox-widget-border)', overflow: 'hidden' }}>
+                    <MonacoRequestEditor
+                      ref={requestEditorRef}
+                      value={request.request || ''}
+                      onChange={(value) => onUpdateRequest({ ...request, request: value })}
+                      language="graphql"
+                      readOnly={readOnly}
+                      availableVariables={availableVariables}
+                      requestId={request.id || request.name}
+                      fontSize={editorSettings.settings.fontSize}
+                      fontFamily={editorSettings.settings.fontFamily}
+                      showLineNumbers={editorSettings.settings.showLineNumbers}
+                      showMinimap={editorSettings.settings.showMinimap}
+                      forceUpdateKey={editorForceUpdateKey}
+                      onLog={onLog}
+                    />
+                  </div>
+                  {/* Variables panel — 33% */}
+                  <div style={{ flex: '0 0 33%', minWidth: 0, overflow: 'hidden' }}>
+                    <QueryParamsPanel
+                      params={graphqlVars}
+                      onChange={(vars) => onUpdateRequest({
+                        ...request,
+                        graphqlConfig: { ...request.graphqlConfig, variables: vars }
+                      })}
+                      title="Variables"
+                      paramLabel="Variable"
+                      readOnly={readOnly}
+                    />
+                  </div>
+                </div>
+              </S.RequestEditorSurface>
+            </S.RequestEditorContainer>
           );
         }
 
         return (
-          <MonacoRequestEditor
-            ref={requestEditorRef}
-            value={request.request || ''}
-            onChange={(value) => onUpdateRequest({ ...request, request: value })}
-            language={editorLanguage}
-            readOnly={readOnly}
-            availableVariables={availableVariables}
-            requestId={request.id || request.name}
-            fontSize={editorSettings.settings.fontSize}
-            fontFamily={editorSettings.settings.fontFamily}
-            showLineNumbers={editorSettings.settings.showLineNumbers}
-            showMinimap={editorSettings.settings.showMinimap}
-            forceUpdateKey={editorForceUpdateKey}
-            onLog={onLog}
-          />
+          <S.RequestEditorContainer>
+            {renderRequestEditorToolbar()}
+            <S.RequestEditorSurface>
+              <MonacoRequestEditor
+                ref={requestEditorRef}
+                value={request.request || ''}
+                onChange={(value) => onUpdateRequest({ ...request, request: value })}
+                language={editorLanguage}
+                readOnly={readOnly}
+                availableVariables={availableVariables}
+                requestId={request.id || request.name}
+                fontSize={editorSettings.settings.fontSize}
+                fontFamily={editorSettings.settings.fontFamily}
+                showLineNumbers={editorSettings.settings.showLineNumbers}
+                showMinimap={editorSettings.settings.showMinimap}
+                forceUpdateKey={editorForceUpdateKey}
+                onLog={onLog}
+              />
+            </S.RequestEditorSurface>
+          </S.RequestEditorContainer>
         );
 
       case 'headers':
@@ -655,55 +702,6 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
             <S.TabMeta>{availableVariables.length}</S.TabMeta>
           </S.TabButton>
         )}
-
-        {/* Right side: Format & Settings buttons */}
-        <S.TabsRight>
-          <S.CompactIconButton
-            title={editorSettings.settings.prettyPrint ? 'Minify (Compress)' : 'Pretty Print (Format)'}
-            onClick={() => {
-              // Toggle the setting - this will trigger reactive updates
-              editorSettings.togglePrettyPrint();
-              
-              // Format the request body immediately with the NEW value
-              // (state update is async, so we toggle the current value)
-              const newPrettyPrint = !editorSettings.settings.prettyPrint;
-              
-              if (request.request && request.bodyType) {
-                const language = request.bodyType === 'json' ? 'json' : 
-                                request.bodyType === 'xml' ? 'xml' :
-                                request.bodyType === 'graphql' ? 'graphql' : 'text';
-                
-                const formatted = formatContent(
-                  request.request, 
-                  language, 
-                  editorSettings.settings, 
-                  newPrettyPrint
-                );
-                
-                if (formatted !== request.request) {
-                  onUpdateRequest({ ...request, request: formatted });
-                }
-              }
-              
-              // Response viewer will update reactively via settings change
-              // Force editor refresh to ensure both update
-              setEditorForceUpdateKey(prev => prev + 1);
-            }}
-          >
-            {editorSettings.settings.prettyPrint ? <Minus size={14} /> : <Braces size={14} />}
-          </S.CompactIconButton>
-          
-          <S.SettingsMenuWrapper>
-            <S.CompactIconButton
-              ref={settingsButtonRef}
-              title="Editor Settings"
-              onClick={handleToggleSettings}
-              className={showEditorSettings ? 'active' : ''}
-            >
-              <Settings size={14} />
-            </S.CompactIconButton>
-          </S.SettingsMenuWrapper>
-        </S.TabsRight>
       </S.TabsHeader>
 
       {/* Content Area (Split View) */}

@@ -247,6 +247,32 @@ export const CompactIconButton = styled.button<{ className?: string }>`
   }
 `;
 
+// Editor-local toolbar (sits above the Monaco editor surface)
+export const RequestEditorContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+`;
+
+export const RequestEditorToolbar = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 4px 8px;
+  background: var(--apinox-sideBar-background, #252526);
+  border-bottom: 1px solid var(--apinox-panel-border, #333);
+  min-height: 32px;
+`;
+
+export const RequestEditorSurface = styled.div`
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+`;
+
 // Content Area (split view)
 export const ContentArea = styled.div`
   flex: 1;
