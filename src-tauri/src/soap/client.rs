@@ -106,25 +106,38 @@ impl SoapClient {
         // Add SOAPAction header for SOAP 1.1
         if soap_version == SoapVersion::Soap11 {
             let soap_action = operation.action.as_deref().unwrap_or("");
-            log::info!("Setting SOAPAction header: \"{}\"", soap_action);
             request = request.header("SOAPAction", format!("\"{}\"", soap_action));
         }
-        
-        // Execute the request
+
+        // Log all request headers
         log::info!("Sending SOAP request to: {}", endpoint);
-        log::debug!("Request body: {}", envelope);
+        log::debug!("Request headers:");
+        log::debug!("  Content-Type: {}", soap_version.content_type());
+        if soap_version == SoapVersion::Soap11 {
+            log::debug!("  SOAPAction: \"{}\"", operation.action.as_deref().unwrap_or(""));
+        }
+        log::info!("Request body:\n{}", envelope);
+
         let response = request.send().await?;
         
         let status_code = response.status().as_u16();
-        
+        let status_text = response.status().canonical_reason().unwrap_or("Unknown");
+
         // Extract response headers
         let headers: Vec<(String, String)> = response.headers()
             .iter()
             .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or("").to_string()))
             .collect();
+
+        log::info!("Response: {} {}", status_code, status_text);
+        log::debug!("Response headers:");
+        for (k, v) in &headers {
+            log::debug!("  {}: {}", k, v);
+        }
         
         // Get response body
         let raw_xml = response.text().await?;
+        log::info!("Response body:\n{}", raw_xml);
         
         // Parse the SOAP response
         let (body, fault) = parse_soap_response(&raw_xml)?;

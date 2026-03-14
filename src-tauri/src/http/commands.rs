@@ -18,7 +18,20 @@ pub async fn execute_http_request(
     proxy_password: Option<String>,
 ) -> Result<HttpResponse, String> {
     log::info!("Executing HTTP request: {} {}", method, url);
-    
+
+    // Log request headers
+    if !headers.is_empty() {
+        log::debug!("Request headers:");
+        for (k, v) in &headers {
+            log::debug!("  {}: {}", k, v);
+        }
+    }
+
+    // Log request body
+    if let Some(ref b) = body {
+        log::debug!("Request body:\n{}", b);
+    }
+
     let client = HttpClient::new()
         .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
 
@@ -35,7 +48,24 @@ pub async fn execute_http_request(
         proxy_password,
     };
 
-    Ok(client.execute(request).await)
+    let response = client.execute(request).await;
+
+    // Log response
+    log::info!("Response: {} {}", response.status, response.status_text);
+    if !response.headers.is_empty() {
+        log::debug!("Response headers:");
+        for (k, v) in &response.headers {
+            log::debug!("  {}: {}", k, v);
+        }
+    }
+    if !response.body.is_empty() {
+        log::debug!("Response body:\n{}", response.body);
+    }
+    if let Some(ref err) = response.error {
+        log::warn!("Response error: {}", err);
+    }
+
+    Ok(response)
 }
 
 #[tauri::command]
