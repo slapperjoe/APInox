@@ -362,26 +362,8 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
 
 
     const [alignAttributes, setAlignAttributes] = React.useState(false);
-    const [activeTab, setActiveTab] = React.useState<'request' | 'headers' | 'params' | 'assertions' | 'auth' | 'extractors' | 'attachments' | 'variables' | 'chainvars'>('request');
     const [showVariables, setShowVariables] = React.useState(false);
     const [showCodeSnippet, setShowCodeSnippet] = React.useState(false);
-    const [editorFontSize, setEditorFontSize] = React.useState(14);
-    const [editorFontFamily, setEditorFontFamily] = React.useState<string>('Consolas, "Courier New", monospace');
-    const [showEditorSettings, setShowEditorSettings] = React.useState(false);
-    const [installedFonts, setInstalledFonts] = React.useState<Array<{name: string; value: string}>>([]);
-    
-    console.log('[WorkspaceLayout] Component rendered, editorFontSize:', editorFontSize, 'config exists:', !!config);
-
-    // Detect installed fonts on mount
-    React.useEffect(() => {
-        const detectFonts = async () => {
-            // Dynamic import to avoid bundling issues
-            const { getInstalledFonts } = await import('../utils/fontDetection');
-            const fonts = getInstalledFonts();
-            setInstalledFonts(fonts);
-        };
-        detectFonts();
-    }, []);
 
     // ... imports
 
@@ -402,88 +384,11 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     const [urlValidationError, setUrlValidationError] = React.useState<string | null>(null);
     const [bodyValidationError, setBodyValidationError] = React.useState<string | null>(null);
 
-    // Close editor settings menu when clicking outside
-    React.useEffect(() => {
-        if (!showEditorSettings) return;
-        
-        const handleClickOutside = (event: MouseEvent) => {
-            if (settingsMenuRef.current && !settingsMenuRef.current.contains(event.target as Node)) {
-                setShowEditorSettings(false);
-            }
-        };
-        
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [showEditorSettings]);
-
     React.useEffect(() => {
         if (config?.ui?.alignAttributes !== undefined) {
             setAlignAttributes(config.ui.alignAttributes);
         }
     }, [config?.ui?.alignAttributes]);
-
-    // Load editor font size from config
-    React.useEffect(() => {
-        if (config?.ui?.editorFontSize !== undefined) {
-            setEditorFontSize(config.ui.editorFontSize);
-        }
-    }, [config?.ui?.editorFontSize]);
-
-    // Load editor font family from config
-    React.useEffect(() => {
-        if (config?.ui?.editorFontFamily !== undefined) {
-            setEditorFontFamily(config.ui.editorFontFamily);
-        }
-    }, [config?.ui?.editorFontFamily]);
-
-    // Save editor font size to config when changed
-    const handleFontSizeChange = React.useCallback((newSize: number) => {
-        console.log('[WorkspaceLayout] Font size change requested:', newSize);
-        console.log('[WorkspaceLayout] Config available?', !!config, 'config:', config);
-        setEditorFontSize(newSize);
-        
-        // Update config and save immediately
-        if (config) {
-            const updatedConfig = {
-                ...config,
-                ui: {
-                    ...config.ui,
-                    editorFontSize: newSize
-                }
-            };
-            console.log('[WorkspaceLayout] Sending saveSettings with fontSize:', newSize, 'config.ui:', updatedConfig.ui);
-            bridge.sendMessage({ 
-                command: 'saveSettings', 
-                config: updatedConfig 
-            });
-        } else {
-            console.warn('[WorkspaceLayout] No config available, cannot save font size');
-        }
-    }, [config]);
-
-    // Save editor font family to config when changed
-    const handleFontFamilyChange = React.useCallback((newFamily: string) => {
-        console.log('[WorkspaceLayout] Font family change requested:', newFamily);
-        setEditorFontFamily(newFamily);
-        
-        // Update config and save immediately
-        if (config) {
-            const updatedConfig = {
-                ...config,
-                ui: {
-                    ...config.ui,
-                    editorFontFamily: newFamily
-                }
-            };
-            console.log('[WorkspaceLayout] Sending saveSettings with fontFamily:', newFamily);
-            bridge.sendMessage({ 
-                command: 'saveSettings', 
-                config: updatedConfig 
-            });
-        } else {
-            console.warn('[WorkspaceLayout] No config available, cannot save font family');
-        }
-    }, [config]);
 
     React.useEffect(() => {
         if (prevAlignAttributesRef.current === alignAttributes) return;
