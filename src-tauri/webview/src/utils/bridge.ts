@@ -1004,7 +1004,7 @@ function mapResponseToBackendEvent(command: string, data: any): BackendMessage |
     const commandToEventMap: Record<string, (data: any) => BackendMessage | null> = {
         [FrontendCommand.LoadWsdl]: (data) => ({
             command: BackendCommand.WsdlParsed,
-            // Sidecar returns array of services directly from parseWsdl
+            // Backend returns array of services directly from parseWsdl
             services: Array.isArray(data) ? data : (data?.services || data || []),
             wsdlUrl: data?.wsdlUrl || '',
             targetProjectId: data?.targetProjectId

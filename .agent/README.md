@@ -30,8 +30,6 @@ The `.agent/workflows/` directory contains **coding patterns and conventions** t
 
 ### Build & Deployment
 - `../docs/BUILD_INSTRUCTIONS.md` - Build process and requirements
-- `../docs/TAURI_BUNDLING.md` - Tauri bundling configuration
-- `../docs/STANDALONE_SIDECAR.md` - Standalone binary architecture
 
 ### Security & Certificates
 - `../docs/CERTIFICATE_RESTORATION.md` - Certificate feature implementation
@@ -42,7 +40,6 @@ The `.agent/workflows/` directory contains **coding patterns and conventions** t
 ### Development Guides
 - `../docs/CODE_ANALYSIS.md` - **Code quality analysis** - Refactoring opportunities, technical debt
 - `../docs/OUTSTANDING_WORK.md` - **Detailed task breakdown** - All features, completion status
-- `../docs/SIDECAR_DIAGNOSTICS.md` - Debugging sidecar issues
 - `../docs/WCF_DEBUGGING.md` - WCF service debugging
 
 ### Testing & Quality
@@ -72,7 +69,6 @@ The `.agent/workflows/` directory contains **coding patterns and conventions** t
 - **Build issues**: `../docs/BUILD_INSTRUCTIONS.md`
 - **Certificate errors**: `../docs/CERT_INSTALL_TROUBLESHOOTING.md`
 - **TLS problems**: `../docs/TLS_FIX_GUIDE.md`
-- **Sidecar issues**: `../docs/SIDECAR_DIAGNOSTICS.md`
 
 ### Testing
 - **Backend tests**: `.agent/workflows/create-backend-test.md`

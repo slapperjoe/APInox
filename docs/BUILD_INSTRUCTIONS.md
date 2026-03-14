@@ -1,85 +1,48 @@
 ## Tauri Production Build
 
-### Build Metrics (v0.15.105)
+### Current Build Path
 
-- **Installer Size**: 20.59 MB (optimized with LZMA compression)
-- **Webview Bundle**: 16.91 MB (production, no sourcemaps)
-- **Sidecar Binary**: 38.29 MB (minified with pkg + GZip)
-- **Total Application**: ~75 MB installed
+APInox is now packaged as a Tauri desktop application with a Rust backend and React webview. There is no separate backend bundle to build or include.
 
 ### Production vs Development Builds
 
 **Production Build** (`npm run tauri:build`):
-- ✅ Sourcemaps stripped from webview (smaller size)
-- ✅ Sidecar minified
-- ✅ LZMA compression on installer
-- ✅ Optimized for distribution
+- Builds shared packages
+- Builds the webview in production mode
+- Compiles the Rust backend with release optimizations
+- Produces platform installers/bundles
 
 **Development Build** (`npm run tauri:dev`):
-- ✅ Sourcemaps included for debugging
-- ✅ Faster build times
-- ✅ Hot module reload
-- ⚠️ Larger bundle size
+- Starts the Vite dev server for the webview
+- Compiles and runs the Tauri app in debug mode
+- Supports fast iteration for Rust and frontend changes
 
 ### How to Build Correctly
 
-**MUST USE THIS COMMAND:**
+**Use one of these commands:**
 ```bash
+npm run tauri:dev
 npm run tauri:build
 ```
 
-**DO NOT USE:**
-- `tauri build` (misses prepare step)
-- `npx tauri build` (misses prepare step)
-- Building from VS Code Tauri extension (misses prepare step)
-
 ### What `npm run tauri:build` Does
 
-1. ✅ Increments build number
-2. ✅ Syncs versions across all package files
-3. ✅ Runs `npm run prepare:sidecar` which:
-   - Compiles TypeScript
-   - Bundles with esbuild (minified for production)
-   - Creates pkg binary with GZip compression
-   - Copies to `sidecar-bundle/` for Tauri inclusion
-4. ✅ Builds webview with Vite (production mode, no sourcemaps)
-5. ✅ Runs `tauri build` which:
-   - Compiles Rust code with release optimizations
-   - Includes sidecar binary
-   - Creates NSIS installer with LZMA compression
+1. Increments the build number
+2. Syncs versions across package files
+3. Builds reusable packages
+4. Builds the webview with Vite
+5. Runs the Tauri production build
 
 ### Verification
 
-After building, check that the installer includes the bundle:
-
-**Windows (NSIS):**
-```bash
-# Extract installer or check installed files
-dir "C:\Program Files\APInox\sidecar-bundle\"
-```
-
-Should contain:
-- `sidecar-x86_64-pc-windows-msvc.exe` (38.29 MB)
-
-### Build Optimization History
-
-**v0.15.105 (Feb 2026)**:
-- Reduced installer from 28.92 MB to 20.59 MB (-28.8%)
-- Stripped production sourcemaps (49 MB savings in webview)
-- Enabled sidecar minification
-- Added LZMA compression to NSIS bundler
-
-### Current Status
-
-✅ Production build optimized and tested
-✅ All features working correctly
-✅ Installer size reduced by 8.33 MB
+After building, verify that:
+- the webview assets were produced under `src-tauri/webview/dist/`
+- the Rust build completed successfully
+- installers or bundles were created under `src-tauri/target/release/bundle/`
 
 ### Next Steps
 
-1. Run `npm run tauri:build` from project root
-2. Install the new build
-3. Check logs - should see "✓ Found bundled sidecar at: ..."
-4. Sidecar should start successfully
-
-**The implementation is complete - just needs to be built correctly!**
+1. Run `npm run tauri:build` from the project root
+2. Install or launch the generated app
+3. Open the Debug modal and confirm backend logs look healthy
+4. Exercise a WSDL load and request execution path

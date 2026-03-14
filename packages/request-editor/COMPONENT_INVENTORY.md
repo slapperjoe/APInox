@@ -123,7 +123,7 @@
 - `sidebar/SidebarRail.tsx`
 
 ### Utilities (App-specific)
-- `utils/bridge.ts` - Sidecar communication
+- `utils/bridge.ts` - Tauri/backend communication
 - `utils/projectUtils.ts` - Project operations
 - `utils/workspaceSearch.ts` - Search functionality
 - `utils/reportGenerator.ts` - Report generation

@@ -57,7 +57,7 @@ A desktop application for SOAP web service testing and API development, inspired
 - **Settings**: Persistent configuration with a built-in JSONC editor and contextual **Help Panel**.
 - **Debug & Diagnostics**:
     - **Debug Modal**: Press **Ctrl+Shift+D** to open comprehensive diagnostics.
-    - **Sidecar Logs**: View real-time Node.js backend logs with auto-refresh.
+    - **Backend Logs**: View real-time Tauri/Rust backend logs with auto-refresh.
     - **Frontend Logs**: Captured browser console logs for React/UI debugging.
     - **System Info**: View configuration state and system diagnostics.
     - **Connection Test**: Test frontend-backend communication with latency display.
@@ -91,7 +91,7 @@ A desktop application for SOAP web service testing and API development, inspired
     - Use the **Close** (❌) icon to close projects.
 7. **Debug & Diagnostics**:
     - Press **Ctrl+Shift+D** to open the debug modal.
-    - View sidecar logs, frontend logs, and system diagnostics.
+    - View backend logs, frontend logs, and system diagnostics.
     - Test connection to backend.
     - Toggle debug indicator visibility if needed.
 
@@ -216,7 +216,7 @@ APInox takes security seriously, especially when handling sensitive data like AP
 
 ### Best Practices
 - **Rotate Credentials**: Regularly update encrypted secrets, especially after team member changes.
-- **Audit Logs**: Review sidecar logs (Ctrl+Shift+D) for unexpected requests or errors.
+- **Audit Logs**: Review application logs (Ctrl+Shift+D) for unexpected requests or errors.
 - **Environment Separation**: Use separate environments for Dev/Test/Prod with different credentials.
 
 ## Developer Notes

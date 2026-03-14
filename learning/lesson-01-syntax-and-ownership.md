@@ -256,10 +256,10 @@ let mut guard = SIDECAR_PROCESS.lock().unwrap();
 **C# equivalent:**
 ```csharp
 private static readonly object _lock = new object();
-private static Process _sidecarProcess;
+private static Process _backendProcess;
 
 lock (_lock) {
-    _sidecarProcess = new Process(...);
+    _backendProcess = new Process(...);
 }
 ```
 

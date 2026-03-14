@@ -26,7 +26,6 @@ This document provides an overview of all documentation files and their location
 - `TLS_FIX_GUIDE.md` - TLS/HTTPS troubleshooting
 
 ### Debugging & Diagnostics
-- `SIDECAR_DIAGNOSTICS.md` - Sidecar debugging guide
 - `WCF_DEBUGGING.md` - WCF service debugging tips
 
 ### Development

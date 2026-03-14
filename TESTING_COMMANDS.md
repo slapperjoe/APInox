@@ -211,4 +211,4 @@ await window.__TAURI__.core.invoke('parse_wsdl', {
 
 **If app doesn't start:**
 1. Stop: Ctrl+C
-2. Rebuild: `npm run build:sidecar && npm run tauri:dev`
+2. Rebuild: `npm run tauri:dev`

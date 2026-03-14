@@ -26,7 +26,7 @@ The proxy now logs TLS handshake errors:
 [ProxyService] TLS Error: ECONNRESET - socket hang up
 ```
 
-Check the sidecar logs (Ctrl+Shift+D → Logs tab) when your .NET client connects.
+Check the application logs (Ctrl+Shift+D → Logs tab) when your .NET client connects.
 
 ### 3. New Diagnostic: Test Proxy Connection
 Added `testProxyConnection` command that:
@@ -55,9 +55,9 @@ This will:
 - Try .NET-compatible cipher suites
 - Show which protocol/cipher works
 
-### Step 3: Check Sidecar Logs
+### Step 3: Check Application Logs
 1. Open Debug modal (`Ctrl+Shift+D`)
-2. Expand "Sidecar Logs"
+2. Review the backend log output
 3. Look for:
    ```
    [ProxyService] TLS Client Error: ...
@@ -128,7 +128,7 @@ ServicePointManager.ServerCertificateValidationCallback =
 2. **Start proxy** with HTTPS target
 3. **Run diagnostics** - all should be green INCLUDING "Proxy connection successful"
 4. **Check logs** for TLS connection messages
-5. **Test .NET client** - check sidecar logs for TLS errors when client connects
+5. **Test .NET client** - check application logs for TLS errors when client connects
 6. If still failing, **run test-proxy-tls.js** and share output
 
 ## Expected Output (Working)
@@ -142,7 +142,7 @@ ServicePointManager.ServerCertificateValidationCallback =
    Protocol: TLSv1.2, Cipher: ECDHE-RSA-AES256-GCM-SHA384
 ```
 
-### Sidecar Logs
+### Application Logs
 ```
 [ProxyService] Secure connection established: Protocol=TLSv1.2, Cipher=ECDHE-RSA-AES256-GCM-SHA384
 ```
@@ -168,13 +168,12 @@ If diagnostics show "Proxy connection successful" but .NET still fails:
 
 3. **Share diagnostic output**:
    - Screenshot of diagnostics tab
-   - Sidecar logs when .NET client connects
+   - Application logs when the .NET client connects
    - Output of test-proxy-tls.js
    - .NET exception stack trace
 
 ## Quick Fix Checklist
 
-- [ ] Rebuild sidecar: `cd sidecar && npm run build`
 - [ ] Restart APInox
 - [ ] Click "Regenerate Certificate" in diagnostics (gets new cert with correct properties)
 - [ ] Click "Fix Certificate Location" (moves to LocalMachine)

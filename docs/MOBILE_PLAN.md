@@ -29,7 +29,7 @@ APInox is currently a desktop-only Tauri application with no mobile support, fix
 ## Current State Summary
 
 - **Tauri**: 2.10.3 (Android/iOS capable)
-- **Architecture**: Pure Rust backend + React webview (no Node.js sidecar)
+- **Architecture**: Pure Rust backend + React webview (no separate Node.js backend process)
 - **Mobile entry point**: `#[cfg_attr(mobile, tauri::mobile_entry_point)]` already in `src-tauri/src/lib.rs`
 - **Android icons**: Already exist in `src-tauri/icons/android/`
 - **Plugins**: 8 Tauri plugins — most have mobile support, 2 need desktop guards

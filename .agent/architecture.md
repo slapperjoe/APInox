@@ -11,7 +11,7 @@ For the complete architecture documentation, see:
 This file contains:
 - Project overview and structure
 - Tauri application architecture
-- Sidecar backend structure  
+- Rust backend structure  
 - Webview (React) structure
 - Communication architecture (Bridge pattern)
 - Key technical considerations
@@ -23,18 +23,18 @@ This file contains:
 This is a **Tauri Desktop Application** with:
 
 1. **React Webview** (`src-tauri/webview/`) - UI layer
-2. **Sidecar Process** (`sidecar/`) - Node.js backend (bundled binary)
+2. **Rust Backend** (`src-tauri/src/`) - Tauri commands, HTTP/SOAP logic, storage, and native integrations
 3. **Tauri Core** (`src-tauri/`) - Rust + native features
 
 ### Communication Flow
 ```
-React Webview ←→ bridge.sendMessage() ←→ Sidecar Backend
+React Webview ←→ bridge.sendMessage()/invoke() ←→ Tauri Rust Backend
 ```
 
 ### Local-First Pattern
 - Frontend manages project state
-- Direct file saves via sidecar
+- Direct file saves via the Rust backend
 - No backend commands for simple updates
-- Use sidecar only for WSDL parsing, HTTP requests, servers
+- Use backend commands only for WSDL parsing, HTTP requests, proxy/mock services, and other native work
 
 For complete details, **read [AGENTS.md](../AGENTS.md)**.

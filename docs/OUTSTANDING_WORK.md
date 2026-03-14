@@ -16,7 +16,6 @@ This document consolidates all outstanding tasks, TODOs, and planned features ac
 | **SOAP Attachments** | ✅ 100% Complete | P1 |
 | **REST/GraphQL Support** | 80% Complete | P2 |
 | **Test Suite Enhancements** | Not Started | P2 |
-| **CLI + Sidecar Merge** | Not Started | P1 |
 | **Shared Code Refactor** | Not Started | P2 |
 | **Workflow UI** | ✅ Complete | - |
 | **Documentation Updates** | Pending | P2 |
@@ -152,33 +151,7 @@ Extend beyond SOAP to support REST APIs with OpenAPI/Swagger import.
 
 ## 🔧 Infrastructure & Code Quality
 
-### 6. CLI + Sidecar Merge
-**Status**: Planned  
-**Priority**: P1  
-**Effort**: 6 days  
-**Location**: `CLI_SIDECAR_MERGE.md`
-
-Merge CLI commands into the sidecar to create a single standalone binary.
-
-**Goal**: Single binary works as Tauri sidecar AND CLI for distributed testing with zero dependencies.
-
-**Tasks:**
-- [ ] Add Commander to sidecar
-- [ ] Create `sidecar/src/cli.ts` entry point
-- [ ] Move CLI commands to `sidecar/src/commands/`
-- [ ] Update commands to use sidecar SOAP engine
-- [ ] Test server mode: `apinox serve --config-dir /path`
-- [ ] Test worker mode: `apinox worker --connect ws://...`
-- [ ] Test coordinator mode: `apinox coordinator --suite ...`
-- [ ] Update binary build to use `cli.ts`
-- [ ] Update Tauri to use new binary name
-- [ ] Test Tauri integration
-- [ ] Update documentation
-- [ ] Create release with binaries for all platforms
-
----
-
-### 7. Shared Code Refactor
+### 6. Shared Code Refactor
 **Status**: Planned  
 **Priority**: P2  
 **Effort**: 2-3 days  
@@ -254,13 +227,13 @@ Eliminate code duplication between VS Code Extension backend and Webview fronten
    // TODO: Simulate Monaco editor change to make it dirty
    ```
 
-### Backend (Sidecar)
+### Backend
 4. **`src-tauri/webview/src/contexts/TestRunnerContext.tsx:226`**
    ```typescript
    wsdlUrl: '', // TODO: This was local state in App.tsx. Needed?
    ```
 
-**Note**: Many TODOs found in `sidecar/bundle.js` are from third-party libraries and not actionable.
+**Note**: Many TODOs found in generated or third-party output are not actionable.
 
 ---
 
@@ -317,7 +290,6 @@ Based on actual completion status and priority:
 4. **Test Suite Enhancements** (3-5 days) - Status indicators, renaming, run all
 
 ### **Short-term** (1-2 weeks):
-5. **CLI + Sidecar Merge** (6 days) - Single binary for distributed testing
 6. **Request Chaining UI Polish** (2-3 days) - Backend works, improve visual builder
 
 ### **Medium-term** (1-2 months):
