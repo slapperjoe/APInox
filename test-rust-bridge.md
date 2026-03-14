@@ -49,4 +49,4 @@ Expected output:
 - Should get wsdlParsed event with services array
 - Second test should show direct Rust response with services
 
-If you see "falling back to Node.js sidecar" - the routing failed and needs debugging.
+If you see the app bypass the Rust command path, the routing failed and needs debugging.

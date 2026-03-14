@@ -27,7 +27,7 @@ For the complete task list, see:
 
 ### 📋 Planned
 - Test Suite Enhancements
-- CLI + Sidecar Merge
+- CLI extraction to APIprox
 - GraphQL Schema Import
 - OAuth2 Advanced Flows
 

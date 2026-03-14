@@ -178,7 +178,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
     const [saveErrors, setSaveErrors] = useState<Map<string, string>>(new Map());
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
-    // Sync projects to backend when they change — removed (no sidecar)
+    // Sync projects to backend when they change — removed (local-first persistence)
 
     // -------------------------------------------------------------------------
     // AUTO-SAVE

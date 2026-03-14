@@ -42,14 +42,12 @@ Response time tracking and load testing.
 - Export metrics to CSV/JSON
 - Historical comparison (charts show multiple runs)
 
-### Standalone Binary (Infrastructure)
-Create truly standalone sidecar binary with embedded Node.js runtime.
-- Replaced axios with native fetch API
-- Bundle with esbuild → `bundle.js` (3.7MB)
-- Package with pkg → `apinox-sidecar` (46MB)
-- Embedded Node.js v18.5.0
-- Zero runtime dependencies (users don't need Node.js)
-- Cross-platform ready (Windows/Mac/Linux)
+### Standalone Desktop Build (Infrastructure)
+The desktop app now ships as a Tauri application with the backend built into the Rust core.
+- Backend logic runs inside the Tauri/Rust application
+- No separate Node.js backend process to package
+- Zero backend runtime dependencies for end users
+- Cross-platform ready (Windows/macOS/Linux)
 
 ---
 
@@ -119,7 +117,7 @@ Extend beyond SOAP to REST APIs.
 
 ## 🚧 Infrastructure Backlog
 
-### CLI + Sidecar → APIprox (COMPLETED)
+### CLI Extraction → APIprox (COMPLETED)
 CLI functionality has been split into a separate project: **[APIprox](https://github.com/yourusername/apiprox)**
 
 **APIprox provides**:
@@ -131,16 +129,14 @@ CLI functionality has been split into a separate project: **[APIprox](https://gi
 
 **APInox focus**: Desktop UI for SOAP testing only
 
-### Future: Migrate Sidecar to Rust
-Consider migrating Node.js sidecar backend logic into Tauri Rust commands for single-binary distribution.
+### Rust Backend Consolidation (COMPLETED)
+Core backend logic now lives in the Tauri Rust application, giving APInox a single native desktop runtime.
 
-**Benefits**:
-- Single executable (no separate sidecar process)
+**Benefits achieved**:
+- Single executable backend path
 - Better performance
-- Smaller distribution size
+- Smaller distribution complexity
 - Simpler deployment
-
-**Estimated effort**: 8-10 days
 
 ---
 

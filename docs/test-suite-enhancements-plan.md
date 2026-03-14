@@ -103,7 +103,7 @@ The current test suite functionality is missing several key features:
   - [ ] Update `WorkspaceLayout.tsx` to show TestSuiteSummary when suite selected
 
 - [ ] **Commands & Backend** (if needed)
-  - [ ] Verify sidecar has no specific commands needed (status is stored in project)
+  - [ ] Verify the backend needs no special command support (status is stored in project)
   - [ ] Ensure project save includes new status fields
 
 - [ ] **Testing & Validation**

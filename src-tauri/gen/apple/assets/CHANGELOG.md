@@ -1,6 +1,52 @@
 # Changelog
 
 
+## [0.17.122] - 2026-03-10
+### Changed
+- **Sidebar consistency**: All sidebar section headers are now a fixed 44px height — titles without action buttons no longer render shorter than those with buttons
+- **Icon consistency**: Standardised all sidebar header action icons to 16px across Workflows, Tests, Collections, Quick Requests and API Explorer panels
+
+### Added
+- **Changelog in Welcome panel**: Release notes are now embedded at build time and displayed directly in the Welcome panel — no backend message required
+- **Auto-show Welcome on update**: If the application patch number has increased since last launch, the Welcome panel is shown automatically on startup so users see what changed
+
+
+## [0.17.1] - 2026-03-10
+### Added
+- **Android & iOS Support**: Full mobile platform support via Tauri Mobile
+  - Phase 1–5 implementation: project init, network security config, bundled assets, mobile header bar
+  - Vertical layout forced on mobile; tab overflow fixed on small screens
+  - Android: ARM64-only builds, Gradle task fixes, switched to rustls-only (drops OpenSSL dependency)
+  - iOS: bundled assets for simulator (no dev server needed), safe-area inset handling, scroll prevention via JS touchmove
+  - Desktop titlebar/controls hidden on Android/iOS; proper mobile header shown instead
+  - Added `npm run android` / `npm run ios` convenience scripts
+
+### Fixed
+- iOS layout: `flex:1` on WSDL Explorer container for reliable full-height layout
+- iOS layout: `position:fixed inset:0` on root container
+- iOS: mobile header made in-flow (not fixed) to prevent content offset
+- iOS: hamburger button safe-area and scroll prevention refined
+- iOS: viewport-fit=cover with correct safe-area insets
+
+
+## [0.17.0] - 2026-02-10
+### Added
+- **Linux Distribution Packages**: CI pipeline now builds `.deb`, `.rpm`, and Arch `.pkg.tar.zst` packages alongside Windows and macOS (#17)
+- **Splashscreen**: Application launch now shows a branded splashscreen that hides once initialisation completes
+- **SOAP Version Badge**: `SoapVersionBadge` component displayed in the service tree for quick SOAP 1.1/1.2 identification
+- **Deterministic Environment Colors**: Environments are now assigned consistent colors across sessions; settings editor enhanced accordingly
+- **Build Number Tracking**: `.buildno` file introduced for fine-grained build versioning
+
+### Changed
+- **Standalone WSDL/SOAP Parser**: Extracted parser logic into a dedicated `apinox-wsdl-parser` Rust crate for reuse and testability (#12)
+- **Tauri upgraded to 2.10.3**: Synced `tauri`, `tauri-plugin-dialog` and related packages to latest stable versions (#15)
+- **Removed legacy Node.js backend process**: Deprecated separate backend process fully removed from source and CI — all backend logic now runs in the Tauri Rust core (#11)
+
+### Fixed
+- CI artifact paths corrected for Cargo workspace at repo root (#16)
+- CI build failure with `--target` flag in `tauri:build` script
+
+
 ## [0.16.0] - 2026-02-05
 ### Added
 - **Regex Extractors**: Extract values from JSON, HTML, or plain text responses using regex patterns
@@ -11,15 +57,12 @@
   - Enhanced documentation with real-world examples
   - Complementary to existing XPath extractors for non-XML responses
 
-### Auto-Generated Changes
-- No Commit messages found.
-
 ## [0.15.105] - 2026-02-04
 ### Changed
 - **Build Size Optimization**: Significantly reduced installer size through production optimizations
   - Installer size reduced from 28.92 MB to 20.59 MB (-28.8% reduction)
   - Stripped sourcemaps from production builds (kept in development)
-  - Enabled sidecar minification for production
+  - Enabled legacy backend bundle minification for production
   - Added LZMA compression to NSIS installer
   - Webview bundle reduced from 62.22 MB to 16.91 MB (-72.8%)
   - Development builds retain sourcemaps for debugging
@@ -137,7 +180,7 @@
   - Ramp-up configuration for gradual load increase
   
 - **Certificate Management**: Restored ability to open development certificates from the GUI
-  - Added OpenCertificate command handler in sidecar router
+  - Added OpenCertificate command handler in legacy backend router
   - Shield icon in Server UI opens certificate file in system file manager
   - Certificates automatically generated when proxy/mock server starts with HTTPS target
 
@@ -169,7 +212,7 @@
 
 ## [0.13.3] - 2026-01-21
 ### Auto-Generated Changes
-- feat: migrate from axios to native fetch API for standalone binary support  - Replaced axios with native Node.js fetch in ProxyService and other services - Updated ProxyService to handle HTTP requests and responses using fetch - Added NativeHttpClient utility for HTTP operations with error handling - Enhanced DebugModal to reflect changes in sidecar diagnostics - Updated WelcomePanel and styles for logo adjustments - Bumped webview version to 0.13.2 - Added comprehensive tests for NativeHttpClient - Documented standalone binary implementation and build process
+- feat: migrate from axios to native fetch API for standalone binary support  - Replaced axios with native Node.js fetch in ProxyService and other services - Updated ProxyService to handle HTTP requests and responses using fetch - Added NativeHttpClient utility for HTTP operations with error handling - Enhanced DebugModal to reflect changes in legacy backend diagnostics - Updated WelcomePanel and styles for logo adjustments - Bumped webview version to 0.13.2 - Added comprehensive tests for NativeHttpClient - Documented standalone binary implementation and build process
 
 ## [0.13.2] - 2026-01-21
 ### Auto-Generated Changes
@@ -185,7 +228,7 @@
 
 ## [0.12.0] - 2026-01-19
 ### Auto-Generated Changes
-- feat: add Tauri dialog plugin and enhance settings management - Added @tauri-apps/plugin-dialog dependency for file selection dialogs. - Enhanced MainContent component to support new configDir state. - Updated SettingsEditorModal to auto-save settings on tab changes and close. - Integrated file watcher configuration in IntegrationsTab with file selection capability. - Improved GeneralTab to display settings location and sidecar status. - Added sample requests for SOAP,REST,and GraphQL in the Samples folder. - Updated UI context and message handling to manage new configDir state. - Refactored various components to improve settings handling and user experience.
+- feat: add Tauri dialog plugin and enhance settings management - Added @tauri-apps/plugin-dialog dependency for file selection dialogs. - Enhanced MainContent component to support new configDir state. - Updated SettingsEditorModal to auto-save settings on tab changes and close. - Integrated file watcher configuration in IntegrationsTab with file selection capability. - Improved GeneralTab to display settings location and backend status. - Added sample requests for SOAP,REST,and GraphQL in the Samples folder. - Updated UI context and message handling to manage new configDir state. - Refactored various components to improve settings handling and user experience.
 -----
 
 ## [0.11.0] - 2026-01-15

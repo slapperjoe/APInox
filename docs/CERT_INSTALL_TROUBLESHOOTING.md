@@ -40,7 +40,7 @@ scripts\verify-cert-installation.ps1`
 4. Install fresh
 
 ### 3. PowerShell Execution Errors
-The installation command might be failing silently. Check sidecar logs in Debug Modal for `[Diagnostics]` messages.
+The installation command might be failing silently. Check application logs in the Debug Modal for `[Diagnostics]` messages.
 
 ### 4. Cached Diagnostic Results
 Close and reopen Debug Modal, then click "Run Certificate Check" again.
@@ -79,6 +79,6 @@ Get-ChildItem -Path Cert:\LocalMachine\Root | Where-Object { $_.Thumbprint -eq $
 Provide:
 1. Output of `.
 scripts\verify-cert-installation.ps1`
-2. Sidecar logs from Debug Modal (look for `[Diagnostics]` lines)
+2. Backend logs from Debug Modal (look for `[Diagnostics]` lines)
 3. Screenshot of Certificate & Proxy diagnostics tab
 4. Whether you ran APInox as Administrator
