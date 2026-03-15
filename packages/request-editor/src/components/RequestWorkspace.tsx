@@ -24,6 +24,7 @@ import { RequestTypeSelector } from './RequestTypeSelector';
 import { RequestTypeBadge, MethodBadge, BodyTypeBadge, ContentTypeBadge, BadgeGroup } from './RequestTypeBadges';
 import type { RequestType, BodyType, HttpMethod } from '../types';
 import { getInstalledFonts, type MonoFont } from '../utils/fontDetection';
+import type { ExtraTab } from './MonacoRequestEditorWithToolbar';
 
 // Types
 export interface ApiRequest {
@@ -117,9 +118,13 @@ export interface RequestWorkspaceProps {
   
   // File picker callbacks for form-data and binary uploads
   onPickFile?: () => Promise<{ name: string; content: string; contentType: string; size: number } | null>;
+
+  /** Additional tabs injected by the parent, rendered after the built-in tabs */
+  extraTabs?: ExtraTab[];
 }
 
-type TabType = 'request' | 'headers' | 'params' | 'assertions' | 'extractors' | 'auth' | 'attachments' | 'variables';
+type BuiltinTabType = 'request' | 'headers' | 'params' | 'assertions' | 'extractors' | 'auth' | 'attachments' | 'variables';
+type TabType = BuiltinTabType | string;
 
 // Internal component that uses the context
 const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
@@ -142,7 +147,8 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
   onPickFile,
   initialLayoutMode,
   layoutMode: controlledLayoutMode,
-  onLayoutModeChange
+  onLayoutModeChange,
+  extraTabs = [],
 }) => {
   // Editor settings from context
   const editorSettings = useEditorSettings();
@@ -346,28 +352,8 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
     setEditorForceUpdateKey(prev => prev + 1);
   }, [editorSettings, onUpdateRequest, request]);
 
-  const renderRequestEditorToolbar = () => (
-    <S.RequestEditorToolbar>
-      <S.CompactIconButton
-        title={editorSettings.settings.prettyPrint ? 'Minify (Compress)' : 'Pretty Print (Format)'}
-        onClick={handleTogglePrettyPrint}
-      >
-        {editorSettings.settings.prettyPrint ? <Minus size={14} /> : <Braces size={14} />}
-      </S.CompactIconButton>
-      <S.SettingsMenuWrapper>
-        <S.CompactIconButton
-          ref={settingsButtonRef}
-          title="Editor Settings"
-          onClick={handleToggleSettings}
-          className={showEditorSettings ? 'active' : ''}
-        >
-          <Settings size={14} />
-        </S.CompactIconButton>
-      </S.SettingsMenuWrapper>
-    </S.RequestEditorToolbar>
-  );
+    // Render tab content
 
-  // Render tab content
   const renderTabContent = () => {
     switch (activeTab) {
       case 'request':
@@ -413,68 +399,58 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
             return Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, String(v ?? '')]));
           })();
           return (
-            <S.RequestEditorContainer>
-              {renderRequestEditorToolbar()}
-              <S.RequestEditorSurface>
-                <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
-                  {/* GraphQL query editor — 67% */}
-                  <div style={{ flex: '0 0 67%', minWidth: 0, borderRight: '1px solid var(--apinox-widget-border)', overflow: 'hidden' }}>
-                    <MonacoRequestEditor
-                      ref={requestEditorRef}
-                      value={request.request || ''}
-                      onChange={(value) => onUpdateRequest({ ...request, request: value })}
-                      language="graphql"
-                      readOnly={readOnly}
-                      availableVariables={availableVariables}
-                      requestId={request.id || request.name}
-                      fontSize={editorSettings.settings.fontSize}
-                      fontFamily={editorSettings.settings.fontFamily}
-                      showLineNumbers={editorSettings.settings.showLineNumbers}
-                      showMinimap={editorSettings.settings.showMinimap}
-                      forceUpdateKey={editorForceUpdateKey}
-                      onLog={onLog}
-                    />
-                  </div>
-                  {/* Variables panel — 33% */}
-                  <div style={{ flex: '0 0 33%', minWidth: 0, overflow: 'hidden' }}>
-                    <QueryParamsPanel
-                      params={graphqlVars}
-                      onChange={(vars) => onUpdateRequest({
-                        ...request,
-                        graphqlConfig: { ...request.graphqlConfig, variables: vars }
-                      })}
-                      title="Variables"
-                      paramLabel="Variable"
-                      readOnly={readOnly}
-                    />
-                  </div>
-                </div>
-              </S.RequestEditorSurface>
-            </S.RequestEditorContainer>
+            <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
+              {/* GraphQL query editor — 67% */}
+              <div style={{ flex: '0 0 67%', minWidth: 0, borderRight: '1px solid var(--apinox-widget-border)', overflow: 'hidden' }}>
+                <MonacoRequestEditor
+                  ref={requestEditorRef}
+                  value={request.request || ''}
+                  onChange={(value) => onUpdateRequest({ ...request, request: value })}
+                  language="graphql"
+                  readOnly={readOnly}
+                  availableVariables={availableVariables}
+                  requestId={request.id || request.name}
+                  fontSize={editorSettings.settings.fontSize}
+                  fontFamily={editorSettings.settings.fontFamily}
+                  showLineNumbers={editorSettings.settings.showLineNumbers}
+                  showMinimap={editorSettings.settings.showMinimap}
+                  forceUpdateKey={editorForceUpdateKey}
+                  onLog={onLog}
+                />
+              </div>
+              {/* Variables panel — 33% */}
+              <div style={{ flex: '0 0 33%', minWidth: 0, overflow: 'hidden' }}>
+                <QueryParamsPanel
+                  params={graphqlVars}
+                  onChange={(vars) => onUpdateRequest({
+                    ...request,
+                    graphqlConfig: { ...request.graphqlConfig, variables: vars }
+                  })}
+                  title="Variables"
+                  paramLabel="Variable"
+                  readOnly={readOnly}
+                />
+              </div>
+            </div>
           );
         }
 
         return (
-          <S.RequestEditorContainer>
-            {renderRequestEditorToolbar()}
-            <S.RequestEditorSurface>
-              <MonacoRequestEditor
-                ref={requestEditorRef}
-                value={request.request || ''}
-                onChange={(value) => onUpdateRequest({ ...request, request: value })}
-                language={editorLanguage}
-                readOnly={readOnly}
-                availableVariables={availableVariables}
-                requestId={request.id || request.name}
-                fontSize={editorSettings.settings.fontSize}
-                fontFamily={editorSettings.settings.fontFamily}
-                showLineNumbers={editorSettings.settings.showLineNumbers}
-                showMinimap={editorSettings.settings.showMinimap}
-                forceUpdateKey={editorForceUpdateKey}
-                onLog={onLog}
-              />
-            </S.RequestEditorSurface>
-          </S.RequestEditorContainer>
+          <MonacoRequestEditor
+            ref={requestEditorRef}
+            value={request.request || ''}
+            onChange={(value) => onUpdateRequest({ ...request, request: value })}
+            language={editorLanguage}
+            readOnly={readOnly}
+            availableVariables={availableVariables}
+            requestId={request.id || request.name}
+            fontSize={editorSettings.settings.fontSize}
+            fontFamily={editorSettings.settings.fontFamily}
+            showLineNumbers={editorSettings.settings.showLineNumbers}
+            showMinimap={editorSettings.settings.showMinimap}
+            forceUpdateKey={editorForceUpdateKey}
+            onLog={onLog}
+          />
         );
 
       case 'headers':
@@ -550,8 +526,10 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
           </S.PanelContent>
         );
 
-      default:
-        return null;
+      default: {
+        const extra = extraTabs.find(t => t.id === activeTab);
+        return extra ? extra.render() : null;
+      }
     }
   };
 
@@ -666,6 +644,11 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
 
       {/* Tabs */}
       <S.TabsHeader>
+        {request.bodyType !== 'none' && (
+          <S.TabButton $active={activeTab === 'request'} onClick={() => setActiveTab('request')}>
+            Body
+          </S.TabButton>
+        )}
         <S.TabButton $active={activeTab === 'headers'} onClick={() => setActiveTab('headers')}>
           Headers
           {request.headers && Object.keys(request.headers).length > 0 && (
@@ -702,6 +685,34 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
             <S.TabMeta>{availableVariables.length}</S.TabMeta>
           </S.TabButton>
         )}
+        {extraTabs.map(tab => (
+          <S.TabButton key={tab.id} $active={activeTab === tab.id} onClick={() => setActiveTab(tab.id)}>
+            {tab.label}
+            {tab.badge !== undefined && tab.badge > 0 && (
+              <S.TabMeta>{tab.badge}</S.TabMeta>
+            )}
+          </S.TabButton>
+        ))}
+        <S.TabsRight>
+          {activeTab === 'request' && (
+            <S.CompactIconButton
+              title={editorSettings.settings.prettyPrint ? 'Minify (Compress)' : 'Pretty Print (Format)'}
+              onClick={handleTogglePrettyPrint}
+            >
+              {editorSettings.settings.prettyPrint ? <Minus size={14} /> : <Braces size={14} />}
+            </S.CompactIconButton>
+          )}
+          <S.SettingsMenuWrapper>
+            <S.CompactIconButton
+              ref={settingsButtonRef}
+              title="Editor Settings"
+              onClick={handleToggleSettings}
+              className={showEditorSettings ? 'active' : ''}
+            >
+              <Settings size={14} />
+            </S.CompactIconButton>
+          </S.SettingsMenuWrapper>
+        </S.TabsRight>
       </S.TabsHeader>
 
       {/* Content Area (Split View) */}
