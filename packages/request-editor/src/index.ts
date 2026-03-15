@@ -11,6 +11,7 @@ export type { SchemaNode } from './shared';
 export { MonacoRequestEditor } from './components/MonacoRequestEditor';
 export type { MonacoRequestEditorHandle } from './components/MonacoRequestEditor';
 export { MonacoRequestEditorWithToolbar } from './components/MonacoRequestEditorWithToolbar';
+export type { MonacoRequestEditorWithToolbarProps, ExtraTab } from './components/MonacoRequestEditorWithToolbar';
 export { MonacoResponseViewer } from './components/MonacoResponseViewer';
 export { MonacoSingleLineInput } from './components/MonacoSingleLineInput';
 export type { MonacoSingleLineInputHandle } from './components/MonacoSingleLineInput';
