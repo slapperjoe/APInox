@@ -412,7 +412,7 @@
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALID_ARCHS = arm64;
-				DEVELOPMENT_TEAM = "6682UZHBKW";
+				DEVELOPMENT_TEAM = "";
 			};
 			name = debug;
 		};
@@ -500,11 +500,11 @@
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALID_ARCHS = arm64;
-				DEVELOPMENT_TEAM = "6682UZHBKW";
+				DEVELOPMENT_TEAM = "";
 			};
 			name = release;
 		};
-		EAFB7E9D7C2DBC7B83DE8B9A /* debug */ = {
+		EAFB7E9D7C2DBC7B83DE8B9A /* debug */= {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
