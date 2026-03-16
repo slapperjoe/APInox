@@ -111,7 +111,8 @@ const FilterButton = styled.button<{ $active?: boolean }>`
     border-radius: 4px;
     font-size: 11px;
     line-height: 1;
-    height: 24px;
+    height: 22px;
+    min-height: unset;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -132,7 +133,8 @@ const ClearFiltersButton = styled.button`
     border-radius: 4px;
     font-size: 11px;
     line-height: 1;
-    height: 24px;
+    height: 22px;
+    min-height: unset;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -149,6 +151,7 @@ const FilterToggle = styled.button<{ $expanded: boolean }>`
     background: transparent;
     border: none;
     color: var(--apinox-sideBar-foreground);
+    min-height: unset;
     padding: ${SPACING_XS} ${SPACING_SM};
     cursor: pointer;
     display: flex;
