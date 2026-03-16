@@ -219,13 +219,7 @@ const BreadcrumbText = styled.span`
   white-space: nowrap;
 `;
 
-const VersionLabel = styled.div`
-  font-size: 10px;
-  color: var(--apinox-descriptionForeground);
-  opacity: 0.6;
-  padding: 0 8px;
-  -webkit-app-region: no-drag;
-`;
+
 
 const WindowControls = styled.div`
   display: flex;
@@ -418,7 +412,7 @@ const TitleBar: React.FC = () => {
         <DragRegion $isMacOS={platformOS === 'macos'} $isMaximized={isMaximized} data-tauri-drag-region>
           <AppLogo onClick={handleLogoClick} title="Double-click to open Debug Console">
             <LogoIcon src={apinoxIcon} alt="APInox" />
-            <AppTitle>APInox</AppTitle>
+            <AppTitle>APInox {version}</AppTitle>
           </AppLogo>
           
           <SearchContainer>
@@ -453,7 +447,6 @@ const TitleBar: React.FC = () => {
             </LastSearchBreadcrumb>
           )}
         </DragRegion>
-        {version && <VersionLabel>v{version}</VersionLabel>}
         {platformOS !== 'macos' && (
           <WindowControls>
             <WindowButton onClick={handleMinimize} title="Minimize">

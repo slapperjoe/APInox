@@ -104,30 +104,54 @@ const FilterSelect = styled.select`
 `;
 
 const FilterButton = styled.button<{ $active?: boolean }>`
-    background: ${props => props.$active ? 'var(--apinox-button-background)' : 'transparent'};
-    color: var(--apinox-button-foreground);
-    border: 1px solid var(--apinox-input-border);
-    padding: ${SPACING_XS} ${SPACING_SM};
+    background: ${props => props.$active ? 'var(--apinox-button-background)' : 'var(--apinox-button-secondaryBackground)'};
+    color: ${props => props.$active ? 'var(--apinox-button-foreground)' : 'var(--apinox-button-secondaryForeground)'};
+    border: 1px solid ${props => props.$active ? 'var(--apinox-button-background)' : 'var(--apinox-input-border)'};
+    padding: 2px ${SPACING_SM};
     border-radius: 4px;
     font-size: 11px;
+    line-height: 1;
+    height: 22px;
+    min-height: unset;
     cursor: pointer;
     display: flex;
     align-items: center;
     gap: ${SPACING_XS};
     
     &:hover {
-        background: var(--apinox-button-hoverBackground);
+        background: ${props => props.$active ? 'var(--apinox-button-hoverBackground)' : 'var(--apinox-button-secondaryHoverBackground)'};
+        border-color: ${props => props.$active ? 'var(--apinox-button-hoverBackground)' : 'var(--apinox-input-border)'};
     }
 `;
 
-const ClearFiltersButton = styled(FilterButton)`
+const ClearFiltersButton = styled.button`
     margin-left: auto;
+    background: transparent;
+    color: var(--apinox-input-foreground);
+    border: 1px solid var(--apinox-input-border);
+    padding: 2px ${SPACING_SM};
+    border-radius: 4px;
+    font-size: 11px;
+    line-height: 1;
+    height: 22px;
+    min-height: unset;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: ${SPACING_XS};
+    opacity: 0.8;
+
+    &:hover {
+        background: var(--apinox-list-hoverBackground);
+        opacity: 1;
+    }
 `;
 
 const FilterToggle = styled.button<{ $expanded: boolean }>`
     background: transparent;
     border: none;
-    color: var(--apinox-button-foreground);
+    color: var(--apinox-sideBar-foreground);
+    min-height: unset;
     padding: ${SPACING_XS} ${SPACING_SM};
     cursor: pointer;
     display: flex;
