@@ -60,7 +60,9 @@ export default defineConfig(({ mode }) => {
           'react-dom',
           'react/jsx-runtime',
           'styled-components',
-          'monaco-editor'
+          'monaco-editor',
+          '@tauri-apps/api',
+          /^@tauri-apps\//
         ],
         output: {
           globals: {
