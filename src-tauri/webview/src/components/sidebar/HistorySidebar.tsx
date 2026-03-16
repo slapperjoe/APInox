@@ -107,9 +107,11 @@ const FilterButton = styled.button<{ $active?: boolean }>`
     background: ${props => props.$active ? 'var(--apinox-button-background)' : 'var(--apinox-button-secondaryBackground)'};
     color: ${props => props.$active ? 'var(--apinox-button-foreground)' : 'var(--apinox-button-secondaryForeground)'};
     border: 1px solid ${props => props.$active ? 'var(--apinox-button-background)' : 'var(--apinox-input-border)'};
-    padding: ${SPACING_XS} ${SPACING_SM};
+    padding: 2px ${SPACING_SM};
     border-radius: 4px;
     font-size: 11px;
+    line-height: 1;
+    height: 24px;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -126,9 +128,11 @@ const ClearFiltersButton = styled.button`
     background: transparent;
     color: var(--apinox-input-foreground);
     border: 1px solid var(--apinox-input-border);
-    padding: ${SPACING_XS} ${SPACING_SM};
+    padding: 2px ${SPACING_SM};
     border-radius: 4px;
     font-size: 11px;
+    line-height: 1;
+    height: 24px;
     cursor: pointer;
     display: flex;
     align-items: center;
