@@ -1,6 +1,17 @@
 # Changelog
 
 
+## [0.18.0] - 2026-03-16
+### Changes
+- fix: update version to 0.17.128 in package-lock.json
+- Merge pull request #25 from slapperjoe/copilot/debug-job-67182809833
+- fix(ci): intercept xcodebuild -exportArchive to fix teamID error
+- fix(ci): fix actionlint SC2016 — use quoted heredoc in xcodebuild wrapper
+- fix(ci): fix iOS unsigned sideload — inject signing-off settings directly in xcodebuild wrapper
+- Initial plan
+- chore: update iOS build conditions to require APPLE_CERTIFICATE and APPLE_PROVISIONING_PROFILE
+- chore: add '@tauri-apps/api' and related patterns to external dependencies in vite config
+
 ## [0.17.122] - 2026-03-10
 ### Changed
 - **Sidebar consistency**: All sidebar section headers are now a fixed 44px height — titles without action buttons no longer render shorter than those with buttons
