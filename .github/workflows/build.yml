@@ -298,24 +298,27 @@ jobs:
           WRAPPER_DIR="$RUNNER_TEMP/xcodebuild-nosign/bin"
           WRAPPER="$WRAPPER_DIR/xcodebuild"
           mkdir -p "$WRAPPER_DIR"
-          {
-            echo '#!/bin/bash'
-            echo 'ARGS=()'
-            echo 'for arg in "$@"; do'
-            echo '  [[ "$arg" == "-allowProvisioningUpdates" ]] && continue'
-            echo '  ARGS+=("$arg")'
-            echo 'done'
-            echo 'NOSIGN_SETTINGS=('
-            echo '  CODE_SIGNING_ALLOWED=NO'
-            echo '  CODE_SIGNING_REQUIRED=NO'
-            echo '  "CODE_SIGN_IDENTITY="'
-            echo '  "EXPANDED_CODE_SIGN_IDENTITY="'
-            echo '  CODE_SIGN_STYLE=Manual'
-            echo '  "DEVELOPMENT_TEAM="'
-            echo '  "PROVISIONING_PROFILE_SPECIFIER="'
-            echo ')'
-            printf 'exec "%s" "${ARGS[@]}" "${NOSIGN_SETTINGS[@]}"\n' "$REAL_XCODEBUILD"
-          } > "$WRAPPER"
+          # Use a quoted heredoc so shellcheck knows $arg/${ARGS[@]} are intentionally unexpanded
+          cat > "$WRAPPER" << 'EOF_XCODEBUILD_WRAPPER'
+          #!/bin/bash
+          ARGS=()
+          for arg in "$@"; do
+            [[ "$arg" == "-allowProvisioningUpdates" ]] && continue
+            ARGS+=("$arg")
+          done
+          NOSIGN_SETTINGS=(
+            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_REQUIRED=NO
+            "CODE_SIGN_IDENTITY="
+            "EXPANDED_CODE_SIGN_IDENTITY="
+            CODE_SIGN_STYLE=Manual
+            "DEVELOPMENT_TEAM="
+            "PROVISIONING_PROFILE_SPECIFIER="
+          )
+          EOF_XCODEBUILD_WRAPPER
+          # Append the exec line with the real xcodebuild path expanded now (outer shell)
+          # Use escaped \${...} so shellcheck knows those refs are intentionally literal
+          printf "exec \"%s\" \"\${ARGS[@]}\" \"\${NOSIGN_SETTINGS[@]}\"\n" "$REAL_XCODEBUILD" >> "$WRAPPER"
           chmod +x "$WRAPPER"
           export PATH="$WRAPPER_DIR:$PATH"
           npx tauri ios build --target aarch64
