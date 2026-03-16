@@ -131,7 +131,7 @@ impl TestRunner {
 Rust has no explicit destructor syntax like C#'s `~Foo()`. Instead, you implement the `Drop` trait:
 
 ```rust
-impl Drop for SidecarProcess {
+impl Drop for BackendProcess {
     fn drop(&mut self) {
         // cleanup code — called automatically when value goes out of scope
         self.stop();
@@ -141,7 +141,7 @@ impl Drop for SidecarProcess {
 
 **C# equivalent:**
 ```csharp
-~SidecarProcess() {    // finalizer
+~BackendProcess() {    // finalizer
     Stop();
 }
 // or better:

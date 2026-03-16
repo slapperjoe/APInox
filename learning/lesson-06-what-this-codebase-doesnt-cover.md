@@ -308,7 +308,7 @@ match parse_wsdl(url).await {
 
 ## 7. Testing
 
-**What you saw**: No tests in the Rust source (they exist in the Node.js sidecar).
+**What you saw**: Limited tests in the Rust source compared to the webview/shared code.
 
 **What's missing**: Rust's built-in testing framework — unit tests live *inside* source files, integration tests in `tests/`.
 

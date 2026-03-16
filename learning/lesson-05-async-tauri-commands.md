@@ -215,7 +215,7 @@ fn get_platform_os() -> String {
 #[tauri::command]
 async fn quit_app(app: tauri::AppHandle) {
     log::info!("Quit command received");
-    stop_sidecar();
+    // Stop any long-running backend tasks here if needed
     app.exit(0);
 }
 ```

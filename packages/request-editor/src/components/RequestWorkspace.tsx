@@ -24,6 +24,7 @@ import { RequestTypeSelector } from './RequestTypeSelector';
 import { RequestTypeBadge, MethodBadge, BodyTypeBadge, ContentTypeBadge, BadgeGroup } from './RequestTypeBadges';
 import type { RequestType, BodyType, HttpMethod } from '../types';
 import { getInstalledFonts, type MonoFont } from '../utils/fontDetection';
+import type { ExtraTab } from './MonacoRequestEditorWithToolbar';
 
 // Types
 export interface ApiRequest {
@@ -117,9 +118,13 @@ export interface RequestWorkspaceProps {
   
   // File picker callbacks for form-data and binary uploads
   onPickFile?: () => Promise<{ name: string; content: string; contentType: string; size: number } | null>;
+
+  /** Additional tabs injected by the parent, rendered after the built-in tabs */
+  extraTabs?: ExtraTab[];
 }
 
-type TabType = 'request' | 'headers' | 'params' | 'assertions' | 'extractors' | 'auth' | 'attachments' | 'variables';
+type BuiltinTabType = 'request' | 'headers' | 'params' | 'assertions' | 'extractors' | 'auth' | 'attachments' | 'variables';
+type TabType = BuiltinTabType | string;
 
 // Internal component that uses the context
 const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
@@ -142,7 +147,8 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
   onPickFile,
   initialLayoutMode,
   layoutMode: controlledLayoutMode,
-  onLayoutModeChange
+  onLayoutModeChange,
+  extraTabs = [],
 }) => {
   // Editor settings from context
   const editorSettings = useEditorSettings();
@@ -330,7 +336,24 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
     };
   }, [isResizing, layoutMode]);
 
-  // Render tab content
+  const handleTogglePrettyPrint = useCallback(() => {
+    editorSettings.togglePrettyPrint();
+    const newPrettyPrint = !editorSettings.settings.prettyPrint;
+    if (request.request && request.bodyType) {
+      const language = request.bodyType === 'json' ? 'json'
+        : request.bodyType === 'xml' ? 'xml'
+        : request.bodyType === 'graphql' ? 'graphql'
+        : 'text';
+      const formatted = formatContent(request.request, language, editorSettings.settings, newPrettyPrint);
+      if (formatted !== request.request) {
+        onUpdateRequest({ ...request, request: formatted });
+      }
+    }
+    setEditorForceUpdateKey(prev => prev + 1);
+  }, [editorSettings, onUpdateRequest, request]);
+
+    // Render tab content
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'request':
@@ -503,8 +526,10 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
           </S.PanelContent>
         );
 
-      default:
-        return null;
+      default: {
+        const extra = extraTabs.find(t => t.id === activeTab);
+        return extra ? extra.render() : null;
+      }
     }
   };
 
@@ -619,6 +644,11 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
 
       {/* Tabs */}
       <S.TabsHeader>
+        {request.bodyType !== 'none' && (
+          <S.TabButton $active={activeTab === 'request'} onClick={() => setActiveTab('request')}>
+            Body
+          </S.TabButton>
+        )}
         <S.TabButton $active={activeTab === 'headers'} onClick={() => setActiveTab('headers')}>
           Headers
           {request.headers && Object.keys(request.headers).length > 0 && (
@@ -655,44 +685,23 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
             <S.TabMeta>{availableVariables.length}</S.TabMeta>
           </S.TabButton>
         )}
-
-        {/* Right side: Format & Settings buttons */}
+        {extraTabs.map(tab => (
+          <S.TabButton key={tab.id} $active={activeTab === tab.id} onClick={() => setActiveTab(tab.id)}>
+            {tab.label}
+            {tab.badge !== undefined && tab.badge > 0 && (
+              <S.TabMeta>{tab.badge}</S.TabMeta>
+            )}
+          </S.TabButton>
+        ))}
         <S.TabsRight>
-          <S.CompactIconButton
-            title={editorSettings.settings.prettyPrint ? 'Minify (Compress)' : 'Pretty Print (Format)'}
-            onClick={() => {
-              // Toggle the setting - this will trigger reactive updates
-              editorSettings.togglePrettyPrint();
-              
-              // Format the request body immediately with the NEW value
-              // (state update is async, so we toggle the current value)
-              const newPrettyPrint = !editorSettings.settings.prettyPrint;
-              
-              if (request.request && request.bodyType) {
-                const language = request.bodyType === 'json' ? 'json' : 
-                                request.bodyType === 'xml' ? 'xml' :
-                                request.bodyType === 'graphql' ? 'graphql' : 'text';
-                
-                const formatted = formatContent(
-                  request.request, 
-                  language, 
-                  editorSettings.settings, 
-                  newPrettyPrint
-                );
-                
-                if (formatted !== request.request) {
-                  onUpdateRequest({ ...request, request: formatted });
-                }
-              }
-              
-              // Response viewer will update reactively via settings change
-              // Force editor refresh to ensure both update
-              setEditorForceUpdateKey(prev => prev + 1);
-            }}
-          >
-            {editorSettings.settings.prettyPrint ? <Minus size={14} /> : <Braces size={14} />}
-          </S.CompactIconButton>
-          
+          {activeTab === 'request' && (
+            <S.CompactIconButton
+              title={editorSettings.settings.prettyPrint ? 'Minify (Compress)' : 'Pretty Print (Format)'}
+              onClick={handleTogglePrettyPrint}
+            >
+              {editorSettings.settings.prettyPrint ? <Minus size={14} /> : <Braces size={14} />}
+            </S.CompactIconButton>
+          )}
           <S.SettingsMenuWrapper>
             <S.CompactIconButton
               ref={settingsButtonRef}

@@ -40,7 +40,7 @@
 ### Changed
 - **Standalone WSDL/SOAP Parser**: Extracted parser logic into a dedicated `apinox-wsdl-parser` Rust crate for reuse and testability (#12)
 - **Tauri upgraded to 2.10.3**: Synced `tauri`, `tauri-plugin-dialog` and related packages to latest stable versions (#15)
-- **Removed Node.js sidecar**: Deprecated sidecar process fully removed from source and CI — all backend logic now runs in the Tauri Rust core (#11)
+- **Removed legacy Node.js backend process**: Deprecated separate backend process fully removed from source and CI — all backend logic now runs in the Tauri Rust core (#11)
 
 ### Fixed
 - CI artifact paths corrected for Cargo workspace at repo root (#16)
@@ -62,7 +62,7 @@
 - **Build Size Optimization**: Significantly reduced installer size through production optimizations
   - Installer size reduced from 28.92 MB to 20.59 MB (-28.8% reduction)
   - Stripped sourcemaps from production builds (kept in development)
-  - Enabled sidecar minification for production
+  - Enabled legacy backend bundle minification for production
   - Added LZMA compression to NSIS installer
   - Webview bundle reduced from 62.22 MB to 16.91 MB (-72.8%)
   - Development builds retain sourcemaps for debugging
@@ -180,7 +180,7 @@
   - Ramp-up configuration for gradual load increase
   
 - **Certificate Management**: Restored ability to open development certificates from the GUI
-  - Added OpenCertificate command handler in sidecar router
+  - Added OpenCertificate command handler in legacy backend router
   - Shield icon in Server UI opens certificate file in system file manager
   - Certificates automatically generated when proxy/mock server starts with HTTPS target
 
@@ -212,7 +212,7 @@
 
 ## [0.13.3] - 2026-01-21
 ### Auto-Generated Changes
-- feat: migrate from axios to native fetch API for standalone binary support  - Replaced axios with native Node.js fetch in ProxyService and other services - Updated ProxyService to handle HTTP requests and responses using fetch - Added NativeHttpClient utility for HTTP operations with error handling - Enhanced DebugModal to reflect changes in sidecar diagnostics - Updated WelcomePanel and styles for logo adjustments - Bumped webview version to 0.13.2 - Added comprehensive tests for NativeHttpClient - Documented standalone binary implementation and build process
+- feat: migrate from axios to native fetch API for standalone binary support  - Replaced axios with native Node.js fetch in ProxyService and other services - Updated ProxyService to handle HTTP requests and responses using fetch - Added NativeHttpClient utility for HTTP operations with error handling - Enhanced DebugModal to reflect changes in legacy backend diagnostics - Updated WelcomePanel and styles for logo adjustments - Bumped webview version to 0.13.2 - Added comprehensive tests for NativeHttpClient - Documented standalone binary implementation and build process
 
 ## [0.13.2] - 2026-01-21
 ### Auto-Generated Changes
@@ -228,7 +228,7 @@
 
 ## [0.12.0] - 2026-01-19
 ### Auto-Generated Changes
-- feat: add Tauri dialog plugin and enhance settings management - Added @tauri-apps/plugin-dialog dependency for file selection dialogs. - Enhanced MainContent component to support new configDir state. - Updated SettingsEditorModal to auto-save settings on tab changes and close. - Integrated file watcher configuration in IntegrationsTab with file selection capability. - Improved GeneralTab to display settings location and sidecar status. - Added sample requests for SOAP,REST,and GraphQL in the Samples folder. - Updated UI context and message handling to manage new configDir state. - Refactored various components to improve settings handling and user experience.
+- feat: add Tauri dialog plugin and enhance settings management - Added @tauri-apps/plugin-dialog dependency for file selection dialogs. - Enhanced MainContent component to support new configDir state. - Updated SettingsEditorModal to auto-save settings on tab changes and close. - Integrated file watcher configuration in IntegrationsTab with file selection capability. - Improved GeneralTab to display settings location and backend status. - Added sample requests for SOAP,REST,and GraphQL in the Samples folder. - Updated UI context and message handling to manage new configDir state. - Refactored various components to improve settings handling and user experience.
 -----
 
 ## [0.11.0] - 2026-01-15

@@ -62,7 +62,7 @@ To test the fix:
 1. User selects a local WSDL file
 2. Frontend extracts the directory path from the file path
 3. Frontend sends `loadWsdl` command with both `url` and `localWsdlDir`
-4. Sidecar receives the command and passes both parameters to WsdlParser
+4. The backend command receives both parameters and passes them to `WsdlParser`
 5. WsdlParser scans the directory and builds a namespace cache of local XSD files
 6. WsdlParser intercepts all remote XSD import requests via `overrideImportLocation`
 7. **If local XSD files exist:** Redirects to local files (node-soap resolves by namespace)
