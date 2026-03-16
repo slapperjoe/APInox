@@ -277,17 +277,38 @@ jobs:
       # causes Tauri to embed DEVELOPMENT_TEAM in the Xcode project, which makes
       # xcodebuild attempt account/profile lookup even with CODE_SIGNING_ALLOWED=NO.
       # AltStore/Sideloadly handle all re-signing, so no team is needed at build time.
+      #
+      # The xcodebuild wrapper strips -allowProvisioningUpdates from Tauri's
+      # xcodebuild invocation. That flag causes Xcode's GatherProvisioningInputs
+      # step to contact Apple servers for account/profile resolution, which fails
+      # in CI even when signing is fully disabled via build-setting overrides.
       - name: Build unsigned iOS (device — sideload)
         if: env.APPLE_CERTIFICATE == ''
-        run: >
-          npx tauri ios build --target aarch64 --
-          CODE_SIGNING_ALLOWED=NO
-          CODE_SIGNING_REQUIRED=NO
-          CODE_SIGN_IDENTITY=""
-          EXPANDED_CODE_SIGN_IDENTITY=""
-          CODE_SIGN_STYLE=Manual
-          DEVELOPMENT_TEAM=""
-          PROVISIONING_PROFILE_SPECIFIER=""
+        run: |
+          XCODE_PATH=$(xcode-select -p) || { echo 'Error: xcode-select failed'; exit 1; }
+          REAL_XCODEBUILD="$XCODE_PATH/usr/bin/xcodebuild"
+          WRAPPER_DIR="$RUNNER_TEMP/xcodebuild-nosign/bin"
+          WRAPPER="$WRAPPER_DIR/xcodebuild"
+          mkdir -p "$WRAPPER_DIR"
+          {
+            echo '#!/bin/bash'
+            echo 'ARGS=()'
+            echo 'for arg in "$@"; do'
+            echo '  [[ "$arg" == "-allowProvisioningUpdates" ]] && continue'
+            echo '  ARGS+=("$arg")'
+            echo 'done'
+            printf 'exec "%s" "${ARGS[@]}"\n' "$REAL_XCODEBUILD"
+          } > "$WRAPPER"
+          chmod +x "$WRAPPER"
+          export PATH="$WRAPPER_DIR:$PATH"
+          npx tauri ios build --target aarch64 -- \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            EXPANDED_CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM="" \
+            PROVISIONING_PROFILE_SPECIFIER=""
 
       - name: Package sideload IPA
         if: env.APPLE_CERTIFICATE == ''
