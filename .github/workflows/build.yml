@@ -180,14 +180,62 @@ jobs:
     runs-on: macos-latest
     permissions:
       contents: read
-    # iOS builds require Apple Developer signing credentials configured as repository secrets:
-    #   APPLE_CERTIFICATE            – base64-encoded .p12 certificate
-    #   APPLE_CERTIFICATE_PASSWORD   – password for the .p12
-    #   APPLE_PROVISIONING_PROFILE   – base64-encoded .mobileprovision file
-    #   APPLE_TEAM_ID                – Apple Developer Team ID
-    # Build and upload steps are skipped gracefully when those secrets are absent.
-    # Map secrets to env vars so they can be checked in `if:` conditions.
-    # (The `secrets` context is not accessible in `if:` expressions.)
+    #
+    # This job has TWO build paths, selected by which secrets are configured:
+    #
+    # ┌─────────────────────────────────┬────────────────┬──────────────────────┐
+    # │ Secrets set                     │ Build output   │ Where it runs        │
+    # ├─────────────────────────────────┼────────────────┼──────────────────────┤
+    # │ (none)                          │ unsigned .ipa  │ Real device via      │
+    # │ APPLE_TEAM_ID only              │ (sideloadable) │ AltStore/Sideloadly  │
+    # │   (free Xcode / personal team)  │                │                      │
+    # │ APPLE_CERTIFICATE + all four    │ signed .ipa    │ Real device directly │
+    # │   (paid Developer Program)      │                │                      │
+    # └─────────────────────────────────┴────────────────┴──────────────────────┘
+    #
+    # ── Path 1: Sideload .ipa (no APPLE_CERTIFICATE — default) ──────────────
+    # Built for aarch64-apple-ios (real device ARM64) with signing disabled.
+    # Packaged into an .ipa (a zip of Payload/AppName.app).
+    #
+    # You can then install it on your iPhone using a FREE Apple ID via:
+    #   • AltStore   — https://altstore.io
+    #   • Sideloadly — https://sideloadly.io
+    # These tools re-sign the .ipa with your free personal certificate.
+    # Sideloaded apps work for 7 days before needing a re-install.
+    #
+    # ── Path 2: Signed .ipa (APPLE_CERTIFICATE + all four — paid account) ───
+    # Fully signed for real-device deployment. Requires a paid Apple Developer
+    # Program membership ($99/yr) for the certificate and provisioning profile.
+    #
+    # ── Secret reference table ───────────────────────────────────────────────
+    #
+    # Secret                       What it is                  Where to get it
+    # ─────────────────────────────────────────────────────────────────────────
+    # APPLE_TEAM_ID                10-character alphanumeric    Xcode → Settings →
+    #                              string identifying your      Accounts → team row
+    #                              Apple Developer team.        (also at developer.apple.com
+    #                              Free accounts have one too.  → Account → Membership)
+    #
+    # APPLE_CERTIFICATE            Base64-encoded .p12 file    Keychain Access → right-click
+    #                              containing your Apple        your "Apple Distribution" or
+    #                              Distribution or Developer    "iPhone Developer" cert →
+    #                              signing certificate +        Export → save as .p12 → then:
+    #                              private key.                 base64 -i cert.p12 | pbcopy
+    #                              Requires paid Apple
+    #                              Developer Program ($99/yr).
+    #
+    # APPLE_CERTIFICATE_PASSWORD   Passphrase chosen when       You set this when exporting
+    #                              exporting the .p12 above.    the .p12 from Keychain Access.
+    #
+    # APPLE_PROVISIONING_PROFILE   Base64-encoded               developer.apple.com →
+    #                              .mobileprovision file that   Certificates, Identifiers &
+    #                              links your App ID, devices,  Profiles → Profiles → download
+    #                              and certificate together.    the .mobileprovision → then:
+    #                              Requires paid Apple          base64 -i profile.mobileprovision | pbcopy
+    #                              Developer Program ($99/yr).
+    #
+    # (The `secrets` context is not accessible in `if:` conditions, so secrets
+    #  are mapped to env vars and those are tested instead.)
     env:
       APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
       APPLE_PROVISIONING_PROFILE: ${{ secrets.APPLE_PROVISIONING_PROFILE }}
@@ -222,6 +270,113 @@ jobs:
       - name: Install request-editor dependencies
         run: cd packages/request-editor && npm install
 
+      # ── Path 1: Sideload .ipa (no APPLE_CERTIFICATE — default) ─────────────
+      # Builds for real-device ARM64 without signing so the artifact can be
+      # re-signed and installed via AltStore or Sideloadly using a free Apple ID.
+      #
+      # APPLE_DEVELOPMENT_TEAM is intentionally NOT set: passing it as an env var
+      # causes Tauri to embed DEVELOPMENT_TEAM in the Xcode project, which makes
+      # xcodebuild attempt account/profile lookup even with signing disabled.
+      #
+      # Key design decision — why the wrapper, not `tauri ios build -- KEY=VAL`:
+      # `npx tauri ios build -- CODE_SIGNING_ALLOWED=NO ...` does NOT forward those
+      # key=value pairs to xcodebuild. The xcodebuild log shows only
+      # "SDKROOT = iphoneos18.5" in "Build settings from command line", confirming
+      # that Tauri does not pass the `--` tail through to xcodebuild. As a result,
+      # xcodebuild runs with CODE_SIGNING_ALLOWED=YES (the iphoneos default) and
+      # fails with exit code 65 (GatherProvisioningInputs signing error).
+      #
+      # The wrapper solves this by directly appending the signing-off build
+      # settings to every xcodebuild invocation, bypassing Tauri's CLI layer.
+      # It also strips -allowProvisioningUpdates, which (even without signing)
+      # causes Xcode to contact Apple servers for account/profile resolution.
+      - name: Build unsigned iOS (device — sideload)
+        if: env.APPLE_CERTIFICATE == ''
+        env:
+          # Known output path for the IPA; the wrapper reads this at runtime.
+          IPA_OUTPUT_PATH: ${{ github.workspace }}/apinox-sideload.ipa
+        run: |
+          XCODE_PATH=$(xcode-select -p) || { echo 'Error: xcode-select failed — ensure Xcode is installed and selected'; exit 1; }
+          WRAPPER_DIR="$RUNNER_TEMP/xcodebuild-nosign/bin"
+          WRAPPER="$WRAPPER_DIR/xcodebuild"
+          mkdir -p "$WRAPPER_DIR"
+          # Pass real xcodebuild path as an env var so the wrapper (quoted heredoc) can read it
+          # at runtime without needing shell expansion inside the heredoc body.
+          export REAL_XCODEBUILD_BIN="$XCODE_PATH/usr/bin/xcodebuild"
+          # Quoted heredoc: shellcheck skips the body (intentionally literal wrapper script).
+          # The wrapper reads REAL_XCODEBUILD_BIN and IPA_OUTPUT_PATH from its inherited env.
+          cat > "$WRAPPER" << 'EOF_XCODEBUILD_WRAPPER'
+          #!/bin/bash
+          # xcodebuild signing wrapper — unsigned iOS sideload builds.
+          # Reads REAL_XCODEBUILD_BIN and IPA_OUTPUT_PATH from the environment.
+          REAL_XC="${REAL_XCODEBUILD_BIN:-$(xcode-select -p)/usr/bin/xcodebuild}"
+          # Strip -allowProvisioningUpdates (triggers Apple server contact even without signing)
+          ARGS=()
+          for arg in "$@"; do
+            [[ "$arg" == "-allowProvisioningUpdates" ]] && continue
+            ARGS+=("$arg")
+          done
+          # Detect -exportArchive: xcodebuild reads the teamID from ExportOptions.plist, which
+          # Tauri leaves empty when APPLE_DEVELOPMENT_TEAM is unset → "teamID should be non-empty".
+          # Instead of delegating to xcodebuild, package the .app from the .xcarchive directly.
+          IS_EXPORT=false
+          for arg in "${ARGS[@]}"; do
+            [[ "$arg" == "-exportArchive" ]] && IS_EXPORT=true && break
+          done
+          if $IS_EXPORT; then
+            ARCHIVE_PATH=""
+            EXPORT_PATH=""
+            PREV=""
+            for arg in "${ARGS[@]}"; do
+              [[ "$PREV" == "-archivePath" ]] && ARCHIVE_PATH="$arg"
+              [[ "$PREV" == "-exportPath"  ]] && EXPORT_PATH="$arg"
+              PREV="$arg"
+            done
+            APP_PATH=""
+            if [[ -d "${ARCHIVE_PATH}/Products/Applications" ]]; then
+              APP_PATH=$(find "${ARCHIVE_PATH}/Products/Applications" -maxdepth 1 -name "*.app" | head -1)
+            fi
+            if [[ -z "$APP_PATH" ]]; then
+              echo "xcodebuild-wrapper: error — no .app found in '${ARCHIVE_PATH}/Products/Applications'; attempting fallback (will likely fail)" >&2
+              exec "$REAL_XC" "${ARGS[@]}"
+            fi
+            PAYLOAD_TMP=$(mktemp -d)
+            mkdir -p "${PAYLOAD_TMP}/Payload"
+            cp -r "$APP_PATH" "${PAYLOAD_TMP}/Payload/"
+            APP_NAME=$(basename "$APP_PATH" .app)
+            mkdir -p "$EXPORT_PATH"
+            (cd "$PAYLOAD_TMP" && zip -qr "${APP_NAME}.ipa" Payload/ && mv "${APP_NAME}.ipa" "$EXPORT_PATH/")
+            if [[ -n "$IPA_OUTPUT_PATH" ]]; then
+              cp "$EXPORT_PATH/${APP_NAME}.ipa" "$IPA_OUTPUT_PATH"
+              echo "xcodebuild-wrapper: sideload IPA → $IPA_OUTPUT_PATH"
+            fi
+            rm -rf "$PAYLOAD_TMP"
+            echo "** EXPORT SUCCEEDED (unsigned sideload — ${APP_NAME}.ipa) **"
+            exit 0
+          fi
+          # For all other xcodebuild invocations (build, archive, …): inject signing-off settings.
+          exec "$REAL_XC" "${ARGS[@]}" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            "CODE_SIGN_IDENTITY=" \
+            "EXPANDED_CODE_SIGN_IDENTITY=" \
+            CODE_SIGN_STYLE=Manual \
+            "DEVELOPMENT_TEAM=" \
+            "PROVISIONING_PROFILE_SPECIFIER="
+          EOF_XCODEBUILD_WRAPPER
+          chmod +x "$WRAPPER"
+          export PATH="$WRAPPER_DIR:$PATH"
+          npx tauri ios build --target aarch64
+
+      - name: Upload sideload IPA artifact
+        if: env.APPLE_CERTIFICATE == ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: apinox-ios-sideload
+          path: apinox-sideload.ipa
+          if-no-files-found: warn
+
+      # ── Path 2: Signed .ipa (APPLE_CERTIFICATE set — paid Developer Program) ─
       - name: Import Apple code signing certificate
         if: env.APPLE_CERTIFICATE != ''
         uses: apple-actions/import-codesign-certs@v3
