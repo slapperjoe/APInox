@@ -292,52 +292,81 @@ jobs:
       # causes Xcode to contact Apple servers for account/profile resolution.
       - name: Build unsigned iOS (device — sideload)
         if: env.APPLE_CERTIFICATE == ''
+        env:
+          # Known output path for the IPA; the wrapper reads this at runtime.
+          IPA_OUTPUT_PATH: ${{ github.workspace }}/apinox-sideload.ipa
         run: |
-          XCODE_PATH=$(xcode-select -p) || { echo 'Error: xcode-select failed'; exit 1; }
-          REAL_XCODEBUILD="$XCODE_PATH/usr/bin/xcodebuild"
+          XCODE_PATH=$(xcode-select -p) || { echo 'Error: xcode-select failed — ensure Xcode is installed and selected'; exit 1; }
           WRAPPER_DIR="$RUNNER_TEMP/xcodebuild-nosign/bin"
           WRAPPER="$WRAPPER_DIR/xcodebuild"
           mkdir -p "$WRAPPER_DIR"
-          # Use a quoted heredoc so shellcheck knows $arg/${ARGS[@]} are intentionally unexpanded
+          # Pass real xcodebuild path as an env var so the wrapper (quoted heredoc) can read it
+          # at runtime without needing shell expansion inside the heredoc body.
+          export REAL_XCODEBUILD_BIN="$XCODE_PATH/usr/bin/xcodebuild"
+          # Quoted heredoc: shellcheck skips the body (intentionally literal wrapper script).
+          # The wrapper reads REAL_XCODEBUILD_BIN and IPA_OUTPUT_PATH from its inherited env.
           cat > "$WRAPPER" << 'EOF_XCODEBUILD_WRAPPER'
           #!/bin/bash
+          # xcodebuild signing wrapper — unsigned iOS sideload builds.
+          # Reads REAL_XCODEBUILD_BIN and IPA_OUTPUT_PATH from the environment.
+          REAL_XC="${REAL_XCODEBUILD_BIN:-$(xcode-select -p)/usr/bin/xcodebuild}"
+          # Strip -allowProvisioningUpdates (triggers Apple server contact even without signing)
           ARGS=()
           for arg in "$@"; do
             [[ "$arg" == "-allowProvisioningUpdates" ]] && continue
             ARGS+=("$arg")
           done
-          NOSIGN_SETTINGS=(
-            CODE_SIGNING_ALLOWED=NO
-            CODE_SIGNING_REQUIRED=NO
-            "CODE_SIGN_IDENTITY="
-            "EXPANDED_CODE_SIGN_IDENTITY="
-            CODE_SIGN_STYLE=Manual
-            "DEVELOPMENT_TEAM="
+          # Detect -exportArchive: xcodebuild reads the teamID from ExportOptions.plist, which
+          # Tauri leaves empty when APPLE_DEVELOPMENT_TEAM is unset → "teamID should be non-empty".
+          # Instead of delegating to xcodebuild, package the .app from the .xcarchive directly.
+          IS_EXPORT=false
+          for arg in "${ARGS[@]}"; do
+            [[ "$arg" == "-exportArchive" ]] && IS_EXPORT=true && break
+          done
+          if $IS_EXPORT; then
+            ARCHIVE_PATH=""
+            EXPORT_PATH=""
+            PREV=""
+            for arg in "${ARGS[@]}"; do
+              [[ "$PREV" == "-archivePath" ]] && ARCHIVE_PATH="$arg"
+              [[ "$PREV" == "-exportPath"  ]] && EXPORT_PATH="$arg"
+              PREV="$arg"
+            done
+            APP_PATH=""
+            if [[ -d "${ARCHIVE_PATH}/Products/Applications" ]]; then
+              APP_PATH=$(find "${ARCHIVE_PATH}/Products/Applications" -maxdepth 1 -name "*.app" | head -1)
+            fi
+            if [[ -z "$APP_PATH" ]]; then
+              echo "xcodebuild-wrapper: error — no .app found in '${ARCHIVE_PATH}/Products/Applications'; attempting fallback (will likely fail)" >&2
+              exec "$REAL_XC" "${ARGS[@]}"
+            fi
+            PAYLOAD_TMP=$(mktemp -d)
+            mkdir -p "${PAYLOAD_TMP}/Payload"
+            cp -r "$APP_PATH" "${PAYLOAD_TMP}/Payload/"
+            APP_NAME=$(basename "$APP_PATH" .app)
+            mkdir -p "$EXPORT_PATH"
+            (cd "$PAYLOAD_TMP" && zip -qr "${APP_NAME}.ipa" Payload/ && mv "${APP_NAME}.ipa" "$EXPORT_PATH/")
+            if [[ -n "$IPA_OUTPUT_PATH" ]]; then
+              cp "$EXPORT_PATH/${APP_NAME}.ipa" "$IPA_OUTPUT_PATH"
+              echo "xcodebuild-wrapper: sideload IPA → $IPA_OUTPUT_PATH"
+            fi
+            rm -rf "$PAYLOAD_TMP"
+            echo "** EXPORT SUCCEEDED (unsigned sideload — ${APP_NAME}.ipa) **"
+            exit 0
+          fi
+          # For all other xcodebuild invocations (build, archive, …): inject signing-off settings.
+          exec "$REAL_XC" "${ARGS[@]}" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            "CODE_SIGN_IDENTITY=" \
+            "EXPANDED_CODE_SIGN_IDENTITY=" \
+            CODE_SIGN_STYLE=Manual \
+            "DEVELOPMENT_TEAM=" \
             "PROVISIONING_PROFILE_SPECIFIER="
-          )
           EOF_XCODEBUILD_WRAPPER
-          # Append the exec line with the real xcodebuild path expanded now (outer shell)
-          # Use escaped \${...} so shellcheck knows those refs are intentionally literal
-          printf "exec \"%s\" \"\${ARGS[@]}\" \"\${NOSIGN_SETTINGS[@]}\"\n" "$REAL_XCODEBUILD" >> "$WRAPPER"
           chmod +x "$WRAPPER"
           export PATH="$WRAPPER_DIR:$PATH"
           npx tauri ios build --target aarch64
-
-      - name: Package sideload IPA
-        if: env.APPLE_CERTIFICATE == ''
-        run: |
-          APP_PATH=$(find src-tauri/gen/apple/build -name "*.app" -path "*iphoneos*" -not -path "*iphonesimulator*" | head -1)
-          if [ -z "$APP_PATH" ]; then
-            APP_PATH=$(find src-tauri/gen/apple/build -name "*.app" -not -path "*iphonesimulator*" | head -1)
-          fi
-          if [ -z "$APP_PATH" ]; then
-            echo "Error: no .app bundle found for device target" >&2
-            exit 1
-          fi
-          echo "Packaging: $APP_PATH"
-          mkdir -p /tmp/Payload
-          cp -r "$APP_PATH" /tmp/Payload/
-          cd /tmp && zip -qr "$GITHUB_WORKSPACE/apinox-sideload.ipa" Payload/
 
       - name: Upload sideload IPA artifact
         if: env.APPLE_CERTIFICATE == ''
