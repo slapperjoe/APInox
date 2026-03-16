@@ -237,13 +237,13 @@ jobs:
             > ~/Library/MobileDevice/Provisioning\ Profiles/apinox.mobileprovision
 
       - name: Build iOS IPA
-        if: env.APPLE_TEAM_ID != ''
+        if: env.APPLE_TEAM_ID != '' && env.APPLE_CERTIFICATE != '' && env.APPLE_PROVISIONING_PROFILE != ''
         run: npx tauri ios build
         env:
           APPLE_DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
 
       - name: Upload iOS IPA artifact
-        if: env.APPLE_TEAM_ID != ''
+        if: env.APPLE_TEAM_ID != '' && env.APPLE_CERTIFICATE != '' && env.APPLE_PROVISIONING_PROFILE != ''
         uses: actions/upload-artifact@v4
         with:
           name: apinox-ios
