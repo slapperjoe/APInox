@@ -136,8 +136,8 @@ jobs:
 
       - name: Pre-build steps
         run: |
-          node scripts/increment-build.js
-          node scripts/sync-version.js
+          node scripts/version.js increment
+          node scripts/version.js sync
           npm run build:packages
 
       - name: Build Tauri app
