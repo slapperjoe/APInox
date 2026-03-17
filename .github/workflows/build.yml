@@ -283,7 +283,7 @@ jobs:
       # ── Path 1: Simulator .app (no secrets set) ─────────────────────────────
       - name: Build unsigned iOS (simulator)
         if: env.APPLE_CERTIFICATE == '' && env.APPLE_TEAM_ID == ''
-        run: npx tauri ios build --target aarch64-sim -- CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+        run: npx tauri ios build --target aarch64-sim
 
       - name: Upload unsigned iOS simulator artifact
         if: env.APPLE_CERTIFICATE == '' && env.APPLE_TEAM_ID == ''
@@ -301,19 +301,11 @@ jobs:
       # xcodebuild attempt account/profile lookup even with CODE_SIGNING_ALLOWED=NO.
       # AltStore/Sideloadly handle all re-signing, so no team is needed at build time.
       - name: Build unsigned iOS (device — sideload)
-        if: env.APPLE_CERTIFICATE == '' 
-        run: >
-          npx tauri ios build --target aarch64 --
-          CODE_SIGNING_ALLOWED=NO
-          CODE_SIGNING_REQUIRED=NO
-          CODE_SIGN_IDENTITY=""
-          EXPANDED_CODE_SIGN_IDENTITY=""
-          CODE_SIGN_STYLE=Manual
-          DEVELOPMENT_TEAM=""
-          PROVISIONING_PROFILE_SPECIFIER=""
+        if: env.APPLE_CERTIFICATE == '' && env.APPLE_TEAM_ID != ''
+        run: npx tauri ios build --target aarch64
 
       - name: Package sideload IPA
-        if: env.APPLE_CERTIFICATE == ''
+        if: env.APPLE_CERTIFICATE == '' && env.APPLE_TEAM_ID != ''
         run: |
           APP_PATH=$(find src-tauri/gen/apple/build -name "*.app" -path "*iphoneos*" | head -1)
           if [ -z "$APP_PATH" ]; then
@@ -329,7 +321,7 @@ jobs:
           cd /tmp && zip -qr "$GITHUB_WORKSPACE/apinox-sideload.ipa" Payload/
 
       - name: Upload sideload IPA artifact
-        if: env.APPLE_CERTIFICATE == ''
+        if: env.APPLE_CERTIFICATE == '' && env.APPLE_TEAM_ID != ''
         uses: actions/upload-artifact@v4
         with:
           name: apinox-ios-sideload
@@ -350,6 +342,14 @@ jobs:
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           echo "${{ secrets.APPLE_PROVISIONING_PROFILE }}" | base64 --decode \
             > ~/Library/MobileDevice/Provisioning\ Profiles/apinox.mobileprovision
+
+      - name: Enable code signing in Xcode project for signed build
+        if: env.APPLE_TEAM_ID != '' && env.APPLE_CERTIFICATE != '' && env.APPLE_PROVISIONING_PROFILE != ''
+        run: |
+          sed -i '' 's/CODE_SIGNING_ALLOWED = NO;/CODE_SIGNING_ALLOWED = YES;/g' \
+            src-tauri/gen/apple/apinox.xcodeproj/project.pbxproj
+          sed -i '' 's/CODE_SIGNING_REQUIRED = NO;/CODE_SIGNING_REQUIRED = YES;/g' \
+            src-tauri/gen/apple/apinox.xcodeproj/project.pbxproj
 
       - name: Build iOS IPA
         if: env.APPLE_TEAM_ID != '' && env.APPLE_CERTIFICATE != '' && env.APPLE_PROVISIONING_PROFILE != ''
