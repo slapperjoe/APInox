@@ -3,6 +3,11 @@ node_modules
 dist
 out
 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
 
 .vscode-test
 *.vsix
