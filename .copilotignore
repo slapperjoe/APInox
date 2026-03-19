@@ -1,0 +1,71 @@
+# .copilotignore — Files excluded from GitHub Copilot context
+#
+# Syntax is identical to .gitignore.
+# GitHub Copilot will not read files matching these patterns when generating
+# code suggestions or answering questions.
+#
+# Maintain this file carefully for Australian Government ISM compliance.
+# Review quarterly or whenever classification of code/data changes.
+
+# ── Secrets and credentials ───────────────────────────────────────────────
+*.pfx
+*.p12
+*.key
+*.pem
+*.jks
+*.keystore
+*secret*
+*secrets*
+*credential*
+*credentials*
+*password*
+*.env
+.env.*
+appsettings.Production.json
+appsettings.Staging.json
+appsettings.*.Local.json
+launchSettings.json
+
+# ── Government-classified data ────────────────────────────────────────────
+data/protected/
+data/official-sensitive/
+data/classified/
+Samples/classified/
+
+# ── Siebel repository exports (may contain PII schema definitions) ────────
+siebel-export/
+*.sif
+siebel/**/*.xml
+
+# ── Oracle FMW deployment plans (contain environment-specific config) ─────
+*-deploy-plan.xml
+fmw/config/
+fmw/domain/
+
+# ── Salesforce (may contain org-specific metadata with real data) ─────────
+.sfdx/
+.sf/
+
+# ── Test fixtures with real data samples ─────────────────────────────────
+tests/fixtures/real-data/
+tests/data/pii/
+
+# ── Build outputs and generated files ─────────────────────────────────────
+node_modules/
+dist/
+build/
+target/
+*.min.js
+*.min.css
+*.map
+
+# ── IDE and OS artifacts ──────────────────────────────────────────────────
+.idea/
+.vs/
+*.suo
+*.user
+.DS_Store
+Thumbs.db
+
+# ── Pipeline variable group exports ───────────────────────────────────────
+azure-pipelines/variable-groups/

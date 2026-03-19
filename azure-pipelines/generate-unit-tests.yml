@@ -1,0 +1,105 @@
+# Azure DevOps Pipeline — AI-Assisted Unit Test Generation
+#
+# This pipeline can be triggered manually (workflow_dispatch equivalent in ADO)
+# or as part of a PR policy to identify untested public methods and generate
+# unit test stubs using Azure OpenAI.
+#
+# Generated tests are committed to a feature branch for human review —
+# they are NEVER merged automatically.
+#
+# Requirements:
+#   Variable group "ai-review-config" (same as copilot-pr-review.yml):
+#       AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_KEY, AZURE_OPENAI_DEPLOYMENT, ADO_PAT
+#
+# Usage:
+#   Run manually from the ADO Pipelines UI, providing:
+#     - targetPath:  Relative path to the file or directory to generate tests for
+#     - testFramework: xunit | nunit | mstest | vitest | jest
+#     - outputPath: Where to write the generated test file
+
+trigger: none
+pr: none
+
+parameters:
+  - name: targetPath
+    displayName: 'Path to source file or directory'
+    type: string
+    default: 'src/'
+
+  - name: testFramework
+    displayName: 'Test framework'
+    type: string
+    default: 'xunit'
+    values:
+      - xunit
+      - nunit
+      - mstest
+      - vitest
+      - jest
+
+  - name: outputPath
+    displayName: 'Output path for generated tests'
+    type: string
+    default: 'tests/generated/'
+
+pool:
+  name: 'Default'
+
+variables:
+  - group: ai-review-config
+  - name: GENERATED_BRANCH
+    value: 'ai/generated-tests-$(Build.BuildId)'
+
+stages:
+  - stage: GenerateTests
+    displayName: 'Generate Unit Tests'
+    jobs:
+      - job: GenerateUnitTests
+        displayName: 'Generate test stubs with Azure OpenAI'
+        timeoutInMinutes: 20
+        steps:
+          - checkout: self
+            persistCredentials: true
+            fetchDepth: 0
+
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '3.10'
+            displayName: 'Set up Python'
+
+          - script: |
+              pip install openai --quiet
+            displayName: 'Install Python dependencies'
+
+          - script: |
+              python "$(Build.SourcesDirectory)/azure-pipelines/scripts/generate_tests.py"
+            displayName: 'Generate unit test stubs'
+            env:
+              AZURE_OPENAI_ENDPOINT: $(AZURE_OPENAI_ENDPOINT)
+              AZURE_OPENAI_KEY: $(AZURE_OPENAI_KEY)
+              AZURE_OPENAI_DEPLOYMENT: $(AZURE_OPENAI_DEPLOYMENT)
+              TARGET_PATH: ${{ parameters.targetPath }}
+              TEST_FRAMEWORK: ${{ parameters.testFramework }}
+              OUTPUT_PATH: ${{ parameters.outputPath }}
+              SOURCE_ROOT: $(Build.SourcesDirectory)
+
+          - script: |
+              git config user.email "ai-pipeline@noreply.local"
+              git config user.name "AI Test Generator"
+              git checkout -b "$(GENERATED_BRANCH)"
+              git add "${{ parameters.outputPath }}"
+              git commit -m "chore: AI-generated unit test stubs for ${{ parameters.targetPath }}" || echo "Nothing to commit"
+              git push origin "$(GENERATED_BRANCH)"
+            displayName: 'Commit and push generated tests to new branch'
+            env:
+              GIT_ASKPASS: echo
+              GIT_USERNAME: $(ADO_PAT)
+
+          - script: |
+              echo "##vso[task.setvariable variable=generatedBranch]$(GENERATED_BRANCH)"
+              echo ""
+              echo "================================================================="
+              echo "Generated tests pushed to branch: $(GENERATED_BRANCH)"
+              echo "Create a Pull Request in ADO to review and merge the generated tests."
+              echo "================================================================="
+            displayName: 'Report generated branch'

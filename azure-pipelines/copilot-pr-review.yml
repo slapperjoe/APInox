@@ -1,0 +1,126 @@
+# Azure DevOps Pipeline — AI-Assisted Pull Request Review
+#
+# This pipeline runs on every pull request and posts AI-generated review
+# comments back to the ADO PR using the Git REST API.
+#
+# Requirements:
+#   - An Azure OpenAI resource in an Australian Azure region (AU East / AU SE)
+#   - A pipeline variable group named "ai-review-config" containing:
+#       AZURE_OPENAI_ENDPOINT  — e.g. https://my-openai.openai.azure.com/
+#       AZURE_OPENAI_KEY       — API key (mark as secret)
+#       AZURE_OPENAI_DEPLOYMENT — model deployment name, e.g. gpt-4o
+#       ADO_PAT                — Personal Access Token with Code (read/write) scope
+#   - Python 3.10+ available on the agent (or use the UsePythonVersion task)
+#
+# Usage:
+#   1. Copy this file to your repository root or to a shared pipeline template
+#      library in ADO.
+#   2. Reference it in your main azure-pipelines.yml:
+#
+#       resources:
+#         repositories:
+#           - repository: templates
+#             type: git
+#             name: MyProject/pipeline-templates
+#       stages:
+#         - template: copilot-pr-review.yml@templates
+#
+# Security note:
+#   All secrets are pulled from the variable group — never hardcode credentials.
+#   The script only reads changed files within the PR diff; it never writes to
+#   the repository.
+
+trigger: none   # This pipeline is triggered by pull request policy, not push
+
+pr:
+  autoCancel: true
+  branches:
+    include:
+      - main
+      - develop
+      - 'release/*'
+      - 'hotfix/*'
+
+pool:
+  # Replace with your self-hosted agent pool name
+  name: 'Default'
+
+variables:
+  - group: ai-review-config   # Variable group holding OpenAI and ADO secrets
+  - name: MAX_FILES_TO_REVIEW
+    value: '20'               # Safety limit — avoids excessive token usage
+  - name: MAX_DIFF_LINES
+    value: '400'              # Lines of diff per file sent to the model
+
+stages:
+  - stage: AICodeReview
+    displayName: 'AI Code Review'
+    condition: eq(variables['Build.Reason'], 'PullRequest')
+    jobs:
+      - job: ReviewDiff
+        displayName: 'Analyse PR diff with Azure OpenAI'
+        timeoutInMinutes: 15
+        steps:
+          - checkout: self
+            fetchDepth: 0     # Full history so we can compute the diff
+
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '3.10'
+            displayName: 'Set up Python'
+
+          - script: |
+              pip install requests openai --quiet
+            displayName: 'Install Python dependencies'
+
+          # ------------------------------------------------------------------
+          # Step 1: Compute the PR diff and write changed-file paths to disk
+          # ------------------------------------------------------------------
+          - script: |
+              python "$(Build.SourcesDirectory)/azure-pipelines/scripts/get_pr_diff.py"
+            displayName: 'Compute PR diff'
+            env:
+              SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+              ADO_PAT: $(ADO_PAT)
+              BUILD_REPOSITORY_ID: $(Build.Repository.ID)
+              SYSTEM_PULLREQUEST_PULLREQUESTID: $(System.PullRequest.PullRequestId)
+              SYSTEM_PULLREQUEST_SOURCEBRANCH: $(System.PullRequest.SourceBranch)
+              SYSTEM_PULLREQUEST_TARGETBRANCH: $(System.PullRequest.TargetBranch)
+              SYSTEM_TEAMFOUNDATIONCOLLECTIONURI: $(System.TeamFoundationCollectionUri)
+              SYSTEM_TEAMPROJECT: $(System.TeamProject)
+              MAX_FILES_TO_REVIEW: $(MAX_FILES_TO_REVIEW)
+              MAX_DIFF_LINES: $(MAX_DIFF_LINES)
+              # Output path for the diff JSON
+              DIFF_OUTPUT_PATH: $(Agent.TempDirectory)/pr_diff.json
+
+          # ------------------------------------------------------------------
+          # Step 2: Send diff to Azure OpenAI and collect review comments
+          # ------------------------------------------------------------------
+          - script: |
+              python "$(Build.SourcesDirectory)/azure-pipelines/scripts/review_with_openai.py"
+            displayName: 'Generate AI review comments'
+            env:
+              AZURE_OPENAI_ENDPOINT: $(AZURE_OPENAI_ENDPOINT)
+              AZURE_OPENAI_KEY: $(AZURE_OPENAI_KEY)
+              AZURE_OPENAI_DEPLOYMENT: $(AZURE_OPENAI_DEPLOYMENT)
+              DIFF_INPUT_PATH: $(Agent.TempDirectory)/pr_diff.json
+              COMMENTS_OUTPUT_PATH: $(Agent.TempDirectory)/ai_comments.json
+
+          # ------------------------------------------------------------------
+          # Step 3: Post the review comments to the ADO PR thread
+          # ------------------------------------------------------------------
+          - script: |
+              python "$(Build.SourcesDirectory)/azure-pipelines/scripts/post_pr_comments.py"
+            displayName: 'Post review comments to ADO PR'
+            env:
+              ADO_PAT: $(ADO_PAT)
+              BUILD_REPOSITORY_ID: $(Build.Repository.ID)
+              SYSTEM_PULLREQUEST_PULLREQUESTID: $(System.PullRequest.PullRequestId)
+              SYSTEM_TEAMFOUNDATIONCOLLECTIONURI: $(System.TeamFoundationCollectionUri)
+              SYSTEM_TEAMPROJECT: $(System.TeamProject)
+              COMMENTS_INPUT_PATH: $(Agent.TempDirectory)/ai_comments.json
+
+          - publish: $(Agent.TempDirectory)/ai_comments.json
+            artifact: ai-review-comments
+            displayName: 'Publish AI review artifact'
+            condition: always()
