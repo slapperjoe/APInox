@@ -115,6 +115,62 @@ function MyComponent() {
 
 ---
 
+### MonacoResponseViewerWithToolbar
+
+Read-only Monaco viewer with a tab bar. Provides a **Body** tab (the response content) and an optional read-only **Headers** tab, plus support for injecting arbitrary extra tabs.
+
+No settings panel is included — it is intended to be paired with a `MonacoRequestEditorWithToolbar` that owns the editor settings.
+
+```tsx
+import { MonacoResponseViewerWithToolbar } from '@apinox/request-editor';
+import type { MonacoResponseViewerWithToolbarProps, ExtraTab } from '@apinox/request-editor';
+
+function MyComponent() {
+  const [response, setResponse] = React.useState('');
+  const [headers, setHeaders] = React.useState<Record<string, string>>({
+    'Content-Type': 'text/xml; charset=utf-8',
+    'X-Request-ID': 'abc-123',
+  });
+
+  const extraTabs: ExtraTab[] = [
+    {
+      id: 'timeline',
+      label: 'Timeline',
+      badge: 3,
+      render: () => <MyTimelineComponent />,
+    },
+  ];
+
+  return (
+    <MonacoResponseViewerWithToolbar
+      value={response}
+      language="xml"
+      headers={headers}
+      autoFoldElements={['soapenv:Header']}
+      onSelectionChange={(data) => console.log('Selected:', data?.text)}
+      extraTabs={extraTabs}
+    />
+  );
+}
+```
+
+**Props**
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `value` | `string` | — | Response body content |
+| `language` | `string` | `'xml'` | Syntax highlighting language |
+| `showLineNumbers` | `boolean` | `true` | Show line numbers |
+| `showMinimap` | `boolean` | `false` | Show minimap |
+| `fontSize` | `number` | `14` | Editor font size |
+| `fontFamily` | `string` | `'Consolas, …'` | Editor font family |
+| `autoFoldElements` | `string[]` | — | XML elements to auto-fold |
+| `onSelectionChange` | `(data) => void` | — | Fired when user selects text |
+| `headers` | `Record<string, string>` | — | When provided, shows a read-only Headers tab |
+| `extraTabs` | `ExtraTab[]` | `[]` | Additional tabs to inject after the built-in tabs |
+
+---
+
 ### HeadersPanel
 
 Key-value editor for HTTP headers.
