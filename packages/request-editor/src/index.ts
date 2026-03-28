@@ -13,6 +13,8 @@ export type { MonacoRequestEditorHandle } from './components/MonacoRequestEditor
 export { MonacoRequestEditorWithToolbar } from './components/MonacoRequestEditorWithToolbar';
 export type { MonacoRequestEditorWithToolbarProps, ExtraTab } from './components/MonacoRequestEditorWithToolbar';
 export { MonacoResponseViewer } from './components/MonacoResponseViewer';
+export { MonacoResponseViewerWithToolbar } from './components/MonacoResponseViewerWithToolbar';
+export type { MonacoResponseViewerWithToolbarProps } from './components/MonacoResponseViewerWithToolbar';
 export { MonacoSingleLineInput } from './components/MonacoSingleLineInput';
 export type { MonacoSingleLineInputHandle } from './components/MonacoSingleLineInput';
 export { RequestWorkspace } from './components/RequestWorkspace';
