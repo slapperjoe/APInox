@@ -1,7 +1,5 @@
 // Main entry point for @apinox/request-editor package
 
-export const version = '0.1.0';
-
 // Export all types
 export * from './types';
 // Don't re-export shared (contains duplicate SchemaNode)
