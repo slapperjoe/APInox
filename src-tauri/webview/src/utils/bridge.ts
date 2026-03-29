@@ -558,6 +558,15 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
         // Route ExecuteRequest (SOAP) to Rust execute_soap_request command
         if (message.command === FrontendCommand.ExecuteRequest && message.xml) {
             console.log('[Bridge] Routing SOAP ExecuteRequest to Rust backend');
+
+            // Read proxy setting from persisted config
+            let proxyUrl: string | null = null;
+            try {
+                const cfg: any = await tauriInvoke('get_settings', {});
+                proxyUrl = cfg?.config?.network?.proxy || cfg?.network?.proxy || null;
+            } catch {
+                // non-fatal — proceed without proxy
+            }
             
             // Build request from message parameters
             const request: any = {
@@ -579,7 +588,8 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                 password: message.password || null,
                 passwordType: message.passwordType || null,
                 addTimestamp: message.addTimestamp || false,
-                rawXml: message.xml // Send raw XML body
+                rawXml: message.xml, // Send raw XML body
+                proxyUrl: proxyUrl || null,
             };
 
             const startTime = Date.now();

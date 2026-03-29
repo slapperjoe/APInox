@@ -109,6 +109,7 @@ pub struct ExecuteSoapRequest {
     pub password: Option<String>,
     pub password_type: Option<String>, // "text" or "digest"
     pub add_timestamp: Option<bool>,
+    pub proxy_url: Option<String>,
 }
 
 /// Response from SOAP execution
@@ -186,7 +187,13 @@ pub async fn execute_soap_request(
     };
     
     // Execute the request
-    let client = SoapClient::new();
+    let client = match request.proxy_url.as_deref().filter(|s| !s.is_empty()) {
+        Some(proxy) => {
+            log::info!("Using proxy for SOAP request: {}", proxy);
+            SoapClient::with_proxy(proxy).map_err(|e| e.to_string())?
+        }
+        None => SoapClient::new(),
+    };
     
     match client.execute(
         &request.operation,
