@@ -3,7 +3,7 @@
 /// Executes SOAP requests with proper headers and response parsing
 
 use anyhow::{Result, anyhow};
-use reqwest::Client;
+use reqwest::{Client, Proxy};
 use quick_xml::events::Event;
 use quick_xml::Reader;
 
@@ -48,13 +48,26 @@ pub struct SoapClient {
 }
 
 impl SoapClient {
-    /// Create a new SOAP client
+    /// Create a new SOAP client (uses system env proxy if set)
     pub fn new() -> Self {
         Self {
             http_client: Client::new(),
         }
     }
-    
+
+    /// Create a SOAP client that routes all traffic through the given proxy URL.
+    /// Disables certificate verification so HTTPS traffic can be intercepted.
+    pub fn with_proxy(proxy_url: &str) -> Result<Self> {
+        let proxy = Proxy::all(proxy_url)
+            .map_err(|e| anyhow!("Invalid proxy URL '{}': {}", proxy_url, e))?;
+        let client = Client::builder()
+            .proxy(proxy)
+            .danger_accept_invalid_certs(true) // required for MITM proxy interception
+            .build()
+            .map_err(|e| anyhow!("Failed to build proxy HTTP client: {}", e))?;
+        Ok(Self { http_client: client })
+    }
+
     /// Create a SOAP client with a custom HTTP client
     pub fn with_client(client: Client) -> Self {
         Self {
