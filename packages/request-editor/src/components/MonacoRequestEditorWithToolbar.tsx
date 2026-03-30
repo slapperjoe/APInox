@@ -99,6 +99,7 @@ const EditorWithToolbarInternal = forwardRef<MonacoRequestEditorHandle, Omit<Mon
     headers,
     onHeadersChange,
     extraTabs = [],
+    forceUpdateKey: externalForceUpdateKey,
     ...otherProps
   }, ref) => {
     const { settings, updateSettings, toggleAlignAttributes, toggleInlineValues, toggleHideCausality, toggleLineNumbers, toggleMinimap } = useEditorSettings();
@@ -108,6 +109,7 @@ const EditorWithToolbarInternal = forwardRef<MonacoRequestEditorHandle, Omit<Mon
     const [menuPosition, setMenuPosition] = useState<{ top: number; right: number; maxHeight: number } | null>(null);
     const [installedFonts, setInstalledFonts] = useState<MonoFont[]>([]);
     const [internalValue, setInternalValue] = useState(value);
+    const [localForceUpdateKey, setLocalForceUpdateKey] = useState(0);
 
     const settingsButtonRef = useRef<HTMLButtonElement>(null);
     const settingsMenuRef = useRef<HTMLDivElement>(null);
@@ -131,6 +133,9 @@ const EditorWithToolbarInternal = forwardRef<MonacoRequestEditorHandle, Omit<Mon
         setInternalValue(formatted);
         onChange(formatted);
       }
+      // Force the base Monaco editor to sync its model — it ignores value prop changes
+      // unless requestId or forceUpdateKey changes, so we bump our local key here.
+      setLocalForceUpdateKey(k => k + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [settings.alignAttributes, settings.inlineValues, settings.hideCausality]);
 
@@ -193,6 +198,7 @@ const EditorWithToolbarInternal = forwardRef<MonacoRequestEditorHandle, Omit<Mon
             fontSize={settings.fontSize}
             fontFamily={settings.fontFamily}
             {...otherProps}
+            forceUpdateKey={(externalForceUpdateKey ?? 0) + localForceUpdateKey}
           />
         );
       }
