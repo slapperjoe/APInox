@@ -1,0 +1,509 @@
+name: Release
+
+# Manually triggered from the GitHub Actions UI.
+# Reads the version from tauri.conf.json and creates a GitHub Release
+# with platform installers (Windows NSIS, macOS DMG, Linux DEB/RPM/Arch,
+# Android APK, iOS IPA) attached.
+#
+# Requirements:
+#   - The most recent CI build on main must have passed (enforced below).
+#   - TAURI_SIGNING_PRIVATE_KEY / _PASSWORD secrets must be set.
+#   - GITHUB_TOKEN is provided automatically by GitHub Actions.
+on:
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  # ── Gate: verify CI + bump version ─────────────────────────────────────────
+  check-ci:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Verify latest CI build on main passed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          STATUS=$(gh run list \
+            --workflow build.yml \
+            --branch main \
+            --limit 1 \
+            --json conclusion \
+            --jq '.[0].conclusion')
+          echo "Latest CI conclusion: $STATUS"
+          if [ "$STATUS" != "success" ]; then
+            echo "❌ Latest CI build did not pass (status: $STATUS). Fix it before releasing."
+            exit 1
+          fi
+
+      - name: Bump patch version
+        run: |
+          node scripts/version.js increment
+          node scripts/version.js sync
+
+      - name: Read bumped version
+        id: version
+        run: |
+          VERSION=$(jq -r '.version' src-tauri/tauri.conf.json)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Releasing v$VERSION"
+
+      - name: Commit and push version bump
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add scripts/version.js package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/webview/package.json
+          git commit -m "chore: bump version to v${{ steps.version.outputs.version }}"
+          git push origin HEAD:main
+
+  # ── Desktop builds (Windows + macOS + Linux) ───────────────────────────────
+  build:
+    needs: check-ci
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: macos-arm64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_name: windows-x64
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: linux-x64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: '. -> target'
+
+      - name: Install dependencies (Linux only)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf rpm
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install webview dependencies
+        run: cd src-tauri/webview && npm ci
+
+      - name: Install request-editor dependencies
+        run: cd packages/request-editor && npm install && npm run build
+
+      - name: Build Tauri app
+        run: npx tauri build --target ${{ matrix.target }}
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - name: Stage Windows portable exe
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $src = "target/${{ matrix.target }}/release/APInox.exe"
+          $dst = "target/${{ matrix.target }}/release/APInox-portable.exe"
+          if (Test-Path $src) { Copy-Item $src $dst }
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.artifact_name }}
+          path: |
+            target/${{ matrix.target }}/release/bundle/dmg/*.dmg
+            target/${{ matrix.target }}/release/bundle/nsis/*.exe
+            target/${{ matrix.target }}/release/bundle/deb/*.deb
+            target/${{ matrix.target }}/release/bundle/rpm/*.rpm
+            target/${{ matrix.target }}/release/APInox-portable.exe
+          if-no-files-found: ignore
+
+  # ── Arch Linux build ────────────────────────────────────────────────────────
+  build-arch:
+    needs: check-ci
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    container:
+      image: archlinux/archlinux:latest
+
+    steps:
+      - name: Install git
+        run: pacman -Sy --noconfirm git
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Update system and install build dependencies
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm \
+            base-devel nodejs npm rust \
+            webkit2gtk-4.1 gtk3 libsoup3 openssl patchelf dpkg rpm-tools
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install webview dependencies
+        run: cd src-tauri/webview && npm ci
+
+      - name: Install request-editor dependencies
+        run: cd packages/request-editor && npm install && npm run build
+
+      - name: Build Tauri app
+        run: npx tauri build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - name: Package for Arch Linux
+        run: |
+          useradd -m builder
+          WORKDIR="$(pwd)"
+          chown -R builder:builder "$WORKDIR"
+          cat > /tmp/run-makepkg.sh << SCRIPT
+          #!/bin/bash
+          set -e
+          cd "$WORKDIR"
+          mkdir -p target/release/bundle/arch
+          PKGDEST="$WORKDIR/target/release/bundle/arch" makepkg -f --nodeps --nocheck --noconfirm
+          SCRIPT
+          chmod +x /tmp/run-makepkg.sh
+          su -s /bin/bash builder /tmp/run-makepkg.sh
+          node scripts/gen-arch-install.js
+
+      - name: Upload Arch artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-linux-arch
+          path: |
+            target/release/bundle/arch/*.pkg.tar.zst
+            target/release/bundle/arch/install.sh
+          if-no-files-found: ignore
+
+  # ── Android build ───────────────────────────────────────────────────────────
+  build-android:
+    needs: check-ci
+    runs-on: ubuntu-latest
+    env:
+      ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: '. -> target'
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install webview dependencies
+        run: cd src-tauri/webview && npm ci
+
+      - name: Install request-editor dependencies
+        run: cd packages/request-editor && npm install && npm run build
+
+      - name: Decode signing keystore
+        if: env.ANDROID_KEYSTORE != ''
+        run: echo "${{ secrets.ANDROID_KEYSTORE }}" | base64 --decode > "$RUNNER_TEMP/release.keystore"
+
+      - name: Build Android APK (signed release)
+        if: env.ANDROID_KEYSTORE != ''
+        run: npx tauri android build
+        env:
+          NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
+          TAURI_ANDROID_SIGNING_KEY_STORE: ${{ runner.temp }}/release.keystore
+          TAURI_ANDROID_SIGNING_KEY_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          TAURI_ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          TAURI_ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      - name: Build Android APK (unsigned debug)
+        if: env.ANDROID_KEYSTORE == ''
+        run: npx tauri android build --debug
+        env:
+          NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
+
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-android
+          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          if-no-files-found: ignore
+
+  # ── iOS build ───────────────────────────────────────────────────────────────
+  build-ios:
+    needs: check-ci
+    runs-on: macos-latest
+    env:
+      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+      APPLE_PROVISIONING_PROFILE: ${{ secrets.APPLE_PROVISIONING_PROFILE }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: '. -> target'
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install webview dependencies
+        run: cd src-tauri/webview && npm ci
+
+      - name: Install request-editor dependencies
+        run: cd packages/request-editor && npm install && npm run build
+
+      # Path 1: Simulator (no secrets)
+      - name: Build unsigned iOS (simulator)
+        if: env.APPLE_CERTIFICATE == '' && env.APPLE_TEAM_ID == ''
+        run: npx tauri ios build --target aarch64-sim
+
+      - name: Upload iOS simulator artifact
+        if: env.APPLE_CERTIFICATE == '' && env.APPLE_TEAM_ID == ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-ios-simulator
+          path: src-tauri/gen/apple/build/**/*.app
+          if-no-files-found: ignore
+
+      # Path 2: Sideload IPA (APPLE_TEAM_ID only)
+      - name: Build unsigned iOS (device — sideload)
+        if: env.APPLE_CERTIFICATE == '' && env.APPLE_TEAM_ID != ''
+        env:
+          IPA_OUTPUT_PATH: ${{ github.workspace }}/apinox-sideload.ipa
+        run: |
+          XCODE_PATH=$(xcode-select -p)
+          WRAPPER_DIR="$RUNNER_TEMP/xcodebuild-nosign/bin"
+          WRAPPER="$WRAPPER_DIR/xcodebuild"
+          mkdir -p "$WRAPPER_DIR"
+          export REAL_XCODEBUILD_BIN="$XCODE_PATH/usr/bin/xcodebuild"
+          cat > "$WRAPPER" << 'EOF_XCODEBUILD_WRAPPER'
+          #!/bin/bash
+          REAL_XC="${REAL_XCODEBUILD_BIN:-$(xcode-select -p)/usr/bin/xcodebuild}"
+          ARGS=()
+          for arg in "$@"; do
+            [[ "$arg" == "-allowProvisioningUpdates" ]] && continue
+            ARGS+=("$arg")
+          done
+          IS_EXPORT=false
+          for arg in "${ARGS[@]}"; do [[ "$arg" == "-exportArchive" ]] && IS_EXPORT=true && break; done
+          if $IS_EXPORT; then
+            ARCHIVE_PATH=""; EXPORT_PATH=""; PREV=""
+            for arg in "${ARGS[@]}"; do
+              [[ "$PREV" == "-archivePath" ]] && ARCHIVE_PATH="$arg"
+              [[ "$PREV" == "-exportPath"  ]] && EXPORT_PATH="$arg"
+              PREV="$arg"
+            done
+            APP_PATH=$(find "${ARCHIVE_PATH}/Products/Applications" -maxdepth 1 -name "*.app" 2>/dev/null | head -1)
+            if [[ -z "$APP_PATH" ]]; then exec "$REAL_XC" "${ARGS[@]}"; fi
+            PAYLOAD_TMP=$(mktemp -d)
+            mkdir -p "${PAYLOAD_TMP}/Payload"
+            cp -r "$APP_PATH" "${PAYLOAD_TMP}/Payload/"
+            APP_NAME=$(basename "$APP_PATH" .app)
+            mkdir -p "$EXPORT_PATH"
+            (cd "$PAYLOAD_TMP" && zip -qr "${APP_NAME}.ipa" Payload/ && mv "${APP_NAME}.ipa" "$EXPORT_PATH/")
+            [[ -n "$IPA_OUTPUT_PATH" ]] && cp "$EXPORT_PATH/${APP_NAME}.ipa" "$IPA_OUTPUT_PATH"
+            rm -rf "$PAYLOAD_TMP"
+            echo "** EXPORT SUCCEEDED (unsigned sideload) **"
+            exit 0
+          fi
+          exec "$REAL_XC" "${ARGS[@]}"
+          EOF_XCODEBUILD_WRAPPER
+          chmod +x "$WRAPPER"
+          export PATH="$WRAPPER_DIR:$PATH"
+          npx tauri ios build --target aarch64
+
+      - name: Upload sideload IPA artifact
+        if: env.APPLE_CERTIFICATE == '' && env.APPLE_TEAM_ID != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-ios-sideload
+          path: apinox-sideload.ipa
+          if-no-files-found: ignore
+
+      # Path 3: Signed IPA (full Developer Program)
+      - name: Import Apple code signing certificate
+        if: env.APPLE_CERTIFICATE != ''
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.APPLE_CERTIFICATE }}
+          p12-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+
+      - name: Install provisioning profile
+        if: env.APPLE_PROVISIONING_PROFILE != ''
+        run: |
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          echo "${{ secrets.APPLE_PROVISIONING_PROFILE }}" | base64 --decode \
+            > ~/Library/MobileDevice/Provisioning\ Profiles/apinox.mobileprovision
+
+      - name: Enable code signing in Xcode project
+        if: env.APPLE_TEAM_ID != '' && env.APPLE_CERTIFICATE != '' && env.APPLE_PROVISIONING_PROFILE != ''
+        run: |
+          sed -i '' 's/CODE_SIGNING_ALLOWED = NO;/CODE_SIGNING_ALLOWED = YES;/g' \
+            src-tauri/gen/apple/apinox.xcodeproj/project.pbxproj
+          sed -i '' 's/CODE_SIGNING_REQUIRED = NO;/CODE_SIGNING_REQUIRED = YES;/g' \
+            src-tauri/gen/apple/apinox.xcodeproj/project.pbxproj
+
+      - name: Build iOS IPA (signed)
+        if: env.APPLE_TEAM_ID != '' && env.APPLE_CERTIFICATE != '' && env.APPLE_PROVISIONING_PROFILE != ''
+        run: npx tauri ios build
+        env:
+          APPLE_DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: Upload signed iOS IPA artifact
+        if: env.APPLE_TEAM_ID != '' && env.APPLE_CERTIFICATE != '' && env.APPLE_PROVISIONING_PROFILE != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-ios
+          path: src-tauri/gen/apple/build/**/*.ipa
+          if-no-files-found: ignore
+
+  # ── Publish GitHub Release ──────────────────────────────────────────────────
+  publish:
+    needs: [check-ci, build, build-arch, build-android, build-ios]
+    if: |
+      needs.build.result == 'success' &&
+      needs.build-arch.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          ref: main
+
+      - name: Create and push version tag
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "v${{ needs.check-ci.outputs.version }}"
+          git push origin "v${{ needs.check-ci.outputs.version }}"
+
+      - name: Build changelog from commits since last tag
+        id: changelog
+        run: |
+          VERSION="v${{ needs.check-ci.outputs.version }}"
+          PREV_TAG=$(git tag --sort=-version:refname | grep -v "^${VERSION}$" | head -1)
+          if [ -z "$PREV_TAG" ]; then
+            RANGE="HEAD"
+          else
+            RANGE="${PREV_TAG}..HEAD"
+          fi
+          echo "Changelog range: ${PREV_TAG:-<beginning>} → HEAD"
+
+          COMMITS=$(git log "$RANGE" \
+            --no-merges \
+            --pretty=format:"- %s ([%h](../../commit/%H))" \
+            | grep -Ev "^- (chore: bump version|chore: release|Merge branch|update Cargo\.lock)" \
+            || true)
+
+          if [ -z "$COMMITS" ]; then
+            COMMITS="_No user-facing changes since ${PREV_TAG}._"
+          fi
+
+          {
+            echo "## What's changed"
+            echo ""
+            echo "$COMMITS"
+            if [ -n "$PREV_TAG" ]; then
+              echo ""
+              echo "**Full diff**: [$PREV_TAG → $VERSION](../../compare/${PREV_TAG}...${VERSION})"
+            fi
+          } > changelog.md
+
+          cat changelog.md
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        run: find artifacts -type f | sort
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.check-ci.outputs.version }}
+          name: APInox v${{ needs.check-ci.outputs.version }}
+          draft: true
+          body_path: changelog.md
+          files: artifacts/**
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
