@@ -190,11 +190,21 @@ pub async fn import_workspace(
                 project_count,
             })
         },
+        "xml" => {
+            // SoapUI workspace or project XML
+            log::info!("import_workspace: Delegating .xml to SoapUI importer");
+            let projects = crate::soapui_importer::import_soapui_xml(&file_path).await?;
+            let project_count = projects.len();
+            Ok(ImportResult {
+                imported: true,
+                projects,
+                project_count,
+            })
+        },
         _ => {
-            // Unsupported format or legacy XML
+            // Unsupported format
             Err(format!(
-                "Unsupported workspace format: .{}. Only .apinox and .json are supported. \
-                For XML workspaces, please import individual projects instead.",
+                "Unsupported workspace format: .{}. Supported formats: .apinox, .json, .xml (SoapUI).",
                 extension
             ))
         }

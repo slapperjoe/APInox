@@ -330,7 +330,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
                     directory: false,
                     filters: [{
                         name: 'Workspace or Project',
-                        extensions: ['apinox', 'json', 'xml']
+                        extensions: ['apinox', 'json']
                     }],
                     title: 'Open Workspace File'
                 });
@@ -362,7 +362,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
             return;
         }
         
-        // Check if it's a workspace file (compressed, JSON, or legacy XML)
+        // Check if it's a workspace file (compressed or JSON format)
         const ext = targetPath.toLowerCase().split('.').pop();
         if (ext === 'apinox' || ext === 'json' || ext === 'xml') {
             // Import workspace - this will load multiple projects

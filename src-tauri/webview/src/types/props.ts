@@ -47,6 +47,7 @@ export interface SidebarProjectProps {
     onRefreshInterface?: (projectName: string, iface: ApiInterface) => void;
     onExportWorkspace?: () => void;
     onBulkImport?: () => void;
+    onImportSoapUI?: () => void;
 }
 
 export interface SidebarExplorerProps {

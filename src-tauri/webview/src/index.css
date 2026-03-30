@@ -292,6 +292,14 @@ code,
     top: 68px;  /* 44px header + 24px status bar */
   }
 
+  /* Narrow desktop (Windows/Linux/macOS): TitleBar is 40px, not the mobile 44px header */
+  body:not([data-platform="android"]):not([data-platform="ios"]) .sidebar-drawer {
+    top: 40px;
+  }
+  body:not([data-platform="android"]):not([data-platform="ios"]) .sidebar-backdrop {
+    top: 40px;
+  }
+
   .sidebar-drawer.sidebar-open {
     transform: translateX(0);
   }
@@ -373,6 +381,38 @@ code,
   cursor: pointer;
   color: var(--apinox-icon-foreground, #c5c5c5);
   flex-shrink: 0;
+}
+
+/* Hamburger for narrow desktop windows — fixed overlay sitting in the TitleBar */
+.narrow-desktop-hamburger {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 40px;
+  height: 40px;
+  margin: -2px 0 0 0;
+  padding: 0;
+  box-sizing: border-box;
+  z-index: 1002;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--apinox-titleBar-activeForeground, #c5c5c5);
+  -webkit-app-region: no-drag;
+}
+
+@media (max-width: 899px) {
+  .narrow-desktop-hamburger {
+    display: flex;
+  }
+
+  /* Shift TitleBar content right so it clears the 40px hamburger button */
+  [data-tauri-drag-region] {
+    padding-left: 48px !important;
+  }
 }
 
 .mobile-header-title {
