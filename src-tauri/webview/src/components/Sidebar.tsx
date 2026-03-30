@@ -99,7 +99,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     onMobileClose
 }) => {
     // Destructure for passing to legacy children (can be cleaned up later by moving groups down)
-    const { projects, savedProjects, loadProject, saveProject, onUpdateProject, closeProject, onAddProject, toggleProjectExpand, toggleInterfaceExpand, toggleOperationExpand, expandAll, collapseAll, reorderItems, onDeleteInterface, onDeleteOperation, onAddFolder, onAddRequestToFolder, onDeleteFolder, onToggleFolderExpand, onRefreshInterface, onExportWorkspace, onBulkImport } = projectProps;
+    const { projects, savedProjects, loadProject, saveProject, onUpdateProject, closeProject, onAddProject, toggleProjectExpand, toggleInterfaceExpand, toggleOperationExpand, expandAll, collapseAll, reorderItems, onDeleteInterface, onDeleteOperation, onAddFolder, onAddRequestToFolder, onDeleteFolder, onToggleFolderExpand, onRefreshInterface, onExportWorkspace, onBulkImport, onImportSoapUI } = projectProps;
     const { exploredInterfaces, addToProject, addAllToProject, clearExplorer, removeFromExplorer, toggleExploredInterface, toggleExploredOperation } = explorerProps;
 
     const {
@@ -233,6 +233,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         onRefreshInterface={onRefreshInterface}
                         onExportWorkspace={onExportWorkspace}
                         onBulkImport={onBulkImport}
+                        onImportSoapUI={onImportSoapUI}
                     />
                 )}
 

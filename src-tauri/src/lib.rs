@@ -9,6 +9,7 @@ mod history_storage;
 mod scrapbook_storage;
 mod secret_storage;
 pub mod settings_manager;
+mod soapui_importer;
 mod workspace_export;
 
 // Rust backend modules

@@ -206,7 +206,8 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     setDeleteConfirm,
     onRefreshInterface,
     onExportWorkspace,
-    onBulkImport
+    onBulkImport,
+    onImportSoapUI
 }) => {
     // Local state for folder selection
     const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
@@ -414,6 +415,11 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                                 icon: <Download size={16} />,
                                 label: 'Bulk Import',
                                 onClick: onBulkImport || (() => {})
+                            },
+                            {
+                                icon: <Download size={16} />,
+                                label: 'Import SoapUI Workspace',
+                                onClick: onImportSoapUI || (() => {})
                             }
                         ]}
                     />

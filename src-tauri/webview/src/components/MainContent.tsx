@@ -139,7 +139,7 @@ const MainContent: React.FC = () => {
     const [platformOS, setPlatformOS] = useState<'macos' | 'windows' | 'linux' | 'android' | 'ios' | 'unknown'>('unknown');
     const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
     const { isMobile } = useMobileLayout();
-    
+
     useEffect(() => {
         async function detectPlatform() {
             try {
@@ -1289,6 +1289,20 @@ const MainContent: React.FC = () => {
                 </div>
             )}
 
+            {/* Narrow-desktop hamburger — fixed overlay in TitleBar area, only on non-mobile platforms */}
+            {isMobile && !isMobilePlatform && (
+                <button
+                    className="narrow-desktop-hamburger"
+                    onClick={(e) => { e.stopPropagation(); setIsMobileDrawerOpen(prev => !prev); }}
+                    title={isMobileDrawerOpen ? "Close sidebar" : "Open sidebar"}
+                    aria-label={isMobileDrawerOpen ? "Close sidebar" : "Open sidebar"}
+                >
+                    <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M2 4h16v2H2zM2 9h16v2H2zM2 14h16v2H2z"/>
+                    </svg>
+                </button>
+            )}
+
             {/* Backdrop — closes sidebar on mobile when tapping outside */}
             {isMobile && isMobileDrawerOpen && (
                 <div
@@ -1326,7 +1340,21 @@ const MainContent: React.FC = () => {
                     onToggleFolderExpand: handleToggleFolderExpand,
                     onRefreshInterface: handleRefreshWsdl,
                     onExportWorkspace: () => setExportWorkspaceModal(true),
-                    onBulkImport: () => setShowBulkImportModal(true)
+                    onBulkImport: () => setShowBulkImportModal(true),
+                    onImportSoapUI: async () => {
+                        if (bridge.isTauri()) {
+                            const { open } = await import('@tauri-apps/plugin-dialog');
+                            const selected = await open({
+                                multiple: false,
+                                directory: false,
+                                filters: [{ name: 'SoapUI Workspace or Project', extensions: ['xml'] }],
+                                title: 'Import SoapUI Workspace or Project',
+                            });
+                            if (selected) {
+                                await loadProject(selected as string);
+                            }
+                        }
+                    },
                 }}
                 explorerProps={{
                     exploredInterfaces,
