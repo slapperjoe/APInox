@@ -509,7 +509,29 @@ log(`Processing user ${userId} at ${timestamp}`);
     - Switch between Vertical and Horizontal layouts.
     - **Auto-Expand**: The Request panel automatically fills the screen if there is no Response visible.
 - **Help Panel**: The Settings Editor includes a panel at the bottom that explains each configuration option as you type.
-- **Proxy**: Configure network proxy settings in `config.jsonc`.
+- **Proxy**: Configure network proxy settings in `config.jsonc`. When **APIprox** is running with "Auto-update APInox proxy config" enabled, this is set automatically — no manual configuration needed.
+
+### 10. Projects & Workspace
+
+APInox uses a **single implicit workspace**: all projects live in `~/.apinox/projects/` and are loaded automatically on startup. There is no need to select a workspace file or pick a location.
+
+**Starting fresh or adding a project:**
+- **New Project** — creates an empty project in `~/.apinox/projects/<name>/`
+- **Import Project / Workspace** — import an external `.apinox`, `.json`, or `.xml` (SoapUI) file; the imported projects are saved to `~/.apinox/projects/` and will be present on every subsequent startup
+
+**Removing a project:**
+- Double-click the close button on the project in the sidebar to remove it (second click within 3 s confirms deletion of files from disk)
+
+### 11. APIprox Integration
+
+APIprox and APInox share `~/.apinox/` and integrate automatically:
+
+| Feature | How it works |
+|---|---|
+| **Proxy auto-config** | When APIprox starts, it writes `network.proxy` in `~/.apinox/config.jsonc`. APInox picks this up so all requests route through the APIprox proxy with zero manual setup. |
+| **Captured traffic** | Traffic saved to APInox from APIprox appears in the **APIprox Captures** project, which is auto-loaded on startup. |
+
+To use the proxy integration, ensure **Settings → APInox Integration → Auto-update APInox proxy config** is enabled in APIprox (it is on by default).
 
 ## Security Best Practices
 
