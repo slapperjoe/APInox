@@ -182,6 +182,45 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
 
     // -------------------------------------------------------------------------
     // AUTO-SAVE
+    // Auto-load all projects from ~/.apinox/projects/ on startup
+    // -------------------------------------------------------------------------
+    useEffect(() => {
+        if (!bridge.isTauri()) return;
+        let cancelled = false;
+
+        async function loadAllProjects() {
+            try {
+                const paths = await bridge.invokeTauriCommand<string[]>('list_projects');
+                if (cancelled || !paths || paths.length === 0) return;
+
+                for (const dirPath of paths) {
+                    if (cancelled) break;
+                    try {
+                        const project = await bridge.invokeTauriCommand<any>('load_project', { dirPath });
+                        if (project) {
+                            (project as any).fileName = dirPath;
+                            setProjects(prev => {
+                                const exists = prev.some(p =>
+                                    (p.id && p.id === project.id) || p.name === project.name
+                                );
+                                return exists ? prev : [...prev, project];
+                            });
+                        }
+                    } catch (err) {
+                        console.error('[ProjectContext] Failed to auto-load project:', dirPath, err);
+                    }
+                }
+            } catch (err) {
+                console.error('[ProjectContext] Failed to list projects on startup:', err);
+            }
+        }
+
+        loadAllProjects();
+        return () => { cancelled = true; };
+    }, []); // run once on mount
+
+    // -------------------------------------------------------------------------
+    // AUTO-SAVE
     // Watch for dirty projects and save them automatically
     // -------------------------------------------------------------------------
     useEffect(() => {
@@ -306,11 +345,16 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
     }, [deleteConfirm, selectedProjectName, projects, debugLog]);
 
     /**
-     * Loads a project or workspace.
+     * Imports a project or workspace from an external file.
      * - If path is provided, loads that specific path
      * - If not, shows file picker dialog for:
-     *   1. Project folder (native APInox format)
-     *   2. Workspace XML file (SoapUI export format - imports all projects)
+     *   1. A workspace export (.apinox / .json) to import multiple projects
+     *   2. A SoapUI workspace XML file (.xml)
+     *   3. A project folder (native APInox format)
+     *
+     * Note: Projects already stored in ~/.apinox/projects/ are loaded
+     * automatically on startup — this is only needed to import from
+     * external files or directories.
      */
     const loadProject = useCallback(async (path?: string) => {
         debugLog('loadProject', { path: path || 'picker' });

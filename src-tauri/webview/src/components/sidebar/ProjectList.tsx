@@ -436,7 +436,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                             },
                             {
                                 icon: <FolderPlus size={16} />,
-                                label: 'Add Existing Project',
+                                label: 'Import Project / Workspace',
                                 onClick: loadProject
                             }
                         ]}
