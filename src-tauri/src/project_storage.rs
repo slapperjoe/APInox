@@ -2,6 +2,25 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+/// Returns the ~/.apinox/projects/ directory, creating it if needed.
+fn projects_dir() -> Result<PathBuf, String> {
+    let base = std::env::var("APINOX_CONFIG_DIR")
+        .ok()
+        .and_then(|d| if d.trim().is_empty() { None } else { Some(d) })
+        .or_else(|| {
+            let home = std::env::var("HOME")
+                .or_else(|_| std::env::var("USERPROFILE"))
+                .ok()?;
+            Some(format!("{}/.apinox", home))
+        })
+        .ok_or_else(|| "Cannot determine config directory".to_string())?;
+
+    let dir = PathBuf::from(base).join("projects");
+    fs::create_dir_all(&dir)
+        .map_err(|e| format!("Failed to create projects directory: {}", e))?;
+    Ok(dir)
+}
+
 /// Project metadata stored in properties.json
 #[derive(Debug, Serialize, Deserialize)]
 struct ProjectProperties {
@@ -23,17 +42,17 @@ fn sanitize_name(name: &str) -> String {
         .collect()
 }
 
-/// Save a project to disk
-/// 
-/// This command receives the entire project JSON from the frontend
-/// and saves it to the folder structure format.
+/// Save a project to disk.
+///
+/// The save location is always `~/.apinox/projects/{sanitized_name}/`.
+/// Returns the absolute path to the project directory.
 #[tauri::command]
-pub async fn save_project(
-    project: serde_json::Value,
-    dir_path: String,
-) -> Result<(), String> {
-    let dir = PathBuf::from(&dir_path);
-    
+pub async fn save_project(project: serde_json::Value) -> Result<String, String> {
+    let name = project["name"]
+        .as_str()
+        .ok_or("Missing project name")?;
+    let dir = projects_dir()?.join(sanitize_name(name));
+
     // Create root directory if needed
     fs::create_dir_all(&dir)
         .map_err(|e| format!("Failed to create project directory: {}", e))?;
@@ -144,8 +163,28 @@ pub async fn save_project(
                 .map_err(|e| format!("Failed to write folder: {}", e))?;
         }
     }
-    
-    Ok(())
+
+    Ok(dir.to_string_lossy().to_string())
+}
+
+/// List all projects saved in ~/.apinox/projects/.
+/// Returns a sorted list of absolute directory paths.
+#[tauri::command]
+pub async fn list_projects() -> Result<Vec<String>, String> {
+    let dir = projects_dir()?;
+    let mut paths = Vec::new();
+
+    if let Ok(entries) = fs::read_dir(&dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() && path.join("properties.json").exists() {
+                paths.push(path.to_string_lossy().to_string());
+            }
+        }
+    }
+
+    paths.sort();
+    Ok(paths)
 }
 
 /// Save an interface to its directory

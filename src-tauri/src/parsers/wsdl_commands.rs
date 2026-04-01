@@ -236,7 +236,7 @@ pub async fn apply_wsdl_sync(
     let updated_interface = interface.clone();
     
     // Save the updated project
-    project_storage::save_project(project.clone(), dir_path).await?;
+    project_storage::save_project(project.clone()).await?;
     
     log::info!("WSDL sync applied successfully");
     

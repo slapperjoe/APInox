@@ -75,33 +75,28 @@ export const useAppLifecycle = ({
             }
         }
 
-        // Restore previously open projects from localStorage (Rust backend)
+        // Auto-load all projects from ~/.apinox/projects/ on startup
         if (isTauri()) {
             try {
-                const savedPaths = localStorage.getItem('apinox:openProjects');
-                if (savedPaths) {
-                    const paths = JSON.parse(savedPaths) as string[];
-                    console.log('[useAppLifecycle] Restoring', paths.length, 'open projects');
-                    
-                    // Load each project from disk
-                    paths.forEach(async (path) => {
-                        try {
-                            const project = await bridge.invokeTauriCommand('load_project', { dirPath: path });
-                            (project as any).fileName = path;
-                            
-                            // Add to projects list via bridge event
-                            bridge.emit({
-                                command: 'projectLoaded',
-                                project,
-                                filename: path
-                            } as any);
-                        } catch (error) {
-                            console.error('[useAppLifecycle] Failed to restore project:', path, error);
-                        }
-                    });
+                const paths = await bridge.invokeTauriCommand<string[]>('list_projects', {});
+                console.log('[useAppLifecycle] Auto-loading', paths.length, 'projects from ~/.apinox/projects/');
+
+                for (const path of paths) {
+                    try {
+                        const project = await bridge.invokeTauriCommand('load_project', { dirPath: path });
+                        (project as any).fileName = path;
+
+                        bridge.emit({
+                            command: 'projectLoaded',
+                            project,
+                            filename: path
+                        } as any);
+                    } catch (error) {
+                        console.error('[useAppLifecycle] Failed to load project:', path, error);
+                    }
                 }
             } catch (error) {
-                console.error('[useAppLifecycle] Failed to restore open projects:', error);
+                console.error('[useAppLifecycle] Failed to list projects:', error);
             }
         }
     }, []); // Run once on mount

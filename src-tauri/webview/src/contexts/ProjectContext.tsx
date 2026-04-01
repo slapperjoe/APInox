@@ -190,11 +190,8 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
         if (dirtyProjects.length > 0) {
             const timer = setTimeout(() => {
                 dirtyProjects.forEach(p => {
-                    // We call the internal save logic directly
-                    // Only auto-save if project is already saved to disk (has path)
-                    if ((p as any).fileName) {
-                        bridge.sendMessage({ command: 'saveProject', project: p });
-                    }
+                    // All projects are auto-saved to ~/.apinox/projects/{name}/
+                    bridge.sendMessage({ command: 'saveProject', project: p });
                 });
             }, 1000); // 1s debounce
 
@@ -248,11 +245,12 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
         if (deleteConfirm === name) {
             // Second click - actually close
             const project = projects.find(p => p.name === name);
+            // Compute the project path (always in ~/.apinox/projects/{name}/)
             const projectPath = (project as any)?.fileName;
-            
+
             // Ask if user wants to delete files from disk
             let deleteFiles = false;
-            if (projectPath && bridge.isTauri()) {
+            if (bridge.isTauri()) {
                 try {
                     const { ask } = await import('@tauri-apps/plugin-dialog');
                     deleteFiles = await ask(
@@ -324,33 +322,21 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
             try {
                 const { open } = await import('@tauri-apps/plugin-dialog');
                 
-                // Show file picker that accepts workspace files OR folders
+                // Show file picker for workspace import files
                 const selected = await open({
                     multiple: false,
                     directory: false,
                     filters: [{
                         name: 'Workspace or Project',
-                        extensions: ['apinox', 'json']
+                        extensions: ['apinox', 'json', 'xml']
                     }],
                     title: 'Open Workspace File'
                 });
-                
+
                 if (!selected) {
-                    // User cancelled, offer folder selection
-                    const folderSelected = await open({
-                        multiple: false,
-                        directory: true,
-                        title: 'Or Select Project Folder'
-                    });
-                    
-                    if (!folderSelected) {
-                        return; // User cancelled
-                    }
-                    
-                    targetPath = folderSelected as string;
-                } else {
-                    targetPath = selected as string;
+                    return; // User cancelled
                 }
+                targetPath = selected as string;
             } catch (error) {
                 console.error('[ProjectContext] Failed to open file dialog:', error);
                 return;
@@ -393,41 +379,17 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
                         }
                     }
                     
-                    alert(`Successfully imported ${response.projects.length} project(s) from workspace.\n\nPlease choose a parent folder to save all projects.`);
-                    
-                    // Prompt user to choose parent directory once for all projects
-                    if (bridge.isTauri()) {
-                        setTimeout(async () => {
-                            try {
-                                const { open } = await import('@tauri-apps/plugin-dialog');
-                                const parentFolderPath = await open({
-                                    multiple: false,
-                                    directory: true,
-                                    title: `Choose parent folder for ${response.projects.length} project(s)`,
-                                });
-                                
-                                if (parentFolderPath) {
-                                    const path = await import('@tauri-apps/api/path');
-                                    // Save each project in its own subdirectory under the parent folder
-                                    for (const project of importedProjects) {
-                                        try {
-                                            const projectFolderPath = await path.join(parentFolderPath as string, project.name);
-                                            (project as any).fileName = projectFolderPath;
-                                            await saveProject(project);
-                                            console.log(`[ProjectContext] Saved project ${project.name} to ${projectFolderPath}`);
-                                        } catch (error) {
-                                            console.error(`[ProjectContext] Failed to save project ${project.name}:`, error);
-                                        }
-                                    }
-                                    alert(`Successfully saved ${importedProjects.length} project(s) to ${parentFolderPath}`);
-                                } else {
-                                    console.log(`[ProjectContext] User cancelled save for workspace import`);
-                                }
-                            } catch (error) {
-                                console.error(`[ProjectContext] Failed to show save dialog for workspace:`, error);
-                            }
-                        }, 500); // Small delay to let the UI update
+                    // Save each imported project to ~/.apinox/projects/{name}/
+                    for (const project of importedProjects) {
+                        try {
+                            const savedPath = await bridge.invokeTauriCommand<string>('save_project', { project });
+                            (project as any).fileName = savedPath;
+                            console.log(`[ProjectContext] Saved imported project ${project.name} to ${savedPath}`);
+                        } catch (error) {
+                            console.error(`[ProjectContext] Failed to save project ${project.name}:`, error);
+                        }
                     }
+                    alert(`Successfully imported and saved ${importedProjects.length} project(s) to ~/.apinox/projects/`);
                 } else {
                     console.error('[ProjectContext] Workspace import returned no projects');
                     alert('Workspace import failed: No projects found in workspace file');
@@ -469,82 +431,20 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
     const saveProject = useCallback(async (project: ApinoxProject) => {
         debugLog('saveProject', { name: project.name, hasPath: !!(project as any).fileName });
 
-        // If this is a new project (no file path) and we are in Tauri, prompt for location
-        if (!(project as any).fileName && bridge.isTauri()) {
-            try {
-                // Dynamically import Tauri dialog plugin
-                const { save } = await import('@tauri-apps/plugin-dialog');
-
-                // Allow "Any" to simulate folder selection (since save dialog is for files)
-                const filePath = await save({
-                    defaultPath: `${project.name}`
-                });
-
-                if (filePath) {
-                    // Strip .json if it was added by OS or user, because we save as FOLDER
-                    const cleanPath = filePath.endsWith('.json')
-                        ? filePath.slice(0, -5)
-                        : filePath;
-
-                    debugLog('saveProject: Dialog selected path', { filePath, cleanPath });
-                    console.log('[ProjectContext] NEW PROJECT - Checking originalEndpoint before save:');
-                    project.interfaces.forEach(iface => {
-                        iface.operations.forEach(op => {
-                            console.log(`  ${iface.name}.${op.name}: originalEndpoint=${op.originalEndpoint}`);
-                        });
-                    });
-                    
-                    // Use Rust command directly for file I/O
-                    try {
-                        await bridge.invokeTauriCommand('save_project', {
-                            project,
-                            dirPath: cleanPath  // Tauri converts to dir_path
-                        });
-                        
-                        // Update project with file path
-                        (project as any).fileName = cleanPath;
-                        setProjects(prev => prev.map(p => 
-                            p.name === project.name ? { ...project } : p
-                        ));
-                        
-                        console.log('[ProjectContext] Project saved successfully via Rust:', cleanPath);
-                    } catch (error: any) {
-                        console.error('[ProjectContext] Rust save_project failed:', error);
-                        alert(`Failed to save project: ${error}`);
-                    }
-                } else {
-                    debugLog('saveProject: Dialog cancelled');
-                }
-            } catch (e) {
-                console.error('[ProjectContext] Failed to open save dialog:', e);
+        // All projects save to ~/.apinox/projects/{name}/ — no dialog needed
+        try {
+            const savedPath = await bridge.invokeTauriCommand<string>('save_project', { project });
+            // Update in-memory fileName so dirty-checks and auto-save work
+            if (savedPath && !(project as any).fileName) {
+                (project as any).fileName = savedPath;
+                setProjects(prev => prev.map(p =>
+                    p.name === project.name ? { ...project } : p
+                ));
             }
-            return;
-        }
-
-        // Log interface displayNames for debugging
-        const interfacesWithDisplayNames = project.interfaces.filter(i => (i as any).displayName);
-        if (interfacesWithDisplayNames.length > 0) {
-            console.log('[ProjectContext] Saving interfaces with displayNames:', interfacesWithDisplayNames.map(i => ({
-                name: i.name,
-                displayName: (i as any).displayName
-            })));
-        }
-        
-        // Use Rust command for saving existing projects
-        const filePath = (project as any).fileName;
-        if (filePath) {
-            try {
-                await bridge.invokeTauriCommand('save_project', {
-                    project,
-                    dirPath: filePath  // Tauri converts to dir_path
-                });
-                console.log('[ProjectContext] Project saved successfully via Rust:', filePath);
-            } catch (error: any) {
-                console.error('[ProjectContext] save_project failed:', error);
-                alert(`Failed to save project: ${error.message || 'Unknown error'}`);
-            }
-        } else {
-            console.error('[ProjectContext] Cannot save project: no file path set');
+            console.log('[ProjectContext] Project saved:', project.name, '->', savedPath);
+        } catch (error: any) {
+            console.error('[ProjectContext] save_project failed:', error);
+            alert(`Failed to save project: ${error.message || 'Unknown error'}`);
         }
     }, [debugLog, setProjects]);
     // -------------------------------------------------------------------------
