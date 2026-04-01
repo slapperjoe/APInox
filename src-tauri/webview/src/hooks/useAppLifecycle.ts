@@ -100,9 +100,7 @@ export const useAppLifecycle = ({
             }
         };
 
-        if (isTauri()) {
-            autoLoadProjects();
-        }
+        autoLoadProjects();
     }, []); // Run once on mount
 
     // Tauri window persistence (size/position)
