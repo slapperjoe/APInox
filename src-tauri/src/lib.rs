@@ -242,6 +242,7 @@ pub fn run() {
             get_tauri_logs,
             project_storage::save_project,
             project_storage::load_project,
+            project_storage::list_projects,
             project_storage::delete_project,
             history_storage::get_history,
             history_storage::add_history_entry,

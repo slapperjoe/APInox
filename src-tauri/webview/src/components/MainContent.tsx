@@ -346,11 +346,8 @@ const MainContent: React.FC = () => {
 
     const handleUpdateProject = useCallback((oldProject: import('@shared/models').ApinoxProject, newProject: import('@shared/models').ApinoxProject) => {
         setProjects(prev => prev.map(p => p === oldProject ? newProject : p));
-        // Only auto-save if project already has a file path (persisted).
-        // Otherwise, rely on dirty flag and manual save for new projects.
-        if (newProject.fileName) {
-            saveProject(newProject);
-        }
+        // All projects are persisted to ~/.apinox/projects/{name}/ — always save
+        saveProject(newProject);
     }, [setProjects, saveProject]);
 
     // ==========================================================================
@@ -1208,15 +1205,13 @@ const MainContent: React.FC = () => {
         
         const timer = setTimeout(() => {
             console.log('[MainContent] Auto-save executing for', projects.length, 'projects');
-            
-            // Save all projects that have a file path (are persisted)
+
+            // All projects are always persisted to ~/.apinox/projects/{name}/
             projects.forEach(project => {
-                if (project.fileName) {
-                    console.log('[MainContent] Auto-saving project:', project.name);
-                    saveProject(project);
-                }
+                console.log('[MainContent] Auto-saving project:', project.name);
+                saveProject(project);
             });
-            
+
             // Clear dirty flag after save
             setWorkspaceDirty(false);
         }, 1000); // Debounce 1 second
