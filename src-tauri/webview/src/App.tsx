@@ -100,8 +100,6 @@ export default function App() {
     const showCustomTitleBar = platformOS !== 'macos' && !isMobilePlatform;
     const showMacOSSearchBar = platformOS === 'macos';
     
-    console.log('📱 App render - platformOS:', platformOS, 'showCustomTitleBar:', showCustomTitleBar, 'showMacOSSearchBar:', showMacOSSearchBar);
-    
     return (
         <ThemeProvider standalone={true}>
             <EditorSettingsProvider

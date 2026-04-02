@@ -28,9 +28,6 @@ import { QueryParamsPanel } from '@apinox/request-editor';
 import { RestAuthPanel } from '@apinox/request-editor';
 import { GraphQLVariablesPanel } from '@apinox/request-editor';
 import { ScriptEditor } from '@apinox/request-editor';
-import { validateUrl, validateJson, validateXml, validateXPath, validateRegex } from '@apinox/request-editor';
-import type { ValidationResult } from '@apinox/request-editor';
-// import { CodeSnippetModal } from './modals/CodeSnippetModal'; // Temporarily disabled
 import { WelcomePanel, TestCaseView, EmptyTestCase } from './workspace';
 import { WorkflowSummary } from './workspace/WorkflowSummary';
 import { WorkflowEditor } from './workspace/WorkflowEditor';
@@ -44,13 +41,6 @@ import { ProjectSummary } from './workspace/ProjectSummary';
 import { InterfaceSummary } from './workspace/InterfaceSummary';
 import { TestSuiteSummary } from './workspace/TestSuiteSummary';
 import { OperationSummary } from './workspace/OperationSummary';
-// REMOVED: Performance UI moved to APIprox
-// import { PerformanceSuiteEditor } from './workspace/PerformanceSuiteEditor';
-
-
-// Styled components extracted to styles file
-
-// import { createMockRuleFromSource } from '../utils/mockUtils'; // Removed - mock features
 import { findPathToRequest } from '../utils/projectUtils';
 
 /**

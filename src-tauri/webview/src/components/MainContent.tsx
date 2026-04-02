@@ -12,7 +12,7 @@ import { HelpModal } from './HelpModal';
 import { AddToTestCaseModal } from './modals/AddToTestCaseModal';
 import { ConfirmationModal } from './modals/ConfirmationModal';
 import { RenameModal } from './modals/RenameModal';
-// import { SampleModal } from './modals/SampleModal';
+// import { SampleModal } from './modals/SampleModal'; // file is .skip — not yet available
 import { ExtractorModal } from './modals/ExtractorModal';
 import { SettingsEditorModal } from './modals/SettingsEditorModal';
 import { AddToDevOpsModal } from './modals/AddToDevOpsModal';
@@ -757,37 +757,28 @@ const MainContent: React.FC = () => {
     // ==========================================================================
 
     const handleAddWorkflow = useCallback(() => {
-        console.log('[Workflows] handleAddWorkflow called');
         setWorkflowBuilderModal({ open: true, workflow: null, projectPath: '' });
     }, []);
 
     const handleEditWorkflow = useCallback((workflow: Workflow) => {
-        console.log('[Workflows] handleEditWorkflow called with workflow:', workflow.name);
         setWorkflowBuilderModal({ open: true, workflow, projectPath: '' });
     }, []);
 
     const handleSaveWorkflow = useCallback(async (workflow: Workflow) => {
-        console.log('[MainContent] handleSaveWorkflow called with:', workflow);
-
         try {
-            const result = await bridge.sendMessageAsync({
+            await bridge.sendMessageAsync({
                 command: FrontendCommand.SaveWorkflow,
                 workflow
             });
 
-            console.log('[MainContent] SaveWorkflow result:', result);
-
             // Workflows are now global - reload config
             const response = await bridge.sendMessageAsync({ command: FrontendCommand.GetSettings });
-            console.log('[MainContent] Updated config workflows:', response?.workflows);
 
             if (response) {
                 setConfig(response);
             }
 
             setWorkspaceDirty(true);
-
-            // Close the modal
             setWorkflowBuilderModal({ open: false, workflow: null, projectPath: '' });
         } catch (error) {
             console.error('[MainContent] Failed to save workflow:', error);
@@ -803,11 +794,8 @@ const MainContent: React.FC = () => {
                 environment: config?.activeEnvironment
             });
 
-            console.log('[Workflow] Execution result:', result);
-
-            // TODO: Show execution results in UI (WorkflowRunner component)
             if (result.status === 'completed') {
-                console.log(`[Workflow] ${workflow.name} completed successfully`);
+                // workflow completed — no-op (results shown in UI by TestRunnerContext)
             } else {
                 console.error(`[Workflow] ${workflow.name} failed:`, result.error);
             }
@@ -853,38 +841,19 @@ const MainContent: React.FC = () => {
     }, []);
 
     const handleSelectWorkflow = useCallback((workflow: Workflow) => {
-        console.log('[MainContent] handleSelectWorkflow called:', workflow.name);
-        console.log('[MainContent] About to set workflow step with null step');
-
         setSelectedRequest(null);
-
-        // Set workflow with a placeholder step to indicate workflow-level selection
-        // The step will be null/undefined which WorkspaceLayout will detect
         const workflowStep = { workflow, step: null as any };
-        console.log('[MainContent] Calling setSelectedWorkflowStep with:', workflowStep);
         setSelectedWorkflowStep(workflowStep);
-
         setActiveView(SidebarView.WORKFLOWS);
-
-        console.log('[MainContent] handleSelectWorkflow complete');
     }, [setSelectedRequest, setSelectedWorkflowStep, setActiveView]);
 
     const handleSelectWorkflowStep = useCallback((workflow: Workflow, step: WorkflowStep) => {
-        console.log('[MainContent] handleSelectWorkflowStep called:', workflow.name, step.name);
-        console.log('[MainContent] setSelectedWorkflowStep function exists:', !!setSelectedWorkflowStep);
-
         setSelectedRequest(null);
-
-        console.log('[MainContent] About to call setSelectedWorkflowStep with:', { workflow: workflow.name, step: step.name });
         setSelectedWorkflowStep({ workflow, step });
-        console.log('[MainContent] Called setSelectedWorkflowStep');
-
         setActiveView(SidebarView.WORKFLOWS);
-        console.log('[MainContent] Set activeView to WORKFLOWS');
     }, [setSelectedRequest, setSelectedWorkflowStep, setActiveView]);
 
     const handleUpdateWorkflowStep = useCallback(async (workflow: Workflow, updatedStep: WorkflowStep) => {
-        console.log('[MainContent] handleUpdateWorkflowStep called:', workflow.name, updatedStep.name);
 
         // Update the step in the workflow
         const updatedWorkflow: Workflow = {
@@ -905,15 +874,12 @@ const MainContent: React.FC = () => {
                 setConfig(response);
             }
             setSelectedWorkflowStep({ workflow: updatedWorkflow, step: updatedStep });
-
-            console.log('[MainContent] Workflow step updated successfully');
         } catch (error) {
             console.error('[MainContent] Failed to update workflow step:', error);
         }
     }, [setConfig, setSelectedWorkflowStep]);
 
     const handleUpdateWorkflow = useCallback(async (updatedWorkflow: Workflow) => {
-        console.log('[MainContent] handleUpdateWorkflow called:', updatedWorkflow.name);
 
         // Save the updated workflow
         try {

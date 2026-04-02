@@ -20,6 +20,15 @@
 - Check that production optimizations don't break functionality
 - Consider bundle size and performance impacts in production builds
 
+**Build Warnings Policy — fix all warnings, regardless of origin.**
+
+- After any code change, run `cargo build` (Rust) and `npm run build` or `npm run build:skip-check` (webview) and check for warnings
+- Fix every warning visible in the build output, even if the warning pre-dates your change
+- In Rust: address `unused import`, `dead_code`, `unused variable`, `deprecated`, and clippy lints
+- In TypeScript/React: address unused variable, unreachable code, and missing dependency warnings
+- Do not use `#[allow(...)]` or `// @ts-ignore` to suppress warnings unless genuinely justified and accompanied by an explanatory comment
+- A clean build (zero warnings) is the expected baseline state
+
 ### 3. Logging: Use Logger Mechanism
 **ALWAYS** send important changes and errors through the logging mechanism, never use `console.log` for production code.
 
@@ -142,12 +151,18 @@ bridge.sendMessage({
     request: { /* request data */ }
 });
 
-// Backend → Frontend (via events/messages)
-window.addEventListener('message', (event) => {
-    const { command, data } = event.data;
-    if (command === 'response') {
+// Backend → Frontend (via bridge listener)
+bridge.addListener((message) => {
+    const { command, data } = message;
+    if (command === BackendCommand.Response) {
         // Handle response
     }
+});
+
+// Direct Tauri events (streaming / one-shot)
+import { listen } from '@tauri-apps/api/event';
+const unlisten = await listen('proxy-event', (event) => {
+    // Handle event.payload
 });
 ```
 

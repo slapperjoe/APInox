@@ -108,11 +108,6 @@ fn collect_events(xml: &str) -> Vec<SoapEvent> {
 // Event cursor — index-based cursor over the owned event slice
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Peek at the current event without advancing.
-fn peek(events: &[SoapEvent], pos: usize) -> Option<&SoapEvent> {
-    events.get(pos)
-}
-
 /// Skip all events until (and including) the matching `End` for the current
 /// `Start` element (which has already been consumed / counted as depth 1).
 fn skip_element(events: &[SoapEvent], pos: &mut usize) {

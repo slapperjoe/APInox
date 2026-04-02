@@ -21,7 +21,6 @@ import {
     WsdlDiff
 } from '@shared/models';
 import { useNavigation } from '../contexts/NavigationContext';
-// import { useMockProxy } from '../contexts/MockProxyContext'; // Removed - mock/proxy features
 
 // Debug logger - console only to prevent message flooding
 // Note: Sending log messages back to the backend on every received message
@@ -47,27 +46,17 @@ export interface MessageHandlerState {
     setShowLineNumbers: React.Dispatch<React.SetStateAction<boolean>>;
     setSplitRatio: React.Dispatch<React.SetStateAction<number>> | ((ratio: number) => void);
     setInlineElementValues: React.Dispatch<React.SetStateAction<boolean>>;
-    // setActiveRunId: React.Dispatch<React.SetStateAction<string | null>>; // Moved to PerformanceContext
-    // setPerformanceProgress: React.Dispatch<React.SetStateAction<any>>; // Moved to PerformanceContext
-    // setCoordinatorStatus: React.Dispatch<React.SetStateAction<any>>; // Moved to PerformanceContext
     configPath?: string | null;
     setConfigPath: React.Dispatch<React.SetStateAction<string | null>>;
     setConfigDir: React.Dispatch<React.SetStateAction<string | null>>;
-    // setProxyConfig: React.Dispatch<React.SetStateAction<any>>; // Moved to MockProxyContext
+    // setProxyConfig removed — moved to MockProxyContext (proxy features now in APIprox)
     setSelectedProjectName: React.Dispatch<React.SetStateAction<string | null>>;
     setWsdlUrl: React.Dispatch<React.SetStateAction<string>>;
     setWorkspaceDirty: React.Dispatch<React.SetStateAction<boolean>>;
     setSavedProjects: React.Dispatch<React.SetStateAction<Set<string>>>;
     setSaveErrors: React.Dispatch<React.SetStateAction<Map<string, string>>>;
     setChangelog: React.Dispatch<React.SetStateAction<string>>;
-    // setProxyHistory: Moved to MockProxyContext
-    // setProxyRunning: Moved to MockProxyContext
-    // setTestExecution: Moved to TestRunnerContext
-    // setExploredInterfaces: Moved to NavigationContext
     setActiveView: React.Dispatch<React.SetStateAction<SidebarView>>;
-    // setMockHistory: Moved to MockProxyContext
-    // setMockRunning: Moved to MockProxyContext
-    // setMockConfig: Moved to MockProxyContext
     setRequestHistory: React.Dispatch<React.SetStateAction<RequestHistoryEntry[]>>;
 
 
