@@ -20,7 +20,7 @@ pub mod parsers;
 pub mod testing;
 pub mod workflow;
 
-#[cfg(desktop)]
+#[cfg(target_os = "macos")]
 use tauri_plugin_decorum::WebviewWindowExt;
 
 #[cfg(windows)]
@@ -215,15 +215,9 @@ fn apply_window_styling(window: &tauri::WebviewWindow) {
     }
 }
 
-#[cfg(not(windows))]
-fn apply_window_styling(_window: &tauri::WebviewWindow) {
-    // No-op on non-Windows platforms
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
@@ -301,13 +295,6 @@ pub fn run() {
             project_storage::close_project,
         ])
         .setup(|app| {
-            // Initialize logging for both debug and production
-            // This helps diagnose issues on user machines
-            let _log_level = if cfg!(debug_assertions) {
-                log::LevelFilter::Info
-            } else {
-                log::LevelFilter::Info  // Keep info level in production for diagnostics
-            };
             
             // Configure logging to file for production diagnostics
             let log_dir = app.path().app_log_dir().unwrap_or_else(|_| {

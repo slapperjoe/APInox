@@ -164,7 +164,7 @@ export const OperationSummary: React.FC<{
                     <Title>{operation.name}</Title>
                 </TitleGroup>
                 <HeaderActions>
-                    <PrimaryButton onClick={() => console.log('Run all requests (stub)')}>
+                    <PrimaryButton onClick={() => { /* TODO: implement run-all */ }}>
                         <Play size={14} /> Run All
                     </PrimaryButton>
                     <ContextHelpButton sectionId="operation" />

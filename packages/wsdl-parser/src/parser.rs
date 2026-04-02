@@ -30,6 +30,7 @@ struct WsdlService {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)] // Internal parsing structures
 struct WsdlPort {
     name: String,
     binding: String,
@@ -46,12 +47,14 @@ struct WsdlBinding {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)] // Internal parsing structures
 struct WsdlBindingOperation {
     name: String,
     soap_action: String,
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)] // Internal parsing structures
 struct WsdlPortType {
     name: String,
     operations: HashMap<String, WsdlOperation>,
@@ -980,12 +983,6 @@ impl WsdlParser {
 
     fn strip_namespace_prefix(name: &str) -> String {
         name.split(':').last().unwrap_or(name).to_string()
-    }
-
-    fn is_soap12_namespace(e: &BytesStart) -> bool {
-        e.attributes().flatten().any(|attr| {
-            String::from_utf8_lossy(&attr.value).contains("soap12")
-        })
     }
 }
 

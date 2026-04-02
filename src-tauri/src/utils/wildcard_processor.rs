@@ -1,8 +1,15 @@
 use chrono::{Datelike, Duration, Utc};
+use once_cell::sync::Lazy;
 use rand::Rng;
 use regex::Regex;
 use std::collections::HashMap;
 use uuid::Uuid;
+
+static UUID_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\{\{(uuid|newguid)\}\}").unwrap());
+static EPOCH_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\{\{epoch\}\}").unwrap());
+static RANDOM_INT_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\{\{randomInt\((\d+),(\d+)\)\}\}").unwrap());
+static LOREM_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\{\{lorem\((\d+)\)\}\}").unwrap());
+static DATE_MATH_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\{\{now([+-])(\d+)([dmy])\}\}").unwrap());
 
 /// Processes wildcard/template variables in text
 /// Supports environment variables, global variables, context variables, and built-in functions
@@ -88,8 +95,7 @@ impl WildcardProcessor {
         let mut result = text.to_string();
 
         // {{uuid}} or {{newguid}}
-        let uuid_re = Regex::new(r"\{\{(uuid|newguid)\}\}").unwrap();
-        result = uuid_re.replace_all(&result, |_: &regex::Captures| {
+        result = UUID_RE.replace_all(&result, |_: &regex::Captures| {
             Uuid::new_v4().to_string()
         }).to_string();
 
@@ -97,14 +103,12 @@ impl WildcardProcessor {
         result = result.replace("{{now}}", &Utc::now().to_rfc3339());
 
         // {{epoch}}
-        let epoch_re = Regex::new(r"\{\{epoch\}\}").unwrap();
-        result = epoch_re.replace_all(&result, |_: &regex::Captures| {
+        result = EPOCH_RE.replace_all(&result, |_: &regex::Captures| {
             Utc::now().timestamp().to_string()
         }).to_string();
 
         // {{randomInt(min,max)}}
-        let random_int_re = Regex::new(r"\{\{randomInt\((\d+),(\d+)\)\}\}").unwrap();
-        result = random_int_re.replace_all(&result, |caps: &regex::Captures| {
+        result = RANDOM_INT_RE.replace_all(&result, |caps: &regex::Captures| {
             let min: i64 = caps[1].parse().unwrap_or(0);
             let max: i64 = caps[2].parse().unwrap_or(100);
             let mut rng = rand::thread_rng();
@@ -112,8 +116,7 @@ impl WildcardProcessor {
         }).to_string();
 
         // {{lorem(count)}}
-        let lorem_re = Regex::new(r"\{\{lorem\((\d+)\)\}\}").unwrap();
-        result = lorem_re.replace_all(&result, |caps: &regex::Captures| {
+        result = LOREM_RE.replace_all(&result, |caps: &regex::Captures| {
             let count: usize = caps[1].parse().unwrap_or(5);
             Self::generate_lorem(count)
         }).to_string();
@@ -128,8 +131,7 @@ impl WildcardProcessor {
         result = result.replace("{{state}}", &Self::generate_state());
 
         // {{now+1d}}, {{now-2m}}, etc.
-        let date_math_re = Regex::new(r"\{\{now([+-])(\d+)([dmy])\}\}").unwrap();
-        result = date_math_re.replace_all(&result, |caps: &regex::Captures| {
+        result = DATE_MATH_RE.replace_all(&result, |caps: &regex::Captures| {
             let op = &caps[1];
             let amount: i64 = caps[2].parse().unwrap_or(0);
             let unit = &caps[3];
