@@ -76,7 +76,7 @@ export const useAppLifecycle = ({
         }
 
         // Auto-load all projects from ~/.apinox/projects/ on startup
-        if (isTauri()) {
+        const autoLoadProjects = async () => {
             try {
                 const paths = await bridge.invokeTauriCommand<string[]>('list_projects', {});
                 console.log('[useAppLifecycle] Auto-loading', paths.length, 'projects from ~/.apinox/projects/');
@@ -98,7 +98,9 @@ export const useAppLifecycle = ({
             } catch (error) {
                 console.error('[useAppLifecycle] Failed to list projects:', error);
             }
-        }
+        };
+
+        autoLoadProjects();
     }, []); // Run once on mount
 
     // Tauri window persistence (size/position)
