@@ -43,6 +43,22 @@ tauri-plugin-decorum = "1.1.1"
 reqwest = { version = "0.12", default-features = false, features = ["json", "cookies", "gzip", "rustls-tls", "charset", "http2"] }
 tokio = { version = "1.45", features = ["full"] }
 
+# HTTP proxy/mock server (from APIprox integration)
+hyper = { version = "1", features = ["full"] }
+hyper-util = { version = "0.1", features = ["full"] }
+http-body-util = "0.1"
+bytes = "1"
+
+# TLS for HTTPS proxy (from APIprox integration)
+rustls = "0.23"
+tokio-rustls = "0.26"
+
+# File watching (from APIprox integration)
+notify = "6"
+
+# Home directory resolution (from APIprox integration)
+dirs-next = "2"
+
 # XML parsing and XPath
 quick-xml = { version = "0.31", features = ["serialize"] }
 sxd-document = "0.3"
@@ -90,6 +106,9 @@ pem = "3.0"
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.58", features = ["Win32_Graphics_Dwm", "Win32_Foundation"] }
+
+[dev-dependencies]
+tempfile = "3"
 
 [profile.release]
 opt-level = "z"       # optimise for size rather than speed

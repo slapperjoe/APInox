@@ -1,7 +1,7 @@
 // Prevent additional console window on Windows in release builds
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tauri::Manager;
 
 mod project_storage;
@@ -12,13 +12,24 @@ pub mod settings_manager;
 mod soapui_importer;
 mod workspace_export;
 
-// Rust backend modules
+// Rust backend modules (APInox)
 pub mod utils;
 pub mod http;
 pub mod soap;
 pub mod parsers;
 pub mod testing;
 pub mod workflow;
+
+// Proxy/mock/cert modules (from APIprox integration)
+pub mod proxy_models;
+pub mod proxy;
+pub mod mock;
+pub mod replacer;
+pub mod breakpoint;
+pub mod filewatcher;
+pub mod certificates;
+pub mod storage;
+pub mod commands;
 
 #[cfg(target_os = "macos")]
 use tauri_plugin_decorum::WebviewWindowExt;
@@ -29,6 +40,17 @@ use windows::Win32::Graphics::Dwm::{DwmSetWindowAttribute, DWMWA_BORDER_COLOR};
 use windows::Win32::Foundation::HWND;
 
 static LOG_FILE_PATH: Mutex<Option<String>> = Mutex::new(None);
+
+/// Shared state for all proxy/mock/cert services (APIprox integration).
+pub struct ProxyAppState {
+    pub proxy: proxy::state::SharedProxyState,
+    pub mock: mock::state::SharedMockState,
+    pub replacer: replacer::service::SharedReplacerService,
+    pub breakpoint: breakpoint::service::SharedBreakpointService,
+    pub filewatcher: filewatcher::service::SharedFileWatcherService,
+    pub storage: Arc<storage::rules::RulesStorage>,
+    pub cert_manager: Arc<certificates::manager::CertManager>,
+}
 
 #[cfg(desktop)]
 #[tauri::command]
@@ -217,6 +239,11 @@ fn apply_window_styling(window: &tauri::WebviewWindow) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Prevent the outbound reqwest client (used for proxy forwarding) from
+    // looping back through the proxy port when system proxy is set.
+    std::env::set_var("NO_PROXY", "*");
+    std::env::set_var("no_proxy", "*");
+
     tauri::Builder::default()
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
@@ -293,6 +320,46 @@ pub fn run() {
             workspace_export::export_workspace,
             workspace_export::import_workspace,
             project_storage::close_project,
+            // ── Proxy / mock / cert (APIprox integration) ──────────────────
+            commands::proxy_server::start_proxy,
+            commands::proxy_server::stop_proxy,
+            commands::proxy_server::get_proxy_status,
+            commands::mock_server::start_mock,
+            commands::mock_server::stop_mock,
+            commands::mock_server::get_mock_status,
+            commands::mock_server::get_mock_rules,
+            commands::mock_server::add_mock_rule,
+            commands::mock_server::update_mock_rule,
+            commands::mock_server::delete_mock_rule,
+            commands::mock_server::set_mock_record_mode,
+            commands::mock_server::save_mock_rules,
+            commands::mock_server::export_mock_collection,
+            commands::mock_server::import_mock_collection,
+            commands::replacer_server::get_replace_rules,
+            commands::replacer_server::add_replace_rule,
+            commands::replacer_server::update_replace_rule,
+            commands::replacer_server::delete_replace_rule,
+            commands::breakpoint_server::get_breakpoint_rules,
+            commands::breakpoint_server::set_breakpoint_rules,
+            commands::breakpoint_server::add_breakpoint_rule,
+            commands::breakpoint_server::delete_breakpoint_rule,
+            commands::breakpoint_server::get_paused_traffic,
+            commands::breakpoint_server::continue_breakpoint,
+            commands::breakpoint_server::drop_breakpoint,
+            commands::filewatcher_server::get_file_watches,
+            commands::filewatcher_server::add_file_watch,
+            commands::filewatcher_server::update_file_watch,
+            commands::filewatcher_server::delete_file_watch,
+            commands::filewatcher_server::get_soap_pairs,
+            commands::filewatcher_server::get_watcher_events,
+            commands::filewatcher_server::clear_watcher_events,
+            commands::certificates_server::get_ca_certificate_info,
+            commands::certificates_server::generate_ca_certificate,
+            commands::certificates_server::trust_ca_certificate,
+            commands::certificates_server::untrust_ca_certificate,
+            commands::sniffer_server::get_system_proxy_status,
+            commands::sniffer_server::set_system_proxy,
+            commands::sniffer_server::clear_system_proxy,
         ])
         .setup(|app| {
             
@@ -439,7 +506,82 @@ pub fn run() {
                 }
             }
 
+            // ── Proxy/mock/cert state setup (APIprox integration) ──────────
+            {
+                let config_dir = dirs_next::home_dir()
+                    .unwrap_or_else(|| std::path::PathBuf::from("."))
+                    .join(".apinox");
+                std::fs::create_dir_all(&config_dir).ok();
+
+                let proxy_storage = Arc::new(storage::rules::RulesStorage::new(config_dir.clone()));
+
+                let replacer_svc = replacer::service::new_shared();
+                {
+                    let mut svc = replacer_svc.lock().unwrap();
+                    for rule in proxy_storage.load_replace_rules() {
+                        svc.add_rule(rule);
+                    }
+                }
+
+                let breakpoint_svc = breakpoint::service::new_shared();
+                {
+                    let mut svc = breakpoint_svc.blocking_lock();
+                    svc.set_rules(proxy_storage.load_breakpoint_rules());
+                }
+
+                let filewatcher_svc = filewatcher::service::new_shared();
+                {
+                    let mut svc = filewatcher_svc.blocking_lock();
+                    for watch in proxy_storage.load_file_watches() {
+                        svc.add_watch(watch);
+                    }
+                }
+
+                let mock_state = mock::state::new_shared();
+                {
+                    let mut state = mock_state.blocking_lock();
+                    state.config.rules = proxy_storage.load_mock_rules();
+                }
+
+                let cert_manager = Arc::new(certificates::manager::CertManager::new(config_dir));
+                if !cert_manager.info().exists {
+                    if let Err(e) = cert_manager.generate() {
+                        log::warn!("[Setup] Failed to generate CA certificate: {}", e);
+                    }
+                }
+
+                // Re-spawn file watchers for persisted watches
+                {
+                    let watches = filewatcher_svc.blocking_lock().get_watches();
+                    for watch in watches {
+                        commands::filewatcher_server::spawn_watcher(
+                            watch,
+                            filewatcher_svc.clone(),
+                            app.handle().clone(),
+                        );
+                    }
+                }
+
+                app.manage(ProxyAppState {
+                    proxy: proxy::state::new_shared(),
+                    mock: mock_state,
+                    replacer: replacer_svc,
+                    breakpoint: breakpoint_svc,
+                    filewatcher: filewatcher_svc,
+                    storage: proxy_storage,
+                    cert_manager,
+                });
+
+                log::info!("[Proxy] Proxy/mock/cert services initialised");
+            }
+
             Ok(())
+        })
+        .on_window_event(|_window, event| {
+            if let tauri::WindowEvent::Destroyed = event {
+                // Clear the OS system proxy when the app exits.
+                commands::sniffer_server::clear_on_exit();
+            }
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

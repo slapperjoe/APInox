@@ -421,7 +421,10 @@ export enum SidebarView {
     TESTS = 'tests',
     WORKFLOWS = 'workflows', // NEW: Request chaining workflows
     PERFORMANCE = 'performance',
-    HISTORY = 'history'
+    HISTORY = 'history',
+    PROXY = 'proxy',     // Proxy/traffic interceptor (from APIprox)
+    MOCK = 'mock',       // Mock server (from APIprox)
+    WATCHER = 'watcher', // File watcher / SOAP pair viewer (from APIprox)
 }
 
 export interface ApinoxConfig {
@@ -836,4 +839,190 @@ export interface WorkflowStepResult {
     iterations?: number;
     /** For condition steps: which branch was taken */
     branchTaken?: 'true' | 'false';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Proxy / Mock / Cert models (from APIprox integration)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface TrafficEvent {
+    id: string;
+    timestamp: number;
+    timestampLabel: string;
+    method: string;
+    url: string;
+    requestHeaders: Record<string, string>;
+    requestBody: string;
+    status?: number;
+    responseHeaders?: Record<string, string>;
+    responseBody?: string;
+    durationMs?: number;
+    matchedRule?: string;
+    passthrough?: boolean;
+    /** 'proxy' | 'mock' */
+    source: string;
+}
+
+export interface ProxyServerConfig {
+    enabled: boolean;
+    port: number;
+    targetUrl: string;
+    /** 'proxy' | 'mock' | 'both' */
+    mode: string;
+}
+
+export interface MockMatchCondition {
+    /** 'url' | 'operation' | 'soapAction' | 'header' | 'contains' | 'xpath' | 'templateName' */
+    type: string;
+    pattern: string;
+    isRegex?: boolean;
+    headerName?: string;
+}
+
+export interface MockRule {
+    id: string;
+    name: string;
+    enabled: boolean;
+    conditions: MockMatchCondition[];
+    statusCode: number;
+    responseBody: string;
+    contentType?: string;
+    responseHeaders?: Record<string, string>;
+    delayMs?: number;
+    hitCount?: number;
+    recordedAt?: number;
+    recordedFrom?: string;
+    tags?: string[];
+}
+
+export interface MockRuleCollection {
+    name: string;
+    description: string;
+    version: string;
+    exportedAt: number;
+    rules: MockRule[];
+}
+
+export interface MockServerConfig {
+    enabled: boolean;
+    port: number;
+    targetUrl: string;
+    rules: MockRule[];
+    passthroughEnabled: boolean;
+    routeThroughProxy: boolean;
+    recordMode: boolean;
+}
+
+export interface ReplaceRule {
+    id: string;
+    name: string;
+    enabled: boolean;
+    /** 'request' | 'response' | 'both' */
+    target: string;
+    matchText: string;
+    replaceWith: string;
+    isRegex?: boolean;
+    xpath?: string;
+}
+
+export interface BreakpointCondition {
+    /** 'url' | 'method' | 'statusCode' | 'header' | 'contains' */
+    type: string;
+    pattern: string;
+    isRegex?: boolean;
+    headerName?: string;
+}
+
+export interface BreakpointRule {
+    id: string;
+    name: string;
+    enabled: boolean;
+    /** 'request' | 'response' | 'both' */
+    target: string;
+    conditions: BreakpointCondition[];
+}
+
+export interface PausedTraffic {
+    id: string;
+    timestamp: number;
+    /** 'request' | 'response' */
+    pauseType: string;
+    method: string;
+    url: string;
+    requestHeaders: Record<string, string>;
+    requestBody: string;
+    statusCode?: number;
+    responseHeaders?: Record<string, string>;
+    responseBody?: string;
+    matchedRule: string;
+}
+
+export interface BreakpointResolution {
+    /** 'continue' | 'drop' */
+    action: string;
+    modifiedHeaders?: Record<string, string>;
+    modifiedBody?: string;
+    modifiedStatusCode?: number;
+}
+
+export interface FileWatch {
+    id: string;
+    name: string;
+    enabled: boolean;
+    requestFile: string;
+    responseFile: string;
+    correlationIdElements: string[];
+}
+
+export interface SoapMessage {
+    id: string;
+    watchId: string;
+    timestamp: number;
+    /** 'request' | 'response' */
+    messageType: string;
+    filePath: string;
+    content: string;
+    operationName?: string;
+    correlationId?: string;
+}
+
+export interface SoapPair {
+    id: string;
+    watchId: string;
+    operationName?: string;
+    request?: SoapMessage;
+    response?: SoapMessage;
+    /** 'pending' | 'matched' */
+    status: string;
+    createdAt: number;
+    updatedAt: number;
+}
+
+export interface WatcherSoapEvent {
+    /** 'new_request' | 'pair_matched' | 'orphan_response' */
+    eventType: string;
+    pair: SoapPair;
+}
+
+export interface CertInfo {
+    exists: boolean;
+    certPath: string;
+    keyPath: string;
+    subject: string;
+    issuer: string;
+    validFrom: string;
+    validTo: string;
+    fingerprint: string;
+    isTrusted: boolean;
+}
+
+export interface SystemProxyStatus {
+    enabled: boolean;
+    host: string;
+    port?: number;
+    /** 'windows' | 'macos' | 'linux' | 'unknown' */
+    platform: string;
+    automationSupported: boolean;
+    requiresElevation: boolean;
+    networkServices: string[];
 }
