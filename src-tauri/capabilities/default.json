@@ -27,6 +27,17 @@
           "path": "$TEMP/**"
         }
       ]
+    },
+    "shell:default",
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        { "name": "certutil", "cmd": "certutil", "args": true },
+        { "name": "security", "cmd": "security", "args": true },
+        { "name": "update-ca-certificates", "cmd": "update-ca-certificates", "args": true },
+        { "name": "sudo", "cmd": "sudo", "args": true },
+        { "name": "cp", "cmd": "cp", "args": true }
+      ]
     }
   ]
 }

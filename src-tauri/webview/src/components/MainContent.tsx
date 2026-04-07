@@ -7,6 +7,9 @@ import { updateProjectWithRename } from '../utils/projectUtils';
 import { generateInitialXmlForOperation } from '../utils/soapUtils';
 import { Sidebar } from './Sidebar';
 import { WorkspaceLayout } from './WorkspaceLayout';
+import { ProxyPanel } from './proxy/ProxyPanel';
+import { MockRulesPage } from './proxy/MockRulesPage';
+import { FileWatcherPage } from './proxy/FileWatcherPage';
 import { HelpModal } from './HelpModal';
 
 import { AddToTestCaseModal } from './modals/AddToTestCaseModal';
@@ -1431,7 +1434,24 @@ const MainContent: React.FC = () => {
             />
 
             {/* WorkspaceLayout with consolidated props */}
-            <WorkspaceLayout
+            {activeView === SidebarView.PROXY && (
+                <ProxyPanel
+                    onNavigateTo={(view) => handleSetActiveViewWrapper(view as SidebarView)}
+                />
+            )}
+            {activeView === SidebarView.MOCK && (
+                <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                    <MockRulesPage />
+                </div>
+            )}
+            {activeView === SidebarView.WATCHER && (
+                <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                    <FileWatcherPage />
+                </div>
+            )}
+            {/* WorkspaceLayout with consolidated props */}
+            {activeView !== SidebarView.PROXY && activeView !== SidebarView.MOCK && activeView !== SidebarView.WATCHER && (
+                <WorkspaceLayout
                 projects={projects}
                 setProjects={setProjects}
                 selectionState={{
@@ -1568,6 +1588,7 @@ const MainContent: React.FC = () => {
                     }
                 }}
             />
+            )}
 
             {
                 showDevOpsModal && config?.azureDevOps?.orgUrl && config?.azureDevOps?.project && selectedRequest && (

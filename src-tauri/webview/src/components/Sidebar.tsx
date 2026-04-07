@@ -111,7 +111,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         deleteConfirm, setDeleteConfirm
     } = selectionProps;
 
-    const hideContent = !sidebarExpanded || activeView === SidebarView.HOME;
+    const proxyFullPanelView = activeView === SidebarView.PROXY || activeView === SidebarView.MOCK || activeView === SidebarView.WATCHER;
+    const hideContent = !sidebarExpanded || activeView === SidebarView.HOME || proxyFullPanelView;
 
     return (
         <SidebarContainer
