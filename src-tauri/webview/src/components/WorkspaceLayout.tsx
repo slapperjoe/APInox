@@ -4,7 +4,7 @@ import { Layout as LayoutIcon, ListOrdered, Play, Loader2, RotateCcw, WrapText, 
 // Checking code: TestStepType is used in props interface but not local var?
 // Actually TestStepType is used in onAddStep signature but onAddStep comes from props.
 // Let's remove them and add back if needed.
-import { SidebarView, RequestType, BodyType, HttpMethod, WorkflowStep, ApiRequest } from '@shared/models';
+import { SidebarView, RequestType, BodyType, HttpMethod, WorkflowStep, ApiRequest, TestStep } from '@shared/models';
 import { bridge } from '../utils/bridge';
 import { CustomXPathEvaluator } from '../utils/xpathEvaluator';
 import { XPathGenerator } from '../utils/xpathGenerator';
@@ -15,7 +15,7 @@ import { RequestWorkspace, ErrorBoundary } from '@apinox/request-editor';
 import type { ApiRequest as PackageApiRequest, ExecutionResponse as PackageExecutionResponse, Variable as PackageVariable } from '@apinox/request-editor';
 import { MonacoRequestEditorWithToolbar as MonacoRequestEditor } from '@apinox/request-editor';
 import type { MonacoRequestEditorHandle } from '@apinox/request-editor';
-import { MonacoResponseViewer, formatXml, stripCausalityData, formatContent, formatJson } from '@apinox/request-editor';
+import { MonacoResponseViewer, formatXml, stripCausalityData, formatContent, formatJson, validateUrl, validateJson, validateXml } from '@apinox/request-editor';
 import { MonacoSingleLineInput } from '@apinox/request-editor';
 import type { MonacoSingleLineInputHandle } from '@apinox/request-editor';
 import { AssertionsPanel } from '@apinox/request-editor';
@@ -41,6 +41,7 @@ import { ProjectSummary } from './workspace/ProjectSummary';
 import { InterfaceSummary } from './workspace/InterfaceSummary';
 import { TestSuiteSummary } from './workspace/TestSuiteSummary';
 import { OperationSummary } from './workspace/OperationSummary';
+import { PerformanceSuiteEditor } from './workspace/PerformanceSuiteEditor';
 import { findPathToRequest } from '../utils/projectUtils';
 
 /**
@@ -159,21 +160,21 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     configState,
     stepActions,
     toolsActions,
-    onUpdateSuite: _onUpdateSuite, // Unused - performance removed
-    onAddPerformanceRequest: _onAddPerformanceRequest, // Unused - performance removed
-    onDeletePerformanceRequest: _onDeletePerformanceRequest, // Unused - performance removed
-    onSelectPerformanceRequest: _onSelectPerformanceRequest, // Unused - performance removed
-    onUpdatePerformanceRequest: _onUpdatePerformanceRequest, // Unused - performance removed
-    onImportFromWorkspace: _onImportFromWorkspace, // Unused - performance removed
-    onRunSuite: _onRunSuite, // Unused - performance removed
-    onStopRun: _onStopRun, // Unused - performance removed
-    performanceProgress: _performanceProgress, // Unused - performance removed
-    performanceHistory: _performanceHistory, // Unused - performance removed
-    onBackToSuite: _onBackToSuite, // Unused - performance removed
+    onUpdateSuite,
+    onAddPerformanceRequest,
+    onDeletePerformanceRequest,
+    onSelectPerformanceRequest,
+    onUpdatePerformanceRequest,
+    onImportFromWorkspace,
+    onRunSuite,
+    onStopRun,
+    performanceProgress,
+    performanceHistory,
+    onBackToSuite: _onBackToSuite,
     navigationActions,
-    coordinatorStatus: _coordinatorStatus, // Unused - performance removed
-    onStartCoordinator: _onStartCoordinator, // Unused - performance removed
-    onStopCoordinator: _onStopCoordinator, // Unused - performance removed
+    coordinatorStatus,
+    onStartCoordinator,
+    onStopCoordinator,
     explorerState // Add this
 }) => {
     // Destructure groups
@@ -185,6 +186,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         testCase: selectedTestCase,
         testSuite: selectedTestSuite,
         testStep: selectedStep,
+        performanceSuite: selectedPerformanceSuite,
         workflowStep: selectedWorkflowStep
     } = selectionState;
 
@@ -271,7 +273,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     }, []);
 
     // Derived read-only state
-    const isStructureLocked = (activeView === SidebarView.TESTS);
+    const isStructureLocked = (activeView === SidebarView.PERFORMANCE || activeView === SidebarView.TESTS);
     const isContentLocked = (activeRequest?.readOnly === true) ||
         (!isStructureLocked && selectedProject?.readOnly === true);
     const preventEditing = isHistoryMode || isContentLocked;
@@ -496,14 +498,12 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         }
 
         onAddAssertion({ xpath: currentXPath, expectedContent: selection.text });
-        setActiveTab('assertions');
     };
 
     const handleCreateExistenceAssertion = () => {
         if (!selection || !response || !onAddExistenceAssertion || !currentXPath) return;
 
         onAddExistenceAssertion({ xpath: currentXPath });
-        setActiveTab('assertions');
     };
 
     // Validated execute handler - MUST be defined before any conditional returns
@@ -583,6 +583,40 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
 
     // PERFORMANCE VIEW - REMOVED: Moved to APIprox
     // Performance testing is now available in the APIprox project
+
+    // PERFORMANCE VIEW
+    if (activeView === SidebarView.PERFORMANCE) {
+        const suiteHistory = (performanceHistory || []).filter(run => selectedPerformanceSuite ? run.suiteId === selectedPerformanceSuite.id : false);
+        const performanceSchedules = config?.performanceSchedules || [];
+        const isPerfRunning = !!performanceProgress;
+
+        if (!selectedPerformanceSuite && !activeRequest) {
+            return <EmptyState title="No Performance Suite Selected" description="Pick or create a performance suite from the sidebar." icon={Play} />;
+        }
+
+        if (selectedPerformanceSuite && !activeRequest) {
+            return (
+                <PerformanceSuiteEditor
+                    suite={selectedPerformanceSuite}
+                    onUpdate={onUpdateSuite || (() => { })}
+                    onRun={onRunSuite || (() => { })}
+                    onStop={onStopRun || (() => { })}
+                    isRunning={isPerfRunning}
+                    onAddRequest={onAddPerformanceRequest}
+                    onDeleteRequest={onDeletePerformanceRequest}
+                    onUpdateRequest={onUpdatePerformanceRequest}
+                    onSelectRequest={onSelectPerformanceRequest}
+                    onImportFromWorkspace={onImportFromWorkspace}
+                    progress={performanceProgress || null}
+                    history={suiteHistory}
+                    schedules={performanceSchedules}
+                    coordinatorStatus={coordinatorStatus}
+                    onStartCoordinator={onStartCoordinator}
+                    onStopCoordinator={onStopCoordinator}
+                />
+            );
+        }
+    }
 
     // TESTS VIEW
     if (activeView === SidebarView.TESTS) {
@@ -921,7 +955,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
             return (
                 <ScriptEditor
                     step={selectedStep}
-                    onUpdate={onUpdateStep}
+                    onUpdate={(step) => onUpdateStep(step as unknown as TestStep)}
                     isReadOnly={isReadOnly}
                     onBack={onBackToCase}
                 />

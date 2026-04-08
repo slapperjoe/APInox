@@ -828,6 +828,111 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
             }
         }
 
+        // ── Performance suite execution ────────────────────────────────────────
+
+        if (message.command === FrontendCommand.RunPerformanceSuite || message.command === 'runPerformanceSuite') {
+            try {
+                const response = await tauriInvoke('run_performance_suite', {
+                    request: {
+                        suiteId: message.suiteId,
+                        stream: message.stream !== false
+                    }
+                });
+                return response;
+            } catch (error: any) {
+                console.error('[Bridge] Run performance suite failed:', error);
+                throw new Error(`Failed to run performance suite: ${error.message || error}`);
+            }
+        }
+
+        if (message.command === FrontendCommand.GetPerformanceRunUpdates || message.command === 'getPerformanceRunUpdates') {
+            try {
+                const response = await tauriInvoke('get_performance_run_updates', {
+                    runId: message.runId,
+                    fromIndex: message.fromIndex || 0
+                });
+                return response;
+            } catch (error: any) {
+                console.error('[Bridge] Get performance run updates failed:', error);
+                throw new Error(`Failed to get performance run updates: ${error.message || error}`);
+            }
+        }
+
+        if (message.command === 'abortPerformanceSuite' || message.command === FrontendCommand.AbortPerformanceSuite) {
+            try {
+                await tauriInvoke('abort_performance_suite', { runId: message.runId || '' });
+                return { success: true };
+            } catch (error: any) {
+                console.error('[Bridge] Abort performance suite failed:', error);
+                return { success: false };
+            }
+        }
+
+        // ── Performance suite/request CRUD ────────────────────────────────────
+
+        if (['addPerformanceRequest', 'deletePerformanceRequest', 'updatePerformanceRequest',
+             'updatePerformanceSuite', 'deletePerformanceSuite',
+             FrontendCommand.AddPerformanceRequest, FrontendCommand.UpdatePerformanceRequest,
+             FrontendCommand.DeletePerformanceRequest, FrontendCommand.UpdatePerformanceSuite,
+             'deletePerfomanceSuite'].includes(message.command)) {
+            try {
+                const config = await tauriInvoke('get_settings', {});
+                let suites: any[] = (config as any)?.performanceSuites || [];
+
+                if (message.command === 'addPerformanceRequest' || message.command === FrontendCommand.AddPerformanceRequest) {
+                    const suiteIdx = suites.findIndex((s: any) => s.id === message.suiteId);
+                    if (suiteIdx !== -1) {
+                        const newReq = {
+                            id: `perf-req-${Date.now()}`,
+                            name: message.name || 'New Request',
+                            endpoint: message.endpoint || '',
+                            method: message.method || 'POST',
+                            soapAction: message.soapAction,
+                            requestBody: message.requestBody || '',
+                            headers: message.headers || {},
+                            extractors: message.extractors || [],
+                            order: (suites[suiteIdx].requests || []).length,
+                            requestType: message.requestType,
+                            bodyType: message.bodyType,
+                            restConfig: message.restConfig,
+                            graphqlConfig: message.graphqlConfig,
+                        };
+                        suites[suiteIdx] = { ...suites[suiteIdx], requests: [...(suites[suiteIdx].requests || []), newReq] };
+                    }
+                } else if (message.command === 'updatePerformanceRequest' || message.command === FrontendCommand.UpdatePerformanceRequest) {
+                    const suiteIdx = suites.findIndex((s: any) => s.id === message.suiteId);
+                    if (suiteIdx !== -1) {
+                        const reqs = suites[suiteIdx].requests || [];
+                        const reqIdx = reqs.findIndex((r: any) => r.id === message.requestId);
+                        if (reqIdx !== -1) {
+                            reqs[reqIdx] = { ...reqs[reqIdx], ...message.updates };
+                            suites[suiteIdx] = { ...suites[suiteIdx], requests: reqs };
+                        }
+                    }
+                } else if (message.command === 'deletePerformanceRequest' || message.command === FrontendCommand.DeletePerformanceRequest) {
+                    const suiteIdx = suites.findIndex((s: any) => s.id === message.suiteId);
+                    if (suiteIdx !== -1) {
+                        suites[suiteIdx] = { ...suites[suiteIdx], requests: (suites[suiteIdx].requests || []).filter((r: any) => r.id !== message.requestId) };
+                    }
+                } else if (message.command === 'updatePerformanceSuite' || message.command === FrontendCommand.UpdatePerformanceSuite) {
+                    const suiteIdx = suites.findIndex((s: any) => s.id === message.suiteId);
+                    if (suiteIdx !== -1) {
+                        suites[suiteIdx] = { ...suites[suiteIdx], ...message.updates };
+                    }
+                } else if (message.command === 'deletePerformanceSuite' || message.command === 'deletePerfomanceSuite' || message.command === FrontendCommand.DeletePerformanceSuite) {
+                    suites = suites.filter((s: any) => s.id !== message.suiteId);
+                }
+
+                const updatedConfig = { ...(config as any), performanceSuites: suites };
+                await tauriInvoke('save_settings', { config: updatedConfig });
+                setTimeout(() => bridge.emit({ command: 'settingsUpdate', config: updatedConfig } as any), 0);
+                return { success: true };
+            } catch (error: any) {
+                console.error('[Bridge] Performance CRUD failed:', error);
+                return { success: false, error: String(error) };
+            }
+        }
+
         // Route workflow commands to Rust
         if (message.command === FrontendCommand.SaveWorkflow) {
             console.log('[Bridge] Routing SaveWorkflow to Rust backend');
@@ -1055,6 +1160,18 @@ function mapResponseToBackendEvent(command: string, data: any): BackendMessage |
             command: BackendCommand.SettingsUpdate,
             config: data?.config,
             raw: data?.raw
+        }),
+        [FrontendCommand.AddPerformanceSuite]: (data) => ({
+            command: BackendCommand.SettingsUpdate,
+            config: data?.config ?? data
+        }),
+        [FrontendCommand.UpdatePerformanceSuite]: (data) => ({
+            command: BackendCommand.SettingsUpdate,
+            config: data?.config ?? data
+        }),
+        [FrontendCommand.DeletePerformanceSuite]: (data) => ({
+            command: BackendCommand.SettingsUpdate,
+            config: data?.config ?? data
         }),
         [FrontendCommand.LoadProject]: (data) => {
             const project = data?.project ?? data;

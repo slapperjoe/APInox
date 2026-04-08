@@ -60,6 +60,7 @@ interface ProjectListProps {
     setDeleteConfirm: (id: string | null) => void;
     onRefreshInterface?: (projectName: string, iface: ApiInterface) => void;
     onBulkImport?: () => void;
+    onImportSoapUI?: () => void;
 }
 
 const ProjectContainer = styled(SidebarContainer)`

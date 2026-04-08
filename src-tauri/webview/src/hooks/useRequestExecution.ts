@@ -123,7 +123,10 @@ interface UseRequestExecutionParams {
     testExecution: Record<string, Record<string, { response?: any }>>;
 
     // Config support (for environment variables)
+    // Performance Support
+    selectedPerformanceSuiteId?: string | null;
     config?: any;
+    setConfig?: React.Dispatch<React.SetStateAction<any>>;
 
     // Explorer Support
     exploredInterfaces?: ApiInterface[];
@@ -155,7 +158,9 @@ export function useRequestExecution({
     setProjects,
     setWorkspaceDirty,
     testExecution,
+    selectedPerformanceSuiteId,
     config,
+    setConfig,
     exploredInterfaces,
     setExploredInterfaces,
     onScrapbookAutoSave
@@ -319,7 +324,8 @@ export function useRequestExecution({
             selectedInterfaceName: selectedInterface?.name,
             selectedOperationName: selectedOperation?.name,
             selectedTestCaseName: selectedTestCase?.name,
-            selectedTestCaseId: selectedTestCase?.id
+            selectedTestCaseId: selectedTestCase?.id,
+            selectedPerformanceSuiteId
         };
 
 
@@ -347,6 +353,51 @@ export function useRequestExecution({
         }
 
         // PERFORMANCE REMOVED: Performance functionality moved to APIprox
+
+        // 1. Performance Request Modification
+        if (selectedPerformanceSuiteId && updated.id?.startsWith('perf-req-')) {
+            bridge.sendMessage({ command: 'log', message: '[handleRequestUpdate] PERF PATH - updating perf request', data: JSON.stringify({ suiteId: selectedPerformanceSuiteId, requestId: updated.id }) });
+
+            bridge.sendMessage({
+                command: FrontendCommand.UpdatePerformanceRequest,
+                suiteId: selectedPerformanceSuiteId,
+                requestId: updated.id!,
+                updates: {
+                    name: updated.name,
+                    requestBody: updated.request,
+                    headers: updated.headers,
+                    method: updated.method,
+                    endpoint: updated.endpoint
+                }
+            });
+
+            if (setConfig && config) {
+                setConfig((prev: any) => {
+                    const suites = prev.performanceSuites || [];
+                    const suiteIndex = suites.findIndex((s: any) => s.id === selectedPerformanceSuiteId);
+                    if (suiteIndex === -1) return prev;
+                    const suite = { ...suites[suiteIndex] };
+                    const reqIndex = suite.requests.findIndex((r: any) => r.id === updated.id);
+                    if (reqIndex !== -1) {
+                        const updatedReq = {
+                            ...suite.requests[reqIndex],
+                            name: updated.name,
+                            requestBody: updated.request,
+                            headers: updated.headers,
+                            method: updated.method,
+                            endpoint: updated.endpoint
+                        };
+                        const newRequests = [...suite.requests];
+                        newRequests[reqIndex] = updatedReq;
+                        const newSuites = [...suites];
+                        newSuites[suiteIndex] = { ...suite, requests: newRequests };
+                        return { ...prev, performanceSuites: newSuites };
+                    }
+                    return prev;
+                });
+            }
+            return;
+        }
 
         // 2. Project/Explorer Update - DEBOUNCED
         // This prevents the race condition where `setProjects` triggers a MainContent re-render
@@ -456,7 +507,7 @@ export function useRequestExecution({
             });
         }, 300); // 300ms debounce for tree updates
 
-    }, [selectedProjectName, selectedTestCase, selectedInterface, selectedOperation, selectedRequest, setProjects, setSelectedRequest, setWorkspaceDirty, exploredInterfaces, setExploredInterfaces]);
+    }, [selectedProjectName, selectedTestCase, selectedInterface, selectedOperation, selectedRequest, setProjects, setSelectedRequest, setWorkspaceDirty, selectedPerformanceSuiteId, config, setConfig, exploredInterfaces, setExploredInterfaces]);
 
     const handleResetRequest = useCallback(() => {
         if (selectedRequest && selectedOperation) {
