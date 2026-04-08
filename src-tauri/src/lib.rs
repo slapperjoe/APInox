@@ -21,6 +21,7 @@ pub mod testing;
 pub mod workflow;
 
 // Proxy/mock/cert modules (from APIprox integration)
+pub mod performance;
 pub mod proxy_models;
 pub mod proxy;
 pub mod mock;
@@ -313,6 +314,9 @@ pub fn run() {
             testing::commands::run_test_case,
             testing::commands::run_test_suite,
             testing::commands::get_test_run_updates,
+            performance::commands::run_performance_suite,
+            performance::commands::get_performance_run_updates,
+            performance::commands::abort_performance_suite,
             workflow::commands::run_workflow,
             workflow::commands::get_workflows,
             workflow::commands::save_workflow,

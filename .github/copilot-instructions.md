@@ -20,14 +20,14 @@
 - Check that production optimizations don't break functionality
 - Consider bundle size and performance impacts in production builds
 
-**Build Warnings Policy — fix all warnings, regardless of origin.**
+**Build Errors and Warnings Policy — fix all errors and warnings, regardless of origin.**
 
-- After any code change, run `cargo build` (Rust) and `npm run build` or `npm run build:skip-check` (webview) and check for warnings
-- Fix every warning visible in the build output, even if the warning pre-dates your change
+- After any code change, run `cargo build` (Rust) and `npm run build` or `npm run build:skip-check` (webview) and check for errors and warnings
+- Fix every error and warning visible in the build output, even if it pre-dates your change
 - In Rust: address `unused import`, `dead_code`, `unused variable`, `deprecated`, and clippy lints
-- In TypeScript/React: address unused variable, unreachable code, and missing dependency warnings
-- Do not use `#[allow(...)]` or `// @ts-ignore` to suppress warnings unless genuinely justified and accompanied by an explanatory comment
-- A clean build (zero warnings) is the expected baseline state
+- In TypeScript/React: address type errors, unused variable, unreachable code, and missing dependency warnings
+- Do not use `#[allow(...)]` or `// @ts-ignore` to suppress errors/warnings unless genuinely justified and accompanied by an explanatory comment
+- A clean build (zero errors, zero warnings) is the expected baseline state
 
 ### 3. Logging: Use Logger Mechanism
 **ALWAYS** send important changes and errors through the logging mechanism, never use `console.log` for production code.
