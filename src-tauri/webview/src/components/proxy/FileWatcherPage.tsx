@@ -85,7 +85,7 @@ const WatchList = styled.div`
 
 const WatchItem = styled.div<{ $active: boolean }>`
   padding: 10px 14px;
-  border-bottom: 1px solid #2d2d30;
+  border-bottom: 1px solid ${tokens.surface.elevated};
   cursor: pointer;
   background: ${p => p.$active ? tokens.surface.active : 'transparent'};
   &:hover { background: ${p => p.$active ? tokens.surface.active : tokens.surface.stripe}; }
@@ -116,7 +116,7 @@ const StatusBadge = styled.span<{ $enabled: boolean }>`
   padding: 2px 7px;
   border-radius: 10px;
   background: ${p => p.$enabled ? 'rgba(14,99,156,0.25)' : 'rgba(100,100,100,0.2)'};
-  color: ${p => p.$enabled ? '#6db3e8' : tokens.text.muted};
+  color: ${p => p.$enabled ? 'var(--apinox-focusBorder, #6db3e8)' : tokens.text.muted};
   border: 1px solid ${p => p.$enabled ? 'rgba(14,99,156,0.5)' : 'rgba(100,100,100,0.4)'};
   user-select: none;
   pointer-events: none;
@@ -158,7 +158,7 @@ const PairScroll = styled.div`
 
 const PairRow = styled.div<{ $active: boolean }>`
   padding: 10px 14px;
-  border-bottom: 1px solid #2d2d30;
+  border-bottom: 1px solid ${tokens.surface.elevated};
   cursor: pointer;
   background: ${p => p.$active ? tokens.surface.active : 'transparent'};
   &:hover { background: ${p => p.$active ? tokens.surface.active : tokens.surface.stripe}; }
@@ -188,7 +188,7 @@ const MatchBadge = styled.span<{ $matched: boolean }>`
   padding: 2px 8px;
   border-radius: 10px;
   background: ${p => p.$matched ? 'rgba(58,110,58,0.25)' : 'rgba(122,90,30,0.2)'};
-  color: ${p => p.$matched ? '#89d185' : tokens.syntax.string};
+  color: ${p => p.$matched ? 'var(--apinox-testing-iconPassed, #89d185)' : 'var(--apinox-testing-iconQueued, #ddb165)'};
   border: 1px solid ${p => p.$matched ? 'rgba(58,110,58,0.5)' : 'rgba(122,90,30,0.5)'};
   flex-shrink: 0;
   margin-left: 6px;
@@ -255,7 +255,7 @@ const PaneLabel = styled.div`
   font-weight: 600;
   color: ${tokens.text.secondary};
   background: ${tokens.surface.panel};
-  border-bottom: 1px solid #2d2d30;
+  border-bottom: 1px solid ${tokens.surface.elevated};
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -266,7 +266,7 @@ const PaneMeta = styled.div`
   font-size: 10px;
   color: ${tokens.text.hint};
   background: ${tokens.surface.panel};
-  border-bottom: 1px solid #2d2d30;
+  border-bottom: 1px solid ${tokens.surface.elevated};
 `;
 
 const Placeholder = styled.div`
@@ -312,16 +312,17 @@ const SecondaryBtn = styled(Btn)`
 `;
 
 const DangerBtn = styled(Btn)`
-  background: #c50f1f;
-  color: white;
-  &:hover:not(:disabled) { background: #e81123; }
+  background: ${tokens.surface.danger};
+  color: ${tokens.text.danger};
+  border: 1px solid ${tokens.surface.dangerDark};
+  &:hover:not(:disabled) { background: ${tokens.surface.dangerDark}; }
 `;
 
 const SuccessBtn = styled(Btn)`
-  background: #3a6e3a;
-  color: #89d185;
-  border: 1px solid #3a6e3a;
-  &:hover:not(:disabled) { background: #4d9e4d; }
+  background: ${tokens.surface.successDark};
+  color: ${tokens.status.success};
+  border: 1px solid ${tokens.surface.successDark};
+  &:hover:not(:disabled) { background: #1a8a2a; }
 `;
 
 const AddBtn = styled(Btn)`
