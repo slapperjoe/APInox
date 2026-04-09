@@ -78,7 +78,7 @@ export const useAppLifecycle = ({
         // Auto-load all projects from ~/.apinox/projects/ on startup
         const autoLoadProjects = async () => {
             try {
-                const paths = await bridge.invokeTauriCommand<string[]>('list_projects', {});
+                const paths = await bridge.invokeTauriCommand('list_projects', {}) as string[];
                 console.log('[useAppLifecycle] Auto-loading', paths.length, 'projects from ~/.apinox/projects/');
 
                 for (const path of paths) {

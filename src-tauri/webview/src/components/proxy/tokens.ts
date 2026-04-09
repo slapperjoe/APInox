@@ -13,21 +13,21 @@ export const tokens = {
   /** Background surface layers (darkest → lightest) */
   surface: {
     /** Deepest background — editor / content areas */
-    base: '#1e1e1e',
+    base: 'var(--apinox-editor-background, #1e1e1e)',
     /** Slightly deeper than base — template bars, dense rows */
     deep: '#181818',
     /** Panel / sidebar background */
-    panel: '#252526',
+    panel: 'var(--apinox-sideBar-background, #252526)',
     /** Tab bar / header / toolbar background */
-    elevated: '#2d2d30',
+    elevated: 'var(--apinox-surface-elevated, #2d2d30)',
     /** Subtle row separator / alternating stripe */
-    stripe: '#2a2a2a',
+    stripe: 'var(--apinox-editor-lineHighlightBackground, #2a2a2a)',
     /** Input field background */
-    input: '#3c3c3c',
+    input: 'var(--apinox-input-background, #3c3c3c)',
     /** Hover / subtle overlay on inputs/items */
-    hover: '#4a4a4a',
+    hover: 'var(--apinox-list-hoverBackground, #2a2d2e)',
     /** Active / selected item background */
-    active: '#37373d',
+    active: 'var(--apinox-list-activeSelectionBackground, #37373d)',
     /** Danger button / delete background */
     danger: '#5a2e2e',
     /** Drop / destructive action button (darker red) */
@@ -41,21 +41,21 @@ export const tokens = {
   /** Border colours */
   border: {
     /** Default separator between elements */
-    default: '#3e3e42',
+    default: 'var(--apinox-border-default, #3e3e42)',
     /** Subtle (less prominent borders, e.g. nested inputs) */
-    subtle: '#555555',
+    subtle: 'var(--apinox-border-subtle, #555555)',
   },
 
   /** Text colours */
   text: {
     /** Primary body text */
-    primary: '#d4d4d4',
+    primary: 'var(--apinox-editor-foreground, #d4d4d4)',
     /** Secondary text / labels */
-    secondary: '#cccccc',
+    secondary: 'var(--apinox-foreground, #cccccc)',
     /** Muted / placeholder / de-emphasised text */
-    muted: '#858585',
+    muted: 'var(--apinox-descriptionForeground, #858585)',
     /** Hint / meta / helper text (lighter than muted) */
-    hint: '#666666',
+    hint: 'var(--apinox-disabledForeground, #666666)',
     /** Very subtle / decorative text (dividers, counters) */
     faint: '#555555',
     /** Danger / delete icon text */
@@ -69,19 +69,19 @@ export const tokens = {
   /** Semantic status / action colours */
   status: {
     /** Success / running / allow */
-    success: '#22c55e',
+    success: 'var(--apinox-testing-iconPassed, #22c55e)',
     successGlow: '#22c55e99',
     /** Warning / caution */
-    warning: '#f59e0b',
+    warning: 'var(--apinox-testing-iconQueued, #f59e0b)',
     /** Error / danger / drop / stopped */
-    error: '#ef4444',
+    error: 'var(--apinox-testing-iconFailed, #ef4444)',
     errorGlow: '#ef444499',
     /** Brand / link / active accent (VS Code blue) */
-    accent: '#007acc',
+    accent: 'var(--apinox-focusBorder, #007acc)',
     /** Primary button / action blue (darker variant) */
-    accentDark: '#0e639c',
+    accentDark: 'var(--apinox-button-background, #0e639c)',
     /** Hover state for accentDark buttons */
-    accentHover: '#1177bb',
+    accentHover: 'var(--apinox-button-hoverBackground, #1177bb)',
   },
 
   /** HTTP response status code colours */
