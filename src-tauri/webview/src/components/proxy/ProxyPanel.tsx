@@ -3,13 +3,11 @@ import { listen } from '@tauri-apps/api/event';
 import { ServerControl } from './ServerControl';
 import { TrafficViewer, type TrafficLog } from './TrafficViewer';
 import { TrafficDetails } from './TrafficDetails';
-import { RulesPage } from './RulesPage';
 import { BreakpointsPage } from './BreakpointsPage';
-import { ProxySettingsPanel } from './ProxySettingsPanel';
 import { useIgnoreList } from '../../utils/useIgnoreList';
 import { tokens } from './tokens';
 
-type ProxyTab = 'traffic' | 'rules' | 'breakpoints' | 'settings';
+type ProxyTab = 'traffic' | 'breakpoints';
 
 interface ProxyPanelProps {
   onNavigateTo?: (view: string) => void;
@@ -38,8 +36,8 @@ export function ProxyPanel({ onNavigateTo }: ProxyPanelProps) {
   }, [onNavigateTo]);
 
   const handleCreateReplaceRule = useCallback((_log: TrafficLog) => {
-    setActiveTab('rules');
-  }, []);
+    if (onNavigateTo) onNavigateTo('mock');
+  }, [onNavigateTo]);
 
   const handleCreateBreakpoint = useCallback((_log: TrafficLog) => {
     setActiveTab('breakpoints');
@@ -80,11 +78,9 @@ export function ProxyPanel({ onNavigateTo }: ProxyPanelProps) {
 
       {/* Tab bar */}
       <div style={tabBarStyle}>
-        {(['traffic', 'rules', 'breakpoints', 'settings'] as ProxyTab[]).map(tab => (
+        {(['traffic', 'breakpoints'] as ProxyTab[]).map(tab => (
           <button key={tab} style={tabStyle(activeTab === tab)} onClick={() => setActiveTab(tab)}>
-            {tab === 'traffic' ? 'Traffic' :
-             tab === 'rules' ? 'Replace Rules' :
-             tab === 'breakpoints' ? 'Breakpoints' : 'Settings'}
+            {tab === 'traffic' ? 'Traffic' : 'Breakpoints'}
           </button>
         ))}
       </div>
@@ -112,23 +108,9 @@ export function ProxyPanel({ onNavigateTo }: ProxyPanelProps) {
             )}
           </>
         )}
-        {activeTab === 'rules' && (
-          <div style={{ flex: 1, overflow: 'auto' }}>
-            <RulesPage />
-          </div>
-        )}
         {activeTab === 'breakpoints' && (
           <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
             <BreakpointsPage />
-          </div>
-        )}
-        {activeTab === 'settings' && (
-          <div style={{ flex: 1, overflow: 'auto' }}>
-            <ProxySettingsPanel
-              ignoreRules={ignoreRules}
-              onRemoveIgnoreRule={removeIgnoreRule}
-              onAddIgnoreRule={addIgnoreRule}
-            />
           </div>
         )}
       </div>

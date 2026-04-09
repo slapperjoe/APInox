@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import Editor, { Monaco } from '@monaco-editor/react';
-import { AlertTriangle, Settings, FileJson, Globe, Cloud } from 'lucide-react';
+import { AlertTriangle, Settings, FileJson, Globe, Cloud, Server } from 'lucide-react';
 import { GeneralTab, EnvironmentsTab, GlobalsTab, IntegrationsTab, ApinoxConfig } from './settings';
 import { bridge, isTauri } from '../../utils/bridge';
 import { FrontendCommand } from '@shared/messages';
@@ -9,6 +9,8 @@ import { useTheme } from '@apinox/request-editor'; // Use package ThemeContext
 import { Modal } from './Modal';
 import { TAG_COLORS } from '../../styles/colors';
 import { SPACING_SM, SPACING_MD } from '../../styles/spacing';
+import { ProxySettingsPanel } from '../proxy/ProxySettingsPanel';
+import { useIgnoreList } from '../../utils/useIgnoreList';
 
 // Hex-only palette for deterministic env color assignment (stored in config)
 const ENV_HEX_COLORS = ['#58A6FF', '#7EE787', '#FF7B72', '#FFA657', '#D29922', '#A371F7', '#79C0FF', '#FFA198', '#FFCB6B', '#C9D1D9'];
@@ -93,6 +95,7 @@ enum SettingsTab {
     ENVIRONMENTS = 'environments',
     GLOBALS = 'globals',
     INTEGRATIONS = 'integrations',
+    PROXY = 'proxy',
     JSON = 'json'
 }
 
@@ -123,6 +126,9 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
 
     // Status message for inject/restore operations
     const [injectionStatus, setInjectionStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+    // Proxy ignore list (shared with ProxySettingsPanel)
+    const { rules: ignoreRules, addRule: addIgnoreRule, removeRule: removeIgnoreRule } = useIgnoreList();
 
     const applyEditorTheme = (monacoInstance: Monaco) => {
         const root = document.documentElement;
@@ -423,6 +429,9 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
                     <Tab $active={activeTab === SettingsTab.INTEGRATIONS} onClick={() => handleTabSwitch(SettingsTab.INTEGRATIONS)}>
                         <Cloud size={14} /> Integrations
                     </Tab>
+                    <Tab $active={activeTab === SettingsTab.PROXY} onClick={() => handleTabSwitch(SettingsTab.PROXY)}>
+                        <Server size={14} /> Proxy
+                    </Tab>
                     <Tab $active={activeTab === SettingsTab.JSON} onClick={() => handleTabSwitch(SettingsTab.JSON)} style={{ marginLeft: 'auto', borderRight: 'none', borderLeft: '1px solid var(--apinox-panel-border)' }}>
                         <FileJson size={14} /> JSON (Advanced)
                     </Tab>
@@ -470,6 +479,16 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
                             onConfigChange={(field, value) => setGuiConfig(prev => ({ ...prev, [field]: value }))}
                             sendMessage={(msg) => bridge.sendMessage(msg)}
                         />
+                    )}
+
+                    {activeTab === SettingsTab.PROXY && (
+                        <div style={{ flex: 1, overflow: 'auto' }}>
+                            <ProxySettingsPanel
+                                ignoreRules={ignoreRules}
+                                onRemoveIgnoreRule={removeIgnoreRule}
+                                onAddIgnoreRule={addIgnoreRule}
+                            />
+                        </div>
                     )}
 
                     {activeTab === SettingsTab.JSON && (

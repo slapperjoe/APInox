@@ -17,8 +17,6 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
     () => parseInt(localStorage.getItem('apiprox-default-port') ?? '8888')
   );
   const [targetUrl, setTargetUrl] = useState('http://localhost:3000');
-  // Mode is a frontend concept — backend only knows 'proxy'/'mock'/'both'.
-  // Persist to localStorage so it survives app restarts.
   const [mode, setModeState] = useState<ProxyMode>(
     () => (localStorage.getItem('apiprox-mode') as ProxyMode) ?? 'proxy'
   );
@@ -26,10 +24,8 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<any>(null);
-  // Prevent the background poll from interfering with in-progress start/stop operations.
   const operationInProgress = useRef(false);
 
-  // Sniffer-specific state — only active when a sniffer mode is selected
   const [sysProxyStatus, setSysProxyStatus] = useState<SystemProxyStatus | null>(null);
   const [sysProxyLoading, setSysProxyLoading] = useState(false);
   const [sysProxyError, setSysProxyError] = useState<string | null>(null);
@@ -37,6 +33,15 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
 
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [activeSetupTab, setActiveSetupTab] = useState<SetupTab>('env');
+
+  // Minimized state — persisted so it survives navigation
+  const [minimized, setMinimized] = useState<boolean>(
+    () => localStorage.getItem('apiprox-control-minimized') === 'true'
+  );
+  const toggleMinimized = () => setMinimized(v => {
+    localStorage.setItem('apiprox-control-minimized', String(!v));
+    return !v;
+  });
 
   const isSniffer = mode === 'sniffer' || mode === 'sniffer-mock';
 
@@ -46,7 +51,6 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
     return () => clearInterval(interval);
   }, []);
 
-  // Poll system proxy status and cert trust only when in a sniffer mode
   useEffect(() => {
     if (!isSniffer) return;
     loadSysProxyStatus();
@@ -56,15 +60,12 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
   }, [isSniffer]);
 
   async function loadStatus() {
-    // Skip polling while handleStart/handleStop is running to avoid state flickering.
     if (operationInProgress.current) return;
     try {
       const s = await invokeTauriCommand<any>('get_proxy_status');
       setStatus(s);
       setProxyEnabled(s.running);
       if (s.port) setProxyPort(s.port);
-      // Never overwrite the frontend mode from the backend — sniffer/sniffer-mock are
-      // frontend-only concepts; the backend only returns 'proxy' or 'both' for those.
       if (s.running && s.targetUrl !== undefined) setTargetUrl(s.targetUrl);
       onStatusChange?.({ running: s.running, port: s.port ?? proxyPort, mode });
     } catch (err: any) {
@@ -95,16 +96,15 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
     setLoading(true);
     setError(null);
     try {
-      // Map sniffer modes to the underlying proxy mode
       const backendMode = mode === 'sniffer' ? 'proxy' : mode === 'sniffer-mock' ? 'both' : mode;
-      // In sniffer mode there is no fixed target — each request is forwarded to its
-      // own destination. Pass an empty targetUrl so the backend uses the request URI.
       const effectiveTargetUrl = isSniffer ? '' : targetUrl;
       await invokeTauriCommand('start_proxy', { port: proxyPort, mode: backendMode, targetUrl: effectiveTargetUrl });
       setProxyEnabled(true);
       onStatusChange?.({ running: true, port: proxyPort, mode });
+      // Collapse to minimized bar so traffic area gets full space
+      setMinimized(true);
+      localStorage.setItem('apiprox-control-minimized', 'true');
 
-      // Sniffer modes also set the OS system proxy automatically
       if (isSniffer) {
         setSysProxyLoading(true);
         setSysProxyError(null);
@@ -113,7 +113,6 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
           await loadSysProxyStatus();
           await loadCertStatus();
         } catch (sysErr: any) {
-          // System proxy failure is non-fatal — surface as a warning
           setSysProxyError(sysErr?.message ?? String(sysErr));
         } finally {
           setSysProxyLoading(false);
@@ -132,7 +131,6 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
     setLoading(true);
     setError(null);
     try {
-      // Clear system proxy first (non-blocking on failure — e.g. macOS Touch ID cancelled)
       if (isSniffer) {
         setSysProxyLoading(true);
         setSysProxyError(null);
@@ -156,7 +154,6 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
     }
   }
 
-  // Manual OS proxy toggle (shown inside SystemProxyPanel when proxy is already running)
   async function handleEnableSysProxy() {
     setSysProxyLoading(true);
     setSysProxyError(null);
@@ -185,28 +182,189 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
   }
 
   const modeLabelMap: Record<ProxyMode, string> = {
-    proxy: 'Proxy Only',
-    mock: 'Mock Only',
+    proxy: 'Proxy',
+    mock: 'Mock',
     both: 'Proxy + Mock',
-    sniffer: 'Sniffer (System Proxy)',
+    sniffer: 'Sniffer',
     'sniffer-mock': 'Sniffer + Mock',
   };
 
+  const modeColors: Record<ProxyMode, string> = {
+    proxy: tokens.status.accentDark,
+    mock: '#7c5fc5',
+    both: '#2a7a4b',
+    sniffer: '#b07a20',
+    'sniffer-mock': '#7c5fc5',
+  };
+
+  // ── Minimized bar ──────────────────────────────────────────────────────────
+  if (minimized) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        padding: '6px 12px',
+        background: tokens.surface.panel,
+        borderBottom: `1px solid ${tokens.border.default}`,
+        minHeight: '38px',
+        flexShrink: 0,
+      }}>
+        {/* Expand toggle */}
+        <button
+          onClick={toggleMinimized}
+          title="Expand server controls"
+          style={{
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            color: tokens.text.muted, padding: '2px 4px', lineHeight: 1,
+            fontSize: '11px', flexShrink: 0,
+            display: 'flex', alignItems: 'center',
+          }}
+        >
+          ▼
+        </button>
+
+        {/* Status dot */}
+        <span
+          title={proxyEnabled ? 'Running' : 'Stopped'}
+          style={{
+            width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
+            background: proxyEnabled ? '#4caf50' : tokens.text.hint,
+            boxShadow: proxyEnabled ? '0 0 6px #4caf5088' : 'none',
+            transition: 'background 0.3s',
+          }}
+        />
+
+        {/* Mode badge */}
+        <span style={{
+          fontSize: tokens.fontSize.xs, fontWeight: 600,
+          padding: '2px 8px', borderRadius: '10px',
+          background: proxyEnabled ? modeColors[mode] + '22' : tokens.surface.elevated,
+          color: proxyEnabled ? modeColors[mode] : tokens.text.hint,
+          border: `1px solid ${proxyEnabled ? modeColors[mode] + '55' : tokens.border.subtle}`,
+          flexShrink: 0, letterSpacing: '0.02em',
+        }}>
+          {modeLabelMap[mode]}
+        </span>
+
+        {/* Port */}
+        <span style={{ fontSize: tokens.fontSize.xs, color: tokens.text.muted, flexShrink: 0 }}>
+          :{proxyPort}
+        </span>
+
+        {/* Target URL — show when not sniffer and not running (running shows status text instead) */}
+        {!isSniffer && !proxyEnabled && targetUrl && (
+          <span style={{
+            fontSize: tokens.fontSize.xs, color: tokens.text.hint,
+            fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap', flex: 1, minWidth: 0,
+          }} title={targetUrl}>
+            → {targetUrl}
+          </span>
+        )}
+
+        {/* Running text */}
+        {proxyEnabled && (
+          <span style={{ fontSize: tokens.fontSize.xs, color: '#4caf50', flex: 1, minWidth: 0 }}>
+            {isSniffer ? 'Intercepting system traffic' : `Forwarding → ${targetUrl}`}
+          </span>
+        )}
+
+        {/* Sniffer sys-proxy status chip */}
+        {isSniffer && proxyEnabled && sysProxyStatus && (
+          <span style={{
+            fontSize: tokens.fontSize.xs,
+            padding: '2px 7px', borderRadius: '10px',
+            background: sysProxyStatus.enabled ? 'rgba(76,175,80,0.12)' : 'rgba(180,30,30,0.12)',
+            color: sysProxyStatus.enabled ? '#4caf50' : tokens.text.danger,
+            border: `1px solid ${sysProxyStatus.enabled ? 'rgba(76,175,80,0.35)' : 'rgba(180,30,30,0.35)'}`,
+            flexShrink: 0,
+          }}>
+            OS proxy {sysProxyStatus.enabled ? 'on' : 'off'}
+          </span>
+        )}
+
+        {/* Error indicator */}
+        {error && (
+          <span title={error} style={{
+            fontSize: tokens.fontSize.xs, color: tokens.text.danger, flexShrink: 0,
+          }}>
+            ⚠ error
+          </span>
+        )}
+
+        {/* Start / Stop */}
+        <div style={{ marginLeft: 'auto', flexShrink: 0 }}>
+          {!proxyEnabled ? (
+            <button
+              onClick={handleStart}
+              disabled={loading}
+              style={{
+                padding: '4px 14px',
+                background: tokens.status.accentDark,
+                border: 'none',
+                borderRadius: tokens.radius.md,
+                color: tokens.text.white,
+                fontSize: tokens.fontSize.xs,
+                fontWeight: 500,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: loading ? 0.6 : 1,
+              }}
+            >
+              {loading ? 'Starting…' : '▶ Start'}
+            </button>
+          ) : (
+            <button
+              onClick={handleStop}
+              disabled={loading}
+              style={{
+                padding: '4px 14px',
+                background: '#c5000b',
+                border: 'none',
+                borderRadius: tokens.radius.md,
+                color: tokens.text.white,
+                fontSize: tokens.fontSize.xs,
+                fontWeight: 500,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: loading ? 0.6 : 1,
+              }}
+            >
+              {loading ? 'Stopping…' : '■ Stop'}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Expanded panel ─────────────────────────────────────────────────────────
   return (
     <div style={{
-      padding: '20px',
+      padding: '12px 16px',
       background: tokens.surface.panel,
-      borderRadius: tokens.radius.lg,
-      marginBottom: '20px'
     }}>
-      <h2 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: 500 }}>
-        Proxy Server Control
-      </h2>
+      {/* Header row with collapse toggle */}
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
+        <button
+          onClick={toggleMinimized}
+          title="Collapse server controls"
+          style={{
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            color: tokens.text.muted, padding: '2px 6px 2px 0', lineHeight: 1,
+            fontSize: '11px', flexShrink: 0,
+            display: 'flex', alignItems: 'center',
+          }}
+        >
+          ▲
+        </button>
+        <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 500 }}>
+          Server Control
+        </h2>
+      </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {/* Main controls — all in one row */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {/* Main controls row */}
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          {/* Mode dropdown */}
           <select
             value={mode}
             onChange={(e) => setMode(e.target.value as ProxyMode)}
@@ -215,12 +373,12 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
             style={{
               flexShrink: 0,
               width: '190px',
-              padding: '8px 12px',
+              padding: '6px 10px',
               background: tokens.surface.input,
               border: `1px solid ${tokens.border.subtle}`,
               borderRadius: tokens.radius.md,
               color: tokens.text.secondary,
-              fontSize: tokens.fontSize.base,
+              fontSize: tokens.fontSize.sm,
               appearance: 'none',
               WebkitAppearance: 'none',
             }}
@@ -232,7 +390,6 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
             <option value="sniffer-mock">Sniffer + Mock</option>
           </select>
 
-          {/* Target URL — hidden in sniffer mode (system proxy routes by request destination) */}
           {!isSniffer && (
             <input
               type="text"
@@ -243,17 +400,16 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
               title="Upstream server to forward requests to"
               style={{
                 flex: 1,
-                padding: '8px 12px',
+                padding: '6px 10px',
                 background: tokens.surface.input,
                 border: `1px solid ${tokens.border.subtle}`,
                 borderRadius: tokens.radius.md,
                 color: tokens.text.secondary,
-                fontSize: tokens.fontSize.base,
+                fontSize: tokens.fontSize.sm,
               }}
             />
           )}
 
-          {/* Port */}
           <input
             type="number"
             value={proxyPort}
@@ -263,28 +419,27 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
             style={{
               flexShrink: 0,
               width: '90px',
-              padding: '8px 12px',
+              padding: '6px 10px',
               background: tokens.surface.input,
               border: `1px solid ${tokens.border.subtle}`,
               borderRadius: tokens.radius.md,
               color: tokens.text.secondary,
-              fontSize: tokens.fontSize.base,
+              fontSize: tokens.fontSize.sm,
             }}
           />
 
-          {/* Start / Stop */}
           {!proxyEnabled ? (
             <button
               onClick={handleStart}
               disabled={loading}
               style={{
                 flexShrink: 0,
-                padding: '8px 20px',
+                padding: '6px 18px',
                 background: tokens.status.accentDark,
                 border: 'none',
                 borderRadius: tokens.radius.md,
                 color: tokens.text.white,
-                fontSize: tokens.fontSize.base,
+                fontSize: tokens.fontSize.sm,
                 fontWeight: 500,
                 cursor: loading ? 'not-allowed' : 'pointer',
                 opacity: loading ? 0.6 : 1,
@@ -298,12 +453,12 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
               disabled={loading}
               style={{
                 flexShrink: 0,
-                padding: '8px 20px',
+                padding: '6px 18px',
                 background: '#c5000b',
                 border: 'none',
                 borderRadius: tokens.radius.md,
                 color: tokens.text.white,
-                fontSize: tokens.fontSize.base,
+                fontSize: tokens.fontSize.sm,
                 fontWeight: 500,
                 cursor: loading ? 'not-allowed' : 'pointer',
                 opacity: loading ? 0.6 : 1,
@@ -314,21 +469,19 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
           )}
         </div>
 
-        {/* Sniffer mode hint */}
         {isSniffer && (
           <div style={{ fontSize: tokens.fontSize.xs, color: tokens.text.muted }}>
             In sniffer mode the OS system proxy is set automatically — all HTTP/HTTPS traffic is captured without a fixed target URL.
           </div>
         )}
 
-        {/* Running status banner */}
         {proxyEnabled && (
           <div style={{
-            padding: '12px',
+            padding: '8px 12px',
             background: '#1a3d1a',
             border: '1px solid #2d6a2d',
             borderRadius: tokens.radius.md,
-            fontSize: tokens.fontSize.base,
+            fontSize: tokens.fontSize.sm,
             color: '#6fbf6f',
           }}>
             🟢 {modeLabelMap[mode]} running on port {proxyPort}
@@ -337,26 +490,25 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
 
         {error && (
           <div style={{
-            padding: '12px',
+            padding: '8px 12px',
             background: '#3d1a1a',
             border: '1px solid #6a2d2d',
             borderRadius: tokens.radius.md,
-            fontSize: tokens.fontSize.base,
+            fontSize: tokens.fontSize.sm,
             color: '#bf6f6f',
           }}>
             ❌ {error}
           </div>
         )}
 
-        {/* System proxy panel — only in sniffer modes */}
         {isSniffer && (
           <div style={{
-            padding: '16px',
+            padding: '12px',
             background: tokens.surface.elevated,
             border: `1px solid ${tokens.border.default}`,
             borderRadius: tokens.radius.md,
           }}>
-            <div style={{ fontSize: tokens.fontSize.sm, fontWeight: 600, color: tokens.text.secondary, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div style={{ fontSize: tokens.fontSize.xs, fontWeight: 600, color: tokens.text.secondary, marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               System Proxy
             </div>
             <SystemProxyPanel
@@ -371,8 +523,8 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
         )}
       </div>
 
-      {/* Advanced setup guide — collapsed by default */}
-      <div style={{ marginTop: '16px', borderTop: `1px solid ${tokens.border.default}`, paddingTop: '8px' }}>
+      {/* Advanced setup guide */}
+      <div style={{ marginTop: '10px', borderTop: `1px solid ${tokens.border.default}`, paddingTop: '6px' }}>
         <button
           onClick={() => setShowAdvanced(v => !v)}
           style={{
@@ -380,17 +532,17 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
             display: 'flex',
             alignItems: 'center',
             gap: tokens.space['3'],
-            padding: `${tokens.space['3']} 0`,
+            padding: `${tokens.space['2']} 0`,
             background: 'transparent',
             border: 'none',
             cursor: 'pointer',
             color: tokens.text.muted,
-            fontSize: tokens.fontSize.sm,
+            fontSize: tokens.fontSize.xs,
             textAlign: 'left',
           }}
         >
           <span style={{ fontSize: '10px', transition: 'transform 0.15s', transform: showAdvanced ? 'rotate(90deg)' : 'none' }}>▶</span>
-          Advanced: manual proxy setup (for apps that don't use the system proxy)
+          Advanced: manual proxy setup
         </button>
         {showAdvanced && (
           <div style={{ paddingBottom: '8px' }}>
