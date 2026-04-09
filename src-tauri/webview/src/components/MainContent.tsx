@@ -8,7 +8,7 @@ import { generateInitialXmlForOperation } from '../utils/soapUtils';
 import { Sidebar } from './Sidebar';
 import { WorkspaceLayout } from './WorkspaceLayout';
 import { ProxyPanel } from './proxy/ProxyPanel';
-import { MockRulesPage } from './proxy/MockRulesPage';
+import { RulesAndMockPage } from './proxy/RulesAndMockPage';
 import { FileWatcherPage } from './proxy/FileWatcherPage';
 import { HelpModal } from './HelpModal';
 
@@ -1507,7 +1507,7 @@ const MainContent: React.FC = () => {
             )}
             {activeView === SidebarView.MOCK && (
                 <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                    <MockRulesPage />
+                    <RulesAndMockPage />
                 </div>
             )}
             {activeView === SidebarView.WATCHER && (
