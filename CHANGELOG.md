@@ -1,6 +1,10 @@
 # Changelog
 
 
+## [0.19.1] - 2026-04-09
+### Changes
+- No commit messages found.
+
 ## [0.18.0] - 2026-03-16
 ### Changes
 - fix: update version to 0.17.128 in package-lock.json
