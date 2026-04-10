@@ -1,77 +1,90 @@
-/* 
+/*
  * APInox Theme Variables
- * 
+ *
  * These CSS variables define the visual theme for APInox.
  * The ThemeContext dynamically sets all variables based on the selected theme.
  */
 :root {
-  /* APInox Default Dark Theme Fallback */
-  --apinox-font-family: "Segoe UI", system-ui, sans-serif;
-  --apinox-font-size: 13px;
-  --apinox-font-weight: 400;
+    /* APInox Default Dark Theme Fallback */
+    --apinox-font-family: "Segoe UI", system-ui, sans-serif;
+    --apinox-font-size: 13px;
+    --apinox-font-weight: 400;
 
-  --apinox-editor-background: #1e1e1e;
-  --apinox-editor-foreground: #d4d4d4;
+    --apinox-editor-background: #1e1e1e;
+    --apinox-editor-foreground: #d4d4d4;
 
-  --apinox-sideBar-background: #252526;
-  --apinox-sideBar-foreground: #cccccc;
-  --apinox-sideBarSectionHeader-border: rgba(204, 204, 204, 0.2);
+    --apinox-sideBar-background: #252526;
+    --apinox-sideBar-foreground: #cccccc;
+    --apinox-sideBarSectionHeader-border: rgba(204, 204, 204, 0.2);
 
-  /* Spacing System */
-  --space-xs: 4px;
-  --space-sm: 8px;
-  --space-md: 16px;
-  --space-lg: 24px;
-  --space-xl: 32px;
+    /* Spacing System */
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 16px;
+    --space-lg: 24px;
+    --space-xl: 32px;
 
-  --apinox-list-hoverBackground: #2a2d2e;
-  --apinox-list-activeSelectionBackground: #37373d;
-  --apinox-list-activeSelectionForeground: #ffffff;
+    --apinox-list-hoverBackground: #2a2d2e;
+    --apinox-list-activeSelectionBackground: #37373d;
+    --apinox-list-activeSelectionForeground: #ffffff;
 
-  --apinox-button-background: #0e639c;
-  --apinox-button-foreground: #ffffff;
-  --apinox-button-hoverBackground: #1177bb;
-  --apinox-button-border: transparent;
+    --apinox-button-background: #0e639c;
+    --apinox-button-foreground: #ffffff;
+    --apinox-button-hoverBackground: #1177bb;
+    --apinox-button-border: transparent;
 
-  --apinox-toolbar-hoverBackground: rgba(90, 93, 94, 0.31);
-  --apinox-icon-foreground: #c5c5c5;
+    --apinox-toolbar-hoverBackground: rgba(90, 93, 94, 0.31);
+    --apinox-icon-foreground: #c5c5c5;
 
-  --apinox-input-background: #3c3c3c;
-  --apinox-input-foreground: #cccccc;
-  --apinox-input-border: #3c3c3c;
-  --apinox-focusBorder: #007fd4;
+    --apinox-input-background: #3c3c3c;
+    --apinox-input-foreground: #cccccc;
+    --apinox-input-border: #3c3c3c;
+    --apinox-focusBorder: #007fd4;
 
-  --apinox-panel-border: #80808059;
+    --apinox-panel-border: #80808059;
 
-  --apinox-menu-background: #3c3c3c;
-  --apinox-menu-foreground: #cccccc;
-  --apinox-menu-border: #454545;
-  --apinox-menu-selectionBackground: #094771;
-  --apinox-menu-selectionForeground: #ffffff;
+    --apinox-menu-background: #3c3c3c;
+    --apinox-menu-foreground: #cccccc;
+    --apinox-menu-border: #454545;
+    --apinox-menu-selectionBackground: #094771;
+    --apinox-menu-selectionForeground: #ffffff;
 
-  --apinox-descriptionForeground: #8b949e;
-  --apinox-errorForeground: #f48771;
-  --apinox-editorWarning-foreground: #cca700;
-  --apinox-list-inactiveSelectionBackground: #37373d;
-  --apinox-foreground: #cccccc;
+    --apinox-descriptionForeground: #8b949e;
+    --apinox-errorForeground: #f48771;
+    --apinox-editorWarning-foreground: #cca700;
+    --apinox-list-inactiveSelectionBackground: #37373d;
+    --apinox-foreground: #cccccc;
+}
+
+/* Tell WebKit/GTK which color scheme to use for native controls (e.g. select popups) */
+:root {
+    color-scheme: dark; /* default – matches the dark fallback theme */
+}
+body[data-theme="light"],
+body[data-theme="solarized-light"] {
+    color-scheme: light;
+}
+body[data-theme="dark"],
+body[data-theme="solarized-dark"] {
+    color-scheme: dark;
 }
 
 html {
-  height: 100%;
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
 }
 
 body {
-  height: 100%;
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  background-color: var(--apinox-editor-background);
-  color: var(--apinox-editor-foreground);
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: var(--apinox-editor-background);
+    color: var(--apinox-editor-foreground);
 }
 
 /* iOS WKWebView: scrolling is handled via JS touchmove prevention
@@ -79,126 +92,128 @@ body {
    Safe area insets are applied directly on the fixed mobile-header and
    Container's padding-top via env(safe-area-inset-*) (requires viewport-fit=cover). */
 body[data-platform="ios"] {
-  overflow: hidden;
+    overflow: hidden;
 }
 
 #root {
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
 }
 
 * {
-  box-sizing: border-box;
+    box-sizing: border-box;
 }
 
 /* iOS/Android: enable momentum scrolling on all overflow containers */
 body[data-platform="ios"] *,
 body[data-platform="android"] * {
-  -webkit-overflow-scrolling: touch;
+    -webkit-overflow-scrolling: touch;
 }
-
 
 /* Scrollbar styling for a native feel */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+    width: 10px;
+    height: 10px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--apinox-scrollbarSlider-background, #79797966);
+    background: var(--apinox-scrollbarSlider-background, #79797966);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--apinox-scrollbarSlider-hoverBackground, #646464b3);
+    background: var(--apinox-scrollbarSlider-hoverBackground, #646464b3);
 }
 
 ::-webkit-scrollbar-thumb:active {
-  background: var(--apinox-scrollbarSlider-activeBackground, #bfbfbf66);
+    background: var(--apinox-scrollbarSlider-activeBackground, #bfbfbf66);
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+    background: transparent;
 }
 
 /* Wildcard Highlighting */
 .wildcard-tag-decoration {
-  background-color: var(--apinox-editorBracketHighlight-foreground4, #4ec9b0);
-  /* Fallback/Opacity handled via CSS if needed, but using direct variable is safer for themes */
-  opacity: 0.2;
-  border: 1px solid var(--apinox-editorBracketHighlight-foreground4, #4ec9b0);
-  border-radius: 4px;
+    background-color: var(--apinox-editorBracketHighlight-foreground4, #4ec9b0);
+    /* Fallback/Opacity handled via CSS if needed, but using direct variable is safer for themes */
+    opacity: 0.2;
+    border: 1px solid var(--apinox-editorBracketHighlight-foreground4, #4ec9b0);
+    border-radius: 4px;
 }
 
 .wildcard-tag-text {
-  font-weight: bold;
-  color: var(--apinox-editorBracketHighlight-foreground4, #4ec9b0) !important;
-  font-style: italic;
+    font-weight: bold;
+    color: var(--apinox-editorBracketHighlight-foreground4, #4ec9b0) !important;
+    font-style: italic;
 }
 
 .environment-tag-decoration {
-  background-color: var(--apinox-textLink-activeForeground, #3794ff);
-  opacity: 0.2;
-  border: 1px solid var(--apinox-focusBorder, #007fd4);
-  border-radius: 4px;
+    background-color: var(--apinox-textLink-activeForeground, #3794ff);
+    opacity: 0.2;
+    border: 1px solid var(--apinox-focusBorder, #007fd4);
+    border-radius: 4px;
 }
 
 .environment-tag-text {
-  font-weight: bold;
-  color: var(--apinox-textLink-activeForeground, #3794ff) !important;
-  font-style: italic;
+    font-weight: bold;
+    color: var(--apinox-textLink-activeForeground, #3794ff) !important;
+    font-style: italic;
 }
 
 /* Chain Variable Highlighting (${}) */
 .chain-variable-decoration {
-  background-color: var(--apinox-charts-purple, #c586c0);
-  opacity: 0.2;
-  border: 1px solid var(--apinox-charts-purple, #c586c0);
-  border-radius: 4px;
+    background-color: var(--apinox-charts-purple, #c586c0);
+    opacity: 0.2;
+    border: 1px solid var(--apinox-charts-purple, #c586c0);
+    border-radius: 4px;
 }
 
 .chain-variable-text {
-  font-weight: bold;
-  color: var(--apinox-charts-purple, #c586c0) !important;
-  font-style: italic;
+    font-weight: bold;
+    color: var(--apinox-charts-purple, #c586c0) !important;
+    font-style: italic;
 }
 
 /* Undefined Variable Warning */
 .undefined-variable-warning {
-  border-bottom: 2px wavy var(--apinox-editorWarning-foreground, #cca700);
+    border-bottom: 2px wavy var(--apinox-editorWarning-foreground, #cca700);
 }
 
 /* Native select elements - override OS/GTK appearance and apply theme */
 select {
-  appearance: none;
-  -webkit-appearance: none;
-  background-color: var(--apinox-dropdown-background, #3c3c3c);
-  color: var(--apinox-dropdown-foreground, #cccccc);
-  border: 1px solid var(--apinox-dropdown-border, #3c3c3c);
-  font-family: var(--apinox-font-family, "Segoe UI", system-ui, sans-serif);
-  font-size: var(--apinox-font-size, 13px);
-  padding-right: 22px;
-  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M0 0L5 6L10 0' fill='%23888888'/></svg>");
-  background-repeat: no-repeat;
-  background-position: right 6px center;
-  background-size: 10px 6px;
-  cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-color: var(--apinox-dropdown-background, #3c3c3c);
+    color: var(--apinox-dropdown-foreground, #cccccc);
+    border: 1px solid var(--apinox-dropdown-border, #3c3c3c);
+    font-family: var(--apinox-font-family, "Segoe UI", system-ui, sans-serif);
+    font-size: var(--apinox-font-size, 13px);
+    padding-right: 22px;
+    background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M0 0L5 6L10 0' fill='%23888888'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+    background-size: 10px 6px;
+    cursor: pointer;
 }
 
 select:focus {
-  outline: none;
-  border-color: var(--apinox-focusBorder, #007fd4);
+    outline: none;
+    border-color: var(--apinox-focusBorder, #007fd4);
 }
 
 select option {
-  background-color: var(--apinox-dropdown-listBackground, var(--apinox-dropdown-background, #3c3c3c));
-  color: var(--apinox-dropdown-foreground, #cccccc);
+    background-color: var(
+        --apinox-dropdown-listBackground,
+        var(--apinox-dropdown-background, #3c3c3c)
+    );
+    color: var(--apinox-dropdown-foreground, #cccccc);
 }
 
 /* Theme-specific visibility for title images */
 body.vscode-light .dark-only,
 body[data-theme="light"] .dark-only {
-  display: none !important;
+    display: none !important;
 }
 
 body.vscode-dark .light-only,
@@ -206,7 +221,7 @@ body.vscode-high-contrast .light-only,
 body.vscode-high-contrast-light .light-only,
 body[data-theme="dark"] .light-only,
 body[data-theme="high-contrast"] .light-only {
-  display: none !important;
+    display: none !important;
 }
 
 /* ==========================================================================
@@ -224,21 +239,21 @@ button,
 [role="tab"],
 [role="treeitem"],
 a {
-  min-height: 44px;
+    min-height: 44px;
 }
 
 /* Narrow override — elements that are intentionally compact (icon rail, etc.)
    use this class to opt out of the 44px floor */
 .touch-compact {
-  min-height: unset;
+    min-height: unset;
 }
 
 /* Responsive modal sizing */
 [role="dialog"],
 .modal-container {
-  width: min(95vw, 800px) !important;
-  max-height: 90vh;
-  overflow-y: auto;
+    width: min(95vw, 800px) !important;
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
 /* XML / code response viewer — horizontal scroll instead of overflow */
@@ -247,181 +262,187 @@ code,
 .response-body,
 .xml-viewer,
 .code-viewer {
-  overflow-x: auto;
-  word-break: normal;
-  white-space: pre;
+    overflow-x: auto;
+    word-break: normal;
+    white-space: pre;
 }
 
 /* On phone portrait, stack request/response panels vertically */
 @media (max-width: 899px) {
-  .request-response-split {
-    flex-direction: column !important;
-  }
+    .request-response-split {
+        flex-direction: column !important;
+    }
 
-  .request-response-split > * {
-    width: 100% !important;
-    height: auto !important;
-  }
+    .request-response-split > * {
+        width: 100% !important;
+        height: auto !important;
+    }
 }
 
 /* Sidebar drawer on phone portrait */
 @media (max-width: 899px) {
-  /* Row that holds Sidebar + main workspace — fills remaining space below mobile header */
-  .content-row {
-    display: flex;
-    flex-direction: row;
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-    position: relative;
-  }
+    /* Row that holds Sidebar + main workspace — fills remaining space below mobile header */
+    .content-row {
+        display: flex;
+        flex-direction: row;
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+        position: relative;
+    }
 
-  .sidebar-drawer {
-    position: fixed !important;
-    top: calc(44px + env(safe-area-inset-top, 0px));
-    left: 0;
-    bottom: 0; /* fill to bottom - no safe area needed */
-    z-index: 1000;
-    transform: translateX(-100%);
-    transition: transform 0.25s ease;
-    box-shadow: 4px 0 16px rgba(0, 0, 0, 0.5);
-  }
+    .sidebar-drawer {
+        position: fixed !important;
+        top: calc(44px + env(safe-area-inset-top, 0px));
+        left: 0;
+        bottom: 0; /* fill to bottom - no safe area needed */
+        z-index: 1000;
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+        box-shadow: 4px 0 16px rgba(0, 0, 0, 0.5);
+    }
 
-  /* Android-specific sidebar positioning */
-  body[data-platform="android"] .sidebar-drawer {
-    top: 68px;  /* 44px header + 24px status bar */
-  }
+    /* Android-specific sidebar positioning */
+    body[data-platform="android"] .sidebar-drawer {
+        top: 68px; /* 44px header + 24px status bar */
+    }
 
-  /* Narrow desktop (Windows/Linux/macOS): TitleBar is 40px, not the mobile 44px header */
-  body:not([data-platform="android"]):not([data-platform="ios"]) .sidebar-drawer {
-    top: 40px;
-  }
-  body:not([data-platform="android"]):not([data-platform="ios"]) .sidebar-backdrop {
-    top: 40px;
-  }
+    /* Narrow desktop (Windows/Linux/macOS): TitleBar is 40px, not the mobile 44px header */
+    body:not([data-platform="android"]):not([data-platform="ios"])
+        .sidebar-drawer {
+        top: 40px;
+    }
+    body:not([data-platform="android"]):not([data-platform="ios"])
+        .sidebar-backdrop {
+        top: 40px;
+    }
 
-  .sidebar-drawer.sidebar-open {
-    transform: translateX(0);
-  }
+    .sidebar-drawer.sidebar-open {
+        transform: translateX(0);
+    }
 
-  .sidebar-backdrop {
-    display: block;
-    position: fixed;
-    top: calc(44px + env(safe-area-inset-top, 0px));
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 999;
-  }
+    .sidebar-backdrop {
+        display: block;
+        position: fixed;
+        top: calc(44px + env(safe-area-inset-top, 0px));
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+    }
 
-  /* Android-specific backdrop positioning */
-  body[data-platform="android"] .sidebar-backdrop {
-    top: 68px;  /* 44px header + 24px status bar */
-  }
+    /* Android-specific backdrop positioning */
+    body[data-platform="android"] .sidebar-backdrop {
+        top: 68px; /* 44px header + 24px status bar */
+    }
 }
 
 /* Hide backdrop on desktop; content-row is normal row layout */
 @media (min-width: 900px) {
-  .content-row {
-    display: contents; /* on desktop, don't add extra flex wrapper */
-  }
+    .content-row {
+        display: contents; /* on desktop, don't add extra flex wrapper */
+    }
 
-  .sidebar-backdrop {
-    display: none !important;
-  }
+    .sidebar-backdrop {
+        display: none !important;
+    }
 
-  .sidebar-drawer {
-    position: relative !important;
-    transform: none !important;
-    box-shadow: none !important;
-  }
+    .sidebar-drawer {
+        position: relative !important;
+        transform: none !important;
+        box-shadow: none !important;
+    }
 }
 
 /* Mobile header bar — shown on Android/iOS instead of desktop TitleBar */
 .mobile-header {
-  display: none;
+    display: none;
 }
 
 @media (max-width: 899px) {
-  .mobile-header {
-    display: flex;
-    align-items: center;         /* center content vertically */
-    flex-shrink: 0;
-    width: 100%;
-    padding-top: env(safe-area-inset-top, 0px);  /* iOS notch/Dynamic Island only */
-    padding-left: env(safe-area-inset-left, 0px);
-    padding-right: env(safe-area-inset-right, 0px);
-    min-height: calc(44px + env(safe-area-inset-top, 0px));
-    z-index: 1001;
-    background: var(--apinox-titleBar-activeBackground, #1e1e1e);
-    border-bottom: 1px solid var(--apinox-titleBar-border, rgba(255,255,255,0.08));
-    gap: 8px;
-  }
+    .mobile-header {
+        display: flex;
+        align-items: center; /* center content vertically */
+        flex-shrink: 0;
+        width: 100%;
+        padding-top: env(
+            safe-area-inset-top,
+            0px
+        ); /* iOS notch/Dynamic Island only */
+        padding-left: env(safe-area-inset-left, 0px);
+        padding-right: env(safe-area-inset-right, 0px);
+        min-height: calc(44px + env(safe-area-inset-top, 0px));
+        z-index: 1001;
+        background: var(--apinox-titleBar-activeBackground, #1e1e1e);
+        border-bottom: 1px solid
+            var(--apinox-titleBar-border, rgba(255, 255, 255, 0.08));
+        gap: 8px;
+    }
 }
 
 /* Android-specific: add extra padding for status bar on mobile header */
 @media (max-width: 899px) {
-  body[data-platform="android"] .mobile-header {
-    padding-top: 24px;  /* Android status bar clearance */
-    min-height: 68px;   /* 44px base + 24px status bar */
-  }
+    body[data-platform="android"] .mobile-header {
+        padding-top: 24px; /* Android status bar clearance */
+        min-height: 68px; /* 44px base + 24px status bar */
+    }
 }
 
 /* Hamburger button inside mobile header */
 .mobile-hamburger {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  min-width: 44px;
-  padding: 0;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  color: var(--apinox-icon-foreground, #c5c5c5);
-  flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--apinox-icon-foreground, #c5c5c5);
+    flex-shrink: 0;
 }
 
 /* Hamburger for narrow desktop windows — fixed overlay sitting in the TitleBar */
 .narrow-desktop-hamburger {
-  display: none;
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 40px;
-  height: 40px;
-  margin: -2px 0 0 0;
-  padding: 0;
-  box-sizing: border-box;
-  z-index: 1002;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  color: var(--apinox-titleBar-activeForeground, #c5c5c5);
-  -webkit-app-region: no-drag;
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 40px;
+    height: 40px;
+    margin: -2px 0 0 0;
+    padding: 0;
+    box-sizing: border-box;
+    z-index: 1002;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--apinox-titleBar-activeForeground, #c5c5c5);
+    -webkit-app-region: no-drag;
 }
 
 @media (max-width: 899px) {
-  .narrow-desktop-hamburger {
-    display: flex;
-  }
+    .narrow-desktop-hamburger {
+        display: flex;
+    }
 
-  /* Shift TitleBar content right so it clears the 40px hamburger button */
-  [data-tauri-drag-region] {
-    padding-left: 48px !important;
-  }
+    /* Shift TitleBar content right so it clears the 40px hamburger button */
+    [data-tauri-drag-region] {
+        padding-left: 48px !important;
+    }
 }
 
 .mobile-header-title {
-  font-size: 15px;
-  font-weight: 600;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+    font-size: 15px;
+    font-weight: 600;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 /* iOS safe area insets - handled via Container component props */
