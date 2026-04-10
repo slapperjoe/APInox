@@ -4,6 +4,7 @@ pkgver=0.16.116
 pkgrel=1
 pkgdesc="A visual SOAP client desktop application"
 arch=('x86_64')
+options=('strip' '!debug')
 url="https://github.com/slapperjoe/apinox"
 license=('MIT')
 depends=(

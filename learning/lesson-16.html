@@ -257,7 +257,7 @@ cargo test                     # test everything
 cargo test -p apinox-core      # test only one member
 cargo build -p apinox-cli      # build only one member</code></pre>
 
-    <div class="callout"><strong>APInox doesn't use a workspace</strong> — it's a single crate. But if you were to split the sidecar logic into a pure Rust library and keep the Tauri-specific code separate, a workspace would be the right tool. It's the Rust equivalent of a .NET solution with multiple projects.</div>
+    <div class="callout"><strong>APInox doesn't use a workspace</strong> — it's a single crate. But if you were to split the proxy/mock module logic into a pure Rust library and keep the Tauri-specific code separate, a workspace would be the right tool. It's the Rust equivalent of a .NET solution with multiple projects.</div>
 
     <!-- QUIZ 4 -->
     <div class="quiz" id="q16-4">

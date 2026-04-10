@@ -129,7 +129,7 @@
       </div>
       <button class="btn-check" onclick="fillCheck('q21-2', ['connect', 'connect-src'])">Check</button>
       <div class="quiz-exp" id="q21-2-exp">
-        <strong>connect-src</strong> — this CSP directive controls where <code>fetch()</code>, <code>XMLHttpRequest</code>, and WebSocket connections can go. <code>https:</code> is a broad wildcard allowing all HTTPS origins. Without this, every external SOAP endpoint would be blocked by the browser's CSP enforcement. This is also why <code>http://localhost:*</code> is included — APInox needs to talk to its local sidecar process.
+        <strong>connect-src</strong> — this CSP directive controls where <code>fetch()</code>, <code>XMLHttpRequest</code>, and WebSocket connections can go. <code>https:</code> is a broad wildcard allowing all HTTPS origins. Without this, every external SOAP endpoint would be blocked by the browser's CSP enforcement. This is also why <code>http://localhost:*</code> is included — APInox's built-in proxy and mock servers run on local ports and the webview needs to reach them.
       </div>
     </div>
   </section>

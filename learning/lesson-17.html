@@ -81,23 +81,25 @@
 <div class="diagram-caption">Tauri's three-layer architecture — webview renders UI, Rust handles native operations, OS provides APIs</div>
 </div>
 
-    <div class="callout-arch">An architect reviewing this diagram will note that the webview and the sidecar are 'too tightly coupled' and suggest extracting the sidecar into a separately deployable microservice behind an API gateway, with a message bus for events, a service registry for discovery, and distributed tracing. For a desktop app. That one person uses. To parse SOAP envelopes.</div>
+    <div class="callout-arch">An architect reviewing this diagram will note that the webview and the proxy layer are 'too tightly coupled' and suggest extracting the proxy module into a separately deployable microservice behind an API gateway, with a message bus for events, a service registry for discovery, and distributed tracing. For a desktop app. That one person uses. To parse SOAP envelopes.</div>
 
-    <p>In APInox's case there's also a legacy <strong>sidecar</strong> (a Node.js process), though the codebase is actively migrating that logic into the Rust layer:</p>
+    <p>APInox previously used a <strong>sidecar</strong> (a Node.js process) during an early migration phase to port existing SOAP logic. That migration is now complete — the Rust backend handles everything directly. The current <code>lib.rs</code> declares shared global state used across commands:</p>
 
-    <pre class="language-rust"><code>// src-tauri/src/lib.rs — sidecar process management
-static SIDECAR_PORT: AtomicU16 = AtomicU16::new(0);
-static SIDECAR_PROCESS: Mutex&lt;Option&lt;Child&gt;&gt; = Mutex::new(None);
+    <pre class="language-rust"><code>// src-tauri/src/lib.rs — global state
+static LOG_FILE_PATH: Mutex&lt;Option&lt;String&gt;&gt; = Mutex::new(None);
 
-fn spawn_sidecar(app_handle: &amp;tauri::AppHandle) -&gt; Result&lt;(), String&gt; {
-    // Launches Node.js as a child process — a separate OS process
-    let mut cmd = Command::new("node");
-    cmd.arg("sidecar/dist/index.js")
-       .stdout(Stdio::piped());
-    // ...
+/// Shared state for all proxy/mock/cert services.
+pub struct ProxyAppState {
+    pub proxy: proxy::state::SharedProxyState,
+    pub mock: mock::state::SharedMockState,
+    pub replacer: replacer::service::SharedReplacerService,
+    pub breakpoint: breakpoint::service::SharedBreakpointService,
+    pub filewatcher: filewatcher::service::SharedFileWatcherService,
+    pub storage: Arc&lt;storage::rules::RulesStorage&gt;,
+    pub cert_manager: Arc&lt;certificates::manager::CertManager&gt;,
 }</code></pre>
 
-    <div class="callout">The sidecar pattern is unusual — most Tauri apps don't need it. APInox used it to port existing Node.js SOAP logic before rewriting in Rust. <strong>New Tauri apps: put logic in Rust directly.</strong></div>
+    <div class="callout">APInox previously used the sidecar pattern to port existing Node.js SOAP logic before rewriting in Rust. That migration is complete. <strong>New Tauri apps: put logic in Rust directly — no sidecar needed.</strong></div>
 
     <!-- QUIZ 1 -->
     <div class="quiz" id="q17-1">
@@ -139,14 +141,21 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             quit_app,
             get_app_version,
+            get_platform_os,
+            get_debug_info,
             project_storage::save_project,
+            project_storage::load_project,
+            secret_storage::store_secret,
+            secret_storage::get_secret,
+            settings_manager::get_settings,
+            settings_manager::save_settings,
             soap::commands::execute_soap_request,
             testing::commands::run_test_case,
-            // ... 40+ more commands
+            // ... 80+ more commands
         ])
         // Setup callback — runs before the window appears
         .setup(|app| {
-            // Initialize logging, spawn sidecar, etc.
+            // Initialize logging, register proxy/mock state, etc.
             Ok(())
         })
         .run(tauri::generate_context!())
@@ -179,7 +188,7 @@ pub fn run() {
 
     <pre class="language-json"><code>{
   "productName": "APInox",
-  "version": "0.16.114",
+  "version": "0.19.146",
   "identifier": "app.apinox.dev1",
   "build": {
     "frontendDist": "webview/dist",
