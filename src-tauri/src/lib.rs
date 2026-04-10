@@ -438,6 +438,7 @@ pub fn run() {
                     }
                     log::info!("Splashscreen sized to {}x{} logical px (monitor: {}x{} physical, scale: {})",
                         logical_w, logical_h, phys.width, phys.height, scale);
+                    let _ = splash.show();
                 } else {
                     // No monitor info — just center with default size and show immediately
                     let _ = splash.center();

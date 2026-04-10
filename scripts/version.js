@@ -9,12 +9,12 @@
  * Commands:
  *   node scripts/version.js increment              — bump BUILD_NO in this file
  *   node scripts/version.js sync [x.y.z]          — write version to all config files
- *   node scripts/version.js bump <major|minor|patch> ["msg"] — bump + changelog + git commit + tag
+ *   node scripts/version.js bump <major|minor|patch> ["msg"] — bump + changelog + git commit + tag (patch preserved for major/minor)
  *   node scripts/version.js build [tauri-args...]  — increment + sync + build:packages + tauri build
  */
 
 // ─── BUILD NUMBER (auto-managed — do not edit manually) ───────────────────
-const BUILD_NO = 2;
+const BUILD_NO = 6;
 // ─────────────────────────────────────────────────────────────────────────
 
 const fs = require('fs');
@@ -167,18 +167,8 @@ function bump(type, message) {
         run('node scripts/version.js increment');
         run('node scripts/version.js sync');
     } else {
-        // major/minor: let npm handle the arithmetic, then reset BUILD_NO to 1
+        // major/minor: let npm handle the arithmetic, preserve the existing BUILD_NO as patch
         run(`npm version ${type} --no-git-tag-version`);
-
-        const self = fs.readFileSync(scriptFile, 'utf8');
-        const updated = self.replace(/^(const BUILD_NO = )\d+(;)$/m, '$11$2');
-        if (updated === self) {
-            console.error('❌ Could not locate BUILD_NO line in version.js');
-            process.exit(1);
-        }
-        fs.writeFileSync(scriptFile, updated, 'utf8');
-        console.log('ℹ️  BUILD_NO reset to 1');
-
         run('node scripts/version.js sync');
     }
 

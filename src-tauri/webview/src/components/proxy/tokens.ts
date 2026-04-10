@@ -15,7 +15,7 @@ export const tokens = {
     /** Deepest background — editor / content areas */
     base: 'var(--apinox-editor-background, #1e1e1e)',
     /** Slightly deeper than base — template bars, dense rows */
-    deep: '#181818',
+    deep: 'var(--apinox-surface-deep, #181818)',
     /** Panel / sidebar background */
     panel: 'var(--apinox-sideBar-background, #252526)',
     /** Tab bar / header / toolbar background */
@@ -29,13 +29,13 @@ export const tokens = {
     /** Active / selected item background */
     active: 'var(--apinox-list-activeSelectionBackground, #37373d)',
     /** Danger button / delete background */
-    danger: '#5a2e2e',
+    danger: 'var(--apinox-surface-danger, #5a2e2e)',
     /** Drop / destructive action button (darker red) */
-    dangerDark: '#6b1010',
+    dangerDark: 'var(--apinox-surface-danger-dark, #6b1010)',
     /** Allow / continue / success action button (dark green) */
-    successDark: '#106b21',
+    successDark: 'var(--apinox-surface-success-dark, #106b21)',
     /** Tag chip background */
-    tag: '#1e4a7a',
+    tag: 'var(--apinox-surface-tag, #1e4a7a)',
   },
 
   /** Border colours */
@@ -57,11 +57,11 @@ export const tokens = {
     /** Hint / meta / helper text (lighter than muted) */
     hint: 'var(--apinox-disabledForeground, #666666)',
     /** Very subtle / decorative text (dividers, counters) */
-    faint: '#555555',
+    faint: 'var(--apinox-text-faint, #555555)',
     /** Danger / delete icon text */
-    danger: '#ff6b6b',
+    danger: 'var(--apinox-text-danger, #ff6b6b)',
     /** Tag chip text */
-    tag: '#90caf9',
+    tag: 'var(--apinox-text-tag, #90caf9)',
     /** Full-bright white */
     white: '#ffffff',
   },

@@ -9,14 +9,13 @@ import { tokens } from './tokens';
  */
 export function RulesAndMockPage() {
   const sectionHeaderStyle: React.CSSProperties = {
-    padding: '6px 16px',
-    fontSize: tokens.fontSize.xs,
-    fontWeight: 700,
-    textTransform: 'uppercase',
-    letterSpacing: '0.07em',
-    color: tokens.text.muted,
+    padding: '8px 16px',
+    fontSize: tokens.fontSize.sm,
+    fontWeight: 600,
+    color: tokens.text.secondary,
     background: tokens.surface.elevated,
     borderBottom: `1px solid ${tokens.border.default}`,
+    fontFamily: tokens.fontFamily,
     flexShrink: 0,
   };
 

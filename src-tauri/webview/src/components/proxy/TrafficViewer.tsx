@@ -23,12 +23,12 @@ type StatusGroupKey = '1xx' | '2xx' | '3xx' | '4xx' | '5xx' | 'none';
 const STATUS_GROUPS: Array<{
   key: StatusGroupKey; label: string; desc: string; fg: string; bg: string; border: string;
 }> = [
-  { key: '1xx',  label: '1xx', desc: 'Informational', fg: '#a0aec0', bg: 'rgba(160,174,192,0.15)', border: 'rgba(160,174,192,0.35)' },
-  { key: '2xx',  label: '2xx', desc: 'Success',       fg: '#89d185', bg: 'rgba(58,110,58,0.2)',    border: 'rgba(58,110,58,0.45)'   },
-  { key: '3xx',  label: '3xx', desc: 'Redirect',      fg: '#6db3e8', bg: 'rgba(14,99,156,0.2)',    border: 'rgba(14,99,156,0.45)'   },
-  { key: '4xx',  label: '4xx', desc: 'Client Error',  fg: '#ddb165', bg: 'rgba(122,90,30,0.2)',    border: 'rgba(122,90,30,0.45)'   },
-  { key: '5xx',  label: '5xx', desc: 'Server Error',  fg: '#f28b82', bg: 'rgba(156,14,14,0.2)',    border: 'rgba(156,14,14,0.45)'   },
-  { key: 'none', label: '···', desc: 'No Response',   fg: '#6b7280', bg: 'rgba(60,60,60,0.15)',    border: 'rgba(100,100,100,0.35)' },
+  { key: '1xx',  label: '1xx', desc: 'Informational', fg: 'var(--apinox-descriptionForeground, #a0aec0)', bg: 'rgba(160,174,192,0.15)', border: 'rgba(160,174,192,0.35)' },
+  { key: '2xx',  label: '2xx', desc: 'Success',       fg: 'var(--apinox-testing-iconPassed, #89d185)',    bg: 'rgba(58,110,58,0.2)',    border: 'rgba(58,110,58,0.45)'   },
+  { key: '3xx',  label: '3xx', desc: 'Redirect',      fg: 'var(--apinox-focusBorder, #6db3e8)',           bg: 'rgba(14,99,156,0.2)',    border: 'rgba(14,99,156,0.45)'   },
+  { key: '4xx',  label: '4xx', desc: 'Client Error',  fg: 'var(--apinox-testing-iconQueued, #ddb165)',    bg: 'rgba(122,90,30,0.2)',    border: 'rgba(122,90,30,0.45)'   },
+  { key: '5xx',  label: '5xx', desc: 'Server Error',  fg: 'var(--apinox-testing-iconFailed, #f28b82)',    bg: 'rgba(156,14,14,0.2)',    border: 'rgba(156,14,14,0.45)'   },
+  { key: 'none', label: '···', desc: 'No Response',   fg: 'var(--apinox-descriptionForeground, #6b7280)', bg: 'rgba(60,60,60,0.15)',    border: 'rgba(100,100,100,0.35)' },
 ];
 
 const ALL_STATUS_KEYS = new Set<StatusGroupKey>(STATUS_GROUPS.map(g => g.key) as StatusGroupKey[]);
@@ -314,6 +314,8 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = [], onAddIgnore
             borderRadius: tokens.radius.md,
             color: tokens.text.primary,
             fontSize: tokens.fontSize.sm,
+            fontFamily: tokens.fontFamily,
+            outline: 'none',
           }}
         />
 
@@ -327,6 +329,8 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = [], onAddIgnore
             borderRadius: tokens.radius.md,
             color: tokens.text.secondary,
             fontSize: tokens.fontSize.sm,
+            fontFamily: tokens.fontFamily,
+            outline: 'none',
           }}
         >
           {HTTP_METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
