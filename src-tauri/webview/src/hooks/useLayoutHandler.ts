@@ -14,6 +14,8 @@ interface UseLayoutHandlerProps {
     setSelectedOperation: (op: any) => void;
     setSelectedRequest: (req: any) => void;
     setSelectedTestCase: (tc: any) => void;
+    selectedPerformanceSuiteId: string | null;
+    setSelectedPerformanceSuiteId: (id: string | null) => void;
 }
 
 export const useLayoutHandler = ({
@@ -29,7 +31,9 @@ export const useLayoutHandler = ({
     setSelectedInterface,
     setSelectedOperation,
     setSelectedRequest,
-    setSelectedTestCase
+    setSelectedTestCase,
+    selectedPerformanceSuiteId,
+    setSelectedPerformanceSuiteId
 }: UseLayoutHandlerProps) => {
     const [isResizing, setIsResizing] = useState(false);
 
@@ -107,16 +111,18 @@ export const useLayoutHandler = ({
             setSelectedOperation(null);
             setSelectedInterface(null);
             setSelectedTestCase(null);
+            setSelectedPerformanceSuiteId(null);
             return;
         }
 
         if (view === SidebarView.PROJECTS || view === SidebarView.EXPLORER) {
             setSelectedTestCase(null);
+            setSelectedPerformanceSuiteId(null);
             return;
         }
 
         if (view === SidebarView.TESTS) {
-            // Nothing to clear
+            setSelectedPerformanceSuiteId(null);
             return;
         }
 
@@ -132,7 +138,9 @@ export const useLayoutHandler = ({
         setSelectedInterface,
         setSelectedOperation,
         setSelectedRequest,
-        setSelectedTestCase
+        setSelectedTestCase,
+        setSelectedPerformanceSuiteId,
+        selectedPerformanceSuiteId
     ]);
 
     return {

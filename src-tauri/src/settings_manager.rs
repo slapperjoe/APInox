@@ -405,3 +405,12 @@ pub async fn get_global_variables() -> Result<HashMap<String, String>, String> {
     let config = load_config()?;
     Ok(config.globals.unwrap_or_default())
 }
+
+/// Public re-exports for use by other modules (e.g. performance runner)
+pub fn load_config_internal() -> Result<ApinoxConfig, String> {
+    load_config()
+}
+
+pub fn save_config_internal(config: &ApinoxConfig) -> Result<(), String> {
+    save_config(config)
+}

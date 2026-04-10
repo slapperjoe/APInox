@@ -7,6 +7,7 @@ import { ProjectList } from './sidebar/ProjectList';
 import { ApiExplorerSidebar } from './sidebar/ApiExplorerSidebar';
 import { TestsUi } from './sidebar/TestsUi';
 import { WorkflowsUi } from './sidebar/WorkflowsUi';
+import { PerformanceUi } from './sidebar/PerformanceUi';
 // @ts-ignore - TS export detection issue; runtime export exists.
 import HistorySidebar from './sidebar/HistorySidebar';
 import { ScrapbookPanel } from './sidebar/ScrapbookPanel';
@@ -84,7 +85,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     testRunnerProps: _testRunnerProps, // Legacy, tests now use testsProps
     testsProps,
     workflowsProps,
-    performanceProps: _performanceProps, // Unused - performance removed
+    performanceProps,
     historyProps,
     workspaceDirty,
     onOpenSettings,
@@ -111,7 +112,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         deleteConfirm, setDeleteConfirm
     } = selectionProps;
 
-    const hideContent = !sidebarExpanded || activeView === SidebarView.HOME;
+    const proxyFullPanelView = activeView === SidebarView.PROXY || activeView === SidebarView.MOCK || activeView === SidebarView.WATCHER;
+    const hideContent = !sidebarExpanded || activeView === SidebarView.HOME || proxyFullPanelView;
 
     return (
         <SidebarContainer
@@ -157,6 +159,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {activeView === SidebarView.WORKFLOWS && workflowsProps && (
                     <WorkflowsUi
                         {...workflowsProps}
+                    />
+                )}
+
+                {activeView === SidebarView.PERFORMANCE && performanceProps && (
+                    <PerformanceUi
+                        {...performanceProps}
                     />
                 )}
 

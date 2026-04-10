@@ -49,6 +49,9 @@ interface SelectionContextValue {
     /** Currently selected test case (for test runner) */
     selectedTestCase: TestCase | null;
 
+    /** Currently selected performance suite ID */
+    selectedPerformanceSuiteId: string | null;
+
     /** Currently selected workflow step (for workflow editor) */
     selectedWorkflowStep: { workflow: Workflow; step: WorkflowStep } | null;
 
@@ -72,6 +75,7 @@ interface SelectionContextValue {
     setSelectedStep: React.Dispatch<React.SetStateAction<TestStep | null>>;
     setSelectedTestSuite: React.Dispatch<React.SetStateAction<TestSuite | null>>;
     setSelectedTestCase: React.Dispatch<React.SetStateAction<TestCase | null>>;
+    setSelectedPerformanceSuiteId: React.Dispatch<React.SetStateAction<string | null>>;
     setSelectedWorkflowStep: React.Dispatch<React.SetStateAction<{ workflow: Workflow; step: WorkflowStep } | null>>;
     setResponse: React.Dispatch<React.SetStateAction<any>>;
     setLoading: React.Dispatch<React.SetStateAction<boolean>>;
@@ -127,6 +131,7 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
     const [selectedStep, setSelectedStep] = useState<TestStep | null>(null);
     const [selectedTestSuite, setSelectedTestSuite] = useState<TestSuite | null>(null);
     const [selectedTestCase, setSelectedTestCase] = useState<TestCase | null>(null);
+    const [selectedPerformanceSuiteId, setSelectedPerformanceSuiteId] = useState<string | null>(null);
     const [selectedWorkflowStep, setSelectedWorkflowStepInternal] = useState<{ workflow: Workflow; step: WorkflowStep } | null>(null);
     const [response, setResponseState] = useState<any>(null);
     
@@ -229,6 +234,7 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
         setSelectedStep(null);
         setSelectedTestSuite(null);
         setSelectedTestCase(null);
+        setSelectedPerformanceSuiteId(null);
         setSelectedWorkflowStep(null);
         setResponseState(null);
         setResponseCache({});
@@ -258,6 +264,7 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
         selectedStep,
         selectedTestSuite,
         selectedTestCase,
+        selectedPerformanceSuiteId,
         selectedWorkflowStep,
 
         // Request/Response State
@@ -271,6 +278,7 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
         setSelectedStep,
         setSelectedTestSuite,
         setSelectedTestCase,
+        setSelectedPerformanceSuiteId,
         setSelectedWorkflowStep,
         setResponse,
         setLoading,

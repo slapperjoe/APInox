@@ -95,6 +95,11 @@ export const darkTheme: Theme = {
         '--apinox-panelTitle-activeForeground': '#e7e7e7',
         '--apinox-panelTitle-inactiveForeground': '#e7e7e799',
 
+        // Surface / Border tokens (used by proxy/traffic components)
+        '--apinox-surface-elevated': '#2d2d30',
+        '--apinox-border-default': '#3e3e42',
+        '--apinox-border-subtle': '#555555',
+
         // Status Bar
         '--apinox-statusBar-background': '#007acc',
         '--apinox-statusBar-foreground': '#ffffff',
@@ -272,8 +277,10 @@ export const lightTheme: Theme = {
         '--apinox-panelTitle-activeForeground': '#424242',
         '--apinox-panelTitle-inactiveForeground': '#424242b3',
 
-        // Status Bar
-        '--apinox-statusBar-background': '#007acc',
+        // Surface / Border tokens (used by proxy/traffic components)
+        '--apinox-surface-elevated': '#ebebeb',
+        '--apinox-border-default': '#d4d4d4',
+        '--apinox-border-subtle': '#c0c0c0',
         '--apinox-statusBar-foreground': '#ffffff',
         '--apinox-statusBar-noFolderBackground': '#68217a',
         '--apinox-statusBar-debuggingBackground': '#cc6633',
@@ -430,6 +437,11 @@ export const solarizedDarkTheme: Theme = {
         '--apinox-panelTitle-activeForeground': '#93a1a1',
         '--apinox-panelTitle-inactiveForeground': '#586e75',
 
+        // Surface / Border tokens (used by proxy/traffic components)
+        '--apinox-surface-elevated': '#073642',
+        '--apinox-border-default': '#586e75',
+        '--apinox-border-subtle': '#657b83',
+
         // Status Bar
         '--apinox-statusBar-background': '#268bd2',
         '--apinox-statusBar-foreground': '#fdf6e3',
@@ -581,6 +593,11 @@ export const solarizedLightTheme: Theme = {
         '--apinox-panelTitle-activeBorder': '#268bd2',
         '--apinox-panelTitle-activeForeground': '#586e75',
         '--apinox-panelTitle-inactiveForeground': '#93a1a1',
+
+        // Surface / Border tokens (used by proxy/traffic components)
+        '--apinox-surface-elevated': '#eee8d5',
+        '--apinox-border-default': '#93a1a1',
+        '--apinox-border-subtle': '#adb6b3',
 
         // Status Bar
         '--apinox-statusBar-background': '#268bd2',

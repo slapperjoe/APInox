@@ -448,7 +448,7 @@ export function useMessageHandler(state: MessageHandlerState) {
                 case BackendCommand.PerformanceIterationComplete:
                 case BackendCommand.CoordinatorStatus:
                 case BackendCommand.AddOperationToPerformance:
-                    // Performance features removed - moved to APIprox
+                    // Handled in PerformanceContext
                     break;
 
                 case BackendCommand.ProjectLoaded:
