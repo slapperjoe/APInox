@@ -208,6 +208,16 @@ export const darkTheme: Theme = {
         '--apinox-symbolIcon-propertyForeground': '#75beff',
         '--apinox-symbolIcon-variableForeground': '#75beff',
         '--apinox-symbolIcon-stringForeground': '#ce9178',
+
+        // Proxy/Mock UI Colors
+        '--apinox-surface-deep': '#181818',
+        '--apinox-text-faint': '#555555',
+        '--apinox-surface-danger': '#5a2e2e',
+        '--apinox-surface-danger-dark': '#6b1010',
+        '--apinox-surface-success-dark': '#106b21',
+        '--apinox-surface-tag': '#1e4a7a',
+        '--apinox-text-danger': '#ff6b6b',
+        '--apinox-text-tag': '#90caf9',
     },
 };
 
@@ -312,6 +322,7 @@ export const lightTheme: Theme = {
         // Text and Links
         '--apinox-foreground': '#3b3b3b',
         '--apinox-descriptionForeground': '#717171',
+        '--apinox-disabledForeground': '#717171',
         '--apinox-errorForeground': '#a1260d',
         '--apinox-textLink-foreground': '#006ab1',
         '--apinox-textLink-activeForeground': '#006ab1',
@@ -362,6 +373,16 @@ export const lightTheme: Theme = {
         '--apinox-tab-activeBackground': '#ffffff',
         '--apinox-tab-activeForeground': '#000000',
         '--apinox-tab-inactiveForeground': '#717171',
+
+        // Proxy/Mock UI Colors
+        '--apinox-surface-deep': '#e8e8e8',
+        '--apinox-text-faint': '#aaaaaa',
+        '--apinox-surface-danger': '#fce8e8',
+        '--apinox-surface-danger-dark': '#c62828',
+        '--apinox-surface-success-dark': '#2e7d32',
+        '--apinox-surface-tag': '#deeaf7',
+        '--apinox-text-danger': '#c62828',
+        '--apinox-text-tag': '#1565c0',
     },
 };
 
@@ -475,10 +496,8 @@ export const solarizedDarkTheme: Theme = {
         // Text and Links
         '--apinox-foreground': '#839496',
         '--apinox-descriptionForeground': '#586e75',
+        '--apinox-disabledForeground': '#586e75',
         '--apinox-errorForeground': '#dc322f',
-        '--apinox-textLink-foreground': '#268bd2',
-        '--apinox-textLink-activeForeground': '#2aa198',
-        '--apinox-textCodeBlock-background': '#073642',
         '--apinox-textPreformat-foreground': '#b58900',
         '--apinox-textBlockQuote-background': '#07364266',
         '--apinox-textBlockQuote-border': '#268bd280',
@@ -525,6 +544,16 @@ export const solarizedDarkTheme: Theme = {
         '--apinox-tab-activeBackground': '#073642',
         '--apinox-tab-activeForeground': '#93a1a1',
         '--apinox-tab-inactiveForeground': '#586e75',
+
+        // Proxy/Mock UI Colors
+        '--apinox-surface-deep': '#001f29',
+        '--apinox-text-faint': '#3a5258',
+        '--apinox-surface-danger': '#3a1515',
+        '--apinox-surface-danger-dark': '#5a0000',
+        '--apinox-surface-success-dark': '#0d4d1f',
+        '--apinox-surface-tag': '#0d3655',
+        '--apinox-text-danger': '#dc322f',
+        '--apinox-text-tag': '#7ec8f7',
     },
 };
 
@@ -632,6 +661,7 @@ export const solarizedLightTheme: Theme = {
         // Text and Links
         '--apinox-foreground': '#657b83',
         '--apinox-descriptionForeground': '#93a1a1',
+        '--apinox-disabledForeground': '#93a1a1',
         '--apinox-errorForeground': '#dc322f',
         '--apinox-textLink-foreground': '#268bd2',
         '--apinox-textLink-activeForeground': '#2aa198',
@@ -682,6 +712,16 @@ export const solarizedLightTheme: Theme = {
         '--apinox-tab-activeBackground': '#eee8d5',
         '--apinox-tab-activeForeground': '#586e75',
         '--apinox-tab-inactiveForeground': '#93a1a1',
+
+        // Proxy/Mock UI Colors
+        '--apinox-surface-deep': '#f0e9d0',
+        '--apinox-text-faint': '#99a9a5',
+        '--apinox-surface-danger': '#fce0e0',
+        '--apinox-surface-danger-dark': '#c62828',
+        '--apinox-surface-success-dark': '#2e7d32',
+        '--apinox-surface-tag': '#d0e8f7',
+        '--apinox-text-danger': '#c62828',
+        '--apinox-text-tag': '#1565c0',
     },
 };
 
