@@ -2,12 +2,12 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { bridge, isTauri } from '../utils/bridge';
 import { PerformanceSuite, PerformanceRequest, ApiRequest } from '@shared/models';
 import { BackendCommand, FrontendCommand } from '@shared/messages';
-// import { getInitialXml } from '@apinox/request-editor'; // Temporarily disabled
-import { getInitialXml } from '../utils/soapUtils'; // Use local version temporarily
+import { getInitialXml } from '@shared/utils/soapUtils';
 import { useUI } from './UIContext';
 import { useSelection } from './SelectionContext';
 import { useNavigation } from './NavigationContext';
 import { SidebarView } from '@shared/models';
+import { PERF_REQUEST_ID_PREFIX, PERF_SUITE_ID_PREFIX } from '../constants';
 
 const debugLog = (_message: string, _data?: any) => { // Allowed unused for now or used
     // console.debug(`[PerformanceContext] ${_message}`, _data);
@@ -389,7 +389,7 @@ export const PerformanceProvider = ({ children }: { children: ReactNode }) => {
             if (newRequest) {
                 newRequest = {
                     ...newRequest,
-                    id: `perf-req-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                    id: `${PERF_REQUEST_ID_PREFIX}${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
                     method: newRequest.method || 'POST',
                     requestBody: newRequest.requestBody || (newRequest as any).request || '',
                     interfaceName: newRequest.interfaceName,
@@ -408,14 +408,14 @@ export const PerformanceProvider = ({ children }: { children: ReactNode }) => {
                     const firstRequest = perfOp.requests[0];
                     newRequest = {
                         ...firstRequest,
-                        id: `perf-req-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                        id: `${PERF_REQUEST_ID_PREFIX}${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
                         order: (suite.requests?.length || 0) + 1,
                         readOnly: false
                     };
                 } else {
                     // No requests - generate default SOAP XML
                     newRequest = {
-                        id: `perf-req-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                        id: `${PERF_REQUEST_ID_PREFIX}${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
                         name: perfOp.name,
                         endpoint: (perfOp as any).originalEndpoint || '',
                         method: 'POST',

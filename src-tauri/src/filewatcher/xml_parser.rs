@@ -1,5 +1,18 @@
+use once_cell::sync::Lazy;
 use sxd_document::parser;
 use sxd_xpath::{evaluate_xpath, Value};
+
+static BODY_CHILD_RE: Lazy<regex::Regex> = Lazy::new(|| {
+    regex::Regex::new(r"<soapenv:Body[^>]*>\s*<(?:[^:>\s]+:)?([A-Za-z0-9_]+)").unwrap()
+});
+
+static ROOT_ELEMENT_RE: Lazy<regex::Regex> = Lazy::new(|| {
+    regex::Regex::new(r"<(?:[^:>\s]+:)?([A-Za-z0-9_]+)").unwrap()
+});
+
+static SOAP_HEADER_RE: Lazy<regex::Regex> = Lazy::new(|| {
+    regex::Regex::new(r"(?s)<soapenv:Header[^>]*>(.*?)</soapenv:Header>").unwrap()
+});
 
 /// Extract the SOAP operation name from a request envelope.
 ///
@@ -11,8 +24,7 @@ pub fn extract_operation_name_from_request(content: &str) -> Option<String> {
         return Some(name);
     }
     // Regex fallback — matches the opening tag of the Body child element
-    let re = regex::Regex::new(r"<soapenv:Body[^>]*>\s*<(?:[^:>\s]+:)?([A-Za-z0-9_]+)").ok()?;
-    re.captures(content)
+    BODY_CHILD_RE.captures(content)
         .and_then(|c| c.get(1))
         .map(|m| m.as_str().to_string())
 }
@@ -30,8 +42,7 @@ pub fn extract_operation_name_from_response(content: &str) -> Option<String> {
         }
     }
     // Regex fallback — first opening tag, strip namespace prefix
-    let re = regex::Regex::new(r"<(?:[^:>\s]+:)?([A-Za-z0-9_]+)").ok()?;
-    re.captures(content.trim())
+    ROOT_ELEMENT_RE.captures(content.trim())
         .and_then(|c| c.get(1))
         .map(|m| m.as_str().to_string())
 }
@@ -66,10 +77,7 @@ pub fn extract_correlation_id(content: &str, element_names: &[String]) -> Option
     }
 
     // Regex fallback — search for element tags in SOAP header region
-    let header_re = regex::Regex::new(
-        r"(?s)<soapenv:Header[^>]*>(.*?)</soapenv:Header>"
-    ).ok()?;
-    let header_content = header_re
+    let header_content = SOAP_HEADER_RE
         .captures(content)
         .and_then(|c| c.get(1))
         .map(|m| m.as_str())?;

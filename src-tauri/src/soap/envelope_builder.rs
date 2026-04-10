@@ -7,6 +7,7 @@ use anyhow::{Result, anyhow};
 use std::collections::HashMap;
 
 use crate::parsers::wsdl::types::{SchemaNode, ServiceOperation};
+use crate::utils::CONTENT_TYPE_XML;
 use super::ws_security::{WsSecurityConfig, build_security_header};
 
 /// SOAP version
@@ -28,7 +29,7 @@ impl SoapVersion {
     /// Get the Content-Type header for this SOAP version
     pub fn content_type(&self) -> &'static str {
         match self {
-            SoapVersion::Soap11 => "text/xml; charset=utf-8",
+            SoapVersion::Soap11 => CONTENT_TYPE_XML,
             SoapVersion::Soap12 => "application/soap+xml; charset=utf-8",
         }
     }

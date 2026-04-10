@@ -8,6 +8,7 @@ import { useSearch } from '../contexts/SearchContext';
 import { SearchDropdown } from './SearchDropdown';
 import apinoxIcon from '../assets/apinox-icon.png';
 import { Search, X, FileText, Folder, Box, Layers, TestTube, ChevronRight } from 'lucide-react';
+import { MULTI_CLICK_RESET_MS } from '../constants';
 
 const TitleBarContainer = styled.div`
   position: fixed;
@@ -305,14 +306,14 @@ const TitleBar: React.FC = () => {
       }
       setClickCount(0);
       setClickTimer(null);
-    }, 300);
+    }, MULTI_CLICK_RESET_MS);
     
     setClickTimer(timer);
   };
 
   useEffect(() => {
     const appWindow = getCurrentWindow();
-    
+
     // Check initial maximized state
     appWindow.isMaximized().then(setIsMaximized);
 

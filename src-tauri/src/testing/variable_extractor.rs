@@ -3,11 +3,9 @@
 /// Extracts values from responses using XPath, JSONPath, regex, etc.
 
 use anyhow::{Result, anyhow};
-use regex::Regex;
 use serde::{Deserialize, Serialize};
-use sxd_document::parser;
-use sxd_xpath::{evaluate_xpath, Value};
 use serde_json::Value as JsonValue;
+use crate::utils::{RegexExtractor, XPathEvaluator};
 
 /// Variable extraction method
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -45,29 +43,8 @@ impl VariableExtractor {
     }
     
     fn extract_xpath(xml: &str, xpath: &str) -> Result<String> {
-        let package = parser::parse(xml)
-            .map_err(|e| anyhow!("Failed to parse XML: {}", e))?;
-        let document = package.as_document();
-        
-        let value = evaluate_xpath(&document, xpath)
-            .map_err(|e| anyhow!("XPath evaluation failed: {}", e))?;
-        
-        Ok(match value {
-            Value::String(s) => s,
-            Value::Number(n) => n.to_string(),
-            Value::Boolean(b) => b.to_string(),
-            Value::Nodeset(nodes) => {
-                if nodes.size() == 0 {
-                    String::new()
-                } else {
-                    nodes.document_order()
-                        .iter()
-                        .map(|n| n.string_value())
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                }
-            }
-        })
+        XPathEvaluator::evaluate(xml, xpath)
+            .ok_or_else(|| anyhow!("XPath expression '{}' returned no results", xpath))
     }
     
     fn extract_jsonpath(json: &str, path: &str) -> Result<String> {
@@ -97,19 +74,8 @@ impl VariableExtractor {
     }
     
     fn extract_regex(text: &str, pattern: &str) -> Result<String> {
-        let re = Regex::new(pattern)
-            .map_err(|e| anyhow!("Invalid regex pattern: {}", e))?;
-        
-        let captures = re.captures(text)
-            .ok_or_else(|| anyhow!("Regex '{}' did not match", pattern))?;
-        
-        // Return first capture group, or entire match if no groups
-        let value = captures.get(1)
-            .or_else(|| captures.get(0))
-            .map(|m| m.as_str())
-            .ok_or_else(|| anyhow!("No match found"))?;
-        
-        Ok(value.to_string())
+        RegexExtractor::extract(text, pattern)
+            .ok_or_else(|| anyhow!("Regex '{}' did not match", pattern))
     }
 }
 

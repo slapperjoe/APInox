@@ -10,6 +10,7 @@ import { FrontendCommand } from '@shared/messages';
 import { CustomXPathEvaluator } from '../utils/xpathEvaluator';
 import { useProject } from '../contexts/ProjectContext';
 import { ApiRequest, ApiOperation, ApiInterface, TestCase } from '@shared/models';
+import { getInitialXml } from '@shared/utils/soapUtils';
 
 interface UseRequestHandlersProps {
     selectedRequest: ApiRequest | null;
@@ -304,16 +305,4 @@ function updateFolderRequest(folders: any[], requestId: string, updated: ApiRequ
         ),
         folders: folder.folders ? updateFolderRequest(folder.folders, requestId, updated) : folder.folders
     }));
-}
-
-// Utility function (also used by App.tsx)
-export function getInitialXml(input: any): string {
-    if (!input) return '';
-    if (typeof input === 'string') return input;
-    if (input.body && typeof input.body === 'string') return input.body;
-    try {
-        return JSON.stringify(input, null, 2);
-    } catch {
-        return '';
-    }
 }

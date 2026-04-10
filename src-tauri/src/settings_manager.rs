@@ -3,6 +3,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+use crate::utils::resolve_config_dir;
 
 /// APInox configuration structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -123,8 +124,8 @@ impl ApinoxConfig {
         let mut envs = HashMap::new();
         
         let mut build = HashMap::new();
-        build.insert("endpoint_url".to_string(), Value::String("http://bld02.acme.com".to_string()));
-        build.insert("env".to_string(), Value::String("bld02".to_string()));
+        build.insert("endpoint_url".to_string(), Value::String("http://your-service.example.com".to_string()));
+        build.insert("env".to_string(), Value::String("example".to_string()));
         build.insert("color".to_string(), Value::String("#58A6FF".to_string()));
         envs.insert("Build".to_string(), build);
         
@@ -164,16 +165,7 @@ impl ApinoxConfig {
 
 /// Get config directory path
 fn get_config_dir() -> Result<PathBuf, String> {
-    let config_dir = std::env::var("APINOX_CONFIG_DIR")
-        .ok()
-        .and_then(|dir| if dir.trim().is_empty() { None } else { Some(PathBuf::from(dir)) })
-        .or_else(|| {
-            let home = std::env::var("HOME")
-                .or_else(|_| std::env::var("USERPROFILE"))
-                .ok()?;
-            Some(PathBuf::from(home).join(".apinox"))
-        })
-        .ok_or("Could not determine config directory")?;
+    let config_dir = resolve_config_dir()?;
 
     if !config_dir.exists() {
         fs::create_dir_all(&config_dir)

@@ -143,27 +143,14 @@ fn get_platform_os() -> String {
     return "unknown".to_string();
 }
 
-/// Compute the config directory path using the same logic as settings_manager.
-fn resolve_config_dir() -> Option<String> {
-    std::env::var("APINOX_CONFIG_DIR")
-        .ok()
-        .and_then(|dir| if dir.trim().is_empty() { None } else { Some(dir) })
-        .or_else(|| {
-            let home = std::env::var("HOME")
-                .or_else(|_| std::env::var("USERPROFILE"))
-                .ok()?;
-            Some(format!("{}/.apinox", home))
-        })
-}
-
 #[tauri::command]
 fn get_config_dir() -> Option<String> {
-    resolve_config_dir()
+    utils::resolve_config_dir().ok().map(|p| p.to_string_lossy().to_string())
 }
 
 #[tauri::command]
 fn get_debug_info() -> serde_json::Value {
-    let config_dir = resolve_config_dir();
+    let config_dir = utils::resolve_config_dir().ok().map(|p| p.to_string_lossy().to_string());
     let log_path = LOG_FILE_PATH.lock().ok().and_then(|p| p.clone());
 
     let platform = {
@@ -236,6 +223,206 @@ fn apply_window_styling(window: &tauri::WebviewWindow) {
             log::info!("Applied initial window border styling (theme will update it)");
         }
     }
+}
+
+/// Initialise file logging and store the log path for diagnostics.
+fn init_logging(app: &mut tauri::App) -> tauri::Result<()> {
+    let log_dir = app.path().app_log_dir().unwrap_or_else(|_| {
+        app.path().app_data_dir().unwrap_or_else(|_| std::env::temp_dir())
+    });
+    std::fs::create_dir_all(&log_dir).ok();
+
+    let log_file = log_dir.join("apinox.log");
+    if let Ok(mut guard) = LOG_FILE_PATH.lock() {
+        *guard = Some(log_file.to_string_lossy().to_string());
+    }
+
+    app.handle().plugin(
+        tauri_plugin_log::Builder::default()
+            .level(log::LevelFilter::Debug)
+            .targets([
+                tauri_plugin_log::Target::new(
+                    tauri_plugin_log::TargetKind::LogDir { file_name: Some("apinox.log".to_string()) }
+                ),
+                tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
+                tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Webview),
+            ])
+            .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll)
+            .max_file_size(5_000_000)
+            .build(),
+    )?;
+
+    // Initialize decorum plugin on desktop only (mobile doesn't support it)
+    #[cfg(desktop)]
+    app.handle().plugin(tauri_plugin_decorum::init())?;
+
+    log::info!("APInox starting (version: {})", env!("CARGO_PKG_VERSION"));
+    log::info!("Debug mode: {}", cfg!(debug_assertions));
+    if let Ok(guard) = LOG_FILE_PATH.lock() {
+        if let Some(ref path) = *guard {
+            log::info!("Logs will be written to: {}", path);
+        }
+    }
+
+    // On Android, set APINOX_CONFIG_DIR to the sandboxed app data dir.
+    #[cfg(target_os = "android")]
+    {
+        if let Ok(data_dir) = app.path().app_data_dir() {
+            let config_dir = data_dir.join("apinox");
+            std::env::set_var("APINOX_CONFIG_DIR", config_dir.to_string_lossy().as_ref());
+            log::info!("Android: APINOX_CONFIG_DIR set to {:?}", config_dir);
+        }
+    }
+
+    Ok(())
+}
+
+/// Configure the main/splashscreen windows (sizing, decorations, platform styling).
+fn init_window(app: &mut tauri::App) {
+    // Size and centre the splashscreen to half the primary monitor dimensions.
+    #[cfg(desktop)]
+    if let Some(splash) = app.get_webview_window("splashscreen") {
+        if let Ok(Some(monitor)) = splash.primary_monitor() {
+            let scale = monitor.scale_factor();
+            let phys = monitor.size();
+            let logical_w = (phys.width as f64 / scale / 2.0) as u32;
+            let logical_h = (phys.height as f64 / scale / 2.0) as u32;
+            if let Err(e) = splash.set_size(tauri::LogicalSize::new(logical_w, logical_h)) {
+                log::warn!("Failed to resize splashscreen: {:?}", e);
+            }
+            if let Err(e) = splash.center() {
+                log::warn!("Failed to center splashscreen: {:?}", e);
+            }
+            log::info!("Splashscreen sized to {}x{} logical px (monitor: {}x{} physical, scale: {})",
+                logical_w, logical_h, phys.width, phys.height, scale);
+            let _ = splash.show();
+        } else {
+            let _ = splash.center();
+            let _ = splash.show();
+        }
+    }
+
+    #[cfg(desktop)]
+    if let Some(window) = app.get_webview_window("main") {
+        if let Err(e) = window.set_min_size(Some(tauri::LogicalSize::new(800.0_f64, 600.0_f64))) {
+            log::warn!("Failed to set minimum window size: {:?}", e);
+        }
+    }
+
+    // Windows: remove native titlebar and apply border colour.
+    #[cfg(windows)]
+    {
+        if let Some(window) = app.get_webview_window("main") {
+            if let Err(e) = window.set_decorations(false) {
+                log::error!("Failed to remove Windows decorations: {:?}", e);
+            }
+            apply_window_styling(&window);
+        }
+    }
+
+    // Linux: set taskbar icon and remove native titlebar.
+    #[cfg(target_os = "linux")]
+    {
+        if let Some(window) = app.get_webview_window("main") {
+            let icon_bytes = include_bytes!("../icons/128x128.png");
+            if let Ok(icon) = tauri::image::Image::from_bytes(icon_bytes) {
+                if let Err(e) = window.set_icon(icon) {
+                    log::error!("Failed to set window icon: {:?}", e);
+                }
+            }
+            if let Err(e) = window.set_decorations(false) {
+                log::error!("Failed to remove Linux decorations: {:?}", e);
+            }
+        }
+    }
+
+    // macOS: apply decorum overlay titlebar with traffic lights inset.
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(window) = app.get_webview_window("main") {
+            log::info!("Applying decorum plugin for macOS traffic lights");
+            match window.create_overlay_titlebar() {
+                Ok(_) => {
+                    log::info!("Successfully created overlay titlebar");
+                    if let Err(e) = window.set_traffic_lights_inset(12.0, 16.0) {
+                        log::error!("Failed to set traffic lights inset: {:?}", e);
+                    }
+                }
+                Err(e) => log::error!("Failed to create overlay titlebar: {:?}", e),
+            }
+        } else {
+            log::error!("Failed to get main window for decorum setup");
+        }
+    }
+}
+
+/// Initialise and register proxy/mock/cert Tauri state.
+fn init_proxy_state(app: &mut tauri::App) {
+    let config_dir = dirs_next::home_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+        .join(".apinox");
+    std::fs::create_dir_all(&config_dir).ok();
+
+    let proxy_storage = Arc::new(storage::rules::RulesStorage::new(config_dir.clone()));
+
+    let replacer_svc = replacer::service::new_shared();
+    {
+        let mut svc = replacer_svc.lock().unwrap();
+        for rule in proxy_storage.load_replace_rules() {
+            svc.add_rule(rule);
+        }
+    }
+
+    let breakpoint_svc = breakpoint::service::new_shared();
+    {
+        let mut svc = breakpoint_svc.blocking_lock();
+        svc.set_rules(proxy_storage.load_breakpoint_rules());
+    }
+
+    let filewatcher_svc = filewatcher::service::new_shared();
+    {
+        let mut svc = filewatcher_svc.blocking_lock();
+        for watch in proxy_storage.load_file_watches() {
+            svc.add_watch(watch);
+        }
+    }
+
+    let mock_state = mock::state::new_shared();
+    {
+        let mut state = mock_state.blocking_lock();
+        state.config.rules = proxy_storage.load_mock_rules();
+    }
+
+    let cert_manager = Arc::new(certificates::manager::CertManager::new(config_dir));
+    if !cert_manager.info().exists {
+        if let Err(e) = cert_manager.generate() {
+            log::warn!("[Setup] Failed to generate CA certificate: {}", e);
+        }
+    }
+
+    // Re-spawn file watchers for persisted watches.
+    {
+        let watches = filewatcher_svc.blocking_lock().get_watches();
+        for watch in watches {
+            commands::filewatcher_server::spawn_watcher(
+                watch,
+                filewatcher_svc.clone(),
+                app.handle().clone(),
+            );
+        }
+    }
+
+    app.manage(ProxyAppState {
+        proxy: proxy::state::new_shared(),
+        mock: mock_state,
+        replacer: replacer_svc,
+        breakpoint: breakpoint_svc,
+        filewatcher: filewatcher_svc,
+        storage: proxy_storage,
+        cert_manager,
+    });
+
+    log::info!("[Proxy] Proxy/mock/cert services initialised");
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -366,220 +553,9 @@ pub fn run() {
             commands::sniffer_server::clear_system_proxy,
         ])
         .setup(|app| {
-            
-            // Configure logging to file for production diagnostics
-            let log_dir = app.path().app_log_dir().unwrap_or_else(|_| {
-                app.path().app_data_dir().unwrap_or_else(|_| std::env::temp_dir())
-            });
-            
-            std::fs::create_dir_all(&log_dir).ok();
-            
-            let log_file = log_dir.join("apinox.log");
-            
-            // Store log file path for diagnostics
-            if let Ok(mut guard) = LOG_FILE_PATH.lock() {
-                *guard = Some(log_file.to_string_lossy().to_string());
-            }
-            
-            app.handle().plugin(
-                tauri_plugin_log::Builder::default()
-                    .level(log::LevelFilter::Debug)  // Enable DEBUG level for detailed logs
-                    .targets([
-                        tauri_plugin_log::Target::new(
-                            tauri_plugin_log::TargetKind::LogDir { file_name: Some("apinox.log".to_string()) }
-                        ),
-                        tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
-                        // Add Webview target for DevTools console
-                        tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Webview),                    ])
-                    .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll)
-                    .max_file_size(5_000_000) // 5 MB
-                    .build(),
-            )?;
-
-            // Initialize decorum plugin on desktop only (mobile doesn't support it)
-            #[cfg(desktop)]
-            app.handle().plugin(tauri_plugin_decorum::init())?;
-
-            log::info!("APInox starting (version: {})", env!("CARGO_PKG_VERSION"));
-            log::info!("Debug mode: {}", cfg!(debug_assertions));
-            if let Ok(guard) = LOG_FILE_PATH.lock() {
-                if let Some(ref path) = *guard {
-                    log::info!("Logs will be written to: {}", path);
-                }
-            }
-
-            // On Android, set APINOX_CONFIG_DIR to app data dir so all storage modules
-            // use the correct sandboxed path (they all check this env var first).
-            #[cfg(target_os = "android")]
-            {
-                if let Ok(data_dir) = app.path().app_data_dir() {
-                    let config_dir = data_dir.join("apinox");
-                    std::env::set_var("APINOX_CONFIG_DIR", config_dir.to_string_lossy().as_ref());
-                    log::info!("Android: APINOX_CONFIG_DIR set to {:?}", config_dir);
-                }
-            }
-
-            // Size and center the splashscreen to half the primary monitor dimensions.
-            // The window is hidden (visible: false in config) and will be shown by the
-            // splashscreen HTML once the image has finished loading, ensuring the image
-            // is visible the instant the window appears.
-            #[cfg(desktop)]
-            if let Some(splash) = app.get_webview_window("splashscreen") {
-                if let Ok(Some(monitor)) = splash.primary_monitor() {
-                    let scale = monitor.scale_factor();
-                    let phys = monitor.size();
-                    let logical_w = (phys.width as f64 / scale / 2.0) as u32;
-                    let logical_h = (phys.height as f64 / scale / 2.0) as u32;
-                    if let Err(e) = splash.set_size(tauri::LogicalSize::new(logical_w, logical_h)) {
-                        log::warn!("Failed to resize splashscreen: {:?}", e);
-                    }
-                    if let Err(e) = splash.center() {
-                        log::warn!("Failed to center splashscreen: {:?}", e);
-                    }
-                    log::info!("Splashscreen sized to {}x{} logical px (monitor: {}x{} physical, scale: {})",
-                        logical_w, logical_h, phys.width, phys.height, scale);
-                    let _ = splash.show();
-                } else {
-                    // No monitor info — just center with default size and show immediately
-                    let _ = splash.center();
-                    let _ = splash.show();
-                }
-            }
-
-            // Set minimum window size on desktop only (mobile has no concept of min size)
-            #[cfg(desktop)]
-            if let Some(window) = app.get_webview_window("main") {
-                if let Err(e) = window.set_min_size(Some(tauri::LogicalSize::new(800.0_f64, 600.0_f64))) {
-                    log::warn!("Failed to set minimum window size: {:?}", e);
-                }
-            }
-
-            // Apply custom window styling for Windows
-            #[cfg(windows)]
-            {
-                if let Some(window) = app.get_webview_window("main") {
-                    // Remove native Windows titlebar - we use our own custom React titlebar
-                    if let Err(e) = window.set_decorations(false) {
-                        log::error!("Failed to remove Windows decorations: {:?}", e);
-                    }
-                    apply_window_styling(&window);
-                }
-            }
-
-            // Set window icon explicitly (required on Linux for taskbar/dock)
-            #[cfg(target_os = "linux")]
-            {
-                if let Some(window) = app.get_webview_window("main") {
-                    let icon_bytes = include_bytes!("../icons/128x128.png");
-                    if let Ok(icon) = tauri::image::Image::from_bytes(icon_bytes) {
-                        if let Err(e) = window.set_icon(icon) {
-                            log::error!("Failed to set window icon: {:?}", e);
-                        }
-                    }
-                }
-            }
-
-            // Remove native titlebar on Linux - we use our own custom React titlebar
-            #[cfg(target_os = "linux")]
-            {
-                if let Some(window) = app.get_webview_window("main") {
-                    if let Err(e) = window.set_decorations(false) {
-                        log::error!("Failed to remove Linux decorations: {:?}", e);
-                    }
-                }
-            }
-            
-            // Apply decorum plugin for macOS traffic lights
-            #[cfg(target_os = "macos")]
-            {
-                if let Some(window) = app.get_webview_window("main") {
-                    log::info!("Applying decorum plugin for macOS traffic lights");
-                    match window.create_overlay_titlebar() {
-                        Ok(_) => {
-                            log::info!("Successfully created overlay titlebar");
-                            // Set traffic lights inset to align with our custom titlebar
-                            if let Err(e) = window.set_traffic_lights_inset(12.0, 16.0) {
-                                log::error!("Failed to set traffic lights inset: {:?}", e);
-                            }
-                        },
-                        Err(e) => {
-                            log::error!("Failed to create overlay titlebar: {:?}", e);
-                        }
-                    }
-                } else {
-                    log::error!("Failed to get main window for decorum setup");
-                }
-            }
-
-            // ── Proxy/mock/cert state setup (APIprox integration) ──────────
-            {
-                let config_dir = dirs_next::home_dir()
-                    .unwrap_or_else(|| std::path::PathBuf::from("."))
-                    .join(".apinox");
-                std::fs::create_dir_all(&config_dir).ok();
-
-                let proxy_storage = Arc::new(storage::rules::RulesStorage::new(config_dir.clone()));
-
-                let replacer_svc = replacer::service::new_shared();
-                {
-                    let mut svc = replacer_svc.lock().unwrap();
-                    for rule in proxy_storage.load_replace_rules() {
-                        svc.add_rule(rule);
-                    }
-                }
-
-                let breakpoint_svc = breakpoint::service::new_shared();
-                {
-                    let mut svc = breakpoint_svc.blocking_lock();
-                    svc.set_rules(proxy_storage.load_breakpoint_rules());
-                }
-
-                let filewatcher_svc = filewatcher::service::new_shared();
-                {
-                    let mut svc = filewatcher_svc.blocking_lock();
-                    for watch in proxy_storage.load_file_watches() {
-                        svc.add_watch(watch);
-                    }
-                }
-
-                let mock_state = mock::state::new_shared();
-                {
-                    let mut state = mock_state.blocking_lock();
-                    state.config.rules = proxy_storage.load_mock_rules();
-                }
-
-                let cert_manager = Arc::new(certificates::manager::CertManager::new(config_dir));
-                if !cert_manager.info().exists {
-                    if let Err(e) = cert_manager.generate() {
-                        log::warn!("[Setup] Failed to generate CA certificate: {}", e);
-                    }
-                }
-
-                // Re-spawn file watchers for persisted watches
-                {
-                    let watches = filewatcher_svc.blocking_lock().get_watches();
-                    for watch in watches {
-                        commands::filewatcher_server::spawn_watcher(
-                            watch,
-                            filewatcher_svc.clone(),
-                            app.handle().clone(),
-                        );
-                    }
-                }
-
-                app.manage(ProxyAppState {
-                    proxy: proxy::state::new_shared(),
-                    mock: mock_state,
-                    replacer: replacer_svc,
-                    breakpoint: breakpoint_svc,
-                    filewatcher: filewatcher_svc,
-                    storage: proxy_storage,
-                    cert_manager,
-                });
-
-                log::info!("[Proxy] Proxy/mock/cert services initialised");
-            }
-
+            init_logging(app)?;
+            init_window(app);
+            init_proxy_state(app);
             Ok(())
         })
         .on_window_event(|_window, event| {

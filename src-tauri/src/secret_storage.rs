@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+use crate::utils::resolve_config_dir;
 
 const SECRET_REFERENCE_PREFIX: &str = "__SECRET__:";
 const ALGORITHM_IV_SIZE: usize = 12; // GCM nonce size
@@ -19,16 +20,7 @@ struct SecretsData {
 
 /// Get path to encryption key file
 fn get_key_path() -> Result<PathBuf, String> {
-    let config_dir = std::env::var("APINOX_CONFIG_DIR")
-        .ok()
-        .and_then(|dir| if dir.trim().is_empty() { None } else { Some(PathBuf::from(dir)) })
-        .or_else(|| {
-            let home = std::env::var("HOME")
-                .or_else(|_| std::env::var("USERPROFILE"))
-                .ok()?;
-            Some(PathBuf::from(home).join(".apinox"))
-        })
-        .ok_or("Could not determine config directory")?;
+    let config_dir = resolve_config_dir()?;
 
     if !config_dir.exists() {
         fs::create_dir_all(&config_dir)
@@ -40,16 +32,7 @@ fn get_key_path() -> Result<PathBuf, String> {
 
 /// Get path to encrypted secrets file
 fn get_secrets_path() -> Result<PathBuf, String> {
-    let config_dir = std::env::var("APINOX_CONFIG_DIR")
-        .ok()
-        .and_then(|dir| if dir.trim().is_empty() { None } else { Some(PathBuf::from(dir)) })
-        .or_else(|| {
-            let home = std::env::var("HOME")
-                .or_else(|_| std::env::var("USERPROFILE"))
-                .ok()?;
-            Some(PathBuf::from(home).join(".apinox"))
-        })
-        .ok_or("Could not determine config directory")?;
+    let config_dir = resolve_config_dir()?;
 
     Ok(config_dir.join("secrets.enc"))
 }

@@ -29,6 +29,7 @@ import { WorkflowBuilderModal } from './modals/WorkflowBuilderModal';
 import { BulkImportModal, BulkImportResult } from './modals/BulkImportModal';
 import { ApiRequest, TestCase, TestStep, SidebarView, RequestHistoryEntry, WsdlDiff, ApiInterface, Workflow, WorkflowStep, ApinoxProject } from '@shared/models';
 import { BackendCommand, FrontendCommand } from '@shared/messages';
+import { PERF_REQUEST_ID_PREFIX } from '../constants';
 import { useMessageHandler } from '../hooks/useMessageHandler';
 import { useProject } from '../contexts/ProjectContext';
 import { useSelection } from '../contexts/SelectionContext';
@@ -307,19 +308,19 @@ const MainContent: React.FC = () => {
     // View Isolation Logic - Prevent leaking requests between contexts
     useEffect(() => {
         // If we switch TO Projects/Explorer view, and have a perf request selected -> Clear it
-        if ((activeView === SidebarView.PROJECTS || activeView === SidebarView.EXPLORER) && selectedRequest?.id && selectedRequest.id.startsWith('perf-req-')) {
+        if ((activeView === SidebarView.PROJECTS || activeView === SidebarView.EXPLORER) && selectedRequest?.id && selectedRequest.id.startsWith(PERF_REQUEST_ID_PREFIX)) {
             setSelectedRequest(null);
         }
 
         // Tests view handles its own selection logic via useTestCaseHandlers usually, but safely:
-        if (activeView === SidebarView.TESTS && selectedRequest?.id && selectedRequest.id.startsWith('perf-req-')) {
+        if (activeView === SidebarView.TESTS && selectedRequest?.id && selectedRequest.id.startsWith(PERF_REQUEST_ID_PREFIX)) {
             setSelectedRequest(null);
         }
     }, [activeView, selectedRequest, setSelectedRequest]);
 
     // If we switch TO Performance view, and have a non-perf request selected -> Clear it
     useEffect(() => {
-        if (activeView === SidebarView.PERFORMANCE && selectedRequest?.id && !selectedRequest.id.startsWith('perf-req-')) {
+        if (activeView === SidebarView.PERFORMANCE && selectedRequest?.id && !selectedRequest.id.startsWith(PERF_REQUEST_ID_PREFIX)) {
             setSelectedRequest(null);
         }
     }, [activeView, selectedRequest, setSelectedRequest]);
@@ -1883,13 +1884,13 @@ const MainContent: React.FC = () => {
                         onAdd={(target) => {
                             const req = addToTestCaseModal.request!;
                             const newStep: TestStep = {
-                                id: `step - ${Date.now()} `,
+                                id: `step-${Date.now()}`,
                                 name: req.name,
                                 type: 'request',
                                 config: {
                                     request: {
                                         ...req,
-                                        id: `req - ${Date.now()} `,
+                                        id: `req-${Date.now()}`,
                                         // Explicitly preserve requestType and bodyType to prevent defaulting to soap
                                         requestType: req.requestType || 'soap',
                                         bodyType: req.bodyType
@@ -1909,8 +1910,8 @@ const MainContent: React.FC = () => {
                                         // If creating new case
                                         if (target.type === 'new') {
                                             const newCase: TestCase = {
-                                                id: `tc - ${Date.now()} `,
-                                                name: `TestCase ${(s.testCases?.length || 0) + 1} `,
+                                                id: `tc-${Date.now()}`,
+                                                name: `TestCase ${(s.testCases?.length || 0) + 1}`,
                                                 expanded: true,
                                                 steps: [newStep]
                                             };

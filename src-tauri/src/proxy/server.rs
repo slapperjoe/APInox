@@ -23,6 +23,7 @@ use crate::certificates::sni_resolver::SniResolver;
 use crate::mock::server::find_matching_rule;
 use crate::mock::state::SharedMockState;
 use crate::proxy_models::{PausedTraffic, ProxyConfig, TrafficEvent};
+use crate::utils::{emit_traffic_event, match_pattern, CONTENT_TYPE_PLAIN};
 use crate::replacer::service::SharedReplacerService;
 
 /// Run the forward proxy server. Loops forever; cancel by aborting the spawned task.
@@ -275,14 +276,14 @@ async fn handle_http(
             }
 
             let status = rule.status_code;
-            let content_type = rule.content_type.clone().unwrap_or_else(|| "text/plain".to_string());
+            let content_type = rule.content_type.clone().unwrap_or_else(|| CONTENT_TYPE_PLAIN.to_string());
             let resp_body = rule.response_body.clone();
             let mut resp_headers: HashMap<String, String> = rule.response_headers.clone().unwrap_or_default();
             resp_headers.entry("content-type".to_string()).or_insert(content_type);
 
             let duration_ms = start.elapsed().as_millis() as u64;
             let now = Utc::now();
-            emit_traffic_event(&app, TrafficEvent {
+            emit_traffic_event(&app, &TrafficEvent {
                 id: event_id,
                 timestamp: now.timestamp_millis(),
                 timestamp_label: now.to_rfc3339(),
@@ -297,7 +298,7 @@ async fn handle_http(
                 matched_rule: Some(rule.name.clone()),
                 passthrough: Some(false),
                 source: "proxy-mock".to_string(),
-            });
+            }, "Proxy");
 
             let mut hb = Response::builder().status(status);
             for (k, v) in &resp_headers {
@@ -510,7 +511,7 @@ async fn handle_http(
 
     emit_traffic_event(
         &app,
-        TrafficEvent {
+        &TrafficEvent {
             id: event_id,
             timestamp: now.timestamp_millis(),
             timestamp_label: now.to_rfc3339(),
@@ -526,6 +527,7 @@ async fn handle_http(
             passthrough: Some(true),
             source: "proxy".to_string(),
         },
+        "Proxy",
     );
 
     // Build hyper response. resp_headers was already stripped of hop-by-hop headers
@@ -568,15 +570,9 @@ fn resolve_url(req: &Request<Incoming>, config: &ProxyConfig) -> String {
 fn error_response(status: StatusCode, msg: &str) -> Response<Full<Bytes>> {
     Response::builder()
         .status(status)
-        .header("content-type", "text/plain")
+        .header("content-type", CONTENT_TYPE_PLAIN)
         .body(Full::new(Bytes::from(msg.to_string())))
         .unwrap()
-}
-
-fn emit_traffic_event(app: &AppHandle, event: TrafficEvent) {
-    if let Err(e) = app.emit("traffic-event", &event) {
-        log::warn!("[Proxy] Failed to emit traffic-event: {}", e);
-    }
 }
 
 fn emit_paused_queue(app: &AppHandle, svc: &crate::breakpoint::service::BreakpointService) {
@@ -601,7 +597,7 @@ fn breakpoint_matches(
     rule.conditions.iter().all(|cond| {
         let pattern = &cond.pattern;
         match cond.r#type.as_str() {
-            "url" => url_matches(url, pattern, cond.is_regex),
+            "url" => match_pattern(url, pattern, cond.is_regex),
             "method" => method.eq_ignore_ascii_case(pattern),
             "statusCode" => status_code.map(|s| s.to_string() == *pattern).unwrap_or(false),
             "contains" => body.contains(pattern.as_str()),
@@ -612,12 +608,4 @@ fn breakpoint_matches(
             _ => false,
         }
     })
-}
-
-fn url_matches(url: &str, pattern: &str, is_regex: bool) -> bool {
-    if is_regex {
-        regex::Regex::new(pattern).map(|r| r.is_match(url)).unwrap_or(false)
-    } else {
-        url.contains(pattern)
-    }
 }

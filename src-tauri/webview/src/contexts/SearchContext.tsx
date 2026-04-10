@@ -22,6 +22,7 @@ import {
     searchWorkspace,
     ExploredInterface,
 } from '../utils/workspaceSearch';
+import { DEBOUNCE_MS, TREE_NAV_DELAY_MS } from '../constants';
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -108,6 +109,10 @@ export const SearchProvider: React.FC<SearchProviderProps> = ({
     // -------------------------------------------------------------------------
 
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    // Stable ref to projects — lets navigateToResult read the latest projects
+    // without being recreated on every projects change.
+    const projectsRef = useRef(projects);
+    useEffect(() => { projectsRef.current = projects; }, [projects]);
 
     // -------------------------------------------------------------------------
     // SEARCH LOGIC
@@ -166,7 +171,7 @@ export const SearchProvider: React.FC<SearchProviderProps> = ({
             setIsSearching(true);
             searchTimeoutRef.current = setTimeout(() => {
                 performSearch(query);
-            }, 300); // 300ms debounce
+            }, DEBOUNCE_MS);
         }
     }, [performSearch]);
 
@@ -190,48 +195,22 @@ export const SearchProvider: React.FC<SearchProviderProps> = ({
      */
     const navigateToResult = useCallback((result: SearchResult) => {
         const { data, type, view } = result;
-        
-        console.log('[SearchContext] Navigating to result:', { 
-            type, 
-            view, 
-            name: result.name,
-            data: {
-                projectName: data.projectName,
-                interfaceId: data.interface?.id,
-                interfaceName: data.interface?.name,
-                operationId: data.operation?.id,
-                operationName: data.operation?.name,
-                requestId: data.request?.id,
-                requestName: data.request?.name
-            }
-        });
 
         if (view === 'projects') {
-            // Switch to Projects view
             setActiveView(SidebarView.PROJECTS);
             
-            const { projectName, interface: iface, operation, request, folder } = data;
+            const { projectName, interface: iface, operation, request } = data;
 
-            // Delay to allow view switch to complete before manipulating tree state
             setTimeout(() => {
-                // Set selected project and ensure it's expanded
                 if (projectName) {
-                    console.log('[SearchContext] Step 1: Expanding project:', projectName);
                     setSelectedProjectName(projectName);
                     ensureProjectExpanded(projectName);
                 }
 
-                // Another delay for tree expansion to render
                 setTimeout(() => {
-                    // Handle different item types
                     switch (type) {
                         case 'interface':
                             if (iface && projectName) {
-                                console.log('[SearchContext] Step 2: Selecting interface:', {
-                                    id: iface.id,
-                                    name: iface.name
-                                });
-                                // Expand interface and select it
                                 ensureInterfaceExpanded(projectName, iface.name);
                                 setSelectedInterface(iface);
                                 setSelectedOperation(null);
@@ -241,119 +220,76 @@ export const SearchProvider: React.FC<SearchProviderProps> = ({
 
                         case 'operation':
                             if (operation && iface && projectName) {
-                                console.log('[SearchContext] Step 2: Expanding interface for operation:', iface.name);
-                                // Expand interface and operation
                                 ensureInterfaceExpanded(projectName, iface.name);
-                                
                                 setTimeout(() => {
-                                    console.log('[SearchContext] Step 3: Selecting operation:', {
-                                        id: operation.id,
-                                        name: operation.name
-                                    });
                                     ensureOperationExpanded(projectName, iface.name, operation.name);
-                                    // Select operation
                                     setSelectedInterface(iface);
                                     setSelectedOperation(operation);
                                     setSelectedRequest(null);
-                                }, 100);
+                                }, TREE_NAV_DELAY_MS);
                             }
                             break;
 
                         case 'request':
                             if (request && operation && iface && projectName) {
-                                console.log('[SearchContext] Step 2: Expanding interface for request:', iface.name);
-                                // Expand all parent nodes
                                 ensureInterfaceExpanded(projectName, iface.name);
-                                
                                 setTimeout(() => {
-                                    console.log('[SearchContext] Step 3: Expanding operation:', operation.name);
                                     ensureOperationExpanded(projectName, iface.name, operation.name);
-                                    
                                     setTimeout(() => {
-                                        console.log('[SearchContext] Step 4: Selecting request:', {
-                                            id: request.id,
-                                            name: request.name
-                                        });
-                                        // Select request (this should open it in editor)
                                         setSelectedInterface(iface);
                                         setSelectedOperation(operation);
                                         setSelectedRequest(request);
-                                        
-                                        console.log('[SearchContext] Selection complete. Current selection state:', {
-                                            project: projectName,
-                                            interface: { id: iface.id, name: iface.name },
-                                            operation: { id: operation.id, name: operation.name },
-                                            request: { id: request.id, name: request.name }
-                                        });
-                                    }, 100);
-                                }, 100);
+                                    }, TREE_NAV_DELAY_MS);
+                                }, TREE_NAV_DELAY_MS);
                             }
                             break;
 
                         case 'folder':
                             // TODO: Implement folder navigation
-                            // For now, just select the project
-                            console.log('[SearchContext] Folder navigation not yet implemented');
                             break;
 
                         default:
-                            console.warn('[SearchContext] Unknown result type:', type);
+                            console.warn(`[SearchContext] Unknown result type: ${type}`);
                     }
-                }, 100);
-            }, 100);
+                }, TREE_NAV_DELAY_MS);
+            }, TREE_NAV_DELAY_MS);
         } else if (view === 'explorer') {
-            // Switch to Explorer view
             setActiveView(SidebarView.EXPLORER);
-            
-            // Handle Explorer navigation
             setTimeout(() => {
                 const { operation } = data;
                 if (operation) {
-                    console.log('[SearchContext] Selecting explorer operation:', operation.name);
                     setSelectedOperation(operation);
                     setSelectedInterface(null);
                     setSelectedRequest(null);
                 }
-            }, 100);
+            }, TREE_NAV_DELAY_MS);
         } else if (view === 'tests') {
-            // Switch to Tests view
             setActiveView(SidebarView.TESTS);
-            
             const { projectName, testSuiteId, testCaseId } = data;
-            
-            console.log('[SearchContext] Navigating to test:', { projectName, testSuiteId, testCaseId });
-            
-            // Delay to allow view switch to complete
+
             setTimeout(() => {
-                // Find the project and test suite
                 if (projectName && testSuiteId) {
-                    const project = projects.find(p => p.name === projectName);
+                    const project = projectsRef.current.find(p => p.name === projectName);
                     if (project) {
                         const testSuite = project.testSuites?.find(s => s.id === testSuiteId);
-                        
                         if (testSuite) {
-                            console.log('[SearchContext] Found test suite:', testSuite);
                             setSelectedTestSuite(testSuite);
-                            
-                            // If selecting a specific test case
                             if (testCaseId && type === 'test-case') {
                                 const testCase = testSuite.testCases?.find(c => c.id === testCaseId);
                                 if (testCase) {
-                                    console.log('[SearchContext] Found test case:', testCase);
                                     setSelectedTestCase(testCase);
                                 }
                             } else {
                                 setSelectedTestCase(null);
                             }
                         } else {
-                            console.warn('[SearchContext] Test suite not found:', testSuiteId);
+                            console.warn(`[SearchContext] Test suite not found: ${testSuiteId}`);
                         }
                     }
                 }
-            }, 100);
+            }, TREE_NAV_DELAY_MS);
         }
     }, [
-        projects,
         setActiveView,
         setSelectedProjectName,
         ensureProjectExpanded,
@@ -393,7 +329,6 @@ export const SearchProvider: React.FC<SearchProviderProps> = ({
      */
     const navigateToLastResult = useCallback(() => {
         if (lastSelectedResult) {
-            console.log('[SearchContext] Navigating to last result:', lastSelectedResult);
             navigateToResult(lastSelectedResult);
         }
     }, [lastSelectedResult, navigateToResult]);

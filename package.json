@@ -7,7 +7,7 @@
     "url": "https://github.com/slapperjoe/apinox.git"
   },
   "license": "MIT",
-  "version": "0.19.148",
+  "version": "0.19.153",
   "scripts": {
     "clean": "node scripts/clean.js",
     "clean:rust": "cargo clean --manifest-path src-tauri/Cargo.toml",
@@ -25,6 +25,7 @@
     "prepare": "npx simple-git-hooks",
     "increment-build": "node scripts/version.js increment",
     "tauri:test": "npm run build:packages && cd src-tauri/webview && npm install && cd ../.. && npx tauri dev",
+    "tauri:run": "npx tauri dev",
     "tauri:dev": "node scripts/version.js increment && node scripts/version.js sync && npm run build:packages && cd src-tauri/webview && npm install && cd ../.. && npx tauri dev",
     "tauri:build": "node scripts/version.js build",
     "tauri:ios": "node scripts/version.js increment && node scripts/version.js sync && npm run compile-webview && npx tauri ios dev",

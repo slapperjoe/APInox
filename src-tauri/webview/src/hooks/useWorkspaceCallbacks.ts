@@ -5,9 +5,15 @@
  * Extracted from App.tsx to reduce inline handler complexity.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { ApinoxProject, TestStep, TestCase, TestStepType, RequestExtractor } from '@shared/models';
 import { bridge, isVsCode } from '../utils/bridge';
+import {
+    deleteTestStep,
+    reorderTestStep,
+    updateTestStep,
+    addTestStep,
+} from '../utils/projectUpdateHelpers';
 
 interface UseWorkspaceCallbacksParams {
     // Test case state
@@ -77,32 +83,37 @@ export function useWorkspaceCallbacks({
     onPickRequestForTestCase
 }: UseWorkspaceCallbacksParams): UseWorkspaceCallbacksReturn {
 
-    const handleSelectStep = useCallback((step: TestStep | null) => {
-        if (step) {
-            // Look up the current step from projects state to get latest edits (e.g., assertions)
-            // Search ALL test cases for the step by ID to avoid relying on stale selectedTestCase
-            let currentStep = step;
-            let foundInProjects = false;
-            outer: for (const proj of projects) {
-                for (const suite of (proj.testSuites || [])) {
-                    for (const tc of (suite.testCases || [])) {
-                        const foundStep = tc.steps.find(s => s.id === step.id);
-                        if (foundStep) {
-                            // Merge: Use foundStep but preserve scriptContent from incoming step if foundStep lacks it
-                            // This handles the case where projects state was restored from cache without scriptContent
-                            if (step.type === 'script' && step.config.scriptContent && !foundStep.config.scriptContent) {
-                                currentStep = { ...foundStep, config: { ...foundStep.config, scriptContent: step.config.scriptContent } };
-                            } else {
-                                currentStep = foundStep;
-                            }
-                            foundInProjects = true;
-                            break outer;
-                        }
+    // Flat step index — rebuilt only when `projects` changes.
+    // Replaces the O(projects × suites × cases × steps) nested loop in handleSelectStep.
+    const stepIndex = useMemo(() => {
+        const index = new Map<string, TestStep>();
+        for (const proj of projects) {
+            for (const suite of proj.testSuites ?? []) {
+                for (const tc of suite.testCases ?? []) {
+                    for (const s of tc.steps ?? []) {
+                        index.set(s.id, s);
                     }
                 }
             }
-            if (!foundInProjects) {
-                // Step not found in projects, using passed-in step
+        }
+        return index;
+    }, [projects]);
+
+    const handleSelectStep = useCallback((step: TestStep | null) => {
+        if (step) {
+            // Look up the current step from the pre-built index to get latest edits (e.g., assertions).
+            const found = stepIndex.get(step.id);
+            let currentStep: TestStep;
+            if (found) {
+                // Preserve scriptContent from the incoming step if the indexed copy lacks it
+                // (can happen when projects state is restored from cache without scriptContent).
+                if (step.type === 'script' && step.config.scriptContent && !found.config.scriptContent) {
+                    currentStep = { ...found, config: { ...found.config, scriptContent: step.config.scriptContent } };
+                } else {
+                    currentStep = found;
+                }
+            } else {
+                currentStep = step;
             }
 
             // Update selectedStep with the fresh version found in projects (or the passed one if not found)
@@ -130,90 +141,31 @@ export function useWorkspaceCallbacks({
             setSelectedRequest(null);
             setResponse(null);
         }
-    }, [selectedTestCase, testExecution, projects, setSelectedStep, setSelectedRequest, setResponse]);
+    }, [selectedTestCase, testExecution, stepIndex, setSelectedStep, setSelectedRequest, setResponse]);
 
     const handleDeleteStep = useCallback((stepId: string) => {
         if (!selectedTestCase) return;
-        setProjects(prev => prev.map(p => {
-            const suite = p.testSuites?.find(s => s.testCases?.some(tc => tc.id === selectedTestCase.id));
-            if (!suite) return p;
-
-            const updatedSuite = {
-                ...suite,
-                testCases: suite.testCases?.map(tc => {
-                    if (tc.id !== selectedTestCase.id) return tc;
-                    return {
-                        ...tc,
-                        steps: tc.steps.filter(s => s.id !== stepId)
-                    };
-                })
-            };
-            const updatedProject = { ...p, testSuites: p.testSuites!.map(s => s.id === suite.id ? updatedSuite : s), dirty: true };
-            // setTimeout(() => saveProject(updatedProject), 0);
-            return updatedProject;
-        }));
-
+        setProjects(prev => deleteTestStep(prev, selectedTestCase.id, stepId));
         if (selectedStep?.id === stepId) {
             setSelectedStep(null);
             setSelectedRequest(null);
             setResponse(null);
         }
-    }, [selectedTestCase, selectedStep, setProjects, saveProject, setSelectedStep, setSelectedRequest, setResponse]);
+    }, [selectedTestCase, selectedStep, setProjects, setSelectedStep, setSelectedRequest, setResponse]);
 
     const handleMoveStep = useCallback((stepId: string, direction: 'up' | 'down') => {
         if (!selectedTestCase) return;
-        setProjects(prev => prev.map(p => {
-            const suite = p.testSuites?.find(s => s.testCases?.some(tc => tc.id === selectedTestCase.id));
-            if (!suite) return p;
-
-            const updatedSuite = {
-                ...suite,
-                testCases: suite.testCases?.map(tc => {
-                    if (tc.id !== selectedTestCase.id) return tc;
-                    const steps = [...tc.steps];
-                    const index = steps.findIndex(s => s.id === stepId);
-                    if (index === -1) return tc;
-
-                    if (direction === 'up' && index > 0) {
-                        [steps[index], steps[index - 1]] = [steps[index - 1], steps[index]];
-                    } else if (direction === 'down' && index < steps.length - 1) {
-                        [steps[index], steps[index + 1]] = [steps[index + 1], steps[index]];
-                    } else {
-                        return tc; // No change
-                    }
-
-                    return { ...tc, steps };
-                })
-            };
-            const updatedProject = { ...p, testSuites: p.testSuites!.map(s => s.id === suite.id ? updatedSuite : s), dirty: true };
-            // setTimeout(() => saveProject(updatedProject), 0);
-            return updatedProject;
-        }));
-    }, [selectedTestCase, setProjects, saveProject]);
+        setProjects(prev => reorderTestStep(prev, selectedTestCase.id, stepId, direction));
+    }, [selectedTestCase, setProjects]);
 
     const handleUpdateStep = useCallback((updatedStep: TestStep) => {
-        if (!selectedTestCase) {
-            return;
-        }
-        setProjects(prev => prev.map(p => {
-            const suite = p.testSuites?.find(s => s.testCases?.some(tc => tc.id === selectedTestCase.id));
-            if (!suite) return p;
-
-            const updatedSuite = {
-                ...suite,
-                testCases: suite.testCases?.map(tc => {
-                    if (tc.id !== selectedTestCase.id) return tc;
-                    return {
-                        ...tc,
-                        steps: tc.steps.map(s => s.id === updatedStep.id ? updatedStep : s)
-                    };
-                })
-            };
-
-            const updatedProject = { ...p, testSuites: p.testSuites!.map(s => s.id === suite.id ? updatedSuite : s), dirty: true };
-            setTimeout(() => saveProject(updatedProject), 0);
-            return updatedProject;
-        }));
+        if (!selectedTestCase) return;
+        setProjects(prev => {
+            const updated = updateTestStep(prev, selectedTestCase.id, updatedStep.id, () => updatedStep);
+            const project = updated.find(p => p.testSuites?.some(s => s.testCases?.some(tc => tc.id === selectedTestCase.id)));
+            if (project) setTimeout(() => saveProject(project), 0);
+            return updated;
+        });
         setSelectedStep(updatedStep);
     }, [selectedTestCase, setProjects, saveProject, setSelectedStep]);
 
@@ -224,87 +176,36 @@ export function useWorkspaceCallbacks({
     }, [setSelectedRequest, setSelectedStep, setResponse]);
 
     const handleAddStep = useCallback((caseId: string, type: TestStepType) => {
-        if (type === 'delay') {
-            setProjects(prev => prev.map(p => {
-                const suite = p.testSuites?.find(s => s.testCases?.some(tc => tc.id === caseId));
-                if (!suite) return p;
+        const newStepsByType: Record<string, TestStep | null> = {
+            delay: { id: `step-${Date.now()}`, name: 'Delay', type: 'delay', config: { delayMs: 1000 } },
+            script: {
+                id: `step-${Date.now()}`,
+                name: 'Script',
+                type: 'script',
+                config: { scriptContent: "// Script Step\n// Available: context, log(msg), goto(stepName), fail(reason), delay(ms)\n\nlog('Script started');\n" },
+            },
+            workflow: { id: `step-${Date.now()}`, name: 'Workflow Step', type: 'workflow', config: { workflowId: '', workflowVariables: {} } },
+            request: null,
+        };
 
-                const updatedSuite = {
-                    ...suite,
-                    testCases: suite.testCases?.map(tc => {
-                        if (tc.id !== caseId) return tc;
-                        const newStep: TestStep = {
-                            id: `step-${Date.now()}`,
-                            name: 'Delay',
-                            type: 'delay',
-                            config: { delayMs: 1000 }
-                        };
-                        return { ...tc, steps: [...tc.steps, newStep] };
-                    }) || []
-                };
-
-                const updatedProject = { ...p, testSuites: p.testSuites!.map(s => s.id === suite.id ? updatedSuite : s), dirty: true };
-                setTimeout(() => saveProject(updatedProject), 0);
-                return updatedProject;
-            }));
-        } else if (type === 'script') {
-            setProjects(prev => prev.map(p => {
-                const suite = p.testSuites?.find(s => s.testCases?.some(tc => tc.id === caseId));
-                if (!suite) return p;
-
-                const updatedSuite = {
-                    ...suite,
-                    testCases: suite.testCases?.map(tc => {
-                        if (tc.id !== caseId) return tc;
-                        const newStep: TestStep = {
-                            id: `step-${Date.now()}`,
-                            name: 'Script',
-                            type: 'script',
-                            config: {
-                                scriptContent: "// Script Step\n// Available: context, log(msg), goto(stepName), fail(reason), delay(ms)\n\nlog('Script started');\n"
-                            }
-                        };
-                        return { ...tc, steps: [...tc.steps, newStep] };
-                    }) || []
-                };
-
-                const updatedProject = { ...p, testSuites: p.testSuites!.map(s => s.id === suite.id ? updatedSuite : s), dirty: true };
-                setTimeout(() => saveProject(updatedProject), 0);
-                return updatedProject;
-            }));
-        } else if (type === 'workflow') {
-            setProjects(prev => prev.map(p => {
-                const suite = p.testSuites?.find(s => s.testCases?.some(tc => tc.id === caseId));
-                if (!suite) return p;
-
-                const updatedSuite = {
-                    ...suite,
-                    testCases: suite.testCases?.map(tc => {
-                        if (tc.id !== caseId) return tc;
-                        const newStep: TestStep = {
-                            id: `step-${Date.now()}`,
-                            name: 'Workflow Step',
-                            type: 'workflow',
-                            config: {
-                                workflowId: '',
-                                workflowVariables: {}
-                            }
-                        };
-                        return { ...tc, steps: [...tc.steps, newStep] };
-                    }) || []
-                };
-
-                const updatedProject = { ...p, testSuites: p.testSuites!.map(s => s.id === suite.id ? updatedSuite : s), dirty: true };
-                setTimeout(() => saveProject(updatedProject), 0);
-                return updatedProject;
-            }));
-        } else if (type === 'request') {
+        if (type === 'request') {
             if (isVsCode()) {
                 bridge.sendMessage({ command: 'pickOperationForTestCase', caseId });
             } else {
                 onPickRequestForTestCase?.(caseId);
             }
+            return;
         }
+
+        const newStep = newStepsByType[type];
+        if (!newStep) return;
+
+        setProjects(prev => {
+            const updated = addTestStep(prev, caseId, newStep);
+            const project = updated.find(p => p.testSuites?.some(s => s.testCases?.some(tc => tc.id === caseId)));
+            if (project) setTimeout(() => saveProject(project), 0);
+            return updated;
+        });
     }, [setProjects, saveProject, onPickRequestForTestCase]);
 
     const handleToggleLayout = useCallback(() => {

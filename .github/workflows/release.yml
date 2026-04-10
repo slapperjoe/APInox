@@ -270,7 +270,7 @@ jobs:
 
       - name: Build Android APK (signed release)
         if: env.ANDROID_KEYSTORE != ''
-        run: npx tauri android build
+        run: npx tauri android build --apk --split-per-abi
         env:
           NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
           TAURI_ANDROID_SIGNING_KEY_STORE: ${{ runner.temp }}/release.keystore

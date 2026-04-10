@@ -66,25 +66,33 @@ export type BodyType = 'xml' | 'json' | 'graphql' | 'text' | 'form-data' | 'bina
 /** REST authentication type */
 export type RestAuthType = 'none' | 'basic' | 'bearer' | 'apiKey' | 'oauth2';
 
-/** REST authentication configuration */
+export interface BasicAuthConfig {
+    username: string;
+    password: string;
+}
+
+export interface BearerAuthConfig {
+    token: string;
+}
+
+export interface ApiKeyAuthConfig {
+    key: string;
+    value: string;
+    addTo: 'header' | 'query';
+}
+
+export interface OAuth2Config {
+    accessToken: string;
+    tokenType?: string;
+}
+
+/** REST authentication configuration (union-typed: each auth variant has its own nested object) */
 export interface RestAuthConfig {
     type: RestAuthType;
-    // Basic Auth
-    username?: string;
-    password?: string;
-    // Bearer Token / API Key
-    token?: string;
-    // API Key specifics
-    apiKeyIn?: 'header' | 'query';
-    apiKeyName?: string;
-    // OAuth2 (future)
-    oauth2Config?: {
-        authUrl?: string;
-        tokenUrl?: string;
-        clientId?: string;
-        clientSecret?: string;
-        scope?: string;
-    };
+    basic?: BasicAuthConfig;
+    bearer?: BearerAuthConfig;
+    apiKey?: ApiKeyAuthConfig;
+    oauth2?: OAuth2Config;
 }
 
 /** REST-specific request configuration */

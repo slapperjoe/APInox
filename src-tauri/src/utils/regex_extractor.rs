@@ -15,7 +15,7 @@ impl RegexExtractor {
     /// Extracted value or None if no match
     /// 
     /// # Examples
-    /// ```
+    /// ```ignore
     /// // Extract token from JSON
     /// extract(r#"{"token":"abc123"}"#, r#""token":"([^"]+)""#) // Returns: Some("abc123")
     /// 
@@ -54,7 +54,7 @@ impl RegexExtractor {
     /// Vector of extracted values
     /// 
     /// # Examples
-    /// ```
+    /// ```ignore
     /// extractAll("<id>1</id><id>2</id>", r"<id>(\d+)</id>") // Returns: vec!["1", "2"]
     /// ```
     pub fn extract_all(text: &str, pattern: &str) -> Vec<String> {
