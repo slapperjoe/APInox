@@ -45,8 +45,6 @@ pub struct NetworkConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub default_timeout: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub retry_count: Option<i32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub proxy: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub strict_ssl: Option<bool>,
@@ -90,7 +88,6 @@ impl Default for ApinoxConfig {
             version: 1,
             network: Some(NetworkConfig {
                 default_timeout: Some(30),
-                retry_count: Some(3),
                 proxy: Some(String::new()),
                 strict_ssl: Some(true),
             }),

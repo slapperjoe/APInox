@@ -223,32 +223,38 @@ await invoke('start_long_operation', { params: { ... } });</code></pre>
 
   <!-- ================================================ -->
   <section>
-    <h2>4. APInox's Bridge — The Dual-Mode Abstraction</h2>
-    <p>APInox has an interesting historical layer: the <code>bridge.ts</code> file was originally designed for a <em>sidecar</em> (postMessage to a Node.js process). As functionality migrated to Rust, the bridge became a hybrid:</p>
+    <h2>4. APInox's Bridge — The Unified Abstraction</h2>
+    <p>APInox's <code>bridge.ts</code> was originally written for a sidecar (a Node.js process). That migration is complete — the bridge now routes all commands to the Rust backend. It exposes two patterns:</p>
 
-    <pre class="language-typescript"><code>// bridge.ts — the two paths:
+    <pre class="language-typescript"><code>// bridge.ts — the two patterns:
 
-// PATH 1: Direct Tauri invoke (pure Rust commands)
+// PATTERN 1: Direct Tauri invoke (simple queries and CRUD)
 export async function invokeTauriCommand&lt;T&gt;(command: string, args?: any): Promise&lt;T&gt; {
     await ensureTauriInitialized();
     return tauriInvoke(command, args);   // calls Rust directly
 }
 
-// PATH 2: Legacy sidecar message routing (being phased out)
-export async function sendMessage(message: BridgeMessage): Promise&lt;BackendMessage&gt; {
-    // Routes to the Node.js sidecar process via HTTP
-    // ...
-}
+// PATTERN 2: Event-driven bridge (async ops that emit updates)
+export const bridge = {
+    sendMessage(message: BridgeMessage): void {
+        // Calls Rust via invokeRustCommand(), then emits the
+        // response as a backend event to all registered listeners.
+    },
+    sendMessageAsync&lt;T&gt;(message: BridgeMessage): Promise&lt;T&gt; {
+        // Same, but awaitable — returns the Rust response directly.
+    },
+};
 
 // Usage in components:
-// Modern (Rust):
-const project = await bridge.invokeTauriCommand('load_project', { dirPath });
+// Simple query (direct invoke):
+const version = await invokeTauriCommand&lt;string&gt;('get_app_version');
 
-// Legacy (sidecar HTTP — being migrated):
-const result = await bridge.sendMessage({ command: 'parseWsdl', url });
+// Async operation with events (bridge):
+bridge.sendMessage({ command: 'executeRequest', request: { ... } });
+// → response arrives via bridge.addListener(...)
 </code></pre>
 
-    <div class="callout callout-warn">⚠️ The dual bridge is a migration artifact. New Tauri projects should use <code>invoke()</code> exclusively — no sidecar needed. The pattern to learn is the <code>invoke()</code> path; the <code>sendMessage()</code> path is legacy.</div>
+    <div class="callout">Both paths call Rust — there is no longer a sidecar or HTTP intermediary. <code>sendMessage()</code> is preferred for operations that emit multiple updates (test runs, WSDL parsing), while <code>invokeTauriCommand()</code> is preferred for simple request/response queries. New Tauri projects can use <code>invoke()</code> directly without the bridge abstraction.</div>
   </section>
 
   <!-- ================================================ -->

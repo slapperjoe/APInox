@@ -33,9 +33,8 @@
     <p>A Tauri production build compiles everything into a single native installer. The pipeline has four stages:</p>
 
     <pre><code>1. Frontend build      → npm/vite builds React → webview/dist/
-2. Sidecar compile     → tsc + pkg → apinox-sidecar binary (if used)
-3. Rust compile        → cargo build --release → libapinox.so / .dylib / .dll
-4. Tauri bundle        → packs webview + Rust into installer / app bundle</code></pre>
+2. Rust compile        → cargo build --release → libapinox.so / .dylib / .dll
+3. Tauri bundle        → packs webview + Rust into installer / app bundle</code></pre>
 
     <pre class="language-bash"><code># The single command that does all of this:
 npm run tauri:build
@@ -43,9 +42,9 @@ npm run tauri:build
 npx tauri build
 
 # Output (from tauri.conf.json bundle.targets):
-# macOS:   src-tauri/target/release/bundle/dmg/APInox_0.16.114_x64.dmg
-# Windows: src-tauri/target/release/bundle/nsis/APInox_0.16.114_x64-setup.exe
-# Linux:   src-tauri/target/release/bundle/deb/apinox_0.16.114_amd64.deb</code></pre>
+# macOS:   src-tauri/target/release/bundle/dmg/APInox_0.19.146_x64.dmg
+# Windows: src-tauri/target/release/bundle/nsis/APInox_0.19.146_x64-setup.exe
+# Linux:   src-tauri/target/release/bundle/deb/apinox_0.19.146_amd64.deb</code></pre>
 
     <p>APInox also has a <code>beforeBuildCommand</code> in <code>tauri.conf.json</code> that runs the webview build automatically before Tauri bundles:</p>
     <pre class="language-json"><code>{
@@ -223,7 +222,7 @@ jobs:
         <button data-correct="false" onclick="mc('q22-3', this, false)">For redundancy — if one build fails, the other covers it</button>
         <button data-correct="false" onclick="mc('q22-3', this, false)">The x86_64 build is for older macOS; aarch64 is for newer macOS versions</button>
         <button data-correct="true"  onclick="mc('q22-3', this, true)">x86_64 targets Intel Macs; aarch64 targets Apple Silicon (M1/M2/M3). They're different CPU architectures</button>
-        <button data-correct="false" onclick="mc('q22-3', this, false)">One is for the Tauri app, one is for the embedded sidecar binary</button>
+        <button data-correct="false" onclick="mc('q22-3', this, false)">One is for the Tauri app binary, one is for a bundled helper binary</button>
       </div>
       <div class="quiz-exp" id="q22-3-exp">
         <strong>Two CPU architectures!</strong> Apple Silicon (M1/M2/M3) uses ARM (aarch64), while older Macs use Intel x86_64. A binary compiled for one won't run on the other natively (though Rosetta 2 can translate Intel binaries on Apple Silicon with a performance hit). For maximum performance on both, you build two separate binaries. Some teams build a <em>universal binary</em> with <code>lipo</code> — it contains both architectures and runs natively on either.
@@ -285,29 +284,32 @@ async function checkForUpdates() {
 
   <!-- ================================================ -->
   <section>
-    <h2>6. Resources &amp; Sidecar Bundling</h2>
-    <p>APInox bundles a Node.js sidecar binary alongside the Rust app. This is configured in <code>tauri.conf.json</code>:</p>
+    <h2>6. Resources &amp; Bundle Configuration</h2>
+    <p>APInox previously bundled a Node.js sidecar binary alongside the Rust app. That migration is complete — all logic now lives in Rust. The current <code>tauri.conf.json</code> bundle section only ships extra files (like the changelog):</p>
 
     <pre class="language-json"><code>{
   "bundle": {
+    "active": true,
+    "targets": ["nsis", "dmg", "deb", "rpm"],
     "resources": {
       "../CHANGELOG.md": "CHANGELOG.md"
     },
-    "externalBin": [
-      "binaries/apinox-sidecar"   // sidecar binary (built separately)
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
     ]
   }
 }</code></pre>
 
-    <p>The sidecar binary must exist for all target platforms. For APInox:</p>
-    <pre class="language-bash"><code># Build the Node.js sidecar into a standalone binary:
-npm run build:sidecar     # tsc compilation
-npm run prepare:sidecar   # pkg bundles into apinox-sidecar binary
-
-# The naming convention Tauri expects (platform suffix):
-# binaries/apinox-sidecar-x86_64-pc-windows-msvc.exe   (Windows x64)
-# binaries/apinox-sidecar-x86_64-apple-darwin           (macOS Intel)
-# binaries/apinox-sidecar-aarch64-apple-darwin          (macOS M1/M2)</code></pre>
+    <p>If you ever do need to ship a native helper binary alongside your Tauri app, you add it under <code>externalBin</code> (now called <code>bundle.externalBin</code> in Tauri v2). Each binary must exist for every target platform, named with the platform triple suffix that Tauri expects:</p>
+    <pre class="language-bash"><code># Example: if you had an external helper binary
+# binaries/myhelper-x86_64-pc-windows-msvc.exe   (Windows x64)
+# binaries/myhelper-x86_64-apple-darwin           (macOS Intel)
+# binaries/myhelper-aarch64-apple-darwin          (macOS M1/M2)
+# binaries/myhelper-x86_64-unknown-linux-gnu      (Linux x64)</code></pre>
 
     <!-- QUIZ 4 -->
     <div class="quiz" id="q22-4">

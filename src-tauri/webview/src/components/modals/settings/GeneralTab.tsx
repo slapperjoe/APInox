@@ -185,30 +185,6 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange }) => {
             />
           </FormGroup>
           <FormGroup>
-            <Label>Retry Count</Label>
-            <Input
-              type="number"
-              min={0}
-              max={10}
-              value={config.network?.retryCount ?? 0}
-              onChange={(e) =>
-                onChange("network", "retryCount", parseInt(e.target.value))
-              }
-              disabled
-              title="Retry logic not yet implemented"
-              style={{ opacity: 0.6, cursor: "not-allowed" }}
-            />
-            <div
-              style={{
-                fontSize: "0.75em",
-                color: "var(--apinox-descriptionForeground)",
-                marginTop: 4,
-              }}
-            >
-              ⚠️ Not implemented yet - requests will not be retried on failure
-            </div>
-          </FormGroup>
-          <FormGroup>
             <Label>Proxy URL (Optional)</Label>
             <Input
               type="text"

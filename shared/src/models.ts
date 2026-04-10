@@ -431,7 +431,6 @@ export interface ApinoxConfig {
     version: number;
     network?: {
         defaultTimeout?: number;
-        retryCount?: number;
         proxy?: string;
         strictSSL?: boolean;
     };

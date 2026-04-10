@@ -219,11 +219,10 @@ pub async fn execute_soap_request(
     <h2>4. AppHandle — The God Object (Used Sparingly)</h2>
     <p><code>tauri::AppHandle</code> gives you access to the whole application at runtime — emit events, spawn windows, access managed state, get app directories. You can inject it as a parameter too:</p>
 
-    <pre class="language-rust"><code">// lib.rs — AppHandle used to manage the app lifecycle:
+    <pre class="language-rust"><code>// lib.rs — AppHandle used to manage the app lifecycle:
 #[tauri::command]
 fn quit_app(app: tauri::AppHandle) {
-    log::info!("Quit command received");
-    stop_sidecar();
+    log::info!("Quit command received, exiting...");
     app.exit(0);   // ← terminate the process cleanly
 }
 
@@ -324,7 +323,7 @@ pub async fn get_test_run_updates(
     }))
 }</code></pre>
 
-    <div class="callout">This is a <em>long polling</em> pattern. An alternative is Tauri events (covered in Lesson 19) which push updates to the webview without polling. Events are simpler; the poll pattern is used here because it was migrated from a REST sidecar design.</div>
+    <div class="callout">This is a <em>long polling</em> pattern. An alternative is Tauri events (covered in Lesson 19) which push updates to the webview without polling. Events are simpler; the poll pattern is used here because it originated from a REST sidecar design that has since been fully migrated to Rust.</div>
 
     <!-- QUIZ 5 -->
     <div class="quiz predict" id="q18-5">
