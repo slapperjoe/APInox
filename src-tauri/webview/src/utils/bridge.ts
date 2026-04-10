@@ -86,6 +86,7 @@ if (isTauri()) {
 // ============== Message Types ==============
 
 import { FrontendCommand, BackendCommand } from '@shared/messages';
+import { PERF_REQUEST_ID_PREFIX } from '../constants';
 
 interface BridgeMessage {
     command: FrontendCommand | string;
@@ -883,7 +884,7 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                     const suiteIdx = suites.findIndex((s: any) => s.id === message.suiteId);
                     if (suiteIdx !== -1) {
                         const newReq = {
-                            id: `perf-req-${Date.now()}`,
+                            id: `${PERF_REQUEST_ID_PREFIX}${Date.now()}`,
                             name: message.name || 'New Request',
                             endpoint: message.endpoint || '',
                             method: message.method || 'POST',

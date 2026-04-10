@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
+import path from 'path';
 
 export default defineConfig(({ mode }) => {
   if (mode === 'development') {
@@ -40,13 +41,23 @@ export default defineConfig(({ mode }) => {
         open: true,
         strictPort: false
       },
-      clearScreen: false
+      clearScreen: false,
+      resolve: {
+        alias: {
+          '@shared': path.resolve(__dirname, '../../shared/src')
+        }
+      }
     };
   }
 
   // Build mode: build the library
   return {
     plugins: [react()],
+    resolve: {
+      alias: {
+        '@shared': path.resolve(__dirname, '../../shared/src')
+      }
+    },
     build: {
       lib: {
         entry: resolve(__dirname, 'src/index.ts'),

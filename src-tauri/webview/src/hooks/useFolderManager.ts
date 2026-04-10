@@ -11,7 +11,7 @@ export interface UseFolderManagerProps {
 export function useFolderManager({ setProjects, setWorkspaceDirty, setSelectedRequest }: UseFolderManagerProps) {
 
     const handleAddFolder = useCallback((projectName: string, parentFolderId?: string) => {
-        const newId = `folder - ${Date.now()} `;
+        const newId = `folder-${Date.now()}`;
         const newFolder: import('@shared/models').ApinoxFolder = {
             id: newId,
             name: `New Folder`,
@@ -45,7 +45,7 @@ export function useFolderManager({ setProjects, setWorkspaceDirty, setSelectedRe
     }, [setProjects, setWorkspaceDirty]);
 
     const handleAddRequestToFolder = useCallback((projectName: string, folderId: string) => {
-        const newRequestId = `request - ${Date.now()} `;
+        const newRequestId = `request-${Date.now()}`;
         const newRequest: ApiRequest = {
             id: newRequestId,
             name: 'New Request',

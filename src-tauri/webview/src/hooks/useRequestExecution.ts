@@ -10,6 +10,7 @@ import { bridge } from '../utils/bridge';
 import { CustomXPathEvaluator } from '../utils/xpathEvaluator';
 import { FrontendCommand } from '@shared/messages';
 import { getInitialXml } from '@shared/utils/xmlUtils';
+import { PERF_REQUEST_ID_PREFIX, DEBOUNCE_MS } from '../constants';
 import {
     ApinoxProject,
     ApiInterface,
@@ -355,7 +356,7 @@ export function useRequestExecution({
         // PERFORMANCE REMOVED: Performance functionality moved to APIprox
 
         // 1. Performance Request Modification
-        if (selectedPerformanceSuiteId && updated.id?.startsWith('perf-req-')) {
+        if (selectedPerformanceSuiteId && updated.id?.startsWith(PERF_REQUEST_ID_PREFIX)) {
             bridge.sendMessage({ command: 'log', message: '[handleRequestUpdate] PERF PATH - updating perf request', data: JSON.stringify({ suiteId: selectedPerformanceSuiteId, requestId: updated.id }) });
 
             bridge.sendMessage({
@@ -505,7 +506,7 @@ export function useRequestExecution({
 
                 return updatedProjects;
             });
-        }, 300); // 300ms debounce for tree updates
+        }, DEBOUNCE_MS);
 
     }, [selectedProjectName, selectedTestCase, selectedInterface, selectedOperation, selectedRequest, setProjects, setSelectedRequest, setWorkspaceDirty, selectedPerformanceSuiteId, config, setConfig, exploredInterfaces, setExploredInterfaces]);
 

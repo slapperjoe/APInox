@@ -9,6 +9,8 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::time::Instant;
 
+use crate::utils::{RegexExtractor, XPathEvaluator, substitute_variables, CONTENT_TYPE_XML};
+
 use super::frontend_types::{
     AssertionResult, FrontendAssertion, FrontendExtractor, FrontendRequest,
     FrontendTestStep, StepExecutionResult,
@@ -66,6 +68,12 @@ async fn run_request_step(
     context: &HashMap<String, Value>,
     start: Instant,
 ) -> Result<StepExecutionResult> {
+    // Convert context values to strings for template substitution
+    let str_context: HashMap<String, String> = context
+        .iter()
+        .map(|(k, v)| (k.clone(), match v { Value::String(s) => s.clone(), other => other.to_string() }))
+        .collect();
+
     let endpoint = req
         .endpoint
         .as_deref()
@@ -74,7 +82,7 @@ async fn run_request_step(
         .unwrap_or("")
         .to_string();
 
-    let endpoint = substitute_variables(&endpoint, context);
+    let endpoint = substitute_variables(&endpoint, &str_context);
 
     if endpoint.is_empty() {
         return Ok(StepExecutionResult {
@@ -93,13 +101,13 @@ async fn run_request_step(
         .as_deref()
         .unwrap_or("")
         .to_string();
-    let body = substitute_variables(&body, context);
+    let body = substitute_variables(&body, &str_context);
 
     let method = req.method.as_deref().unwrap_or("POST").to_uppercase();
     let content_type = req
         .content_type
         .as_deref()
-        .unwrap_or("text/xml;charset=UTF-8")
+        .unwrap_or(CONTENT_TYPE_XML)
         .to_string();
 
     let client = Client::new();
@@ -296,8 +304,8 @@ fn run_assertion(
         "XPath Match" => {
             let xpath_expr = config.and_then(|c| c.xpath.as_deref()).unwrap_or("");
             let expected = config.and_then(|c| c.expected_content.as_deref()).unwrap_or("");
-            match evaluate_xpath(body, xpath_expr) {
-                Ok(actual) => {
+            match XPathEvaluator::evaluate(body, xpath_expr) {
+                Some(actual) => {
                     let ok = actual.trim() == expected.trim();
                     AssertionResult {
                         name,
@@ -309,10 +317,10 @@ fn run_assertion(
                         },
                     }
                 }
-                Err(e) => AssertionResult {
+                None => AssertionResult {
                     name,
                     status: "FAIL".to_string(),
-                    message: Some(format!("XPath evaluation failed: {}", e)),
+                    message: Some(format!("XPath '{}' returned no results or failed to evaluate", xpath_expr)),
                 },
             }
         }
@@ -359,11 +367,11 @@ fn run_extractors(
         let value = match ext.extractor_type.as_deref().unwrap_or("XPath") {
             "XPath" => {
                 let path = ext.path.as_deref().unwrap_or("");
-                evaluate_xpath(body, path).ok()
+                XPathEvaluator::evaluate(body, path)
             }
             "Regex" => {
                 let path = ext.path.as_deref().unwrap_or("");
-                extract_regex(body, path)
+                RegexExtractor::extract(body, path)
             }
             _ => None,
         };
@@ -372,52 +380,4 @@ fn run_extractors(
         }
     }
     vars
-}
-
-/// Evaluate an XPath expression against an XML string.
-/// Returns the string value of the first matching node.
-fn evaluate_xpath(xml: &str, xpath: &str) -> Result<String> {
-    use sxd_document::parser;
-    use sxd_xpath::{Context, Factory};
-
-    let package = parser::parse(xml)
-        .map_err(|e| anyhow::anyhow!("XML parse error: {:?}", e))?;
-    let document = package.as_document();
-
-    let factory = Factory::new();
-    let expression = factory
-        .build(xpath)
-        .map_err(|e| anyhow::anyhow!("XPath parse error: {:?}", e))?
-        .ok_or_else(|| anyhow::anyhow!("Empty XPath expression"))?;
-
-    let context = Context::new();
-    let value = expression
-        .evaluate(&context, document.root())
-        .map_err(|e| anyhow::anyhow!("XPath evaluation error: {:?}", e))?;
-
-    Ok(value.string())
-}
-
-/// Extract the first regex capture group (or whole match) from text.
-fn extract_regex(text: &str, pattern: &str) -> Option<String> {
-    let re = regex::Regex::new(pattern).ok()?;
-    let caps = re.captures(text)?;
-    // Return first capture group, or whole match if no groups
-    caps.get(1)
-        .or_else(|| caps.get(0))
-        .map(|m| m.as_str().to_string())
-}
-
-/// Substitute `{{variableName}}` placeholders from context.
-fn substitute_variables(text: &str, context: &HashMap<String, Value>) -> String {
-    let mut result = text.to_string();
-    for (key, val) in context {
-        let placeholder = format!("{{{{{}}}}}", key);
-        let value_str = match val {
-            Value::String(s) => s.clone(),
-            other => other.to_string(),
-        };
-        result = result.replace(&placeholder, &value_str);
-    }
-    result
 }

@@ -7,6 +7,7 @@ import { SearchDropdown } from './SearchDropdown';
 import { SearchResult } from '../utils/workspaceSearch';
 import apinoxIcon from '../assets/apinox-icon.png';
 import pkg from '../../package.json';
+import { MULTI_CLICK_RESET_MS } from '../constants';
 
 const SearchBarContainer = styled.div`
   position: fixed;
@@ -190,7 +191,7 @@ export const MacOSTitleBarSearch: React.FC = () => {
       }
       setClickCount(0);
       setClickTimer(null);
-    }, 300);
+    }, MULTI_CLICK_RESET_MS);
     
     setClickTimer(timer);
   };

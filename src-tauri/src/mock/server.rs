@@ -10,12 +10,13 @@ use hyper::body::Incoming;
 use hyper::service::service_fn;
 use hyper::{Request, Response, StatusCode};
 use hyper_util::rt::TokioIo;
-use tauri::{AppHandle, Emitter};
+use tauri::AppHandle;
 use tokio::net::TcpListener;
 use uuid::Uuid;
 
 use crate::mock::state::SharedMockState;
 use crate::proxy_models::{MockMatchCondition, MockRule, TrafficEvent};
+use crate::utils::{emit_traffic_event, match_pattern, XPathEvaluator, CONTENT_TYPE_XML, CONTENT_TYPE_PLAIN};
 
 /// Run the mock HTTP server. Loops forever; cancel via AbortHandle.
 pub async fn run_mock(state: SharedMockState, app: AppHandle) -> Result<()> {
@@ -118,7 +119,7 @@ async fn handle_mock_request(
         let content_type = rule
             .content_type
             .clone()
-            .unwrap_or_else(|| "text/xml; charset=utf-8".to_string());
+            .unwrap_or_else(|| CONTENT_TYPE_XML.to_string());
         let resp_body = rule.response_body.clone();
 
         let mut resp_headers: HashMap<String, String> = rule
@@ -133,7 +134,7 @@ async fn handle_mock_request(
         let now = Utc::now();
         emit_traffic_event(
             &app,
-            TrafficEvent {
+            &TrafficEvent {
                 id: event_id,
                 timestamp: now.timestamp_millis(),
                 timestamp_label: now.to_rfc3339(),
@@ -149,6 +150,7 @@ async fn handle_mock_request(
                 passthrough: Some(false),
                 source: "mock".to_string(),
             },
+            "Mock",
         );
 
         let mut hb = Response::builder().status(status);
@@ -230,7 +232,7 @@ async fn passthrough(
     let now = Utc::now();
     emit_traffic_event(
         app,
-        TrafficEvent {
+        &TrafficEvent {
             id: event_id,
             timestamp: now.timestamp_millis(),
             timestamp_label: now.to_rfc3339(),
@@ -246,6 +248,7 @@ async fn passthrough(
             passthrough: Some(true),
             source: "mock".to_string(),
         },
+        "Mock",
     );
 
     let mut hb = Response::builder().status(status);
@@ -351,7 +354,7 @@ fn condition_matches(
     body: &str,
 ) -> bool {
     match cond.r#type.as_str() {
-        "url" => match_text(url, &cond.pattern, cond.is_regex),
+        "url" => match_pattern(url, &cond.pattern, cond.is_regex),
 
         "operation" | "soapAction" => {
             let action = headers
@@ -359,21 +362,21 @@ fn condition_matches(
                 .or_else(|| headers.get("SOAPAction"))
                 .map(|s| s.trim_matches('"'))
                 .unwrap_or("");
-            match_text(action, &cond.pattern, cond.is_regex)
+            match_pattern(action, &cond.pattern, cond.is_regex)
         }
 
         "header" => {
             if let Some(name) = &cond.header_name {
                 let val = headers.get(name.to_lowercase().as_str()).map(|s| s.as_str()).unwrap_or("");
-                match_text(val, &cond.pattern, cond.is_regex)
+                match_pattern(val, &cond.pattern, cond.is_regex)
             } else {
                 false
             }
         }
 
-        "contains" => match_text(body, &cond.pattern, cond.is_regex),
+        "contains" => match_pattern(body, &cond.pattern, cond.is_regex),
 
-        "xpath" => match_xpath(body, &cond.pattern),
+        "xpath" => XPathEvaluator::evaluate(body, &cond.pattern).is_some(),
 
         "templateName" => {
             // Match <Property Name="TemplateName">value</Property>
@@ -391,40 +394,6 @@ fn condition_matches(
     }
 }
 
-fn match_text(text: &str, pattern: &str, is_regex: bool) -> bool {
-    if is_regex {
-        regex::Regex::new(pattern)
-            .map(|re| re.is_match(text))
-            .unwrap_or(false)
-    } else {
-        text.contains(pattern)
-    }
-}
-
-fn match_xpath(body: &str, xpath_expr: &str) -> bool {
-    use sxd_document::parser;
-    use sxd_xpath::{Context, Factory};
-
-    let package = match parser::parse(body) {
-        Ok(p) => p,
-        Err(_) => return false,
-    };
-    let doc = package.as_document();
-    let factory = Factory::new();
-    let xpath = match factory.build(xpath_expr) {
-        Ok(Some(x)) => x,
-        _ => return false,
-    };
-    let context = Context::new();
-    match xpath.evaluate(&context, doc.root()) {
-        Ok(sxd_xpath::Value::Nodeset(ns)) => ns.size() > 0,
-        Ok(sxd_xpath::Value::Boolean(b)) => b,
-        Ok(sxd_xpath::Value::String(s)) => !s.is_empty(),
-        Ok(sxd_xpath::Value::Number(n)) => n != 0.0,
-        Err(_) => false,
-    }
-}
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -432,15 +401,9 @@ fn match_xpath(body: &str, xpath_expr: &str) -> bool {
 fn plain_response(status: StatusCode, msg: &str) -> Response<Full<Bytes>> {
     Response::builder()
         .status(status)
-        .header("content-type", "text/plain")
+        .header("content-type", CONTENT_TYPE_PLAIN)
         .body(Full::new(Bytes::from(msg.to_string())))
         .unwrap()
-}
-
-fn emit_traffic_event(app: &AppHandle, event: TrafficEvent) {
-    if let Err(e) = app.emit("traffic-event", &event) {
-        log::warn!("[Mock] Failed to emit traffic-event: {}", e);
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -466,6 +429,7 @@ mod tests {
             hit_count: 0,
             recorded_at: None,
             recorded_from: None,
+            tags: vec![],
         }
     }
 

@@ -213,7 +213,7 @@ export interface AssertionsPanelProps {
 // Extractors Panel
 // ============================================================================
 
-export type ExtractorType = 'xpath' | 'jsonpath' | 'regex' | 'header' | 'Regex' | 'XPath';
+export type ExtractorType = 'XPath' | 'JSONPath' | 'Regex' | 'Header';
 
 export interface RequestExtractor {
   id: string;
@@ -336,35 +336,23 @@ export interface QueryParamsPanelProps {
 // REST Auth Panel
 // ============================================================================
 
-export type RestAuthType = 'none' | 'basic' | 'bearer' | 'apiKey' | 'oauth2';
-
-export interface BasicAuthConfig {
-  username: string;
-  password: string;
-}
-
-export interface BearerAuthConfig {
-  token: string;
-}
-
-export interface ApiKeyAuthConfig {
-  key: string;
-  value: string;
-  addTo: 'header' | 'query';
-}
-
-export interface OAuth2Config {
-  accessToken: string;
-  tokenType?: string;
-}
-
-export interface RestAuthConfig {
-  type: RestAuthType;
-  basic?: BasicAuthConfig;
-  bearer?: BearerAuthConfig;
-  apiKey?: ApiKeyAuthConfig;
-  oauth2?: OAuth2Config;
-}
+// Auth types are canonical in @shared/models — import locally and re-export for package consumers.
+import type {
+    RestAuthType,
+    RestAuthConfig,
+    BasicAuthConfig,
+    BearerAuthConfig,
+    ApiKeyAuthConfig,
+    OAuth2Config,
+} from '@shared/models';
+export type {
+    RestAuthType,
+    RestAuthConfig,
+    BasicAuthConfig,
+    BearerAuthConfig,
+    ApiKeyAuthConfig,
+    OAuth2Config,
+};
 
 export interface RestAuthPanelProps {
   /** Current auth configuration */

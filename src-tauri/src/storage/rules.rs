@@ -112,6 +112,7 @@ mod tests {
             hit_count: 0,
             recorded_at: None,
             recorded_from: None,
+            tags: vec![],
         }];
 
         storage.save_mock_rules(&rules).unwrap();
@@ -232,6 +233,7 @@ mod tests {
             hit_count: i as u64,
             recorded_at: None,
             recorded_from: None,
+            tags: vec![],
         }).collect();
 
         storage.save_mock_rules(&rules).unwrap();

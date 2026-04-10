@@ -3,6 +3,7 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use crate::http::client::{HttpClient, HttpRequest};
 use crate::performance::types::{PerformanceRequest, PerformanceResult};
+use crate::utils::{substitute_variables, CONTENT_TYPE_XML};
 
 /// Execute a single performance request and return a `PerformanceResult`.
 pub async fn execute_request(
@@ -34,7 +35,7 @@ pub async fn execute_request(
                     .or_insert_with(|| format!("\"{}\"", action));
                 headers
                     .entry("Content-Type".to_string())
-                    .or_insert_with(|| "text/xml; charset=utf-8".to_string());
+                    .or_insert_with(|| CONTENT_TYPE_XML.to_string());
             }
 
             let http_req = HttpRequest {
@@ -95,16 +96,6 @@ pub async fn execute_request(
         },
         timestamp,
     }
-}
-
-/// Replace `{{var}}` and `${var}` placeholders in a template string.
-pub fn substitute_variables(template: &str, variables: &HashMap<String, String>) -> String {
-    let mut result = template.to_string();
-    for (key, value) in variables {
-        result = result.replace(&format!("{{{{{}}}}}", key), value);
-        result = result.replace(&format!("${{{}}}", key), value);
-    }
-    result
 }
 
 /// Extract a value from XML using the last element name in an XPath-like path.

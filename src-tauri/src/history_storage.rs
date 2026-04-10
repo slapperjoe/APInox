@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+use crate::utils::resolve_config_dir;
 
 /// Request history entry stored in history.json
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -82,16 +83,7 @@ impl Default for HistoryFile {
 
 /// Get path to history.json file
 fn get_history_path(_app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
-    let config_dir = std::env::var("APINOX_CONFIG_DIR")
-        .ok()
-        .and_then(|dir| if dir.trim().is_empty() { None } else { Some(PathBuf::from(dir)) })
-        .or_else(|| {
-            let home = std::env::var("HOME")
-                .or_else(|_| std::env::var("USERPROFILE"))
-                .ok()?;
-            Some(PathBuf::from(home).join(".apinox"))
-        })
-        .ok_or("Could not determine config directory")?;
+    let config_dir = resolve_config_dir()?;
 
     // Ensure directory exists
     if !config_dir.exists() {
