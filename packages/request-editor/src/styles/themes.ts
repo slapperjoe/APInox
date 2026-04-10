@@ -94,6 +94,9 @@ export const darkTheme: Theme = {
         '--apinox-panelTitle-activeBorder': '#e7e7e7',
         '--apinox-panelTitle-activeForeground': '#e7e7e7',
         '--apinox-panelTitle-inactiveForeground': '#e7e7e799',
+        '--apinox-surface-elevated': '#2d2d30',
+        '--apinox-border-default': '#3e3e42',
+        '--apinox-border-subtle': '#555555',
 
         // Status Bar
         '--apinox-statusBar-background': '#007acc',
@@ -203,6 +206,16 @@ export const darkTheme: Theme = {
         '--apinox-symbolIcon-propertyForeground': '#75beff',
         '--apinox-symbolIcon-variableForeground': '#75beff',
         '--apinox-symbolIcon-stringForeground': '#ce9178',
+
+        // Proxy/Mock UI Colors
+        '--apinox-surface-deep': '#181818',
+        '--apinox-text-faint': '#555555',
+        '--apinox-surface-danger': '#5a2e2e',
+        '--apinox-surface-danger-dark': '#6b1010',
+        '--apinox-surface-success-dark': '#106b21',
+        '--apinox-surface-tag': '#1e4a7a',
+        '--apinox-text-danger': '#ff6b6b',
+        '--apinox-text-tag': '#90caf9',
     },
 };
 
@@ -271,11 +284,12 @@ export const lightTheme: Theme = {
         '--apinox-panelTitle-activeBorder': '#424242',
         '--apinox-panelTitle-activeForeground': '#424242',
         '--apinox-panelTitle-inactiveForeground': '#424242b3',
+        '--apinox-surface-elevated': '#ebebeb',
+        '--apinox-border-default': '#d4d4d4',
+        '--apinox-border-subtle': '#c0c0c0',
 
         // Status Bar
         '--apinox-statusBar-background': '#007acc',
-        '--apinox-statusBar-foreground': '#ffffff',
-        '--apinox-statusBar-noFolderBackground': '#68217a',
         '--apinox-statusBar-debuggingBackground': '#cc6633',
 
         // Activity Bar
@@ -305,6 +319,7 @@ export const lightTheme: Theme = {
         // Text and Links
         '--apinox-foreground': '#3b3b3b',
         '--apinox-descriptionForeground': '#717171',
+        '--apinox-disabledForeground': '#717171',
         '--apinox-errorForeground': '#a1260d',
         '--apinox-textLink-foreground': '#006ab1',
         '--apinox-textLink-activeForeground': '#006ab1',
@@ -350,11 +365,20 @@ export const lightTheme: Theme = {
         '--apinox-testing-iconPassed': '#388a34',
         '--apinox-testing-iconFailed': '#d73a49',
         '--apinox-testing-iconQueued': '#9a6700',
-        
         // Tabs
         '--apinox-tab-activeBackground': '#ffffff',
         '--apinox-tab-activeForeground': '#000000',
         '--apinox-tab-inactiveForeground': '#717171',
+
+        // Proxy/Mock UI Colors
+        '--apinox-surface-deep': '#e8e8e8',
+        '--apinox-text-faint': '#aaaaaa',
+        '--apinox-surface-danger': '#fce8e8',
+        '--apinox-surface-danger-dark': '#c62828',
+        '--apinox-surface-success-dark': '#2e7d32',
+        '--apinox-surface-tag': '#deeaf7',
+        '--apinox-text-danger': '#c62828',
+        '--apinox-text-tag': '#1565c0',
     },
 };
 
@@ -429,6 +453,9 @@ export const solarizedDarkTheme: Theme = {
         '--apinox-panelTitle-activeBorder': '#268bd2',
         '--apinox-panelTitle-activeForeground': '#93a1a1',
         '--apinox-panelTitle-inactiveForeground': '#586e75',
+        '--apinox-surface-elevated': '#073642',
+        '--apinox-border-default': '#586e75',
+        '--apinox-border-subtle': '#657b83',
 
         // Status Bar
         '--apinox-statusBar-background': '#268bd2',
@@ -463,6 +490,7 @@ export const solarizedDarkTheme: Theme = {
         // Text and Links
         '--apinox-foreground': '#839496',
         '--apinox-descriptionForeground': '#586e75',
+        '--apinox-disabledForeground': '#586e75',
         '--apinox-errorForeground': '#dc322f',
         '--apinox-textLink-foreground': '#268bd2',
         '--apinox-textLink-activeForeground': '#2aa198',
@@ -508,11 +536,20 @@ export const solarizedDarkTheme: Theme = {
         '--apinox-testing-iconPassed': '#859900',
         '--apinox-testing-iconFailed': '#dc322f',
         '--apinox-testing-iconQueued': '#b58900',
-        
         // Tabs
         '--apinox-tab-activeBackground': '#073642',
         '--apinox-tab-activeForeground': '#93a1a1',
         '--apinox-tab-inactiveForeground': '#586e75',
+
+        // Proxy/Mock UI Colors
+        '--apinox-surface-deep': '#001f29',
+        '--apinox-text-faint': '#3a5258',
+        '--apinox-surface-danger': '#3a1515',
+        '--apinox-surface-danger-dark': '#5a0000',
+        '--apinox-surface-success-dark': '#0d4d1f',
+        '--apinox-surface-tag': '#0d3655',
+        '--apinox-text-danger': '#dc322f',
+        '--apinox-text-tag': '#7ec8f7',
     },
 };
 
@@ -581,6 +618,9 @@ export const solarizedLightTheme: Theme = {
         '--apinox-panelTitle-activeBorder': '#268bd2',
         '--apinox-panelTitle-activeForeground': '#586e75',
         '--apinox-panelTitle-inactiveForeground': '#93a1a1',
+        '--apinox-surface-elevated': '#eee8d5',
+        '--apinox-border-default': '#93a1a1',
+        '--apinox-border-subtle': '#adb6b3',
 
         // Status Bar
         '--apinox-statusBar-background': '#268bd2',
@@ -615,6 +655,7 @@ export const solarizedLightTheme: Theme = {
         // Text and Links
         '--apinox-foreground': '#657b83',
         '--apinox-descriptionForeground': '#93a1a1',
+        '--apinox-disabledForeground': '#93a1a1',
         '--apinox-errorForeground': '#dc322f',
         '--apinox-textLink-foreground': '#268bd2',
         '--apinox-textLink-activeForeground': '#2aa198',
@@ -660,11 +701,20 @@ export const solarizedLightTheme: Theme = {
         '--apinox-testing-iconPassed': '#859900',
         '--apinox-testing-iconFailed': '#dc322f',
         '--apinox-testing-iconQueued': '#b58900',
-        
         // Tabs
         '--apinox-tab-activeBackground': '#eee8d5',
         '--apinox-tab-activeForeground': '#586e75',
         '--apinox-tab-inactiveForeground': '#93a1a1',
+
+        // Proxy/Mock UI Colors
+        '--apinox-surface-deep': '#f0e9d0',
+        '--apinox-text-faint': '#99a9a5',
+        '--apinox-surface-danger': '#fce0e0',
+        '--apinox-surface-danger-dark': '#c62828',
+        '--apinox-surface-success-dark': '#2e7d32',
+        '--apinox-surface-tag': '#d0e8f7',
+        '--apinox-text-danger': '#c62828',
+        '--apinox-text-tag': '#1565c0',
     },
 };
 
