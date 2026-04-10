@@ -14,45 +14,42 @@
  */
 
 // ─── BUILD NUMBER (auto-managed — do not edit manually) ───────────────────
-const BUILD_NO = 7;
+const BUILD_NO = 146;
 // ─────────────────────────────────────────────────────────────────────────
 
-const fs = require('fs');
-const path = require('path');
-const { execSync, spawnSync } = require('child_process');
+const fs = require("fs");
+const path = require("path");
+const { execSync, spawnSync } = require("child_process");
 
-const root       = path.join(__dirname, '..');
+const root = path.join(__dirname, "..");
 const scriptFile = __filename;
 
 const configFiles = {
-    rootPackage:    path.join(root, 'package.json'),
-    webviewPackage: path.join(root, 'src-tauri', 'webview', 'package.json'),
-    cargo:          path.join(root, 'src-tauri', 'Cargo.toml'),
-    tauriConfig:    path.join(root, 'src-tauri', 'tauri.conf.json'),
-    changelog:      path.join(root, 'CHANGELOG.md'),
+  rootPackage: path.join(root, "package.json"),
+  webviewPackage: path.join(root, "src-tauri", "webview", "package.json"),
+  cargo: path.join(root, "src-tauri", "Cargo.toml"),
+  tauriConfig: path.join(root, "src-tauri", "tauri.conf.json"),
+  changelog: path.join(root, "CHANGELOG.md"),
 };
 
 function run(cmd, opts = {}) {
-    console.log(`\n> ${cmd}`);
-    execSync(cmd, { stdio: 'inherit', cwd: root, ...opts });
+  console.log(`\n> ${cmd}`);
+  execSync(cmd, { stdio: "inherit", cwd: root, ...opts });
 }
 
 // ── increment ──────────────────────────────────────────────────────────────
 // Reads BUILD_NO from this file, increments it, and writes it back.
 // Must be invoked as a separate process so the next command sees the new value.
 function increment() {
-    const self = fs.readFileSync(scriptFile, 'utf8');
-    const next = BUILD_NO + 1;
-    const updated = self.replace(
-        /^(const BUILD_NO = )\d+(;)$/m,
-        `$1${next}$2`
-    );
-    if (updated === self) {
-        console.error('❌ Could not locate BUILD_NO line in version.js');
-        process.exit(1);
-    }
-    fs.writeFileSync(scriptFile, updated, 'utf8');
-    console.log(`✅ Build number incremented to: ${next}`);
+  const self = fs.readFileSync(scriptFile, "utf8");
+  const next = BUILD_NO + 1;
+  const updated = self.replace(/^(const BUILD_NO = )\d+(;)$/m, `$1${next}$2`);
+  if (updated === self) {
+    console.error("❌ Could not locate BUILD_NO line in version.js");
+    process.exit(1);
+  }
+  fs.writeFileSync(scriptFile, updated, "utf8");
+  console.log(`✅ Build number incremented to: ${next}`);
 }
 
 // ── sync ───────────────────────────────────────────────────────────────────
@@ -60,173 +57,211 @@ function increment() {
 // When called as a fresh Node.js process (after increment), BUILD_NO will
 // already hold the incremented value.
 function sync(forcedVersion) {
-    let targetVersion = forcedVersion;
+  let targetVersion = forcedVersion;
 
-    if (!targetVersion) {
-        const rootPkg = JSON.parse(fs.readFileSync(configFiles.rootPackage, 'utf8'));
-        const parts = rootPkg.version.split('.');
-        if (parts.length < 2) {
-            console.error('❌ Version in package.json must be at least major.minor');
-            process.exit(1);
-        }
-        targetVersion = `${parts[0]}.${parts[1]}.${BUILD_NO}`;
+  if (!targetVersion) {
+    const rootPkg = JSON.parse(
+      fs.readFileSync(configFiles.rootPackage, "utf8"),
+    );
+    const parts = rootPkg.version.split(".");
+    if (parts.length < 2) {
+      console.error("❌ Version in package.json must be at least major.minor");
+      process.exit(1);
     }
+    targetVersion = `${parts[0]}.${parts[1]}.${BUILD_NO}`;
+  }
 
-    const vParts = targetVersion.split('.');
-    if (vParts.length !== 3) {
-        console.error('❌ Version must be major.minor.patch');
-        process.exit(1);
-    }
+  const vParts = targetVersion.split(".");
+  if (vParts.length !== 3) {
+    console.error("❌ Version must be major.minor.patch");
+    process.exit(1);
+  }
 
-    console.log(`\n🔄 Syncing all versions to: ${targetVersion}\n`);
+  console.log(`\n🔄 Syncing all versions to: ${targetVersion}\n`);
 
-    const rootPkg = JSON.parse(fs.readFileSync(configFiles.rootPackage, 'utf8'));
-    rootPkg.version = targetVersion;
-    fs.writeFileSync(configFiles.rootPackage, JSON.stringify(rootPkg, null, 2) + '\n');
-    console.log(`✓ package.json → ${targetVersion}`);
+  const rootPkg = JSON.parse(fs.readFileSync(configFiles.rootPackage, "utf8"));
+  rootPkg.version = targetVersion;
+  fs.writeFileSync(
+    configFiles.rootPackage,
+    JSON.stringify(rootPkg, null, 2) + "\n",
+  );
+  console.log(`✓ package.json → ${targetVersion}`);
 
-    const webviewPkg = JSON.parse(fs.readFileSync(configFiles.webviewPackage, 'utf8'));
-    webviewPkg.version = targetVersion;
-    fs.writeFileSync(configFiles.webviewPackage, JSON.stringify(webviewPkg, null, 2) + '\n');
-    console.log(`✓ src-tauri/webview/package.json → ${targetVersion}`);
+  const webviewPkg = JSON.parse(
+    fs.readFileSync(configFiles.webviewPackage, "utf8"),
+  );
+  webviewPkg.version = targetVersion;
+  fs.writeFileSync(
+    configFiles.webviewPackage,
+    JSON.stringify(webviewPkg, null, 2) + "\n",
+  );
+  console.log(`✓ src-tauri/webview/package.json → ${targetVersion}`);
 
-    let cargo = fs.readFileSync(configFiles.cargo, 'utf8');
-    cargo = cargo.replace(/^version = ".+"$/m, `version = "${targetVersion}"`);
-    fs.writeFileSync(configFiles.cargo, cargo);
-    console.log(`✓ src-tauri/Cargo.toml → ${targetVersion}`);
+  let cargo = fs.readFileSync(configFiles.cargo, "utf8");
+  cargo = cargo.replace(/^version = ".+"$/m, `version = "${targetVersion}"`);
+  fs.writeFileSync(configFiles.cargo, cargo);
+  console.log(`✓ src-tauri/Cargo.toml → ${targetVersion}`);
 
-    const tauriConf = JSON.parse(fs.readFileSync(configFiles.tauriConfig, 'utf8'));
-    tauriConf.version = targetVersion;
-    fs.writeFileSync(configFiles.tauriConfig, JSON.stringify(tauriConf, null, 2) + '\n');
-    console.log(`✓ src-tauri/tauri.conf.json → ${targetVersion}`);
+  const tauriConf = JSON.parse(
+    fs.readFileSync(configFiles.tauriConfig, "utf8"),
+  );
+  tauriConf.version = targetVersion;
+  fs.writeFileSync(
+    configFiles.tauriConfig,
+    JSON.stringify(tauriConf, null, 2) + "\n",
+  );
+  console.log(`✓ src-tauri/tauri.conf.json → ${targetVersion}`);
 
-    console.log('\n✅ Version sync complete.\n');
+  console.log("\n✅ Version sync complete.\n");
 }
 
 // ── changelog ─────────────────────────────────────────────────────────────
 function updateChangelog(version, customMessage) {
-    let changelog = '';
-    if (fs.existsSync(configFiles.changelog)) {
-        changelog = fs.readFileSync(configFiles.changelog, 'utf8');
+  let changelog = "";
+  if (fs.existsSync(configFiles.changelog)) {
+    changelog = fs.readFileSync(configFiles.changelog, "utf8");
+  }
+
+  const date = new Date().toISOString().split("T")[0];
+  const header = `## [${version}] - ${date}`;
+
+  if (changelog.includes(header)) {
+    console.log("ℹ️  Changelog already has current version header.");
+    return;
+  }
+
+  let changes = "";
+  if (customMessage) {
+    changes = `- ${customMessage}`;
+  } else {
+    try {
+      let lastAnchor = "";
+      try {
+        lastAnchor = execSync('git log -n 1 --format="%H" -- package.json', {
+          cwd: root,
+        })
+          .toString()
+          .trim();
+      } catch {
+        /* no history */
+      }
+
+      if (lastAnchor) {
+        changes = execSync(
+          `git log ${lastAnchor}..HEAD --pretty=format:"- %s"`,
+          { cwd: root },
+        ).toString();
+      } else {
+        changes = execSync('git log -n 10 --pretty=format:"- %s"', {
+          cwd: root,
+        }).toString();
+      }
+    } catch {
+      changes = "- Could not auto-generate changes from git.";
     }
+  }
 
-    const date = new Date().toISOString().split('T')[0];
-    const header = `## [${version}] - ${date}`;
+  if (!changes) changes = "- No commit messages found.";
+  const entry = `${header}\n### Changes\n${changes}`;
 
-    if (changelog.includes(header)) {
-        console.log('ℹ️  Changelog already has current version header.');
-        return;
-    }
+  let newContent = "";
+  if (changelog.startsWith("# Changelog")) {
+    const lines = changelog.split("\n");
+    const headerLines = lines.slice(0, 2).join("\n");
+    const rest = lines.slice(2).join("\n");
+    newContent = `${headerLines}\n\n${entry}\n${rest}`;
+  } else {
+    newContent = `${entry}\n${changelog}`;
+  }
 
-    let changes = '';
-    if (customMessage) {
-        changes = `- ${customMessage}`;
-    } else {
-        try {
-            let lastAnchor = '';
-            try {
-                lastAnchor = execSync('git log -n 1 --format="%H" -- package.json', { cwd: root }).toString().trim();
-            } catch { /* no history */ }
-
-            if (lastAnchor) {
-                changes = execSync(`git log ${lastAnchor}..HEAD --pretty=format:"- %s"`, { cwd: root }).toString();
-            } else {
-                changes = execSync('git log -n 10 --pretty=format:"- %s"', { cwd: root }).toString();
-            }
-        } catch {
-            changes = '- Could not auto-generate changes from git.';
-        }
-    }
-
-    if (!changes) changes = '- No commit messages found.';
-    const entry = `${header}\n### Changes\n${changes}`;
-
-    let newContent = '';
-    if (changelog.startsWith('# Changelog')) {
-        const lines = changelog.split('\n');
-        const headerLines = lines.slice(0, 2).join('\n');
-        const rest = lines.slice(2).join('\n');
-        newContent = `${headerLines}\n\n${entry}\n${rest}`;
-    } else {
-        newContent = `${entry}\n${changelog}`;
-    }
-
-    fs.writeFileSync(configFiles.changelog, newContent);
-    console.log(`✅ Updated CHANGELOG.md with version ${version}`);
+  fs.writeFileSync(configFiles.changelog, newContent);
+  console.log(`✅ Updated CHANGELOG.md with version ${version}`);
 }
 
 // ── bump ───────────────────────────────────────────────────────────────────
 function bump(type, message) {
-    if (!['major', 'minor', 'patch'].includes(type)) {
-        console.error('Usage: node scripts/version.js bump <major|minor|patch> [commit_message]');
-        process.exit(1);
-    }
+  if (!["major", "minor", "patch"].includes(type)) {
+    console.error(
+      "Usage: node scripts/version.js bump <major|minor|patch> [commit_message]",
+    );
+    process.exit(1);
+  }
 
-    if (type === 'patch') {
-        // patch: increment BUILD_NO then sync in a fresh process each time
-        run('node scripts/version.js increment');
-        run('node scripts/version.js sync');
-    } else {
-        // major/minor: let npm handle the arithmetic, preserve the existing BUILD_NO as patch
-        run(`npm version ${type} --no-git-tag-version`);
-        run('node scripts/version.js sync');
-    }
+  if (type === "patch") {
+    // patch: increment BUILD_NO then sync in a fresh process each time
+    run("node scripts/version.js increment");
+    run("node scripts/version.js sync");
+  } else {
+    // major/minor: let npm handle the arithmetic, preserve the existing BUILD_NO as patch
+    run(`npm version ${type} --no-git-tag-version`);
+    run("node scripts/version.js sync");
+  }
 
-    const pkg = JSON.parse(fs.readFileSync(configFiles.rootPackage, 'utf8'));
-    const ver = pkg.version;
+  const pkg = JSON.parse(fs.readFileSync(configFiles.rootPackage, "utf8"));
+  const ver = pkg.version;
 
-    updateChangelog(ver, message);
+  updateChangelog(ver, message);
 
-    run('git add .');
-    const msg = message ? `v${ver}: ${message}` : `Bump version to ${ver}`;
-    run(`git commit -m "${msg}"`);
-    run(`git tag v${ver}`);
+  run("git add .");
+  const msg = message ? `v${ver}: ${message}` : `Bump version to ${ver}`;
+  run(`git commit -m "${msg}"`);
+  run(`git tag v${ver}`);
 
-    console.log(`\n✅ Bumped to v${ver}\n`);
+  console.log(`\n✅ Bumped to v${ver}\n`);
 }
 
 // ── build ──────────────────────────────────────────────────────────────────
 function build(extraArgs) {
-    run('node scripts/version.js increment');
-    run('node scripts/version.js sync');
-    run('npm run build:packages');
-    run('npm install', { cwd: path.join(root, 'src-tauri', 'webview') });
+  run("node scripts/version.js increment");
+  run("node scripts/version.js sync");
+  run("npm run build:packages");
+  run("npm install", { cwd: path.join(root, "src-tauri", "webview") });
 
-    console.log(`\n> npx tauri build ${extraArgs.join(' ')}`);
-    const result = spawnSync('npx', ['tauri', 'build', ...extraArgs], {
-        stdio: 'inherit',
-        cwd:   root,
-        shell: true,
-    });
-    if (result.status !== 0) {
-        process.exit(result.status ?? 1);
-    }
+  console.log(`\n> npx tauri build ${extraArgs.join(" ")}`);
+  const result = spawnSync("npx", ["tauri", "build", ...extraArgs], {
+    stdio: "inherit",
+    cwd: root,
+    shell: true,
+  });
+  if (result.status !== 0) {
+    process.exit(result.status ?? 1);
+  }
 
-    // On Linux, produce an Arch Linux package only when makepkg is available
-    if (process.platform === 'linux') {
-        let hasMakepkg = false;
-        try {
-            execSync('which makepkg', { stdio: 'ignore' });
-            hasMakepkg = true;
-        } catch {
-            console.log('ℹ️  makepkg not found, skipping Arch Linux packaging.');
-        }
-        if (hasMakepkg) {
-            run('npm run package:arch');
-        }
+  // On Linux, produce an Arch Linux package only when makepkg is available
+  if (process.platform === "linux") {
+    let hasMakepkg = false;
+    try {
+      execSync("which makepkg", { stdio: "ignore" });
+      hasMakepkg = true;
+    } catch {
+      console.log("ℹ️  makepkg not found, skipping Arch Linux packaging.");
     }
+    if (hasMakepkg) {
+      run("npm run package:arch");
+    }
+  }
 }
 
 // ── dispatch ───────────────────────────────────────────────────────────────
-const [,, cmd, ...args] = process.argv;
+const [, , cmd, ...args] = process.argv;
 
 switch (cmd) {
-    case 'increment': increment();                             break;
-    case 'sync':      sync(args[0]);                          break;
-    case 'bump':      bump(args[0], args.slice(1).join(' ')); break;
-    case 'build':     build(args);                            break;
-    default:
-        console.error(`Unknown command: ${cmd}`);
-        console.error('Commands: increment | sync [x.y.z] | bump <major|minor|patch> [msg] | build [tauri-args...]');
-        process.exit(1);
+  case "increment":
+    increment();
+    break;
+  case "sync":
+    sync(args[0]);
+    break;
+  case "bump":
+    bump(args[0], args.slice(1).join(" "));
+    break;
+  case "build":
+    build(args);
+    break;
+  default:
+    console.error(`Unknown command: ${cmd}`);
+    console.error(
+      "Commands: increment | sync [x.y.z] | bump <major|minor|patch> [msg] | build [tauri-args...]",
+    );
+    process.exit(1);
 }
