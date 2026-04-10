@@ -78,26 +78,25 @@ export const useAppLifecycle = ({
         // Auto-load all projects from ~/.apinox/projects/ on startup
         const autoLoadProjects = async () => {
             try {
-                const paths = await bridge.invokeTauriCommand<string[]>('list_projects', {});
+                const paths = await bridge.invokeTauriCommand('list_projects', {}) as string[];
                 console.log('[useAppLifecycle] Auto-loading', paths.length, 'projects from ~/.apinox/projects/');
 
-                    for (const path of paths) {
-                        try {
-                            const project = await bridge.invokeTauriCommand('load_project', { dirPath: path });
-                            (project as any).fileName = path;
+                for (const path of paths) {
+                    try {
+                        const project = await bridge.invokeTauriCommand('load_project', { dirPath: path });
+                        (project as any).fileName = path;
 
-                            bridge.emit({
-                                command: 'projectLoaded',
-                                project,
-                                filename: path
-                            } as any);
-                        } catch (error) {
-                            console.error('[useAppLifecycle] Failed to load project:', path, error);
-                        }
+                        bridge.emit({
+                            command: 'projectLoaded',
+                            project,
+                            filename: path
+                        } as any);
+                    } catch (error) {
+                        console.error('[useAppLifecycle] Failed to load project:', path, error);
                     }
-                } catch (error) {
-                    console.error('[useAppLifecycle] Failed to list projects:', error);
                 }
+            } catch (error) {
+                console.error('[useAppLifecycle] Failed to list projects:', error);
             }
         };
 

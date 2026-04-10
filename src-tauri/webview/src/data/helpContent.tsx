@@ -1,4 +1,4 @@
-import { MonitorPlay, Eye, FileJson, Network, Radio, Layout, FlaskConical, Activity, Compass, FolderOpen, Settings, Cloud, Clock, ListChecks, Braces } from 'lucide-react';
+import { MonitorPlay, Eye, FileJson, Network, Radio, Layout, FlaskConical, Compass, FolderOpen, Settings, Cloud, Clock, ListChecks, Braces } from 'lucide-react';
 
 const normalizeContent = (text: string) => {
     const trimmed = text.replace(/^\n/, '').replace(/\n\s*$/, '');
@@ -354,43 +354,93 @@ const HELP_SECTIONS_RAW = [
     Select text in the Response viewer and click **Extract** to save it as a variable. Use \`{{variableName}}\` in the body or headers.
     `
             },
+        ]
+    },
+    {
+        id: 'performance',
+        label: 'Performance',
+        icon: FlaskConical,
+        order: 4,
+        content: `
+    # Performance Testing
+
+    Run load tests against SOAP/REST services and analyse response time statistics.
+    `,
+        children: [
             {
-                id: 'performance-suite',
-                label: 'Performance',
-                icon: Activity,
-                order: 3,
+                id: 'performance-suites',
+                label: 'Suites & Requests',
+                icon: FlaskConical,
+                order: 1,
                 content: `
     # Performance Suites
 
-    Performance suites run a sequence of requests repeatedly to measure latency and reliability.
+    A **Performance Suite** groups one or more HTTP requests that will be executed repeatedly to measure throughput and latency.
 
-    ## Create & Run
+    ## Creating a Suite
 
-    1. Add a suite from the Performance sidebar.
-    2. Add requests to the suite.
-    3. Click **Run Suite** to execute.
+    1. Open the **Performance** tab in the sidebar.
+    2. Click **+ New Suite** and give it a name.
+    3. Click **+ Add Request** inside the suite to configure each request (endpoint, method, headers, body, optional SOAP action).
 
-    ## Configuration
+    ## Suite Settings
 
-    - **Delay (ms)**: Pause between requests in sequence.
-    - **Iterations**: How many times to run the full request list.
-    - **Concurrency**: Parallelism (1 = sequential).
-    - **Warmup Runs**: Runs excluded from stats.
+    | Setting | Description |
+    |---------|-------------|
+    | **Iterations** | How many times to repeat the full request sequence (default: 1) |
+    | **Warmup Runs** | Iterations executed before statistics are collected |
+    | **Concurrency** | Requests sent in parallel per iteration (default: 1 = sequential) |
+    | **Delay Between Requests** | Pause (ms) inserted between each request in sequential mode |
 
-    ## Results
+    ## SLA Thresholds
 
-    - Summary stats (avg, p50/p95/p99, success rate).
-    - Run history with per-run details.
-    - Export results to CSV.
+    Set an **SLA Threshold (ms)** on any request. Results exceeding the threshold are flagged as SLA breaches and counted in the summary.
     `
-            }
+            },
+            {
+                id: 'performance-run',
+                label: 'Running & Results',
+                icon: FlaskConical,
+                order: 2,
+                content: `
+    # Running a Performance Suite
+
+    1. Select a suite and click the **Play** button.
+    2. The backend executes all requests for every iteration, streaming progress updates.
+    3. Click **Stop** at any time to abort the run.
+
+    ## Progress Updates
+
+    While running, the UI receives:
+    - **runStarted** — confirms the suite has begun.
+    - **iterationComplete** — fired after each full iteration.
+    - **runCompleted** — contains the full result set and summary statistics.
+
+    ## Statistics
+
+    The summary panel shows:
+
+    | Metric | Description |
+    |--------|-------------|
+    | **Total / Success / Failure** | Request counts |
+    | **Success Rate** | Percentage of non-error responses |
+    | **Avg / Min / Max** | Response time extremes |
+    | **p50 / p95 / p99** | Percentile latencies |
+    | **SLA Breaches** | Requests that exceeded the SLA threshold |
+    | **Total Duration** | Wall-clock time from first to last request |
+
+    ## History
+
+    Completed runs are saved to the APInox config (last 50 retained) and remain visible between sessions.
+    `
+            },
         ]
     },
     {
         id: 'server-group',
         label: 'Server',
         icon: Network,
-        order: 4,
+        order: 5,
         content: `
     # Server
 
@@ -427,6 +477,10 @@ const HELP_SECTIONS_RAW = [
     - **Gear** opens Server settings.
     - **Trash** clears traffic history.
     - **Plus** adds a rule or breakpoint.
+
+    ## System Proxy
+
+    When the proxy is running, APInox can set the OS-level HTTP/HTTPS proxy automatically so all system traffic is routed through it without manual client configuration. Use the **System Proxy** toggle in the Server tab. Disable it before stopping the server to restore original OS proxy settings.
     `
             },
             {
@@ -441,22 +495,37 @@ const HELP_SECTIONS_RAW = [
 
     ## Getting Started
 
-    1. Configure **Port** and **Target URL** in **Settings → Server**.
+    1. Configure **Port** and **Target URL** in **Settings → Server** or the Proxy Settings panel.
     2. Select **Proxy** or **Both** and click **Play**.
-    3. Point your client at the proxy URL (e.g., \`http://localhost:9000\`).
-    4. Inspect events in **Traffic**.
+    3. Point your client at the proxy URL (e.g., \`http://localhost:8888\`), or use the **System Proxy** toggle to route OS traffic automatically.
+    4. Inspect events in the **Traffic** panel.
+
+    ## Traffic Viewer
+
+    All intercepted requests and responses appear in the Traffic list. Click any entry to inspect headers and body. Right-click an entry for quick actions:
+
+    - **Create Breakpoint** — pause future matching requests.
+    - **Create Mock Rule** — create a mock rule from this traffic.
+    - **Create Replace Rule** — auto-populate a replace rule from this entry.
+    - **Add to APInox Project** — import the request into a project.
 
     ## Breakpoints
 
-    Breakpoints pause requests/responses so you can edit them live.
+    Breakpoints pause matching requests or responses so you can edit them live before forwarding.
+
+    1. Open the **Breakpoints** tab or right-click a traffic entry and choose **Create Breakpoint**.
+    2. Configure match conditions (URL pattern, method, header).
+    3. When a breakpoint fires, an editor appears — modify the request/response and click **Forward** or **Drop**.
+
+    Auto-timeout: configure a default action (**Allow** or **Drop**) so paused requests don't block indefinitely.
 
     ## Replace Rules
 
-    Replace Rules apply automatic replacements in-flight (XPath-scoped, regex or plain text). Configure in **Settings → Replace Rules**.
+    Replace Rules apply automatic text substitutions in-flight (XPath-scoped, regex or plain text, request and/or response). Configure in **Settings → Replace Rules** or the **Rules** tab.
 
-    ## HTTPS Support
+    ## HTTPS & Certificates
 
-    The proxy generates a local certificate for HTTPS traffic. Trust it in your client if needed.
+    The proxy generates a local certificate authority for HTTPS interception. Use **Certificate Manager** to install or regenerate the certificate. Trust it in your OS or browser to decrypt HTTPS traffic.
     `
             },
             {
@@ -472,7 +541,7 @@ const HELP_SECTIONS_RAW = [
     ## Getting Started
 
     1. Select **Moxy** or **Both** mode in the Server tab.
-    2. Add mock rules.
+    2. Add mock rules via the **+** button or right-click a traffic entry to create one from real traffic.
     3. Start the server.
 
     ## Mock Rules
@@ -510,19 +579,20 @@ const HELP_SECTIONS_RAW = [
                 content: `
     # File Watcher
 
-    The File Watcher monitors request/response files written by external tools.
+    The File Watcher monitors request/response files written by external tools (e.g., middleware, test harnesses, or the APIprox proxy CLI).
 
     ## Setup
 
-    1. Configure file paths in **Settings → JSON (Advanced)** under \`fileWatcher.requestPath\` and \`fileWatcher.responsePath\`.
+    1. Configure the watch directory or file paths in **Settings → JSON (Advanced)** under \`fileWatcher.requestPath\` and \`fileWatcher.responsePath\`.
     2. Click **Start Watcher** in the sidebar.
 
     ## Functionality
 
-    - Real-time updates as files change.
-    - Smart naming from the SOAP body root element.
-    - Read-only view — inspect but not edit.
-    - Export history to CSV.
+    - Real-time updates as files change on disk.
+    - Smart naming inferred from the SOAP body root element.
+    - Full-featured Monaco editor for inspecting request and response content.
+    - Editor settings (font size, word wrap, line numbers) persist per session.
+    - Export captured history to CSV.
     `
             },
             {

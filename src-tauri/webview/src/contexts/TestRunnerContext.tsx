@@ -69,7 +69,9 @@ export const TestRunnerProvider = ({ children }: { children: ReactNode }) => {
         selectedOperation,
         selectedInterface,
         selectedTestSuite,
-        setSelectedTestSuite
+        setSelectedTestSuite,
+        selectedPerformanceSuiteId,
+        setSelectedPerformanceSuiteId
     } = useSelection();
 
     // Note: TestRunnerProvider must be inside UIProvider, NavigationProvider, and ScrapbookProvider
@@ -220,7 +222,8 @@ export const TestRunnerProvider = ({ children }: { children: ReactNode }) => {
         setActiveView,
         closeContextMenu: noOpCloseContextMenu, // Temporary decoupling
         selectedTestSuite,
-        setSelectedTestSuite
+        setSelectedTestSuite,
+        setSelectedPerformanceSuiteId
     });
 
     const requestExecution = useRequestExecution({
@@ -237,7 +240,9 @@ export const TestRunnerProvider = ({ children }: { children: ReactNode }) => {
         setProjects,
         setWorkspaceDirty,
         testExecution,
-        config, // For environment variables in execution
+        selectedPerformanceSuiteId,
+        config,
+        setConfig,
         exploredInterfaces,
         setExploredInterfaces,
         onScrapbookAutoSave: scrapbookAutoSave

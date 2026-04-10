@@ -7,6 +7,9 @@ import { updateProjectWithRename } from '../utils/projectUtils';
 import { generateInitialXmlForOperation } from '../utils/soapUtils';
 import { Sidebar } from './Sidebar';
 import { WorkspaceLayout } from './WorkspaceLayout';
+import { ProxyPanel } from './proxy/ProxyPanel';
+import { RulesAndMockPage } from './proxy/RulesAndMockPage';
+import { FileWatcherPage } from './proxy/FileWatcherPage';
 import { HelpModal } from './HelpModal';
 
 import { AddToTestCaseModal } from './modals/AddToTestCaseModal';
@@ -31,6 +34,7 @@ import { useProject } from '../contexts/ProjectContext';
 import { useSelection } from '../contexts/SelectionContext';
 import { useUI } from '../contexts/UIContext';
 import { useNavigation } from '../contexts/NavigationContext';
+import { usePerformance } from '../contexts/PerformanceContext';
 import { useTestRunner } from '../contexts/TestRunnerContext';
 import { useExplorer } from '../hooks/useExplorer';
 import { useContextMenu } from '../hooks/useContextMenu';
@@ -202,6 +206,8 @@ const MainContent: React.FC = () => {
         setSelectedTestCase,
         selectedWorkflowStep,
         setSelectedWorkflowStep,
+        selectedPerformanceSuiteId,
+        setSelectedPerformanceSuiteId,
         response,
         setResponse,
         loading,
@@ -310,6 +316,21 @@ const MainContent: React.FC = () => {
             setSelectedRequest(null);
         }
     }, [activeView, selectedRequest, setSelectedRequest]);
+
+    // If we switch TO Performance view, and have a non-perf request selected -> Clear it
+    useEffect(() => {
+        if (activeView === SidebarView.PERFORMANCE && selectedRequest?.id && !selectedRequest.id.startsWith('perf-req-')) {
+            setSelectedRequest(null);
+        }
+    }, [activeView, selectedRequest, setSelectedRequest]);
+
+    // Auto-select first performance suite when available
+    useEffect(() => {
+        const suites = config?.performanceSuites || [];
+        if (suites.length > 0 && !selectedPerformanceSuiteId) {
+            setSelectedPerformanceSuiteId(suites[0].id);
+        }
+    }, [config?.performanceSuites, selectedPerformanceSuiteId, setSelectedPerformanceSuiteId]);
 
     // Local State (remaining)
     const [selectedFile, setSelectedFile] = useState<string | null>(null);
@@ -434,6 +455,28 @@ const MainContent: React.FC = () => {
         handleResetRequest,
         startTimeRef
     } = useTestRunner();
+
+    const {
+        activeRunId,
+        performanceProgress,
+        coordinatorStatus,
+        expandedPerformanceSuiteIds,
+        handleAddPerformanceSuite,
+        handleDeletePerformanceSuite,
+        handleRunPerformanceSuite,
+        handleStopPerformanceRun,
+        handleSelectPerformanceSuite,
+        handleUpdatePerformanceSuite,
+        handleAddPerformanceRequest,
+        handleDeletePerformanceRequest,
+        handleUpdatePerformanceRequest,
+        handleSelectPerformanceRequest,
+        handleStartCoordinator,
+        handleStopCoordinator,
+        handleTogglePerformanceSuiteExpand
+    } = usePerformance();
+
+    const selectedPerformanceSuite = config?.performanceSuites?.find((s: any) => s.id === selectedPerformanceSuiteId) || null;
 
     // ==========================================================================
     // SIDEBAR CALLBACKS - from useSidebarCallbacks hook
@@ -706,7 +749,8 @@ const MainContent: React.FC = () => {
     // Modals (remaining)
     const [confirmationModal, setConfirmationModal] = useState<ConfirmationState | null>(null);
     const [addToTestCaseModal, setAddToTestCaseModal] = React.useState<{ open: boolean, request: ApiRequest | null }>({ open: false, request: null });
-    const [pickRequestModal, setPickRequestModal] = React.useState<{ open: boolean, mode: 'testcase', caseId: string | null, suiteId?: string | null }>({ open: false, mode: 'testcase', caseId: null });
+    const [pickRequestModal, setPickRequestModal] = React.useState<{ open: boolean, mode: 'testcase' | 'performance', caseId: string | null, suiteId: string | null }>({ open: false, mode: 'testcase', caseId: null, suiteId: null });
+    const [importToPerformanceModal, setImportToPerformanceModal] = React.useState<{ open: boolean, suiteId: string | null }>({ open: false, suiteId: null });
     const [sampleModal, setSampleModal] = React.useState<{ open: boolean, schema: any | null, operationName: string }>({ open: false, schema: null, operationName: '' });
     const [exportWorkspaceModal, setExportWorkspaceModal] = React.useState(false);
     // const [codeSnippetModal, setCodeSnippetModal] = React.useState<{ open: boolean, request: ApiRequest | null }>({ open: false, request: null });
@@ -999,7 +1043,7 @@ const MainContent: React.FC = () => {
     const handleApplyWsdlSync = useCallback((diff: WsdlDiff) => {
         // Find project dirPath from projects context
         const project = projects.find(p => p.id === diff.projectId);
-        const dirPath = project?.dirPath || '';
+        const dirPath = project?.fileName || '';
         
         bridge.sendMessage({
             command: FrontendCommand.ApplyWsdlSync,
@@ -1016,6 +1060,15 @@ const MainContent: React.FC = () => {
     // ==========================================================================
     // LAYOUT & VIEW SWITCHING
     // ==========================================================================
+
+    const handleAddPerformanceRequestForUi = useCallback((suiteId: string) => {
+        if (isTauri()) {
+            setPickRequestModal({ open: true, mode: 'performance', caseId: null, suiteId });
+            return;
+        }
+        handleAddPerformanceRequest(suiteId);
+    }, [handleAddPerformanceRequest]);
+
     const {
         isResizing,
         splitRatio,
@@ -1034,7 +1087,9 @@ const MainContent: React.FC = () => {
         setSelectedInterface,
         setSelectedOperation,
         setSelectedRequest,
-        setSelectedTestCase
+        setSelectedTestCase,
+        selectedPerformanceSuiteId,
+        setSelectedPerformanceSuiteId
     });
     useMessageHandler({
         setProjects,
@@ -1408,6 +1463,20 @@ const MainContent: React.FC = () => {
                     onSelect: handleSelectWorkflow,
                     onSelectStep: handleSelectWorkflowStep
                 }}
+                performanceProps={{
+                    suites: config?.performanceSuites || [],
+                    onAddSuite: handleAddPerformanceSuite,
+                    onDeleteSuite: handleDeletePerformanceSuite,
+                    onRunSuite: handleRunPerformanceSuite,
+                    onSelectSuite: handleSelectPerformanceSuite,
+                    onStopRun: handleStopPerformanceRun,
+                    isRunning: !!activeRunId,
+                    activeRunId,
+                    selectedSuiteId: selectedPerformanceSuite?.id,
+                    deleteConfirm,
+                    setDeleteConfirm,
+                    onAddRequest: handleAddPerformanceRequestForUi
+                }}
                 historyProps={{
                     history: requestHistory,
                     onReplay: handleReplayRequest,
@@ -1427,11 +1496,28 @@ const MainContent: React.FC = () => {
                 environments={config?.environments}
                 onChangeEnvironment={(env) => bridge.sendMessage({ command: 'setActiveEnvironment', env })}
                 isMobileOpen={isMobileDrawerOpen}
-                onMobileClose={() => setIsMobileDrawerOpen(false)}
+                onMobileClose={isMobilePlatform ? () => setIsMobileDrawerOpen(false) : undefined}
             />
 
             {/* WorkspaceLayout with consolidated props */}
-            <WorkspaceLayout
+            {activeView === SidebarView.PROXY && (
+                <ProxyPanel
+                    onNavigateTo={(view) => handleSetActiveViewWrapper(view as SidebarView)}
+                />
+            )}
+            {activeView === SidebarView.MOCK && (
+                <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                    <RulesAndMockPage />
+                </div>
+            )}
+            {activeView === SidebarView.WATCHER && (
+                <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                    <FileWatcherPage />
+                </div>
+            )}
+            {/* WorkspaceLayout with consolidated props */}
+            {activeView !== SidebarView.PROXY && activeView !== SidebarView.MOCK && activeView !== SidebarView.WATCHER && (
+                <WorkspaceLayout
                 projects={projects}
                 setProjects={setProjects}
                 selectionState={{
@@ -1442,6 +1528,7 @@ const MainContent: React.FC = () => {
                     testCase: selectedTestCase,
                     testSuite: selectedTestSuite,
                     testStep: selectedStep,
+                    performanceSuite: selectedPerformanceSuite,
                     workflowStep: (() => {
                         console.log('[MainContent] Passing workflowStep to WorkspaceLayout:', !!selectedWorkflowStep);
                         if (selectedWorkflowStep) {
@@ -1534,6 +1621,19 @@ const MainContent: React.FC = () => {
                     onOpenDevOps: () => setShowDevOpsModal(true),
                     // onOpenCodeSnippet: (request) => setCodeSnippetModal({ open: true, request })
                 }}
+                onUpdateSuite={handleUpdatePerformanceSuite}
+                onAddPerformanceRequest={handleAddPerformanceRequest}
+                onDeletePerformanceRequest={handleDeletePerformanceRequest}
+                onSelectPerformanceRequest={handleSelectPerformanceRequest}
+                onUpdatePerformanceRequest={handleUpdatePerformanceRequest}
+                onImportFromWorkspace={(suiteId) => setImportToPerformanceModal({ open: true, suiteId })}
+                onRunSuite={handleRunPerformanceSuite}
+                onStopRun={handleStopPerformanceRun}
+                performanceProgress={performanceProgress}
+                performanceHistory={config?.performanceHistory}
+                coordinatorStatus={coordinatorStatus}
+                onStartCoordinator={handleStartCoordinator}
+                onStopCoordinator={handleStopCoordinator}
                 explorerState={{
                     inputType,
                     setInputType,
@@ -1568,6 +1668,7 @@ const MainContent: React.FC = () => {
                     }
                 }}
             />
+            )}
 
             {
                 showDevOpsModal && config?.azureDevOps?.orgUrl && config?.azureDevOps?.project && selectedRequest && (
@@ -1844,8 +1945,19 @@ const MainContent: React.FC = () => {
                     isOpen={pickRequestModal.open}
                     items={pickRequestItems}
                     title="Add Request to Test Case"
-                    onClose={() => setPickRequestModal({ open: false, mode: 'testcase', caseId: null })}
+                    onClose={() => setPickRequestModal({ open: false, mode: 'testcase', caseId: null, suiteId: null })}
                     onSelect={(item) => {
+                        if (pickRequestModal.mode === 'performance') {
+                            const suiteId = pickRequestModal.suiteId;
+                            if (!suiteId) return;
+                            bridge.emit({
+                                command: BackendCommand.AddOperationToPerformance,
+                                suiteId,
+                                ...(item.type === 'request' ? { request: item.data } : { operation: item.data })
+                            });
+                            setPickRequestModal({ open: false, mode: 'testcase', caseId: null, suiteId: null });
+                            return;
+                        }
                         const caseId = pickRequestModal.caseId;
                         if (!caseId) return;
                         bridge.emit({
@@ -1853,7 +1965,7 @@ const MainContent: React.FC = () => {
                             caseId,
                             ...(item.type === 'request' ? { request: item.data } : { operation: item.data })
                         });
-                        setPickRequestModal({ open: false, mode: 'testcase', caseId: null });
+                        setPickRequestModal({ open: false, mode: 'testcase', caseId: null, suiteId: null });
                     }}
                 />
             )}
@@ -2018,6 +2130,62 @@ const MainContent: React.FC = () => {
                     onClose={() => setWsdlDiff(null)}
                     onSync={handleApplyWsdlSync}
                 />
+            )}
+
+            {/* Import to Performance Suite Modal */}
+            {importToPerformanceModal.open && importToPerformanceModal.suiteId && (
+                <ImportModalOverlay>
+                    <ImportModalContainer>
+                        <ImportModalTitle>Import Test Case to Performance Suite</ImportModalTitle>
+                        <ImportModalDescription>Select a test case to import. All request steps from the test case will be added to this performance suite.</ImportModalDescription>
+                        <ImportModalList>
+                            {projects.flatMap(p =>
+                                (p.testSuites || []).flatMap(suite =>
+                                    (suite.testCases || []).map(tc => ({
+                                        projectName: p.name,
+                                        suiteName: suite.name,
+                                        testCase: tc,
+                                        stepCount: (tc.steps || []).filter(s => s.type === 'request').length
+                                    }))
+                                )
+                            ).map((item, idx) => (
+                                <ImportModalItem key={idx} onClick={() => {
+                                    const requestSteps = (item.testCase.steps || []).filter(s => s.type === 'request');
+                                    if (requestSteps.length > 0) {
+                                        for (const step of requestSteps) {
+                                            const req = step.config.request;
+                                            if (!req) continue;
+                                            bridge.sendMessage({
+                                                command: 'addPerformanceRequest',
+                                                suiteId: importToPerformanceModal.suiteId,
+                                                name: step.name || 'Imported Step',
+                                                endpoint: req.endpoint || '',
+                                                method: req.method || 'POST',
+                                                soapAction: req.method === 'POST' ? req.headers?.['SOAPAction'] : undefined,
+                                                requestBody: req.request || '',
+                                                headers: req.headers || {},
+                                                extractors: req.extractors || [],
+                                                requestType: req.requestType,
+                                                bodyType: req.bodyType,
+                                                restConfig: req.restConfig,
+                                                graphqlConfig: req.graphqlConfig,
+                                            });
+                                        }
+                                    }
+                                    setImportToPerformanceModal({ open: false, suiteId: null });
+                                }}>
+                                    <ImportModalItemTitle>{item.testCase.name}</ImportModalItemTitle>
+                                    <ImportModalItemMeta>{item.projectName} → {item.suiteName}</ImportModalItemMeta>
+                                    <ImportModalItemCount>{item.stepCount} request step{item.stepCount !== 1 ? 's' : ''}</ImportModalItemCount>
+                                </ImportModalItem>
+                            ))}
+                            {projects.flatMap(p => (p.testSuites || []).flatMap(s => s.testCases || [])).length === 0 && (
+                                <ImportModalEmpty>No test cases available. Create a test suite first.</ImportModalEmpty>
+                            )}
+                        </ImportModalList>
+                        <ImportModalCancel onClick={() => setImportToPerformanceModal({ open: false, suiteId: null })}>Cancel</ImportModalCancel>
+                    </ImportModalContainer>
+                </ImportModalOverlay>
             )}
         </Container >
     );

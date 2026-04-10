@@ -1,5 +1,5 @@
 import React from 'react';
-import { Settings, HelpCircle, Compass, FolderOpen as FolderIcon, FlaskConical, Home, Clock, Workflow } from 'lucide-react';
+import { Settings, HelpCircle, Compass, FolderOpen as FolderIcon, FlaskConical, Home, Clock, Workflow, Shuffle, Server, Eye, Activity } from 'lucide-react';
 import { SidebarView } from '@shared/models';
 import { EnvironmentSelector } from './EnvironmentSelector';
 
@@ -30,6 +30,15 @@ const NavItem = ({ icon: Icon, active, onClick, title }: any) => (
     >
         <Icon size={24} strokeWidth={active ? 2.5 : 2} />
     </div>
+);
+
+const RailSeparator = () => (
+    <div style={{
+        margin: '6px 10px',
+        borderTop: '1px solid var(--apinox-activityBar-border)',
+        opacity: 0.5,
+        flexShrink: 0
+    }} />
 );
 
 export const SidebarRail: React.FC<SidebarRailProps> = ({
@@ -83,13 +92,42 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
                 title="Workflows"
             />
             <NavItem
+                icon={Activity}
+                active={activeView === SidebarView.PERFORMANCE}
+                onClick={() => onChangeView(SidebarView.PERFORMANCE)}
+                title="Performance"
+            />
+            <NavItem
                 icon={Clock}
                 active={activeView === SidebarView.HISTORY}
                 onClick={() => onChangeView(SidebarView.HISTORY)}
                 title="History"
             />
 
+            <RailSeparator />
+
+            <NavItem
+                icon={Shuffle}
+                active={activeView === SidebarView.PROXY}
+                onClick={() => onChangeView(SidebarView.PROXY)}
+                title="Proxy &amp; Traffic"
+            />
+            <NavItem
+                icon={Server}
+                active={activeView === SidebarView.MOCK}
+                onClick={() => onChangeView(SidebarView.MOCK)}
+                title="Mock Server"
+            />
+            <NavItem
+                icon={Eye}
+                active={activeView === SidebarView.WATCHER}
+                onClick={() => onChangeView(SidebarView.WATCHER)}
+                title="File Watcher"
+            />
+
             <div style={{ flex: 1 }}></div>
+
+            <RailSeparator />
 
             <EnvironmentSelector
                 activeEnvironment={activeEnvironment}
