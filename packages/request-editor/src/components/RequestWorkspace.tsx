@@ -1,20 +1,10 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { Play, X, RotateCcw, Variable, Settings, Type, Minus, Plus, WrapText, AlignLeft, Braces, ListOrdered, Layout as LayoutIcon, Map } from 'lucide-react';
+import { Play, X, RotateCcw, Variable, Settings, Braces, Minus } from 'lucide-react';
 import * as S from './RequestWorkspace.styles';
-import { MonacoRequestEditor } from './MonacoRequestEditor';
 import { MonacoResponseViewer } from './MonacoResponseViewer';
 import { MonacoSingleLineInput } from './MonacoSingleLineInput';
 import type { MonacoSingleLineInputHandle } from './MonacoSingleLineInput';
 import type { MonacoRequestEditorHandle } from './MonacoRequestEditor';
-import { HeadersPanel } from './HeadersPanel';
-import { AssertionsPanel } from './AssertionsPanel';
-import { ExtractorsPanel } from './ExtractorsPanel';
-import { QueryParamsPanel } from './QueryParamsPanel';
-import { SecurityPanel } from './SecurityPanel';
-import { AttachmentsPanel } from './AttachmentsPanel';
-import { FormDataPanel } from './FormDataPanel';
-import { BinaryBodyPanel } from './BinaryBodyPanel';
 import type { FormField, BinaryFile } from '../types';
 import { XPathGenerator } from '../utils/xpathGenerator';
 import { useEditorSettings, EditorSettingsProvider } from '../contexts/EditorSettingsContext';
@@ -25,6 +15,8 @@ import { RequestTypeBadge, MethodBadge, BodyTypeBadge, ContentTypeBadge, BadgeGr
 import type { RequestType, BodyType, HttpMethod } from '../types';
 import { getInstalledFonts, type MonoFont } from '../utils/fontDetection';
 import type { ExtraTab } from './MonacoRequestEditorWithToolbar';
+import { EditorSettingsMenu } from './EditorSettingsMenu';
+import { RequestTabContent } from './RequestTabContent';
 
 // Types
 export interface ApiRequest {
@@ -336,6 +328,19 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
     };
   }, [isResizing, layoutMode]);
 
+  const handleFormatXml = useCallback(() => {
+    const currentValue = requestEditorRef.current?.getValue() || request.request || '';
+    const formatted = formatXml(
+      currentValue,
+      editorSettings.settings.alignAttributes,
+      editorSettings.settings.inlineValues,
+      editorSettings.settings.hideCausality
+    );
+    onUpdateRequest({ ...request, request: formatted });
+    setEditorForceUpdateKey(prev => prev + 1);
+    setShowEditorSettings(false);
+  }, [editorSettings.settings, request, onUpdateRequest]);
+
   const handleTogglePrettyPrint = useCallback(() => {
     editorSettings.togglePrettyPrint();
     const newPrettyPrint = !editorSettings.settings.prettyPrint;
@@ -351,187 +356,6 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
     }
     setEditorForceUpdateKey(prev => prev + 1);
   }, [editorSettings, onUpdateRequest, request]);
-
-    // Render tab content
-
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'request':
-        // Handle different body types
-        if (request.bodyType === 'form-data') {
-          return (
-            <FormDataPanel
-              fields={request.formFields || []}
-              onChange={(fields) => onUpdateRequest({ ...request, formFields: fields })}
-              enctype={(request.contentType === 'application/x-www-form-urlencoded' || request.contentType === 'multipart/form-data') ? request.contentType : 'multipart/form-data'}
-              onPickFile={onPickFile}
-            />
-          );
-        }
-        
-        if (request.bodyType === 'binary') {
-          return (
-            <BinaryBodyPanel
-              file={request.binaryFile ?? null}
-              onChange={(file) => onUpdateRequest({ ...request, binaryFile: file ?? undefined })}
-              onPickFile={onPickFile}
-            />
-          );
-        }
-        
-        if (request.bodyType === 'none') {
-          return (
-            <S.EmptyState>
-              <S.EmptyStateText>No request body for this request type</S.EmptyStateText>
-            </S.EmptyState>
-          );
-        }
-        
-        // Default: Monaco editor for text-based bodies (XML, JSON, GraphQL, text)
-        const editorLanguage = request.bodyType === 'json' ? 'json' : request.bodyType === 'graphql' ? 'graphql' : 'xml';
-
-        // GraphQL: split layout — query editor (67%) + variables panel (33%)
-        if (request.bodyType === 'graphql') {
-          const graphqlVars: Record<string, string> = (() => {
-            const raw = request.graphqlConfig?.variables;
-            if (!raw) return {};
-            // Convert any non-string values to strings for the panel
-            return Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, String(v ?? '')]));
-          })();
-          return (
-            <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
-              {/* GraphQL query editor — 67% */}
-              <div style={{ flex: '0 0 67%', minWidth: 0, borderRight: '1px solid var(--apinox-widget-border)', overflow: 'hidden' }}>
-                <MonacoRequestEditor
-                  ref={requestEditorRef}
-                  value={request.request || ''}
-                  onChange={(value) => onUpdateRequest({ ...request, request: value })}
-                  language="graphql"
-                  readOnly={readOnly}
-                  availableVariables={availableVariables}
-                  requestId={request.id || request.name}
-                  fontSize={editorSettings.settings.fontSize}
-                  fontFamily={editorSettings.settings.fontFamily}
-                  showLineNumbers={editorSettings.settings.showLineNumbers}
-                  showMinimap={editorSettings.settings.showMinimap}
-                  forceUpdateKey={editorForceUpdateKey}
-                  onLog={onLog}
-                />
-              </div>
-              {/* Variables panel — 33% */}
-              <div style={{ flex: '0 0 33%', minWidth: 0, overflow: 'hidden' }}>
-                <QueryParamsPanel
-                  params={graphqlVars}
-                  onChange={(vars) => onUpdateRequest({
-                    ...request,
-                    graphqlConfig: { ...request.graphqlConfig, variables: vars }
-                  })}
-                  title="Variables"
-                  paramLabel="Variable"
-                  readOnly={readOnly}
-                />
-              </div>
-            </div>
-          );
-        }
-
-        return (
-          <MonacoRequestEditor
-            ref={requestEditorRef}
-            value={request.request || ''}
-            onChange={(value) => onUpdateRequest({ ...request, request: value })}
-            language={editorLanguage}
-            readOnly={readOnly}
-            availableVariables={availableVariables}
-            requestId={request.id || request.name}
-            fontSize={editorSettings.settings.fontSize}
-            fontFamily={editorSettings.settings.fontFamily}
-            showLineNumbers={editorSettings.settings.showLineNumbers}
-            showMinimap={editorSettings.settings.showMinimap}
-            forceUpdateKey={editorForceUpdateKey}
-            onLog={onLog}
-          />
-        );
-
-      case 'headers':
-        return readOnly && request.headers ? (
-          <S.HeadersViewer>
-            {Object.entries(request.headers).map(([key, value]) => (
-              <S.HeadersRow key={key}>
-                <S.HeadersKey>{key}</S.HeadersKey>
-                <S.HeadersValue>{value}</S.HeadersValue>
-              </S.HeadersRow>
-            ))}
-          </S.HeadersViewer>
-        ) : (
-          <HeadersPanel
-            headers={request.headers || {}}
-            onChange={(headers) => onUpdateRequest({ ...request, headers })}
-          />
-        );
-
-      case 'params':
-        return (
-          <QueryParamsPanel
-            params={request.queryParams || {}}
-            onChange={(params) => onUpdateRequest({ ...request, queryParams: params })}
-          />
-        );
-
-      case 'assertions':
-        return (
-          <AssertionsPanel
-            assertions={request.assertions || []}
-            onChange={(assertions) => onUpdateRequest({ ...request, assertions })}
-          />
-        );
-
-      case 'extractors':
-        return (
-          <ExtractorsPanel
-            extractors={request.extractors || []}
-            onChange={(extractors) => onUpdateRequest({ ...request, extractors })}
-          />
-        );
-
-      case 'auth':
-        return (
-          <SecurityPanel
-            security={request.wsSecurity}
-            onChange={(security) => onUpdateRequest({ ...request, wsSecurity: security })}
-          />
-        );
-
-      case 'attachments':
-        return (
-          <AttachmentsPanel
-            attachments={request.attachments || []}
-            onChange={(attachments) => onUpdateRequest({ ...request, attachments })}
-          />
-        );
-
-      case 'variables':
-        return (
-          <S.PanelContent>
-            {availableVariables.length === 0 ? (
-              <S.StatText>No variables available</S.StatText>
-            ) : (
-              availableVariables.map((v) => (
-                <S.HeadersRow key={v.name}>
-                  <S.HeadersKey>${'{' + v.name + '}'}</S.HeadersKey>
-                  <S.HeadersValue>{v.value || '(not yet extracted)'}</S.HeadersValue>
-                </S.HeadersRow>
-              ))
-            )}
-          </S.PanelContent>
-        );
-
-      default: {
-        const extra = extraTabs.find(t => t.id === activeTab);
-        return extra ? extra.render() : null;
-      }
-    }
-  };
 
   return (
     <S.RequestWorkspaceContainer>
@@ -721,7 +545,18 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
           {/* Request Pane */}
           <S.RequestPane $ratio={response ? splitRatio : 1}>
             <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-              {renderTabContent()}
+              <RequestTabContent
+                activeTab={activeTab}
+                request={request}
+                onUpdateRequest={onUpdateRequest}
+                readOnly={readOnly}
+                availableVariables={availableVariables}
+                requestEditorRef={requestEditorRef}
+                editorForceUpdateKey={editorForceUpdateKey}
+                onLog={onLog}
+                onPickFile={onPickFile}
+                extraTabs={extraTabs}
+              />
             </div>
             {/* Request Status Bar */}
             <S.StatusBar>
@@ -810,206 +645,17 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
       </S.ContentArea>
 
       {/* Settings Menu Portal - renders at document body level */}
-      {showEditorSettings && menuPosition && createPortal(
-        <div
-          ref={settingsMenuRef}
-          style={{
-            position: 'fixed',
-            top: `${menuPosition.top}px`,
-            right: `${menuPosition.right}px`,
-            zIndex: 999999
-          }}
-        >
-          {/* maxHeight + overflow on the menu itself, NOT the wrapper, because
-              EditorSettingsMenu is position:absolute so overflow on the parent
-              wrapper would clip it entirely */}
-          <S.EditorSettingsMenu style={{
-            maxHeight: `${menuPosition.maxHeight}px`,
-            overflowY: 'auto',
-            WebkitOverflowScrolling: 'touch' as any,
-          }}>
-            {/* Font Settings */}
-            <S.MenuSection>
-              <S.MenuSectionTitle>Font Settings</S.MenuSectionTitle>
-              
-              <S.MenuRow>
-                <S.MenuLabel>
-                  <Type size={14} />
-                  Font Family
-                </S.MenuLabel>
-                <S.FontSelect
-                  value={editorSettings.settings.fontFamily}
-                  onChange={(e) => editorSettings.updateSettings({ fontFamily: e.target.value })}
-                >
-                  {installedFonts.length > 0 ? (
-                    installedFonts.map((font) => (
-                      <option key={font.value} value={font.value}>
-                        {font.name}
-                      </option>
-                    ))
-                  ) : (
-                    <option value='Consolas, "Courier New", monospace'>Consolas</option>
-                  )}
-                </S.FontSelect>
-              </S.MenuRow>
-
-              <S.MenuRow>
-                <S.MenuLabel>
-                  <Type size={14} />
-                  Font Size
-                </S.MenuLabel>
-                <S.MenuControls>
-                  <S.MenuIconButton
-                    onClick={() => {
-                      const newSize = Math.max(8, editorSettings.settings.fontSize - 1);
-                      editorSettings.updateSettings({ fontSize: newSize });
-                    }}
-                    disabled={editorSettings.settings.fontSize <= 8}
-                    title="Decrease"
-                  >
-                    <Minus size={12} />
-                  </S.MenuIconButton>
-                  <S.FontSizeDisplay>{editorSettings.settings.fontSize}px</S.FontSizeDisplay>
-                  <S.MenuIconButton
-                    onClick={() => {
-                      const newSize = Math.min(24, editorSettings.settings.fontSize + 1);
-                      editorSettings.updateSettings({ fontSize: newSize });
-                    }}
-                    disabled={editorSettings.settings.fontSize >= 24}
-                    title="Increase"
-                  >
-                    <Plus size={12} />
-                  </S.MenuIconButton>
-                </S.MenuControls>
-              </S.MenuRow>
-            </S.MenuSection>
-
-            {/* Formatting Options */}
-            <S.MenuSection>
-              <S.MenuSectionTitle>Formatting Options</S.MenuSectionTitle>
-              
-              <S.MenuRow>
-                <S.MenuLabel>
-                  <Braces size={14} />
-                  Format XML
-                </S.MenuLabel>
-                <S.MenuIconButton
-                  onClick={() => {
-                    // Get current value from editor (not saved state)
-                    const currentValue = requestEditorRef.current?.getValue() || request.request || '';
-                    console.log('[Format] Current editor value:', currentValue);
-                    const formatted = formatXml(
-                      currentValue,
-                      editorSettings.settings.alignAttributes,
-                      editorSettings.settings.inlineValues,
-                      editorSettings.settings.hideCausality
-                    );
-                    console.log('[Format] Formatted:', formatted);
-                    console.log('[Format] Settings:', editorSettings.settings);
-                    onUpdateRequest({ ...request, request: formatted });
-                    // Force editor to update with new value
-                    setEditorForceUpdateKey(prev => prev + 1);
-                    setShowEditorSettings(false);
-                  }}
-                  title="Format XML Now"
-                >
-                  Format
-                </S.MenuIconButton>
-              </S.MenuRow>
-              
-              <S.MenuRow>
-                <S.MenuLabel>
-                  <WrapText size={14} />
-                  Align Attributes
-                </S.MenuLabel>
-                <S.MenuIconButton
-                  onClick={() => editorSettings.toggleAlignAttributes()}
-                  className={editorSettings.settings.alignAttributes ? 'active' : ''}
-                  title={editorSettings.settings.alignAttributes ? 'On' : 'Off'}
-                >
-                  {editorSettings.settings.alignAttributes ? 'On' : 'Off'}
-                </S.MenuIconButton>
-              </S.MenuRow>
-
-              <S.MenuRow>
-                <S.MenuLabel>
-                  <AlignLeft size={14} />
-                  Inline Values
-                </S.MenuLabel>
-                <S.MenuIconButton
-                  onClick={() => editorSettings.toggleInlineValues()}
-                  className={editorSettings.settings.inlineValues ? 'active' : ''}
-                  title={editorSettings.settings.inlineValues ? 'On' : 'Off'}
-                >
-                  {editorSettings.settings.inlineValues ? 'On' : 'Off'}
-                </S.MenuIconButton>
-              </S.MenuRow>
-
-              <S.MenuRow>
-                <S.MenuLabel>
-                  <Braces size={14} />
-                  Hide Causality
-                </S.MenuLabel>
-                <S.MenuIconButton
-                  onClick={() => editorSettings.toggleHideCausality()}
-                  className={editorSettings.settings.hideCausality ? 'active' : ''}
-                  title={editorSettings.settings.hideCausality ? 'On' : 'Off'}
-                >
-                  {editorSettings.settings.hideCausality ? 'On' : 'Off'}
-                </S.MenuIconButton>
-              </S.MenuRow>
-            </S.MenuSection>
-
-            {/* View Options */}
-            <S.MenuSection>
-              <S.MenuSectionTitle>View Options</S.MenuSectionTitle>
-              
-              <S.MenuRow>
-                <S.MenuLabel>
-                  <ListOrdered size={14} />
-                  Line Numbers
-                </S.MenuLabel>
-                <S.MenuIconButton
-                  onClick={() => editorSettings.toggleLineNumbers()}
-                  className={editorSettings.settings.showLineNumbers ? 'active' : ''}
-                  title={editorSettings.settings.showLineNumbers ? 'On' : 'Off'}
-                >
-                  {editorSettings.settings.showLineNumbers ? 'On' : 'Off'}
-                </S.MenuIconButton>
-              </S.MenuRow>
-
-              <S.MenuRow>
-                <S.MenuLabel>
-                  <Map size={14} />
-                  Minimap
-                </S.MenuLabel>
-                <S.MenuIconButton
-                  onClick={() => editorSettings.toggleMinimap()}
-                  className={editorSettings.settings.showMinimap ? 'active' : ''}
-                  title={editorSettings.settings.showMinimap ? 'On' : 'Off'}
-                >
-                  {editorSettings.settings.showMinimap ? 'On' : 'Off'}
-                </S.MenuIconButton>
-              </S.MenuRow>
-
-              {controlledLayoutMode === undefined && (
-              <S.MenuRow>
-                <S.MenuLabel>
-                  <LayoutIcon size={14} />
-                  Split Layout
-                </S.MenuLabel>
-                <S.MenuIconButton
-                  onClick={handleToggleLayout}
-                  title={layoutMode === 'vertical' ? 'Vertical' : 'Horizontal'}
-                >
-                  {layoutMode === 'vertical' ? 'Vertical' : 'Horizontal'}
-                </S.MenuIconButton>
-              </S.MenuRow>
-              )}
-            </S.MenuSection>
-          </S.EditorSettingsMenu>
-        </div>,
-        document.body
+      {showEditorSettings && menuPosition && (
+        <EditorSettingsMenu
+          menuPosition={menuPosition}
+          settingsMenuRef={settingsMenuRef}
+          installedFonts={installedFonts}
+          layoutMode={layoutMode}
+          showLayoutToggle={controlledLayoutMode === undefined}
+          onToggleLayout={handleToggleLayout}
+          onFormatXml={handleFormatXml}
+          onClose={() => setShowEditorSettings(false)}
+        />
       )}
     </S.RequestWorkspaceContainer>
   );
