@@ -45,93 +45,14 @@ import { useAppLifecycle } from '../hooks/useAppLifecycle';
 import { useLayoutHandler } from '../hooks/useLayoutHandler';
 import { useFolderManager } from '../hooks/useFolderManager';
 import { useMobileLayout } from '../hooks/useMobileLayout';
+import { useWorkflowHandlers } from '../hooks/useWorkflowHandlers';
+import { ImportTestCaseModal } from './ImportTestCaseModal';
 
 interface ConfirmationState {
     title: string;
     message: string;
     onConfirm: () => void;
 }
-
-// ==========================================================================
-// STYLED COMPONENTS - Defined outside component to prevent dynamic creation
-// ==========================================================================
-const ImportModalOverlay = styled.div`
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0,0,0,0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-`;
-
-const ImportModalContainer = styled.div`
-    background: var(--apinox-editor-background);
-    border: 1px solid var(--apinox-widget-border);
-    border-radius: 6px;
-    padding: 20px;
-    min-width: 400px;
-    max-width: 600px;
-    max-height: 70vh;
-    overflow: auto;
-`;
-
-const ImportModalTitle = styled.h3`
-    margin: 0 0 15px 0;
-`;
-
-const ImportModalDescription = styled.p`
-    margin-bottom: 15px;
-    opacity: 0.8;
-    font-size: 0.9em;
-`;
-
-const ImportModalList = styled.div`
-    max-height: 300px;
-    overflow: auto;
-    margin-bottom: 15px;
-`;
-
-const ImportModalItem = styled.div`
-    padding: 10px;
-    margin-bottom: 5px;
-    border-radius: 4px;
-    background: var(--apinox-list-hoverBackground);
-    cursor: pointer;
-    border: 1px solid var(--apinox-widget-border);
-`;
-
-const ImportModalItemTitle = styled.div`
-    font-weight: bold;
-`;
-
-const ImportModalItemMeta = styled.div`
-    font-size: 0.85em;
-    opacity: 0.7;
-`;
-
-const ImportModalItemCount = styled.div`
-    font-size: 0.8em;
-    opacity: 0.5;
-`;
-
-const ImportModalEmpty = styled.div`
-    padding: 20px;
-    text-align: center;
-    opacity: 0.6;
-`;
-
-const ImportModalCancel = styled.button`
-    background: var(--apinox-button-secondaryBackground);
-    color: var(--apinox-button-secondaryForeground);
-    border: none;
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-`;
 
 const DangerMenuItem = styled(ContextMenuItem)`
     color: var(--apinox-errorForeground);
@@ -755,7 +676,6 @@ const MainContent: React.FC = () => {
     const [sampleModal, setSampleModal] = React.useState<{ open: boolean, schema: any | null, operationName: string }>({ open: false, schema: null, operationName: '' });
     const [exportWorkspaceModal, setExportWorkspaceModal] = React.useState(false);
     // const [codeSnippetModal, setCodeSnippetModal] = React.useState<{ open: boolean, request: ApiRequest | null }>({ open: false, request: null });
-    const [workflowBuilderModal, setWorkflowBuilderModal] = React.useState<{ open: boolean, workflow: Workflow | null, projectPath: string | null }>({ open: false, workflow: null, projectPath: null });
 
     const handleExportWorkspace = useCallback(async (selectedProjects: ApinoxProject[]) => {
         try {
@@ -798,158 +718,31 @@ const MainContent: React.FC = () => {
     }, []);
 
     // ==========================================================================
-    // WORKFLOW HANDLERS
+    // WORKFLOW HANDLERS - extracted to useWorkflowHandlers hook
     // ==========================================================================
-
-    const handleAddWorkflow = useCallback(() => {
-        setWorkflowBuilderModal({ open: true, workflow: null, projectPath: '' });
-    }, []);
-
-    const handleEditWorkflow = useCallback((workflow: Workflow) => {
-        setWorkflowBuilderModal({ open: true, workflow, projectPath: '' });
-    }, []);
-
-    const handleSaveWorkflow = useCallback(async (workflow: Workflow) => {
-        try {
-            await bridge.sendMessageAsync({
-                command: FrontendCommand.SaveWorkflow,
-                workflow
-            });
-
-            // Workflows are now global - reload config
-            const response = await bridge.sendMessageAsync({ command: FrontendCommand.GetSettings });
-
-            if (response) {
-                setConfig(response);
-            }
-
-            setWorkspaceDirty(true);
-            setWorkflowBuilderModal({ open: false, workflow: null, projectPath: '' });
-        } catch (error) {
-            console.error('[MainContent] Failed to save workflow:', error);
-        }
-    }, [setConfig, setWorkspaceDirty]);
-
-    const handleRunWorkflow = useCallback(async (workflow: Workflow) => {
-        try {
-            setLoading(true);
-            const result: any = await bridge.sendMessageAsync({
-                command: FrontendCommand.ExecuteWorkflow,
-                workflow,
-                environment: config?.activeEnvironment
-            });
-
-            if (result.status === 'completed') {
-                // workflow completed — no-op (results shown in UI by TestRunnerContext)
-            } else {
-                console.error(`[Workflow] ${workflow.name} failed:`, result.error);
-            }
-        } catch (error) {
-            console.error('Failed to run workflow:', error);
-        } finally {
-            setLoading(false);
-        }
-    }, [config?.activeEnvironment, setLoading]);
-
-    const handleDeleteWorkflow = useCallback(async (workflow: Workflow) => {
-        try {
-            await bridge.sendMessageAsync({
-                command: FrontendCommand.DeleteWorkflow,
-                workflowId: workflow.id
-            });
-
-            // Clear the workspace if this workflow was selected
-            if (selectedWorkflowStep?.workflow.id === workflow.id) {
-                setSelectedWorkflowStep(null);
-            }
-
-            // Reload config
-            const updatedConfig: any = await bridge.sendMessageAsync({ command: FrontendCommand.GetSettings });
-            if (updatedConfig) {
-                setConfig(updatedConfig);
-            }
-
-            setWorkspaceDirty(true);
-        } catch (error) {
-            console.error('Failed to delete workflow:', error);
-        }
-    }, [setConfig, setWorkspaceDirty, selectedWorkflowStep, setSelectedWorkflowStep]);
-
-    const handleDuplicateWorkflow = useCallback((workflow: Workflow) => {
-        const { v4: uuidv4 } = require('uuid');
-        const duplicated: Workflow = {
-            ...workflow,
-            id: uuidv4(),
-            name: `${workflow.name} (Copy)`,
-        };
-        setWorkflowBuilderModal({ open: true, workflow: duplicated, projectPath: '' });
-    }, []);
-
-    const handleSelectWorkflow = useCallback((workflow: Workflow) => {
-        setSelectedRequest(null);
-        const workflowStep = { workflow, step: null as any };
-        setSelectedWorkflowStep(workflowStep);
-        setActiveView(SidebarView.WORKFLOWS);
-    }, [setSelectedRequest, setSelectedWorkflowStep, setActiveView]);
-
-    const handleSelectWorkflowStep = useCallback((workflow: Workflow, step: WorkflowStep) => {
-        setSelectedRequest(null);
-        setSelectedWorkflowStep({ workflow, step });
-        setActiveView(SidebarView.WORKFLOWS);
-    }, [setSelectedRequest, setSelectedWorkflowStep, setActiveView]);
-
-    const handleUpdateWorkflowStep = useCallback(async (workflow: Workflow, updatedStep: WorkflowStep) => {
-
-        // Update the step in the workflow
-        const updatedWorkflow: Workflow = {
-            ...workflow,
-            steps: workflow.steps.map(s => s.id === updatedStep.id ? updatedStep : s)
-        };
-
-        // Save the updated workflow
-        try {
-            await bridge.sendMessageAsync({
-                command: FrontendCommand.SaveWorkflow,
-                workflow: updatedWorkflow
-            });
-
-            // Reload config to get updated workflows
-            const response = await bridge.sendMessageAsync({ command: FrontendCommand.GetSettings });
-            if (response) {
-                setConfig(response);
-            }
-            setSelectedWorkflowStep({ workflow: updatedWorkflow, step: updatedStep });
-        } catch (error) {
-            console.error('[MainContent] Failed to update workflow step:', error);
-        }
-    }, [setConfig, setSelectedWorkflowStep]);
-
-    const handleUpdateWorkflow = useCallback(async (updatedWorkflow: Workflow) => {
-
-        // Save the updated workflow
-        try {
-            await bridge.sendMessageAsync({
-                command: FrontendCommand.SaveWorkflow,
-                workflow: updatedWorkflow
-            });
-
-            // Reload config to get updated workflows
-            const response = await bridge.sendMessageAsync({ command: FrontendCommand.GetSettings });
-            if (response) {
-                setConfig(response);
-            }
-            if (selectedWorkflowStep?.workflow.id === updatedWorkflow.id) {
-                setSelectedWorkflowStep({
-                    workflow: updatedWorkflow,
-                    step: selectedWorkflowStep.step
-                });
-            }
-
-            console.log('[MainContent] Workflow updated successfully');
-        } catch (error) {
-            console.error('[MainContent] Failed to update workflow:', error);
-        }
-    }, [setConfig, setSelectedWorkflowStep, selectedWorkflowStep]);
+    const {
+        workflowBuilderModal,
+        setWorkflowBuilderModal,
+        handleAddWorkflow,
+        handleEditWorkflow,
+        handleSaveWorkflow,
+        handleRunWorkflow,
+        handleDeleteWorkflow,
+        handleDuplicateWorkflow,
+        handleSelectWorkflow,
+        handleSelectWorkflowStep,
+        handleUpdateWorkflowStep,
+        handleUpdateWorkflow,
+    } = useWorkflowHandlers({
+        config,
+        setConfig,
+        setWorkspaceDirty,
+        selectedWorkflowStep,
+        setSelectedWorkflowStep,
+        setSelectedRequest,
+        setActiveView,
+        setLoading,
+    });
 
     const pickRequestItems = useMemo<PickRequestItem[]>(() => {
         const items: PickRequestItem[] = [];
@@ -2134,67 +1927,14 @@ const MainContent: React.FC = () => {
             )}
 
             {/* Import to Performance Suite Modal */}
-            {importToPerformanceModal.open && importToPerformanceModal.suiteId && (
-                <ImportModalOverlay>
-                    <ImportModalContainer>
-                        <ImportModalTitle>Import Test Case to Performance Suite</ImportModalTitle>
-                        <ImportModalDescription>Select a test case to import. All request steps from the test case will be added to this performance suite.</ImportModalDescription>
-                        <ImportModalList>
-                            {projects.flatMap(p =>
-                                (p.testSuites || []).flatMap(suite =>
-                                    (suite.testCases || []).map(tc => ({
-                                        projectName: p.name,
-                                        suiteName: suite.name,
-                                        testCase: tc,
-                                        stepCount: (tc.steps || []).filter(s => s.type === 'request').length
-                                    }))
-                                )
-                            ).map((item, idx) => (
-                                <ImportModalItem key={idx} onClick={() => {
-                                    const requestSteps = (item.testCase.steps || []).filter(s => s.type === 'request');
-                                    if (requestSteps.length > 0) {
-                                        for (const step of requestSteps) {
-                                            const req = step.config.request;
-                                            if (!req) continue;
-                                            bridge.sendMessage({
-                                                command: 'addPerformanceRequest',
-                                                suiteId: importToPerformanceModal.suiteId,
-                                                name: step.name || 'Imported Step',
-                                                endpoint: req.endpoint || '',
-                                                method: req.method || 'POST',
-                                                soapAction: req.method === 'POST' ? req.headers?.['SOAPAction'] : undefined,
-                                                requestBody: req.request || '',
-                                                headers: req.headers || {},
-                                                extractors: req.extractors || [],
-                                                requestType: req.requestType,
-                                                bodyType: req.bodyType,
-                                                restConfig: req.restConfig,
-                                                graphqlConfig: req.graphqlConfig,
-                                            });
-                                        }
-                                    }
-                                    setImportToPerformanceModal({ open: false, suiteId: null });
-                                }}>
-                                    <ImportModalItemTitle>{item.testCase.name}</ImportModalItemTitle>
-                                    <ImportModalItemMeta>{item.projectName} → {item.suiteName}</ImportModalItemMeta>
-                                    <ImportModalItemCount>{item.stepCount} request step{item.stepCount !== 1 ? 's' : ''}</ImportModalItemCount>
-                                </ImportModalItem>
-                            ))}
-                            {projects.flatMap(p => (p.testSuites || []).flatMap(s => s.testCases || [])).length === 0 && (
-                                <ImportModalEmpty>No test cases available. Create a test suite first.</ImportModalEmpty>
-                            )}
-                        </ImportModalList>
-                        <ImportModalCancel onClick={() => setImportToPerformanceModal({ open: false, suiteId: null })}>Cancel</ImportModalCancel>
-                    </ImportModalContainer>
-                </ImportModalOverlay>
-            )}
+            <ImportTestCaseModal
+                open={importToPerformanceModal.open}
+                suiteId={importToPerformanceModal.suiteId}
+                projects={projects}
+                onClose={() => setImportToPerformanceModal({ open: false, suiteId: null })}
+            />
         </Container >
     );
 }
-
-
-
-
-
 
 export default MainContent;
