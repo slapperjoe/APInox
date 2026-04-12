@@ -2,6 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 import { AlertTriangle, X, Trash2, RotateCcw } from 'lucide-react';
 import { ApinoxProject } from '@shared/models';
+import { IconButton, PrimaryButton, SecondaryButton, DangerButton } from './common/Button';
 
 interface SaveErrorDialogProps {
     projectName: string;
@@ -56,21 +57,6 @@ const Title = styled.h2`
     color: var(--apinox-editorWidget-foreground);
 `;
 
-const CloseButton = styled.button`
-    background: transparent;
-    border: none;
-    color: var(--apinox-icon-foreground);
-    cursor: pointer;
-    padding: 4px;
-    display: flex;
-    align-items: center;
-    border-radius: 4px;
-
-    &:hover {
-        background: var(--apinox-toolbar-hoverBackground);
-    }
-`;
-
 const Content = styled.div`
     padding: 16px;
 `;
@@ -107,45 +93,6 @@ const ButtonGroup = styled.div`
     border-top: 1px solid var(--apinox-editorWidget-border);
 `;
 
-const Button = styled.button<{ $variant?: 'primary' | 'danger' | 'secondary' }>`
-    padding: 8px 16px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 13px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    transition: all 0.2s;
-
-    ${props => {
-        if (props.$variant === 'primary') {
-            return `
-                background: var(--apinox-button-background);
-                color: var(--apinox-button-foreground);
-                &:hover {
-                    background: var(--apinox-button-hoverBackground);
-                }
-            `;
-        } else if (props.$variant === 'danger') {
-            return `
-                background: var(--apinox-errorForeground);
-                color: white;
-                &:hover {
-                    opacity: 0.9;
-                }
-            `;
-        } else {
-            return `
-                background: var(--apinox-button-secondaryBackground);
-                color: var(--apinox-button-secondaryForeground);
-                &:hover {
-                    background: var(--apinox-button-secondaryHoverBackground);
-                }
-            `;
-        }
-    }}
-`;
 
 export const SaveErrorDialog: React.FC<SaveErrorDialogProps> = ({
     projectName,
@@ -162,9 +109,9 @@ export const SaveErrorDialog: React.FC<SaveErrorDialogProps> = ({
                         <AlertTriangle size={20} />
                     </IconWrapper>
                     <Title>Failed to Save Project</Title>
-                    <CloseButton onClick={onKeep}>
+                    <IconButton onClick={onKeep}>
                         <X size={16} />
-                    </CloseButton>
+                    </IconButton>
                 </Header>
 
                 <Content>
@@ -181,17 +128,17 @@ export const SaveErrorDialog: React.FC<SaveErrorDialogProps> = ({
                 </Content>
 
                 <ButtonGroup>
-                    <Button $variant="secondary" onClick={onKeep}>
+                    <SecondaryButton onClick={onKeep}>
                         Keep Project
-                    </Button>
-                    <Button $variant="primary" onClick={onRetry}>
+                    </SecondaryButton>
+                    <PrimaryButton onClick={onRetry} style={{ gap: '6px' }}>
                         <RotateCcw size={14} />
                         Retry Save
-                    </Button>
-                    <Button $variant="danger" onClick={onDelete}>
+                    </PrimaryButton>
+                    <DangerButton onClick={onDelete} style={{ gap: '6px' }}>
                         <Trash2 size={14} />
                         Delete & Cleanup
-                    </Button>
+                    </DangerButton>
                 </ButtonGroup>
             </Dialog>
         </Overlay>

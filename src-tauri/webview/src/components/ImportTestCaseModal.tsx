@@ -2,6 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 import { bridge } from '../utils/bridge';
 import type { ApinoxProject, TestStep } from '@shared/models';
+import { SecondaryButton } from './common/Button';
 
 const Overlay = styled.div`
     position: fixed;
@@ -70,15 +71,6 @@ const Empty = styled.div`
     padding: 20px;
     text-align: center;
     opacity: 0.6;
-`;
-
-const CancelButton = styled.button`
-    background: var(--apinox-button-secondaryBackground);
-    color: var(--apinox-button-secondaryForeground);
-    border: none;
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
 `;
 
 interface ImportTestCaseModalProps {
@@ -152,7 +144,7 @@ export const ImportTestCaseModal: React.FC<ImportTestCaseModalProps> = ({
                         <Empty>No test cases available. Create a test suite first.</Empty>
                     )}
                 </List>
-                <CancelButton onClick={onClose}>Cancel</CancelButton>
+                <SecondaryButton onClick={onClose}>Cancel</SecondaryButton>
             </ModalContainer>
         </Overlay>
     );
