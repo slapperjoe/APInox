@@ -2,7 +2,8 @@ import React, { ReactNode } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { X } from 'lucide-react';
 import { MODAL_DEFAULTS, MODAL_SIZES, MODAL_CONSTRAINTS, ModalSize } from './constants';
-import { SPACING_XS, SPACING_MD } from '../../styles/spacing';
+import { SPACING_MD } from '../../styles/spacing';
+import { PrimaryButton, IconButton as ModalCloseIconButton } from '../common/Button';
 
 const overlayEnter = keyframes`
   from { opacity: 0; }
@@ -101,41 +102,11 @@ const ModalFooter = styled.div<{ $align?: 'left' | 'center' | 'right' }>`
     gap: ${MODAL_DEFAULTS.BUTTON_GAP};
 `;
 
-export const Button = styled.button`
-  background: var(--apinox-button-background);
-  color: var(--apinox-button-foreground);
-  border: none;
-  padding: 6px 14px;
-  cursor: pointer;
-  border-radius: 2px;
-  font-size: 13px;
-  font-weight: 500;
-  
-  &:hover {
-    background: var(--apinox-button-hoverBackground);
-  }
-  
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-`;
+// Re-export the shared PrimaryButton as Button for backward compatibility.
+// All modal footers should import { Button } from './Modal' as before.
+export { PrimaryButton as Button } from '../common/Button';
 
-const CloseButton = styled.button`
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  color: var(--apinox-icon-foreground);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: ${SPACING_XS};
-  border-radius: 4px;
-  
-  &:hover {
-    background: var(--apinox-toolbar-hoverBackground);
-  }
-`;
+const CloseButton = ModalCloseIconButton;
 
 /**
  * Base Modal Component

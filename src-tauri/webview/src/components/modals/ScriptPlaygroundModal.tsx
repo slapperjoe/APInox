@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import Editor from '@monaco-editor/react';
 import { Play, Loader2, HelpCircle } from 'lucide-react';
-import { bridge, isTauri, isStandalone } from '../../utils/bridge';
+import { PrimaryButton, SecondaryButton } from '../common/Button';
 import { useTheme } from '@apinox/request-editor'; // Use package ThemeContext
 import { Modal } from './Modal';
 import { SPACING_XS, SPACING_SM, SPACING_MD, SPACING_LG } from '../../styles/spacing';
@@ -74,41 +74,10 @@ const Footer = styled.div`
     gap: ${SPACING_MD};
 `;
 
-const RunButton = styled.button`
-    background: var(--apinox-button-background);
-    color: var(--apinox-button-foreground);
-    border: none;
-    padding: 6px 14px;
-    border-radius: 2px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-
-    &:hover { background: var(--apinox-button-hoverBackground); }
-    &:disabled { opacity: 0.5; cursor: not-allowed; }
-`;
-
-const ApplyButton = styled.button`
-    background: var(--apinox-button-secondaryBackground, var(--apinox-button-background));
-    color: var(--apinox-button-secondaryForeground, var(--apinox-button-foreground));
-    border: 1px solid var(--apinox-button-border, transparent);
-    padding: 6px 14px;
-    border-radius: 2px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 400;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-
-    &:hover { 
-        background: var(--apinox-button-secondaryHoverBackground, var(--apinox-button-hoverBackground)); 
-    }
-    &:disabled { opacity: 0.5; cursor: not-allowed; }
-`;
+// Local aliases with icon-gap — extend the shared buttons to add gap for icon+label layout.
+// This avoids redefining all the colour/padding/border-radius properties.
+const RunButton = styled(PrimaryButton)`gap: 8px;`;
+const ApplyButton = styled(SecondaryButton)`gap: 8px;`;
 
 const OutputConsole = styled.div`
     flex: 1;
