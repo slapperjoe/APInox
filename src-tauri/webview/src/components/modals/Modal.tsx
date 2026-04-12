@@ -3,7 +3,7 @@ import styled, { keyframes } from 'styled-components';
 import { X } from 'lucide-react';
 import { MODAL_DEFAULTS, MODAL_SIZES, MODAL_CONSTRAINTS, ModalSize } from './constants';
 import { SPACING_MD } from '../../styles/spacing';
-import { PrimaryButton, IconButton as ModalCloseIconButton } from '../common/Button';
+import { PrimaryButton, IconButton } from '../common/Button';
 
 const overlayEnter = keyframes`
   from { opacity: 0; }
@@ -102,11 +102,7 @@ const ModalFooter = styled.div<{ $align?: 'left' | 'center' | 'right' }>`
     gap: ${MODAL_DEFAULTS.BUTTON_GAP};
 `;
 
-// Re-export the shared PrimaryButton as Button for backward compatibility.
-// All modal footers should import { Button } from './Modal' as before.
 export { PrimaryButton as Button } from '../common/Button';
-
-const CloseButton = ModalCloseIconButton;
 
 /**
  * Base Modal Component
@@ -233,9 +229,9 @@ export const Modal: React.FC<ModalProps> = ({
             <ModalHeaderExtra>{headerExtra}</ModalHeaderExtra>
           )}
           {showCloseButton && (
-            <CloseButton onClick={onClose} title="Close">
+            <IconButton onClick={onClose} title="Close">
               <X size={16} />
-            </CloseButton>
+            </IconButton>
           )}
         </ModalHeader>
         <ModalBody>

@@ -57,8 +57,6 @@ const Title = styled.h2`
     color: var(--apinox-editorWidget-foreground);
 `;
 
-const CloseButton = IconButton;
-
 const Content = styled.div`
     padding: 16px;
 `;
@@ -111,9 +109,9 @@ export const SaveErrorDialog: React.FC<SaveErrorDialogProps> = ({
                         <AlertTriangle size={20} />
                     </IconWrapper>
                     <Title>Failed to Save Project</Title>
-                    <CloseButton onClick={onKeep}>
+                    <IconButton onClick={onKeep}>
                         <X size={16} />
-                    </CloseButton>
+                    </IconButton>
                 </Header>
 
                 <Content>

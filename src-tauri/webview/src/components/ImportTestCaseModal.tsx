@@ -73,8 +73,6 @@ const Empty = styled.div`
     opacity: 0.6;
 `;
 
-const CancelButton = SecondaryButton;
-
 interface ImportTestCaseModalProps {
     open: boolean;
     suiteId: string | null;
@@ -146,7 +144,7 @@ export const ImportTestCaseModal: React.FC<ImportTestCaseModalProps> = ({
                         <Empty>No test cases available. Create a test suite first.</Empty>
                     )}
                 </List>
-                <CancelButton onClick={onClose}>Cancel</CancelButton>
+                <SecondaryButton onClick={onClose}>Cancel</SecondaryButton>
             </ModalContainer>
         </Overlay>
     );

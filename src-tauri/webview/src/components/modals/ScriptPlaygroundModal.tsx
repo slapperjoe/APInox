@@ -74,8 +74,6 @@ const Footer = styled.div`
     gap: ${SPACING_MD};
 `;
 
-// Local aliases with icon-gap — extend the shared buttons to add gap for icon+label layout.
-// This avoids redefining all the colour/padding/border-radius properties.
 const RunButton = styled(PrimaryButton)`gap: 8px;`;
 const ApplyButton = styled(SecondaryButton)`gap: 8px;`;
 
