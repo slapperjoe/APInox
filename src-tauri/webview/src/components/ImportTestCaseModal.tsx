@@ -2,6 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 import { bridge } from '../utils/bridge';
 import type { ApinoxProject, TestStep } from '@shared/models';
+import { SecondaryButton } from './common/Button';
 
 const Overlay = styled.div`
     position: fixed;
@@ -72,16 +73,7 @@ const Empty = styled.div`
     opacity: 0.6;
 `;
 
-const CancelButton = styled.button`
-    background: var(--apinox-button-secondaryBackground);
-    color: var(--apinox-button-secondaryForeground);
-    border: none;
-    padding: 6px 14px;
-    border-radius: 2px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 400;
-`;
+const CancelButton = SecondaryButton;
 
 interface ImportTestCaseModalProps {
     open: boolean;

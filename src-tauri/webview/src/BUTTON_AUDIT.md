@@ -24,29 +24,27 @@ These are the canonical button variants used across the app.
 
 ---
 
-## Non-Standard / Locally-Defined Buttons
+## Non-Standard / Locally-Defined Buttons (Resolved)
 
-These buttons were defined outside of `common/Button.tsx` and had inconsistent sizing.
+The following buttons previously re-implemented their own padding, font-size, font-weight, and border-radius rather than using the shared library. They have been refactored to import and extend `common/Button.tsx` components.
 
 ### `components/modals/Modal.tsx` — `Button` (exported)
-- **Before**: `padding: 4px 12px` (used `SPACING_XS`/`SPACING_MD` constants), `font-size: unset`, `font-weight: unset`, `border-radius: 2px` → **~24px height**
-- **After**: `padding: 6px 14px`, `font-size: 13px`, `font-weight: 500`, `border-radius: 2px` → **~28px height**
-- CSS vars: `--apinox-button-background`, `--apinox-button-foreground`, `--apinox-button-hoverBackground`
+- Local `styled.button` definition removed.
+- Now re-exports `PrimaryButton as Button` from `common/Button.tsx` for backward compatibility with all existing consumers.
+- Internal `CloseButton` now aliases `IconButton` from `common/Button.tsx`.
 
-### `components/SaveErrorDialog.tsx` — `Button` (variant prop)
-- **Before**: `padding: 8px 16px`, `font-size: 13px`, `font-weight: unset`, `border-radius: 4px` → **~32px height**
-- **After**: `padding: 6px 14px`, `font-size: 13px`, `font-weight: 500`, `border-radius: 2px` → **~28px height**
-- CSS vars: `--apinox-button-background`, `--apinox-button-foreground`, `--apinox-button-secondaryBackground`, `--apinox-button-secondaryForeground`, `--apinox-errorForeground`
+### `components/SaveErrorDialog.tsx`
+- Local variant-based `Button` (with `$variant` prop) removed.
+- JSX updated to use `PrimaryButton`, `SecondaryButton`, `DangerButton` from `common/Button.tsx` directly.
+- Local `CloseButton` now aliases `IconButton` from `common/Button.tsx`.
 
 ### `components/modals/ScriptPlaygroundModal.tsx` — `RunButton` / `ApplyButton`
-- **Before**: `padding: 8px 16px`, `font-weight: 600`, `border-radius: 2px` → **~32px height**
-- **After**: `padding: 6px 14px`, `font-weight: 500/400`, `border-radius: 2px` → **~28px height**
-- CSS vars: `--apinox-button-background`, `--apinox-button-foreground`, `--apinox-button-secondaryBackground`
+- Local `styled.button` definitions removed.
+- Now uses `styled(PrimaryButton)` and `styled(SecondaryButton)` with only a `gap: 8px` extension for icon+label layout.
 
 ### `components/ImportTestCaseModal.tsx` — `CancelButton`
-- **Before**: `padding: 8px 16px`, `font-size: unset`, `border-radius: 4px` → **~32px height**
-- **After**: `padding: 6px 14px`, `font-size: 13px`, `font-weight: 400`, `border-radius: 2px` → **~28px height**
-- CSS vars: `--apinox-button-secondaryBackground`, `--apinox-button-secondaryForeground`
+- Local `styled.button` definition removed.
+- `CancelButton` now simply aliases `SecondaryButton` from `common/Button.tsx`.
 
 ---
 
@@ -104,9 +102,9 @@ The `.touch-compact` opt-out class remains available for components that need co
 ## Summary of Changes
 
 1. **`src/index.css`** — Scoped `min-height: 44px` to `@media (max-width: 899px)` only
-2. **`src/components/modals/Modal.tsx`** — Fixed exported `Button` padding to `6px 14px`, added `font-size: 13px` and `font-weight: 500`
-3. **`src/components/SaveErrorDialog.tsx`** — Fixed `Button` padding to `6px 14px`, border-radius to `2px`, added consistent `font-weight`
-4. **`src/components/modals/ScriptPlaygroundModal.tsx`** — Fixed `RunButton` and `ApplyButton` padding to `6px 14px`, aligned font-weight with common library
-5. **`src/components/ImportTestCaseModal.tsx`** — Fixed `CancelButton` padding to `6px 14px`, border-radius to `2px`, added `font-size: 13px` and `font-weight: 400`
+2. **`src/components/modals/Modal.tsx`** — Removed local `Button` definition; re-exports `PrimaryButton as Button` from `common/Button.tsx`. Local `CloseButton` now aliases `IconButton`.
+3. **`src/components/SaveErrorDialog.tsx`** — Removed local variant-based `Button`; imports and uses `PrimaryButton`, `SecondaryButton`, `DangerButton` directly. `CloseButton` aliases `IconButton`.
+4. **`src/components/modals/ScriptPlaygroundModal.tsx`** — Removed local `RunButton`/`ApplyButton`; extends `PrimaryButton`/`SecondaryButton` with only `gap: 8px` for icon layout.
+5. **`src/components/ImportTestCaseModal.tsx`** — Removed local `CancelButton`; aliases `SecondaryButton`.
 
-**Result**: All primary action buttons (Primary, Secondary, Danger) now render at a consistent **~28px height** on desktop.
+**Result**: All primary action buttons (Primary, Secondary, Danger) now render at a consistent **~28px height** on desktop, and all styling (padding, font-size, font-weight, border-radius, colours) lives in one place: `common/Button.tsx`.
