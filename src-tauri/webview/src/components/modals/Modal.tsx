@@ -105,9 +105,11 @@ export const Button = styled.button`
   background: var(--apinox-button-background);
   color: var(--apinox-button-foreground);
   border: none;
-  padding: ${SPACING_XS} ${SPACING_MD};
+  padding: 6px 14px;
   cursor: pointer;
   border-radius: 2px;
+  font-size: 13px;
+  font-weight: 500;
   
   &:hover {
     background: var(--apinox-button-hoverBackground);

@@ -108,15 +108,16 @@ const ButtonGroup = styled.div`
 `;
 
 const Button = styled.button<{ $variant?: 'primary' | 'danger' | 'secondary' }>`
-    padding: 8px 16px;
+    padding: 6px 14px;
     border: none;
-    border-radius: 4px;
+    border-radius: 2px;
     cursor: pointer;
     font-size: 13px;
+    font-weight: 500;
     display: flex;
     align-items: center;
     gap: 6px;
-    transition: all 0.2s;
+    transition: background-color 0.1s ease, opacity 0.1s ease;
 
     ${props => {
         if (props.$variant === 'primary') {
@@ -129,16 +130,18 @@ const Button = styled.button<{ $variant?: 'primary' | 'danger' | 'secondary' }>`
             `;
         } else if (props.$variant === 'danger') {
             return `
-                background: var(--apinox-errorForeground);
-                color: white;
+                background: transparent;
+                color: var(--apinox-testing-iconFailed);
+                border: 1px solid var(--apinox-testing-iconFailed);
                 &:hover {
-                    opacity: 0.9;
+                    background: color-mix(in srgb, var(--apinox-testing-iconFailed) 10%, transparent);
                 }
             `;
         } else {
             return `
                 background: var(--apinox-button-secondaryBackground);
                 color: var(--apinox-button-secondaryForeground);
+                font-weight: 400;
                 &:hover {
                     background: var(--apinox-button-secondaryHoverBackground);
                 }

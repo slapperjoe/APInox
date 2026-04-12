@@ -78,10 +78,11 @@ const RunButton = styled.button`
     background: var(--apinox-button-background);
     color: var(--apinox-button-foreground);
     border: none;
-    padding: 8px 16px;
+    padding: 6px 14px;
     border-radius: 2px;
     cursor: pointer;
-    font-weight: 600;
+    font-size: 13px;
+    font-weight: 500;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -94,10 +95,11 @@ const ApplyButton = styled.button`
     background: var(--apinox-button-secondaryBackground, var(--apinox-button-background));
     color: var(--apinox-button-secondaryForeground, var(--apinox-button-foreground));
     border: 1px solid var(--apinox-button-border, transparent);
-    padding: 8px 16px;
+    padding: 6px 14px;
     border-radius: 2px;
     cursor: pointer;
-    font-weight: 600;
+    font-size: 13px;
+    font-weight: 400;
     display: flex;
     align-items: center;
     gap: 8px;
