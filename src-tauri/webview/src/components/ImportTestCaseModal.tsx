@@ -76,9 +76,11 @@ const CancelButton = styled.button`
     background: var(--apinox-button-secondaryBackground);
     color: var(--apinox-button-secondaryForeground);
     border: none;
-    padding: 8px 16px;
-    border-radius: 4px;
+    padding: 6px 14px;
+    border-radius: 2px;
     cursor: pointer;
+    font-size: 13px;
+    font-weight: 400;
 `;
 
 interface ImportTestCaseModalProps {
