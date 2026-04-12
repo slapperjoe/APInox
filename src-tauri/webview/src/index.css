@@ -232,20 +232,23 @@ body[data-theme="high-contrast"] .light-only {
    Tablet landscape / desktop: ≥ 1200px
    ========================================================================== */
 
-/* Minimum touch target size (Apple HIG / Material Design: 44px) */
-button,
-[role="button"],
-[role="menuitem"],
-[role="tab"],
-[role="treeitem"],
-a {
-    min-height: 44px;
-}
+/* Minimum touch target size (Apple HIG / Material Design: 44px)
+   Only applied on mobile/tablet — desktop layouts use natural button sizing. */
+@media (max-width: 899px) {
+    button,
+    [role="button"],
+    [role="menuitem"],
+    [role="tab"],
+    [role="treeitem"],
+    a {
+        min-height: 44px;
+    }
 
-/* Narrow override — elements that are intentionally compact (icon rail, etc.)
-   use this class to opt out of the 44px floor */
-.touch-compact {
-    min-height: unset;
+    /* Narrow override — elements that are intentionally compact (icon rail, etc.)
+       use this class to opt out of the 44px floor */
+    .touch-compact {
+        min-height: unset;
+    }
 }
 
 /* Responsive modal sizing */

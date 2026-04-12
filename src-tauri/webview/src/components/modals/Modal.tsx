@@ -2,7 +2,8 @@ import React, { ReactNode } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { X } from 'lucide-react';
 import { MODAL_DEFAULTS, MODAL_SIZES, MODAL_CONSTRAINTS, ModalSize } from './constants';
-import { SPACING_XS, SPACING_MD } from '../../styles/spacing';
+import { SPACING_MD } from '../../styles/spacing';
+import { PrimaryButton, IconButton } from '../common/Button';
 
 const overlayEnter = keyframes`
   from { opacity: 0; }
@@ -101,39 +102,7 @@ const ModalFooter = styled.div<{ $align?: 'left' | 'center' | 'right' }>`
     gap: ${MODAL_DEFAULTS.BUTTON_GAP};
 `;
 
-export const Button = styled.button`
-  background: var(--apinox-button-background);
-  color: var(--apinox-button-foreground);
-  border: none;
-  padding: ${SPACING_XS} ${SPACING_MD};
-  cursor: pointer;
-  border-radius: 2px;
-  
-  &:hover {
-    background: var(--apinox-button-hoverBackground);
-  }
-  
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-`;
-
-const CloseButton = styled.button`
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  color: var(--apinox-icon-foreground);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: ${SPACING_XS};
-  border-radius: 4px;
-  
-  &:hover {
-    background: var(--apinox-toolbar-hoverBackground);
-  }
-`;
+export { PrimaryButton as Button } from '../common/Button';
 
 /**
  * Base Modal Component
@@ -260,9 +229,9 @@ export const Modal: React.FC<ModalProps> = ({
             <ModalHeaderExtra>{headerExtra}</ModalHeaderExtra>
           )}
           {showCloseButton && (
-            <CloseButton onClick={onClose} title="Close">
+            <IconButton onClick={onClose} title="Close">
               <X size={16} />
-            </CloseButton>
+            </IconButton>
           )}
         </ModalHeader>
         <ModalBody>
