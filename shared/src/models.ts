@@ -8,6 +8,7 @@ export interface ServiceOperation {
     portName?: string;
     originalEndpoint?: string;
     fullSchema?: SchemaNode | null; // Deep complex type tree for XML generation
+    action?: string; // SOAP action from binding operation
 }
 
 export interface WsdlDiff {

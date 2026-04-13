@@ -173,8 +173,8 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
                         Operation Details
                     </h3>
                     <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 10, fontSize: 13 }}>
-                        <div style={{ opacity: 0.7 }}>Action:</div>
-                        <div style={{ fontFamily: 'monospace' }}>{selectedOperation.action || '(none)'}</div>
+                        <div style={{ opacity: 0.7 }}>SOAP Action:</div>
+                        <div style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>{selectedOperation.action || '(uses endpoint)'}</div>
 
                         <div style={{ opacity: 0.7 }}>Input:</div>
                         {(selectedOperation as any).fullSchema ? (
@@ -193,10 +193,10 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
                         )}
 
                         <div style={{ opacity: 0.7 }}>SOAP Version:</div>
-                        <div style={{ fontFamily: 'monospace' }}>{(selectedOperation as any).soapVersion || '(not available)'}</div>
+                        <div style={{ fontFamily: 'monospace' }}>{selectedInterface.soapVersion || '(not available)'}</div>
 
-                        <div style={{ opacity: 0.7 }}>Port Name:</div>
-                        <div style={{ fontFamily: 'monospace' }}>{(selectedOperation as any).portName || '(not available)'}</div>
+                        <div style={{ opacity: 0.7 }}>Binding:</div>
+                        <div style={{ fontFamily: 'monospace' }}>{selectedInterface.bindingName}</div>
 
                         <div style={{ opacity: 0.7 }}>Target Namespace:</div>
                         <div style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>{(selectedOperation as any).targetNamespace || '(not available)'}</div>
