@@ -174,13 +174,32 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
                     </h3>
                     <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 10, fontSize: 13 }}>
                         <div style={{ opacity: 0.7 }}>Action:</div>
-                        <div style={{ fontFamily: 'monospace' }}>{selectedOperation.action}</div>
+                        <div style={{ fontFamily: 'monospace' }}>{selectedOperation.action || '(none)'}</div>
 
                         <div style={{ opacity: 0.7 }}>Input:</div>
-                        <div style={{ fontFamily: 'monospace' }}>{JSON.stringify(selectedOperation.input) || 'None'}</div>
+                        {(selectedOperation as any).fullSchema ? (
+                            <div style={{ fontFamily: 'monospace' }}>
+                                <div style={{ marginBottom: 5 }}>{(selectedOperation as any).fullSchema.name} ({(selectedOperation as any).fullSchema.type})</div>
+                                {(selectedOperation as any).fullSchema.children && (selectedOperation as any).fullSchema.children.length > 0 && (
+                                    <div style={{ marginLeft: 15, opacity: 0.8 }}>
+                                        {(selectedOperation as any).fullSchema.children.map((child: any, idx: number) => (
+                                            <div key={idx}>• {child.name}: {child.type}</div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div style={{ fontFamily: 'monospace', opacity: 0.5 }}>None</div>
+                        )}
 
-                        <div style={{ opacity: 0.7 }}>Output:</div>
-                        <div style={{ fontFamily: 'monospace' }}>{JSON.stringify((selectedOperation as any).output) || 'None'}</div>
+                        <div style={{ opacity: 0.7 }}>SOAP Version:</div>
+                        <div style={{ fontFamily: 'monospace' }}>{(selectedOperation as any).soapVersion || '(not available)'}</div>
+
+                        <div style={{ opacity: 0.7 }}>Port Name:</div>
+                        <div style={{ fontFamily: 'monospace' }}>{(selectedOperation as any).portName || '(not available)'}</div>
+
+                        <div style={{ opacity: 0.7 }}>Target Namespace:</div>
+                        <div style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>{(selectedOperation as any).targetNamespace || '(not available)'}</div>
                     </div>
                 </div>
             </div>

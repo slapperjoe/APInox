@@ -465,17 +465,9 @@ export interface VariablesPanelProps {
 // Schema Viewer
 // ============================================================================
 
-export interface SchemaNode {
-  name: string;
-  type?: string;
-  minOccurs?: string;
-  maxOccurs?: string;
-  children?: SchemaNode[];
-}
-
 export interface SchemaViewerProps {
   /** Schema tree to display */
-  schema: SchemaNode;
+  schema: import('../../../shared/src/models').SchemaNode;
   /** Theme configuration */
   theme?: EditorTheme;
 }

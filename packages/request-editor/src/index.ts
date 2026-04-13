@@ -2,8 +2,8 @@
 
 // Export all types
 export * from './types';
-// Don't re-export shared (contains duplicate SchemaNode)
-export type { SchemaNode } from './shared';
+// Re-export SchemaNode from canonical location (shared/src/models.ts)
+export type { SchemaNode } from '../../../shared/src/models';
 
 // Export components
 export { MonacoRequestEditor } from './components/MonacoRequestEditor';
