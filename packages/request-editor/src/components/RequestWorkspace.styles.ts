@@ -29,7 +29,7 @@ export const ToolbarButton = styled.button<{ $variant?: 'primary' | 'danger' | '
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 16px;
+  padding: 4px 14px;
   background: ${props => 
     props.$variant === 'primary' ? 'var(--apinox-button-background, #0078d4)' :
     props.$variant === 'danger' ? 'var(--apinox-errorForeground, #f44336)' :
@@ -46,7 +46,7 @@ export const ToolbarButton = styled.button<{ $variant?: 'primary' | 'danger' | '
   };
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   transition: all 0.15s;
   white-space: nowrap;
@@ -82,13 +82,13 @@ export const VariablesLabel = styled.button`
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 12px;
+  padding: 4px 12px;
   background: transparent;
   color: var(--apinox-foreground, #cccccc);
   border: 1px solid var(--apinox-input-border, #444);
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   transition: all 0.15s;
 
   &:hover {

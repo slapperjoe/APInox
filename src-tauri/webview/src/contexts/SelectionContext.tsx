@@ -153,7 +153,7 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
     const restoreResponseForRequest = useCallback((req: ApiRequest | null, existingCache?: Record<string, any>) => {
         const key = getCacheKey(req);
         if (!req || !key) {
-            console.log('[SelectionContext] restoreResponseForRequest: no request/key, clearing response');
+            console.trace('[SelectionContext] CLEAR: no request/key', { req: req?.id || req?.name });
             setResponseState(null);
             return;
         }
@@ -178,7 +178,7 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
             console.warn('[SelectionContext] Failed to read persisted response', e);
         }
 
-        console.log('[SelectionContext] restoreResponseForRequest: no cached response', { key });
+        console.trace('[SelectionContext] CLEAR: cache miss', { key, cacheKeys: Object.keys(cache) });
 
         setResponseState(null);
     }, [getCacheKey, getStorageKey, responseCache]);

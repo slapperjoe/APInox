@@ -1,3 +1,5 @@
+import type React from 'react';
+
 /**
  * Design tokens for proxy/mock components (copied from APIprox webview).
  *
@@ -139,4 +141,14 @@ export const tokens = {
 
   /** Font family */
   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+
+  /** Panel / section title style — matches SidebarHeaderTitle from SidebarStyles */
+  sectionTitle: {
+    fontSize: '11px',
+    fontWeight: 700,
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.3px',
+    color: 'var(--apinox-sideBarTitle-foreground)',
+    margin: 0,
+  } as React.CSSProperties,
 } as const;

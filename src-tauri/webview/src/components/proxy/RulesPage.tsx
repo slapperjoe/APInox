@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { invokeTauriCommand } from '../../utils/bridge';
 import { tokens } from './tokens';
 
@@ -22,10 +22,14 @@ interface PendingReplaceForm {
   xpath: string;
 }
 
-export function RulesPage({ pendingForm, onPendingFormConsumed }: {
+export interface RulesPageHandle {
+  addRule: () => void;
+}
+
+export const RulesPage = forwardRef<RulesPageHandle, {
   pendingForm?: PendingReplaceForm | null;
   onPendingFormConsumed?: () => void;
-}) {
+}>(function RulesPage({ pendingForm, onPendingFormConsumed }, ref) {
   const [rules, setRules] = useState<ReplaceRule[]>([]);
   const [showAddRule, setShowAddRule] = useState(false);
   const [editingRule, setEditingRule] = useState<ReplaceRule | null>(null);
@@ -67,6 +71,8 @@ export function RulesPage({ pendingForm, onPendingFormConsumed }: {
     setEditingRule(null);
     setShowAddRule(true);
   }
+
+  useImperativeHandle(ref, () => ({ addRule: openAddModal }));
 
   function openEditModal(rule: ReplaceRule) {
     setForm({
@@ -147,30 +153,6 @@ export function RulesPage({ pendingForm, onPendingFormConsumed }: {
           {error}
         </div>
       )}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '20px'
-      }}>
-        <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 500 }}>
-          Replace Rules
-        </h2>
-        <button
-          onClick={openAddModal}
-          style={{
-            padding: '8px 16px',
-            background: tokens.status.accentDark,
-            border: 'none',
-            borderRadius: tokens.radius.md,
-            color: tokens.text.white,
-            fontSize: tokens.fontSize.base,
-            cursor: 'pointer'
-          }}
-        >
-          + Add Rule
-        </button>
-      </div>
 
       {rules.length === 0 ? (
         <div style={{
@@ -382,4 +364,4 @@ export function RulesPage({ pendingForm, onPendingFormConsumed }: {
       )}
     </div>
   );
-}
+});

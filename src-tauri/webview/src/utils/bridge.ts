@@ -872,15 +872,24 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
         // ── Performance suite/request CRUD ────────────────────────────────────
 
         if (['addPerformanceRequest', 'deletePerformanceRequest', 'updatePerformanceRequest',
-             'updatePerformanceSuite', 'deletePerformanceSuite',
+             'addPerformanceSuite', 'updatePerformanceSuite', 'deletePerformanceSuite',
+             FrontendCommand.AddPerformanceSuite,
              FrontendCommand.AddPerformanceRequest, FrontendCommand.UpdatePerformanceRequest,
              FrontendCommand.DeletePerformanceRequest, FrontendCommand.UpdatePerformanceSuite,
+             FrontendCommand.DeletePerformanceSuite,
              'deletePerfomanceSuite'].includes(message.command)) {
             try {
                 const config = await tauriInvoke('get_settings', {});
                 let suites: any[] = (config as any)?.performanceSuites || [];
 
-                if (message.command === 'addPerformanceRequest' || message.command === FrontendCommand.AddPerformanceRequest) {
+                if (message.command === 'addPerformanceSuite' || message.command === FrontendCommand.AddPerformanceSuite) {
+                    if (message.suite) {
+                        // Deduplicate: ignore if a suite with the same id already exists in persisted config
+                        if (!suites.some((s: any) => s.id === message.suite.id)) {
+                            suites = [...suites, message.suite];
+                        }
+                    }
+                } else if (message.command === 'addPerformanceRequest' || message.command === FrontendCommand.AddPerformanceRequest) {
                     const suiteIdx = suites.findIndex((s: any) => s.id === message.suiteId);
                     if (suiteIdx !== -1) {
                         const newReq = {
@@ -1150,30 +1159,19 @@ function mapResponseToBackendEvent(command: string, data: any): BackendMessage |
             command: BackendCommand.ProjectSaved,
             ...data
         }),
-        [FrontendCommand.SaveSettings]: (data) => ({
-            command: BackendCommand.SettingsUpdate,
-            config: data?.config,
-            raw: data?.raw,
-            configDir: data?.configDir,
-            configPath: data?.configPath
-        }),
-        [FrontendCommand.SaveUiState]: (data) => ({
-            command: BackendCommand.SettingsUpdate,
-            config: data?.config,
-            raw: data?.raw
-        }),
-        [FrontendCommand.AddPerformanceSuite]: (data) => ({
-            command: BackendCommand.SettingsUpdate,
-            config: data?.config ?? data
-        }),
-        [FrontendCommand.UpdatePerformanceSuite]: (data) => ({
-            command: BackendCommand.SettingsUpdate,
-            config: data?.config ?? data
-        }),
-        [FrontendCommand.DeletePerformanceSuite]: (data) => ({
-            command: BackendCommand.SettingsUpdate,
-            config: data?.config ?? data
-        }),
+        // SaveSettings, SaveUiState, UpdatePerformanceSuite, DeletePerformanceSuite are
+        // intentionally omitted here. Each has an early-return handler in tryRustCommand that
+        // (a) performs the operation, (b) reloads the full config, and (c) emits a proper
+        // settingsUpdate via bridge.emit(). Adding mappers here would produce a second
+        // settingsUpdate with a corrupted/missing config:
+        //   - SaveSettings:           Rust save_settings returns Result<()> → null in JS
+        //                             → mapper would emit config: undefined
+        //   - SaveUiState:            same — handler returns { success: true }
+        //                             → mapper would emit config: undefined
+        //   - UpdatePerformanceSuite: same — handler returns { success: true }
+        //                             → mapper would emit config: { success: true }
+        //   - DeletePerformanceSuite: same
+        //   - AddPerformanceSuite:    same — early handler now covers it
         [FrontendCommand.LoadProject]: (data) => {
             const project = data?.project ?? data;
             const fileName = data?.filename || data?.fileName;

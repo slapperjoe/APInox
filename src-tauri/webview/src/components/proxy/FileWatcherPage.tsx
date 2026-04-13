@@ -70,12 +70,20 @@ const WatchSidebar = styled.div`
 `;
 
 const SidebarHeader = styled.div`
-  padding: 10px 14px;
+  padding: 4px 14px;
+  height: 44px;
   border-bottom: 1px solid ${tokens.border.default};
   display: flex;
   justify-content: space-between;
   align-items: center;
-  h3 { margin: 0; font-size: 13px; font-weight: 600; }
+  h3 {
+    margin: 0;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    color: var(--apinox-sideBarTitle-foreground);
+  }
 `;
 
 const WatchList = styled.div`
@@ -143,12 +151,20 @@ const PairList = styled.div`
 `;
 
 const PairListHeader = styled.div`
-  padding: 10px 14px;
+  padding: 4px 14px;
+  height: 44px;
   border-bottom: 1px solid ${tokens.border.default};
   display: flex;
   justify-content: space-between;
   align-items: center;
-  h3 { margin: 0; font-size: 13px; font-weight: 600; }
+  h3 {
+    margin: 0;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    color: var(--apinox-sideBarTitle-foreground);
+  }
 `;
 
 const PairScroll = styled.div`

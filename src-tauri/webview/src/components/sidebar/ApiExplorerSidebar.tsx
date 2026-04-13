@@ -8,7 +8,7 @@ import { ScrapbookPanel } from './ScrapbookPanel';
 import { useScrapbook } from '../../contexts/ScrapbookContext';
 import { bridge } from '../../utils/bridge';
 import { FrontendCommand } from '@shared/messages';
-import { SPACING_MD, SPACING_XL } from '../../styles/spacing';
+import { SPACING_MD, SPACING_SM, SPACING_XL, SPACING_XS } from '../../styles/spacing';
 
 
 
@@ -38,14 +38,15 @@ export interface ApiExplorerSidebarProps {
 const ExplorerContent = styled(SidebarContent)`
     display: flex;
     flex-direction: column;
-    gap: ${SPACING_MD};
+    gap: ${SPACING_SM};
 `;
 
 const EmptyMessage = styled.div`
     text-align: center;
     color: var(--apinox-descriptionForeground);
-    padding: ${SPACING_XL} 0;
+    padding: ${SPACING_XS} 0;
     font-size: 0.9em;
+    font-weight: 600;
 `;
 
 const Divider = styled.div`

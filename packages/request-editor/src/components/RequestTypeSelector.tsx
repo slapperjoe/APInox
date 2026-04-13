@@ -11,9 +11,9 @@ const Select = styled.select`
     background: var(--apinox-input-background);
     color: var(--apinox-input-foreground);
     border: 1px solid var(--apinox-input-border);
-    padding: 4px 8px;
-    border-radius: 3px;
-    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 13px;
     cursor: pointer;
 
     &:focus {
@@ -60,12 +60,12 @@ const MethodSelect = styled.select<{ $method: string }>`
         }
     }};
     border: none;
-    padding: 6px 12px;
-    border-radius: 3px;
-    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 13px;
     font-weight: 600;
     cursor: pointer;
-    min-width: 80px;
+    min-width: 70px;
     text-align: center;
 
     &:focus {

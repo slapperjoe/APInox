@@ -515,6 +515,10 @@ export function useMessageHandler(state: MessageHandlerState) {
 
                 case BackendCommand.SettingsUpdate:
                     debugLog('settingsUpdate', { hasConfig: !!message.config });
+                    if (!message.config) {
+                        console.warn('[useMessageHandler] Malformed settingsUpdate — missing config payload. Full message:', JSON.stringify(message));
+                        break;
+                    }
                     setConfig(message.config);
                     setRawConfig(message.raw || JSON.stringify(message.config, null, 2));
                     if (message.config.ui) {

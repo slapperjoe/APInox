@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Play, X, RotateCcw, Variable, Settings, Braces, Minus } from 'lucide-react';
+import { Play, X, Variable, Settings, Braces, Minus } from 'lucide-react';
 import * as S from './RequestWorkspace.styles';
 import { MonacoResponseViewer } from './MonacoResponseViewer';
 import { MonacoSingleLineInput } from './MonacoSingleLineInput';
@@ -126,7 +126,7 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
   onUpdateRequest,
   onExecute,
   onCancel,
-  onReset,
+  onReset: _onReset,
   readOnly = false,
   defaultEndpoint,
   availableVariables = [],
@@ -426,15 +426,8 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
         ) : (
           <S.RunButton $variant="primary" onClick={onExecute}>
             <Play />
-            Run
+            RUN
           </S.RunButton>
-        )}
-
-        {/* Reset Button - Only for editable requests */}
-        {!readOnly && onReset && (
-          <S.ToolbarButton onClick={onReset} title="Reset to default">
-            <RotateCcw />
-          </S.ToolbarButton>
         )}
 
         {/* Variables Dropdown */}
