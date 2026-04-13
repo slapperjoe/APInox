@@ -248,7 +248,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+          targets: aarch64-linux-android
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
@@ -285,7 +285,7 @@ jobs:
 
       - name: Build Android APK (signed release)
         if: env.ANDROID_KEYSTORE != ''
-        run: npx tauri android build --apk --split-per-abi
+        run: npx tauri android build --apk --target aarch64
         env:
           NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
 
