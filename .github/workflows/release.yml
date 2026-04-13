@@ -248,7 +248,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+          targets: aarch64-linux-android
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
@@ -266,17 +266,28 @@ jobs:
 
       - name: Decode signing keystore
         if: env.ANDROID_KEYSTORE != ''
-        run: echo "${{ secrets.ANDROID_KEYSTORE }}" | base64 --decode > "$RUNNER_TEMP/release.keystore"
+        run: echo "${{ secrets.ANDROID_KEYSTORE }}" | base64 --decode > "${{ runner.temp }}/release.keystore"
+
+      - name: Write key.properties
+        if: env.ANDROID_KEYSTORE != ''
+        env:
+          KP_STORE_FILE: ${{ runner.temp }}/release.keystore
+          KP_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KP_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KP_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          printf 'storeFile=%s\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
+            "$KP_STORE_FILE" \
+            "$KP_STORE_PASSWORD" \
+            "$KP_KEY_ALIAS" \
+            "$KP_KEY_PASSWORD" \
+            > src-tauri/gen/android/key.properties
 
       - name: Build Android APK (signed release)
         if: env.ANDROID_KEYSTORE != ''
-        run: npx tauri android build --apk --split-per-abi
+        run: npx tauri android build --apk --target aarch64
         env:
           NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
-          TAURI_ANDROID_SIGNING_KEY_STORE: ${{ runner.temp }}/release.keystore
-          TAURI_ANDROID_SIGNING_KEY_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          TAURI_ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          TAURI_ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
       - name: Skip Android build (no signing key configured)
         if: env.ANDROID_KEYSTORE == ''
