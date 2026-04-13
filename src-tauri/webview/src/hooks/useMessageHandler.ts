@@ -199,7 +199,7 @@ export function useMessageHandler(state: MessageHandlerState) {
                                     operations: ops.map((op: any) => ({
                                         id: crypto.randomUUID(),
                                         name: op.name,
-                                        action: '',
+                                        action: op.action || '',
                                         input: op.input,
                                         fullSchema: op.fullSchema, // Pass through the full schema
                                         targetNamespace: op.targetNamespace || svc.targetNamespace,

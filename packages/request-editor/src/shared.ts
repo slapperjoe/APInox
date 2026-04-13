@@ -1,19 +1,8 @@
 // Shared type definitions extracted from APInox models
 // Only includes types needed by editor components
 
-export interface SchemaNode {
-    name: string;
-    type: string;
-    kind: 'complex' | 'simple';
-    minOccurs?: string;
-    maxOccurs?: string;
-    documentation?: string;
-    children?: SchemaNode[];
-    options?: string[]; // Enums
-    isOptional?: boolean;
-    isChoice?: boolean;
-    choiceGroup?: number;
-}
+// Re-export SchemaNode from canonical location to avoid duplication
+export type { SchemaNode } from '../../../shared/src/models';
 
 export type RequestType = 'soap' | 'rest' | 'graphql';
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';

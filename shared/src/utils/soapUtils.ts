@@ -4,15 +4,51 @@
  * Generates SOAP Envelope XML from operation input schemas.
  */
 
+import type { SchemaNode } from '../models';
+
+/**
+ * Builds the SOAP envelope wrapper around body content.
+ * Common helper used by both generateXmlFromSchema and generateXmlFromSchemaNode.
+ * 
+ * @param operationName - The name of the SOAP operation
+ * @param bodyContent - The XML content for the SOAP body
+ * @param targetNamespace - The target namespace URI
+ * @returns Complete SOAP envelope XML string
+ */
+const buildSoapEnvelope = (operationName: string, bodyContent: string, targetNamespace: string): string => {
+    const namespaceDeclaration = targetNamespace ? ` xmlns:web="${targetNamespace}"` : '';
+    
+    return `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"${namespaceDeclaration}>
+   <soapenv:Header/>
+   <soapenv:Body>
+      <web:${operationName}>
+${bodyContent}
+      </web:${operationName}>
+   </soapenv:Body>
+</soapenv:Envelope>`;
+};
+
 /**
  * Generates a full SOAP Envelope XML from an operation's input schema.
+ * 
+ * Use this function when you have a **node-soap plain object schema** (Record<string, any>).
+ * This is typically used for simple schemas without complex nested types.
+ * 
+ * @param operationName - The name of the SOAP operation
+ * @param inputSchema - Plain object schema from node-soap (may contain $-prefixed metadata)
+ * @param targetNamespace - The target namespace URI for the SOAP body
+ * @returns Complete SOAP envelope XML string
  */
-export const generateXmlFromSchema = (operationName: string, inputSchema: any, targetNamespace: string): string => {
+export const generateXmlFromSchema = (
+    operationName: string, 
+    inputSchema: Record<string, any> | undefined,
+    targetNamespace: string
+): string => {
     // Metadata fields to skip (added by node-soap)
     const METADATA_FIELDS = ['targetNSAlias', 'targetNamespace'];
 
-    // Helper to recursively build body content
-    const buildBody = (node: any, indent: string = ''): string => {
+    // Helper to recursively build body content from plain object schema
+    const buildBody = (node: Record<string, any> | string | Array<any> | undefined, indent: string = ''): string => {
         if (!node) return '';
 
         // Handle simple types (strings, or schema definitions like "xsd:int")
@@ -57,28 +93,29 @@ export const generateXmlFromSchema = (operationName: string, inputSchema: any, t
         return '';
     };
 
-    // Construct the full Envelope
-    // We use a prefix 'web' for the target namespace for simplicity
-    const namespaceDeclaration = targetNamespace ? ` xmlns:web="${targetNamespace}"` : '';
+    // Build body content and wrap in SOAP envelope
     const bodyContent = buildBody(inputSchema, '         ');
-
-    return `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"${namespaceDeclaration}>
-   <soapenv:Header/>
-   <soapenv:Body>
-      <web:${operationName}>
-${bodyContent}
-      </web:${operationName}>
-   </soapenv:Body>
-</soapenv:Envelope>`;
+    return buildSoapEnvelope(operationName, bodyContent, targetNamespace);
 };
 
 /**
  * Generates a full SOAP Envelope XML from a SchemaNode tree (deep complex types).
- * This is used when operation.fullSchema is available from WsdlParser.getOperationSchema().
+ * 
+ * Use this function when you have a **SchemaNode tree structure** from WsdlParser.getOperationSchema().
+ * This handles complex nested types, choice groups, and minOccurs/maxOccurs constraints.
+ * 
+ * @param operationName - The name of the SOAP operation
+ * @param schemaNode - SchemaNode tree structure (with kind, children, minOccurs, etc.)
+ * @param targetNamespace - The target namespace URI for the SOAP body
+ * @returns Complete SOAP envelope XML string
  */
-export const generateXmlFromSchemaNode = (operationName: string, schemaNode: any, targetNamespace: string): string => {
+export const generateXmlFromSchemaNode = (
+    operationName: string, 
+    schemaNode: SchemaNode | null | undefined,
+    targetNamespace: string
+): string => {
     // Helper to recursively build XML from SchemaNode tree
-    const buildFromNode = (node: any, indent: string = ''): string => {
+    const buildFromNode = (node: SchemaNode, indent: string = ''): string => {
         if (!node) return '';
 
         // Simple type - just placeholder
@@ -91,15 +128,15 @@ export const generateXmlFromSchemaNode = (operationName: string, schemaNode: any
             const childLines: string[] = [];
             let lastChoiceGroup: number | undefined = undefined;
             
-            node.children.forEach((child: any) => {
+            node.children.forEach((child: SchemaNode) => {
                 const childName = child.name;
                 const childIndent = indent + '   ';
-                const optional = child.minOccurs === '0' || child.minOccurs === 0;
+                const optional = child.minOccurs === '0' || child.isOptional;
                 
                 // Handle choice group comment
                 if (child.isChoice && child.choiceGroup !== lastChoiceGroup) {
                     // Count how many elements in this choice group
-                    const choiceElements = node.children.filter((c: any) => c.isChoice && c.choiceGroup === child.choiceGroup);
+                    const choiceElements = node.children!.filter((c: SchemaNode) => c.isChoice && c.choiceGroup === child.choiceGroup);
                     if (choiceElements.length > 1) {
                         childLines.push(`${indent}<!--You have a CHOICE of the next ${choiceElements.length} items at this level-->`);
                     }
@@ -130,22 +167,19 @@ export const generateXmlFromSchemaNode = (operationName: string, schemaNode: any
         return `${indent}?`;
     };
 
-    // Build the body content from the schema node
+    // Build body content and wrap in SOAP envelope
     let bodyContent = '';
-    if (schemaNode && schemaNode.children) {
-        bodyContent = buildFromNode(schemaNode, '         ');
+    if (schemaNode) {
+        // Handle simple types at root level (e.g., enums)
+        if (schemaNode.kind === 'simple') {
+            bodyContent = `         <${schemaNode.name}>?</${schemaNode.name}>`;
+        } else if (schemaNode.children) {
+            // Complex type with children
+            bodyContent = buildFromNode(schemaNode, '         ');
+        }
     }
-
-    const namespaceDeclaration = targetNamespace ? ` xmlns:web="${targetNamespace}"` : '';
-
-    return `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"${namespaceDeclaration}>
-   <soapenv:Header/>
-   <soapenv:Body>
-      <web:${operationName}>
-${bodyContent}
-      </web:${operationName}>
-   </soapenv:Body>
-</soapenv:Envelope>`;
+    
+    return buildSoapEnvelope(operationName, bodyContent, targetNamespace);
 };
 
 /**
