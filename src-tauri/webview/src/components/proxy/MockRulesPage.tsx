@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useImperativeHandle, forwardRef } from 'react';
 import { open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog';
 import { MonacoRequestEditor } from '@apinox/request-editor';
 import { invokeTauriCommand } from '../../utils/bridge';
@@ -410,17 +410,30 @@ function normalizeConditions(conditions: MockCondition[]): string {
   );
 }
 
-export function MockRulesPage({ initialRule, onInitialRuleConsumed }: {
+export interface MockRulesPageHandle {
+  addRule: () => void;
+  openImport: () => void;
+  openExport: () => void;
+}
+
+export interface MockRulesMeta {
+  allTags: string[];
+  total: number;
+  filtered: number;
+}
+
+export const MockRulesPage = forwardRef<MockRulesPageHandle, {
   initialRule?: MockRule | null;
   onInitialRuleConsumed?: () => void;
-}) {
+  searchText: string;
+  tagFilter: string;
+  onMetaChange?: (meta: MockRulesMeta) => void;
+}>(function MockRulesPage({ initialRule, onInitialRuleConsumed, searchText, tagFilter, onMetaChange }, ref) {
   const [rules, setRules] = useState<MockRule[]>([]);
   const [editingRule, setEditingRule] = useState<MockRule | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [customContentType, setCustomContentType] = useState('');
   const [showExportModal, setShowExportModal] = useState(false);
-  const [searchText, setSearchText] = useState('');
-  const [tagFilter, setTagFilter] = useState('');
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
   const [duplicateConflict, setDuplicateConflict] = useState<{ existing: MockRule; pending: MockRule } | null>(null);
 
@@ -498,6 +511,17 @@ export function MockRulesPage({ initialRule, onInitialRuleConsumed }: {
     if (groups.has('Uncategorized')) sorted.set('Uncategorized', groups.get('Uncategorized')!);
     return sorted;
   }, [filteredRules]);
+
+  // Notify parent of search-relevant state changes
+  useEffect(() => {
+    onMetaChange?.({ allTags, total: rules.length, filtered: filteredRules.length });
+  }, [allTags, rules.length, filteredRules.length, onMetaChange]);
+
+  useImperativeHandle(ref, () => ({
+    addRule: handleAddRule,
+    openImport: handleImport,
+    openExport: () => setShowExportModal(true),
+  }));
 
   function toggleGroup(tag: string) {
     setOpenGroups((prev) => {
@@ -673,77 +697,6 @@ export function MockRulesPage({ initialRule, onInitialRuleConsumed }: {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
 
-      {/* ── Toolbar ── */}
-      <div style={{
-        padding: `${tokens.space['2']} ${tokens.space['5']}`,
-        borderBottom: `1px solid ${tokens.surface.stripe}`,
-        display: 'flex', alignItems: 'center', gap: tokens.space['3'], flexShrink: 0,
-        background: tokens.surface.base,
-      }}>
-        <input
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-          placeholder="Search rules…"
-          style={{
-            padding: `5px 10px`, background: tokens.surface.input,
-            border: `1px solid ${tokens.border.subtle}`,
-            borderRadius: tokens.radius.md, color: tokens.text.secondary,
-            fontSize: tokens.fontSize.sm, width: '200px',
-          }}
-        />
-        <select
-          value={tagFilter}
-          onChange={(e) => setTagFilter(e.target.value)}
-          style={{
-            padding: `5px ${tokens.space['3']}`, background: tokens.surface.input,
-            border: `1px solid ${tokens.border.subtle}`,
-            borderRadius: tokens.radius.md,
-            color: tagFilter ? tokens.text.secondary : tokens.text.muted,
-            fontSize: tokens.fontSize.sm,
-          }}
-        >
-          <option value="">All tags</option>
-          {allTags.map((t) => <option key={t} value={t}>{t}</option>)}
-        </select>
-
-        <span style={{ flex: 1 }} />
-
-        <span style={{ fontSize: tokens.fontSize.xs, color: tokens.text.faint }}>
-          {filteredRules.length} / {rules.length}
-        </span>
-
-        <button
-          onClick={handleImport}
-          style={{
-            padding: `5px ${tokens.space['4']}`, background: 'transparent',
-            border: `1px solid ${tokens.border.subtle}`,
-            borderRadius: tokens.radius.md, color: tokens.text.secondary,
-            fontSize: tokens.fontSize.sm, cursor: 'pointer',
-          }}
-        >Import</button>
-
-        <button
-          onClick={() => setShowExportModal(true)}
-          disabled={rules.length === 0}
-          style={{
-            padding: `5px ${tokens.space['4']}`, background: 'transparent',
-            border: `1px solid ${tokens.border.subtle}`,
-            borderRadius: tokens.radius.md,
-            color: rules.length === 0 ? tokens.border.subtle : tokens.text.secondary,
-            fontSize: tokens.fontSize.sm, cursor: rules.length === 0 ? 'default' : 'pointer',
-          }}
-        >Export</button>
-
-        <button
-          onClick={handleAddRule}
-          style={{
-            padding: `5px 14px`, background: tokens.status.accentDark, border: 'none',
-            borderRadius: tokens.radius.md, color: tokens.text.white,
-            fontSize: tokens.fontSize.sm, cursor: 'pointer',
-          }}
-        >+ Add Rule</button>
-      </div>
-
       {/* ── Template helpers hint ── */}
       <div style={{ padding: `5px ${tokens.space['5']}`, background: tokens.surface.deep, borderBottom: `1px solid ${tokens.surface.stripe}`, flexShrink: 0 }}>
         <p style={{ margin: 0, fontSize: tokens.fontSize.xs, color: tokens.text.faint }}>
@@ -777,10 +730,7 @@ export function MockRulesPage({ initialRule, onInitialRuleConsumed }: {
                 <span style={{ color: tokens.text.faint, fontSize: '10px' }}>
                   {openGroups.has(tag) ? '▼' : '▶'}
                 </span>
-                <span style={{
-                  fontSize: tokens.fontSize.xs, fontWeight: 700, color: tokens.text.muted,
-                  textTransform: 'uppercase', letterSpacing: '0.08em',
-                }}>
+                <span style={{ ...tokens.sectionTitle, color: 'var(--apinox-sideBarTitle-foreground)' }}>
                   {tag}
                 </span>
                 <span style={{ fontSize: '10px', color: tokens.text.faint }}>({groupRules.length})</span>
@@ -1145,4 +1095,4 @@ export function MockRulesPage({ initialRule, onInitialRuleConsumed }: {
       )}
     </div>
   );
-}
+});

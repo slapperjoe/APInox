@@ -86,12 +86,6 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
       }}
     >
       <NavItem
-        icon={Home}
-        active={activeView === SidebarView.HOME}
-        onClick={() => onChangeView(SidebarView.HOME)}
-        title="Home"
-      />
-      <NavItem
         icon={FolderIcon}
         active={activeView === SidebarView.PROJECTS}
         onClick={() => onChangeView(SidebarView.PROJECTS)}
@@ -168,6 +162,12 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
           gap: 10,
         }}
       >
+        <NavItem
+          icon={Home}
+          active={activeView === SidebarView.HOME}
+          onClick={() => onChangeView(SidebarView.HOME)}
+          title="Home"
+        />
         <NavItem icon={Settings} onClick={onOpenSettings} title="Settings" />
         <NavItem icon={HelpCircle} onClick={onOpenHelp} title="Help" />
         {onMobileClose && (
