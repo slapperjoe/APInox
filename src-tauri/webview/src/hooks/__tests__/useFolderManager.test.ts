@@ -1,4 +1,8 @@
 
+/**
+ * @vitest-environment jsdom
+ */
+
 import { renderHook, act } from '@testing-library/react';
 import { useFolderManager } from '../useFolderManager';
 import { describe, it, expect, vi, beforeEach } from 'vitest';

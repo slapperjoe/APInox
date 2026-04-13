@@ -1,8 +1,14 @@
+/**
+ * @vitest-environment jsdom
+ */
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook } from '@testing-library/react';
+import { renderHook, ReactNode } from '@testing-library/react';
 import { useMessageHandler, MessageHandlerState } from '../useMessageHandler';
 import { BackendCommand } from '@shared/messages';
 import { bridge } from '../../utils/bridge';
+import { NavigationProvider } from '../../contexts/NavigationContext';
+import { SidebarView } from '@shared/models';
 
 // Mock bridge
 vi.mock('../../utils/bridge', () => ({
@@ -11,6 +17,23 @@ vi.mock('../../utils/bridge', () => ({
         onMessage: vi.fn(() => vi.fn())
     }
 }));
+
+// Mock __APP_VERSION__
+vi.mock('react', async () => {
+    const actual = await vi.importActual('react');
+    return {
+        ...actual,
+    };
+});
+
+// Wrapper component for NavigationProvider
+function Wrapper({ children }: { children: ReactNode }) {
+    return (
+        <NavigationProvider>
+            {children}
+        </NavigationProvider>
+    );
+}
 
 describe('useMessageHandler', () => {
     let mockState: MessageHandlerState;
@@ -65,12 +88,12 @@ describe('useMessageHandler', () => {
     });
 
     it('should register message listener on mount', () => {
-        renderHook(() => useMessageHandler(mockState));
+        renderHook(() => useMessageHandler(mockState), { wrapper: Wrapper });
         expect(bridge.onMessage).toHaveBeenCalled();
     });
 
     it('should handle WsdlParsed message', () => {
-        renderHook(() => useMessageHandler(mockState));
+        renderHook(() => useMessageHandler(mockState), { wrapper: Wrapper });
 
         const wsdlData = [
             {
@@ -91,7 +114,7 @@ describe('useMessageHandler', () => {
     });
 
     it('should handle EchoResponse message', () => {
-        renderHook(() => useMessageHandler(mockState));
+        renderHook(() => useMessageHandler(mockState), { wrapper: Wrapper });
 
         messageHandlerCallback({
             command: BackendCommand.EchoResponse
@@ -101,7 +124,7 @@ describe('useMessageHandler', () => {
     });
 
     it('should handle Error message', () => {
-        renderHook(() => useMessageHandler(mockState));
+        renderHook(() => useMessageHandler(mockState), { wrapper: Wrapper });
 
         messageHandlerCallback({
             command: BackendCommand.Error,
@@ -113,7 +136,7 @@ describe('useMessageHandler', () => {
     });
 
     it('should handle SettingsUpdate message', () => {
-        renderHook(() => useMessageHandler(mockState));
+        renderHook(() => useMessageHandler(mockState), { wrapper: Wrapper });
 
         const config = { ui: { layoutMode: 'horizontal' } };
         messageHandlerCallback({
@@ -126,7 +149,7 @@ describe('useMessageHandler', () => {
     });
 
     it('should handle ProjectLoaded message', () => {
-        renderHook(() => useMessageHandler(mockState));
+        renderHook(() => useMessageHandler(mockState), { wrapper: Wrapper });
 
         const project = { id: 'p1', name: 'New Project', testSuites: [] };
         messageHandlerCallback({
