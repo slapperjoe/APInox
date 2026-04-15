@@ -7,6 +7,7 @@ import { updateProjectWithRename } from '../utils/projectUtils';
 import { generateInitialXmlForOperation } from '../utils/soapUtils';
 import { Sidebar } from './Sidebar';
 import { WorkspaceLayout } from './WorkspaceLayout';
+import { WorkspaceContext } from '../contexts/WorkspaceContext';
 import { ProxyPanel } from './proxy/ProxyPanel';
 import { RulesAndMockPage } from './proxy/RulesAndMockPage';
 import { FileWatcherPage } from './proxy/FileWatcherPage';
@@ -738,7 +739,7 @@ const MainContent: React.FC = () => {
         setConfig,
         setWorkspaceDirty,
         selectedWorkflowStep,
-        setSelectedWorkflowStep,
+        setSelectedWorkflowStep: setSelectedWorkflowStep as (step: { workflow: Workflow; step: WorkflowStep | null } | null) => void,
         setSelectedRequest,
         setActiveView,
         setLoading,
@@ -1071,14 +1072,158 @@ const MainContent: React.FC = () => {
         closeProject(name);
     };
 
-
-
-
-
-
-
-
-
+    // ==========================================================================
+    // WORKSPACE CONTEXT VALUE - Aggregates all state for WorkspaceLayout subtree
+    // ==========================================================================
+    const workspaceContextValue = useMemo(() => ({
+        // PROJECT STATE
+        projects,
+        dirtyProjects: new Set<string>(),
+        selectedProjectName,
+        setProjects,
+        // SELECTION STATE
+        selectedInterface,
+        selectedOperation,
+        selectedRequest,
+        selectedTestSuite,
+        selectedTestCase,
+        selectedTestStep: selectedStep,
+        selectedWorkflowStep,
+        selectedPerformanceSuiteId,
+        performanceHistory: config?.performanceHistory || [],
+        performanceProgress,
+        coordinatorStatus,
+        // NAVIGATION
+        activeView,
+        // EXPLORER STATE
+        inputType,
+        setInputType,
+        wsdlUrl,
+        setWsdlUrl,
+        loadWsdl: async (url: string, type: 'url' | 'file') => {
+            setDownloadStatus(['Loading...']);
+            if (type === 'url' && url) {
+                bridge.sendMessage({ command: 'loadWsdl', url, isLocal: false, useProxy: wsdlUseProxy });
+                if (!wsdlUrlHistory.includes(url)) {
+                    setWsdlUrlHistory(prev => [url, ...prev].slice(0, 10));
+                }
+            } else if (type === 'file') {
+                bridge.sendMessage({ command: 'loadWsdl', url, isLocal: true, useProxy: false });
+            }
+        },
+        downloadStatus: !downloadStatus ? 'idle' as const
+            : downloadStatus.some(s => s.toLowerCase().includes('error')) ? 'error' as const
+            : downloadStatus.some(s => s.toLowerCase().includes('loading') || s.includes('Downloading')) ? 'loading' as const
+            : 'success' as const,
+        onClearSelection: () => {
+            setSelectedInterface(null);
+            setSelectedOperation(null);
+            setSelectedRequest(null);
+        },
+        // REQUEST/RESPONSE STATE
+        response,
+        loading,
+        // UI STATE
+        layoutMode,
+        showLineNumbers,
+        splitRatio,
+        isResizing,
+        inlineElementValues,
+        setInlineElementValues,
+        hideCausalityData,
+        setHideCausalityData,
+        // CONFIG STATE
+        config,
+        defaultEndpoint: '',
+        isReadOnly: false,
+        backendConnected,
+        // PROJECT ACTIONS
+        addProject,
+        updateProject: handleUpdateProject,
+        closeProject: handleCloseProject,
+        setDirty: (_name: string, _isDirty: boolean) => { /* managed by workspaceDirty flag */ },
+        saveProject: (name: string): Promise<void> => {
+            const p = projects.find(x => x.name === name);
+            if (p) return Promise.resolve(saveProject(p)).then(() => {});
+            return Promise.resolve();
+        },
+        // SELECTION ACTIONS
+        selectInterface: setSelectedInterface,
+        selectOperation: setSelectedOperation,
+        selectRequest: setSelectedRequest,
+        selectTestSuite: setSelectedTestSuite,
+        selectTestCase: setSelectedTestCase,
+        selectTestStep: handleSelectStep,
+        selectWorkflowStep: (ws: any) => setSelectedWorkflowStep(ws),
+        // REQUEST ACTIONS
+        executeRequest,
+        cancelRequest,
+        updateRequest: handleRequestUpdate,
+        resetRequest: handleResetRequest,
+        // UI ACTIONS
+        toggleLayout: handleToggleLayout,
+        setLayoutMode,
+        toggleLineNumbers: handleToggleLineNumbers,
+        setShowLineNumbers,
+        setSplitRatio,
+        setIsResizing: startResizing,
+        // TEST RUNNER
+        handleAddAssertion,
+        handleRunTestCase: handleRunTestCaseWrapper,
+        handleRunTestSuite: handleRunTestSuiteWrapper,
+        // TEST STEP
+        updateTestStep: handleUpdateStep,
+        deleteTestStep: handleDeleteStep,
+        moveTestStep: handleMoveStep,
+        addTestStep: handleAddStep,
+        backToTestCase: () => { setSelectedStep(null); setSelectedRequest(null); },
+        openStepRequest: (req: ApiRequest) => { setSelectedRequest(req); setActiveView(SidebarView.EXPLORER); },
+        // PERFORMANCE
+        handleAddPerformanceSuite,
+        handleDeletePerformanceSuite,
+        handleAddPerformanceRequest: handleAddPerformanceRequestForUi,
+        handleDeletePerformanceRequest,
+        handleUpdatePerformanceRequest,
+        handleSelectPerformanceRequest,
+        handleRunPerformanceSuite: handleRunPerformanceSuite as (suiteId: string) => Promise<void>,
+        handleStopPerformanceRun,
+        handleSelectPerformanceSuite,
+        handleUpdatePerformanceSuite,
+        handleStartCoordinator,
+        handleStopCoordinator,
+        // TEST EXECUTION
+        testExecution,
+        // EXTRACTOR & EXISTENCE ASSERTION
+        handleAddExtractor,
+        handleAddExistenceAssertion,
+        // PERFORMANCE - import from workspace
+        onImportFromWorkspace: (suiteId: string) => setImportToPerformanceModal({ open: true, suiteId }),
+        // WORKFLOW UPDATE
+        updateWorkflow: handleUpdateWorkflow,
+        updateWorkflowStep: handleUpdateWorkflowStep,
+    }), [
+        projects, selectedProjectName, selectedInterface, selectedOperation, selectedRequest,
+        selectedTestSuite, selectedTestCase, selectedStep, selectedWorkflowStep,
+        selectedPerformanceSuiteId, config, performanceProgress, coordinatorStatus,
+        activeView, inputType, wsdlUrl, downloadStatus, wsdlUseProxy, wsdlUrlHistory,
+        response, loading, layoutMode, showLineNumbers, splitRatio, isResizing,
+        inlineElementValues, hideCausalityData, backendConnected, testExecution,
+        handleUpdateProject, handleCloseProject, handleSelectStep, handleToggleLayout,
+        handleToggleLineNumbers, handleUpdateStep, handleDeleteStep, handleMoveStep,
+        handleAddStep, handleRunTestCaseWrapper, handleRunTestSuiteWrapper,
+        handleAddAssertion, handleAddPerformanceSuite, handleDeletePerformanceSuite,
+        handleRunPerformanceSuite, handleStopPerformanceRun, handleSelectPerformanceSuite,
+        handleUpdatePerformanceSuite, handleAddPerformanceRequestForUi,
+        handleDeletePerformanceRequest, handleUpdatePerformanceRequest,
+        handleSelectPerformanceRequest, handleStartCoordinator, handleStopCoordinator,
+        executeRequest, cancelRequest, handleRequestUpdate, handleResetRequest,
+        setSelectedInterface, setSelectedOperation, setSelectedRequest, setSelectedTestSuite,
+        setSelectedTestCase, setSelectedWorkflowStep, setLayoutMode, setShowLineNumbers,
+        setSplitRatio, startResizing, setInlineElementValues, setHideCausalityData,
+        addProject, saveProject, setProjects, setSelectedStep, setActiveView,
+        setDownloadStatus, setWsdlUrlHistory, handleAddExtractor, handleAddExistenceAssertion,
+        handleUpdateWorkflow, handleUpdateWorkflowStep, setImportToPerformanceModal,
+    ]);
 
     return (
         <Container onClick={closeContextMenu} $showCustomTitleBar={showCustomTitleBar} $isMacOS={platformOS === 'macos'} $isMobile={isMobilePlatform} $isAndroid={platformOS === 'android'}>
@@ -1293,7 +1438,6 @@ const MainContent: React.FC = () => {
                 onMobileClose={isMobilePlatform ? () => setIsMobileDrawerOpen(false) : undefined}
             />
 
-            {/* WorkspaceLayout with consolidated props */}
             {activeView === SidebarView.PROXY && (
                 <ProxyPanel
                     onNavigateTo={(view) => handleSetActiveViewWrapper(view as SidebarView)}
@@ -1309,161 +1453,12 @@ const MainContent: React.FC = () => {
                     <FileWatcherPage />
                 </div>
             )}
-            {/* WorkspaceLayout with consolidated props */}
+            {/* WorkspaceLayout using WorkspaceContext - no props needed */}
             {activeView !== SidebarView.PROXY && activeView !== SidebarView.MOCK && activeView !== SidebarView.WATCHER && (
-                <WorkspaceLayout
-                projects={projects}
-                setProjects={setProjects}
-                selectionState={{
-                    project: projects.find(p => p.name === selectedProjectName) || null,
-                    interface: selectedInterface,
-                    request: selectedRequest,
-                    operation: selectedOperation,
-                    testCase: selectedTestCase,
-                    testSuite: selectedTestSuite,
-                    testStep: selectedStep,
-                    performanceSuite: selectedPerformanceSuite,
-                    workflowStep: (() => {
-                        console.log('[MainContent] Passing workflowStep to WorkspaceLayout:', !!selectedWorkflowStep);
-                        if (selectedWorkflowStep) {
-                            console.log('[MainContent] WorkflowStep details:', {
-                                workflow: selectedWorkflowStep.workflow.name,
-                                step: selectedWorkflowStep.step?.name || 'null'
-                            });
-                        }
-                        return selectedWorkflowStep;
-                    })()
-                }}
-                navigationActions={{
-                    onSelectProject: (p) => {
-                        setSelectedProjectName(p.name);
-                        setSelectedTestCase(null); // Clear test case state when navigating to projects
-                        setActiveView(SidebarView.PROJECTS);
-                    },
-                    onSelectInterface: (i) => {
-                        // Ensure parent project is selected if possible (we only have interface here, might need project name context)
-                        // If we are navigating from Project Summary, we assume Project Level is correct.
-                        setSelectedInterface(i);
-                        setSelectedTestCase(null); // Clear test case state
-                        setActiveView(SidebarView.PROJECTS);
-                    },
-                    onSelectOperation: (o) => {
-                        setSelectedOperation(o);
-                        setSelectedTestCase(null); // Clear test case state
-                        setActiveView(SidebarView.PROJECTS);
-                    },
-                    onSelectRequest: (r) => {
-                        if (r === null) {
-                            // Clear selection - navigate back to Explorer/Projects list
-                            setSelectedRequest(null);
-                        } else {
-                            setSelectedRequest({ ...r, contentType: r.contentType || 'application/soap+xml' });
-                            setSelectedTestCase(null); // Clear test case state when selecting workspace request
-                            setActiveView(SidebarView.PROJECTS);
-                        }
-                    },
-                    onSelectTestCase: (tc) => {
-                        handleSelectTestCase(tc.id);
-                        setActiveView(SidebarView.TESTS);
-                    },
-                    onSelectWorkflowStep: handleSelectWorkflowStep,
-                    onUpdateWorkflowStep: handleUpdateWorkflowStep,
-                    onUpdateWorkflow: handleUpdateWorkflow,
-                    onRunWorkflow: handleRunWorkflow,
-                    onEditWorkflow: handleEditWorkflow
-                }}
-                requestActions={{
-                    onExecute: executeRequest,
-                    onCancel: cancelRequest,
-                    onUpdate: handleRequestUpdate,
-                    onReset: handleResetRequest,
-                    response,
-                    loading
-                }}
-                viewState={{
-                    activeView,
-                    layoutMode,
-                    showLineNumbers,
-                    splitRatio,
-                    isResizing,
-                    onToggleLayout: handleToggleLayout,
-                    onToggleLineNumbers: handleToggleLineNumbers,
-                    onStartResizing: startResizing,
-                    inlineElementValues,
-                    onToggleInlineElementValues: handleToggleInlineElementValues,
-                    hideCausalityData,
-                    onToggleHideCausalityData: handleToggleHideCausalityData
-                }}
-                configState={{ config, defaultEndpoint: '', changelog, onChangeEnvironment: (env) => bridge.sendMessage({ command: 'setActiveEnvironment', env }), isReadOnly: false, backendConnected }}
-                stepActions={{
-                    onRunTestCase: handleRunTestCaseWrapper,
-                    onOpenStepRequest: (req) => { setSelectedRequest(req); setActiveView(SidebarView.EXPLORER); console.warn('Legacy onOpenStepRequest called'); },
-                    onBackToCase: () => { setSelectedStep(null); setSelectedRequest(null); },
-                    onAddStep: handleAddStep,
-                    testExecution,
-                    onUpdateStep: handleUpdateStep,
-                    onSelectStep: handleSelectStep,
-                    onDeleteStep: handleDeleteStep,
-                    onMoveStep: handleMoveStep
-                }}
-                toolsActions={{
-                    onAddExtractor: handleAddExtractor,
-                    onEditExtractor: handleEditExtractor,
-                    onAddAssertion: handleAddAssertion,
-                    onAddExistenceAssertion: handleAddExistenceAssertion,
-                    // onAddMockRule: (rule) => bridge.sendMessage({ command: 'addMockRule', rule }), // Removed - mock features
-                    onOpenDevOps: () => setShowDevOpsModal(true),
-                    // onOpenCodeSnippet: (request) => setCodeSnippetModal({ open: true, request })
-                }}
-                onUpdateSuite={handleUpdatePerformanceSuite}
-                onAddPerformanceRequest={handleAddPerformanceRequest}
-                onDeletePerformanceRequest={handleDeletePerformanceRequest}
-                onSelectPerformanceRequest={handleSelectPerformanceRequest}
-                onUpdatePerformanceRequest={handleUpdatePerformanceRequest}
-                onImportFromWorkspace={(suiteId) => setImportToPerformanceModal({ open: true, suiteId })}
-                onRunSuite={handleRunPerformanceSuite}
-                onStopRun={handleStopPerformanceRun}
-                performanceProgress={performanceProgress}
-                performanceHistory={config?.performanceHistory}
-                coordinatorStatus={coordinatorStatus}
-                onStartCoordinator={handleStartCoordinator}
-                onStopCoordinator={handleStopCoordinator}
-                explorerState={{
-                    inputType,
-                    setInputType,
-                    wsdlUrl,
-                    setWsdlUrl,
-                    loadWsdl: async (url, type) => {
-                        // Set loading status immediately
-                        setDownloadStatus(['Loading...']);
-
-                        // Ensure state is updated (react batches updates, so we might need to rely on the args or just assume state sync)
-                        // But since existing loadWsdl uses state, we should probably update state and call it.
-                        // However, calling setWsdlUrl here might not update state immediately for loadWsdl to see it if called synchronously.
-                        // Better to send message directly here using args, mirroring loadWsdl logic.
-                        if (type === 'url' && url) {
-                            bridge.sendMessage({ command: 'loadWsdl', url: url, isLocal: false, useProxy: wsdlUseProxy });
-                            // Add to history
-                            if (!wsdlUrlHistory.includes(url)) {
-                                setWsdlUrlHistory(prev => [url, ...prev].slice(0, 10));
-                            }
-                        } else if (type === 'file') {
-                            bridge.sendMessage({ command: 'loadWsdl', url: url, isLocal: true, useProxy: false });
-                        }
-                    },
-                    downloadStatus: !downloadStatus ? 'idle'
-                        : downloadStatus.some(s => s.toLowerCase().includes('error')) ? 'error'
-                            : downloadStatus.some(s => s.toLowerCase().includes('loading') || s.includes('Downloading')) ? 'loading'
-                                : 'success',
-                    onClearSelection: () => {
-                        setSelectedInterface(null);
-                        setSelectedOperation(null);
-                        setSelectedRequest(null);
-                    }
-                }}
-            />
+                <WorkspaceContext.Provider value={workspaceContextValue}>
+                    <WorkspaceLayout />
+                </WorkspaceContext.Provider>
             )}
-
             {
                 showDevOpsModal && config?.azureDevOps?.orgUrl && config?.azureDevOps?.project && selectedRequest && (
                     <AddToDevOpsModal

@@ -260,7 +260,7 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
                                 onClick={() => {
                                     if (onSelectStep) {
                                         onSelectStep(step);
-                                    } else if (step.type === 'request' && step.config.request && onOpenStepRequest) {
+                                    } else if (step.type === 'request' && step.config?.request && onOpenStepRequest) {
                                         onOpenStepRequest(step.config.request);
                                     }
                                 }}
@@ -285,19 +285,19 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
                                 </StepIndex>
                                 <StepContent>
                                     <strong>{step.name}</strong> <StepType>({step.type})</StepType>
-                                    {step.type === 'request' && step.config.request && (
+                                    {step.type === 'request' && step.config?.request && (
                                         <StepMeta>
                                             {step.config.request.name || `${step.config.request.method || 'POST'} ${step.config.request.endpoint || 'No Endpoint'}`}
                                         </StepMeta>
                                     )}
                                     {step.type === 'delay' && (
                                         <DelayMeta>
-                                            Delay: {step.config.delayMs || 0} ms
+                                            Delay: {step.config?.delayMs || 0} ms
                                         </DelayMeta>
                                     )}
                                     {step.type === 'workflow' && (
                                         <StepMeta>
-                                            Workflow: {workflows?.find(w => w.id === step.config.workflowId)?.name || step.config.workflowId || 'Not configured'}
+                                            Workflow: {workflows?.find(w => w.id === step.config?.workflowId)?.name || step.config?.workflowId || 'Not configured'}
                                         </StepMeta>
                                     )}
                                     {status?.error && (

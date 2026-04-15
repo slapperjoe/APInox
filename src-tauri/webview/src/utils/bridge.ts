@@ -836,7 +836,8 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                 const response = await tauriInvoke('run_performance_suite', {
                     request: {
                         suiteId: message.suiteId,
-                        stream: message.stream !== false
+                        stream: message.stream !== false,
+                        suite: message.suite || null
                     }
                 });
                 return response;

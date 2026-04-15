@@ -62,6 +62,9 @@ pub struct RunPerformanceSuiteRequest {
     #[serde(default = "default_true")]
     pub stream: bool,
     pub environment: Option<HashMap<String, String>>,
+    /// Optional suite payload from the frontend — used as fallback if the suite
+    /// is not found in the persisted config (e.g. due to a save race condition).
+    pub suite: Option<Value>,
 }
 
 fn default_true() -> bool {
@@ -96,15 +99,32 @@ pub async fn run_performance_suite(
         request.suite_id
     );
 
-    let config = settings_manager::load_config_internal()?;
-    let suites: Vec<PerformanceSuite> = config
-        .performance_suites
-        .and_then(|v| serde_json::from_value(Value::Array(v)).ok())
-        .unwrap_or_default();
-
-    let suite = suites
-        .into_iter()
-        .find(|s| s.id == request.suite_id)
+    // Prefer the suite payload supplied directly by the frontend (avoids save-race issues),
+    // then fall back to the persisted config on disk.
+    let suite: PerformanceSuite = request
+        .suite
+        .as_ref()
+        .and_then(|v| {
+            serde_json::from_value::<PerformanceSuite>(v.clone())
+                .map_err(|e| {
+                    log::warn!(
+                        "[run_performance_suite] Frontend suite deserialize failed: {}",
+                        e
+                    )
+                })
+                .ok()
+        })
+        .or_else(|| {
+            // Fallback: load from persisted config
+            let config = settings_manager::load_config_internal().ok()?;
+            let suites: Vec<PerformanceSuite> = config
+                .performance_suites
+                .unwrap_or_default()
+                .into_iter()
+                .filter_map(|v| serde_json::from_value(v).ok())
+                .collect();
+            suites.into_iter().find(|s| s.id == request.suite_id)
+        })
         .ok_or_else(|| format!("Performance suite not found: {}", request.suite_id))?;
 
     let run_id = format!(

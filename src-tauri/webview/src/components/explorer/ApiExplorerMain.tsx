@@ -37,10 +37,10 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isDragOver, setIsDragOver] = useState(false);
 
-    const handleFilePath = (path: string) => {
+    const handleFilePath = async (path: string) => {
         setWsdlUrl(path);
         setInputType('file');
-        loadWsdl(path, 'file');
+        await loadWsdl(path, 'file');
     };
 
     const handleDropZoneDrop = async (e: React.DragEvent<HTMLButtonElement>) => {
@@ -69,7 +69,7 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
                 
                 if (selectedPath) {
                     setWsdlUrl(selectedPath as string);
-                    loadWsdl(selectedPath as string, 'file');
+                    await loadWsdl(selectedPath as string, 'file');
                 }
             } catch (error) {
                 console.error('Error opening file dialog:', error);
@@ -82,7 +82,7 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
             const file = e.target.files[0];
             const path = (file as any).path || file.name;
             setWsdlUrl(path);
-            loadWsdl(path, 'file');
+            await loadWsdl(path, 'file');
         }
     };
 
@@ -102,7 +102,7 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
                 if (selectedPath) {
                     setWsdlUrl(selectedPath as string);
                     setInputType('file');
-                    loadWsdl(selectedPath as string, 'file');
+                    await loadWsdl(selectedPath as string, 'file');
                 }
             } catch (error) {
                 console.error('Error opening file dialog:', error);
@@ -113,8 +113,8 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
         }
     };
 
-    const handleLoad = () => {
-        loadWsdl(wsdlUrl, inputType);
+    const handleLoad = async () => {
+        await loadWsdl(wsdlUrl, inputType);
     };
 
     const handleCancel = () => {
@@ -193,10 +193,10 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
                         )}
 
                         <div style={{ opacity: 0.7 }}>SOAP Version:</div>
-                        <div style={{ fontFamily: 'monospace' }}>{selectedInterface.soapVersion || '(not available)'}</div>
+                        <div style={{ fontFamily: 'monospace' }}>{selectedInterface?.soapVersion || '(not available)'}</div>
 
                         <div style={{ opacity: 0.7 }}>Binding:</div>
-                        <div style={{ fontFamily: 'monospace' }}>{selectedInterface.bindingName}</div>
+                        <div style={{ fontFamily: 'monospace' }}>{selectedInterface?.bindingName}</div>
 
                         <div style={{ opacity: 0.7 }}>Target Namespace:</div>
                         <div style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>{(selectedOperation as any).targetNamespace || '(not available)'}</div>

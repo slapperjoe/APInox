@@ -1,6 +1,23 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+/// Deserialize a JSON null or missing value as an empty Vec.
+fn null_as_empty_vec<'de, D, T>(deserializer: D) -> Result<Vec<T>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: serde::Deserialize<'de>,
+{
+    Ok(Option::<Vec<T>>::deserialize(deserializer)?.unwrap_or_default())
+}
+
+/// Deserialize a JSON null or missing value as an empty HashMap.
+fn null_as_empty_map<'de, D>(deserializer: D) -> Result<HashMap<String, String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Ok(Option::<HashMap<String, String>>::deserialize(deserializer)?.unwrap_or_default())
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PerformanceSuite {
@@ -8,7 +25,7 @@ pub struct PerformanceSuite {
     pub name: String,
     #[serde(default)]
     pub description: Option<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_empty_vec")]
     pub requests: Vec<PerformanceRequest>,
     #[serde(default = "default_iterations")]
     pub iterations: u32,
@@ -38,9 +55,9 @@ pub struct PerformanceRequest {
     pub soap_action: Option<String>,
     #[serde(default)]
     pub request_body: String,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_empty_map")]
     pub headers: HashMap<String, String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_empty_vec")]
     pub extractors: Vec<RequestExtractor>,
     pub sla_threshold: Option<f64>,
     #[serde(default)]
