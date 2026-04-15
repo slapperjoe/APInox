@@ -296,42 +296,49 @@ jobs:
           if-no-files-found: warn
 
       # ── Path 2: Sideload .ipa (APPLE_TEAM_ID set, no certificate) ───────────
-      # Builds for real-device ARM64 without signing so the artifact can be
-      # re-signed and installed via AltStore or Sideloadly using a free Apple ID.
-      # APPLE_DEVELOPMENT_TEAM is intentionally NOT set: passing it causes Tauri to
-      # embed DEVELOPMENT_TEAM in the Xcode project, triggering account/profile lookup
-      # even with CODE_SIGNING_ALLOWED=NO.
-      # AltStore/Sideloadly handle all re-signing, so no team is needed at build time.
+      # Tauri emits a "no code signing certificates" warning but still builds
+      # successfully — xcodebuild compiles without certs and Tauri packages the
+      # IPA itself at src-tauri/gen/apple/build/arm64/APInox.ipa.
+      # The collect step below copies it to the workspace root for upload.
       - name: Build unsigned iOS (device — sideload)
         if: env.APPLE_CERTIFICATE == '' && env.APPLE_TEAM_ID != ''
-        continue-on-error: true
         run: npx tauri ios build --target aarch64
 
-      - name: Package sideload IPA from xcarchive
+      - name: Collect sideload IPA
         if: env.APPLE_CERTIFICATE == '' && env.APPLE_TEAM_ID != ''
         run: |
-          # Search the xcarchive first (produced by `xcodebuild archive`),
-          # then fall back to loose .app files in the build tree.
-          APP_PATH=$(find src-tauri/gen/apple -name "*.xcarchive" 2>/dev/null \
-            | head -1 \
-            | xargs -I{} find {}/Products/Applications -maxdepth 1 -name "*.app" 2>/dev/null \
-            | head -1)
-          if [[ -z "$APP_PATH" ]]; then
-            APP_PATH=$(find src-tauri/gen/apple/build -name "*.app" \
+          # Tauri drops the IPA at src-tauri/gen/apple/build/arm64/*.ipa.
+          # Try that well-known path first, then do a broader search.
+          IPA_PATH=$(find src-tauri/gen/apple/build/arm64 -maxdepth 1 -name "*.ipa" 2>/dev/null | head -1)
+          if [[ -z "$IPA_PATH" ]]; then
+            IPA_PATH=$(find src-tauri/gen/apple -name "*.ipa" \
               -not -path "*Simulator*" 2>/dev/null | head -1)
           fi
-          if [[ -z "$APP_PATH" ]]; then
-            echo "ERROR: no .app found in xcarchive or build tree — cannot package IPA"
-            find src-tauri/gen/apple -maxdepth 5 2>/dev/null || true
-            exit 1
+          # If still nothing, fall back: find the .app and zip it ourselves.
+          if [[ -z "$IPA_PATH" ]]; then
+            echo "No pre-built IPA found — packaging from xcarchive or build tree..."
+            APP_PATH=$(find src-tauri/gen/apple -name "*.xcarchive" 2>/dev/null \
+              | head -1 \
+              | xargs -I{} find {}/Products/Applications -maxdepth 1 -name "*.app" 2>/dev/null \
+              | head -1)
+            if [[ -z "$APP_PATH" ]]; then
+              APP_PATH=$(find src-tauri/gen/apple/build -name "*.app" \
+                -not -path "*Simulator*" 2>/dev/null | head -1)
+            fi
+            if [[ -z "$APP_PATH" ]]; then
+              echo "ERROR: no .ipa or .app found — cannot produce sideload artifact"
+              find src-tauri/gen/apple -maxdepth 5 2>/dev/null || true
+              exit 1
+            fi
+            APP_NAME=$(basename "$APP_PATH" .app)
+            PAYLOAD_TMP=$(mktemp -d)
+            mkdir -p "$PAYLOAD_TMP/Payload"
+            cp -r "$APP_PATH" "$PAYLOAD_TMP/Payload/"
+            (cd "$PAYLOAD_TMP" && zip -qr "${APP_NAME}.ipa" Payload/)
+            IPA_PATH="$PAYLOAD_TMP/${APP_NAME}.ipa"
           fi
-          echo "Packaging: $APP_PATH"
-          APP_NAME=$(basename "$APP_PATH" .app)
-          PAYLOAD_TMP=$(mktemp -d)
-          mkdir -p "$PAYLOAD_TMP/Payload"
-          cp -r "$APP_PATH" "$PAYLOAD_TMP/Payload/"
-          (cd "$PAYLOAD_TMP" && zip -qr "${APP_NAME}.ipa" Payload/)
-          cp "$PAYLOAD_TMP/${APP_NAME}.ipa" "$GITHUB_WORKSPACE/apinox-sideload.ipa"
+          echo "Sideload IPA: $IPA_PATH"
+          cp "$IPA_PATH" "$GITHUB_WORKSPACE/apinox-sideload.ipa"
           echo "Sideload IPA ready: apinox-sideload.ipa"
 
       - name: Upload sideload IPA artifact
@@ -383,17 +390,20 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    # Android builds produce an unsigned APK by default.
+    # Android signing uses a key.properties file read by build.gradle.kts.
     # To enable signed release APKs, add these repository secrets:
     #   ANDROID_KEYSTORE            – base64-encoded .jks / .keystore file
     #   ANDROID_KEYSTORE_PASSWORD   – keystore store password
     #   ANDROID_KEY_ALIAS           – key alias inside the keystore
     #   ANDROID_KEY_PASSWORD        – key password
-    # Signing steps are skipped gracefully when those secrets are absent.
+    # When absent the build falls back to a debug (unsigned) APK.
     # Map secrets to env vars so they can be checked in `if:` conditions.
     # (The `secrets` context is not accessible in `if:` expressions.)
     env:
       ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
     steps:
       - name: Checkout repository
@@ -414,7 +424,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+          targets: aarch64-linux-android
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -430,25 +440,30 @@ jobs:
       - name: Install request-editor dependencies
         run: cd packages/request-editor && npm install
 
-      - name: Decode signing keystore
+      - name: Write key.properties for signing
         if: env.ANDROID_KEYSTORE != ''
         run: |
+          # Decode keystore to a temp file
           echo "${{ secrets.ANDROID_KEYSTORE }}" | base64 --decode \
             > "$RUNNER_TEMP/release.keystore"
+          # build.gradle.kts reads rootProject.file("key.properties"),
+          # which resolves to src-tauri/gen/android/key.properties
+          cat > src-tauri/gen/android/key.properties << EOF
+          storeFile=$RUNNER_TEMP/release.keystore
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          EOF
 
-      - name: Build Android APK (signed release)
+      - name: Build Android APK — arm64 signed release
         if: env.ANDROID_KEYSTORE != ''
-        run: npx tauri android build
+        run: npx tauri android build --target aarch64
         env:
           NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
-          TAURI_ANDROID_SIGNING_KEY_STORE: ${{ runner.temp }}/release.keystore
-          TAURI_ANDROID_SIGNING_KEY_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          TAURI_ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          TAURI_ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
-      - name: Build Android APK (unsigned debug)
+      - name: Build Android APK — arm64 unsigned debug
         if: env.ANDROID_KEYSTORE == ''
-        run: npx tauri android build --debug
+        run: npx tauri android build --target aarch64 --debug
         env:
           NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
 
