@@ -284,7 +284,7 @@ jobs:
           xcodebuild archive \
             -project apinox.xcodeproj \
             -scheme apinox_iOS \
-            -configuration Release \
+            -configuration release \
             -archivePath "$RUNNER_TEMP/apinox.xcarchive" \
             -destination "generic/platform=iOS" \
             CODE_SIGNING_ALLOWED=NO \
