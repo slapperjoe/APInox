@@ -277,6 +277,24 @@ jobs:
       # requires a non-empty teamID and breaks unsigned CI builds). After the
       # archive step the .app bundle is zipped manually into an IPA sideloadable
       # via AltStore / Sideloadly.
+      #
+      # The "Build Rust Code" Xcode phase runs in a sanitised subprocess that
+      # does NOT inherit the PATH set by dtolnay/rust-toolchain, so cargo is
+      # invisible unless we explicitly patch the shellScript to source it first.
+      - name: Patch Xcode Build Rust Code phase to source cargo PATH
+        if: env.APPLE_CERTIFICATE == ''
+        run: |
+          PBXPROJ="src-tauri/gen/apple/apinox.xcodeproj/project.pbxproj"
+          # Only patch if not already patched (idempotent)
+          if ! grep -q '\.cargo/env' "$PBXPROJ"; then
+            sed -i '' \
+              's|shellScript = "npm run -- tauri ios xcode-script|shellScript = "[ -f \\"$HOME/.cargo/env\\" ] \&\& . \\"$HOME/.cargo/env\\"; export PATH=\\"$HOME/.cargo/bin:$PATH\\"; npm run -- tauri ios xcode-script|g' \
+              "$PBXPROJ"
+            echo "Patched shellScript in project.pbxproj to source cargo env"
+          else
+            echo "project.pbxproj already contains cargo PATH sourcing — skipping patch"
+          fi
+
       - name: Build unsigned iOS archive (real device — aarch64)
         if: env.APPLE_CERTIFICATE == ''
         run: |
