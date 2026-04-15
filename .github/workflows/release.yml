@@ -370,21 +370,33 @@ jobs:
             IPA_PATH=$(find src-tauri/gen/apple -name "*.ipa" \
               -not -path "*Simulator*" 2>/dev/null | head -1)
           fi
-          # Fall back: find .app inside the xcarchive and zip it.
+          # Fall back: find .app and zip it into an IPA.
           if [[ -z "$IPA_PATH" ]]; then
-            echo "No pre-built IPA — packaging from xcarchive..."
+            echo "No pre-built IPA — searching for .app bundle..."
+            # 1. xcarchive inside gen/apple (archive builds)
             XCARCHIVE=$(find src-tauri/gen/apple -name "*.xcarchive" 2>/dev/null | head -1)
             if [[ -n "$XCARCHIVE" ]]; then
               APP_PATH=$(find "$XCARCHIVE/Products/Applications" -maxdepth 1 -name "*.app" 2>/dev/null | head -1)
               [[ -z "$APP_PATH" ]] && APP_PATH=$(find "$XCARCHIVE/Products" -maxdepth 4 -name "*.app" 2>/dev/null | head -1)
             fi
-            [[ -z "$APP_PATH" ]] && APP_PATH=$(find src-tauri/gen/apple/build -name "*.app" \
-              -not -path "*Simulator*" 2>/dev/null | head -1)
+            # 2. DerivedData — Tauri uses -build (not -archive), so .app lands here
             if [[ -z "$APP_PATH" ]]; then
-              echo "ERROR: no .ipa or .app found"
+              APP_PATH=$(find "$HOME/Library/Developer/Xcode/DerivedData" \
+                -path "*/Build/Products/*-iphoneos/*.app" \
+                -not -path "*Simulator*" 2>/dev/null | head -1)
+            fi
+            # 3. gen/apple/build tree
+            if [[ -z "$APP_PATH" ]]; then
+              APP_PATH=$(find src-tauri/gen/apple/build -name "*.app" \
+                -not -path "*Simulator*" 2>/dev/null | head -1)
+            fi
+            if [[ -z "$APP_PATH" ]]; then
+              echo "ERROR: no .ipa or .app found — listing search paths for diagnosis:"
               find src-tauri/gen/apple -maxdepth 6 2>/dev/null || true
+              find "$HOME/Library/Developer/Xcode/DerivedData" -maxdepth 6 -name "*.app" 2>/dev/null | head -20 || true
               exit 1
             fi
+            echo "Found .app: $APP_PATH"
             APP_NAME=$(basename "$APP_PATH" .app)
             PAYLOAD_TMP=$(mktemp -d)
             mkdir -p "$PAYLOAD_TMP/Payload"
