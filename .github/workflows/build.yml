@@ -272,35 +272,41 @@ jobs:
         run: cd packages/request-editor && npm install
 
       # ── Path 1: Unsigned real-device IPA (no APPLE_CERTIFICATE) ─────────────
-      # Patch the Xcode project to disable code signing for all configurations,
-      # then build for the real-device target. Skip xcodebuild -exportArchive
-      # entirely and zip the .app bundle into an IPA manually.
-      - name: Disable code signing in Xcode project (unsigned build)
+      # Call xcodebuild archive directly so that xcodebuild -exportArchive is
+      # never invoked (npx tauri ios build always calls it internally, which
+      # requires a non-empty teamID and breaks unsigned CI builds). After the
+      # archive step the .app bundle is zipped manually into an IPA sideloadable
+      # via AltStore / Sideloadly.
+      - name: Build unsigned iOS archive (real device — aarch64)
         if: env.APPLE_CERTIFICATE == ''
         run: |
-          PBXPROJ="src-tauri/gen/apple/apinox.xcodeproj/project.pbxproj"
-          sed -i '' 's/CODE_SIGNING_ALLOWED = YES;/CODE_SIGNING_ALLOWED = NO;/g' "$PBXPROJ"
-          sed -i '' 's/CODE_SIGNING_REQUIRED = YES;/CODE_SIGNING_REQUIRED = NO;/g' "$PBXPROJ"
-          sed -i '' 's/DEVELOPMENT_TEAM = [^;]*;/DEVELOPMENT_TEAM = "";/g' "$PBXPROJ"
-
-      - name: Build unsigned iOS (real device — aarch64)
-        if: env.APPLE_CERTIFICATE == ''
-        run: npx tauri ios build --target aarch64
+          cd src-tauri/gen/apple
+          xcodebuild archive \
+            -project apinox.xcodeproj \
+            -scheme apinox_iOS \
+            -configuration release \
+            -archivePath "$RUNNER_TEMP/apinox.xcarchive" \
+            -destination "generic/platform=iOS" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM=""
 
       - name: Package unsigned IPA from build output
         if: env.APPLE_CERTIFICATE == ''
         run: |
-          # Locate the .app inside the xcarchive produced by the build.
-          XCARCHIVE=$(find src-tauri/gen/apple -name "*.xcarchive" 2>/dev/null | head -1)
-          APP_PATH=""
-          if [[ -n "$XCARCHIVE" ]]; then
-            APP_PATH=$(find "$XCARCHIVE/Products/Applications" -maxdepth 1 -name "*.app" 2>/dev/null | head -1)
-            if [[ -z "$APP_PATH" ]]; then
-              echo "WARNING: xcarchive found but contains no .app in Products/Applications: $XCARCHIVE"
+          # Use the known xcarchive path from the build step.
+          APP_PATH=$(find "$RUNNER_TEMP/apinox.xcarchive/Products/Applications" \
+            -maxdepth 1 -name "*.app" 2>/dev/null | head -1)
+
+          # Fallback: search the gen/apple tree in case the path differs.
+          if [[ -z "$APP_PATH" ]]; then
+            XCARCHIVE=$(find src-tauri/gen/apple -name "*.xcarchive" 2>/dev/null | head -1)
+            if [[ -n "$XCARCHIVE" ]]; then
+              APP_PATH=$(find "$XCARCHIVE/Products/Applications" -maxdepth 1 -name "*.app" 2>/dev/null | head -1)
             fi
           fi
 
-          # Fall back to the build tree if no xcarchive was created (or had no .app).
           if [[ -z "$APP_PATH" ]]; then
             APP_PATH=$(find src-tauri/gen/apple/build -name "*.app" \
               -not -path "*Simulator*" 2>/dev/null | head -1)
@@ -308,6 +314,7 @@ jobs:
 
           if [[ -z "$APP_PATH" ]]; then
             echo "ERROR: no .app found"
+            find "$RUNNER_TEMP" -name "*.xcarchive" -maxdepth 3 || true
             find src-tauri/gen/apple -maxdepth 5 || true
             exit 1
           fi
