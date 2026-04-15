@@ -272,15 +272,29 @@ jobs:
         run: cd packages/request-editor && npm install
 
       # ── Path 1: Unsigned real-device IPA (no APPLE_CERTIFICATE) ─────────────
-      # Call xcodebuild archive directly so that xcodebuild -exportArchive is
-      # never invoked (npx tauri ios build always calls it internally, which
-      # requires a non-empty teamID and breaks unsigned CI builds). After the
-      # archive step the .app bundle is zipped manually into an IPA sideloadable
-      # via AltStore / Sideloadly.
+      # `tauri ios build` is used (not bare `xcodebuild archive`) because the
+      # Xcode "Build Rust Code" phase calls `tauri ios xcode-script`, which
+      # connects via WebSocket to a Tauri orchestrator process to receive build
+      # options.  That orchestrator — and the addr file it writes to
+      # $TMPDIR/app.apinox.dev1-server-addr — only exist when `tauri ios build`
+      # is the one driving the build.  Calling xcodebuild directly skips all
+      # of that setup, causing xcode-script to panic with "failed to read
+      # missing addr file".
       #
-      # The "Build Rust Code" Xcode phase runs in a sanitised subprocess that
-      # does NOT inherit the PATH set by dtolnay/rust-toolchain, so cargo is
-      # invisible unless we explicitly patch the shellScript to source it first.
+      # tauri ios build:
+      #   1. builds the webview frontend (beforeBuildCommand)
+      #   2. starts the WebSocket server + writes the addr file
+      #   3. calls xcodebuild archive  → succeeds (CODE_SIGNING_ALLOWED=NO in pbxproj)
+      #   4. calls xcodebuild -exportArchive → fails (no signing certs — expected)
+      #
+      # We allow that failure, locate the xcarchive Xcode left behind, and copy
+      # it to $RUNNER_TEMP/apinox.xcarchive for the packaging step below.
+      #
+      # The "Build Rust Code" Xcode phase also runs in a sanitised subprocess
+      # that does NOT inherit the PATH set by dtolnay/rust-toolchain, so cargo
+      # must be sourced explicitly.  The shellScript in project.pbxproj already
+      # contains the `. "$HOME/.cargo/env"` prefix (committed fix); the step
+      # below is belt-and-suspenders in case Tauri tooling regenerates the file.
       - name: Patch Xcode Build Rust Code phase to source cargo PATH
         if: env.APPLE_CERTIFICATE == ''
         run: |
@@ -298,17 +312,30 @@ jobs:
       - name: Build unsigned iOS archive (real device — aarch64)
         if: env.APPLE_CERTIFICATE == ''
         run: |
-          cd src-tauri/gen/apple
-          xcodebuild archive \
-            -project apinox.xcodeproj \
-            -scheme apinox_iOS \
-            -configuration release \
-            -archivePath "$RUNNER_TEMP/apinox.xcarchive" \
-            -destination "generic/platform=iOS" \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            DEVELOPMENT_TEAM=""
+          source "$HOME/.cargo/env" || true
+          export PATH="$HOME/.cargo/bin:$PATH"
+
+          # Run tauri ios build for proper Tauri orchestration (addr file setup).
+          # The archive step will succeed; exportArchive will fail — that is expected.
+          set +e
+          npx tauri ios build 2>&1 | tee /tmp/tauri-ios-build.log
+          EXIT_CODE=$?
+          set -e
+
+          # The xcarchive is created by the archive step before exportArchive fails.
+          # Xcode stores archives in ~/Library/Developer/Xcode/Archives/.
+          XCARCHIVE=$(find "$HOME/Library/Developer/Xcode/Archives" -name "*.xcarchive" \
+            2>/dev/null | sort -r | head -1)
+
+          if [[ -z "$XCARCHIVE" ]]; then
+            echo "ERROR: No xcarchive found — the archive step itself failed:"
+            cat /tmp/tauri-ios-build.log
+            exit 1
+          fi
+
+          echo "Archive found: $XCARCHIVE"
+          # Copy to the path downstream packaging steps expect
+          cp -r "$XCARCHIVE" "$RUNNER_TEMP/apinox.xcarchive"
 
       - name: Package unsigned IPA from build output
         if: env.APPLE_CERTIFICATE == ''
