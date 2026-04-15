@@ -353,12 +353,18 @@ jobs:
           if-no-files-found: ignore
 
       # Path 2: Sideload IPA (APPLE_TEAM_ID only)
-      # Tauri builds the xcarchive successfully but xcodebuild -exportArchive
-      # fails with "teamID should be non-empty" (no cert → no teamID in plist).
-      # We allow the failure, then package the .app from the xcarchive ourselves.
-      - name: Build iOS (sideload — allow export failure)
+      - name: Inject teamID into ExportOptions.plist
         if: env.APPLE_CERTIFICATE == '' && env.APPLE_TEAM_ID != ''
-        continue-on-error: true
+        run: |
+          PLIST="src-tauri/gen/apple/ExportOptions.plist"
+          # Add the key if absent, otherwise overwrite it
+          /usr/libexec/PlistBuddy -c "Add :teamID string ${{ secrets.APPLE_TEAM_ID }}" "$PLIST" 2>/dev/null \
+            || /usr/libexec/PlistBuddy -c "Set :teamID ${{ secrets.APPLE_TEAM_ID }}" "$PLIST"
+          echo "ExportOptions.plist after injection:"
+          cat "$PLIST"
+
+      - name: Build iOS (sideload)
+        if: env.APPLE_CERTIFICATE == '' && env.APPLE_TEAM_ID != ''
         run: npx tauri ios build --target aarch64
 
       - name: Collect sideload IPA
