@@ -353,62 +353,47 @@ jobs:
           if-no-files-found: ignore
 
       # Path 2: Sideload IPA (APPLE_TEAM_ID only)
-      - name: Inject teamID into ExportOptions.plist
+      # Tauri builds the xcarchive successfully but xcodebuild -exportArchive
+      # fails with "teamID should be non-empty" (no cert → no teamID in plist).
+      # We allow the failure, then package the .app from the xcarchive ourselves.
+      - name: Build iOS (sideload — allow export failure)
         if: env.APPLE_CERTIFICATE == '' && env.APPLE_TEAM_ID != ''
-        run: |
-          /usr/libexec/PlistBuddy -c "Add :teamID string ${{ secrets.APPLE_TEAM_ID }}" \
-            src-tauri/gen/apple/ExportOptions.plist 2>/dev/null || \
-          /usr/libexec/PlistBuddy -c "Set :teamID ${{ secrets.APPLE_TEAM_ID }}" \
-            src-tauri/gen/apple/ExportOptions.plist
+        continue-on-error: true
+        run: npx tauri ios build --target aarch64
 
-      - name: Build unsigned iOS (device — sideload)
+      - name: Collect sideload IPA
         if: env.APPLE_CERTIFICATE == '' && env.APPLE_TEAM_ID != ''
-        env:
-          IPA_OUTPUT_PATH: ${{ github.workspace }}/apinox-sideload.ipa
         run: |
-          XCODE_PATH=$(xcode-select -p)
-          WRAPPER_DIR="$RUNNER_TEMP/xcodebuild-nosign/bin"
-          WRAPPER="$WRAPPER_DIR/xcodebuild"
-          mkdir -p "$WRAPPER_DIR"
-          export REAL_XCODEBUILD_BIN="$XCODE_PATH/usr/bin/xcodebuild"
-          cat > "$WRAPPER" << 'EOF_XCODEBUILD_WRAPPER'
-          #!/bin/bash
-          REAL_XC="${REAL_XCODEBUILD_BIN:-$(xcode-select -p)/usr/bin/xcodebuild}"
-          ARGS=()
-          for arg in "$@"; do
-            [[ "$arg" == "-allowProvisioningUpdates" ]] && continue
-            ARGS+=("$arg")
-          done
-          IS_EXPORT=false
-          for arg in "${ARGS[@]}"; do [[ "$arg" == "-exportArchive" ]] && IS_EXPORT=true && break; done
-          if $IS_EXPORT; then
-            ARCHIVE_PATH=""; EXPORT_PATH=""; PREV=""
-            for arg in "${ARGS[@]}"; do
-              [[ "$PREV" == "-archivePath" ]] && ARCHIVE_PATH="$arg"
-              [[ "$PREV" == "-exportPath"  ]] && EXPORT_PATH="$arg"
-              PREV="$arg"
-            done
-            APP_PATH=$(find "${ARCHIVE_PATH}/Products/Applications" -maxdepth 1 -name "*.app" 2>/dev/null | head -1)
-            if [[ -z "$APP_PATH" ]]; then
-              APP_PATH=$(find "${ARCHIVE_PATH}/Products" -maxdepth 4 -name "*.app" 2>/dev/null | head -1)
-            fi
-            if [[ -z "$APP_PATH" ]]; then exec "$REAL_XC" "${ARGS[@]}"; fi
-            PAYLOAD_TMP=$(mktemp -d)
-            mkdir -p "${PAYLOAD_TMP}/Payload"
-            cp -r "$APP_PATH" "${PAYLOAD_TMP}/Payload/"
-            APP_NAME=$(basename "$APP_PATH" .app)
-            mkdir -p "$EXPORT_PATH"
-            (cd "$PAYLOAD_TMP" && zip -qr "${APP_NAME}.ipa" Payload/ && mv "${APP_NAME}.ipa" "$EXPORT_PATH/")
-            [[ -n "$IPA_OUTPUT_PATH" ]] && cp "$EXPORT_PATH/${APP_NAME}.ipa" "$IPA_OUTPUT_PATH"
-            rm -rf "$PAYLOAD_TMP"
-            echo "** EXPORT SUCCEEDED (unsigned sideload) **"
-            exit 0
+          # Try the IPA Tauri drops when export succeeds.
+          IPA_PATH=$(find src-tauri/gen/apple/build/arm64 -maxdepth 1 -name "*.ipa" 2>/dev/null | head -1)
+          if [[ -z "$IPA_PATH" ]]; then
+            IPA_PATH=$(find src-tauri/gen/apple -name "*.ipa" \
+              -not -path "*Simulator*" 2>/dev/null | head -1)
           fi
-          exec "$REAL_XC" "${ARGS[@]}"
-          EOF_XCODEBUILD_WRAPPER
-          chmod +x "$WRAPPER"
-          export PATH="$WRAPPER_DIR:$PATH"
-          npx tauri ios build --target aarch64
+          # Fall back: find .app inside the xcarchive and zip it.
+          if [[ -z "$IPA_PATH" ]]; then
+            echo "No pre-built IPA — packaging from xcarchive..."
+            XCARCHIVE=$(find src-tauri/gen/apple -name "*.xcarchive" 2>/dev/null | head -1)
+            if [[ -n "$XCARCHIVE" ]]; then
+              APP_PATH=$(find "$XCARCHIVE/Products/Applications" -maxdepth 1 -name "*.app" 2>/dev/null | head -1)
+              [[ -z "$APP_PATH" ]] && APP_PATH=$(find "$XCARCHIVE/Products" -maxdepth 4 -name "*.app" 2>/dev/null | head -1)
+            fi
+            [[ -z "$APP_PATH" ]] && APP_PATH=$(find src-tauri/gen/apple/build -name "*.app" \
+              -not -path "*Simulator*" 2>/dev/null | head -1)
+            if [[ -z "$APP_PATH" ]]; then
+              echo "ERROR: no .ipa or .app found"
+              find src-tauri/gen/apple -maxdepth 6 2>/dev/null || true
+              exit 1
+            fi
+            APP_NAME=$(basename "$APP_PATH" .app)
+            PAYLOAD_TMP=$(mktemp -d)
+            mkdir -p "$PAYLOAD_TMP/Payload"
+            cp -r "$APP_PATH" "$PAYLOAD_TMP/Payload/"
+            (cd "$PAYLOAD_TMP" && zip -qr "${APP_NAME}.ipa" Payload/)
+            IPA_PATH="$PAYLOAD_TMP/${APP_NAME}.ipa"
+          fi
+          echo "Sideload IPA: $IPA_PATH"
+          cp "$IPA_PATH" "$GITHUB_WORKSPACE/apinox-sideload.ipa"
 
       - name: Upload sideload IPA artifact
         if: env.APPLE_CERTIFICATE == '' && env.APPLE_TEAM_ID != ''
@@ -416,7 +401,7 @@ jobs:
         with:
           name: release-ios-sideload
           path: apinox-sideload.ipa
-          if-no-files-found: ignore
+          if-no-files-found: warn
 
       # Path 3: Signed IPA (full Developer Program)
       - name: Import Apple code signing certificate
