@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import Editor from '@monaco-editor/react';
 import { Play, Loader2, HelpCircle } from 'lucide-react';
+import { bridge, isTauri, isStandalone } from '../../utils/bridge';
 import { PrimaryButton, SecondaryButton } from '../common/Button';
 import { useTheme } from '@apinox/request-editor'; // Use package ThemeContext
 import { Modal } from './Modal';

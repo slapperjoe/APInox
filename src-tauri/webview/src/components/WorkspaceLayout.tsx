@@ -42,7 +42,11 @@ import { InterfaceSummary } from './workspace/InterfaceSummary';
 import { TestSuiteSummary } from './workspace/TestSuiteSummary';
 import { OperationSummary } from './workspace/OperationSummary';
 import { PerformanceSuiteEditor } from './workspace/PerformanceSuiteEditor';
+import { ProxyPanel } from './proxy/ProxyPanel';
+import { RulesAndMockPage } from './proxy/RulesAndMockPage';
+import { FileWatcherPage } from './proxy/FileWatcherPage';
 import { findPathToRequest } from '../utils/projectUtils';
+import { useWorkspace } from '../contexts/WorkspaceContext';
 
 /**
  * Get Content-Type header based on body type
@@ -133,89 +137,146 @@ import {
     SettingsMenuWrapper
 } from '../styles/WorkspaceLayout.styles';
 
+/**
+ * WorkspaceLayout - Main workspace component for editing requests, tests, and workflows
+ * 
+ * Uses useWorkspace() hook to access all state instead of receiving props.
+ * This eliminates the need for ~140 lines of prop passing from MainContent.
+ */
+export const WorkspaceLayout: React.FC = () => {
+    // Consume workspace context - replaces all prop groups
+    const workspace = useWorkspace();
 
-// Prop Groups
-import {
-    WorkspaceLayoutProps
-} from '../types/props';
-
-
-
-
-
-
-
-// Helper Components
-
-
-
-
-
-export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
-    projects,
-    setProjects,
-    selectionState,
-    requestActions,
-    viewState,
-    configState,
-    stepActions,
-    toolsActions,
-    onUpdateSuite,
-    onAddPerformanceRequest,
-    onDeletePerformanceRequest,
-    onSelectPerformanceRequest,
-    onUpdatePerformanceRequest,
-    onImportFromWorkspace,
-    onRunSuite,
-    onStopRun,
-    performanceProgress,
-    performanceHistory,
-    onBackToSuite: _onBackToSuite,
-    navigationActions,
-    coordinatorStatus,
-    onStartCoordinator,
-    onStopCoordinator,
-    explorerState // Add this
-}) => {
-    // Destructure groups
+    // Destructure all needed state from context
     const {
-        project: selectedProject,
-        interface: selectedInterface,
-        operation: selectedOperation,
-        request: selectedRequest,
-        testCase: selectedTestCase,
-        testSuite: selectedTestSuite,
-        testStep: selectedStep,
-        performanceSuite: selectedPerformanceSuite,
-        workflowStep: selectedWorkflowStep
-    } = selectionState;
-
-    const {
-        onExecute,
-        onCancel,
-        onUpdate: rawOnUpdateRequest,
-        onReset,
+        // PROJECT STATE
+        projects,
+        dirtyProjects,
+        selectedProjectName,
+        setProjects,
+        
+        // SELECTION STATE - Interface/Operation/Request
+        selectedInterface,
+        selectedOperation,
+        selectedRequest,
+        
+        // SELECTION STATE - Test Cases
+        selectedTestSuite,
+        selectedTestCase,
+        selectedTestStep: selectedStep,  // Alias for backward compatibility
+        
+        // SELECTION STATE - Workflows
+        selectedWorkflowStep,
+        
+        // SELECTION STATE - Performance
+        selectedPerformanceSuiteId,
+        performanceHistory,
+        performanceProgress,
+        coordinatorStatus,
+        
+        // EXPLORER STATE
+        inputType,
+        setInputType,
+        wsdlUrl,
+        setWsdlUrl,
+        loadWsdl,
+        downloadStatus,
+        onClearSelection,
+        
+        // REQUEST/RESPONSE STATE
         response,
-        loading
-    } = requestActions;
+        loading,
+        
+        // UI STATE - Layout & Editor
+        layoutMode,
+        showLineNumbers,
+        splitRatio,
+        isResizing,
+        
+        // CONFIG STATE
+        config,
+        defaultEndpoint,
+        isReadOnly: isHistoryMode,
+        backendConnected
+    } = workspace;
 
-    const { 
-        activeView,
-        layoutMode, 
-        showLineNumbers, 
-        splitRatio, 
-        isResizing, 
-        onToggleLayout, 
-        onToggleLineNumbers, 
-        onStartResizing,
-        inlineElementValues, 
-        onToggleInlineElementValues, 
-        hideCausalityData, 
-        onToggleHideCausalityData
-    } = viewState;
+    // Get selected project from projects array
+    const selectedProject = React.useMemo(() => {
+        return projects.find(p => p.name === selectedProjectName) || null;
+    }, [projects, selectedProjectName]);
+
+    // Create explorerState object for backward compatibility with ApiExplorerMain
+    const explorerState = React.useMemo(() => ({
+        inputType,
+        setInputType,
+        wsdlUrl,
+        setWsdlUrl,
+        loadWsdl,
+        downloadStatus,
+        onClearSelection
+    }), [inputType, setInputType, wsdlUrl, setWsdlUrl, loadWsdl, downloadStatus, onClearSelection]);
+
+    // Map context actions to existing variable names for minimal disruption
+    const onExecute = workspace.executeRequest;
+    const onCancel = workspace.cancelRequest;
+    const rawOnUpdateRequest = workspace.updateRequest;
+    const onReset = workspace.resetRequest;
+    const onToggleLayout = workspace.toggleLayout;
+    const onToggleLineNumbers = workspace.toggleLineNumbers;
+    const onStartResizing = workspace.setIsResizing;
+    const activeView = workspace.activeView;
+    const inlineElementValues = workspace.inlineElementValues;
+    const onToggleInlineElementValues = workspace.setInlineElementValues;
+    const hideCausalityData = workspace.hideCausalityData;
+    const onToggleHideCausalityData = workspace.setHideCausalityData;
     
-    const { config, defaultEndpoint, changelog, isReadOnly: isHistoryMode } = configState;
-
+    // Navigation actions (for backward compatibility)
+    const navigationActions = {
+        onSelectInterface: workspace.selectInterface,
+        onSelectOperation: workspace.selectOperation,
+        onSelectRequest: workspace.selectRequest,
+        onSelectTestCase: workspace.selectTestCase,
+        onSelectWorkflowStep: workspace.selectWorkflowStep
+    };
+    
+    // Test runner actions
+    const testExecution = workspace.testExecution;
+    const onAddAssertion = workspace.handleAddAssertion;
+    const onRunTestCase = workspace.handleRunTestCase;
+    const onRunTestSuite = workspace.handleRunTestSuite;
+    const onAddExtractor = workspace.handleAddExtractor;
+    const onAddExistenceAssertion = workspace.handleAddExistenceAssertion;
+    const onImportFromWorkspace = workspace.onImportFromWorkspace;
+    const onUpdateStep = workspace.updateTestStep;
+    const onSelectStep = workspace.selectTestStep;
+    const onDeleteStep = workspace.deleteTestStep;
+    const onMoveStep = workspace.moveTestStep;
+    const onAddStep = workspace.addTestStep;
+    const onBackToCase = workspace.backToTestCase;
+    const onOpenStepRequest = workspace.openStepRequest;
+    
+    // Performance actions
+    const onAddPerformanceSuite = workspace.handleAddPerformanceSuite;
+    const onDeletePerformanceSuite = workspace.handleDeletePerformanceSuite;
+    const onAddPerformanceRequest = workspace.handleAddPerformanceRequest;
+    const onDeletePerformanceRequest = workspace.handleDeletePerformanceRequest;
+    const onUpdatePerformanceRequest = workspace.handleUpdatePerformanceRequest;
+    const onSelectPerformanceRequest = workspace.handleSelectPerformanceRequest;
+    const onRunPerformanceSuite = workspace.handleRunPerformanceSuite;
+    const onStopPerformanceRun = workspace.handleStopPerformanceRun;
+    const onSelectPerformanceSuite = workspace.handleSelectPerformanceSuite;
+    const onUpdateSuite = workspace.handleUpdatePerformanceSuite;
+    const onStartCoordinator = workspace.handleStartCoordinator;
+    const onStopCoordinator = workspace.handleStopCoordinator;
+    const onRunSuite = workspace.handleRunPerformanceSuite;
+    const onStopRun = workspace.handleStopPerformanceRun;
+    
+    // Calculate selectedPerformanceSuite from config (similar to MainContent)
+    const selectedPerformanceSuite = React.useMemo(() => {
+        return config?.performanceSuites?.find((s: any) => s.id === selectedPerformanceSuiteId) || null;
+    }, [config, selectedPerformanceSuiteId]);
+    
+    // Mobile layout hook
     const { isMobile } = useMobileLayout();
 
     // For WORKFLOWS view, create a request object from the workflow step
@@ -253,13 +314,24 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     // For backward compatibility with existing code, we use effectiveRequest as well
     const effectiveRequest = activeRequest;
 
-    console.log('[WorkspaceLayout] Render - activeView:', activeView, 'selectedWorkflowStep:', !!selectedWorkflowStep);
+    console.log('=== [WorkspaceLayout] RENDER DEBUG ===');
+    console.log('[WorkspaceLayout] Render - activeView:', activeView);
+    console.log('[WorkspaceLayout] SidebarView.EXPLORER:', SidebarView.EXPLORER);
+    console.log('[WorkspaceLayout] SidebarView.PROJECTS:', SidebarView.PROJECTS);
+    console.log('[WorkspaceLayout] SidebarView.TESTS:', SidebarView.TESTS);
+    console.log('[WorkspaceLayout] SidebarView.WORKFLOWS:', SidebarView.WORKFLOWS);
+    console.log('[WorkspaceLayout] SidebarView.HISTORY:', SidebarView.HISTORY);
+    console.log('[WorkspaceLayout] SidebarView.PERFORMANCE:', SidebarView.PERFORMANCE);
+    console.log('[WorkspaceLayout] selectedWorkflowStep:', !!selectedWorkflowStep);
+    console.log('[WorkspaceLayout] activeRequest:', !!activeRequest);
+    console.log('[WorkspaceLayout] effectiveRequest:', !!effectiveRequest);
     if (selectedWorkflowStep) {
         console.log('[WorkspaceLayout] Workflow step details:', {
             workflow: selectedWorkflowStep.workflow?.name,
             step: selectedWorkflowStep.step?.name || 'null'
         });
     }
+    console.log('=====================================');
 
     // Wrapper to add logging for debugging
     const onUpdateRequest = React.useCallback((updated: any) => {
@@ -278,13 +350,6 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         (!isStructureLocked && selectedProject?.readOnly === true);
     const preventEditing = isHistoryMode || isContentLocked;
     const isReadOnly = preventEditing; // Defaults to preventing editing, specific overrides used below
-    const {
-        onRunTestCase, onOpenStepRequest, onBackToCase, onAddStep, testExecution,
-        onUpdateStep, onSelectStep, onDeleteStep, onMoveStep
-    } = stepActions;
-    const {
-        onAddExtractor, onEditExtractor, onAddAssertion, onAddExistenceAssertion, /* onAddReplaceRule, onAddMockRule, */ onOpenDevOps
-    } = toolsActions;
 
     // Performance Actions extracted in props destructuring above
 
@@ -578,7 +643,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     };
 
     if (activeView === SidebarView.HOME) {
-        return <WelcomePanel changelog={changelog} />;
+        return <WelcomePanel changelog={undefined} />;
     }
 
     // PERFORMANCE VIEW - REMOVED: Moved to APIprox
@@ -745,7 +810,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                     onMoveStep={onMoveStep}
                     onDeleteStep={onDeleteStep}
                     onOpenStepRequest={onOpenStepRequest}
-                    workflows={configState.config?.workflows}
+                    workflows={config?.workflows}
                     projects={projects}
                 />
             );
@@ -785,15 +850,11 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                     workflow={workflow}
                     projects={projects || []}
                     onUpdate={(updatedWorkflow) => {
-                        if (navigationActions?.onUpdateWorkflow) {
-                            navigationActions.onUpdateWorkflow(updatedWorkflow);
-                        }
+                        workspace.updateWorkflow(updatedWorkflow);
                     }}
                     onSelectStep={(selectedStep) => {
                         // Re-select with proper step
-                        if (navigationActions?.onSelectWorkflowStep) {
-                            navigationActions.onSelectWorkflowStep(workflow, selectedStep);
-                        }
+                        workspace.selectWorkflowStep({ workflow, step: selectedStep });
                     }}
                 />
             );
@@ -804,9 +865,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
             console.log('[WorkspaceLayout] Non-request step type:', step.type);
             
             const updateHandler = (updatedStep: WorkflowStep) => {
-                if (navigationActions?.onUpdateWorkflowStep) {
-                    navigationActions.onUpdateWorkflowStep(workflow, updatedStep);
-                }
+                workspace.updateWorkflowStep(workflow, updatedStep);
             };
             
             // Show appropriate editor for each step type
@@ -900,10 +959,41 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         // If request IS selected, fall through to Request Editor
     }
 
+    // PROXY VIEW
+    if (activeView === SidebarView.PROXY) {
+        return (
+            <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <ProxyPanel onNavigateTo={(_view) => workspace.selectInterface(null)} />
+            </div>
+        );
+    }
+
+    // MOCK/RULES VIEW
+    if (activeView === SidebarView.MOCK) {
+        return (
+            <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <RulesAndMockPage />
+            </div>
+        );
+    }
+
+    // WATCHER VIEW
+    if (activeView === SidebarView.WATCHER) {
+        return (
+            <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <FileWatcherPage />
+            </div>
+        );
+    }
+
     // EXPLORER VIEW
     if (activeView === SidebarView.EXPLORER) {
+        console.log('[WorkspaceLayout] ✅ EXPLORER VIEW HIT');
+        console.log('[WorkspaceLayout] activeRequest:', !!activeRequest);
+        console.log('[WorkspaceLayout] explorerState:', !!explorerState);
         // If a request is selected, fall through to main render
         if (!activeRequest && explorerState) {
+            console.log('[WorkspaceLayout] Showing ApiExplorerMain');
             return (
                 <ApiExplorerMain
                     inputType={explorerState.inputType}
@@ -918,8 +1008,10 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                 />
             );
         } else if (!activeRequest) {
+            console.log('[WorkspaceLayout] Showing EmptyApiExplorer');
             return <EmptyApiExplorer />;
         }
+        console.log('[WorkspaceLayout] EXPLORER: activeRequest exists, falling through to main render');
     }
 
     // Watcher/Server views removed - features moved to APIprox
@@ -961,7 +1053,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                 />
             );
         }
-        return <WelcomePanel changelog={changelog} />;
+        return <WelcomePanel changelog={undefined} />;
     }
 
     // TypeScript flow analysis: After the guard above, activeRequest is guaranteed to be non-null

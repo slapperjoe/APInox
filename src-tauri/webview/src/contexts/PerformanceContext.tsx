@@ -130,10 +130,17 @@ export const PerformanceProvider = ({ children }: { children: ReactNode }) => {
         if (isTauri()) {
             (async () => {
                 try {
+                    // Pass the full suite as fallback in case disk config is stale or not yet saved.
+                    // Normalize requests to [] to guard against null values from stale config state.
+                    const rawSuite = (config?.performanceSuites || []).find((s: PerformanceSuite) => s.id === id);
+                    const currentSuite = rawSuite
+                        ? { ...rawSuite, requests: Array.isArray(rawSuite.requests) ? rawSuite.requests : [] }
+                        : null;
                     const start = await bridge.sendMessageAsync<{ runId: string }>({
                         command: FrontendCommand.RunPerformanceSuite,
                         suiteId: id,
-                        stream: true
+                        stream: true,
+                        suite: currentSuite
                     });
 
                     const runId = start?.runId;
@@ -190,7 +197,7 @@ export const PerformanceProvider = ({ children }: { children: ReactNode }) => {
         }
 
         bridge.sendMessage({ command: FrontendCommand.RunPerformanceSuite, suiteId: id });
-    }, [setConfig]);
+    }, [setConfig, config]);
 
     const handleStopPerformanceRun = useCallback(() => {
         bridge.sendMessage({ command: 'abortPerformanceSuite' });
