@@ -8,6 +8,7 @@ import { generateInitialXmlForOperation } from '../utils/soapUtils';
 import { Sidebar } from './Sidebar';
 import { WorkspaceLayout } from './WorkspaceLayout';
 import { WorkspaceContext } from '../contexts/WorkspaceContext';
+import { SidebarContext } from '../contexts/SidebarContext';
 import { ProxyPanel } from './proxy/ProxyPanel';
 import { RulesAndMockPage } from './proxy/RulesAndMockPage';
 import { FileWatcherPage } from './proxy/FileWatcherPage';
@@ -1225,6 +1226,209 @@ const MainContent: React.FC = () => {
         handleUpdateWorkflow, handleUpdateWorkflowStep, setImportToPerformanceModal,
     ]);
 
+    // ==========================================================================
+    // SIDEBAR CONTEXT VALUE - Aggregates all state for the Sidebar subtree
+    // ==========================================================================
+    const sidebarContextValue = useMemo(() => ({
+        projectProps: {
+            projects,
+            savedProjects,
+            saveErrors,
+            setSaveErrors,
+            loadProject: () => loadProject(),
+            saveProject,
+            onUpdateProject: handleUpdateProject,
+            closeProject: handleCloseProject,
+            onAddProject: addProject,
+            toggleProjectExpand,
+            toggleInterfaceExpand,
+            toggleOperationExpand,
+            expandAll,
+            collapseAll,
+            reorderItems,
+            onDeleteInterface: handleDeleteInterface,
+            onDeleteOperation: handleDeleteOperation,
+            onAddFolder: handleAddFolder,
+            onAddRequestToFolder: handleAddRequestToFolder,
+            onDeleteFolder: handleDeleteFolder,
+            onToggleFolderExpand: handleToggleFolderExpand,
+            onRefreshInterface: handleRefreshWsdl,
+            onExportWorkspace: () => setExportWorkspaceModal(true),
+            onBulkImport: () => setShowBulkImportModal(true),
+            onImportSoapUI: async () => {
+                if (bridge.isTauri()) {
+                    const { open } = await import('@tauri-apps/plugin-dialog');
+                    const selected = await open({
+                        multiple: false,
+                        directory: false,
+                        filters: [{ name: 'SoapUI Workspace or Project', extensions: ['xml'] }],
+                        title: 'Import SoapUI Workspace or Project',
+                    });
+                    if (selected) {
+                        await loadProject(selected as string);
+                    }
+                }
+            },
+        },
+        explorerProps: {
+            exploredInterfaces,
+            explorerExpanded,
+            toggleExplorerExpand,
+            addToProject,
+            addAllToProject,
+            clearExplorer,
+            removeFromExplorer,
+            toggleExploredInterface,
+            toggleExploredOperation,
+        },
+        wsdlProps: {
+            inputType,
+            setInputType,
+            wsdlUrl,
+            setWsdlUrl,
+            wsdlUrlHistory,
+            selectedFile,
+            loadWsdl,
+            pickLocalWsdl,
+            downloadStatus,
+            useProxy: wsdlUseProxy,
+            setUseProxy: setWsdlUseProxy,
+        },
+        selectionProps: {
+            selectedProjectName,
+            setSelectedProjectName,
+            selectedInterface,
+            setSelectedInterface,
+            selectedOperation,
+            setSelectedOperation,
+            selectedRequest,
+            setSelectedRequest: (req: import('@shared/models').ApiRequest | null) => {
+                setSelectedRequest(req);
+                setSelectedTestCase(null);
+            },
+            setResponse,
+            handleContextMenu,
+            onAddRequest: handleAddRequest,
+            onDeleteRequest: handleDeleteRequest,
+            deleteConfirm,
+            setDeleteConfirm,
+        },
+        testRunnerProps: {
+            onAddSuite: handleAddSuite,
+            onDeleteSuite: handleDeleteSuite,
+            onRunSuite: handleRunTestSuiteWrapper,
+            onAddTestCase: handleAddTestCase,
+            onRunCase: handleRunTestCaseWrapper,
+            onDeleteTestCase: handleDeleteTestCase,
+            onRenameTestCase: handleRenameTestCase,
+            onSelectSuite: handleSelectTestSuite,
+            onSelectTestCase: handleSelectTestCase,
+            onToggleSuiteExpand: handleToggleSuiteExpand,
+            onToggleCaseExpand: handleToggleCaseExpand,
+        },
+        testsProps: {
+            projects,
+            selectedTestSuite,
+            selectedTestCase,
+            onAddSuite: handleAddSuite,
+            onDeleteSuite: handleDeleteSuite,
+            onRunSuite: handleRunTestSuiteWrapper,
+            onAddTestCase: handleAddTestCase,
+            onDeleteTestCase: handleDeleteTestCase,
+            onRenameTestCase: handleRenameTestCase,
+            onRunCase: handleRunTestCaseWrapper,
+            onSelectSuite: handleSelectTestSuite,
+            onSelectTestCase: handleSelectTestCase,
+            onSelectTestStep: (caseId: string, stepId: string) => {
+                const project = projects.find(p => p.testSuites?.some(s => s.testCases?.some(tc => tc.id === caseId)));
+                const suite = project?.testSuites?.find(s => s.testCases?.some(tc => tc.id === caseId));
+                const testCase = suite?.testCases?.find(tc => tc.id === caseId);
+                const step = testCase?.steps?.find(s => s.id === stepId);
+                if (step) handleSelectStep(step);
+            },
+            onRenameTestStep: handleRenameTestStep,
+            onToggleSuiteExpand: handleToggleSuiteExpand,
+            onToggleCaseExpand: handleToggleCaseExpand,
+            deleteConfirm,
+        },
+        workflowsProps: {
+            workflows: config?.workflows || [],
+            onAdd: handleAddWorkflow,
+            onEdit: handleEditWorkflow,
+            onRun: handleRunWorkflow,
+            onDelete: handleDeleteWorkflow,
+            onDuplicate: handleDuplicateWorkflow,
+            onSelect: handleSelectWorkflow,
+            onSelectStep: handleSelectWorkflowStep,
+        },
+        performanceProps: {
+            suites: config?.performanceSuites || [],
+            onAddSuite: handleAddPerformanceSuite,
+            onDeleteSuite: handleDeletePerformanceSuite,
+            onRunSuite: handleRunPerformanceSuite,
+            onSelectSuite: handleSelectPerformanceSuite,
+            onStopRun: handleStopPerformanceRun,
+            isRunning: !!activeRunId,
+            activeRunId,
+            selectedSuiteId: selectedPerformanceSuiteId ?? undefined,
+            deleteConfirm,
+            setDeleteConfirm,
+            onAddRequest: handleAddPerformanceRequestForUi,
+        },
+        historyProps: {
+            history: requestHistory,
+            onReplay: handleReplayRequest,
+            onToggleStar: handleToggleHistoryStar,
+            onDelete: handleDeleteHistory,
+        },
+        activeView,
+        onChangeView: handleSetActiveViewWrapper,
+        sidebarExpanded,
+        backendConnected,
+        workspaceDirty,
+        showBackendStatus: !isVsCode(),
+        onOpenSettings: () => setShowSettings(true),
+        onOpenHelp: () => setShowHelp(true),
+        onSaveUiState: handleSaveUiState,
+        activeEnvironment: config?.activeEnvironment,
+        environments: config?.environments,
+        onChangeEnvironment: (env: string) => bridge.sendMessage({ command: 'setActiveEnvironment', env }),
+        isMobileOpen: isMobileDrawerOpen,
+        onMobileClose: isMobilePlatform ? () => setIsMobileDrawerOpen(false) : undefined,
+    }), [
+        projects, savedProjects, saveErrors, setSaveErrors, loadProject, saveProject,
+        handleUpdateProject, handleCloseProject, addProject,
+        toggleProjectExpand, toggleInterfaceExpand, toggleOperationExpand,
+        expandAll, collapseAll, reorderItems,
+        handleDeleteInterface, handleDeleteOperation,
+        handleAddFolder, handleAddRequestToFolder, handleDeleteFolder, handleToggleFolderExpand,
+        handleRefreshWsdl, setExportWorkspaceModal, setShowBulkImportModal,
+        exploredInterfaces, explorerExpanded, toggleExplorerExpand,
+        addToProject, addAllToProject, clearExplorer, removeFromExplorer,
+        toggleExploredInterface, toggleExploredOperation,
+        inputType, setInputType, wsdlUrl, setWsdlUrl, wsdlUrlHistory,
+        selectedFile, loadWsdl, pickLocalWsdl, downloadStatus, wsdlUseProxy, setWsdlUseProxy,
+        selectedProjectName, setSelectedProjectName,
+        selectedInterface, setSelectedInterface,
+        selectedOperation, setSelectedOperation,
+        selectedRequest, setSelectedRequest, setSelectedTestCase, setResponse,
+        handleContextMenu, handleAddRequest, handleDeleteRequest, deleteConfirm, setDeleteConfirm,
+        handleAddSuite, handleDeleteSuite, handleRunTestSuiteWrapper,
+        handleAddTestCase, handleDeleteTestCase, handleRenameTestCase,
+        handleRunTestCaseWrapper, handleSelectTestSuite, handleSelectTestCase,
+        handleToggleSuiteExpand, handleToggleCaseExpand, handleSelectStep, handleRenameTestStep,
+        selectedTestSuite, selectedTestCase,
+        config, activeRunId, selectedPerformanceSuiteId,
+        handleAddWorkflow, handleEditWorkflow, handleRunWorkflow,
+        handleDeleteWorkflow, handleDuplicateWorkflow, handleSelectWorkflow, handleSelectWorkflowStep,
+        handleAddPerformanceSuite, handleDeletePerformanceSuite, handleRunPerformanceSuite,
+        handleSelectPerformanceSuite, handleStopPerformanceRun, handleAddPerformanceRequestForUi,
+        requestHistory, handleReplayRequest, handleToggleHistoryStar, handleDeleteHistory,
+        activeView, handleSetActiveViewWrapper, sidebarExpanded, backendConnected,
+        workspaceDirty, handleSaveUiState, setShowSettings, setShowHelp,
+        isMobileDrawerOpen, isMobilePlatform, setIsMobileDrawerOpen,
+    ]);
+
     return (
         <Container onClick={closeContextMenu} $showCustomTitleBar={showCustomTitleBar} $isMacOS={platformOS === 'macos'} $isMobile={isMobilePlatform} $isAndroid={platformOS === 'android'}>
             {/* Mobile header bar — replaces desktop TitleBar on Android/iOS */}
@@ -1269,174 +1473,10 @@ const MainContent: React.FC = () => {
             {/* Content row: sidebar + main workspace side by side */}
             <div className="content-row">
 
-            {/* Sidebar with consolidated props */}
-            <Sidebar
-                projectProps={{
-                    projects,
-                    savedProjects,
-                    saveErrors,
-                    setSaveErrors,
-                    loadProject: () => loadProject(),
-                    saveProject,
-                    onUpdateProject: handleUpdateProject,
-                    closeProject: handleCloseProject,
-                    onAddProject: addProject,
-                    toggleProjectExpand,
-                    toggleInterfaceExpand,
-                    toggleOperationExpand,
-                    expandAll,
-                    collapseAll,
-                    reorderItems,
-                    onDeleteInterface: handleDeleteInterface,
-                    onDeleteOperation: handleDeleteOperation,
-                    onAddFolder: handleAddFolder,
-                    onAddRequestToFolder: handleAddRequestToFolder,
-                    onDeleteFolder: handleDeleteFolder,
-                    onToggleFolderExpand: handleToggleFolderExpand,
-                    onRefreshInterface: handleRefreshWsdl,
-                    onExportWorkspace: () => setExportWorkspaceModal(true),
-                    onBulkImport: () => setShowBulkImportModal(true),
-                    onImportSoapUI: async () => {
-                        if (bridge.isTauri()) {
-                            const { open } = await import('@tauri-apps/plugin-dialog');
-                            const selected = await open({
-                                multiple: false,
-                                directory: false,
-                                filters: [{ name: 'SoapUI Workspace or Project', extensions: ['xml'] }],
-                                title: 'Import SoapUI Workspace or Project',
-                            });
-                            if (selected) {
-                                await loadProject(selected as string);
-                            }
-                        }
-                    },
-                }}
-                explorerProps={{
-                    exploredInterfaces,
-                    explorerExpanded,
-                    toggleExplorerExpand,
-                    addToProject,
-                    addAllToProject,
-                    clearExplorer,
-                    removeFromExplorer,
-                    toggleExploredInterface,
-                    toggleExploredOperation
-                }}
-                wsdlProps={{
-                    inputType,
-                    setInputType,
-                    wsdlUrl,
-                    setWsdlUrl,
-                    wsdlUrlHistory,
-                    selectedFile,
-                    loadWsdl,
-                    pickLocalWsdl,
-                    downloadStatus,
-                    useProxy: wsdlUseProxy,
-                    setUseProxy: setWsdlUseProxy
-                }}
-                selectionProps={{
-                    selectedProjectName,
-                    setSelectedProjectName,
-                    selectedInterface,
-                    setSelectedInterface,
-                    selectedOperation,
-                    setSelectedOperation,
-                    selectedRequest,
-                    setSelectedRequest: (req) => {
-                        setSelectedRequest(req);
-                        setSelectedTestCase(null);
-                    },
-                    setResponse,
-                    handleContextMenu,
-                    onAddRequest: handleAddRequest,
-                    onDeleteRequest: handleDeleteRequest,
-                    deleteConfirm,
-                    setDeleteConfirm
-                }}
-                testRunnerProps={{
-                    onAddSuite: handleAddSuite,
-                    onDeleteSuite: handleDeleteSuite,
-                    onRunSuite: handleRunTestSuiteWrapper,
-                    onAddTestCase: handleAddTestCase,
-                    onRunCase: handleRunTestCaseWrapper,
-                    onDeleteTestCase: handleDeleteTestCase,
-                    onRenameTestCase: handleRenameTestCase,
-                    onSelectSuite: handleSelectTestSuite,
-                    onSelectTestCase: handleSelectTestCase,
-                    onToggleSuiteExpand: handleToggleSuiteExpand,
-                    onToggleCaseExpand: handleToggleCaseExpand
-                }}
-                testsProps={{
-                    projects,
-                    selectedTestSuite,
-                    selectedTestCase,
-                    onAddSuite: handleAddSuite,
-                    onDeleteSuite: handleDeleteSuite,
-                    onRunSuite: handleRunTestSuiteWrapper,
-                    onAddTestCase: handleAddTestCase,
-                    onDeleteTestCase: handleDeleteTestCase,
-                    onRenameTestCase: handleRenameTestCase,
-                    onRunCase: handleRunTestCaseWrapper,
-                    onSelectSuite: handleSelectTestSuite,
-                    onSelectTestCase: handleSelectTestCase,
-                    onToggleSuiteExpand: handleToggleSuiteExpand,
-                    onToggleCaseExpand: handleToggleCaseExpand,
-                    onSelectTestStep: (caseId, stepId) => {
-                        const project = projects.find(p => p.testSuites?.some(s => s.testCases?.some(tc => tc.id === caseId)));
-                        const suite = project?.testSuites?.find(s => s.testCases?.some(tc => tc.id === caseId));
-                        const testCase = suite?.testCases?.find(tc => tc.id === caseId);
-                        const step = testCase?.steps?.find(s => s.id === stepId);
-                        if (step) handleSelectStep(step);
-                    },
-                    onRenameTestStep: handleRenameTestStep,
-                    deleteConfirm
-                }}
-                workflowsProps={{
-                    workflows: config?.workflows || [],
-                    onAdd: handleAddWorkflow,
-                    onEdit: handleEditWorkflow,
-                    onRun: handleRunWorkflow,
-                    onDelete: handleDeleteWorkflow,
-                    onDuplicate: handleDuplicateWorkflow,
-                    onSelect: handleSelectWorkflow,
-                    onSelectStep: handleSelectWorkflowStep
-                }}
-                performanceProps={{
-                    suites: config?.performanceSuites || [],
-                    onAddSuite: handleAddPerformanceSuite,
-                    onDeleteSuite: handleDeletePerformanceSuite,
-                    onRunSuite: handleRunPerformanceSuite,
-                    onSelectSuite: handleSelectPerformanceSuite,
-                    onStopRun: handleStopPerformanceRun,
-                    isRunning: !!activeRunId,
-                    activeRunId,
-                    selectedSuiteId: selectedPerformanceSuite?.id,
-                    deleteConfirm,
-                    setDeleteConfirm,
-                    onAddRequest: handleAddPerformanceRequestForUi
-                }}
-                historyProps={{
-                    history: requestHistory,
-                    onReplay: handleReplayRequest,
-                    onToggleStar: handleToggleHistoryStar,
-                    onDelete: handleDeleteHistory
-                }}
-                activeView={activeView}
-                onChangeView={handleSetActiveViewWrapper}
-                sidebarExpanded={sidebarExpanded}
-                backendConnected={backendConnected}
-                workspaceDirty={workspaceDirty}
-                showBackendStatus={!isVsCode()}
-                onOpenSettings={() => setShowSettings(true)}
-                onOpenHelp={() => setShowHelp(true)}
-                onSaveUiState={handleSaveUiState}
-                activeEnvironment={config?.activeEnvironment}
-                environments={config?.environments}
-                onChangeEnvironment={(env) => bridge.sendMessage({ command: 'setActiveEnvironment', env })}
-                isMobileOpen={isMobileDrawerOpen}
-                onMobileClose={isMobilePlatform ? () => setIsMobileDrawerOpen(false) : undefined}
-            />
+            {/* Sidebar — all props supplied via SidebarContext */}
+            <SidebarContext.Provider value={sidebarContextValue}>
+                <Sidebar />
+            </SidebarContext.Provider>
 
             {activeView === SidebarView.PROXY && (
                 <ProxyPanel
