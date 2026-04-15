@@ -3,6 +3,8 @@
 <plist version="1.0">
 <dict>
     <key>method</key>
-    <string>debugging</string>
+    <string>development</string>
+    <key>compileBitcode</key>
+    <false/>
 </dict>
 </plist>
