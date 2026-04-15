@@ -12,6 +12,7 @@ import { PerformanceUi } from './sidebar/PerformanceUi';
 import HistorySidebar from './sidebar/HistorySidebar';
 import { ScrapbookPanel } from './sidebar/ScrapbookPanel';
 import { SidebarRail } from './sidebar/SidebarRail';
+import { useSidebarContext } from '../contexts/SidebarContext';
 
 const SidebarContainer = styled.div<{ $collapsed: boolean }>`
     display: flex;
@@ -30,75 +31,28 @@ const SidebarContent = styled.div<{ $hidden: boolean }>`
     background-color: var(--apinox-sideBar-background);
 `;
 
-// Prop Groups
-import {
-    SidebarProjectProps,
-    SidebarExplorerProps,
-    SidebarWsdlProps,
-    SidebarSelectionProps,
-    SidebarTestRunnerProps,
-    SidebarTestsProps,
-    SidebarWorkflowsProps,
-    SidebarPerformanceProps,
-    SidebarHistoryProps
-} from '../types/props';
+export const Sidebar: React.FC = () => {
+    const {
+        projectProps,
+        explorerProps,
+        selectionProps,
+        testsProps,
+        workflowsProps,
+        performanceProps,
+        historyProps,
+        workspaceDirty,
+        onOpenSettings,
+        onOpenHelp,
+        activeView,
+        onChangeView,
+        sidebarExpanded,
+        activeEnvironment,
+        environments,
+        onChangeEnvironment,
+        isMobileOpen,
+        onMobileClose,
+    } = useSidebarContext();
 
-interface SidebarProps {
-    projectProps: SidebarProjectProps;
-    explorerProps: SidebarExplorerProps;
-    wsdlProps: SidebarWsdlProps;
-    selectionProps: SidebarSelectionProps;
-    testRunnerProps: SidebarTestRunnerProps;
-    testsProps: SidebarTestsProps;
-    workflowsProps?: SidebarWorkflowsProps;
-    performanceProps?: SidebarPerformanceProps;
-    historyProps?: SidebarHistoryProps;
-
-
-    // View State
-    activeView: SidebarView;
-    onChangeView: (view: SidebarView) => void;
-    sidebarExpanded: boolean;
-
-    // Global/Computed
-    backendConnected: boolean;
-    workspaceDirty?: boolean;
-    showBackendStatus?: boolean;
-    onSaveUiState?: () => void;
-    onOpenSettings?: () => void;
-    onOpenHelp?: () => void;
-
-    // Environment indicator
-    activeEnvironment?: string;
-    environments?: Record<string, any>;
-    onChangeEnvironment?: (env: string) => void;
-
-    // Mobile drawer
-    isMobileOpen?: boolean;
-    onMobileClose?: () => void;
-}
-
-export const Sidebar: React.FC<SidebarProps> = ({
-    projectProps,
-    explorerProps,
-    selectionProps,
-    testRunnerProps: _testRunnerProps, // Legacy, tests now use testsProps
-    testsProps,
-    workflowsProps,
-    performanceProps,
-    historyProps,
-    workspaceDirty,
-    onOpenSettings,
-    onOpenHelp,
-    activeView,
-    onChangeView,
-    sidebarExpanded,
-    activeEnvironment,
-    environments,
-    onChangeEnvironment,
-    isMobileOpen,
-    onMobileClose
-}) => {
     // Destructure for passing to legacy children (can be cleaned up later by moving groups down)
     const { projects, savedProjects, loadProject, saveProject, onUpdateProject, closeProject, onAddProject, toggleProjectExpand, toggleInterfaceExpand, toggleOperationExpand, expandAll, collapseAll, reorderItems, onDeleteInterface, onDeleteOperation, onAddFolder, onAddRequestToFolder, onDeleteFolder, onToggleFolderExpand, onRefreshInterface, onExportWorkspace, onBulkImport, onImportSoapUI } = projectProps;
     const { exploredInterfaces, addToProject, addAllToProject, clearExplorer, removeFromExplorer, toggleExploredInterface, toggleExploredOperation } = explorerProps;
