@@ -353,6 +353,14 @@ jobs:
           if-no-files-found: ignore
 
       # Path 2: Sideload IPA (APPLE_TEAM_ID only)
+      - name: Inject teamID into ExportOptions.plist
+        if: env.APPLE_CERTIFICATE == '' && env.APPLE_TEAM_ID != ''
+        run: |
+          /usr/libexec/PlistBuddy -c "Add :teamID string ${{ secrets.APPLE_TEAM_ID }}" \
+            src-tauri/gen/apple/ExportOptions.plist 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c "Set :teamID ${{ secrets.APPLE_TEAM_ID }}" \
+            src-tauri/gen/apple/ExportOptions.plist
+
       - name: Build unsigned iOS (device — sideload)
         if: env.APPLE_CERTIFICATE == '' && env.APPLE_TEAM_ID != ''
         env:
@@ -381,6 +389,9 @@ jobs:
               PREV="$arg"
             done
             APP_PATH=$(find "${ARCHIVE_PATH}/Products/Applications" -maxdepth 1 -name "*.app" 2>/dev/null | head -1)
+            if [[ -z "$APP_PATH" ]]; then
+              APP_PATH=$(find "${ARCHIVE_PATH}/Products" -maxdepth 4 -name "*.app" 2>/dev/null | head -1)
+            fi
             if [[ -z "$APP_PATH" ]]; then exec "$REAL_XC" "${ARGS[@]}"; fi
             PAYLOAD_TMP=$(mktemp -d)
             mkdir -p "${PAYLOAD_TMP}/Payload"
