@@ -315,26 +315,32 @@ jobs:
           source "$HOME/.cargo/env" || true
           export PATH="$HOME/.cargo/bin:$PATH"
 
-          # Run tauri ios build for proper Tauri orchestration (addr file setup).
-          # The archive step will succeed; exportArchive will fail — that is expected.
-          set +e
-          npx tauri ios build 2>&1 | tee /tmp/tauri-ios-build.log
-          EXIT_CODE=$?
-          set -e
+          # tauri ios build is required (not bare xcodebuild) because the Xcode
+          # "Build Rust Code" phase calls `tauri ios xcode-script`, which connects
+          # via WebSocket to a Tauri orchestrator that only `tauri ios build` starts.
+          # The archive step succeeds; exportArchive fails (no signing certs) —
+          # that is expected, so we use `|| true` to continue past it.
+          npx tauri ios build || true
 
-          # The xcarchive is created by the archive step before exportArchive fails.
-          # Xcode stores archives in ~/Library/Developer/Xcode/Archives/.
-          XCARCHIVE=$(find "$HOME/Library/Developer/Xcode/Archives" -name "*.xcarchive" \
-            2>/dev/null | sort -r | head -1)
+          # Locate the xcarchive produced by the archive step.
+          # cargo-mobile2 may store it in gen/apple or in the standard Xcode
+          # archives directory; search both, most-recently-modified first.
+          # Use `|| true` after the pipeline to guard against pipefail when a
+          # search directory does not exist.
+          XCARCHIVE=$(find \
+            "src-tauri/gen/apple" \
+            "$HOME/Library/Developer/Xcode/Archives" \
+            -name "*.xcarchive" -maxdepth 8 2>/dev/null \
+            | sort -r | head -1 || true)
 
           if [[ -z "$XCARCHIVE" ]]; then
-            echo "ERROR: No xcarchive found — the archive step itself failed:"
-            cat /tmp/tauri-ios-build.log
+            echo "ERROR: No xcarchive found — Rust/Xcode compilation may have failed."
+            echo "Searching entire runner home for any xcarchive:"
+            find /Users/runner -name "*.xcarchive" -maxdepth 20 2>/dev/null || true
             exit 1
           fi
 
           echo "Archive found: $XCARCHIVE"
-          # Copy to the path downstream packaging steps expect
           cp -r "$XCARCHIVE" "$RUNNER_TEMP/apinox.xcarchive"
 
       - name: Package unsigned IPA from build output
