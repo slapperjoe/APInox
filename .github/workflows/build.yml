@@ -272,25 +272,76 @@ jobs:
         run: cd packages/request-editor && npm install
 
       # ── Path 1: Unsigned real-device IPA (no APPLE_CERTIFICATE) ─────────────
-      # Call xcodebuild archive directly so that xcodebuild -exportArchive is
-      # never invoked (npx tauri ios build always calls it internally, which
-      # requires a non-empty teamID and breaks unsigned CI builds). After the
-      # archive step the .app bundle is zipped manually into an IPA sideloadable
-      # via AltStore / Sideloadly.
+      # `tauri ios build` is used (not bare `xcodebuild archive`) because the
+      # Xcode "Build Rust Code" phase calls `tauri ios xcode-script`, which
+      # connects via WebSocket to a Tauri orchestrator process to receive build
+      # options.  That orchestrator — and the addr file it writes to
+      # $TMPDIR/app.apinox.dev1-server-addr — only exist when `tauri ios build`
+      # is the one driving the build.  Calling xcodebuild directly skips all
+      # of that setup, causing xcode-script to panic with "failed to read
+      # missing addr file".
+      #
+      # tauri ios build:
+      #   1. builds the webview frontend (beforeBuildCommand)
+      #   2. starts the WebSocket server + writes the addr file
+      #   3. calls xcodebuild archive  → succeeds (CODE_SIGNING_ALLOWED=NO in pbxproj)
+      #   4. calls xcodebuild -exportArchive → fails (no signing certs — expected)
+      #
+      # We allow that failure, locate the xcarchive Xcode left behind, and copy
+      # it to $RUNNER_TEMP/apinox.xcarchive for the packaging step below.
+      #
+      # The "Build Rust Code" Xcode phase also runs in a sanitised subprocess
+      # that does NOT inherit the PATH set by dtolnay/rust-toolchain, so cargo
+      # must be sourced explicitly.  The shellScript in project.pbxproj already
+      # contains the `. "$HOME/.cargo/env"` prefix (committed fix); the step
+      # below is belt-and-suspenders in case Tauri tooling regenerates the file.
+      - name: Patch Xcode Build Rust Code phase to source cargo PATH
+        if: env.APPLE_CERTIFICATE == ''
+        run: |
+          PBXPROJ="src-tauri/gen/apple/apinox.xcodeproj/project.pbxproj"
+          # Only patch if not already patched (idempotent)
+          if ! grep -q '\.cargo/env' "$PBXPROJ"; then
+            sed -i '' \
+              's|shellScript = "npm run -- tauri ios xcode-script|shellScript = "[ -f \\"$HOME/.cargo/env\\" ] \&\& . \\"$HOME/.cargo/env\\"; export PATH=\\"$HOME/.cargo/bin:$PATH\\"; npm run -- tauri ios xcode-script|g' \
+              "$PBXPROJ"
+            echo "Patched shellScript in project.pbxproj to source cargo env"
+          else
+            echo "project.pbxproj already contains cargo PATH sourcing — skipping patch"
+          fi
+
       - name: Build unsigned iOS archive (real device — aarch64)
         if: env.APPLE_CERTIFICATE == ''
         run: |
-          cd src-tauri/gen/apple
-          xcodebuild archive \
-            -project apinox.xcodeproj \
-            -scheme apinox_iOS \
-            -configuration release \
-            -archivePath "$RUNNER_TEMP/apinox.xcarchive" \
-            -destination "generic/platform=iOS" \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            DEVELOPMENT_TEAM=""
+          source "$HOME/.cargo/env" || true
+          export PATH="$HOME/.cargo/bin:$PATH"
+
+          # tauri ios build is required (not bare xcodebuild) because the Xcode
+          # "Build Rust Code" phase calls `tauri ios xcode-script`, which connects
+          # via WebSocket to a Tauri orchestrator that only `tauri ios build` starts.
+          # The archive step succeeds; exportArchive fails (no signing certs) —
+          # that is expected, so we use `|| true` to continue past it.
+          npx tauri ios build || true
+
+          # Locate the xcarchive produced by the archive step.
+          # cargo-mobile2 may store it in gen/apple or in the standard Xcode
+          # archives directory; search both, most-recently-modified first.
+          # Use `|| true` after the pipeline to guard against pipefail when a
+          # search directory does not exist.
+          XCARCHIVE=$(find \
+            "src-tauri/gen/apple" \
+            "$HOME/Library/Developer/Xcode/Archives" \
+            -name "*.xcarchive" -maxdepth 8 2>/dev/null \
+            | sort -r | head -1 || true)
+
+          if [[ -z "$XCARCHIVE" ]]; then
+            echo "ERROR: No xcarchive found — Rust/Xcode compilation may have failed."
+            echo "Searching entire runner home for any xcarchive:"
+            find /Users/runner -name "*.xcarchive" -maxdepth 20 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "Archive found: $XCARCHIVE"
+          cp -r "$XCARCHIVE" "$RUNNER_TEMP/apinox.xcarchive"
 
       - name: Package unsigned IPA from build output
         if: env.APPLE_CERTIFICATE == ''
