@@ -302,7 +302,7 @@ jobs:
           # Only patch if not already patched (idempotent)
           if ! grep -q '\.cargo/env' "$PBXPROJ"; then
             sed -i '' \
-              's|shellScript = "npm run -- tauri ios xcode-script|shellScript = "[ -f \\"$HOME/.cargo/env\\" ] \&\& . \\"$HOME/.cargo/env\\"; export PATH=\\"$HOME/.cargo/bin:$PATH\\"; npm run -- tauri ios xcode-script|g' \
+              "s|shellScript = \"npm run -- tauri ios xcode-script|shellScript = \"[ -f \\\"$HOME/.cargo/env\\\" ] \\&\\& . \\\"$HOME/.cargo/env\\\"; export PATH=\\\"$HOME/.cargo/bin:$PATH\\\"; npm run -- tauri ios xcode-script|g" \
               "$PBXPROJ"
             echo "Patched shellScript in project.pbxproj to source cargo env"
           else
