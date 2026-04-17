@@ -276,7 +276,25 @@ impl ImportResolver {
         for import in imports {
             log::debug!("Processing import: {:?}", import);
 
-            // Fetch the imported document
+            // Resolve the URL before fetching so we can check for cycles
+            let resolved_url = match self.resolve_url(&import.location, Some(base_url)) {
+                Ok(u) => u,
+                Err(e) => {
+                    log::warn!("Could not resolve import URL '{}': {}", import.location, e);
+                    continue;
+                }
+            };
+
+            // Skip already-processed schemas to prevent circular import loops.
+            // We mark a URL as visited *before* recursing so that any schema
+            // that imports us back (A→B→A) is detected on the return trip.
+            if self.visited.contains(&resolved_url) {
+                log::debug!("Skipping already-processed schema (cycle or duplicate): {}", resolved_url);
+                continue;
+            }
+            self.visited.insert(resolved_url.clone());
+
+            // Fetch the imported document (uses cache if already fetched)
             let imported_xml = self.fetch_document(&import.location, Some(base_url)).await?;
 
             // Determine the namespace for the imported schema
@@ -289,7 +307,7 @@ impl ImportResolver {
             // Recursively resolve imports in the imported schema
             let imported_schema = self.resolve_schema_imports_recursive(
                 &imported_xml,
-                &import.location, // Use imported location as new base URL
+                &resolved_url, // Use resolved URL as new base URL
                 &imported_namespace,
                 depth + 1,
                 max_depth,
