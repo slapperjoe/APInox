@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import Editor, { Monaco } from '@monaco-editor/react';
-import { AlertTriangle, Settings, FileJson, Globe, Cloud, Server } from 'lucide-react';
-import { GeneralTab, EnvironmentsTab, GlobalsTab, IntegrationsTab, ApinoxConfig } from './settings';
+import { AlertTriangle, Settings, FileJson, Globe, Cloud, Server, ArrowUpCircle } from 'lucide-react';
+import { GeneralTab, EnvironmentsTab, GlobalsTab, IntegrationsTab, UpdatesTab, ApinoxConfig } from './settings';
 import { bridge, isTauri } from '../../utils/bridge';
 import { FrontendCommand } from '@shared/messages';
 import { useTheme } from '@apinox/request-editor'; // Use package ThemeContext
@@ -96,6 +96,7 @@ enum SettingsTab {
     GLOBALS = 'globals',
     INTEGRATIONS = 'integrations',
     PROXY = 'proxy',
+    UPDATES = 'updates',
     JSON = 'json'
 }
 
@@ -432,6 +433,9 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
                     <Tab $active={activeTab === SettingsTab.PROXY} onClick={() => handleTabSwitch(SettingsTab.PROXY)}>
                         <Server size={14} /> Proxy
                     </Tab>
+                    <Tab $active={activeTab === SettingsTab.UPDATES} onClick={() => handleTabSwitch(SettingsTab.UPDATES)}>
+                        <ArrowUpCircle size={14} /> Updates
+                    </Tab>
                     <Tab $active={activeTab === SettingsTab.JSON} onClick={() => handleTabSwitch(SettingsTab.JSON)} style={{ marginLeft: 'auto', borderRight: 'none', borderLeft: '1px solid var(--apinox-panel-border)' }}>
                         <FileJson size={14} /> JSON (Advanced)
                     </Tab>
@@ -489,6 +493,10 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
                                 onAddIgnoreRule={addIgnoreRule}
                             />
                         </div>
+                    )}
+
+                    {activeTab === SettingsTab.UPDATES && (
+                        <UpdatesTab />
                     )}
 
                     {activeTab === SettingsTab.JSON && (

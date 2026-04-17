@@ -215,7 +215,13 @@ const MainContent: React.FC = () => {
         setConfigDir
     } = useUI();
 
-    // Keyboard shortcut: Ctrl+Shift+D to open debug modal
+    // ── Startup update check ─────────────────────────────────────────────────
+    const [hasUpdate, setHasUpdate] = useState(false);
+    useEffect(() => {
+        bridge.invokeTauriCommand<{ has_update: boolean }>('check_for_updates')
+            .then((res) => { if (res?.has_update) setHasUpdate(true); })
+            .catch(() => { /* silent failure when offline */ });
+    }, []);
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.ctrlKey && e.shiftKey && e.key === 'D') {
@@ -228,7 +234,7 @@ const MainContent: React.FC = () => {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [openDebugModal]);
 
-    // View Isolation Logic - Prevent leaking requests between contexts
+    // Keyboard shortcut: Ctrl+Shift+D to open debug modal
     useEffect(() => {
         // If we switch TO Projects/Explorer view, and have a perf request selected -> Clear it
         if ((activeView === SidebarView.PROJECTS || activeView === SidebarView.EXPLORER) && selectedRequest?.id && selectedRequest.id.startsWith(PERF_REQUEST_ID_PREFIX)) {
@@ -1395,6 +1401,7 @@ const MainContent: React.FC = () => {
         onChangeEnvironment: (env: string) => bridge.sendMessage({ command: 'setActiveEnvironment', env }),
         isMobileOpen: isMobileDrawerOpen,
         onMobileClose: isMobilePlatform ? () => setIsMobileDrawerOpen(false) : undefined,
+        hasUpdate,
     }), [
         projects, savedProjects, saveErrors, setSaveErrors, loadProject, saveProject,
         handleUpdateProject, handleCloseProject, addProject,
@@ -1426,7 +1433,7 @@ const MainContent: React.FC = () => {
         requestHistory, handleReplayRequest, handleToggleHistoryStar, handleDeleteHistory,
         activeView, handleSetActiveViewWrapper, sidebarExpanded, backendConnected,
         workspaceDirty, handleSaveUiState, setShowSettings, setShowHelp,
-        isMobileDrawerOpen, isMobilePlatform, setIsMobileDrawerOpen,
+        isMobileDrawerOpen, isMobilePlatform, setIsMobileDrawerOpen, hasUpdate,
     ]);
 
     return (

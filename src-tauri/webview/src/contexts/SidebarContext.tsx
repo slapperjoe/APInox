@@ -48,6 +48,7 @@ export interface SidebarContextValue {
     onSaveUiState?: () => void;
     onOpenSettings?: () => void;
     onOpenHelp?: () => void;
+    hasUpdate?: boolean;
 
     // ==================== ENVIRONMENT ====================
     activeEnvironment?: string;

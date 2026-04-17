@@ -51,6 +51,7 @@ export const Sidebar: React.FC = () => {
         onChangeEnvironment,
         isMobileOpen,
         onMobileClose,
+        hasUpdate,
     } = useSidebarContext();
 
     // Destructure for passing to legacy children (can be cleaned up later by moving groups down)
@@ -83,6 +84,7 @@ export const Sidebar: React.FC = () => {
                 environments={environments}
                 onChangeEnvironment={onChangeEnvironment}
                 onMobileClose={onMobileClose}
+                hasUpdate={hasUpdate}
             />
 
             {/* Content Area */}

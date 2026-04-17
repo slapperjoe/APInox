@@ -25,9 +25,10 @@ interface SidebarRailProps {
   environments?: Record<string, any>;
   onChangeEnvironment?: (env: string) => void;
   onMobileClose?: () => void;
+  hasUpdate?: boolean;
 }
 
-const NavItem = ({ icon: Icon, active, onClick, title }: any) => (
+const NavItem = ({ icon: Icon, active, onClick, title, showBadge }: any) => (
   <div
     onClick={onClick}
     style={{
@@ -47,7 +48,24 @@ const NavItem = ({ icon: Icon, active, onClick, title }: any) => (
     }}
     title={title}
   >
-    <Icon size={24} strokeWidth={active ? 2.5 : 2} />
+    <div style={{ position: "relative", display: "inline-flex" }}>
+      <Icon size={24} strokeWidth={active ? 2.5 : 2} />
+      {showBadge && (
+        <div
+          style={{
+            position: "absolute",
+            top: -2,
+            right: -2,
+            width: 8,
+            height: 8,
+            borderRadius: "50%",
+            backgroundColor: "var(--apinox-badge-background, #e85b4a)",
+            border: "1px solid var(--apinox-activityBar-background, #333)",
+            pointerEvents: "none",
+          }}
+        />
+      )}
+    </div>
   </div>
 );
 
@@ -72,6 +90,7 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
   environments,
   onChangeEnvironment,
   onMobileClose,
+  hasUpdate,
 }) => {
   return (
     <div
@@ -168,7 +187,7 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
           onClick={() => onChangeView(SidebarView.HOME)}
           title="Home"
         />
-        <NavItem icon={Settings} onClick={onOpenSettings} title="Settings" />
+        <NavItem icon={Settings} onClick={onOpenSettings} title="Settings" showBadge={hasUpdate} />
         <NavItem icon={HelpCircle} onClick={onOpenHelp} title="Help" />
         {onMobileClose && (
           <div

@@ -10,4 +10,5 @@ export { GlobalsTab } from './GlobalsTab';
 // export { ReplaceRulesTab } from './ReplaceRulesTab'; // Removed - proxy features
 export { IntegrationsTab } from './IntegrationsTab';
 // export { ServerTab } from './ServerTab'; // Removed - proxy features
+export { UpdatesTab } from './UpdatesTab';
 export * from './SettingsTypes';
