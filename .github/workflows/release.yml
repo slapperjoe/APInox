@@ -365,7 +365,9 @@ jobs:
 
       - name: Build iOS (sideload)
         if: env.APPLE_CERTIFICATE == '' && env.APPLE_TEAM_ID != ''
-        run: npx tauri ios build --target aarch64
+        run: npx tauri ios build --target aarch64 || true
+        env:
+          APPLE_DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
 
       - name: Collect sideload IPA
         if: env.APPLE_CERTIFICATE == '' && env.APPLE_TEAM_ID != ''
@@ -381,6 +383,12 @@ jobs:
             echo "No pre-built IPA — searching for .app bundle..."
             # 1. xcarchive inside gen/apple (archive builds)
             XCARCHIVE=$(find src-tauri/gen/apple -name "*.xcarchive" 2>/dev/null | head -1)
+            # 1b. Standard Xcode archives directory (same path build.yml searches)
+            if [[ -z "$XCARCHIVE" ]]; then
+              XCARCHIVE=$(find "$HOME/Library/Developer/Xcode/Archives" \
+                -name "*.xcarchive" -maxdepth 8 2>/dev/null \
+                | sort -r | head -1 || true)
+            fi
             if [[ -n "$XCARCHIVE" ]]; then
               APP_PATH=$(find "$XCARCHIVE/Products/Applications" -maxdepth 1 -name "*.app" 2>/dev/null | head -1)
               [[ -z "$APP_PATH" ]] && APP_PATH=$(find "$XCARCHIVE/Products" -maxdepth 4 -name "*.app" 2>/dev/null | head -1)
