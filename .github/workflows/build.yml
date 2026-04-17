@@ -6,6 +6,15 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      build_ios:
+        description: 'Build iOS'
+        type: boolean
+        default: false
+      build_android:
+        description: 'Build Android'
+        type: boolean
+        default: false
 
 env:
   TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -179,6 +188,7 @@ jobs:
           if-no-files-found: error
 
   build-ios:
+    if: github.event_name != 'workflow_dispatch' || inputs.build_ios == true
     runs-on: macos-latest
     permissions:
       contents: read
@@ -311,6 +321,8 @@ jobs:
 
       - name: Build unsigned iOS archive (real device — aarch64)
         if: env.APPLE_CERTIFICATE == ''
+        env:
+          RUST_MIN_STACK: 4294967296
         run: |
           source "$HOME/.cargo/env" || true
           export PATH="$HOME/.cargo/bin:$PATH"
@@ -414,6 +426,7 @@ jobs:
         run: npx tauri ios build
         env:
           APPLE_DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
+          RUST_MIN_STACK: 4294967296
 
       - name: Upload iOS IPA artifact
         if: env.APPLE_TEAM_ID != '' && env.APPLE_CERTIFICATE != '' && env.APPLE_PROVISIONING_PROFILE != ''
@@ -424,6 +437,7 @@ jobs:
           if-no-files-found: warn
 
   build-android:
+    if: github.event_name != 'workflow_dispatch' || inputs.build_android == true
     runs-on: ubuntu-latest
     permissions:
       contents: read
