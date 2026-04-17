@@ -9,6 +9,7 @@ mod history_storage;
 mod scrapbook_storage;
 mod secret_storage;
 pub mod settings_manager;
+pub mod updater;
 mod soapui_importer;
 mod workspace_export;
 
@@ -511,6 +512,10 @@ pub fn run() {
             workspace_export::export_workspace,
             workspace_export::import_workspace,
             project_storage::close_project,
+            updater::check_for_updates,
+            updater::download_update,
+            updater::launch_installer,
+            updater::open_url_in_browser,
             // ── Proxy / mock / cert (APIprox integration) ──────────────────
             commands::proxy_server::start_proxy,
             commands::proxy_server::stop_proxy,
