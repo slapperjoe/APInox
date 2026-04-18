@@ -20,6 +20,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect, Rea
 import { ApinoxProject } from '@shared/models';
 import { BackendCommand } from '@shared/messages';
 import { bridge } from '../utils/bridge';
+import { debugLog as _debugLog } from '../utils/logger';
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -244,7 +245,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
     // -------------------------------------------------------------------------
 
     const debugLog = useCallback((action: string, data?: any) => {
-        console.log(`[ProjectContext] ${action}`, data || '');
+        _debugLog(`[ProjectContext] ${action}`, data);
     }, []);
 
     // -------------------------------------------------------------------------
@@ -319,7 +320,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
                     await bridge.invokeTauriCommand('delete_project', {
                         dirPath: projectPath  // Tauri converts to dir_path
                     });
-                    console.log(`[ProjectContext] Deleted project files via Rust: ${projectPath}`);
+                    debugLog(`Deleted project files via Rust`, projectPath);
                 } catch (error: any) {
                     console.error('[ProjectContext] Failed to delete project files:', error);
                     alert(`Failed to delete project files: ${error.message || 'Unknown error'}`);
@@ -403,8 +404,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
                 });
                 
                 if (response?.projects && Array.isArray(response.projects)) {
-                    console.log(`[ProjectContext] Imported workspace with ${response.projects.length} project(s)`);
-                    
+                    debugLog(`Imported workspace`, { count: response.projects.length });
                     const importedProjects: ApinoxProject[] = [];
                     
                     // Add each project to state
@@ -428,7 +428,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
                         try {
                             const savedPath = await bridge.invokeTauriCommand<string>('save_project', { project });
                             (project as any).fileName = savedPath;
-                            console.log(`[ProjectContext] Saved imported project ${project.name} to ${savedPath}`);
+                            debugLog(`Saved imported project`, { name: project.name, path: savedPath });
                         } catch (error) {
                             console.error(`[ProjectContext] Failed to save project ${project.name}:`, error);
                         }
@@ -458,8 +458,8 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
                     project: loadedProject,
                     filename: targetPath
                 });
-                
-                console.log('[ProjectContext] Project loaded successfully via Rust:', loadedProject.name);
+
+                debugLog('Project loaded successfully via Rust', loadedProject.name);
             } catch (error: any) {
                 console.error('[ProjectContext] load_project failed:', error);
                 throw error;
@@ -485,7 +485,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
                     p.name === project.name ? { ...project } : p
                 ));
             }
-            console.log('[ProjectContext] Project saved:', project.name, '->', savedPath);
+            debugLog('Project saved', { name: project.name, path: savedPath });
         } catch (error: any) {
             console.error('[ProjectContext] save_project failed:', error);
             alert(`Failed to save project: ${error.message || 'Unknown error'}`);
@@ -504,14 +504,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
                     if (message.project) {
                         // Log interface displayNames for debugging
                         const interfacesWithDisplayNames = message.project.interfaces?.filter((i: any) => i.displayName) || [];
-                        if (interfacesWithDisplayNames.length > 0) {
-                            console.log('[ProjectContext] Loaded interfaces with displayNames:', interfacesWithDisplayNames.map((i: any) => ({
-                                name: i.name,
-                                displayName: i.displayName
-                            })));
-                        } else if (message.project.interfaces?.length > 0) {
-                            console.log('[ProjectContext] Loaded project but NO interfaces have displayName');
-                        }
+                        debugLog('Loaded interfaces', { withDisplayName: interfacesWithDisplayNames.length, total: message.project.interfaces?.length });
                         
                         // Add or update the single project in our list
                         setProjects(prev => {

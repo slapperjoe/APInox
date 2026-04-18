@@ -8,6 +8,7 @@ import { SearchResult } from '../utils/workspaceSearch';
 import apinoxIcon from '../assets/apinox-icon.png';
 import pkg from '../../package.json';
 import { MULTI_CLICK_RESET_MS } from '../constants';
+import { debugLog } from '../utils/logger';
 
 const SearchBarContainer = styled.div`
   position: fixed;
@@ -152,8 +153,6 @@ const ClearButton = styled.button`
 `;
 
 export const MacOSTitleBarSearch: React.FC = () => {
-  console.log('🍎 MacOSTitleBarSearch component rendering');
-  
   const { 
     searchQuery, 
     setSearchQuery, 
@@ -175,7 +174,6 @@ export const MacOSTitleBarSearch: React.FC = () => {
 
   // Handle double-click on logo to open debug modal
   const handleLogoClick = () => {
-    console.log('[MacOSTitleBarSearch] Logo clicked, clickCount:', clickCount);
     setClickCount(prev => prev + 1);
     
     if (clickTimer) {
@@ -186,7 +184,7 @@ export const MacOSTitleBarSearch: React.FC = () => {
     const timer = setTimeout(() => {
       if (clickCount + 1 >= 2) {
         // Double-click detected
-        console.log('[MacOSTitleBarSearch] Double-click detected, opening debug modal');
+        debugLog('[MacOSTitleBarSearch] Logo double-click — opening Debug Modal', { clickCount: clickCount + 1 });
         openDebugModal();
       }
       setClickCount(0);
@@ -196,9 +194,8 @@ export const MacOSTitleBarSearch: React.FC = () => {
     setClickTimer(timer);
   };
 
-  // Wrap selectResult with logging
   const handleSelectResult = useCallback((result: SearchResult) => {
-    console.log('[MacOSTitleBarSearch] Search result selected:', result);
+    debugLog('[MacOSTitleBarSearch] Search result selected', result.id);
     selectResult(result);
   }, [selectResult]);
 

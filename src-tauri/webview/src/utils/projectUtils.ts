@@ -1,5 +1,6 @@
 
 import { ApinoxFolder, ApinoxProject } from '@shared/models';
+import { debugLog } from './logger';
 
 /**
  * Recursively updates a folder name or a request name within a folder structure.
@@ -71,6 +72,7 @@ export const updateProjectWithRename = (
             // Match by ID if available, or name. Note: Project ID might be missing in legacy, so fallback to name.
             const isMatch = (p.id && p.id === targetId) || (!p.id && p.name === targetId);
             if (isMatch) {
+                debugLog('[projectUtils] Renaming project', { from: p.name, to: newName });
                 return { ...p, name: newName, dirty: true };
             }
             return p;
@@ -85,7 +87,6 @@ export const updateProjectWithRename = (
             newInterfaces = p.interfaces.map(i => {
                 const isMatch = (i.id && i.id === targetId) || i.name === targetId || (targetData && i === targetData);
                 if (isMatch) {
-                    console.log('[updateProjectWithRename] Renaming interface:', i.name, 'to displayName:', newName);
                     projectDirty = true;
                     return { ...i, displayName: newName };
                 }
@@ -100,7 +101,6 @@ export const updateProjectWithRename = (
                 operations: i.operations.map(o => {
                     const isMatch = (o.id && o.id === targetId) || o.name === targetId || (targetData && o === targetData);
                     if (isMatch) {
-                        console.log('[updateProjectWithRename] Renaming operation:', o.name, 'to displayName:', newName);
                         projectDirty = true;
                         return { ...o, displayName: newName };
                     }

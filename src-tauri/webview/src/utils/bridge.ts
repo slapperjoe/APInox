@@ -87,6 +87,7 @@ if (isTauri()) {
 
 import { FrontendCommand, BackendCommand } from '@shared/messages';
 import { PERF_REQUEST_ID_PREFIX } from '../constants';
+import { debugLog } from './logger';
 
 interface BridgeMessage {
     command: FrontendCommand | string;
@@ -245,7 +246,7 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
             const isOpenApi = urlLower.endsWith('.json') || urlLower.endsWith('.yaml') || urlLower.endsWith('.yml');
 
             if (isOpenApi) {
-                console.log('[Bridge] Routing LoadWsdl → parse_openapi_spec (OpenAPI/Swagger):', url);
+                debugLog('[Bridge] Routing LoadWsdl → parse_openapi_spec (OpenAPI/Swagger)', url);
                 const spec = await tauriInvoke('parse_openapi_spec', { urlOrJson: url });
 
                 // Group paths by first tag → one ApiInterface per tag
@@ -296,17 +297,14 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                     })
                 }));
 
-                console.log('[Bridge] OpenAPI parsed:', interfaces.length, 'interface(s)');
                 return { interfaces, wsdlUrl: url, targetProjectId: message.targetProjectId };
             }
 
             // GraphQL — detect by URL path containing "graphql"
             const isGraphQL = urlLower.includes('graphql') || urlLower.includes('/gql');
             if (isGraphQL) {
-                console.log('[Bridge] Routing LoadWsdl → GraphQL introspection:', url);
-
                 // Adaptive depth: start from cached tier, back off on depth-limit errors.
-                // Tiers: 'deep' (full type unwrap) → 'shallow' (kind only) → 'none' (no type info)
+                debugLog('[Bridge] Routing LoadWsdl → GraphQL introspection', url);
                 const hostKey = gqlHostKey(url);
                 const TIERS: GqlDepthTier[] = ['deep', 'shallow', 'none'];
                 const startTier = gqlDepthCache.get(hostKey) ?? 'deep';
@@ -315,7 +313,6 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                 let rawBody = '';
                 while (nextIdx < TIERS.length) {
                     const tier = TIERS[nextIdx];
-                    console.log(`[Bridge] GraphQL introspection attempt: tier=${tier} host=${hostKey}`);
                     const resp = await tauriInvoke('execute_rest_request', {
                         method: 'POST',
                         url,
@@ -323,7 +320,6 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                         body: buildIntrospectionQuery(tier),
                     });
                     const body: string = resp.body || '';
-                    console.log('[Bridge] GraphQL introspection raw response (first 500):', body.slice(0, 500));
 
                     if (!body) {
                         throw new Error(`GraphQL introspection failed (HTTP ${resp.status}): ${resp.error || 'empty response'}`);
@@ -347,7 +343,6 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
 
                     rawBody = body;
                     gqlDepthCache.set(hostKey, tier); // remember what worked
-                    console.log(`[Bridge] GraphQL introspection succeeded at tier=${tier}`);
                     break;
                 }
 
@@ -442,12 +437,13 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                         operations: buildOperationsFromFields(mutationFields, true),
                     });
                 }
-                console.log('[Bridge] GraphQL introspection complete:', interfaces.length, 'interface(s)');
                 return { interfaces, wsdlUrl: url, targetProjectId: message.targetProjectId };
             }
 
+            debugLog('[Bridge] GraphQL introspection complete', { count: 0 });
+
             // WSDL / SOAP
-            console.log('[Bridge] Routing LoadWsdl → parse_wsdl (WSDL/SOAP):', url);
+            debugLog('[Bridge] Routing LoadWsdl → parse_wsdl (WSDL/SOAP)', url);
             const response = await tauriInvoke('parse_wsdl', {
                 request: { url }
             });
@@ -456,7 +452,6 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                 throw new Error('Invalid WSDL response from Rust backend');
             }
             
-            console.log('[Bridge] WSDL parsed successfully:', response.services.length, 'services');
             return {
                 services: response.services,
                 wsdlUrl: url,
@@ -467,16 +462,6 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
         // Route ExecuteRequest (REST) to Rust execute_rest_request command
         if (message.command === FrontendCommand.ExecuteRequest && (message.requestType === 'rest' || message.requestType === 'graphql')) {
             const method = (message.method || 'GET').toUpperCase();
-            let url: string = message.url || '';
-
-            // Append query params to URL
-            const qp: Record<string, string> = message.queryParams || {};
-            if (Object.keys(qp).length > 0) {
-                const qs = new URLSearchParams(qp).toString();
-                url = url.includes('?') ? `${url}&${qs}` : `${url}?${qs}`;
-            }
-
-            console.log('[Bridge] Routing REST/GraphQL ExecuteRequest to Rust backend:', method, url);
 
             const headers: Record<string, string> = { ...(message.headers || {}) };
             // GraphQL always POSTs JSON body; REST only for body methods
@@ -558,7 +543,7 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
 
         // Route ExecuteRequest (SOAP) to Rust execute_soap_request command
         if (message.command === FrontendCommand.ExecuteRequest && message.xml) {
-            console.log('[Bridge] Routing SOAP ExecuteRequest to Rust backend');
+            debugLog('[Bridge] Routing SOAP ExecuteRequest to Rust backend');
 
             // Read proxy setting from persisted config
             let proxyUrl: string | null = null;
@@ -729,15 +714,13 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
 
         // Route SaveProject to Rust save_project command
         if (message.command === FrontendCommand.SaveProject) {
-            console.log('[Bridge] Routing SaveProject to Rust backend');
-            
+            debugLog('[Bridge] Routing SaveProject to Rust backend');
             try {
                 await tauriInvoke('save_project', {
                     project: message.project,
                     dirPath: message.filePath || message.project?.fileName  // Tauri converts to dir_path
                 });
                 
-                console.log('[Bridge] Project saved successfully');
                 return { success: true };
             } catch (error: any) {
                 console.error('[Bridge] Save project failed:', error);
@@ -747,13 +730,11 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
 
         // Route LoadProject to Rust load_project command
         if (message.command === FrontendCommand.LoadProject) {
-            console.log('[Bridge] Routing LoadProject to Rust backend');
-            
+            debugLog('[Bridge] Routing LoadProject to Rust backend');
             const response = await tauriInvoke('load_project', {
                 filePath: message.filePath
             });
             
-            console.log('[Bridge] Project loaded successfully');
             return {
                 project: response.project,
                 filename: message.filePath
@@ -762,15 +743,13 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
 
         // Route ExportWorkspace to Rust export_workspace command
         if (message.command === FrontendCommand.ExportWorkspace) {
-            console.log('[Bridge] Routing ExportWorkspace to Rust backend');
-            
+            debugLog('[Bridge] Routing ExportWorkspace to Rust backend');
             try {
                 const response = await tauriInvoke('export_workspace', {
                     projects: message.projects,
                     filePath: message.filePath
                 });
                 
-                console.log('[Bridge] Workspace exported successfully:', response);
                 return response;
             } catch (error: any) {
                 console.error('[Bridge] Export workspace failed:', error);
@@ -780,14 +759,12 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
 
         // Route ImportWorkspace to Rust import_workspace command
         if (message.command === 'importWorkspace') {
-            console.log('[Bridge] Routing ImportWorkspace to Rust backend');
-            
+            debugLog('[Bridge] Routing ImportWorkspace to Rust backend');
             try {
                 const response = await tauriInvoke('import_workspace', {
                     filePath: message.filePath
                 });
                 
-                console.log('[Bridge] Workspace imported successfully:', response);
                 return response;
             } catch (error: any) {
                 console.error('[Bridge] Import workspace failed:', error);
@@ -797,8 +774,7 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
 
         // Route RunTestSuite to Rust run_test_suite command
         if (message.command === FrontendCommand.RunTestSuite) {
-            console.log('[Bridge] Routing RunTestSuite to Rust backend');
-            
+            debugLog('[Bridge] Routing RunTestSuite to Rust backend');
             try {
                 const response = await tauriInvoke('run_test_suite', {
                     testSuite: message.testSuite,
@@ -806,7 +782,6 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                     stream: message.stream || false
                 });
                 
-                console.log('[Bridge] Test suite command sent:', response);
                 return response;
             } catch (error: any) {
                 console.error('[Bridge] Run test suite failed:', error);
@@ -946,14 +921,12 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
 
         // Route workflow commands to Rust
         if (message.command === FrontendCommand.SaveWorkflow) {
-            console.log('[Bridge] Routing SaveWorkflow to Rust backend');
-            
+            debugLog('[Bridge] Routing SaveWorkflow to Rust backend');
             try {
                 const response = await tauriInvoke('save_workflow', {
                     workflow: message.workflow
                 });
                 
-                console.log('[Bridge] Workflow saved successfully');
                 return response;
             } catch (error: any) {
                 console.error('[Bridge] Save workflow failed:', error);
@@ -962,14 +935,12 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
         }
 
         if (message.command === FrontendCommand.DeleteWorkflow) {
-            console.log('[Bridge] Routing DeleteWorkflow to Rust backend');
-            
+            debugLog('[Bridge] Routing DeleteWorkflow to Rust backend');
             try {
                 const response = await tauriInvoke('delete_workflow', {
                     workflowId: message.workflowId
                 });
                 
-                console.log('[Bridge] Workflow deleted successfully');
                 return response;
             } catch (error: any) {
                 console.error('[Bridge] Delete workflow failed:', error);
@@ -989,15 +960,13 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
 
         // Route RefreshWsdl to Rust refresh_wsdl command
         if (message.command === FrontendCommand.RefreshWsdl) {
-            console.log('[Bridge] Routing RefreshWsdl to Rust backend');
-            
+            debugLog('[Bridge] Routing RefreshWsdl to Rust backend');
             try {
                 const response = await tauriInvoke('refresh_wsdl', {
                     url: message.interfaceDef || message.definition,
                     existingInterface: message.existingInterface || {}
                 });
                 
-                console.log('[Bridge] WSDL refreshed successfully');
                 return response;
             } catch (error: any) {
                 console.error('[Bridge] Refresh WSDL failed:', error);
@@ -1007,8 +976,7 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
 
         // Route ApplyWsdlSync to Rust apply_wsdl_sync command
         if (message.command === FrontendCommand.ApplyWsdlSync) {
-            console.log('[Bridge] Routing ApplyWsdlSync to Rust backend');
-            
+            debugLog('[Bridge] Routing ApplyWsdlSync to Rust backend');
             try {
                 const response = await tauriInvoke('apply_wsdl_sync', {
                     projectId: message.projectId,
@@ -1016,7 +984,6 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                     dirPath: message.dirPath || ''
                 });
                 
-                console.log('[Bridge] WSDL sync applied successfully');
                 return response;
             } catch (error: any) {
                 console.error('[Bridge] Apply WSDL sync failed:', error);
@@ -1026,14 +993,12 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
 
         // Route CloseProject to Rust close_project command
         if (message.command === FrontendCommand.CloseProject) {
-            console.log('[Bridge] Routing CloseProject to Rust backend');
-            
+            debugLog('[Bridge] Routing CloseProject to Rust backend');
             try {
                 const response = await tauriInvoke('close_project', {
                     projectId: message.projectId
                 });
                 
-                console.log('[Bridge] Project closed successfully');
                 return response;
             } catch (error: any) {
                 console.error('[Bridge] Close project failed:', error);
@@ -1043,11 +1008,9 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
 
         // Route CancelRequest to Rust cancel_request command
         if (message.command === FrontendCommand.CancelRequest) {
-            console.log('[Bridge] Routing CancelRequest to Rust backend');
-            
+            debugLog('[Bridge] Routing CancelRequest to Rust backend');
             try {
                 const response = await tauriInvoke('cancel_request', {});
-                console.log('[Bridge] Request cancelled successfully');
                 return response;
             } catch (error: any) {
                 console.error('[Bridge] Cancel request failed:', error);
@@ -1106,7 +1069,7 @@ async function invokeRustCommand(message: BridgeMessage): Promise<any> {
     try {
         const rustResult = await tryRustCommand(message);
         if (rustResult !== null) {
-            console.log(`[Bridge] Command '${message.command}' handled by Rust backend`);
+            debugLog(`[Bridge] Command handled by Rust backend`, { command: message.command });
             return rustResult;
         }
 
@@ -1229,14 +1192,10 @@ export const bridge = {
      * For simple CRUD operations, consider using direct Tauri invoke() in the future.
      */
     sendMessage: (message: BridgeMessage): void => {
-        // Log saveSettings commands for debugging
         if (message.command === 'saveSettings') {
-            console.log('[Bridge] Sending saveSettings command:', {
-                hasConfig: !!message.config,
-                uiConfig: message.config?.ui
-            });
+            debugLog('[Bridge] Sending saveSettings command', { hasConfig: !!message.config, uiConfig: message.config?.ui });
         }
-        
+
         // Pre-process loadWsdl command for local XSD resolution
         if (message.command === 'loadWsdl' && message.isLocal && message.url) {
             const lastSlash = Math.max(message.url.lastIndexOf('/'), message.url.lastIndexOf('\\'));
@@ -1282,10 +1241,7 @@ export const bridge = {
                     const backendEvent = mapResponseToBackendEvent(message.command, data);
                     if (backendEvent) {
                         if (message.command === 'saveSettings') {
-                            console.log('[Bridge] Emitting SettingsUpdate event from saveSettings response:', {
-                                hasConfig: !!backendEvent.config,
-                                uiConfig: backendEvent.config?.ui
-                            });
+                            debugLog('[Bridge] Emitting SettingsUpdate event from saveSettings response', { hasConfig: !!backendEvent.config, uiConfig: backendEvent.config?.ui });
                         }
                         listeners.forEach(cb => cb(backendEvent));
                     }

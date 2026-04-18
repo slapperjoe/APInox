@@ -8,6 +8,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { isVsCode } from '../utils/bridge';
 import { themes, ThemeName } from '../styles/themes';
+import { debugLog } from '../utils/logger';
 
 interface ThemeContextType {
     theme: ThemeName;
@@ -64,7 +65,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
         // Add data-theme attribute to body for CSS selectors
         document.body.setAttribute('data-theme', theme);
 
-        console.log(`[ThemeContext] Applied ${theme} theme (${Object.keys(selectedTheme.variables).length} variables)`);
+        debugLog(`[ThemeContext] Applied theme`, { theme, variableCount: Object.keys(selectedTheme.variables).length });
 
         // Update window border color to match theme
         const updateBorderColor = async () => {
@@ -78,8 +79,8 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
                 await invoke('set_border_color', { 
                     color: editorBg 
                 });
-                
-                console.log(`[ThemeContext] Updated border color to: ${editorBg}`);
+
+                debugLog(`[ThemeContext] Updated border color`, editorBg);
             } catch (e) {
                 console.warn('[ThemeContext] Failed to update border color:', e);
             }
@@ -134,7 +135,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
 
         setThemeState(newTheme);
         localStorage.setItem('apinox-theme', newTheme);
-        console.log(`[ThemeContext] Theme changed to: ${newTheme}`);
+        debugLog(`[ThemeContext] Theme changed to`, newTheme);
     };
 
     return (

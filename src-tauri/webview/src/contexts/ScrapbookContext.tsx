@@ -8,6 +8,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { ScrapbookRequest, ScrapbookState } from '@shared/models';
 import { FrontendCommand, BackendCommand } from '@shared/messages';
+import { debugLog } from '../utils/logger';
 import { bridge } from '../utils/bridge';
 
 interface ScrapbookContextType {
@@ -57,14 +58,12 @@ export const ScrapbookProvider = ({ children }: { children: ReactNode }) => {
                 case BackendCommand.ScrapbookLoaded:
                     if (message.state) {
                         setScrapbookRequests(message.state.requests || []);
-                        console.log('[Scrapbook] Loaded', message.state.requests?.length || 0, 'requests');
                     }
                     break;
                 
                 case BackendCommand.ScrapbookUpdated:
                     if (message.state) {
                         setScrapbookRequests(message.state.requests || []);
-                        console.log('[Scrapbook] Updated', message.state.requests?.length || 0, 'requests');
                         
                         // Update selected request if it exists in new state
                         if (selectedScrapbookRequest) {
@@ -99,6 +98,7 @@ export const ScrapbookProvider = ({ children }: { children: ReactNode }) => {
             
             if (response?.state) {
                 setScrapbookRequests(response.state.requests || []);
+                debugLog('[Scrapbook] Loaded requests', response.state.requests?.length ?? 0);
                 // Emit loaded event for consistency
                 bridge.emit({
                     command: BackendCommand.ScrapbookLoaded,
@@ -273,34 +273,19 @@ export const useScrapbookAutoSave = (
         // Only save if this is a scrapbook request context (no project/interface/operation/test)
         const isScrapbookContext = !selectedProjectName && !selectedInterface && !selectedOperation && !selectedTestCase;
         
-        console.log('[Scrapbook AutoSave] Callback called:', {
-            isScrapbookContext,
-            hasUpdatedId: !!updated.id,
-            hasSelectedScrapbookRequest: !!selectedScrapbookRequest,
-            selectedScrapbookRequestId: selectedScrapbookRequest?.id,
-            updatedId: updated.id,
-            selectedProjectName,
-            selectedInterface: selectedInterface?.name,
-            selectedOperation: selectedOperation?.name,
-            selectedTestCase: selectedTestCase?.id
-        });
-        
         if (!isScrapbookContext) {
-            console.log('[Scrapbook AutoSave] Not a scrapbook context, skipping');
             return false; // Not a scrapbook update
         }
         
         if (!updated.id) {
-            console.log('[Scrapbook AutoSave] No updated.id, skipping');
             return false;
         }
         
         if (!selectedScrapbookRequest) {
-            console.log('[Scrapbook AutoSave] No selectedScrapbookRequest, skipping');
             return false;
         }
 
-        console.log('[Scrapbook] Auto-saving request:', updated.id);
+        debugLog('[Scrapbook] Auto-saving request', updated.id);
         try {
             await updateRequest(updated.id, {
                 name: updated.name,
@@ -312,8 +297,7 @@ export const useScrapbookAutoSave = (
                 requestType: updated.requestType,
                 bodyType: updated.bodyType
             });
-            console.log('[Scrapbook] Auto-save succeeded');
-            return true; // Successfully saved to scrapbook
+            return true;
         } catch (error) {
             console.error('[Scrapbook] Auto-save failed:', error);
             return false;

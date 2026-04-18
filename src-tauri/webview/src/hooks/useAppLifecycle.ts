@@ -3,6 +3,7 @@ import { bridge, isTauri } from '../utils/bridge';
 import { FrontendCommand } from '@shared/messages';
 import { ApinoxProject } from '@shared/models';
 import { useNavigation } from '../contexts/NavigationContext';
+import { debugLog } from '../utils/logger';
 
 interface UseAppLifecycleProps {
     projects: ApinoxProject[];
@@ -79,7 +80,7 @@ export const useAppLifecycle = ({
         const autoLoadProjects = async () => {
             try {
                 const paths = await bridge.invokeTauriCommand('list_projects', {}) as string[];
-                console.log('[useAppLifecycle] Auto-loading', paths.length, 'projects from ~/.apinox/projects/');
+                debugLog('[useAppLifecycle] Auto-loading projects', paths.length);
 
                 for (const path of paths) {
                     try {

@@ -138,10 +138,6 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
     // Wrapper to add logging for workflow step changes
     const setSelectedWorkflowStep = useCallback((value: React.SetStateAction<{ workflow: Workflow; step: WorkflowStep } | null>) => {
         const resolvedValue = typeof value === 'function' ? value(selectedWorkflowStep) : value;
-        console.log('[SelectionContext] setSelectedWorkflowStep called with:', resolvedValue ? { 
-            workflow: resolvedValue.workflow.name, 
-            step: resolvedValue.step?.name || 'null' 
-        } : null);
         setSelectedWorkflowStepInternal(resolvedValue);
     }, [selectedWorkflowStep]);
     const [responseCache, setResponseCache] = useState<Record<string, any>>({});
@@ -160,7 +156,6 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
 
         const cache = existingCache || responseCache;
         if (cache.hasOwnProperty(key)) {
-            console.log('[SelectionContext] restoreResponseForRequest: restored from in-memory cache', { key });
             setResponseState(cache[key]);
             return;
         }
@@ -169,7 +164,6 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
             const stored = window.localStorage.getItem(getStorageKey(key));
             if (stored) {
                 const parsed = JSON.parse(stored);
-                console.log('[SelectionContext] restoreResponseForRequest: restored from localStorage', { key });
                 setResponseCache((c) => ({ ...c, [key]: parsed }));
                 setResponseState(parsed);
                 return;
@@ -188,7 +182,6 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
             ? (next as (prev: ApiRequest | null) => ApiRequest | null)(selectedRequestRef.current)
             : next;
 
-        console.log('[SelectionContext] setSelectedRequest', { name: resolved?.name, id: (resolved as any)?.id });
         selectedRequestRef.current = resolved;
         setSelectedRequestState(resolved);
         restoreResponseForRequest(resolved);
@@ -207,7 +200,7 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
                     console.warn('[SelectionContext] Failed to persist response', e);
                 }
             } else {
-                console.log('[SelectionContext] setResponse skipped persisting (no key or null response)', { key, hasResponse: resolved != null });
+                // nothing to persist
             }
             return resolved;
         });
@@ -215,7 +208,6 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
 
     // Restore cached response when switching requests
     useEffect(() => {
-        console.log('[SelectionContext] selectedRequest changed, attempting restore');
         restoreResponseForRequest(selectedRequestState, responseCache);
     }, [selectedRequestState, responseCache, restoreResponseForRequest]);
 
