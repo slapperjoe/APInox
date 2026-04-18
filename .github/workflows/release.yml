@@ -15,11 +15,11 @@ on:
       build_ios:
         description: 'Build iOS'
         type: boolean
-        default: true
+        default: false
       build_android:
         description: 'Build Android'
         type: boolean
-        default: true
+        default: false
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -479,8 +479,9 @@ jobs:
 
   # ── Publish GitHub Release ──────────────────────────────────────────────────
   publish:
-    needs: [check-ci, build, build-arch, build-android, build-ios]
+    needs: [check-ci, build, build-arch]
     if: |
+      always() &&
       needs.build.result == 'success' &&
       needs.build-arch.result == 'success' &&
       (needs.build-android.result == 'success' || needs.build-android.result == 'skipped') &&
