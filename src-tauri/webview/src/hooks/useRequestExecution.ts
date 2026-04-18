@@ -177,6 +177,8 @@ export function useRequestExecution({
             try {
                 // Capture the current state including the xml being executed
                 await onScrapbookAutoSave({ ...selectedRequest, request: xml });
+            } catch (err) {
+                debugLog('[executeRequest] Failed to auto-save scrapbook', err);
             }
         }
 
