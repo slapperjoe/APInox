@@ -24,7 +24,7 @@ interface UpdateCheckResult {
 }
 
 type CheckState = 'idle' | 'checking' | 'done' | 'error';
-type DownloadState = 'idle' | 'downloading' | 'ready';
+type DownloadState = 'idle' | 'downloading' | 'error' | 'ready';
 
 // ── Small shared button style helper ───────────────────────────────────────
 
@@ -95,6 +95,7 @@ export const UpdatesTab: React.FC = () => {
 
         setDownloadState('downloading');
         setDownloadProgress(0);
+        setError(null);
 
         // Subscribe to progress events from Rust.
         const unlisten = await listen<{ percent: number }>(
@@ -112,8 +113,9 @@ export const UpdatesTab: React.FC = () => {
             setDownloadedPath(path);
             setDownloadState('ready');
         } catch (e) {
-            setError(String(e));
-            setDownloadState('idle');
+            const errMsg = String(e);
+            setError(errMsg);
+            setDownloadState('error');
         } finally {
             unlisten();
             unlistenRef.current = null;
@@ -190,6 +192,15 @@ export const UpdatesTab: React.FC = () => {
                         </span>
                     </StatusRow>
                 )}
+
+                {/* Show download error regardless of checkState */}
+                {error && downloadState === 'error' && (
+                    <StatusRow icon={<AlertTriangle size={14} color="var(--apinox-inputValidation-errorForeground, #f48771)" />}>
+                        <span style={{ color: 'var(--apinox-inputValidation-errorForeground, #f48771)' }}>
+                            {error}
+                        </span>
+                    </StatusRow>
+                )}
             </div>
 
             {/* ── Action buttons ── */}
@@ -207,7 +218,7 @@ export const UpdatesTab: React.FC = () => {
                 {checkState === 'done' && result?.has_update && (
                     <>
                         {/* Windows: download & run installer */}
-                        {result.download_url && downloadState === 'idle' && (
+                        {result.download_url && (downloadState === 'idle' || downloadState === 'error') && (
                             <button style={btnStyle(true)} onClick={handleDownload}>
                                 <Download size={13} />
                                 Download update
@@ -233,7 +244,7 @@ export const UpdatesTab: React.FC = () => {
             </div>
 
             {/* ── Download progress bar ── */}
-            {downloadState === 'downloading' && (
+            {(downloadState === 'downloading') && (
                 <div style={{ marginBottom: 20 }}>
                     <div style={{ fontSize: 12, marginBottom: 6 }}>
                         Downloading… {downloadProgress}%
