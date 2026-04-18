@@ -479,7 +479,7 @@ jobs:
 
   # ── Publish GitHub Release ──────────────────────────────────────────────────
   publish:
-    needs: [check-ci, build, build-arch]
+    needs: [check-ci, build, build-arch, build-android, build-ios]
     if: |
       always() &&
       needs.build.result == 'success' &&
