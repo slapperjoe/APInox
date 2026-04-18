@@ -85,11 +85,21 @@ pub async fn check_for_updates() -> Result<UpdateCheckResult, String> {
         .await
         .map_err(|e| format!("Failed to reach GitHub: {}", e))?;
 
-    if !response.status().is_success() {
-        return Err(format!(
-            "GitHub API returned status {}",
-            response.status()
-        ));
+    let status = response.status();
+    if status == reqwest::StatusCode::NOT_FOUND {
+        // No releases published yet — treat as "up to date"
+        log::info!("[Updater] No releases found on GitHub (404) — skipping update check");
+        return Ok(UpdateCheckResult {
+            current_version: APP_VERSION.to_string(),
+            latest_version: APP_VERSION.to_string(),
+            has_update: false,
+            download_url: None,
+            release_url: String::new(),
+            release_notes: String::new(),
+        });
+    }
+    if !status.is_success() {
+        return Err(format!("GitHub API returned status {}", status));
     }
 
     let release: GitHubRelease = response

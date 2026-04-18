@@ -11,6 +11,15 @@ name: Release
 #   - GITHUB_TOKEN is provided automatically by GitHub Actions.
 on:
   workflow_dispatch:
+    inputs:
+      build_ios:
+        description: 'Build iOS'
+        type: boolean
+        default: true
+      build_android:
+        description: 'Build Android'
+        type: boolean
+        default: true
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -224,6 +233,7 @@ jobs:
   # ── Android build ───────────────────────────────────────────────────────────
   build-android:
     needs: check-ci
+    if: inputs.build_android == true
     runs-on: ubuntu-latest
     env:
       ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
@@ -303,6 +313,7 @@ jobs:
   # ── iOS build ───────────────────────────────────────────────────────────────
   build-ios:
     needs: check-ci
+    if: inputs.build_ios == true
     runs-on: macos-latest
     env:
       APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
@@ -471,7 +482,9 @@ jobs:
     needs: [check-ci, build, build-arch, build-android, build-ios]
     if: |
       needs.build.result == 'success' &&
-      needs.build-arch.result == 'success'
+      needs.build-arch.result == 'success' &&
+      (needs.build-android.result == 'success' || needs.build-android.result == 'skipped') &&
+      (needs.build-ios.result == 'success' || needs.build-ios.result == 'skipped')
     runs-on: ubuntu-latest
     permissions:
       contents: write
