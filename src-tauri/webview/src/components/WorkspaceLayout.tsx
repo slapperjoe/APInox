@@ -307,35 +307,12 @@ export const WorkspaceLayout: React.FC = () => {
             attachments: []
         } as any;
         
-        console.log('[WorkspaceLayout] Created activeRequest from workflow step:', activeRequest!.name, 'type:', activeRequest!.requestType);
     }
 
-    // Use activeRequest throughout instead of activeRequest
     // For backward compatibility with existing code, we use effectiveRequest as well
     const effectiveRequest = activeRequest;
 
-    console.log('=== [WorkspaceLayout] RENDER DEBUG ===');
-    console.log('[WorkspaceLayout] Render - activeView:', activeView);
-    console.log('[WorkspaceLayout] SidebarView.EXPLORER:', SidebarView.EXPLORER);
-    console.log('[WorkspaceLayout] SidebarView.PROJECTS:', SidebarView.PROJECTS);
-    console.log('[WorkspaceLayout] SidebarView.TESTS:', SidebarView.TESTS);
-    console.log('[WorkspaceLayout] SidebarView.WORKFLOWS:', SidebarView.WORKFLOWS);
-    console.log('[WorkspaceLayout] SidebarView.HISTORY:', SidebarView.HISTORY);
-    console.log('[WorkspaceLayout] SidebarView.PERFORMANCE:', SidebarView.PERFORMANCE);
-    console.log('[WorkspaceLayout] selectedWorkflowStep:', !!selectedWorkflowStep);
-    console.log('[WorkspaceLayout] activeRequest:', !!activeRequest);
-    console.log('[WorkspaceLayout] effectiveRequest:', !!effectiveRequest);
-    if (selectedWorkflowStep) {
-        console.log('[WorkspaceLayout] Workflow step details:', {
-            workflow: selectedWorkflowStep.workflow?.name,
-            step: selectedWorkflowStep.step?.name || 'null'
-        });
-    }
-    console.log('=====================================');
-
-    // Wrapper to add logging for debugging
     const onUpdateRequest = React.useCallback((updated: any) => {
-        console.log('[WorkspaceLayout] onUpdateRequest called:', { requestName: updated?.name, requestId: updated?.id });
         rawOnUpdateRequest(updated);
     }, [rawOnUpdateRequest]);
 
