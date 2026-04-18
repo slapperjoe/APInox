@@ -1,5 +1,6 @@
 // import React from 'react'; // React 17+ JSX transform doesn't need React in scope
 import { useState, useEffect } from 'react';
+import { debugLog } from './utils/logger';
 import { ThemeProvider, EditorSettingsProvider, ErrorBoundary } from '@apinox/request-editor'; // Use package providers
 import type { EditorSettings } from '@apinox/request-editor';
 import { ProjectProvider } from './contexts/ProjectContext';
@@ -43,14 +44,12 @@ export default function App() {
     useEffect(() => {
         async function detectPlatform() {
             try {
-                console.log('🔧 Starting platform detection...');
+                debugLog('[App] Starting platform detection');
                 
                 // Try to import and invoke directly (Tauri v2 doesn't always set window.__TAURI__)
                 const { invoke } = await import('@tauri-apps/api/core');
-                console.log('🔧 Tauri API imported successfully');
-                
                 const os = await invoke<string>('get_platform_os');
-                console.log('🔍 Platform detected:', os);
+                debugLog('[App] Platform detected', os);
                 setPlatformOS(os as any);
 
                 // Apply platform attribute to body for platform-specific CSS targeting

@@ -6,6 +6,7 @@
 
 import { useCallback, useRef } from 'react';
 import { bridge } from '../utils/bridge';
+import { debugLog } from '../utils/logger';
 import { FrontendCommand } from '@shared/messages';
 import { CustomXPathEvaluator } from '../utils/xpathEvaluator';
 import { useProject } from '../contexts/ProjectContext';
@@ -53,9 +54,7 @@ export function useRequestHandlers({
     const startTimeRef = useRef<number>(0);
 
     const executeRequest = useCallback((xml: string) => {
-        console.log('[useRequestHandlers] executeRequest called');
-        console.log('[useRequestHandlers] Context - Operation:', selectedOperation?.name, 'Request:', selectedRequest?.name);
-
+        debugLog('[useRequestHandlers] executeRequest called', { op: selectedOperation?.name, req: selectedRequest?.name });
         setLoading(true);
         setResponse(null);
         startTimeRef.current = Date.now();
@@ -63,8 +62,7 @@ export function useRequestHandlers({
         if (selectedOperation || selectedRequest) {
             const url = selectedRequest?.endpoint || selectedInterface?.definition || wsdlUrl;
             const opName = selectedOperation?.name || selectedRequest?.name || 'Unknown Operation';
-
-            console.log('[useRequestHandlers] Sending executeRequest message. URL:', url, 'Op:', opName);
+            debugLog('[useRequestHandlers] Sending executeRequest message', { url, opName });
 
             // Calculate context variables if running a test step
             const contextVariables: Record<string, string> = {};
@@ -87,13 +85,10 @@ export function useRequestHandlers({
                                                 const val = CustomXPathEvaluator.evaluate(rawResp, ext.path);
                                                 if (val) {
                                                     contextVariables[ext.variable] = val;
-                                                    console.log(`[Context] Extracted '${ext.variable}' = '${val}' from step '${step.name}'`);
                                                 } else {
-                                                    console.log(`[Context] Warning: Extractor for '${ext.variable}' in step '${step.name}' returned null.`);
                                                 }
                                             } catch (e) {
                                                 console.warn('[useRequestHandlers] Extractor failed for variable ' + ext.variable, e);
-                                                console.log(`[Context] Error evaluating extractor for '${ext.variable}': ${e}`);
                                             }
                                         }
                                     });
@@ -104,9 +99,8 @@ export function useRequestHandlers({
                 }
             }
 
-            console.log('[useRequestHandlers] Context Variables:', contextVariables);
             if (Object.keys(contextVariables).length > 0) {
-                console.log(`[Context] Sending ${Object.keys(contextVariables).length} context variables to backend.`);
+                // context variables are ready
             }
 
             bridge.sendMessage({
@@ -140,7 +134,7 @@ export function useRequestHandlers({
 
     const handleRequestUpdate = useCallback((updated: ApiRequest) => {
         if (selectedRequest?.readOnly) {
-            console.log('[useRequestHandlers] Blocked update on read-only request:', updated.id);
+            debugLog('[useRequestHandlers] Blocked update on read-only request', selectedRequest.id);
             return;
         }
 
@@ -154,7 +148,7 @@ export function useRequestHandlers({
 
                     // 1. Is it a Test Case modification?
                     if (selectedTestCase) {
-                        console.log('[handleRequestUpdate] Updating within Test Case:', selectedTestCase.name);
+                        debugLog('[handleRequestUpdate] Updating within Test Case', selectedTestCase.name);
                         let caseUpdated = false;
                         const updatedSuites = p.testSuites?.map(s => {
                             const tcIndex = s.testCases?.findIndex(tc => tc.id === selectedTestCase.id) ?? -1;
@@ -166,8 +160,6 @@ export function useRequestHandlers({
                                 step.config.request?.name === updated.name ||
                                 (selectedRequest && step.config.request?.name === selectedRequest.name)
                             );
-
-                            console.log('[handleRequestUpdate] Step Search Result:', stepIndex, 'for request:', updated.name);
 
                             if (stepIndex !== -1) {
                                 caseUpdated = true;

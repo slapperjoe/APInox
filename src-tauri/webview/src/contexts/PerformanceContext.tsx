@@ -8,10 +8,7 @@ import { useSelection } from './SelectionContext';
 import { useNavigation } from './NavigationContext';
 import { SidebarView } from '@shared/models';
 import { PERF_REQUEST_ID_PREFIX, PERF_SUITE_ID_PREFIX } from '../constants';
-
-const debugLog = (_message: string, _data?: any) => { // Allowed unused for now or used
-    // console.debug(`[PerformanceContext] ${_message}`, _data);
-};
+import { debugLog } from '../utils/logger';
 
 interface CoordinatorStatus {
     running: boolean;
@@ -266,7 +263,6 @@ export const PerformanceProvider = ({ children }: { children: ReactNode }) => {
     }, []);
 
     const handleSelectPerformanceRequest = useCallback((request: PerformanceRequest) => {
-        console.log('[Performance] Selecting request', request.id);
         const soapRequest: ApiRequest = {
             id: request.id,
             name: request.name,
@@ -281,6 +277,7 @@ export const PerformanceProvider = ({ children }: { children: ReactNode }) => {
             restConfig: request.restConfig,
             graphqlConfig: request.graphqlConfig,
         };
+        debugLog('[Performance] Selecting request', request.id);
         setSelectedRequest(soapRequest);
         setSelectedStep(null);
     }, [setSelectedRequest, setSelectedStep]);

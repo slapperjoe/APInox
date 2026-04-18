@@ -7,6 +7,7 @@
 
 import { useRef, useCallback } from 'react';
 import { bridge } from '../utils/bridge';
+import { debugLog } from '../utils/logger';
 import { CustomXPathEvaluator } from '../utils/xpathEvaluator';
 import { FrontendCommand } from '@shared/messages';
 import { getInitialXml } from '@shared/utils/xmlUtils';
@@ -170,29 +171,12 @@ export function useRequestExecution({
     const startTimeRef = useRef<number>(0);
 
     const executeRequest = useCallback(async (xml: string) => {
-        console.log('[App] executeRequest called');
-        console.log('[App] Context - Operation:', selectedOperation?.name, 'Request:', selectedRequest?.name);
-
-        // Debug: Log all conditions for scrapbook auto-save
-        console.log('[executeRequest] Scrapbook save conditions:', {
-            hasCallback: !!onScrapbookAutoSave,
-            hasSelectedRequest: !!selectedRequest,
-            selectedRequestId: selectedRequest?.id,
-            selectedProjectName,
-            selectedInterface: selectedInterface?.name,
-            selectedOperation: selectedOperation?.name,
-            selectedTestCase: selectedTestCase?.id,
-            willSave: !!(onScrapbookAutoSave && selectedRequest && !selectedProjectName && !selectedInterface && !selectedOperation && !selectedTestCase)
-        });
-
+        debugLog('[App] executeRequest called');
         // Auto-save scrapbook request before execution (captures manual edits to URL/body)
         if (onScrapbookAutoSave && selectedRequest && !selectedProjectName && !selectedInterface && !selectedOperation && !selectedTestCase) {
-            console.log('[executeRequest] Auto-saving scrapbook request before execution');
             try {
                 // Capture the current state including the xml being executed
                 await onScrapbookAutoSave({ ...selectedRequest, request: xml });
-            } catch (err) {
-                console.error('[executeRequest] Failed to auto-save scrapbook:', err);
             }
         }
 
@@ -204,8 +188,7 @@ export function useRequestExecution({
         if (selectedOperation || selectedRequest) {
             const url = selectedRequest?.endpoint || selectedInterface?.definition || wsdlUrl;
             const opName = selectedOperation?.name || selectedRequest?.name || 'Unknown Operation';
-
-            console.log('[App] Sending executeRequest message. URL:', url, 'Op:', opName);
+            debugLog('[App] Sending executeRequest message', { url, opName });
 
             // Calculate context variables if running a test step
             const contextVariables: Record<string, string> = {};
@@ -232,28 +215,23 @@ export function useRequestExecution({
                                             const val = CustomXPathEvaluator.evaluate(rawResp, ext.path);
                                             if (val) {
                                                 contextVariables[ext.variable] = val;
-                                                console.log(`[Context] Extracted '${ext.variable}' = '${val}' from step '${step.name}'`);
+                                                debugLog(`[Context] Extracted '${ext.variable}' from step '${step.name}'`, val);
                                             } else if (ext.defaultValue) {
                                                 // Extraction returned null, use default
                                                 contextVariables[ext.variable] = ext.defaultValue;
-                                                console.log(`[Context] Using default value for '${ext.variable}' = '${ext.defaultValue}' (extraction returned null)`);
                                             } else {
-                                                console.log(`[Context] Warning: Extractor for '${ext.variable}' in step '${step.name}' returned null.`);
                                             }
                                         } catch (e) {
                                             console.warn('[App] Extractor failed for variable ' + ext.variable, e);
                                             if (ext.defaultValue) {
                                                 contextVariables[ext.variable] = ext.defaultValue;
-                                                console.log(`[Context] Using default value for '${ext.variable}' = '${ext.defaultValue}' (extraction error)`);
-                                            } else {
-                                                console.log(`[Context] Error evaluating extractor for '${ext.variable}': ${e}`);
                                             }
                                         }
                                     }
                                 } else if (ext.defaultValue) {
                                     // Step hasn't been run yet, use default value
                                     contextVariables[ext.variable] = ext.defaultValue;
-                                    console.log(`[Context] Using default value for '${ext.variable}' = '${ext.defaultValue}' (step '${step.name}' not run)`);
+                                }
                                 }
                             });
                         }
@@ -261,15 +239,11 @@ export function useRequestExecution({
                 }
             }
 
-            console.log('[App] Context Variables:', contextVariables);
-            if (Object.keys(contextVariables).length > 0) {
-                console.log(`[Context] Sending ${Object.keys(contextVariables).length} context variables to backend.`);
-            }
-
-            // Regression fix: Ensure content-type matches body type
             const { contentType: fixedContentType, headers: fixedHeaders } = selectedRequest 
                 ? fixContentType(selectedRequest) 
                 : { contentType: 'application/soap+xml', headers: {} };
+
+            debugLog('[App] Context Variables', { count: Object.keys(contextVariables).length, vars: contextVariables });
 
             bridge.sendMessage({
                 command: FrontendCommand.ExecuteRequest,
@@ -331,11 +305,9 @@ export function useRequestExecution({
 
 
         if (selectedRequest?.readOnly) {
-            console.log('[handleRequestUpdate] Blocked update on read-only request:', updated.id);
+            debugLog('[handleRequestUpdate] Blocked update on read-only request', selectedRequest.id);
             return;
         }
-
-        console.log('[handleRequestUpdate] Called with:', logContext);
 
         const dirtyUpdated = { ...updated, dirty: true };
 
@@ -348,7 +320,6 @@ export function useRequestExecution({
         if (onScrapbookAutoSave) {
             const savedToScrapbook = await onScrapbookAutoSave(updated);
             if (savedToScrapbook) {
-                console.log('[handleRequestUpdate] Saved to scrapbook via callback');
                 return;
             }
         }

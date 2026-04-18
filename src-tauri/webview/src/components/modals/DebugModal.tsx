@@ -10,52 +10,18 @@ import React, { useState, useEffect } from 'react';
 import { Modal } from './Modal';
 import { bridge } from '../../utils/bridge';
 import { DiagnosticsTab } from './DiagnosticsTab';
+import { frontendLogs, captureLog } from '../../utils/logger';
 
 interface DebugModalProps {
     isOpen: boolean;
     onClose: () => void;
 }
 
-// Frontend console log capture
-const frontendLogs: Array<{ timestamp: number; level: string; message: string }> = [];
-const MAX_FRONTEND_LOGS = 2000;
-
-// Intercept console methods
+// Intercept console methods so they also appear in the Debug Modal frontend log panel.
+// The original methods are still called so errors/warnings remain visible in DevTools.
 const originalConsoleLog = console.log;
 const originalConsoleWarn = console.warn;
 const originalConsoleError = console.error;
-
-const captureLog = (level: string, ...args: any[]) => {
-    const message = args.map(arg => {
-        if (typeof arg === 'object' && arg !== null) {
-            try {
-                // Try to stringify, but catch circular reference errors
-                return JSON.stringify(arg);
-            } catch (e) {
-                // If circular reference, use a fallback representation
-                if (arg instanceof Error) {
-                    return `Error: ${arg.message}`;
-                }
-                if (typeof arg.toString === 'function' && arg.toString !== Object.prototype.toString) {
-                    return arg.toString();
-                }
-                return '[Circular or Complex Object]';
-            }
-        }
-        return String(arg);
-    }).join(' ');
-    
-    frontendLogs.push({
-        timestamp: Date.now(),
-        level,
-        message
-    });
-    
-    // Keep only the last MAX_FRONTEND_LOGS entries
-    if (frontendLogs.length > MAX_FRONTEND_LOGS) {
-        frontendLogs.shift();
-    }
-};
 
 console.log = (...args: any[]) => {
     captureLog('log', ...args);
@@ -654,6 +620,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                                                 wordBreak: 'break-word',
                                                 color: log.level === 'error' ? 'var(--apinox-errorForeground)' :
                                                     log.level === 'warn' ? 'var(--apinox-editorWarning-foreground)' :
+                                                    log.level === 'debug' ? 'var(--apinox-descriptionForeground)' :
                                                         'var(--apinox-editor-foreground)',
                                             }}
                                         >
