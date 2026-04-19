@@ -6,6 +6,7 @@
 use serde::{Deserialize, Serialize};
 use tauri::Emitter;
 use tokio::io::AsyncWriteExt;
+use crate::settings_manager::load_config_internal;
 
 const GITHUB_API_URL: &str =
     "https://api.github.com/repos/slapperjoe/apinox/releases/latest";
@@ -65,11 +66,25 @@ fn is_newer(latest: &str, current: &str) -> bool {
 
 // ── Shared reqwest client factory ──────────────────────────────────────────
 
+/// Builds an HTTP client that honours the proxy configured in APInox settings
+/// (`network.proxy`).  Falls back to a plain client if no proxy is set or the
+/// config cannot be read.
 fn build_client() -> Result<reqwest::Client, String> {
-    reqwest::Client::builder()
-        .user_agent(format!("APInox/{}", APP_VERSION))
-        .build()
-        .map_err(|e| format!("Failed to build HTTP client: {}", e))
+    let mut builder = reqwest::Client::builder()
+        .user_agent(format!("APInox/{}", APP_VERSION));
+
+    // Apply the proxy from APInox network settings, if one is configured.
+    if let Ok(config) = load_config_internal() {
+        if let Some(proxy_url) = config.network.and_then(|n| n.proxy).filter(|p| !p.is_empty()) {
+            log::debug!("[Updater] Using configured proxy: {}", proxy_url);
+            match reqwest::Proxy::all(&proxy_url) {
+                Ok(proxy) => { builder = builder.proxy(proxy); }
+                Err(e) => { log::warn!("[Updater] Invalid proxy URL '{}': {}", proxy_url, e); }
+            }
+        }
+    }
+
+    builder.build().map_err(|e| format!("Failed to build HTTP client: {}", e))
 }
 
 // ── Tauri commands ─────────────────────────────────────────────────────────
