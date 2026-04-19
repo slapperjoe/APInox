@@ -43,6 +43,10 @@ tauri-plugin-decorum = "1.1.1"
 reqwest = { version = "0.12", default-features = false, features = ["json", "cookies", "gzip", "rustls-tls", "charset", "http2"] }
 tokio = { version = "1.45", features = ["full"] }
 
+# Windows system proxy detection
+[target.'cfg(target_os = "windows")'.dependencies]
+winreg = "0.52"
+
 # HTTP proxy/mock server (from APIprox integration)
 hyper = { version = "1", features = ["full"] }
 hyper-util = { version = "0.1", features = ["full"] }
