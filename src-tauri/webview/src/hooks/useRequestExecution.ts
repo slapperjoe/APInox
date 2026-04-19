@@ -234,7 +234,7 @@ export function useRequestExecution({
                                     // Step hasn't been run yet, use default value
                                     contextVariables[ext.variable] = ext.defaultValue;
                                 }
-                                }
+                                
                             });
                         }
                     });
