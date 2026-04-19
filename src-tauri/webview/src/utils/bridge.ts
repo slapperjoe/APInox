@@ -462,6 +462,7 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
         // Route ExecuteRequest (REST) to Rust execute_rest_request command
         if (message.command === FrontendCommand.ExecuteRequest && (message.requestType === 'rest' || message.requestType === 'graphql')) {
             const method = (message.method || 'GET').toUpperCase();
+            const url: string = message.url || '';
 
             const headers: Record<string, string> = { ...(message.headers || {}) };
             // GraphQL always POSTs JSON body; REST only for body methods
