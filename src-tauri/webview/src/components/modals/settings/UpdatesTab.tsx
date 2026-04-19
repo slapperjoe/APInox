@@ -225,6 +225,18 @@ export const UpdatesTab: React.FC = () => {
                             </button>
                         )}
 
+                        {/* Always offer a browser fallback — useful behind corporate proxies */}
+                        {result.download_url && (downloadState === 'idle' || downloadState === 'error') && (
+                            <button
+                                style={btnStyle(false)}
+                                onClick={handleOpenReleasePage}
+                                title="Opens the GitHub release page in your browser — use this if the in-app download is blocked by a corporate proxy"
+                            >
+                                <ExternalLink size={13} />
+                                Open in browser
+                            </button>
+                        )}
+
                         {/* Non-Windows or no NSIS asset: open release page */}
                         {!result.download_url && (
                             <button style={btnStyle(true)} onClick={handleOpenReleasePage}>

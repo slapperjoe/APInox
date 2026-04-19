@@ -66,21 +66,122 @@ fn is_newer(latest: &str, current: &str) -> bool {
 
 // ── Shared reqwest client factory ──────────────────────────────────────────
 
-/// Builds an HTTP client that honours the proxy configured in APInox settings
-/// (`network.proxy`).  Falls back to a plain client if no proxy is set or the
-/// config cannot be read.
+/// Reads the Windows system proxy from the Internet Settings registry key.
+/// Returns `Some("http://host:port")` when a *manual* proxy is enabled, `None` otherwise.
+/// Note: this does NOT handle WPAD/PAC-only setups — use `resolve_wpad_proxy` for those.
+#[cfg(target_os = "windows")]
+fn read_windows_system_proxy() -> Option<String> {
+    use winreg::enums::HKEY_CURRENT_USER;
+    use winreg::RegKey;
+
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    let settings = hkcu
+        .open_subkey(r"Software\Microsoft\Windows\CurrentVersion\Internet Settings")
+        .ok()?;
+
+    let enabled: u32 = settings.get_value("ProxyEnable").ok()?;
+    if enabled == 0 {
+        return None;
+    }
+
+    let server: String = settings.get_value("ProxyServer").ok()?;
+    if server.is_empty() {
+        return None;
+    }
+
+    // The registry value may be bare `host:port` or already `http://host:port`.
+    // reqwest requires a full URL scheme.
+    if server.contains("://") {
+        Some(server)
+    } else {
+        Some(format!("http://{}", server))
+    }
+}
+
+/// Asks .NET (via a PowerShell subprocess) for the effective proxy for a given URL.
+/// This handles WPAD auto-detect, PAC files, and Group Policy — the same path
+/// that Edge and IE use.  Returns the proxy URL string, or `None` if direct or
+/// if the lookup fails.
+///
+/// The PowerShell one-liner is intentionally minimal and non-interactive so it
+/// starts fast (~200–300 ms).  It is only called when no manual proxy is found.
+#[cfg(target_os = "windows")]
+fn resolve_wpad_proxy(target_url: &str) -> Option<String> {
+    use std::process::Command;
+
+    // Ask .NET for the proxy.  GetSystemWebProxy() honours WPAD/PAC/env-var
+    // chains the same way the Windows HTTP stack does.
+    let script = format!(
+        "[System.Net.WebRequest]::GetSystemWebProxy().GetProxy('{}').AbsoluteUri",
+        target_url
+    );
+
+    let output = Command::new("powershell")
+        .args(["-NonInteractive", "-NoProfile", "-Command", &script])
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    let proxy = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
+    // .NET returns the original URL unchanged when no proxy is needed (direct).
+    if proxy.is_empty() || proxy == target_url {
+        return None;
+    }
+
+    log::debug!("[Updater] WPAD resolved proxy for {}: {}", target_url, proxy);
+    Some(proxy)
+}
+
+/// Builds an HTTP client that honours (in priority order):
+///   1. The proxy configured in APInox settings (`network.proxy`)
+///   2. The Windows manual system proxy (Internet Settings registry)
+///   3. WPAD / PAC file via .NET's GetSystemWebProxy() (PowerShell shim)
+///   4. Environment variables `HTTPS_PROXY` / `HTTP_PROXY` (reqwest default)
 fn build_client() -> Result<reqwest::Client, String> {
     let mut builder = reqwest::Client::builder()
         .user_agent(format!("APInox/{}", APP_VERSION));
 
-    // Apply the proxy from APInox network settings, if one is configured.
-    if let Ok(config) = load_config_internal() {
-        if let Some(proxy_url) = config.network.and_then(|n| n.proxy).filter(|p| !p.is_empty()) {
-            log::debug!("[Updater] Using configured proxy: {}", proxy_url);
-            match reqwest::Proxy::all(&proxy_url) {
+    // 1. APInox configured proxy takes highest priority.
+    let apinox_proxy = load_config_internal()
+        .ok()
+        .and_then(|c| c.network)
+        .and_then(|n| n.proxy)
+        .filter(|p| !p.is_empty());
+
+    if let Some(proxy_url) = apinox_proxy {
+        log::debug!("[Updater] Using APInox configured proxy: {}", proxy_url);
+        match reqwest::Proxy::all(&proxy_url) {
+            Ok(proxy) => { builder = builder.proxy(proxy); }
+            Err(e) => { log::warn!("[Updater] Invalid APInox proxy URL '{}': {}", proxy_url, e); }
+        }
+    } else {
+        // 2. Windows manual system proxy (works when ProxyEnable = 1).
+        #[cfg(target_os = "windows")]
+        let manual_proxy = read_windows_system_proxy();
+        #[cfg(not(target_os = "windows"))]
+        let manual_proxy: Option<String> = None;
+
+        if let Some(sys_proxy) = manual_proxy {
+            log::debug!("[Updater] Using Windows manual system proxy: {}", sys_proxy);
+            match reqwest::Proxy::all(&sys_proxy) {
                 Ok(proxy) => { builder = builder.proxy(proxy); }
-                Err(e) => { log::warn!("[Updater] Invalid proxy URL '{}': {}", proxy_url, e); }
+                Err(e) => { log::warn!("[Updater] Invalid system proxy URL '{}': {}", sys_proxy, e); }
             }
+        } else {
+            // 3. WPAD / PAC — ask .NET for the effective proxy.
+            #[cfg(target_os = "windows")]
+            if let Some(wpad_proxy) = resolve_wpad_proxy("https://github.com") {
+                log::debug!("[Updater] Using WPAD/PAC proxy: {}", wpad_proxy);
+                match reqwest::Proxy::all(&wpad_proxy) {
+                    Ok(proxy) => { builder = builder.proxy(proxy); }
+                    Err(e) => { log::warn!("[Updater] Invalid WPAD proxy URL '{}': {}", wpad_proxy, e); }
+                }
+            }
+            // 4. reqwest will automatically pick up HTTPS_PROXY / HTTP_PROXY env vars.
         }
     }
 
