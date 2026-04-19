@@ -103,37 +103,51 @@ fn read_windows_system_proxy() -> Option<String> {
 /// that Edge and IE use.  Returns the proxy URL string, or `None` if direct or
 /// if the lookup fails.
 ///
-/// The PowerShell one-liner is intentionally minimal and non-interactive so it
-/// starts fast (~200–300 ms).  It is only called when no manual proxy is found.
+/// Result is cached for the lifetime of the process — the lookup only ever
+/// runs once regardless of how many update checks the user triggers.
+/// The PowerShell window is hidden via CREATE_NO_WINDOW.
 #[cfg(target_os = "windows")]
 fn resolve_wpad_proxy(target_url: &str) -> Option<String> {
+    use once_cell::sync::OnceCell;
+    use std::os::windows::process::CommandExt;
     use std::process::Command;
 
-    // Ask .NET for the proxy.  GetSystemWebProxy() honours WPAD/PAC/env-var
-    // chains the same way the Windows HTTP stack does.
-    let script = format!(
-        "[System.Net.WebRequest]::GetSystemWebProxy().GetProxy('{}').AbsoluteUri",
-        target_url
-    );
+    // Cache: only probe once per process lifetime.
+    static CACHED: OnceCell<Option<String>> = OnceCell::new();
+    return CACHED
+        .get_or_init(|| wpad_probe(target_url))
+        .clone();
 
-    let output = Command::new("powershell")
-        .args(["-NonInteractive", "-NoProfile", "-Command", &script])
-        .output()
-        .ok()?;
+    fn wpad_probe(target_url: &str) -> Option<String> {
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
-    if !output.status.success() {
-        return None;
+        // Ask .NET for the proxy.  GetSystemWebProxy() honours WPAD/PAC/env-var
+        // chains the same way the Windows HTTP stack does.
+        let script = format!(
+            "[System.Net.WebRequest]::GetSystemWebProxy().GetProxy('{}').AbsoluteUri",
+            target_url
+        );
+
+        let output = Command::new("powershell")
+            .args(["-NonInteractive", "-NoProfile", "-Command", &script])
+            .creation_flags(CREATE_NO_WINDOW)
+            .output()
+            .ok()?;
+
+        if !output.status.success() {
+            return None;
+        }
+
+        let proxy = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
+        // .NET returns the original URL unchanged when no proxy is needed (direct).
+        if proxy.is_empty() || proxy == target_url {
+            return None;
+        }
+
+        log::debug!("[Updater] WPAD resolved proxy for {}: {}", target_url, proxy);
+        Some(proxy)
     }
-
-    let proxy = String::from_utf8_lossy(&output.stdout).trim().to_string();
-
-    // .NET returns the original URL unchanged when no proxy is needed (direct).
-    if proxy.is_empty() || proxy == target_url {
-        return None;
-    }
-
-    log::debug!("[Updater] WPAD resolved proxy for {}: {}", target_url, proxy);
-    Some(proxy)
 }
 
 /// Builds an HTTP client that honours (in priority order):
