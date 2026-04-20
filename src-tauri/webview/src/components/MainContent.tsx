@@ -10,7 +10,7 @@ import { WorkspaceLayout } from './WorkspaceLayout';
 import { WorkspaceContext } from '../contexts/WorkspaceContext';
 import { SidebarContext } from '../contexts/SidebarContext';
 import { ProxyPanel } from './proxy/ProxyPanel';
-import { AddToProjectDialog } from './proxy/AddToProjectDialog';
+import { AddToProjectDialog, type AddToProjectDestination } from './proxy/AddToProjectDialog';
 import type { TrafficLog } from './proxy/TrafficViewer';
 import { RulesAndMockPage } from './proxy/RulesAndMockPage';
 import { FileWatcherPage } from './proxy/FileWatcherPage';
@@ -113,7 +113,8 @@ const MainContent: React.FC = () => {
         toggleOperationExpand,
         expandAll,
         collapseAll,
-        reorderItems
+        reorderItems,
+        reorderRequests
     } = useProject();
 
     // ==========================================================================
@@ -304,8 +305,7 @@ const MainContent: React.FC = () => {
 
     const handleConfirmAddTrafficToProject = useCallback((
         projectName: string,
-        interfaceName: string,
-        operationName: string,
+        destination: AddToProjectDestination,
         requestName: string,
     ) => {
         if (!addTrafficLog) return;
@@ -314,32 +314,56 @@ const MainContent: React.FC = () => {
 
         setProjects(prev => prev.map(p => {
             if (p.name !== projectName) return p;
-            const newInterfaces = p.interfaces.map(iface => {
-                if (iface.name !== interfaceName) return iface;
-                const newOps = iface.operations.map(op => {
-                    if (op.name !== operationName) return op;
-                    const contentType = log.requestHeaders?.['Content-Type']
-                        || log.requestHeaders?.['content-type']
+
+            const rawContentType = log.requestHeaders?.['Content-Type'] || log.requestHeaders?.['content-type'] || '';
+            const newReq: import('@shared/models').ApiRequest = {
+                id: crypto.randomUUID(),
+                name: requestName,
+                request: log.requestBody || '',
+                endpoint: log.url,
+                method: (log.method as any) || 'POST',
+                contentType: rawContentType || 'text/xml; charset=utf-8',
+                headers: { ...log.requestHeaders },
+                dirty: true,
+            };
+
+            if (destination.type === 'operation') {
+                const { interfaceName, operationName } = destination;
+                const newInterfaces = p.interfaces.map(iface => {
+                    if (iface.name !== interfaceName) return iface;
+                    const soapContentType = rawContentType
                         || (iface.soapVersion === '1.2' ? 'application/soap+xml' : 'text/xml; charset=utf-8');
-                    const newReq: import('@shared/models').ApiRequest = {
-                        id: crypto.randomUUID(),
-                        name: requestName,
-                        request: log.requestBody || '',
-                        endpoint: log.url,
-                        method: (log.method as any) || 'POST',
-                        contentType,
-                        headers: { ...log.requestHeaders },
-                        requestType: 'soap',
-                        bodyType: 'xml',
-                        dirty: true,
-                    };
-                    return { ...op, requests: [...op.requests, newReq], expanded: true };
+                    const newOps = iface.operations.map(op => {
+                        if (op.name !== operationName) return op;
+                        const req = { ...newReq, contentType: soapContentType, requestType: 'soap' as const, bodyType: 'xml' as const };
+                        return { ...op, requests: [...op.requests, req], expanded: true };
+                    });
+                    return { ...iface, operations: newOps };
                 });
-                return { ...iface, operations: newOps };
-            });
-            const updated = { ...p, interfaces: newInterfaces, dirty: true };
-            setTimeout(() => saveProject(updated), 0);
-            return updated;
+                const updated = { ...p, interfaces: newInterfaces, dirty: true };
+                setTimeout(() => saveProject(updated), 0);
+                return updated;
+            } else {
+                // folder destination — create folder if it doesn't exist
+                const { folderName } = destination;
+                const existingFolders = p.folders ?? [];
+                const folderExists = existingFolders.some(f => f.name === folderName);
+                const newFolders = folderExists
+                    ? existingFolders.map(f =>
+                        f.name === folderName
+                            ? { ...f, requests: [...f.requests, newReq], expanded: true }
+                            : f
+                    )
+                    : [...existingFolders, {
+                        id: crypto.randomUUID(),
+                        name: folderName,
+                        requests: [newReq],
+                        expanded: true,
+                    }];
+                const updated = { ...p, folders: newFolders, dirty: true };
+                setTimeout(() => saveProject(updated), 0);
+                return updated;
+            }
         }));
     }, [addTrafficLog, setProjects, saveProject]);
 
@@ -1302,6 +1326,7 @@ const MainContent: React.FC = () => {
             expandAll,
             collapseAll,
             reorderItems,
+            reorderRequests,
             onDeleteInterface: handleDeleteInterface,
             onDeleteOperation: handleDeleteOperation,
             onAddFolder: handleAddFolder,
@@ -1535,12 +1560,13 @@ const MainContent: React.FC = () => {
                 <Sidebar />
             </SidebarContext.Provider>
 
-            {activeView === SidebarView.PROXY && (
+            {/* Always mounted to preserve captured traffic across view switches */}
+            <div style={{ display: activeView === SidebarView.PROXY ? 'flex' : 'none', flex: 1, overflow: 'hidden', flexDirection: 'column' }}>
                 <ProxyPanel
                     onNavigateTo={(view) => handleSetActiveViewWrapper(view as SidebarView)}
                     onAddToApinoxProject={handleAddTrafficToProject}
                 />
-            )}
+            </div>
             {activeView === SidebarView.MOCK && (
                 <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                     <RulesAndMockPage />

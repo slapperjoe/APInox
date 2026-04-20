@@ -87,11 +87,14 @@ export function useDragAndDrop({ onReorder }: UseDragAndDropProps) {
         }));
     }, []);
 
-    const handleDragLeave = useCallback((_e: React.DragEvent) => {
-        // Clear the drop indicator whenever the pointer leaves a potential target.
-        // The next dragover on the new target will immediately re-establish it,
-        // so flicker is imperceptible but the indicator won't linger on a row
-        // that the pointer has moved away from.
+    const handleDragLeave = useCallback((e: React.DragEvent) => {
+        // Only clear when the pointer genuinely leaves the element.
+        // dragLeave fires when crossing child element boundaries too — ignore those
+        // by checking that relatedTarget is not still inside this element.
+        const relatedTarget = e.relatedTarget as Node | null;
+        if (relatedTarget && (e.currentTarget as HTMLElement).contains(relatedTarget)) {
+            return;
+        }
         setDragState(prev => ({
             ...prev,
             dropTargetId: null,
@@ -108,13 +111,16 @@ export function useDragAndDrop({ onReorder }: UseDragAndDropProps) {
 
         if (dragIdRef.current &&
             dragTypeRef.current === targetType &&
-            dragIdRef.current !== targetId &&
-            dropPositionRef.current) {
+            dragIdRef.current !== targetId) {
+
+            // Recalculate drop position directly from event so a cleared ref can't break the drop.
+            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+            const position: 'before' | 'after' = e.clientY < rect.top + rect.height / 2 ? 'before' : 'after';
 
             onReorder(
                 dragIdRef.current,
                 targetId,
-                dropPositionRef.current,
+                position,
                 targetType,
                 dragProjectRef.current ?? undefined
             );

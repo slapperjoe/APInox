@@ -37,6 +37,7 @@ export interface SidebarProjectProps {
     expandAll: () => void;
     collapseAll: () => void;
     reorderItems: (itemId: string, targetId: string, position: 'before' | 'after', itemType: 'project' | 'folder' | 'interface', projectName?: string) => void;
+    reorderRequests: (projectName: string, ifaceName: string, opName: string, draggedReqId: string, targetReqId: string, position: 'before' | 'after') => void;
     onDeleteInterface?: (iface: ApiInterface) => void;
     onDeleteOperation?: (op: ApiOperation, iface: ApiInterface) => void;
     // Folder handlers

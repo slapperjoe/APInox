@@ -101,6 +101,9 @@ interface ProjectContextValue {
     /** Reorders items within their parent context */
     reorderItems: (itemId: string, targetId: string, position: 'before' | 'after', itemType: 'project' | 'folder' | 'interface', projectName?: string) => void;
 
+    /** Reorders requests within an operation */
+    reorderRequests: (projectName: string, ifaceName: string, opName: string, draggedReqId: string, targetReqId: string, position: 'before' | 'after') => void;
+
     // -------------------------------------------------------------------------
     // EXPANSION HELPERS (for programmatic navigation)
     // -------------------------------------------------------------------------
@@ -797,6 +800,45 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
         }
     }, [updateProject]);
 
+    const reorderRequests = useCallback((
+        projectName: string,
+        ifaceName: string,
+        opName: string,
+        draggedReqId: string,
+        targetReqId: string,
+        position: 'before' | 'after'
+    ) => {
+        updateProject(projectName, project => {
+            const iface = project.interfaces.find(i => i.name === ifaceName);
+            if (!iface) return project;
+            const op = iface.operations?.find(o => o.name === opName);
+            if (!op || !op.requests) return project;
+
+            const arr = [...op.requests];
+            const draggedIndex = arr.findIndex(r => r.id === draggedReqId);
+            const targetIndex = arr.findIndex(r => r.id === targetReqId);
+            if (draggedIndex === -1 || targetIndex === -1) return project;
+
+            const [draggedItem] = arr.splice(draggedIndex, 1);
+            const insertAt = draggedIndex < targetIndex
+                ? (position === 'after' ? targetIndex : targetIndex - 1)
+                : (position === 'after' ? targetIndex + 1 : targetIndex);
+            arr.splice(Math.max(0, insertAt), 0, draggedItem);
+
+            const newInterfaces = project.interfaces.map(i => {
+                if (i.name !== ifaceName) return i;
+                return {
+                    ...i,
+                    operations: (i.operations || []).map(o => {
+                        if (o.name !== opName) return o;
+                        return { ...o, requests: arr };
+                    })
+                };
+            });
+            return { ...project, interfaces: newInterfaces };
+        });
+    }, [updateProject]);
+
     /**
      * Finds a project by name.
      */
@@ -836,6 +878,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
         expandAll,
         collapseAll,
         reorderItems,
+        reorderRequests,
         ensureProjectExpanded,
         ensureInterfaceExpanded,
         ensureOperationExpanded,
