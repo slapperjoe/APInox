@@ -576,6 +576,7 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                 passwordType: message.passwordType || null,
                 addTimestamp: message.addTimestamp || false,
                 rawXml: message.xml, // Send raw XML body
+                contentType: message.contentType || null, // User-selected Content-Type from dropdown
                 proxyUrl: proxyUrl || null,
             };
 

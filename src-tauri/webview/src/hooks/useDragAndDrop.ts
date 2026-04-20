@@ -5,11 +5,12 @@
  * (projects, folders, interfaces - but NOT requests)
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 
 export interface DragState {
     draggedItemId: string | null;
     draggedItemType: 'project' | 'folder' | 'interface' | null;
+    draggedProjectName: string | null;
     dropTargetId: string | null;
     dropPosition: 'before' | 'after' | null;
 }
@@ -22,20 +23,36 @@ export function useDragAndDrop({ onReorder }: UseDragAndDropProps) {
     const [dragState, setDragState] = useState<DragState>({
         draggedItemId: null,
         draggedItemType: null,
+        draggedProjectName: null,
         dropTargetId: null,
         dropPosition: null
     });
 
+    // Refs mirror the drag metadata so handleDragOver/handleDrop always read
+    // the current values without stale-closure issues (state updates are async
+    // and the first dragover events fire before React re-renders).
+    const dragIdRef = useRef<string | null>(null);
+    const dragTypeRef = useRef<string | null>(null);
+    const dragProjectRef = useRef<string | null>(null);
+    const dropPositionRef = useRef<'before' | 'after' | null>(null);
+
     const handleDragStart = useCallback((
         e: React.DragEvent,
         itemId: string,
-        itemType: 'project' | 'folder' | 'interface'
+        itemType: 'project' | 'folder' | 'interface',
+        projectName?: string
     ) => {
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', itemId);
+        // Update refs synchronously so dragover handlers have them immediately
+        dragIdRef.current = itemId;
+        dragTypeRef.current = itemType;
+        dragProjectRef.current = projectName ?? null;
+        dropPositionRef.current = null;
         setDragState({
             draggedItemId: itemId,
             draggedItemType: itemType,
+            draggedProjectName: projectName ?? null,
             dropTargetId: null,
             dropPosition: null
         });
@@ -47,14 +64,13 @@ export function useDragAndDrop({ onReorder }: UseDragAndDropProps) {
         targetType: 'project' | 'folder' | 'interface'
     ) => {
         e.preventDefault();
-        
-        // Don't allow dropping on self
-        if (dragState.draggedItemId === targetId) {
+        e.dataTransfer.dropEffect = 'move';
+
+        // Use refs to avoid stale-closure problems on rapid dragover events
+        if (dragIdRef.current === targetId) {
             return;
         }
-
-        // Only allow reordering within same type
-        if (dragState.draggedItemType !== targetType) {
+        if (dragTypeRef.current !== targetType) {
             return;
         }
 
@@ -63,23 +79,24 @@ export function useDragAndDrop({ onReorder }: UseDragAndDropProps) {
         const midPoint = rect.top + rect.height / 2;
         const position = e.clientY < midPoint ? 'before' : 'after';
 
+        dropPositionRef.current = position;
         setDragState(prev => ({
             ...prev,
             dropTargetId: targetId,
             dropPosition: position
         }));
-    }, [dragState.draggedItemId, dragState.draggedItemType]);
+    }, []);
 
-    const handleDragLeave = useCallback((e: React.DragEvent) => {
-        // Only clear if we're leaving the entire draggable area
-        const relatedTarget = e.relatedTarget as HTMLElement;
-        if (!relatedTarget || !relatedTarget.hasAttribute('draggable')) {
-            setDragState(prev => ({
-                ...prev,
-                dropTargetId: null,
-                dropPosition: null
-            }));
-        }
+    const handleDragLeave = useCallback((_e: React.DragEvent) => {
+        // Clear the drop indicator whenever the pointer leaves a potential target.
+        // The next dragover on the new target will immediately re-establish it,
+        // so flicker is imperceptible but the indicator won't linger on a row
+        // that the pointer has moved away from.
+        setDragState(prev => ({
+            ...prev,
+            dropTargetId: null,
+            dropPosition: null
+        }));
     }, []);
 
     const handleDrop = useCallback((
@@ -89,31 +106,42 @@ export function useDragAndDrop({ onReorder }: UseDragAndDropProps) {
     ) => {
         e.preventDefault();
 
-        if (dragState.draggedItemId && 
-            dragState.draggedItemType === targetType && 
-            dragState.draggedItemId !== targetId &&
-            dragState.dropPosition) {
-            
+        if (dragIdRef.current &&
+            dragTypeRef.current === targetType &&
+            dragIdRef.current !== targetId &&
+            dropPositionRef.current) {
+
             onReorder(
-                dragState.draggedItemId,
+                dragIdRef.current,
                 targetId,
-                dragState.dropPosition,
-                targetType
+                dropPositionRef.current,
+                targetType,
+                dragProjectRef.current ?? undefined
             );
         }
 
+        dragIdRef.current = null;
+        dragTypeRef.current = null;
+        dragProjectRef.current = null;
+        dropPositionRef.current = null;
         setDragState({
             draggedItemId: null,
             draggedItemType: null,
+            draggedProjectName: null,
             dropTargetId: null,
             dropPosition: null
         });
-    }, [dragState, onReorder]);
+    }, [onReorder]);
 
     const handleDragEnd = useCallback(() => {
+        dragIdRef.current = null;
+        dragTypeRef.current = null;
+        dragProjectRef.current = null;
+        dropPositionRef.current = null;
         setDragState({
             draggedItemId: null,
             draggedItemType: null,
+            draggedProjectName: null,
             dropTargetId: null,
             dropPosition: null
         });

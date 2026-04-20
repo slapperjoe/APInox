@@ -83,6 +83,7 @@ impl SoapClient {
     /// * `values` - Field values for the request
     /// * `security` - Optional WS-Security configuration
     /// * `endpoint_override` - Optional endpoint URL (overrides operation.original_endpoint)
+    /// * `content_type_override` - Optional Content-Type header (overrides the SOAP-version default)
     pub async fn execute(
         &self,
         operation: &ServiceOperation,
@@ -90,6 +91,7 @@ impl SoapClient {
         values: std::collections::HashMap<String, String>,
         security: Option<WsSecurityConfig>,
         endpoint_override: Option<String>,
+        content_type_override: Option<&str>,
     ) -> Result<SoapResponse> {
         // Build the SOAP envelope
         let mut builder = EnvelopeBuilder::new(soap_version, operation.clone());
@@ -110,7 +112,8 @@ impl SoapClient {
             .ok_or_else(|| anyhow!("No endpoint specified for operation"))?;
         
         // Prepare headers
-        let content_type = soap_version.content_type();
+        // Use user-supplied Content-Type if provided, otherwise derive from SOAP version
+        let content_type = content_type_override.unwrap_or_else(|| soap_version.content_type());
         let mut request = self.http_client
             .post(&endpoint)
             .header("Content-Type", content_type)
@@ -125,7 +128,7 @@ impl SoapClient {
         // Log all request headers
         log::info!("Sending SOAP request to: {}", endpoint);
         log::debug!("Request headers:");
-        log::debug!("  Content-Type: {}", soap_version.content_type());
+        log::debug!("  Content-Type: {}", content_type);
         if soap_version == SoapVersion::Soap11 {
             log::debug!("  SOAPAction: \"{}\"", operation.action.as_deref().unwrap_or(""));
         }
