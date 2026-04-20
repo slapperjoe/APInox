@@ -112,6 +112,9 @@ pub struct ExecuteSoapRequest {
     pub proxy_url: Option<String>,
     /// User-selected Content-Type from the UI dropdown (overrides the SOAP-version default)
     pub content_type: Option<String>,
+    /// Raw XML body from the request editor; when present, bypasses EnvelopeBuilder entirely
+    #[serde(default)]
+    pub raw_xml: Option<String>,
 }
 
 /// Response from SOAP execution
@@ -201,14 +204,31 @@ pub async fn execute_soap_request(
     let content_type_override: Option<String> = request.content_type
         .filter(|s| !s.is_empty());
 
-    match client.execute(
-        &request.operation,
-        version,
-        request.values,
-        security,
-        request.endpoint,
-        content_type_override.as_deref(),
-    ).await {
+    // If the frontend supplied a raw XML envelope, send it verbatim (bypasses EnvelopeBuilder).
+    let result = if let Some(raw_xml) = request.raw_xml.as_deref().filter(|s| !s.is_empty()) {
+        let endpoint = request.endpoint
+            .or_else(|| request.operation.original_endpoint.clone())
+            .ok_or_else(|| "No endpoint specified for operation".to_string())?;
+        log::info!("Using raw XML from editor (bypassing EnvelopeBuilder)");
+        client.execute_raw(
+            raw_xml,
+            version,
+            &endpoint,
+            request.operation.action.as_deref(),
+            content_type_override.as_deref(),
+        ).await
+    } else {
+        client.execute(
+            &request.operation,
+            version,
+            request.values,
+            security,
+            request.endpoint,
+            content_type_override.as_deref(),
+        ).await
+    };
+
+    match result {
         Ok(response) => {
             let fault = response.fault.as_ref().map(|f| SoapFaultResponse {
                 faultcode: f.faultcode.clone(),
