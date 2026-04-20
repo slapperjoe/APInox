@@ -31,6 +31,7 @@ interface ProjectListProps {
     expandAll: () => void;
     collapseAll: () => void;
     reorderItems: (itemId: string, targetId: string, position: 'before' | 'after', itemType: 'project' | 'folder' | 'interface', projectName?: string) => void;
+    reorderRequests: (projectName: string, ifaceName: string, opName: string, draggedReqId: string, targetReqId: string, position: 'before' | 'after') => void;
 
     // Selection
     selectedProjectName: string | null;
@@ -71,15 +72,23 @@ const ProjectContent = styled(SidebarContent)`
     overflow-y: auto;
 `;
 
-const ProjectRow = styled(OperationItem)<{ $isDragging?: boolean; $dropPosition?: 'before' | 'after' | null }>`
+const ProjectRow = styled(OperationItem)<{ $isDragging?: boolean; $dropPosition?: 'before' | 'after' | null; $draggable?: boolean }>`
     font-weight: 600;
     font-size: 0.98em;
-    padding-left: 5px;
+    padding-left: 18px;
     padding-top: 3px;
     padding-bottom: 3px;
-    cursor: pointer;
+    cursor: ${props => props.$draggable ? 'grab' : 'pointer'};
     opacity: ${props => props.$isDragging ? 0.5 : 1};
     position: relative;
+
+    &:active {
+        cursor: ${props => props.$draggable ? 'grabbing' : 'pointer'};
+    }
+
+    &:hover .project-drag-handle {
+        opacity: 0.4;
+    }
     
     ${props => props.$dropPosition === 'before' && `
         &::before {
@@ -106,33 +115,27 @@ const ProjectRow = styled(OperationItem)<{ $isDragging?: boolean; $dropPosition?
     `}
 `;
 
-const DragHandle = styled.div<{ $visible: boolean }>`
-    display: ${props => props.$visible ? 'flex' : 'none'};
+const DragHandle = styled.div`
+    display: flex;
     align-items: center;
     justify-content: center;
-    cursor: grab;
     color: var(--apinox-foreground);
-    opacity: 0.5;
+    opacity: 0;
+    pointer-events: none;
     position: absolute;
-    left: -18px;
+    left: 2px;
     top: 50%;
     transform: translateY(-50%);
-    width: 16px;
-    height: 100%;
-    
-    &:hover {
-        opacity: 0.8;
-    }
-    
-    &:active {
-        cursor: grabbing;
-    }
+    width: 14px;
+    transition: opacity 0.1s;
 `;
 
 const ProjectToggle = styled.span`
     cursor: pointer;
     display: flex;
     align-items: center;
+    position: relative;
+    z-index: 1;
 `;
 
 const RenameInput = styled.input`
@@ -185,6 +188,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     expandAll,
     collapseAll,
     reorderItems,
+    reorderRequests,
     setSelectedProjectName,
     selectedProjectName,
     setSelectedInterface,
@@ -472,6 +476,10 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                                     $active={isProjectActive}
                                     $isDragging={isDragging}
                                     $dropPosition={dropPosition}
+                                    $draggable={!isReadOnly && !isRenaming}
+                                    draggable={!isReadOnly && !isRenaming}
+                                    onDragStart={(!isReadOnly && !isRenaming) ? (e) => handleDragStart(e, projId, 'project') : undefined}
+                                    onDragEnd={(!isReadOnly && !isRenaming) ? handleDragEnd : undefined}
                                     onDragOver={(e) => handleDragOver(e, projId, 'project')}
                                     onDragLeave={handleDragLeave}
                                     onDrop={(e) => handleDrop(e, projId, 'project')}
@@ -484,17 +492,8 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                                     }}
                                     onContextMenu={(e) => handleLocalContextMenu(e, 'project', proj)}
                                 >
-                                    {!isReadOnly && !isRenaming && isProjectActive && (
-                                        <DragHandle
-                                            $visible={true}
-                                            draggable
-                                            onDragStart={(e) => {
-                                                e.stopPropagation();
-                                                handleDragStart(e, projId, 'project');
-                                            }}
-                                            onDragEnd={handleDragEnd}
-                                            onClick={(e) => e.stopPropagation()}
-                                        >
+                                    {!isReadOnly && !isRenaming && (
+                                        <DragHandle className="project-drag-handle">
                                             <GripVertical size={14} />
                                         </DragHandle>
                                     )}
@@ -642,6 +641,9 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                                             onDragLeave={handleDragLeave}
                                             onDrop={(e, itemId, itemType) => handleDrop(e, itemId, itemType)}
                                             onDragEnd={handleDragEnd}
+                                            onReorderRequests={(ifaceName, opName, draggedReqId, targetReqId, position) =>
+                                                reorderRequests(proj.name, ifaceName, opName, draggedReqId, targetReqId, position)
+                                            }
                                         />
 
                                         {/* Folders */}

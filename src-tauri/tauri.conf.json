@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "APInox",
-  "version": "0.19.190",
+  "version": "0.19.198",
   "identifier": "app.apinox.dev1",
   "build": {
     "frontendDist": "webview/dist",
@@ -21,7 +21,8 @@
         "transparent": false,
         "visible": false,
         "titleBarStyle": "Overlay",
-        "hiddenTitle": true
+        "hiddenTitle": true,
+        "dragDropEnabled": false
       },
       {
         "label": "splashscreen",

@@ -55,7 +55,7 @@ export const Sidebar: React.FC = () => {
     } = useSidebarContext();
 
     // Destructure for passing to legacy children (can be cleaned up later by moving groups down)
-    const { projects, savedProjects, loadProject, saveProject, onUpdateProject, closeProject, onAddProject, toggleProjectExpand, toggleInterfaceExpand, toggleOperationExpand, expandAll, collapseAll, reorderItems, onDeleteInterface, onDeleteOperation, onAddFolder, onAddRequestToFolder, onDeleteFolder, onToggleFolderExpand, onRefreshInterface, onExportWorkspace, onBulkImport, onImportSoapUI } = projectProps;
+    const { projects, savedProjects, loadProject, saveProject, onUpdateProject, closeProject, onAddProject, toggleProjectExpand, toggleInterfaceExpand, toggleOperationExpand, expandAll, collapseAll, reorderItems, reorderRequests, onDeleteInterface, onDeleteOperation, onAddFolder, onAddRequestToFolder, onDeleteFolder, onToggleFolderExpand, onRefreshInterface, onExportWorkspace, onBulkImport, onImportSoapUI } = projectProps;
     const { exploredInterfaces, addToProject, addAllToProject, clearExplorer, removeFromExplorer, toggleExploredInterface, toggleExploredOperation } = explorerProps;
 
     const {
@@ -172,6 +172,7 @@ export const Sidebar: React.FC = () => {
                         expandAll={expandAll}
                         collapseAll={collapseAll}
                         reorderItems={reorderItems}
+                        reorderRequests={reorderRequests}
 
                         selectedProjectName={selectedProjectName}
                         setSelectedProjectName={setSelectedProjectName}
