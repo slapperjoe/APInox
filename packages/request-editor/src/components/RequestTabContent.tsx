@@ -186,6 +186,7 @@ export const RequestTabContent: React.FC<RequestTabContentProps> = ({
         <HeadersPanel
           headers={request.headers || {}}
           onChange={(headers) => onUpdateRequest({ ...request, headers })}
+          contentType={request.contentType}
         />
       );
 

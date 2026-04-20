@@ -5,11 +5,41 @@ import { ApiInterface, ApiOperation, ApiRequest, ApinoxProject } from '@shared/m
 import { HeaderButton, OperationItem, RequestItem } from './shared/SidebarStyles';
 import { ICON_COLORS } from '../../styles/colors';
 
+const DragHandle = styled.div`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    color: var(--apinox-foreground);
+    opacity: 0;
+    pointer-events: none;
+    position: absolute;
+    left: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 100%;
+    transition: opacity 0.1s;
+    
+    &:hover {
+        opacity: 0.8;
+    }
+    
+    &:active {
+        cursor: grabbing;
+    }
+`;
+
 const InterfaceRow = styled(OperationItem)<{ $isDragging?: boolean; $dropPosition?: 'before' | 'after' | null }>`
     cursor: pointer;
     opacity: ${props => props.$isDragging ? 0.5 : 1};
     position: relative;
     padding-left: 20px;
+
+    &:hover ${DragHandle} {
+        opacity: 0.5;
+        pointer-events: auto;
+    }
     
     ${props => props.$dropPosition === 'before' && `
         &::before {
@@ -34,29 +64,6 @@ const InterfaceRow = styled(OperationItem)<{ $isDragging?: boolean; $dropPositio
             background: var(--apinox-focusBorder, #007ACC);
         }
     `}
-`;
-
-const DragHandle = styled.div<{ $visible: boolean }>`
-    display: ${props => props.$visible ? 'flex' : 'none'};
-    align-items: center;
-    justify-content: center;
-    cursor: grab;
-    color: var(--apinox-foreground);
-    opacity: 0.5;
-    position: absolute;
-    left: 2px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 16px;
-    height: 100%;
-    
-    &:hover {
-        opacity: 0.8;
-    }
-    
-    &:active {
-        cursor: grabbing;
-    }
 `;
 
 const SoapVersionBadge = styled.span`
@@ -85,6 +92,7 @@ const RenameInput = styled.input`
 interface DragState {
     draggedItemId: string | null;
     draggedItemType: 'project' | 'folder' | 'interface' | null;
+    draggedProjectName?: string | null;
     dropTargetId: string | null;
     dropPosition: 'before' | 'after' | null;
 }
@@ -134,7 +142,7 @@ interface ServiceTreeProps {
     // Drag and drop props
     projectName?: string;
     dragState?: DragState;
-    onDragStart?: (e: React.DragEvent, itemId: string, itemType: 'interface') => void;
+    onDragStart?: (e: React.DragEvent, itemId: string, itemType: 'interface', projectName?: string) => void;
     onDragOver?: (e: React.DragEvent, itemId: string, itemType: 'interface') => void;
     onDragLeave?: (e: React.DragEvent) => void;
     onDrop?: (e: React.DragEvent, itemId: string, itemType: 'interface') => void;
@@ -170,7 +178,7 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
     onRenameSubmit,
     onRenameCancel,
     
-    // projectName, // Unused
+    projectName,
     dragState,
     onDragStart,
     onDragOver,
@@ -187,7 +195,7 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
                 const dropPosition = isDropTarget ? dragState?.dropPosition : null;
                 const isRenaming = renameId === ifaceId && renameType === 'interface';
                 const isSelected = selectedInterface?.id && iface.id ? selectedInterface.id === iface.id : selectedInterface?.name === iface.name;
-                const showHandle = !isExplorer && !isRenaming && isSelected;
+                const showHandle = !isExplorer && !isRenaming && !!onDragStart && !!onDragEnd;
                 
                 return (
                 <div key={i}>
@@ -201,13 +209,12 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
                         onDragLeave={onDragLeave}
                         onDrop={onDrop && !isExplorer ? (e) => onDrop(e, ifaceId, 'interface') : undefined}
                     >
-                        {showHandle && onDragStart && onDragEnd && (
+                        {showHandle && (
                             <DragHandle
-                                $visible={true}
                                 draggable
                                 onDragStart={(e) => {
                                     e.stopPropagation();
-                                    onDragStart(e, ifaceId, 'interface');
+                                    onDragStart!(e, ifaceId, 'interface', projectName);
                                 }}
                                 onDragEnd={onDragEnd}
                                 onClick={(e) => e.stopPropagation()}

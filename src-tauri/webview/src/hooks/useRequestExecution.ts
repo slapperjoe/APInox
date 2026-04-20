@@ -221,7 +221,6 @@ export function useRequestExecution({
                                             } else if (ext.defaultValue) {
                                                 // Extraction returned null, use default
                                                 contextVariables[ext.variable] = ext.defaultValue;
-                                            } else {
                                             }
                                         } catch (e) {
                                             console.warn('[App] Extractor failed for variable ' + ext.variable, e);

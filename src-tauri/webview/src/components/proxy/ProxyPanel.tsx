@@ -11,9 +11,10 @@ type ProxyTab = 'traffic' | 'breakpoints';
 
 interface ProxyPanelProps {
   onNavigateTo?: (view: string) => void;
+  onAddToApinoxProject?: (log: TrafficLog) => void;
 }
 
-export function ProxyPanel({ onNavigateTo }: ProxyPanelProps) {
+export function ProxyPanel({ onNavigateTo, onAddToApinoxProject }: ProxyPanelProps) {
   const [activeTab, setActiveTab] = useState<ProxyTab>('traffic');
   const [logs, setLogs] = useState<TrafficLog[]>([]);
   const [selectedLog, setSelectedLog] = useState<TrafficLog | null>(null);
@@ -99,6 +100,7 @@ export function ProxyPanel({ onNavigateTo }: ProxyPanelProps) {
                 onCreateReplaceRule={handleCreateReplaceRule}
                 onCreateBreakpoint={handleCreateBreakpoint}
                 onClearTraffic={handleClearTraffic}
+                onAddToApinoxProject={onAddToApinoxProject}
               />
             </div>
             {selectedLog && (

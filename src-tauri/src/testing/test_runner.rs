@@ -254,6 +254,7 @@ impl TestRunner {
             resolved_values,
             ws_security,
             endpoint.map(|e| self.replace_variables(e)),
+            None, // use SOAP-version default content type
         ).await?;
         
         let duration_ms = start.elapsed().as_millis() as u64;

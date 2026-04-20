@@ -10,6 +10,8 @@ import { WorkspaceLayout } from './WorkspaceLayout';
 import { WorkspaceContext } from '../contexts/WorkspaceContext';
 import { SidebarContext } from '../contexts/SidebarContext';
 import { ProxyPanel } from './proxy/ProxyPanel';
+import { AddToProjectDialog } from './proxy/AddToProjectDialog';
+import type { TrafficLog } from './proxy/TrafficViewer';
 import { RulesAndMockPage } from './proxy/RulesAndMockPage';
 import { FileWatcherPage } from './proxy/FileWatcherPage';
 import { HelpModal } from './HelpModal';
@@ -292,6 +294,54 @@ const MainContent: React.FC = () => {
 
     // Bulk Import Modal State
     const [showBulkImportModal, setShowBulkImportModal] = useState(false);
+
+    // Add-traffic-to-project dialog state
+    const [addTrafficLog, setAddTrafficLog] = useState<TrafficLog | null>(null);
+
+    const handleAddTrafficToProject = useCallback((log: TrafficLog) => {
+        setAddTrafficLog(log);
+    }, []);
+
+    const handleConfirmAddTrafficToProject = useCallback((
+        projectName: string,
+        interfaceName: string,
+        operationName: string,
+        requestName: string,
+    ) => {
+        if (!addTrafficLog) return;
+        const log = addTrafficLog;
+        setAddTrafficLog(null);
+
+        setProjects(prev => prev.map(p => {
+            if (p.name !== projectName) return p;
+            const newInterfaces = p.interfaces.map(iface => {
+                if (iface.name !== interfaceName) return iface;
+                const newOps = iface.operations.map(op => {
+                    if (op.name !== operationName) return op;
+                    const contentType = log.requestHeaders?.['Content-Type']
+                        || log.requestHeaders?.['content-type']
+                        || (iface.soapVersion === '1.2' ? 'application/soap+xml' : 'text/xml; charset=utf-8');
+                    const newReq: import('@shared/models').ApiRequest = {
+                        id: crypto.randomUUID(),
+                        name: requestName,
+                        request: log.requestBody || '',
+                        endpoint: log.url,
+                        method: (log.method as any) || 'POST',
+                        contentType,
+                        headers: { ...log.requestHeaders },
+                        requestType: 'soap',
+                        bodyType: 'xml',
+                        dirty: true,
+                    };
+                    return { ...op, requests: [...op.requests, newReq], expanded: true };
+                });
+                return { ...iface, operations: newOps };
+            });
+            const updated = { ...p, interfaces: newInterfaces, dirty: true };
+            setTimeout(() => saveProject(updated), 0);
+            return updated;
+        }));
+    }, [addTrafficLog, setProjects, saveProject]);
 
 
 
@@ -1488,6 +1538,7 @@ const MainContent: React.FC = () => {
             {activeView === SidebarView.PROXY && (
                 <ProxyPanel
                     onNavigateTo={(view) => handleSetActiveViewWrapper(view as SidebarView)}
+                    onAddToApinoxProject={handleAddTrafficToProject}
                 />
             )}
             {activeView === SidebarView.MOCK && (
@@ -1575,6 +1626,16 @@ const MainContent: React.FC = () => {
                     <DebugModal
                         isOpen={showDebugModal}
                         onClose={() => setShowDebugModal(false)}
+                    />
+                )
+            }
+            {
+                addTrafficLog && (
+                    <AddToProjectDialog
+                        log={addTrafficLog}
+                        projects={projects}
+                        onConfirm={handleConfirmAddTrafficToProject}
+                        onClose={() => setAddTrafficLog(null)}
                     />
                 )
             }

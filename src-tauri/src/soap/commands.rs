@@ -110,6 +110,8 @@ pub struct ExecuteSoapRequest {
     pub password_type: Option<String>, // "text" or "digest"
     pub add_timestamp: Option<bool>,
     pub proxy_url: Option<String>,
+    /// User-selected Content-Type from the UI dropdown (overrides the SOAP-version default)
+    pub content_type: Option<String>,
 }
 
 /// Response from SOAP execution
@@ -195,12 +197,17 @@ pub async fn execute_soap_request(
         None => SoapClient::new(),
     };
     
+    // Resolve the Content-Type: prefer the user-selected value, fall back to SOAP-version default
+    let content_type_override: Option<String> = request.content_type
+        .filter(|s| !s.is_empty());
+
     match client.execute(
         &request.operation,
         version,
         request.values,
         security,
         request.endpoint,
+        content_type_override.as_deref(),
     ).await {
         Ok(response) => {
             let fault = response.fault.as_ref().map(|f| SoapFaultResponse {
