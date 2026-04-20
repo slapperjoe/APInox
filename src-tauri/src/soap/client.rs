@@ -166,6 +166,63 @@ impl SoapClient {
             raw_xml,
         })
     }
+
+    /// Execute a SOAP request using a raw, pre-built XML envelope from the editor.
+    ///
+    /// All headers (Content-Type, SOAPAction) are derived the same way as `execute`,
+    /// but the envelope is sent verbatim instead of being rebuilt by `EnvelopeBuilder`.
+    pub async fn execute_raw(
+        &self,
+        raw_envelope: &str,
+        soap_version: SoapVersion,
+        endpoint: &str,
+        soap_action: Option<&str>,
+        content_type_override: Option<&str>,
+    ) -> Result<SoapResponse> {
+        let content_type = content_type_override.unwrap_or_else(|| soap_version.content_type());
+
+        let mut request = self.http_client
+            .post(endpoint)
+            .header("Content-Type", content_type)
+            .body(raw_envelope.to_string());
+
+        if soap_version == SoapVersion::Soap11 {
+            let action = soap_action.unwrap_or("");
+            request = request.header("SOAPAction", format!("\"{}\"", action));
+        }
+
+        log::info!("Sending raw SOAP request to: {}", endpoint);
+        log::debug!("  Content-Type: {}", content_type);
+        if soap_version == SoapVersion::Soap11 {
+            log::debug!("  SOAPAction: \"{}\"", soap_action.unwrap_or(""));
+        }
+        log::info!("Request body:\n{}", raw_envelope);
+
+        let response = request.send().await?;
+
+        let status_code = response.status().as_u16();
+        let status_text = response.status().canonical_reason().unwrap_or("Unknown");
+
+        let headers: Vec<(String, String)> = response.headers()
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or("").to_string()))
+            .collect();
+
+        log::info!("Response: {} {}", status_code, status_text);
+
+        let raw_xml = response.text().await?;
+        log::info!("Response body:\n{}", raw_xml);
+
+        let (body, fault) = parse_soap_response(&raw_xml)?;
+
+        Ok(SoapResponse {
+            status_code,
+            headers,
+            body,
+            fault,
+            raw_xml,
+        })
+    }
 }
 
 impl Default for SoapClient {
