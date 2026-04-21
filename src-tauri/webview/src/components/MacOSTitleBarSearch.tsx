@@ -23,6 +23,12 @@ const SearchBarContainer = styled.div`
   pointer-events: none;
   padding: 0 16px 0 78px;  /* Left padding for traffic lights */
   -webkit-app-region: drag;  /* Enable window dragging */
+
+  /* In narrow mode the hamburger button appears at left:80px (after traffic lights).
+     Increase left padding so the search bar content doesn't hide behind it. */
+  @media (max-width: 899px) {
+    padding-left: 126px;
+  }
 `;
 
 const AppLogo = styled.div`

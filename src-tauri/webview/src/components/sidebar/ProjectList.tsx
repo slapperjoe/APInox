@@ -11,6 +11,60 @@ import { SaveErrorDialog } from '../SaveErrorDialog';
 import { useDragAndDrop } from '../../hooks/useDragAndDrop';
 import { ExpandCollapseToggle } from '../common/ExpandCollapseToggle';
 import { DropdownMenu } from '../common/DropdownMenu';
+import { PrimaryButton, SecondaryButton } from '../common/Button';
+
+// ---- Cross-interface move confirmation modal ----
+const MoveConfirmOverlay = styled.div`
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+`;
+
+const MoveConfirmDialog = styled.div`
+    background: var(--apinox-editor-background);
+    border: 1px solid var(--apinox-widget-border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    min-width: 360px;
+    max-width: 480px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+`;
+
+const MoveConfirmTitle = styled.h3`
+    margin: 0 0 10px 0;
+    font-size: 1em;
+    font-weight: 600;
+`;
+
+const MoveConfirmBody = styled.p`
+    margin: 0 0 18px 0;
+    font-size: 0.88em;
+    opacity: 0.8;
+    line-height: 1.5;
+`;
+
+const MoveConfirmActions = styled.div`
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+`;
+
+interface PendingCrossMove {
+    projectName: string;
+    srcIfaceName: string;
+    srcOpName: string;
+    draggedReqId: string;
+    draggedReqName: string;
+    targetReqId: string;
+    position: 'before' | 'after';
+    dstIfaceName: string;
+    dstOpName: string;
+    isCrossInterface: boolean;
+}
 
 interface ProjectListProps {
     projects: ApinoxProject[];
@@ -31,7 +85,8 @@ interface ProjectListProps {
     expandAll: () => void;
     collapseAll: () => void;
     reorderItems: (itemId: string, targetId: string, position: 'before' | 'after', itemType: 'project' | 'folder' | 'interface', projectName?: string) => void;
-    reorderRequests: (projectName: string, ifaceName: string, opName: string, draggedReqId: string, targetReqId: string, position: 'before' | 'after') => void;
+    reorderOperations: (projectName: string, ifaceName: string, draggedOpId: string, targetOpId: string, position: 'before' | 'after') => void;
+    reorderRequests: (projectName: string, srcIfaceName: string, srcOpName: string, draggedReqId: string, targetReqId: string, position: 'before' | 'after', dstIfaceName?: string, dstOpName?: string) => void;
 
     // Selection
     selectedProjectName: string | null;
@@ -188,6 +243,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     expandAll,
     collapseAll,
     reorderItems,
+    reorderOperations,
     reorderRequests,
     setSelectedProjectName,
     selectedProjectName,
@@ -219,6 +275,9 @@ export const ProjectList: React.FC<ProjectListProps> = ({
 
     // Save Error Dialog State
     const [errorDialogProject, setErrorDialogProject] = useState<string | null>(null);
+
+    // Cross-interface move confirmation state
+    const [pendingCrossMove, setPendingCrossMove] = useState<PendingCrossMove | null>(null);
 
     // Drag and Drop State
     const { dragState, handleDragStart, handleDragOver, handleDragLeave, handleDrop, handleDragEnd } = useDragAndDrop({
@@ -471,7 +530,11 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                         const dropPosition = isDropTarget ? dragState.dropPosition : null;
 
                         return (
-                            <div key={proj.id || pIdx}>
+                            <div
+                                key={proj.id || pIdx}
+                                onDragOver={(e) => handleDragOver(e, projId, 'project')}
+                                onDrop={(e) => handleDrop(e, projId, 'project')}
+                            >
                                 <ProjectRow
                                     $active={isProjectActive}
                                     $isDragging={isDragging}
@@ -641,9 +704,34 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                                             onDragLeave={handleDragLeave}
                                             onDrop={(e, itemId, itemType) => handleDrop(e, itemId, itemType)}
                                             onDragEnd={handleDragEnd}
-                                            onReorderRequests={(ifaceName, opName, draggedReqId, targetReqId, position) =>
-                                                reorderRequests(proj.name, ifaceName, opName, draggedReqId, targetReqId, position)
-                                            }
+                                            onReorderOperations={(ifaceName, draggedOpId, targetOpId, position) => {
+                                                reorderOperations(proj.name, ifaceName, draggedOpId, targetOpId, position);
+                                            }}
+                                            onReorderRequests={(srcIfaceName, srcOpName, draggedReqId, targetReqId, position, dstIfaceName, dstOpName) => {
+                                                const isCrossInterface = dstIfaceName && dstIfaceName !== srcIfaceName;
+                                                const isCrossOperation = dstOpName && dstOpName !== srcOpName;
+                                                const shouldWarn = isCrossInterface || isCrossOperation;
+                                                if (shouldWarn) {
+                                                    // Find the dragged request name for the confirmation message
+                                                    const srcIface = proj.interfaces.find(i => i.name === srcIfaceName);
+                                                    const srcOp = srcIface?.operations?.find(o => o.name === srcOpName);
+                                                    const draggedReq = srcOp?.requests?.find(r => r.id === draggedReqId);
+                                                    setPendingCrossMove({
+                                                        projectName: proj.name,
+                                                        srcIfaceName,
+                                                        srcOpName,
+                                                        draggedReqId,
+                                                        draggedReqName: draggedReq?.name ?? draggedReqId,
+                                                        targetReqId,
+                                                        position,
+                                                        dstIfaceName: dstIfaceName ?? srcIfaceName,
+                                                        dstOpName: dstOpName ?? srcOpName,
+                                                        isCrossInterface: !!isCrossInterface,
+                                                    });
+                                                } else {
+                                                    reorderRequests(proj.name, srcIfaceName, srcOpName, draggedReqId, targetReqId, position, dstIfaceName, dstOpName);
+                                                }
+                                            }}
                                         />
 
                                         {/* Folders */}
@@ -750,6 +838,34 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                     onDelete={handleDeleteProject}
                     onKeep={handleKeepProject}
                 />
+            )}
+
+            {/* Cross-interface request move confirmation */}
+            {pendingCrossMove && (
+                <MoveConfirmOverlay onClick={() => setPendingCrossMove(null)}>
+                    <MoveConfirmDialog onClick={(e) => e.stopPropagation()}>
+                        <MoveConfirmTitle>
+                            {pendingCrossMove.isCrossInterface
+                                ? 'Move request to a different interface?'
+                                : 'Move request to a different operation?'}
+                        </MoveConfirmTitle>
+                        <MoveConfirmBody>
+                            Move <strong>{pendingCrossMove.draggedReqName}</strong> to{' '}
+                            {pendingCrossMove.isCrossInterface
+                                ? <><strong>{pendingCrossMove.dstIfaceName}</strong> / <strong>{pendingCrossMove.dstOpName}</strong></>
+                                : <><strong>{pendingCrossMove.dstOpName}</strong></>}
+                            ?
+                        </MoveConfirmBody>
+                        <MoveConfirmActions>
+                            <SecondaryButton onClick={() => setPendingCrossMove(null)}>Cancel</SecondaryButton>
+                            <PrimaryButton onClick={() => {
+                                const m = pendingCrossMove;
+                                reorderRequests(m.projectName, m.srcIfaceName, m.srcOpName, m.draggedReqId, m.targetReqId, m.position, m.dstIfaceName, m.dstOpName);
+                                setPendingCrossMove(null);
+                            }}>Move</PrimaryButton>
+                        </MoveConfirmActions>
+                    </MoveConfirmDialog>
+                </MoveConfirmOverlay>
             )}
         </ProjectContainer>
     );

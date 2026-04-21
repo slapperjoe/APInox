@@ -63,14 +63,18 @@ export function useDragAndDrop({ onReorder }: UseDragAndDropProps) {
         targetId: string,
         targetType: 'project' | 'folder' | 'interface'
     ) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-
         // Use refs to avoid stale-closure problems on rapid dragover events
         if (dragIdRef.current === targetId) {
             return;
         }
+
+        // Always allow drop while dragging — the drop event must fire so that bubbled
+        // parent handlers (e.g. outer project div) can catch it when types don't match here.
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+
         if (dragTypeRef.current !== targetType) {
+            // Types don't match at this level — let the event bubble without updating state
             return;
         }
 
@@ -124,12 +128,16 @@ export function useDragAndDrop({ onReorder }: UseDragAndDropProps) {
                 targetType,
                 dragProjectRef.current ?? undefined
             );
+
+            // Only clear refs on a successful (type-matched) drop so that if the event
+            // bubbles to a parent handler with a different type, that handler can still respond.
+            dragIdRef.current = null;
+            dragTypeRef.current = null;
+            dragProjectRef.current = null;
+            dropPositionRef.current = null;
         }
 
-        dragIdRef.current = null;
-        dragTypeRef.current = null;
-        dragProjectRef.current = null;
-        dropPositionRef.current = null;
+        // Always reset visual state
         setDragState({
             draggedItemId: null,
             draggedItemType: null,

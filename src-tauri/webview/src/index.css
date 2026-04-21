@@ -415,7 +415,7 @@ code,
     left: 0;
     width: 40px;
     height: 40px;
-    margin: -2px 0 0 0;
+    margin: -4px 0 0 0;
     padding: 0;
     box-sizing: border-box;
     z-index: 1002;
@@ -436,6 +436,11 @@ code,
     /* Shift TitleBar content right so it clears the 40px hamburger button */
     [data-tauri-drag-region] {
         padding-left: 48px !important;
+    }
+
+    /* On macOS, shift hamburger past traffic lights (~78px) so they don't overlap */
+    body[data-platform="macos"] .narrow-desktop-hamburger {
+        left: 80px;
     }
 }
 
