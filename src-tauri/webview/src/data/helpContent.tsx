@@ -71,8 +71,8 @@ const HELP_SECTIONS_RAW = [
     | Syntax | Source | Example |
     |--------|--------|---------|
     | \`{{myVar}}\` | Active environment (Settings → Environments) | \`{{endpoint_url}}\` |
-    | \`${varName}\` | Chain/test-case extractor variable | \`${customerId}\` |
-    | \`${#TestCase#varName}\` | SoapUI-style test-case variable | \`${#TestCase#token}\` |
+    | \`\${varName}\` | Chain/test-case extractor variable | \`\${customerId}\` |
+    | \`\${#TestCase#varName}\` | SoapUI-style test-case variable | \`\${#TestCase#token}\` |
 
     ### Built-in Dynamic Functions
 
