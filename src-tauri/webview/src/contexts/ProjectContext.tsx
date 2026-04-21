@@ -592,11 +592,23 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
 
     /**
      * Toggles expanded/collapsed state of a project in the sidebar.
+     * When expanding a project, all interfaces are collapsed so the user
+     * can choose which ones to open rather than being overwhelmed by a
+     * fully-expanded tree.
      */
     const toggleProjectExpand = useCallback((name: string) => {
-        setProjects(prev => prev.map(p =>
-            p.name === name ? { ...p, expanded: !p.expanded } : p
-        ));
+        setProjects(prev => prev.map(p => {
+            if (p.name !== name) return p;
+            const expanding = !p.expanded;
+            if (expanding) {
+                return {
+                    ...p,
+                    expanded: true,
+                    interfaces: p.interfaces.map(i => ({ ...i, expanded: false }))
+                };
+            }
+            return { ...p, expanded: false };
+        }));
     }, []);
 
     /**
