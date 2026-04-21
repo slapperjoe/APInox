@@ -357,6 +357,25 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
     setEditorForceUpdateKey(prev => prev + 1);
   }, [editorSettings, onUpdateRequest, request]);
 
+  // Re-format the request body when XML formatting settings change, so the request
+  // editor stays in sync with the response viewer (which already re-renders inline).
+  useEffect(() => {
+    if (activeTab !== 'request' || request.bodyType !== 'xml' || !request.request) return;
+    const current = requestEditorRef.current?.getValue() || request.request;
+    const formatted = formatXml(
+      current,
+      editorSettings.settings.alignAttributes,
+      editorSettings.settings.inlineValues,
+      editorSettings.settings.hideCausality,
+    );
+    if (formatted !== current) {
+      onUpdateRequest({ ...request, request: formatted });
+      setEditorForceUpdateKey(prev => prev + 1);
+    }
+  // Only run when formatting settings change, not on every request or tab change
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editorSettings.settings.alignAttributes, editorSettings.settings.inlineValues, editorSettings.settings.hideCausality]);
+
   return (
     <S.RequestWorkspaceContainer>
       {/* Breadcrumb */}

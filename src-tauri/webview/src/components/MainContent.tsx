@@ -307,6 +307,7 @@ const MainContent: React.FC = () => {
         projectName: string,
         destination: AddToProjectDestination,
         requestName: string,
+        includeAllHeaders: boolean,
     ) => {
         if (!addTrafficLog) return;
         const log = addTrafficLog;
@@ -315,15 +316,33 @@ const MainContent: React.FC = () => {
         setProjects(prev => prev.map(p => {
             if (p.name !== projectName) return p;
 
+            // Extract the bare Content-Type (e.g. "application/soap+xml") from the raw header value.
+            // SOAP Content-Type headers often carry extra directives like
+            //   application/soap+xml; charset=utf-8; action="..."
+            // We want to preserve charset but drop action= and other non-standard params so
+            // they don't bleed into the request's Content-Type field.
             const rawContentType = log.requestHeaders?.['Content-Type'] || log.requestHeaders?.['content-type'] || '';
+            const parsedContentType = (() => {
+                if (!rawContentType) return 'text/xml; charset=utf-8';
+                const parts = rawContentType.split(';').map((s: string) => s.trim());
+                const mimeType = parts[0] || 'text/xml';
+                const charset = parts.slice(1).find((p: string) => p.toLowerCase().startsWith('charset='));
+                return charset ? `${mimeType}; ${charset}` : mimeType;
+            })();
+
+            // Build headers: either everything from the traffic log, or just Content-Type.
+            const derivedHeaders: Record<string, string> = includeAllHeaders
+                ? { ...log.requestHeaders }
+                : {};
+
             const newReq: import('@shared/models').ApiRequest = {
                 id: crypto.randomUUID(),
                 name: requestName,
                 request: log.requestBody || '',
                 endpoint: log.url,
                 method: (log.method as any) || 'POST',
-                contentType: rawContentType || 'text/xml; charset=utf-8',
-                headers: { ...log.requestHeaders },
+                contentType: parsedContentType,
+                headers: derivedHeaders,
                 dirty: true,
             };
 
@@ -331,7 +350,7 @@ const MainContent: React.FC = () => {
                 const { interfaceName, operationName } = destination;
                 const newInterfaces = p.interfaces.map(iface => {
                     if (iface.name !== interfaceName) return iface;
-                    const soapContentType = rawContentType
+                    const soapContentType = parsedContentType
                         || (iface.soapVersion === '1.2' ? 'application/soap+xml' : 'text/xml; charset=utf-8');
                     const newOps = iface.operations.map(op => {
                         if (op.name !== operationName) return op;
