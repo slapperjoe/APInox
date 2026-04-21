@@ -3,6 +3,7 @@ use std::collections::HashMap;
 
 use crate::soap::{EnvelopeBuilder, SoapVersion, SoapClient, WsSecurityConfig, UsernameToken, PasswordType};
 use crate::parsers::wsdl::types::ServiceOperation;
+use crate::utils::WildcardProcessor;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -115,6 +116,12 @@ pub struct ExecuteSoapRequest {
     /// Raw XML body from the request editor; when present, bypasses EnvelopeBuilder entirely
     #[serde(default)]
     pub raw_xml: Option<String>,
+    /// Active environment variables (e.g. from Settings → Environments)
+    #[serde(default)]
+    pub env_variables: HashMap<String, String>,
+    /// Context/workflow variables (chain extractors, test-case variables)
+    #[serde(default)]
+    pub context_variables: HashMap<String, String>,
 }
 
 /// Response from SOAP execution
@@ -209,11 +216,30 @@ pub async fn execute_soap_request(
         let endpoint = request.endpoint
             .or_else(|| request.operation.original_endpoint.clone())
             .ok_or_else(|| "No endpoint specified for operation".to_string())?;
+
+        // Apply wildcard/variable substitution to the raw XML and endpoint before sending.
+        let context_vars = if request.context_variables.is_empty() {
+            None
+        } else {
+            Some(&request.context_variables)
+        };
+        let processed_xml = WildcardProcessor::process(
+            raw_xml,
+            &request.env_variables,
+            &HashMap::new(),
+            context_vars,
+        );
+        let processed_endpoint = WildcardProcessor::process(
+            &endpoint,
+            &request.env_variables,
+            &HashMap::new(),
+            context_vars,
+        );
         log::info!("Using raw XML from editor (bypassing EnvelopeBuilder)");
         client.execute_raw(
-            raw_xml,
+            &processed_xml,
             version,
-            &endpoint,
+            &processed_endpoint,
             request.operation.action.as_deref(),
             content_type_override.as_deref(),
         ).await

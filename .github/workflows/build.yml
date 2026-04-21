@@ -15,6 +15,11 @@ on:
         description: 'Build Android'
         type: boolean
         default: false
+      build_arch:
+        description: 'Build Arch Linux'
+        type: boolean
+        default: false
+        
 
 env:
   TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -110,6 +115,7 @@ jobs:
           if-no-files-found: error
 
   build-arch:
+    if: github.event_name != 'workflow_dispatch' || inputs.build_arch == true
     runs-on: ubuntu-latest
     permissions:
       contents: read

@@ -64,7 +64,34 @@ const HELP_SECTIONS_RAW = [
 
     ## Variables & Environments
 
-    Use \`{{variable}}\` syntax in the body or headers. Switch environments from the sidebar ENV selector. Manage environments in **Settings → Environments**.
+    Use \`{{variable}}\` syntax in the body or headers to inject values at send time. Switch environments from the sidebar ENV selector. Manage environments in **Settings → Environments**.
+
+    ### Environment & Custom Variables
+
+    | Syntax | Source | Example |
+    |--------|--------|---------|
+    | \`{{myVar}}\` | Active environment (Settings → Environments) | \`{{endpoint_url}}\` |
+    | \`${varName}\` | Chain/test-case extractor variable | \`${customerId}\` |
+    | \`${#TestCase#varName}\` | SoapUI-style test-case variable | \`${#TestCase#token}\` |
+
+    ### Built-in Dynamic Functions
+
+    These are replaced automatically at send time — no environment setup required:
+
+    | Token | Output | Example |
+    |-------|--------|---------|
+    | \`{{now}}\` | Current date/time (ISO 8601) | \`2026-04-21T10:30:00Z\` |
+    | \`{{now+1d}}\` / \`{{now-2m}}\` | Date math — d=days, m=months, y=years | \`2026-04-22T10:30:00Z\` |
+    | \`{{epoch}}\` | Unix timestamp (seconds) | \`1745234400\` |
+    | \`{{uuid}}\` / \`{{newguid}}\` | Random UUID v4 | \`550e8400-e29b-41d4-a716-....\` |
+    | \`{{randomInt(1,100)}}\` | Random integer between min and max | \`42\` |
+    | \`{{lorem(5)}}\` | 5 words of Lorem Ipsum | \`lorem ipsum dolor sit amet\` |
+    | \`{{name}}\` | Random full name | \`Jane Smith\` |
+    | \`{{country}}\` | Random country | \`Australia\` |
+    | \`{{state}}\` | Random US state | \`California\` |
+    | \`{{url}}\` / \`{{env}}\` | Active environment endpoint URL | \`https://api.example.com\` |
+
+    The Monaco editor highlights \`{{...}}\` tokens — green if defined/built-in, amber if not found in the active environment.
 
     ## User Scripts
 

@@ -546,13 +546,20 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
         if (message.command === FrontendCommand.ExecuteRequest && message.xml) {
             debugLog('[Bridge] Routing SOAP ExecuteRequest to Rust backend');
 
-            // Read proxy setting from persisted config
+            // Read proxy setting and active environment variables from persisted config
             let proxyUrl: string | null = null;
+            let envVariables: Record<string, string> = {};
             try {
                 const cfg: any = await tauriInvoke('get_settings', {});
                 proxyUrl = cfg?.config?.network?.proxy || cfg?.network?.proxy || null;
+                // Resolve the active environment's variable map
+                const activeEnv: string | undefined = cfg?.config?.activeEnvironment || cfg?.activeEnvironment;
+                const envMap = cfg?.config?.environments || cfg?.environments || {};
+                if (activeEnv && envMap[activeEnv] && typeof envMap[activeEnv] === 'object') {
+                    envVariables = envMap[activeEnv] as Record<string, string>;
+                }
             } catch {
-                // non-fatal — proceed without proxy
+                // non-fatal — proceed without proxy/env
             }
             
             // Build request from message parameters
@@ -578,6 +585,8 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                 rawXml: message.xml, // Send raw XML body
                 contentType: message.contentType || null, // User-selected Content-Type from dropdown
                 proxyUrl: proxyUrl || null,
+                envVariables,                                         // Active environment variables for {{token}} substitution
+                contextVariables: message.contextVariables || {},     // Chain/test-case variables for ${var} substitution
             };
 
             const startTime = Date.now();
