@@ -73,6 +73,16 @@ export const ToolbarButton = styled.button<{ $variant?: 'primary' | 'danger' | '
 export const RunButton = styled(ToolbarButton)``;
 export const CancelButton = styled(ToolbarButton)``;
 
+export const ElapsedTime = styled.span`
+  font-size: 11px;
+  font-family: var(--apinox-editor-font-family, monospace);
+  color: var(--apinox-charts-orange, #ff9800);
+  min-width: 44px;
+  text-align: right;
+  user-select: none;
+  flex-shrink: 0;
+`;
+
 // Variables Dropdown
 export const VariablesWrapper = styled.div`
   position: relative;

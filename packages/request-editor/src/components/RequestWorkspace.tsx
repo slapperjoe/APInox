@@ -166,6 +166,8 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
   const [currentXPath, setCurrentXPath] = useState<string | null>(null);
   const [editorForceUpdateKey, setEditorForceUpdateKey] = useState(0);
   const [installedFonts, setInstalledFonts] = useState<MonoFont[]>([]);
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Refs
   const urlInputRef = useRef<MonacoSingleLineInputHandle>(null);
@@ -213,6 +215,27 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
     const fonts = getInstalledFonts();
     setInstalledFonts(fonts);
   }, []);
+
+  // Elapsed request timer — runs while loading is true, resets on each new request
+  useEffect(() => {
+    if (loading) {
+      setElapsedMs(0);
+      timerRef.current = setInterval(() => {
+        setElapsedMs(prev => prev + 100);
+      }, 100);
+    } else {
+      if (timerRef.current !== null) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+    return () => {
+      if (timerRef.current !== null) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [loading]);
 
   // Handle response selection for XPath generation
   useEffect(() => {
@@ -438,10 +461,13 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
 
         {/* Run Button - Show for all requests including readonly */}
         {loading ? (
-          <S.CancelButton $variant="danger" onClick={onCancel}>
-            <X />
-            Cancel
-          </S.CancelButton>
+          <>
+            <S.ElapsedTime>{(elapsedMs / 1000).toFixed(1)}s</S.ElapsedTime>
+            <S.CancelButton $variant="danger" onClick={onCancel}>
+              <X />
+              Cancel
+            </S.CancelButton>
+          </>
         ) : (
           <S.RunButton $variant="primary" onClick={onExecute}>
             <Play />
