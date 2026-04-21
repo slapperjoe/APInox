@@ -40,6 +40,11 @@ function saveEditorSettings(settings: EditorSettings): void {
 export default function App() {
     // TEMPORARY: Hardcode macOS detection since Tauri API isn't loading properly
     const [platformOS, setPlatformOS] = useState<'macos' | 'windows' | 'linux' | 'android' | 'ios' | 'unknown'>('macos');
+
+    // Keep body[data-platform] in sync so CSS can target platform-specific rules immediately.
+    useEffect(() => {
+        document.body.dataset.platform = platformOS;
+    }, [platformOS]);
     
     useEffect(() => {
         async function detectPlatform() {

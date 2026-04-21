@@ -101,8 +101,11 @@ interface ProjectContextValue {
     /** Reorders items within their parent context */
     reorderItems: (itemId: string, targetId: string, position: 'before' | 'after', itemType: 'project' | 'folder' | 'interface', projectName?: string) => void;
 
-    /** Reorders requests within an operation */
-    reorderRequests: (projectName: string, ifaceName: string, opName: string, draggedReqId: string, targetReqId: string, position: 'before' | 'after') => void;
+    /** Reorders operations within a single interface */
+    reorderOperations: (projectName: string, ifaceName: string, draggedOpId: string, targetOpId: string, position: 'before' | 'after') => void;
+
+    /** Reorders or moves requests — within the same operation or across operations/interfaces */
+    reorderRequests: (projectName: string, srcIfaceName: string, srcOpName: string, draggedReqId: string, targetReqId: string, position: 'before' | 'after', dstIfaceName?: string, dstOpName?: string) => void;
 
     // -------------------------------------------------------------------------
     // EXPANSION HELPERS (for programmatic navigation)
@@ -812,43 +815,124 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
         }
     }, [updateProject]);
 
-    const reorderRequests = useCallback((
+    const reorderOperations = useCallback((
         projectName: string,
         ifaceName: string,
-        opName: string,
-        draggedReqId: string,
-        targetReqId: string,
+        draggedOpId: string,
+        targetOpId: string,
         position: 'before' | 'after'
     ) => {
         updateProject(projectName, project => {
-            const iface = project.interfaces.find(i => i.name === ifaceName);
-            if (!iface) return project;
-            const op = iface.operations?.find(o => o.name === opName);
-            if (!op || !op.requests) return project;
-
-            const arr = [...op.requests];
-            const draggedIndex = arr.findIndex(r => r.id === draggedReqId);
-            const targetIndex = arr.findIndex(r => r.id === targetReqId);
+            const iface = project.interfaces.find(i => i.id === ifaceName || i.name === ifaceName);
+            if (!iface || !iface.operations) return project;
+            const arr = [...iface.operations];
+            const draggedIndex = arr.findIndex(o => o.id === draggedOpId || o.name === draggedOpId);
+            const targetIndex = arr.findIndex(o => o.id === targetOpId || o.name === targetOpId);
             if (draggedIndex === -1 || targetIndex === -1) return project;
-
             const [draggedItem] = arr.splice(draggedIndex, 1);
             const insertAt = draggedIndex < targetIndex
                 ? (position === 'after' ? targetIndex : targetIndex - 1)
                 : (position === 'after' ? targetIndex + 1 : targetIndex);
             arr.splice(Math.max(0, insertAt), 0, draggedItem);
+            return {
+                ...project,
+                interfaces: project.interfaces.map(i =>
+                    (i.id === ifaceName || i.name === ifaceName) ? { ...i, operations: arr } : i
+                )
+            };
+        });
+    }, [updateProject]);
 
-            const newInterfaces = project.interfaces.map(i => {
-                if (i.name !== ifaceName) return i;
+    const reorderRequests = useCallback((
+        projectName: string,
+        srcIfaceName: string,
+        srcOpName: string,
+        draggedReqId: string,
+        targetReqId: string,
+        position: 'before' | 'after',
+        dstIfaceName?: string,
+        dstOpName?: string
+    ) => {
+        const dstIface = dstIfaceName ?? srcIfaceName;
+        const dstOp = dstOpName ?? srcOpName;
+
+        if (dstIface === srcIfaceName && dstOp === srcOpName) {
+            // Same-operation reorder
+            updateProject(projectName, project => {
+                const iface = project.interfaces.find(i => i.name === srcIfaceName);
+                if (!iface) return project;
+                const op = iface.operations?.find(o => o.name === srcOpName);
+                if (!op || !op.requests) return project;
+
+                const arr = [...op.requests];
+                const draggedIndex = arr.findIndex(r => r.id === draggedReqId);
+                const targetIndex = arr.findIndex(r => r.id === targetReqId);
+                if (draggedIndex === -1 || targetIndex === -1) return project;
+
+                const [draggedItem] = arr.splice(draggedIndex, 1);
+                const insertAt = draggedIndex < targetIndex
+                    ? (position === 'after' ? targetIndex : targetIndex - 1)
+                    : (position === 'after' ? targetIndex + 1 : targetIndex);
+                arr.splice(Math.max(0, insertAt), 0, draggedItem);
+
+                const newInterfaces = project.interfaces.map(i => {
+                    if (i.name !== srcIfaceName) return i;
+                    return {
+                        ...i,
+                        operations: (i.operations || []).map(o => {
+                            if (o.name !== srcOpName) return o;
+                            return { ...o, requests: arr };
+                        })
+                    };
+                });
+                return { ...project, interfaces: newInterfaces };
+            });
+        } else {
+            // Cross-operation or cross-interface move
+            updateProject(projectName, project => {
+                let draggedReq: typeof project.interfaces[0]['operations'][0]['requests'][0] | undefined;
+
+                // Step 1: remove from source operation
+                const withRemoved = {
+                    ...project,
+                    interfaces: project.interfaces.map(iface => {
+                        if (iface.name !== srcIfaceName) return iface;
+                        return {
+                            ...iface,
+                            operations: (iface.operations || []).map(op => {
+                                if (op.name !== srcOpName) return op;
+                                const req = (op.requests || []).find(r => r.id === draggedReqId);
+                                if (req) draggedReq = req;
+                                return { ...op, requests: (op.requests || []).filter(r => r.id !== draggedReqId) };
+                            })
+                        };
+                    })
+                };
+
+                if (!draggedReq) return project;
+
+                // Step 2: insert into destination operation
                 return {
-                    ...i,
-                    operations: (i.operations || []).map(o => {
-                        if (o.name !== opName) return o;
-                        return { ...o, requests: arr };
+                    ...withRemoved,
+                    interfaces: withRemoved.interfaces.map(iface => {
+                        if (iface.name !== dstIface) return iface;
+                        return {
+                            ...iface,
+                            operations: (iface.operations || []).map(op => {
+                                if (op.name !== dstOp) return op;
+                                const arr = [...(op.requests || [])];
+                                const targetIdx = arr.findIndex(r => r.id === targetReqId);
+                                const insertAt = targetIdx === -1
+                                    ? arr.length
+                                    : (position === 'after' ? targetIdx + 1 : targetIdx);
+                                arr.splice(insertAt, 0, draggedReq!);
+                                return { ...op, requests: arr };
+                            })
+                        };
                     })
                 };
             });
-            return { ...project, interfaces: newInterfaces };
-        });
+        }
     }, [updateProject]);
 
     /**
@@ -890,6 +974,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
         expandAll,
         collapseAll,
         reorderItems,
+        reorderOperations,
         reorderRequests,
         ensureProjectExpanded,
         ensureInterfaceExpanded,

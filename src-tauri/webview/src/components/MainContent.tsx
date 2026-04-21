@@ -114,6 +114,7 @@ const MainContent: React.FC = () => {
         expandAll,
         collapseAll,
         reorderItems,
+        reorderOperations,
         reorderRequests
     } = useProject();
 
@@ -1345,6 +1346,7 @@ const MainContent: React.FC = () => {
             expandAll,
             collapseAll,
             reorderItems,
+            reorderOperations,
             reorderRequests,
             onDeleteInterface: handleDeleteInterface,
             onDeleteOperation: handleDeleteOperation,

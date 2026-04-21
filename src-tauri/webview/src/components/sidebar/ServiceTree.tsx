@@ -10,7 +10,7 @@ const DragHandle = styled.div`
     align-items: center;
     justify-content: center;
     color: var(--apinox-foreground);
-    opacity: 0;
+    opacity: 0.18;
     pointer-events: none;
     position: absolute;
     left: 2px;
@@ -31,7 +31,7 @@ const InterfaceRow = styled(OperationItem)<{ $isDragging?: boolean; $dropPositio
     }
 
     &:hover ${DragHandle} {
-        opacity: 0.4;
+        opacity: 0.65;
     }
     
     ${props => props.$dropPosition === 'before' && `
@@ -99,6 +99,58 @@ const DraggableRequestItem = styled(RequestItem)<{ $isDragging?: boolean; $dropP
             height: 2px;
             background: var(--apinox-focusBorder, #007ACC);
             z-index: 1;
+        }
+    `}
+    ${props => props.$dropPosition === 'after' && `
+        &::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--apinox-focusBorder, #007ACC);
+            z-index: 1;
+        }
+    `}
+`;
+
+const OperationDragHandle = styled.div`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--apinox-foreground);
+    opacity: 0.18;
+    pointer-events: none;
+    position: absolute;
+    left: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    transition: opacity 0.1s;
+`;
+
+const DraggableOperationItem = styled(OperationItem)<{ $isDragging?: boolean; $dropPosition?: 'before' | 'after' | null; $draggable?: boolean }>`
+    position: relative;
+    padding-left: 20px;
+    cursor: ${props => props.$draggable ? 'grab' : 'pointer'};
+    opacity: ${props => props.$isDragging ? 0.5 : 1};
+
+    &:active { cursor: ${props => props.$draggable ? 'grabbing' : 'pointer'}; }
+
+    &:hover ${OperationDragHandle} {
+        opacity: 0.65;
+    }
+
+    ${props => props.$dropPosition === 'before' && `
+        &::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--apinox-focusBorder, #007ACC);
         }
     `}
     ${props => props.$dropPosition === 'after' && `
@@ -195,7 +247,8 @@ interface ServiceTreeProps {
     onDragLeave?: (e: React.DragEvent) => void;
     onDrop?: (e: React.DragEvent, itemId: string, itemType: 'interface') => void;
     onDragEnd?: () => void;
-    onReorderRequests?: (ifaceName: string, opName: string, draggedReqId: string, targetReqId: string, position: 'before' | 'after') => void;
+    onReorderRequests?: (ifaceName: string, opName: string, draggedReqId: string, targetReqId: string, position: 'before' | 'after', dstIfaceName?: string, dstOpName?: string) => void;
+    onReorderOperations?: (ifaceName: string, draggedOpId: string, targetOpId: string, position: 'before' | 'after') => void;
 }
 
 export const ServiceTree: React.FC<ServiceTreeProps> = ({
@@ -235,8 +288,66 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
     onDrop,
     onDragEnd,
     onReorderRequests,
+    onReorderOperations,
 }) => {
-    // Local drag state for request reordering within operations
+    // ---- Operation drag state ----
+    const opDragIdRef = useRef<string | null>(null);
+    const opDragIfaceRef = useRef<string | null>(null);
+    const [opDragState, setOpDragState] = useState<{
+        draggedId: string | null;
+        dropTargetId: string | null;
+        dropPosition: 'before' | 'after' | null;
+    }>({ draggedId: null, dropTargetId: null, dropPosition: null });
+
+    function handleOpDragStart(e: React.DragEvent, opId: string, ifaceName: string) {
+        e.stopPropagation();
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', opId);
+        opDragIdRef.current = opId;
+        opDragIfaceRef.current = ifaceName;
+        setOpDragState({ draggedId: opId, dropTargetId: null, dropPosition: null });
+    }
+
+    function handleOpDragOver(e: React.DragEvent, targetId: string, ifaceName: string) {
+        if (!opDragIdRef.current) return; // not dragging an operation
+        if (opDragIfaceRef.current !== ifaceName) return; // cross-interface not allowed
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = 'move';
+        if (opDragIdRef.current === targetId) return;
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        const position: 'before' | 'after' = e.clientY < rect.top + rect.height / 2 ? 'before' : 'after';
+        setOpDragState(prev => ({ ...prev, dropTargetId: targetId, dropPosition: position }));
+    }
+
+    function handleOpDragLeave(e: React.DragEvent) {
+        const rel = e.relatedTarget as Node | null;
+        if (rel && (e.currentTarget as HTMLElement).contains(rel)) return;
+        setOpDragState(prev => ({ ...prev, dropTargetId: null, dropPosition: null }));
+    }
+
+    function handleOpDrop(e: React.DragEvent, targetId: string, ifaceName: string) {
+        if (!opDragIdRef.current) return;
+        if (opDragIfaceRef.current !== ifaceName) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (opDragIdRef.current !== targetId && onReorderOperations) {
+            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+            const position: 'before' | 'after' = e.clientY < rect.top + rect.height / 2 ? 'before' : 'after';
+            onReorderOperations(ifaceName, opDragIdRef.current, targetId, position);
+        }
+        opDragIdRef.current = null;
+        opDragIfaceRef.current = null;
+        setOpDragState({ draggedId: null, dropTargetId: null, dropPosition: null });
+    }
+
+    function handleOpDragEnd() {
+        opDragIdRef.current = null;
+        opDragIfaceRef.current = null;
+        setOpDragState({ draggedId: null, dropTargetId: null, dropPosition: null });
+    }
+
+    // ---- Request drag state ----
     const reqDragIdRef = useRef<string | null>(null);
     const reqDragIfaceRef = useRef<string | null>(null);
     const reqDragOpRef = useRef<string | null>(null);
@@ -258,6 +369,9 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
     }
 
     function handleReqDragOver(e: React.DragEvent, targetId: string) {
+        // If we're not dragging a request (e.g. dragging an interface), let the event
+        // bubble up to the outer interface div so interface D&D still works.
+        if (!reqDragIdRef.current) return;
         e.preventDefault();
         e.stopPropagation();
         e.dataTransfer.dropEffect = 'move';
@@ -276,18 +390,34 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
         setReqDragState(prev => ({ ...prev, dropTargetId: null, dropPosition: null }));
     }
 
+    function findReqLocation(reqId: string): { ifaceName: string; opName: string } | null {
+        for (const iface of interfaces) {
+            for (const op of (iface.operations || [])) {
+                if ((op.requests || []).some((r: any) => r.id === reqId)) {
+                    return { ifaceName: iface.name, opName: op.name };
+                }
+            }
+        }
+        return null;
+    }
+
     function handleReqDrop(e: React.DragEvent, targetId: string) {
         e.preventDefault();
+        // If we're not dragging a request, let the event bubble so interface/project D&D works.
+        if (!reqDragIdRef.current) return;
         e.stopPropagation();
-        if (reqDragIdRef.current && reqDragIdRef.current !== targetId && onReorderRequests) {
+        if (reqDragIdRef.current !== targetId && onReorderRequests) {
             const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
             const position: 'before' | 'after' = e.clientY < rect.top + rect.height / 2 ? 'before' : 'after';
+            const dstLoc = findReqLocation(targetId);
             onReorderRequests(
                 reqDragIfaceRef.current!,
                 reqDragOpRef.current!,
                 reqDragIdRef.current,
                 targetId,
-                position
+                position,
+                dstLoc?.ifaceName,
+                dstLoc?.opName
             );
         }
         reqDragIdRef.current = null;
@@ -317,7 +447,12 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
                 const showHandle = !isExplorer && !isRenaming && !!onDragStart && !!onDragEnd;
                 
                 return (
-                <div key={i}>
+                <div
+                    key={i}
+                    onDragOver={onDragOver && !isExplorer ? (e) => onDragOver(e, ifaceId, 'interface') : undefined}
+                    onDrop={onDrop && !isExplorer ? (e) => onDrop(e, ifaceId, 'interface') : undefined}
+                    onDragLeave={!isExplorer ? onDragLeave : undefined}
+                >
                     <InterfaceRow
                         $active={isSelected}
                         $isDragging={isDragging}
@@ -329,7 +464,6 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
                         onDragStart={showHandle ? (e) => onDragStart!(e, ifaceId, 'interface', projectName) : undefined}
                         onDragEnd={showHandle ? onDragEnd : undefined}
                         onDragOver={onDragOver && !isExplorer ? (e) => onDragOver(e, ifaceId, 'interface') : undefined}
-                        onDragLeave={onDragLeave}
                         onDrop={onDrop && !isExplorer ? (e) => onDrop(e, ifaceId, 'interface') : undefined}
                     >
                         {showHandle && (
@@ -404,14 +538,29 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
                     {(iface as any).expanded !== false && (iface.operations || []).map((op: any, j: number) => {
                         const opId = op.id || op.name;
                         const isOpRenaming = renameId === opId && renameType === 'operation';
+                        const canDragOp = !isExplorer && !!onReorderOperations && !isOpRenaming;
                         
                         return (
                             <div key={j} style={{ marginLeft: 15 }}>
-                                <OperationItem
+                                <DraggableOperationItem
                                     $active={selectedOperation?.id && op.id ? selectedOperation.id === op.id : (selectedOperation?.name === op.name && selectedInterface?.name === iface.name)}
+                                    $isDragging={opDragState.draggedId === opId}
+                                    $dropPosition={opDragState.dropTargetId === opId ? opDragState.dropPosition : null}
+                                    $draggable={canDragOp}
+                                    draggable={canDragOp}
                                     onClick={() => onSelectOperation(op, iface)}
                                     onContextMenu={(e) => onContextMenu(e, 'operation', op)}
+                                    onDragStart={canDragOp ? (e) => handleOpDragStart(e, opId, iface.name) : undefined}
+                                    onDragOver={canDragOp ? (e) => handleOpDragOver(e, opId, iface.name) : undefined}
+                                    onDragLeave={canDragOp ? handleOpDragLeave : undefined}
+                                    onDrop={canDragOp ? (e) => handleOpDrop(e, opId, iface.name) : undefined}
+                                    onDragEnd={canDragOp ? handleOpDragEnd : undefined}
                                 >
+                                    {canDragOp && (
+                                        <OperationDragHandle onClick={(e) => e.stopPropagation()}>
+                                            <GripVertical size={12} />
+                                        </OperationDragHandle>
+                                    )}
                                     <span style={{ marginRight: 5, display: 'flex', alignItems: 'center', width: 14 }}>
                                         {op.requests && op.requests.length > 0 && (
                                             <div onClick={(e) => { e.stopPropagation(); onToggleOperation(op, iface); }} style={{ display: 'flex' }}>
@@ -468,7 +617,7 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
                                             )}
                                         </div>
                                     )}
-                                </OperationItem>
+                                </DraggableOperationItem>
 
                                 {/* Always render request children */}
                                 {op.expanded !== false && (op.requests || []).map((req: any, k: number) => {
@@ -482,7 +631,7 @@ export const ServiceTree: React.FC<ServiceTreeProps> = ({
                                             $dropPosition={reqDragState.dropTargetId === req.id ? reqDragState.dropPosition : null}
                                             draggable={canDrag}
                                             onDragStart={canDrag ? (e) => { e.stopPropagation(); handleReqDragStart(e, req.id, iface.name, op.name); } : undefined}
-                                            onDragOver={canDrag ? (e) => { e.stopPropagation(); handleReqDragOver(e, req.id); } : undefined}
+                                            onDragOver={canDrag ? (e) => handleReqDragOver(e, req.id) : undefined}
                                             onDragLeave={canDrag ? (e) => handleReqDragLeave(e) : undefined}
                                             onDrop={canDrag ? (e) => handleReqDrop(e, req.id) : undefined}
                                             onDragEnd={canDrag ? () => handleReqDragEnd() : undefined}
