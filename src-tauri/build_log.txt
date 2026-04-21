@@ -1,0 +1,5 @@
+warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+package:   D:\APIprox\vendor\APInox\src-tauri\Cargo.toml
+workspace: D:\APIprox\vendor\APInox\Cargo.toml
+   Compiling apinox v0.19.199 (D:\APIprox\vendor\APInox\src-tauri)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 7.27s

@@ -20,6 +20,10 @@ on:
         description: 'Build Android'
         type: boolean
         default: false
+      build_arch:
+        description: 'Build Arch Linux'
+        type: boolean
+        default: false
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -167,6 +171,7 @@ jobs:
 
   # ── Arch Linux build ────────────────────────────────────────────────────────
   build-arch:
+    if: inputs.build_arch == true
     needs: check-ci
     runs-on: ubuntu-latest
     permissions:
@@ -483,7 +488,7 @@ jobs:
     if: |
       always() &&
       needs.build.result == 'success' &&
-      needs.build-arch.result == 'success' &&
+      (needs.build-arch.result == 'success' || needs.build-arch.result == 'skipped') &&
       (needs.build-android.result == 'success' || needs.build-android.result == 'skipped') &&
       (needs.build-ios.result == 'success' || needs.build-ios.result == 'skipped')
     runs-on: ubuntu-latest
