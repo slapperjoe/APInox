@@ -16,7 +16,7 @@ export type AddToProjectDestination =
 interface AddToProjectDialogProps {
     log: TrafficLog;
     projects: ApinoxProject[];
-    onConfirm: (projectName: string, destination: AddToProjectDestination, requestName: string) => void;
+    onConfirm: (projectName: string, destination: AddToProjectDestination, requestName: string, includeAllHeaders: boolean) => void;
     onClose: () => void;
 }
 
@@ -118,6 +118,7 @@ export function AddToProjectDialog({ log, projects, onConfirm, onClose }: AddToP
     const [newFolderName, setNewFolderName] = useState<string>(DEFAULT_FOLDER_NAME);
 
     const [requestName, setRequestName] = useState<string>(deriveDefaultName(log));
+    const [includeAllHeaders, setIncludeAllHeaders] = useState<boolean>(false);
 
     const selectedProject: ApinoxProject | undefined = writableProjects.find(p => p.name === selectedProjectName);
     const interfaces: ApiInterface[] = selectedProject?.interfaces ?? [];
@@ -149,9 +150,9 @@ export function AddToProjectDialog({ log, projects, onConfirm, onClose }: AddToP
     function handleConfirm() {
         if (!canConfirm) return;
         if (mode === 'folder') {
-            onConfirm(selectedProjectName, { type: 'folder', folderName: resolvedFolderName }, requestName.trim());
+            onConfirm(selectedProjectName, { type: 'folder', folderName: resolvedFolderName }, requestName.trim(), includeAllHeaders);
         } else {
-            onConfirm(selectedProjectName, { type: 'operation', interfaceName: selectedInterfaceName, operationName: selectedOperationName }, requestName.trim());
+            onConfirm(selectedProjectName, { type: 'operation', interfaceName: selectedInterfaceName, operationName: selectedOperationName }, requestName.trim(), includeAllHeaders);
         }
     }
 
@@ -312,6 +313,24 @@ export function AddToProjectDialog({ log, projects, onConfirm, onClose }: AddToP
                                 onKeyDown={e => { if (e.key === 'Enter') handleConfirm(); if (e.key === 'Escape') onClose(); }}
                                 autoFocus={mode === 'operation' || selectedFolderValue !== NEW_FOLDER_SENTINEL}
                             />
+                        </div>
+
+                        {/* Header copy option */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <input
+                                id="include-all-headers"
+                                type="checkbox"
+                                checked={includeAllHeaders}
+                                onChange={e => setIncludeAllHeaders(e.target.checked)}
+                                style={{ cursor: 'pointer', accentColor: tokens.status.accentDark }}
+                            />
+                            <label
+                                htmlFor="include-all-headers"
+                                style={{ fontSize: 12, color: tokens.text.secondary, cursor: 'pointer', userSelect: 'none' }}
+                            >
+                                Include all request headers
+                                <span style={{ color: tokens.text.muted, marginLeft: 4 }}>(default: Content-Type only)</span>
+                            </label>
                         </div>
                     </>
                 )}
