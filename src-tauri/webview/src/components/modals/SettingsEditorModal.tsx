@@ -3,8 +3,7 @@ import styled from 'styled-components';
 import Editor, { Monaco } from '@monaco-editor/react';
 import { AlertTriangle, Settings, FileJson, Globe, Cloud, Server, ArrowUpCircle } from 'lucide-react';
 import { GeneralTab, EnvironmentsTab, GlobalsTab, IntegrationsTab, UpdatesTab, ApinoxConfig } from './settings';
-import { bridge, isTauri } from '../../utils/bridge';
-import { FrontendCommand } from '@shared/messages';
+
 import { useTheme } from '@apinox/request-editor'; // Use package ThemeContext
 import { Modal } from './Modal';
 import { TAG_COLORS } from '../../styles/colors';

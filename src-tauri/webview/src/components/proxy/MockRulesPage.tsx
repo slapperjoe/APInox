@@ -3,7 +3,7 @@ import { open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialo
 import { MonacoRequestEditor } from '@apinox/request-editor';
 import { invokeTauriCommand } from '../../utils/bridge';
 import { tokens } from './tokens';
-import { ConditionPickerModal, suggestConditionsFromSoapXml } from './ConditionPickerModel';
+
 import type { MockCondition } from './ConditionPickerModel';
 
 export interface MockRule {

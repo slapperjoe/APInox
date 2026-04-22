@@ -358,7 +358,7 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
     };
 
     const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement>, field: keyof PerformanceSuite, type: 'number' | 'text' = 'text') => {
-        let val = e.target.value;
+        const val = e.target.value;
         if (type === 'number') {
             const num = parseInt(val);
             if (!isNaN(num)) {
