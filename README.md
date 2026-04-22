@@ -223,3 +223,4 @@ APInox takes security seriously, especially when handling sensitive data like AP
 
 - **Agent Context**: See [AGENTS.md](./AGENTS.md) for architecture overview and setup instructions.
 - **Code Analysis**: See [CODE_ANALYSIS.md](./CODE_ANALYSIS.md) for technical debt and simplification recommendations.
+- **First-time Tauri setup**: Run `npm run tauri:init` to install root, request-editor, and webview npm dependencies and fetch the Rust workspace crates before running `npm run tauri:dev`.

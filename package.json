@@ -7,10 +7,11 @@
     "url": "https://github.com/slapperjoe/apinox.git"
   },
   "license": "MIT",
-  "version": "0.19.208",
+  "version": "0.19.210",
   "scripts": {
     "clean": "node scripts/clean.js",
     "clean:rust": "cargo clean --manifest-path src-tauri/Cargo.toml",
+    "tauri:init": "node scripts/tauri-init.js",
     "build:packages": "cd packages/request-editor && npm install && npm run build",
     "compile-webview": "npm run build:packages && cd src-tauri/webview && npm install && npm run build:skip-check",
     "test": "vitest run",

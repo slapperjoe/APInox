@@ -1,7 +1,11 @@
 // Prevent additional console window on Windows in release builds
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Mutex, OnceLock,
+};
+use std::time::Instant;
 use tauri::Manager;
 
 mod project_storage;
@@ -42,6 +46,20 @@ use windows::Win32::Graphics::Dwm::{DwmSetWindowAttribute, DWMWA_BORDER_COLOR};
 use windows::Win32::Foundation::HWND;
 
 static LOG_FILE_PATH: Mutex<Option<String>> = Mutex::new(None);
+static STARTUP_TIMER: OnceLock<Instant> = OnceLock::new();
+static STARTUP_REPORTED: AtomicBool = AtomicBool::new(false);
+
+fn report_startup_timing() {
+    if STARTUP_REPORTED.swap(true, Ordering::Relaxed) {
+        return;
+    }
+
+    if let Some(started_at) = STARTUP_TIMER.get() {
+        let elapsed_ms = started_at.elapsed().as_millis();
+        println!("[startup] main window ready in {} ms", elapsed_ms);
+        log::info!("[startup] Main window ready in {} ms", elapsed_ms);
+    }
+}
 
 /// Shared state for all proxy/mock/cert services (APIprox integration).
 pub struct ProxyAppState {
@@ -66,6 +84,8 @@ fn close_splashscreen(app: tauri::AppHandle) {
         main.set_focus().ok();
         log::info!("Main window shown");
     }
+
+    report_startup_timing();
 }
 
 #[tauri::command]
@@ -428,6 +448,9 @@ fn init_proxy_state(app: &mut tauri::App) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    STARTUP_TIMER.get_or_init(Instant::now);
+    STARTUP_REPORTED.store(false, Ordering::Relaxed);
+
     // Prevent the outbound reqwest client (used for proxy forwarding) from
     // looping back through the proxy port when system proxy is set.
     std::env::set_var("NO_PROXY", "*");
