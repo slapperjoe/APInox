@@ -157,16 +157,49 @@ jobs:
           $dst = "target/${{ matrix.target }}/release/APInox-portable.exe"
           if (Test-Path $src) { Copy-Item $src $dst }
 
+      - name: Stage desktop release assets
+        shell: pwsh
+        run: |
+          $version = "${{ needs.check-ci.outputs.version }}"
+          $releaseDir = "target/${{ matrix.target }}/release/release-assets"
+          New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
+
+          if ("${{ runner.os }}" -eq "Windows") {
+            $setup = Get-ChildItem -Path "target/${{ matrix.target }}/release/bundle/nsis/*.exe" -File -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($setup) {
+              Copy-Item $setup.FullName (Join-Path $releaseDir "apinox-v$version-windows-x64-setup.exe")
+            }
+
+            $portable = "target/${{ matrix.target }}/release/APInox-portable.exe"
+            if (Test-Path $portable) {
+              Copy-Item $portable (Join-Path $releaseDir "APInox-portable.exe")
+            }
+          }
+
+          if ("${{ runner.os }}" -eq "macOS") {
+            $dmg = Get-ChildItem -Path "target/${{ matrix.target }}/release/bundle/dmg/*.dmg" -File -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($dmg) {
+              Copy-Item $dmg.FullName (Join-Path $releaseDir "apinox-v$version-macos-arm64.dmg")
+            }
+          }
+
+          if ("${{ runner.os }}" -eq "Linux") {
+            $deb = Get-ChildItem -Path "target/${{ matrix.target }}/release/bundle/deb/*.deb" -File -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($deb) {
+              Copy-Item $deb.FullName (Join-Path $releaseDir "apinox-v$version-linux-x64.deb")
+            }
+
+            $rpm = Get-ChildItem -Path "target/${{ matrix.target }}/release/bundle/rpm/*.rpm" -File -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($rpm) {
+              Copy-Item $rpm.FullName (Join-Path $releaseDir "apinox-v$version-linux-x64.rpm")
+            }
+          }
+
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
         with:
           name: release-${{ matrix.artifact_name }}
-          path: |
-            target/${{ matrix.target }}/release/bundle/dmg/*.dmg
-            target/${{ matrix.target }}/release/bundle/nsis/*.exe
-            target/${{ matrix.target }}/release/bundle/deb/*.deb
-            target/${{ matrix.target }}/release/bundle/rpm/*.rpm
-            target/${{ matrix.target }}/release/APInox-portable.exe
+          path: target/${{ matrix.target }}/release/release-assets/*
           if-no-files-found: ignore
 
   # ── Arch Linux build ────────────────────────────────────────────────────────
@@ -229,10 +262,8 @@ jobs:
       - name: Upload Arch artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: release-linux-arch
-          path: |
-            target/release/bundle/arch/*.pkg.tar.zst
-            target/release/bundle/arch/install.sh
+          name: release-linux-archlinux-x86_64
+          path: target/release/bundle/arch/release-assets/*
           if-no-files-found: ignore
 
   # ── Android build ───────────────────────────────────────────────────────────
@@ -304,6 +335,17 @@ jobs:
         env:
           NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
 
+      - name: Stage Android artifact
+        if: env.ANDROID_KEYSTORE != ''
+        run: |
+          mkdir -p release-assets/android
+          APK_PATH=$(find src-tauri/gen/android/app/build/outputs/apk -name "*.apk" 2>/dev/null | head -1)
+          if [[ -z "$APK_PATH" ]]; then
+            echo "ERROR: no Android APK found"
+            exit 1
+          fi
+          cp "$APK_PATH" "release-assets/android/apinox-v${{ needs.check-ci.outputs.version }}-android-aarch64.apk"
+
       - name: Skip Android build (no signing key configured)
         if: env.ANDROID_KEYSTORE == ''
         run: echo "ANDROID_KEYSTORE secret not set — skipping Android release build."
@@ -311,8 +353,8 @@ jobs:
       - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: release-android
-          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          name: release-android-aarch64
+          path: release-assets/android/*
           if-no-files-found: ignore
 
   # ── iOS build ───────────────────────────────────────────────────────────────
@@ -360,12 +402,24 @@ jobs:
         if: env.APPLE_CERTIFICATE == '' && env.APPLE_TEAM_ID == ''
         run: npx tauri ios build --target aarch64-sim
 
+      - name: Stage iOS simulator artifact
+        if: env.APPLE_CERTIFICATE == '' && env.APPLE_TEAM_ID == ''
+        run: |
+          APP_PATH=$(find src-tauri/gen/apple/build -name "*.app" 2>/dev/null | head -1)
+          if [[ -z "$APP_PATH" ]]; then
+            echo "ERROR: no iOS simulator .app found"
+            exit 1
+          fi
+          mkdir -p release-assets/ios
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" \
+            "release-assets/ios/apinox-v${{ needs.check-ci.outputs.version }}-ios-simulator.app.zip"
+
       - name: Upload iOS simulator artifact
         if: env.APPLE_CERTIFICATE == '' && env.APPLE_TEAM_ID == ''
         uses: actions/upload-artifact@v4
         with:
           name: release-ios-simulator
-          path: src-tauri/gen/apple/build/**/*.app
+          path: release-assets/ios/*
           if-no-files-found: ignore
 
       # Path 2: Sideload IPA (APPLE_TEAM_ID only)
@@ -435,14 +489,15 @@ jobs:
             IPA_PATH="$PAYLOAD_TMP/${APP_NAME}.ipa"
           fi
           echo "Sideload IPA: $IPA_PATH"
-          cp "$IPA_PATH" "$GITHUB_WORKSPACE/apinox-sideload.ipa"
+          mkdir -p "$GITHUB_WORKSPACE/release-assets/ios"
+          cp "$IPA_PATH" "$GITHUB_WORKSPACE/release-assets/ios/apinox-v${{ needs.check-ci.outputs.version }}-ios-sideload.ipa"
 
       - name: Upload sideload IPA artifact
         if: env.APPLE_CERTIFICATE == '' && env.APPLE_TEAM_ID != ''
         uses: actions/upload-artifact@v4
         with:
           name: release-ios-sideload
-          path: apinox-sideload.ipa
+          path: release-assets/ios/*
           if-no-files-found: warn
 
       # Path 3: Signed IPA (full Developer Program)
@@ -474,12 +529,23 @@ jobs:
         env:
           APPLE_DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
 
+      - name: Stage signed iOS IPA artifact
+        if: env.APPLE_TEAM_ID != '' && env.APPLE_CERTIFICATE != '' && env.APPLE_PROVISIONING_PROFILE != ''
+        run: |
+          mkdir -p release-assets/ios
+          IPA_PATH=$(find src-tauri/gen/apple/build -name "*.ipa" 2>/dev/null | head -1)
+          if [[ -z "$IPA_PATH" ]]; then
+            echo "ERROR: no signed iOS IPA found"
+            exit 1
+          fi
+          cp "$IPA_PATH" "release-assets/ios/apinox-v${{ needs.check-ci.outputs.version }}-ios-signed.ipa"
+
       - name: Upload signed iOS IPA artifact
         if: env.APPLE_TEAM_ID != '' && env.APPLE_CERTIFICATE != '' && env.APPLE_PROVISIONING_PROFILE != ''
         uses: actions/upload-artifact@v4
         with:
           name: release-ios
-          path: src-tauri/gen/apple/build/**/*.ipa
+          path: release-assets/ios/*
           if-no-files-found: ignore
 
   # ── Publish GitHub Release ──────────────────────────────────────────────────

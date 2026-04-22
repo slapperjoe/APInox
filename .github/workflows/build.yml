@@ -88,30 +88,44 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
-      - name: Upload Windows artifacts
-        if: matrix.platform == 'windows-latest'
-        uses: actions/upload-artifact@v4
-        with:
-          name: apinox-${{ matrix.artifact_name }}
-          path: target/${{ matrix.target }}/release/bundle/nsis/*.exe
-          if-no-files-found: error
+      - name: Stage desktop build artifacts
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          $releaseDir = "target/${{ matrix.target }}/release/release-assets"
+          New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
 
-      - name: Upload macOS artifacts
-        if: matrix.platform == 'macos-latest'
-        uses: actions/upload-artifact@v4
-        with:
-          name: apinox-${{ matrix.artifact_name }}
-          path: target/${{ matrix.target }}/release/bundle/dmg/*.dmg
-          if-no-files-found: error
+          if ("${{ matrix.platform }}" -eq "windows-latest") {
+            $setup = Get-ChildItem -Path "target/${{ matrix.target }}/release/bundle/nsis/*.exe" -File -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($setup) {
+              Copy-Item $setup.FullName (Join-Path $releaseDir "apinox-v$version-windows-x64-setup.exe")
+            }
+          }
 
-      - name: Upload Linux artifacts
-        if: matrix.platform == 'ubuntu-latest'
+          if ("${{ matrix.platform }}" -eq "macos-latest") {
+            $dmg = Get-ChildItem -Path "target/${{ matrix.target }}/release/bundle/dmg/*.dmg" -File -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($dmg) {
+              Copy-Item $dmg.FullName (Join-Path $releaseDir "apinox-v$version-macos-arm64.dmg")
+            }
+          }
+
+          if ("${{ matrix.platform }}" -eq "ubuntu-latest") {
+            $deb = Get-ChildItem -Path "target/${{ matrix.target }}/release/bundle/deb/*.deb" -File -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($deb) {
+              Copy-Item $deb.FullName (Join-Path $releaseDir "apinox-v$version-linux-x64.deb")
+            }
+
+            $rpm = Get-ChildItem -Path "target/${{ matrix.target }}/release/bundle/rpm/*.rpm" -File -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($rpm) {
+              Copy-Item $rpm.FullName (Join-Path $releaseDir "apinox-v$version-linux-x64.rpm")
+            }
+          }
+
+      - name: Upload desktop artifacts
         uses: actions/upload-artifact@v4
         with:
           name: apinox-${{ matrix.artifact_name }}
-          path: |
-            target/${{ matrix.target }}/release/bundle/deb/*.deb
-            target/${{ matrix.target }}/release/bundle/rpm/*.rpm
+          path: target/${{ matrix.target }}/release/release-assets/*
           if-no-files-found: error
 
   build-arch:
@@ -187,10 +201,8 @@ jobs:
       - name: Upload Arch Linux artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: apinox-linux-arch
-          path: |
-            target/release/bundle/arch/*.pkg.tar.zst
-            target/release/bundle/arch/install.sh
+          name: apinox-linux-archlinux-x86_64
+          path: target/release/bundle/arch/release-assets/*
           if-no-files-found: error
 
   build-ios:
@@ -364,6 +376,7 @@ jobs:
       - name: Package unsigned IPA from build output
         if: env.APPLE_CERTIFICATE == ''
         run: |
+          VERSION=$(node -p "require('./package.json').version")
           # Use the known xcarchive path from the build step.
           APP_PATH=$(find "$RUNNER_TEMP/apinox.xcarchive/Products/Applications" \
             -maxdepth 1 -name "*.app" 2>/dev/null | head -1)
@@ -393,15 +406,16 @@ jobs:
           mkdir -p "$PAYLOAD_TMP/Payload"
           cp -r "$APP_PATH" "$PAYLOAD_TMP/Payload/"
           (cd "$PAYLOAD_TMP" && zip -qr "${APP_NAME}.ipa" Payload/)
-          cp "$PAYLOAD_TMP/${APP_NAME}.ipa" "$GITHUB_WORKSPACE/apinox-unsigned.ipa"
-          echo "Unsigned IPA ready: apinox-unsigned.ipa"
+          mkdir -p "$GITHUB_WORKSPACE/release-assets/ios"
+          cp "$PAYLOAD_TMP/${APP_NAME}.ipa" "$GITHUB_WORKSPACE/release-assets/ios/apinox-v${VERSION}-ios-unsigned.ipa"
+          echo "Unsigned IPA ready in release-assets/ios"
 
       - name: Upload unsigned IPA artifact
         if: env.APPLE_CERTIFICATE == ''
         uses: actions/upload-artifact@v4
         with:
           name: apinox-ios-unsigned
-          path: apinox-unsigned.ipa
+          path: release-assets/ios/*
           if-no-files-found: warn
 
       # ── Path 2: Signed .ipa (APPLE_CERTIFICATE set — paid Developer Program) ─
@@ -434,12 +448,24 @@ jobs:
           APPLE_DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
           RUST_MIN_STACK: 4294967296
 
+      - name: Stage signed iOS IPA artifact
+        if: env.APPLE_TEAM_ID != '' && env.APPLE_CERTIFICATE != '' && env.APPLE_PROVISIONING_PROFILE != ''
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          IPA_PATH=$(find src-tauri/gen/apple/build -name "*.ipa" 2>/dev/null | head -1)
+          if [[ -z "$IPA_PATH" ]]; then
+            echo "ERROR: no signed iOS IPA found"
+            exit 1
+          fi
+          mkdir -p release-assets/ios
+          cp "$IPA_PATH" "release-assets/ios/apinox-v${VERSION}-ios-signed.ipa"
+
       - name: Upload iOS IPA artifact
         if: env.APPLE_TEAM_ID != '' && env.APPLE_CERTIFICATE != '' && env.APPLE_PROVISIONING_PROFILE != ''
         uses: actions/upload-artifact@v4
         with:
           name: apinox-ios
-          path: src-tauri/gen/apple/build/**/*.ipa
+          path: release-assets/ios/*
           if-no-files-found: warn
 
   build-android:
@@ -518,15 +544,39 @@ jobs:
         env:
           NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
 
+      - name: Stage signed Android APK artifact
+        if: env.ANDROID_KEYSTORE != ''
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          APK_PATH=$(find src-tauri/gen/android/app/build/outputs/apk -name "*.apk" 2>/dev/null | head -1)
+          if [[ -z "$APK_PATH" ]]; then
+            echo "ERROR: no signed Android APK found"
+            exit 1
+          fi
+          mkdir -p release-assets/android
+          cp "$APK_PATH" "release-assets/android/apinox-v${VERSION}-android-aarch64.apk"
+
       - name: Build Android APK — arm64 unsigned debug
         if: env.ANDROID_KEYSTORE == ''
         run: npx tauri android build --target aarch64 --debug
         env:
           NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
 
+      - name: Stage unsigned Android APK artifact
+        if: env.ANDROID_KEYSTORE == ''
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          APK_PATH=$(find src-tauri/gen/android/app/build/outputs/apk -name "*.apk" 2>/dev/null | head -1)
+          if [[ -z "$APK_PATH" ]]; then
+            echo "ERROR: no unsigned Android APK found"
+            exit 1
+          fi
+          mkdir -p release-assets/android
+          cp "$APK_PATH" "release-assets/android/apinox-v${VERSION}-android-aarch64-debug.apk"
+
       - name: Upload Android APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: apinox-android
-          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          path: release-assets/android/*
           if-no-files-found: warn

@@ -37,6 +37,9 @@ src-tauri/gen/apple/build/
 # Rust workspace build artifacts (root-level target/ from workspace Cargo.toml)
 target/
 
+# Arch package build staging artifacts
+pkg/
+
 # APInox User Data & Configuration
 .apinox/
 __blobstorage__/
