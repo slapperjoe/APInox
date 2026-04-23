@@ -1,11 +1,8 @@
 
 import { useRef, useImperativeHandle, forwardRef, useEffect } from 'react';
-import Editor, { Monaco, loader } from '@monaco-editor/react';
-import * as monaco from 'monaco-editor';
+import Editor, { Monaco } from '@monaco-editor/react';
 import styled from 'styled-components';
 import { useWildcardDecorations } from '../hooks/useWildcardDecorations';
-
-loader.config({ monaco });
 
 const InputContainer = styled.div`
   height: 26px; /* Matches standard VS Code input height approx */
@@ -240,7 +237,6 @@ export const MonacoSingleLineInput = forwardRef<MonacoSingleLineInputHandle, Mon
                     lineNumbersMinChars: 0,
                     renderLineHighlight: 'none',
                     scrollbar: { horizontal: 'hidden', vertical: 'hidden' },
-                    overviewRulerLanes: 0,
                     hideCursorInOverviewRuler: true,
                     scrollBeyondLastLine: false,
                     automaticLayout: true,

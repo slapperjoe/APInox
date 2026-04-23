@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use crate::mock::server::run_mock;
 use crate::proxy_models::{MockRule, MockRuleCollection};
-use crate::ProxyAppState;
+use crate::{ensure_proxy_state, LazyProxyAppState, ProxyAppState};
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -21,9 +21,10 @@ pub async fn start_mock(
     port: u16,
     target_url: String,
     passthrough_enabled: bool,
-    state: State<'_, ProxyAppState>,
+    state: State<'_, LazyProxyAppState>,
     app: AppHandle,
 ) -> Result<(), String> {
+    let state = ensure_proxy_state(state, &app).await?;
     let mut ms = state.mock.lock().await;
 
     if ms.running {
@@ -50,7 +51,8 @@ pub async fn start_mock(
 }
 
 #[tauri::command]
-pub async fn stop_mock(state: State<'_, ProxyAppState>) -> Result<(), String> {
+ pub async fn stop_mock(state: State<'_, LazyProxyAppState>, app: AppHandle) -> Result<(), String> {
+    let state = ensure_proxy_state(state, &app).await?;
     let mut ms = state.mock.lock().await;
     if let Some(handle) = ms.task.take() {
         handle.abort();
@@ -61,7 +63,8 @@ pub async fn stop_mock(state: State<'_, ProxyAppState>) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn get_mock_status(state: State<'_, ProxyAppState>) -> Result<MockStatus, String> {
+pub async fn get_mock_status(state: State<'_, LazyProxyAppState>, app: AppHandle) -> Result<MockStatus, String> {
+    let state = ensure_proxy_state(state, &app).await?;
     let ms = state.mock.lock().await;
     Ok(MockStatus {
         running: ms.running,
@@ -72,15 +75,19 @@ pub async fn get_mock_status(state: State<'_, ProxyAppState>) -> Result<MockStat
 }
 
 #[tauri::command]
-pub async fn get_mock_rules(state: State<'_, ProxyAppState>) -> Result<Vec<MockRule>, String> {
-    Ok(state.mock.lock().await.config.rules.clone())
+pub async fn get_mock_rules(state: State<'_, LazyProxyAppState>, app: AppHandle) -> Result<Vec<MockRule>, String> {
+    let state = ensure_proxy_state(state, &app).await?;
+    let rules = state.mock.lock().await.config.rules.clone();
+    Ok(rules)
 }
 
 #[tauri::command]
 pub async fn add_mock_rule(
     rule: MockRule,
-    state: State<'_, ProxyAppState>,
+    state: State<'_, LazyProxyAppState>,
+    app: AppHandle,
 ) -> Result<MockRule, String> {
+    let state = ensure_proxy_state(state, &app).await?;
     let rule = if rule.id.is_empty() {
         MockRule { id: Uuid::new_v4().to_string(), ..rule }
     } else {
@@ -95,8 +102,10 @@ pub async fn add_mock_rule(
 pub async fn update_mock_rule(
     id: String,
     rule: MockRule,
-    state: State<'_, ProxyAppState>,
+    state: State<'_, LazyProxyAppState>,
+    app: AppHandle,
 ) -> Result<MockRule, String> {
+    let state = ensure_proxy_state(state, &app).await?;
     let mut ms = state.mock.lock().await;
     match ms.config.rules.iter_mut().find(|r| r.id == id) {
         Some(r) => {
@@ -110,7 +119,8 @@ pub async fn update_mock_rule(
 }
 
 #[tauri::command]
-pub async fn delete_mock_rule(id: String, state: State<'_, ProxyAppState>) -> Result<(), String> {
+pub async fn delete_mock_rule(id: String, state: State<'_, LazyProxyAppState>, app: AppHandle) -> Result<(), String> {
+    let state = ensure_proxy_state(state, &app).await?;
     let mut ms = state.mock.lock().await;
     let before = ms.config.rules.len();
     ms.config.rules.retain(|r| r.id != id);
@@ -131,15 +141,18 @@ async fn save_rules(state: &ProxyAppState) -> Result<(), String> {
 #[tauri::command]
 pub async fn set_mock_record_mode(
     enabled: bool,
-    state: State<'_, ProxyAppState>,
+    state: State<'_, LazyProxyAppState>,
+    app: AppHandle,
 ) -> Result<(), String> {
+    let state = ensure_proxy_state(state, &app).await?;
     state.mock.lock().await.config.record_mode = enabled;
     Ok(())
 }
 
 /// Persist mock rules to disk. Called from the webview after mutations.
 #[tauri::command]
-pub async fn save_mock_rules(state: State<'_, ProxyAppState>) -> Result<(), String> {
+pub async fn save_mock_rules(state: State<'_, LazyProxyAppState>, app: AppHandle) -> Result<(), String> {
+    let state = ensure_proxy_state(state, &app).await?;
     let rules = state.mock.lock().await.config.rules.clone();
     state
         .storage
@@ -154,8 +167,10 @@ pub async fn export_mock_collection(
     name: String,
     description: String,
     file_path: String,
-    state: State<'_, ProxyAppState>,
+    state: State<'_, LazyProxyAppState>,
+    app: AppHandle,
 ) -> Result<(), String> {
+    let state = ensure_proxy_state(state, &app).await?;
     let ms = state.mock.lock().await;
     let rules: Vec<MockRule> = if ids.is_empty() {
         ms.config.rules.clone()
@@ -190,8 +205,10 @@ pub async fn export_mock_collection(
 #[tauri::command]
 pub async fn import_mock_collection(
     file_path: String,
-    state: State<'_, ProxyAppState>,
+    state: State<'_, LazyProxyAppState>,
+    app: AppHandle,
 ) -> Result<Vec<MockRule>, String> {
+    let state = ensure_proxy_state(state, &app).await?;
     let content = std::fs::read_to_string(&file_path)
         .map_err(|e| format!("Failed to read file: {}", e))?;
 

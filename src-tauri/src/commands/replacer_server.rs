@@ -1,19 +1,23 @@
-use tauri::State;
+use tauri::{AppHandle, State};
 use uuid::Uuid;
 
 use crate::proxy_models::ReplaceRule;
-use crate::ProxyAppState;
+use crate::{ensure_proxy_state, LazyProxyAppState, ProxyAppState};
 
 #[tauri::command]
-pub async fn get_replace_rules(state: State<'_, ProxyAppState>) -> Result<Vec<ReplaceRule>, String> {
-    Ok(state.replacer.lock().unwrap().get_rules())
+pub async fn get_replace_rules(state: State<'_, LazyProxyAppState>, app: AppHandle) -> Result<Vec<ReplaceRule>, String> {
+    let state = ensure_proxy_state(state, &app).await?;
+    let rules = state.replacer.lock().unwrap().get_rules();
+    Ok(rules)
 }
 
 #[tauri::command]
 pub async fn add_replace_rule(
     rule: ReplaceRule,
-    state: State<'_, ProxyAppState>,
+    state: State<'_, LazyProxyAppState>,
+    app: AppHandle,
 ) -> Result<ReplaceRule, String> {
+    let state = ensure_proxy_state(state, &app).await?;
     let rule = if rule.id.is_empty() {
         ReplaceRule { id: Uuid::new_v4().to_string(), ..rule }
     } else {
@@ -28,8 +32,10 @@ pub async fn add_replace_rule(
 pub async fn update_replace_rule(
     id: String,
     rule: ReplaceRule,
-    state: State<'_, ProxyAppState>,
+    state: State<'_, LazyProxyAppState>,
+    app: AppHandle,
 ) -> Result<ReplaceRule, String> {
+    let state = ensure_proxy_state(state, &app).await?;
     let updated = state.replacer.lock().unwrap().update_rule(&id, rule.clone());
     if updated {
         save_rules(&state)?;
@@ -40,7 +46,8 @@ pub async fn update_replace_rule(
 }
 
 #[tauri::command]
-pub async fn delete_replace_rule(id: String, state: State<'_, ProxyAppState>) -> Result<(), String> {
+pub async fn delete_replace_rule(id: String, state: State<'_, LazyProxyAppState>, app: AppHandle) -> Result<(), String> {
+    let state = ensure_proxy_state(state, &app).await?;
     let deleted = state.replacer.lock().unwrap().delete_rule(&id);
     if deleted {
         save_rules(&state)?;

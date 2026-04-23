@@ -4,7 +4,7 @@ import Editor, { Monaco } from '@monaco-editor/react';
 import { AlertTriangle, Settings, FileJson, Globe, Cloud, Server, ArrowUpCircle } from 'lucide-react';
 import { GeneralTab, EnvironmentsTab, GlobalsTab, IntegrationsTab, UpdatesTab, ApinoxConfig } from './settings';
 
-import { useTheme } from '@apinox/request-editor'; // Use package ThemeContext
+import { useTheme } from '@apinox/request-editor/core'; // Use package ThemeContext
 import { Modal } from './Modal';
 import { TAG_COLORS } from '../../styles/colors';
 import { SPACING_SM, SPACING_MD } from '../../styles/spacing';

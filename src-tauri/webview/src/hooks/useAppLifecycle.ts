@@ -1,9 +1,7 @@
 import { useEffect } from 'react';
 import { bridge, isTauri } from '../utils/bridge';
-import { FrontendCommand } from '@shared/messages';
 import { ApinoxProject } from '@shared/models';
 import { useNavigation } from '../contexts/NavigationContext';
-import { debugLog } from '../utils/logger';
 
 interface UseAppLifecycleProps {
     projects: ApinoxProject[];
@@ -11,7 +9,6 @@ interface UseAppLifecycleProps {
     wsdlUrl: string;
     selectedProjectName: string | null;
     saveProject: (project: ApinoxProject) => void;
-    setProjects: (projects: ApinoxProject[]) => void;
     setExplorerExpanded: (expanded: boolean) => void;
     setWsdlUrl: (url: string) => void;
     setSelectedProjectName: (name: string | null) => void;
@@ -24,7 +21,6 @@ export const useAppLifecycle = ({
     wsdlUrl,
     selectedProjectName,
     saveProject,
-    setProjects,
     setExplorerExpanded,
     setWsdlUrl,
     setSelectedProjectName,
@@ -60,48 +56,11 @@ export const useAppLifecycle = ({
         // Retrieve initial state from bridge
         const state = bridge.getState();
         if (state) {
-            setProjects(state.projects || []);
             setExploredInterfaces(state.exploredInterfaces || []);
             setExplorerExpanded(state.explorerExpanded ?? true);
             setWsdlUrl(state.wsdlUrl || '');
             if (state.lastSelectedProject) setSelectedProjectName(state.lastSelectedProject);
-
-            // Force reload projects from disk to ensure fresh content
-            if (state.projects) {
-                state.projects.forEach((p: any) => {
-                    if (p.fileName) {
-                        bridge.sendMessage({ command: 'loadProject', path: p.fileName });
-                    }
-                });
-            }
         }
-
-        // Auto-load all projects from ~/.apinox/projects/ on startup
-        const autoLoadProjects = async () => {
-            try {
-                const paths = await bridge.invokeTauriCommand('list_projects', {}) as string[];
-                debugLog('[useAppLifecycle] Auto-loading projects', paths.length);
-
-                for (const path of paths) {
-                    try {
-                        const project = await bridge.invokeTauriCommand('load_project', { dirPath: path });
-                        (project as any).fileName = path;
-
-                        bridge.emit({
-                            command: 'projectLoaded',
-                            project,
-                            filename: path
-                        } as any);
-                    } catch (error) {
-                        console.error('[useAppLifecycle] Failed to load project:', path, error);
-                    }
-                }
-            } catch (error) {
-                console.error('[useAppLifecycle] Failed to list projects:', error);
-            }
-        };
-
-        autoLoadProjects();
     }, []); // Run once on mount
 
     // Tauri window persistence (size/position)

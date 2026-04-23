@@ -2,6 +2,8 @@ import React, { useRef, useState, useEffect } from 'react';
 import styled from 'styled-components';
 import Editor, { Monaco } from '@monaco-editor/react';
 import { ChevronLeft } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
+import { applyMonacoTheme } from '../utils/monacoTheme';
 // import { ScriptPlaygroundModal } from './modals/ScriptPlaygroundModal'; // TODO: Add ScriptPlaygroundModal
 
 // Stub types
@@ -60,7 +62,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ step, onUpdate, isRe
     // Initialize local state from prop
     const [scriptContent, setScriptContent] = useState(step.config.scriptContent || '');
     // const showPlayground = false; // TODO: Enable when ScriptPlaygroundModal is added
-    const theme = 'dark'; // TODO: Get from context
+    const { theme } = useTheme();
     const [editorTheme, setEditorTheme] = useState<string>('vs-dark');
 
     // Track previous prop value to detect actual remote changes
@@ -126,33 +128,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ step, onUpdate, isRe
     }, [scriptContent]); // Trigger on every keystroke (for debounce reset)
 
     const applyEditorTheme = (monacoInstance: Monaco) => {
-        const root = document.documentElement;
-        const getVar = (name: string, fallback: string) => {
-            const value = getComputedStyle(root).getPropertyValue(name).trim();
-            return value || fallback;
-        };
-
-        const isLight = theme.includes('light');
-        const themeId = `apinox-${theme}`;
-
-        monacoInstance.editor.defineTheme(themeId, {
-            base: isLight ? 'vs' : 'vs-dark',
-            inherit: true,
-            rules: [],
-            colors: {
-                'editor.background': getVar('--apinox-editor-background', isLight ? '#ffffff' : '#1e1e1e'),
-                'editor.foreground': getVar('--apinox-editor-foreground', isLight ? '#000000' : '#d4d4d4'),
-                'editor.selectionBackground': getVar('--apinox-editor-selectionBackground', isLight ? '#add6ff' : '#264f78'),
-                'editor.lineHighlightBackground': getVar('--apinox-editor-lineHighlightBackground', 'transparent'),
-                'editorCursor.foreground': getVar('--apinox-editorCursor-foreground', isLight ? '#000000' : '#ffffff'),
-                'editorLineNumber.foreground': getVar('--apinox-editorLineNumber-foreground', isLight ? '#999999' : '#858585'),
-                'editorLineNumber.activeForeground': getVar('--apinox-editorLineNumber-activeForeground', isLight ? '#000000' : '#c6c6c6'),
-                'editorWhitespace.foreground': getVar('--apinox-editorWhitespace-foreground', isLight ? '#d3d3d3' : '#404040')
-            }
-        });
-
-        monacoInstance.editor.setTheme(themeId);
-        setEditorTheme(themeId);
+        setEditorTheme(applyMonacoTheme(monacoInstance, theme));
     };
 
     const handleEditorDidMount = (editor: any, monaco: Monaco) => {

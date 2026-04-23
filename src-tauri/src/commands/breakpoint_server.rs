@@ -2,18 +2,22 @@ use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
 
 use crate::proxy_models::{BreakpointResolution, BreakpointRule, PausedTraffic};
-use crate::ProxyAppState;
+use crate::{ensure_proxy_state, LazyProxyAppState};
 
 #[tauri::command]
-pub async fn get_breakpoint_rules(state: State<'_, ProxyAppState>) -> Result<Vec<BreakpointRule>, String> {
-    Ok(state.breakpoint.lock().await.get_rules())
+pub async fn get_breakpoint_rules(state: State<'_, LazyProxyAppState>, app: AppHandle) -> Result<Vec<BreakpointRule>, String> {
+    let state = ensure_proxy_state(state, &app).await?;
+    let rules = state.breakpoint.lock().await.get_rules();
+    Ok(rules)
 }
 
 #[tauri::command]
 pub async fn set_breakpoint_rules(
     rules: Vec<BreakpointRule>,
-    state: State<'_, ProxyAppState>,
+    state: State<'_, LazyProxyAppState>,
+    app: AppHandle,
 ) -> Result<(), String> {
+    let state = ensure_proxy_state(state, &app).await?;
     state.breakpoint.lock().await.set_rules(rules.clone());
     state.storage.save_breakpoint_rules(&rules).map_err(|e| e.to_string())
 }
@@ -21,8 +25,10 @@ pub async fn set_breakpoint_rules(
 #[tauri::command]
 pub async fn add_breakpoint_rule(
     rule: BreakpointRule,
-    state: State<'_, ProxyAppState>,
+    state: State<'_, LazyProxyAppState>,
+    app: AppHandle,
 ) -> Result<BreakpointRule, String> {
+    let state = ensure_proxy_state(state, &app).await?;
     let rule = if rule.id.is_empty() {
         BreakpointRule { id: Uuid::new_v4().to_string(), ..rule }
     } else {
@@ -39,8 +45,10 @@ pub async fn add_breakpoint_rule(
 #[tauri::command]
 pub async fn delete_breakpoint_rule(
     id: String,
-    state: State<'_, ProxyAppState>,
+    state: State<'_, LazyProxyAppState>,
+    app: AppHandle,
 ) -> Result<(), String> {
+    let state = ensure_proxy_state(state, &app).await?;
     let mut svc = state.breakpoint.lock().await;
     let mut rules = svc.get_rules();
     let before = rules.len();
@@ -54,8 +62,10 @@ pub async fn delete_breakpoint_rule(
 }
 
 #[tauri::command]
-pub async fn get_paused_traffic(state: State<'_, ProxyAppState>) -> Result<Vec<PausedTraffic>, String> {
-    Ok(state.breakpoint.lock().await.get_paused_traffic())
+pub async fn get_paused_traffic(state: State<'_, LazyProxyAppState>, app: AppHandle) -> Result<Vec<PausedTraffic>, String> {
+    let state = ensure_proxy_state(state, &app).await?;
+    let paused = state.breakpoint.lock().await.get_paused_traffic();
+    Ok(paused)
 }
 
 #[tauri::command]
@@ -64,9 +74,10 @@ pub async fn continue_breakpoint(
     modified_headers: Option<std::collections::HashMap<String, String>>,
     modified_body: Option<String>,
     modified_status_code: Option<u16>,
-    state: State<'_, ProxyAppState>,
+    state: State<'_, LazyProxyAppState>,
     app: AppHandle,
 ) -> Result<(), String> {
+    let state = ensure_proxy_state(state, &app).await?;
     let resolution = BreakpointResolution {
         action: "continue".to_string(),
         modified_headers,
@@ -87,9 +98,10 @@ pub async fn continue_breakpoint(
 #[tauri::command]
 pub async fn drop_breakpoint(
     id: String,
-    state: State<'_, ProxyAppState>,
+    state: State<'_, LazyProxyAppState>,
     app: AppHandle,
 ) -> Result<(), String> {
+    let state = ensure_proxy_state(state, &app).await?;
     let dropped = state.breakpoint.lock().await.drop_traffic(&id);
     if dropped {
         let paused = state.breakpoint.lock().await.get_paused_traffic();

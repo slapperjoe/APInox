@@ -15,7 +15,7 @@ import {
   SectionHeader,
   CustomSelect,
 } from "./SettingsTypes";
-import { useTheme } from "@apinox/request-editor"; // Use package ThemeContext
+ import { useTheme } from "@apinox/request-editor/core"; // Use package ThemeContext
 import { useUI } from "../../../contexts/UIContext";
 
 interface GeneralTabProps {
