@@ -207,8 +207,10 @@ export const ApiExplorerSidebar: React.FC<ApiExplorerSidebarProps> = ({
                             // Select explorer request
                             setSelectedInterface(iface);
                             setSelectedOperation(op);
+                            if (selectedRequest?.id !== req.id) {
+                                setResponse(null);
+                            }
                             setSelectedRequest(req);
-                            setResponse(null);
                         }}
                         onContextMenu={(e, type, data) => handleContextMenu(e, type, data, true)}
 

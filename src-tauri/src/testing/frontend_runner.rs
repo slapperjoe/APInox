@@ -165,6 +165,11 @@ async fn run_request_step(
     };
 
     let status_code = response.status().as_u16();
+    let response_headers: HashMap<String, String> = response
+        .headers()
+        .iter()
+        .filter_map(|(k, v)| v.to_str().ok().map(|vs| (k.to_string(), vs.to_string())))
+        .collect();
     let response_body = response.text().await.unwrap_or_default();
     let duration_ms = start.elapsed().as_millis() as u64;
 
@@ -183,6 +188,7 @@ async fn run_request_step(
     let extracted_variables = run_extractors(
         req.extractors.as_deref().unwrap_or(&[]),
         &response_body,
+        &response_headers,
     );
 
     let passed = !has_failures;
@@ -361,6 +367,7 @@ fn run_assertion(
 fn run_extractors(
     extractors: &[FrontendExtractor],
     body: &str,
+    headers: &HashMap<String, String>,
 ) -> HashMap<String, String> {
     let mut vars = HashMap::new();
     for ext in extractors {
@@ -372,6 +379,13 @@ fn run_extractors(
             "Regex" => {
                 let path = ext.path.as_deref().unwrap_or("");
                 RegexExtractor::extract(body, path)
+            }
+            "Header" => {
+                let name = ext.path.as_deref().unwrap_or("");
+                // Case-insensitive header lookup
+                headers.iter()
+                    .find(|(k, _)| k.eq_ignore_ascii_case(name))
+                    .map(|(_, v)| v.clone())
             }
             _ => None,
         };

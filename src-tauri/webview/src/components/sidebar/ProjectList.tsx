@@ -672,8 +672,10 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                                                 setSelectedProjectName(proj.name);
                                                 setSelectedInterface(iface);
                                                 setSelectedOperation(op);
+                                                if (selectedRequest?.id !== req.id) {
+                                                    setResponse(null);
+                                                }
                                                 setSelectedRequest(req);
-                                                setResponse(null);
                                             }}
                                             onContextMenu={(e, type, data) => handleLocalContextMenu(e, type, data, false)}
 

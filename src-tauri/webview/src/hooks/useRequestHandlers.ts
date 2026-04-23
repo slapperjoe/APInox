@@ -80,7 +80,16 @@ export function useRequestHandlers({
 
                                 if (rawResp) {
                                     step.config.request.extractors.forEach(ext => {
-                                        if (ext.source === 'body') {
+                                        if (ext.type === 'Header' || ext.source === 'header') {
+                                            const responseHeaders: Record<string, string> = stepExec.response.headers || {};
+                                            const headerValue = Object.entries(responseHeaders)
+                                                .find(([k]) => k.toLowerCase() === (ext.path || '').toLowerCase())?.[1];
+                                            if (headerValue) {
+                                                contextVariables[ext.variable] = headerValue;
+                                            } else if (ext.defaultValue) {
+                                                contextVariables[ext.variable] = ext.defaultValue;
+                                            }
+                                        } else if (ext.source === 'body') {
                                             try {
                                                 const val = CustomXPathEvaluator.evaluate(rawResp, ext.path);
                                                 if (val) {

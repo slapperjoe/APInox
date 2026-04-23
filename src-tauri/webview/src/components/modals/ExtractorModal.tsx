@@ -116,8 +116,8 @@ export const ExtractorModal: React.FC<ExtractorModalProps> = ({ isOpen, data, on
                 >
                     <option value="XPath">XPath (XML/SOAP)</option>
                     <option value="Regex">Regex (Any Text)</option>
-                    <option value="JSONPath">JSONPath (JSON) - Coming Soon</option>
-                    <option value="Header">HTTP Header - Coming Soon</option>
+                    <option value="JSONPath">JSONPath (JSON)</option>
+                    <option value="Header">HTTP Header</option>
                 </select>
                 <div style={{ fontSize: '0.8em', opacity: 0.7, marginTop: 4 }}>
                     {getHelpText(currentType)}

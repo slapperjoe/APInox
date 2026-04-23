@@ -10,7 +10,7 @@ const DragHandle = styled.div`
     align-items: center;
     justify-content: center;
     color: var(--apinox-foreground);
-    opacity: 0.18;
+    opacity: 0;
     pointer-events: none;
     position: absolute;
     left: 2px;
@@ -120,7 +120,7 @@ const OperationDragHandle = styled.div`
     align-items: center;
     justify-content: center;
     color: var(--apinox-foreground);
-    opacity: 0.18;
+    opacity: 0;
     pointer-events: none;
     position: absolute;
     left: 2px;
