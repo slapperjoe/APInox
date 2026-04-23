@@ -286,8 +286,10 @@ export const CollectionList: React.FC<CollectionListProps> = ({
     setDeleteConfirm
 }) => {
     const handleSelectRequest = (req: ApiRequest) => {
+        if (selectedRequest?.id !== req.id) {
+            setResponse(null);
+        }
         setSelectedRequest(req);
-        setResponse(null);
     };
 
     return (

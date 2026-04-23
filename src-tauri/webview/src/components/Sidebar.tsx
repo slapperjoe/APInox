@@ -68,7 +68,8 @@ export const Sidebar: React.FC = () => {
     } = selectionProps;
 
     const proxyFullPanelView = activeView === SidebarView.PROXY || activeView === SidebarView.MOCK || activeView === SidebarView.WATCHER;
-    const hideContent = !sidebarExpanded || activeView === SidebarView.HOME || proxyFullPanelView;
+    const historyEmpty = activeView === SidebarView.HISTORY && (!historyProps || historyProps.history.length === 0);
+    const hideContent = !sidebarExpanded || activeView === SidebarView.HOME || proxyFullPanelView || historyEmpty;
 
     return (
         <SidebarContainer

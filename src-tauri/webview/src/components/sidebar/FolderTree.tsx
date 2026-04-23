@@ -157,8 +157,10 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
     const handleRequestClick = (req: ApiRequest, folder: ApinoxFolder) => {
         setSelectedProjectName(projectName);
         setSelectedFolderId?.(folder.id);
+        if (selectedRequest?.id !== req.id) {
+            setResponse(null);
+        }
         setSelectedRequest(req);
-        setResponse(null);
     };
 
     return (

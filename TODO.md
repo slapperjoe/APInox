@@ -2,147 +2,37 @@
 
 This document tracks planned features for APInox, ordered by priority.
 
-**Last Updated**: 2026-01-24
+**Last Updated**: 2026-04-23
+
+---
+
+## 📋 Remaining Work
+
+### OpenAPI/REST — Response Validation
+- [ ] Response validation against OpenAPI schema
+
+### Request Chaining — Optional Enhancements
+- [ ] Header extractors (HTTP response headers as variables)
+- [ ] Test data sets (parameterized testing with CSV/JSON input)
 
 ---
 
 ## ✅ Completed Features
 
-### Priority 1: Mock Server (Feature #7)
-Return canned responses for operations. Useful for frontend devs or offline testing.
-- Define mock responses per operation
-- Match incoming requests by URL, XPath, or regex
-- Support for static XML responses
-- Record & playback mode
-- Latency simulation
-- UI panel for managing mocks
-- Passthrough for unmatched requests
+### Mock Server
+Return canned responses for operations — define per-operation mocks, match by URL/XPath/regex, latency simulation, passthrough for unmatched requests.
 
-### Priority 2: Environment Variables UI (Feature #5)
-Visual editor for environments (Dev/Test/Prod) with encrypted secrets support.
-- Visual editor for environments (Settings → Environments tab)
-- Quick environment switcher in toolbar
-- Active environment indicator in Settings
-- Environment indicator badge in sidebar
-- Import/export environments
-- Custom variable fields
-- **Encrypted secrets** (AES-256-GCM):
-  - Mark any field as secret with toggle button
-  - Eye icon to show/hide masked values
-  - Automatic encryption at rest (~/.apinox/secrets.enc)
-  - Variable resolution in requests ({{fieldName}})
-  - Export redacts secrets as [REDACTED]
-  - Import preserves existing secrets
+### Environment Variables
+Visual editor for Dev/Test/Prod environments; qny of thoseuick switcher; AES-256-GCM encrypted secrets; `{{variable}}` resolution in requests; import/export.
 
-### Priority 4: Performance Metrics (Feature #10)
-Response time tracking and load testing.
-- Response time graphs over multiple runs
-- Simple load testing (concurrent requests)
-- SLA monitoring (visual indicators)
-- Export metrics to CSV/JSON
-- Historical comparison (charts show multiple runs)
+### Performance Metrics
+Response time graphs, load testing (concurrent requests), SLA indicators, CSV/JSON export, historical comparison.
 
-### Standalone Desktop Build (Infrastructure)
-The desktop app now ships as a Tauri application with the backend built into the Rust core.
-- Backend logic runs inside the Tauri/Rust application
-- No separate Node.js backend process to package
-- Zero backend runtime dependencies for end users
-- Cross-platform ready (Windows/macOS/Linux)
+### Request Chaining / Workflows
+Variable extraction (XPath, JSONPath, Regex), inject into subsequent requests, conditional execution, loops, workflow summary view, variable autocomplete, drag & drop workflow builder.
 
----
+### OpenAPI/REST Support
+REST + GraphQL request editor; OpenAPI/Swagger import with auto-generated requests; query/path params; REST auth (Basic, Bearer, API Key).
 
-## 🔄 In Progress
-
-(None - all active features complete!)
-
----
-
-## 📋 Not Started
-
-### Priority 3: Request Chaining (Feature #6)
-Property transfers between requests for complex test scenarios.
-
-**Status**: ✅ **COMPLETE** - All phases finished!
-
-**Phase 1 (Complete):**
-- [x] Variable extraction from responses (XPath, JSONPath, Regex)
-- [x] Regex extractors for JSON/HTML/plain text
-- [x] Inject variables into subsequent requests
-- [x] Conditional execution
-- [x] Loop support
-- [x] Workflow summary view
-- [x] VariablesPanel - Shows available variables with status
-- [x] Variable autocomplete - Monaco completion for `${...}`
-- [x] Enhanced status visualization
-
-**Phase 2 (Complete):**
-- [x] Variable usage highlighting
-- [x] Enhanced hover tooltips with detailed context
-- [x] Documentation with workflow examples
-- [x] Integration with wildcard system
-- [x] Regex extraction backend (RegexExtractor utility)
-- [x] Extractor type dropdown UI (XPath/Regex/JSONPath/Header)
-- [x] Common regex pattern library
-
-**Optional Future Enhancements:**
-- [ ] JSONPath extractors (JSON responses)
-- [ ] Header extractors (HTTP headers)
-- [ ] Test data sets (parameterized testing with CSV/JSON)
-- [ ] Visual drag & drop workflow builder
-
-**Estimated effort for optional features**: 1-5 days
-
----
-
-### Priority 5: OpenAPI/REST Support (Feature #8)
-Extend beyond SOAP to REST APIs.
-
-**Status**: ✅ **80% COMPLETE** - Core REST/GraphQL working, missing OpenAPI import
-
-**Completed:**
-- [x] REST request editor (JSON body) - MonacoRequestEditor with JSON mode
-- [x] REST execution with HttpClient
-- [x] GraphQL support
-- [x] Query params, path params, REST auth (Basic, Bearer, API Key)
-- [x] GraphQL variables panel
-
-**Remaining:**
-- [ ] Import OpenAPI/Swagger specs
-- [ ] Auto-generate REST requests from spec
-- [ ] Response validation against schema
-
-**Estimated effort**: 3-5 days for OpenAPI import
-
----
-
-## 🚧 Infrastructure Backlog
-
-### CLI Extraction → APIprox (COMPLETED)
-CLI functionality has been split into a separate project: **[APIprox](https://github.com/yourusername/apiprox)**
-
-**APIprox provides**:
-- CLI commands for distributed testing
-- Coordinator/Worker architecture  
-- HTTP/HTTPS proxy with traffic interception
-- Mock server functionality
-- Standalone binary with zero dependencies
-
-**APInox focus**: Desktop UI for SOAP testing only
-
-### Rust Backend Consolidation (COMPLETED)
-Core backend logic now lives in the Tauri Rust application, giving APInox a single native desktop runtime.
-
-**Benefits achieved**:
-- Single executable backend path
-- Better performance
-- Smaller distribution complexity
-- Simpler deployment
-
----
-
-## 📝 Documentation Tasks
-
-- [x] Update README with encrypted secrets feature
-- [x] Document custom variables in user guide
-- [x] Add security best practices section
-- [x] Update CHANGELOG for 0.15.0 release
+### Standalone Desktop Build (Tauri)
+Single native Rust/Tauri binary — no separate backend process, zero runtime dependencies, cross-platform (Windows/macOS/Linux).

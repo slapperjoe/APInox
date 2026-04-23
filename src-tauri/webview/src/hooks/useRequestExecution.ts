@@ -212,7 +212,17 @@ export function useRequestExecution({
                                         ? stepExec.response.result
                                         : JSON.stringify(stepExec.response.result));
 
-                                    if (rawResp && ext.source === 'body') {
+                                    if (ext.type === 'Header' || ext.source === 'header') {
+                                        const responseHeaders: Record<string, string> = stepExec.response.headers || {};
+                                        const headerValue = Object.entries(responseHeaders)
+                                            .find(([k]) => k.toLowerCase() === (ext.path || '').toLowerCase())?.[1];
+                                        if (headerValue) {
+                                            contextVariables[ext.variable] = headerValue;
+                                            debugLog(`[Context] Extracted header '${ext.variable}' from step '${step.name}'`, headerValue);
+                                        } else if (ext.defaultValue) {
+                                            contextVariables[ext.variable] = ext.defaultValue;
+                                        }
+                                    } else if (rawResp && ext.source === 'body') {
                                         try {
                                             const val = CustomXPathEvaluator.evaluate(rawResp, ext.path);
                                             if (val) {
