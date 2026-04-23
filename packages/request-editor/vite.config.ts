@@ -60,10 +60,14 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       lib: {
-        entry: resolve(__dirname, 'src/index.ts'),
+        entry: {
+          index: resolve(__dirname, 'src/index.ts'),
+          core: resolve(__dirname, 'src/core.ts'),
+          monaco: resolve(__dirname, 'src/monaco.ts'),
+        },
         name: 'ApinoxRequestEditor',
         formats: ['es', 'cjs'],
-        fileName: (format) => format === 'es' ? 'index.js' : 'index.cjs'
+        fileName: (format, entryName) => format === 'es' ? `${entryName}.js` : `${entryName}.cjs`
       },
       rollupOptions: {
         external: [

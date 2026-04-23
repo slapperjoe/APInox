@@ -3,7 +3,7 @@ use tauri::{AppHandle, State};
 
 use crate::proxy_models::ProxyConfig;
 use crate::proxy::server::run_proxy;
-use crate::ProxyAppState;
+use crate::{ensure_proxy_state, LazyProxyAppState};
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -19,9 +19,10 @@ pub async fn start_proxy(
     port: u16,
     mode: String,
     target_url: String,
-    state: State<'_, ProxyAppState>,
+    state: State<'_, LazyProxyAppState>,
     app: AppHandle,
 ) -> Result<(), String> {
+    let state = ensure_proxy_state(state, &app).await?;
     let mut ps = state.proxy.lock().await;
 
     if ps.running {
@@ -66,7 +67,8 @@ pub async fn start_proxy(
 
 
 #[tauri::command]
-pub async fn stop_proxy(state: State<'_, ProxyAppState>) -> Result<(), String> {
+pub async fn stop_proxy(state: State<'_, LazyProxyAppState>, app: AppHandle) -> Result<(), String> {
+    let state = ensure_proxy_state(state, &app).await?;
     let mut ps = state.proxy.lock().await;
 
     if let Some(handle) = ps.task.take() {
@@ -79,7 +81,8 @@ pub async fn stop_proxy(state: State<'_, ProxyAppState>) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn get_proxy_status(state: State<'_, ProxyAppState>) -> Result<ProxyStatus, String> {
+pub async fn get_proxy_status(state: State<'_, LazyProxyAppState>, app: AppHandle) -> Result<ProxyStatus, String> {
+    let state = ensure_proxy_state(state, &app).await?;
     let ps = state.proxy.lock().await;
     Ok(ProxyStatus {
         running: ps.running,

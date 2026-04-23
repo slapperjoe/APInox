@@ -11,6 +11,16 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
+    },
+    "./core": {
+      "types": "./dist/core.d.ts",
+      "import": "./dist/core.js",
+      "require": "./dist/core.cjs"
+    },
+    "./monaco": {
+      "types": "./dist/monaco.d.ts",
+      "import": "./dist/monaco.js",
+      "require": "./dist/monaco.cjs"
     }
   },
   "files": [

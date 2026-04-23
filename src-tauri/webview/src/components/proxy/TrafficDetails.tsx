@@ -1,13 +1,15 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import {
-  MonacoRequestEditorWithToolbar,
-  MonacoResponseViewer,
-  MonacoResponseViewerWithToolbar,
   formatXml,
   formatJson,
   useEditorSettings,
-} from '@apinox/request-editor';
+} from '@apinox/request-editor/core';
+import {
+  MonacoRequestEditorWithToolbar,
+  MonacoResponseViewer,
+  MonacoResponseViewerWithToolbar,
+} from '@apinox/request-editor/monaco';
 import type { TrafficLog } from './TrafficViewer';
 import { tokens } from './tokens';
 

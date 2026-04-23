@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { invokeTauriCommand } from '../../utils/bridge';
 import { tokens } from './tokens';
-import { MonacoRequestEditorWithToolbar, HeadersPanel } from '@apinox/request-editor';
+import { HeadersPanel, MonacoRequestEditorWithToolbar } from '@apinox/request-editor/monaco';
 
 interface BreakpointCondition {
   type: 'url' | 'method' | 'statusCode' | 'header' | 'contains';

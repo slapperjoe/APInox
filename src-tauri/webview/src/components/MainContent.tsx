@@ -1,36 +1,19 @@
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { Suspense, useState, useEffect, useCallback, useMemo } from 'react';
 import styled from 'styled-components';
 import { Container, ContextMenu, ContextMenuItem } from '../styles/App.styles';
 import { bridge, isVsCode, isTauri } from '../utils/bridge';
 import { updateProjectWithRename } from '../utils/projectUtils';
 import { generateInitialXmlForOperation } from '../utils/soapUtils';
 import { Sidebar } from './Sidebar';
-import { WorkspaceLayout } from './WorkspaceLayout';
 import { WorkspaceContext } from '../contexts/WorkspaceContext';
 import { SidebarContext } from '../contexts/SidebarContext';
-import { ProxyPanel } from './proxy/ProxyPanel';
-import { AddToProjectDialog, type AddToProjectDestination } from './proxy/AddToProjectDialog';
+import type { AddToProjectDestination } from './proxy/AddToProjectDialog';
 import type { TrafficLog } from './proxy/TrafficViewer';
-import { RulesAndMockPage } from './proxy/RulesAndMockPage';
-import { FileWatcherPage } from './proxy/FileWatcherPage';
-import { HelpModal } from './HelpModal';
-
-import { AddToTestCaseModal } from './modals/AddToTestCaseModal';
-import { ConfirmationModal } from './modals/ConfirmationModal';
-import { RenameModal } from './modals/RenameModal';
 // import { SampleModal } from './modals/SampleModal'; // file is .skip — not yet available
-import { ExtractorModal } from './modals/ExtractorModal';
-import { SettingsEditorModal } from './modals/SettingsEditorModal';
-import { AddToDevOpsModal } from './modals/AddToDevOpsModal';
-import { AddToProjectModal } from './modals/AddToProjectModal';
-import { WsdlSyncModal } from './modals/WsdlSyncModal';
-import { DebugModal } from './modals/DebugModal';
-import { PickRequestModal, PickRequestItem } from './modals/PickRequestModal';
-import { ExportWorkspaceModal } from './modals/ExportWorkspaceModal';
 // import { CodeSnippetModal } from './modals/CodeSnippetModal';
-import { WorkflowBuilderModal } from './modals/WorkflowBuilderModal';
-import { BulkImportModal, BulkImportResult } from './modals/BulkImportModal';
+import type { PickRequestItem } from './modals/PickRequestModal';
+import type { BulkImportResult } from './modals/BulkImportModal';
 import { ApiRequest, TestCase, TestStep, SidebarView, RequestHistoryEntry, WsdlDiff, ApiInterface, Workflow, WorkflowStep, ApinoxProject } from '@shared/models';
 import { BackendCommand, FrontendCommand } from '@shared/messages';
 import { PERF_REQUEST_ID_PREFIX } from '../constants';
@@ -50,13 +33,73 @@ import { useLayoutHandler } from '../hooks/useLayoutHandler';
 import { useFolderManager } from '../hooks/useFolderManager';
 import { useMobileLayout } from '../hooks/useMobileLayout';
 import { useWorkflowHandlers } from '../hooks/useWorkflowHandlers';
-import { ImportTestCaseModal } from './ImportTestCaseModal';
 
 interface ConfirmationState {
     title: string;
     message: string;
     onConfirm: () => void;
 }
+
+const WorkspaceLayout = React.lazy(() =>
+    import('./WorkspaceLayout').then(module => ({ default: module.WorkspaceLayout }))
+);
+const ProxyPanel = React.lazy(() =>
+    import('./proxy/ProxyPanel').then(module => ({ default: module.ProxyPanel }))
+);
+const RulesAndMockPage = React.lazy(() =>
+    import('./proxy/RulesAndMockPage').then(module => ({ default: module.RulesAndMockPage }))
+);
+const FileWatcherPage = React.lazy(() =>
+    import('./proxy/FileWatcherPage').then(module => ({ default: module.FileWatcherPage }))
+);
+const HelpModal = React.lazy(() =>
+    import('./HelpModal').then(module => ({ default: module.HelpModal }))
+);
+const AddToProjectDialog = React.lazy(() =>
+    import('./proxy/AddToProjectDialog').then(module => ({ default: module.AddToProjectDialog }))
+);
+const AddToTestCaseModal = React.lazy(() =>
+    import('./modals/AddToTestCaseModal').then(module => ({ default: module.AddToTestCaseModal }))
+);
+const ConfirmationModal = React.lazy(() =>
+    import('./modals/ConfirmationModal').then(module => ({ default: module.ConfirmationModal }))
+);
+const RenameModal = React.lazy(() =>
+    import('./modals/RenameModal').then(module => ({ default: module.RenameModal }))
+);
+const ExtractorModal = React.lazy(() =>
+    import('./modals/ExtractorModal').then(module => ({ default: module.ExtractorModal }))
+);
+const SettingsEditorModal = React.lazy(() =>
+    import('./modals/SettingsEditorModal').then(module => ({ default: module.SettingsEditorModal }))
+);
+const AddToDevOpsModal = React.lazy(() =>
+    import('./modals/AddToDevOpsModal').then(module => ({ default: module.AddToDevOpsModal }))
+);
+const AddToProjectModal = React.lazy(() =>
+    import('./modals/AddToProjectModal').then(module => ({ default: module.AddToProjectModal }))
+);
+const WsdlSyncModal = React.lazy(() =>
+    import('./modals/WsdlSyncModal').then(module => ({ default: module.WsdlSyncModal }))
+);
+const DebugModal = React.lazy(() =>
+    import('./modals/DebugModal').then(module => ({ default: module.DebugModal }))
+);
+const PickRequestModal = React.lazy(() =>
+    import('./modals/PickRequestModal').then(module => ({ default: module.PickRequestModal }))
+);
+const ExportWorkspaceModal = React.lazy(() =>
+    import('./modals/ExportWorkspaceModal').then(module => ({ default: module.ExportWorkspaceModal }))
+);
+const WorkflowBuilderModal = React.lazy(() =>
+    import('./modals/WorkflowBuilderModal').then(module => ({ default: module.WorkflowBuilderModal }))
+);
+const BulkImportModal = React.lazy(() =>
+    import('./modals/BulkImportModal').then(module => ({ default: module.BulkImportModal }))
+);
+const ImportTestCaseModal = React.lazy(() =>
+    import('./ImportTestCaseModal').then(module => ({ default: module.ImportTestCaseModal }))
+);
 
 const DangerMenuItem = styled(ContextMenuItem)`
     color: var(--apinox-errorForeground);
@@ -185,6 +228,13 @@ const MainContent: React.FC = () => {
         sidebarExpanded,
         setSidebarExpanded
     } = useNavigation();
+    const [hasOpenedProxyView, setHasOpenedProxyView] = useState(activeView === SidebarView.PROXY);
+
+    useEffect(() => {
+        if (activeView === SidebarView.PROXY) {
+            setHasOpenedProxyView(true);
+        }
+    }, [activeView]);
 
     const {
         layoutMode,
@@ -1037,7 +1087,6 @@ const MainContent: React.FC = () => {
         wsdlUrl,
         selectedProjectName,
         saveProject,
-        setProjects,
         setExplorerExpanded,
         setWsdlUrl,
         setSelectedProjectName,
@@ -1581,147 +1630,158 @@ const MainContent: React.FC = () => {
                 <Sidebar />
             </SidebarContext.Provider>
 
-            {/* Always mounted to preserve captured traffic across view switches */}
-            <div style={{ display: activeView === SidebarView.PROXY ? 'flex' : 'none', flex: 1, overflow: 'hidden', flexDirection: 'column' }}>
-                <ProxyPanel
-                    onNavigateTo={(view) => handleSetActiveViewWrapper(view as SidebarView)}
-                    onAddToApinoxProject={handleAddTrafficToProject}
-                />
-            </div>
+            {hasOpenedProxyView && (
+                <div style={{ display: activeView === SidebarView.PROXY ? 'flex' : 'none', flex: 1, overflow: 'hidden', flexDirection: 'column' }}>
+                    <Suspense fallback={<div style={{ flex: 1, background: 'var(--apinox-editor-background)' }} />}>
+                        <ProxyPanel
+                            onNavigateTo={(view) => handleSetActiveViewWrapper(view as SidebarView)}
+                            onAddToApinoxProject={handleAddTrafficToProject}
+                        />
+                    </Suspense>
+                </div>
+            )}
             {activeView === SidebarView.MOCK && (
                 <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                    <RulesAndMockPage />
+                    <Suspense fallback={<div style={{ flex: 1, background: 'var(--apinox-editor-background)' }} />}>
+                        <RulesAndMockPage />
+                    </Suspense>
                 </div>
             )}
             {activeView === SidebarView.WATCHER && (
                 <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                    <FileWatcherPage />
+                    <Suspense fallback={<div style={{ flex: 1, background: 'var(--apinox-editor-background)' }} />}>
+                        <FileWatcherPage />
+                    </Suspense>
                 </div>
             )}
             {/* WorkspaceLayout using WorkspaceContext - no props needed */}
             {activeView !== SidebarView.PROXY && activeView !== SidebarView.MOCK && activeView !== SidebarView.WATCHER && (
                 <WorkspaceContext.Provider value={workspaceContextValue}>
-                    <WorkspaceLayout />
+                    <Suspense fallback={<div style={{ flex: 1, background: 'var(--apinox-editor-background)' }} />}>
+                        <WorkspaceLayout />
+                    </Suspense>
                 </WorkspaceContext.Provider>
             )}
-            {
-                showDevOpsModal && config?.azureDevOps?.orgUrl && config?.azureDevOps?.project && selectedRequest && (
-                    <AddToDevOpsModal
-                        orgUrl={config.azureDevOps.orgUrl}
-                        project={config.azureDevOps.project}
-                        requestContent={selectedRequest.request || ''}
-                        responseContent={response?.body}
-                        requestName={selectedRequest.name}
-                        onClose={() => setShowDevOpsModal(false)}
-                    />
-                )
-            }
+            <Suspense fallback={null}>
+                {
+                    showDevOpsModal && config?.azureDevOps?.orgUrl && config?.azureDevOps?.project && selectedRequest && (
+                        <AddToDevOpsModal
+                            orgUrl={config.azureDevOps.orgUrl}
+                            project={config.azureDevOps.project}
+                            requestContent={selectedRequest.request || ''}
+                            responseContent={response?.body}
+                            requestName={selectedRequest.name}
+                            onClose={() => setShowDevOpsModal(false)}
+                        />
+                    )
+                }
 
-            {
-                showSettings && (
-                    <SettingsEditorModal
-                        rawConfig={rawConfig}
-                        onClose={() => {
-                            setShowSettings(false);
-                            setInitialSettingsTab(null);
-                        }}
-                        onSave={async (content, config) => {
-                            if (isTauri()) {
-                                try {
-                                    await bridge.sendMessageAsync({
-                                        command: FrontendCommand.SaveSettings,
-                                        raw: !config,
-                                        content,
-                                        config
-                                    });
-                                    const data: any = await bridge.sendMessageAsync({
-                                        command: FrontendCommand.GetSettings
-                                    });
-                                    bridge.emit({
-                                        command: BackendCommand.SettingsUpdate,
-                                        config: data?.config ?? data ?? null,
-                                        raw: data?.raw,
-                                        configDir: data?.configDir,
-                                        configPath: data?.configPath
-                                    } as any);
-                                } catch (e) {
-                                    // fallback to fire-and-forget
-                                    bridge.sendMessage({ command: FrontendCommand.SaveSettings, raw: !config, content, config });
+                {
+                    showSettings && (
+                        <SettingsEditorModal
+                            rawConfig={rawConfig}
+                            onClose={() => {
+                                setShowSettings(false);
+                                setInitialSettingsTab(null);
+                            }}
+                            onSave={async (content, config) => {
+                                if (isTauri()) {
+                                    try {
+                                        await bridge.sendMessageAsync({
+                                            command: FrontendCommand.SaveSettings,
+                                            raw: !config,
+                                            content,
+                                            config
+                                        });
+                                        const data: any = await bridge.sendMessageAsync({
+                                            command: FrontendCommand.GetSettings
+                                        });
+                                        bridge.emit({
+                                            command: BackendCommand.SettingsUpdate,
+                                            config: data?.config ?? data ?? null,
+                                            raw: data?.raw,
+                                            configDir: data?.configDir,
+                                            configPath: data?.configPath
+                                        } as any);
+                                    } catch (e) {
+                                        // fallback to fire-and-forget
+                                        bridge.sendMessage({ command: FrontendCommand.SaveSettings, raw: !config, content, config });
+                                    }
+                                    return;
                                 }
-                                return;
-                            }
 
-                            bridge.sendMessage({ command: 'saveSettings', raw: !config, content, config });
-                        }}
-                        initialTab={initialSettingsTab}
-                    />
-                )
-            }
-            {
-                showHelp && (
-                    <HelpModal
-                        initialSectionId={helpSection}
-                        onClose={() => {
-                            setShowHelp(false);
-                            setHelpSection(null);
-                        }}
-                    />
-                )
-            }
-            {
-                showDebugModal && (
-                    <DebugModal
-                        isOpen={showDebugModal}
-                        onClose={() => setShowDebugModal(false)}
-                    />
-                )
-            }
-            {
-                addTrafficLog && (
-                    <AddToProjectDialog
-                        log={addTrafficLog}
-                        projects={projects}
-                        onConfirm={handleConfirmAddTrafficToProject}
-                        onClose={() => setAddTrafficLog(null)}
-                    />
-                )
-            }
-            {
-                exportWorkspaceModal && (
-                    <ExportWorkspaceModal
-                        isOpen={exportWorkspaceModal}
-                        onClose={() => setExportWorkspaceModal(false)}
-                        projects={projects}
-                        onExport={handleExportWorkspace}
-                    />
-                )
-            }
-            {/* Code snippet modal temporarily disabled during package migration
-                codeSnippetModal.open && codeSnippetModal.request && (
-                    <CodeSnippetModal
-                        isOpen={codeSnippetModal.open}
-                        onClose={() => setCodeSnippetModal({ open: false, request: null })}
-                        request={codeSnippetModal.request}
-                        environment={config?.activeEnvironment && config?.environments
-                            ? config.environments[config.activeEnvironment]
-                            : undefined}
-                    />
-                )
-            */}
-            {
-                workflowBuilderModal.open && (
-                    <WorkflowBuilderModal
-                        isOpen={workflowBuilderModal.open}
-                        onClose={() => {
-                            console.log('[Workflows] Closing modal');
-                            setWorkflowBuilderModal({ open: false, workflow: null, projectPath: null });
-                        }}
-                        workflow={workflowBuilderModal.workflow || undefined}
-                        onSave={handleSaveWorkflow}
-                        projects={projects}
-                    />
-                )
-            }
+                                bridge.sendMessage({ command: 'saveSettings', raw: !config, content, config });
+                            }}
+                            initialTab={initialSettingsTab}
+                        />
+                    )
+                }
+                {
+                    showHelp && (
+                        <HelpModal
+                            initialSectionId={helpSection}
+                            onClose={() => {
+                                setShowHelp(false);
+                                setHelpSection(null);
+                            }}
+                        />
+                    )
+                }
+                {
+                    showDebugModal && (
+                        <DebugModal
+                            isOpen={showDebugModal}
+                            onClose={() => setShowDebugModal(false)}
+                        />
+                    )
+                }
+                {
+                    addTrafficLog && (
+                        <AddToProjectDialog
+                            log={addTrafficLog}
+                            projects={projects}
+                            onConfirm={handleConfirmAddTrafficToProject}
+                            onClose={() => setAddTrafficLog(null)}
+                        />
+                    )
+                }
+                {
+                    exportWorkspaceModal && (
+                        <ExportWorkspaceModal
+                            isOpen={exportWorkspaceModal}
+                            onClose={() => setExportWorkspaceModal(false)}
+                            projects={projects}
+                            onExport={handleExportWorkspace}
+                        />
+                    )
+                }
+                {/* Code snippet modal temporarily disabled during package migration
+                    codeSnippetModal.open && codeSnippetModal.request && (
+                        <CodeSnippetModal
+                            isOpen={codeSnippetModal.open}
+                            onClose={() => setCodeSnippetModal({ open: false, request: null })}
+                            request={codeSnippetModal.request}
+                            environment={config?.activeEnvironment && config?.environments
+                                ? config.environments[config.activeEnvironment]
+                                : undefined}
+                        />
+                    )
+                */}
+                {
+                    workflowBuilderModal.open && (
+                        <WorkflowBuilderModal
+                            isOpen={workflowBuilderModal.open}
+                            onClose={() => {
+                                console.log('[Workflows] Closing modal');
+                                setWorkflowBuilderModal({ open: false, workflow: null, projectPath: null });
+                            }}
+                            workflow={workflowBuilderModal.workflow || undefined}
+                            onSave={handleSaveWorkflow}
+                            projects={projects}
+                        />
+                    )
+                }
+            </Suspense>
             {
                 contextMenu && (
                     <ContextMenu top={contextMenu.y} left={contextMenu.x}>
@@ -1771,43 +1831,47 @@ const MainContent: React.FC = () => {
 
 
             {/* Rename Modal */}
-            <RenameModal
-                isOpen={!!renameState}
-                title={`Rename ${renameState?.type} `}
-                initialValue={renameState?.value || ''}
-                onCancel={() => setRenameState(null)}
-                onSave={(value) => {
-                    if (!renameState) return;
-                    // Apply rename logic here (update state)
-                    if (renameState.type === 'project') {
-                        setProjects(projects.map(p => p === renameState.data ? { ...p, name: value } : p));
-                    } else if (renameState.type === 'interface') {
-                        setProjects(prev => prev.map(p => {
-                            const hasInterface = p.interfaces.some(i => i === renameState.data);
-                            if (hasInterface) {
-                                return {
-                                    ...p,
-                                    interfaces: p.interfaces.map(i => i === renameState.data ? { ...i, name: value } : i),
-                                    dirty: true
-                                };
+            {renameState && (
+                <Suspense fallback={null}>
+                    <RenameModal
+                        isOpen={!!renameState}
+                        title={`Rename ${renameState?.type} `}
+                        initialValue={renameState?.value || ''}
+                        onCancel={() => setRenameState(null)}
+                        onSave={(value) => {
+                            if (!renameState) return;
+                            // Apply rename logic here (update state)
+                            if (renameState.type === 'project') {
+                                setProjects(projects.map(p => p === renameState.data ? { ...p, name: value } : p));
+                            } else if (renameState.type === 'interface') {
+                                setProjects(prev => prev.map(p => {
+                                    const hasInterface = p.interfaces.some(i => i === renameState.data);
+                                    if (hasInterface) {
+                                        return {
+                                            ...p,
+                                            interfaces: p.interfaces.map(i => i === renameState.data ? { ...i, name: value } : i),
+                                            dirty: true
+                                        };
+                                    }
+                                    return p;
+                                }));
+                            } else if (renameState.type === 'folder' || renameState.type === 'request') {
+                                // Use helper to handle deep recursion for folders and requests within them
+                                setProjects(prev => updateProjectWithRename(
+                                    prev,
+                                    renameState.data.id || renameState.data.name, // Use ID if available, else name
+                                    renameState.type as 'folder' | 'request',
+                                    value,
+                                    renameState.data
+                                ));
+
                             }
-                            return p;
-                        }));
-                    } else if (renameState.type === 'folder' || renameState.type === 'request') {
-                        // Use helper to handle deep recursion for folders and requests within them
-                        setProjects(prev => updateProjectWithRename(
-                            prev,
-                            renameState.data.id || renameState.data.name, // Use ID if available, else name
-                            renameState.type as 'folder' | 'request',
-                            value,
-                            renameState.data
-                        ));
 
-                    }
-
-                    setRenameState(null);
-                }}
-            />
+                            setRenameState(null);
+                        }}
+                    />
+                </Suspense>
+            )}
 
             {/* Sample Schema Modal - temporarily disabled
             <SampleModal
@@ -1821,268 +1885,294 @@ const MainContent: React.FC = () => {
             {/* Add to Test Case Modal */}
             {
                 addToTestCaseModal.open && addToTestCaseModal.request && (
-                    <AddToTestCaseModal
-                        projects={projects}
-                        onClose={() => setAddToTestCaseModal({ open: false, request: null })}
-                        onAdd={(target) => {
-                            const req = addToTestCaseModal.request!;
-                            const newStep: TestStep = {
-                                id: `step-${Date.now()}`,
-                                name: req.name,
-                                type: 'request',
-                                config: {
-                                    request: {
-                                        ...req,
-                                        id: `req-${Date.now()}`,
-                                        // Explicitly preserve requestType and bodyType to prevent defaulting to soap
-                                        requestType: req.requestType || 'soap',
-                                        bodyType: req.bodyType
-                                    },
-                                    requestId: undefined
-                                }
-                            };
-
-                            setProjects(prev => prev.map(p => {
-                                const suite = target.suiteId ? p.testSuites?.find(s => s.id === target.suiteId) :
-                                    p.testSuites?.find(s => s.testCases.some(tc => tc.id === target.caseId));
-
-                                if (!suite) return p;
-
-                                const updatedTestSuites = (p.testSuites || []).map(s => {
-                                    if (s.id === suite.id) {
-                                        // If creating new case
-                                        if (target.type === 'new') {
-                                            const newCase: TestCase = {
-                                                id: `tc-${Date.now()}`,
-                                                name: `TestCase ${(s.testCases?.length || 0) + 1}`,
-                                                expanded: true,
-                                                steps: [newStep]
-                                            };
-                                            return { ...s, testCases: [...(s.testCases || []), newCase] };
-                                        }
-                                        // If adding to existing
-                                        if (target.type === 'existing' && target.caseId) {
-                                            return {
-                                                ...s,
-                                                testCases: s.testCases.map(tc =>
-                                                    tc.id === target.caseId ? { ...tc, steps: [...tc.steps, newStep] } : tc
-                                                )
-                                            };
-                                        }
+                    <Suspense fallback={null}>
+                        <AddToTestCaseModal
+                            projects={projects}
+                            onClose={() => setAddToTestCaseModal({ open: false, request: null })}
+                            onAdd={(target) => {
+                                const req = addToTestCaseModal.request!;
+                                const newStep: TestStep = {
+                                    id: `step-${Date.now()}`,
+                                    name: req.name,
+                                    type: 'request',
+                                    config: {
+                                        request: {
+                                            ...req,
+                                            id: `req-${Date.now()}`,
+                                            // Explicitly preserve requestType and bodyType to prevent defaulting to soap
+                                            requestType: req.requestType || 'soap',
+                                            bodyType: req.bodyType
+                                        },
+                                        requestId: undefined
                                     }
-                                    return s;
-                                });
+                                };
 
-                                const newProj = { ...p, testSuites: updatedTestSuites, dirty: true };
-                                setTimeout(() => saveProject(newProj), 0);
-                                return newProj;
-                            }));
-                            setAddToTestCaseModal({ open: false, request: null });
-                            setActiveView(SidebarView.PROJECTS);
-                        }}
-                    />
+                                setProjects(prev => prev.map(p => {
+                                    const suite = target.suiteId ? p.testSuites?.find(s => s.id === target.suiteId) :
+                                        p.testSuites?.find(s => s.testCases.some(tc => tc.id === target.caseId));
+
+                                    if (!suite) return p;
+
+                                    const updatedTestSuites = (p.testSuites || []).map(s => {
+                                        if (s.id === suite.id) {
+                                            // If creating new case
+                                            if (target.type === 'new') {
+                                                const newCase: TestCase = {
+                                                    id: `tc-${Date.now()}`,
+                                                    name: `TestCase ${(s.testCases?.length || 0) + 1}`,
+                                                    expanded: true,
+                                                    steps: [newStep]
+                                                };
+                                                return { ...s, testCases: [...(s.testCases || []), newCase] };
+                                            }
+                                            // If adding to existing
+                                            if (target.type === 'existing' && target.caseId) {
+                                                return {
+                                                    ...s,
+                                                    testCases: s.testCases.map(tc =>
+                                                        tc.id === target.caseId ? { ...tc, steps: [...tc.steps, newStep] } : tc
+                                                    )
+                                                };
+                                            }
+                                        }
+                                        return s;
+                                    });
+
+                                    const newProj = { ...p, testSuites: updatedTestSuites, dirty: true };
+                                    setTimeout(() => saveProject(newProj), 0);
+                                    return newProj;
+                                }));
+                                setAddToTestCaseModal({ open: false, request: null });
+                                setActiveView(SidebarView.PROJECTS);
+                            }}
+                        />
+                    </Suspense>
                 )
             }
 
             {pickRequestModal.open && (
-                <PickRequestModal
-                    isOpen={pickRequestModal.open}
-                    items={pickRequestItems}
-                    title="Add Request to Test Case"
-                    onClose={() => setPickRequestModal({ open: false, mode: 'testcase', caseId: null, suiteId: null })}
-                    onSelect={(item) => {
-                        if (pickRequestModal.mode === 'performance') {
-                            const suiteId = pickRequestModal.suiteId;
-                            if (!suiteId) return;
+                <Suspense fallback={null}>
+                    <PickRequestModal
+                        isOpen={pickRequestModal.open}
+                        items={pickRequestItems}
+                        title="Add Request to Test Case"
+                        onClose={() => setPickRequestModal({ open: false, mode: 'testcase', caseId: null, suiteId: null })}
+                        onSelect={(item) => {
+                            if (pickRequestModal.mode === 'performance') {
+                                const suiteId = pickRequestModal.suiteId;
+                                if (!suiteId) return;
+                                bridge.emit({
+                                    command: BackendCommand.AddOperationToPerformance,
+                                    suiteId,
+                                    ...(item.type === 'request' ? { request: item.data } : { operation: item.data })
+                                });
+                                setPickRequestModal({ open: false, mode: 'testcase', caseId: null, suiteId: null });
+                                return;
+                            }
+                            const caseId = pickRequestModal.caseId;
+                            if (!caseId) return;
                             bridge.emit({
-                                command: BackendCommand.AddOperationToPerformance,
-                                suiteId,
+                                command: BackendCommand.AddStepToCase,
+                                caseId,
                                 ...(item.type === 'request' ? { request: item.data } : { operation: item.data })
                             });
                             setPickRequestModal({ open: false, mode: 'testcase', caseId: null, suiteId: null });
-                            return;
-                        }
-                        const caseId = pickRequestModal.caseId;
-                        if (!caseId) return;
-                        bridge.emit({
-                            command: BackendCommand.AddStepToCase,
-                            caseId,
-                            ...(item.type === 'request' ? { request: item.data } : { operation: item.data })
-                        });
-                        setPickRequestModal({ open: false, mode: 'testcase', caseId: null, suiteId: null });
-                    }}
-                />
+                        }}
+                    />
+                </Suspense>
             )}
 
             {/* Confirmation Modal */}
-            <ConfirmationModal
-                isOpen={!!confirmationModal}
-                title={confirmationModal?.title || ''}
-                message={confirmationModal?.message || ''}
-                onCancel={() => setConfirmationModal(null)}
-                onConfirm={() => {
-                    confirmationModal?.onConfirm();
-                    setConfirmationModal(null);
-                }}
-            />
+            {confirmationModal && (
+                <Suspense fallback={null}>
+                    <ConfirmationModal
+                        isOpen={!!confirmationModal}
+                        title={confirmationModal?.title || ''}
+                        message={confirmationModal?.message || ''}
+                        onCancel={() => setConfirmationModal(null)}
+                        onConfirm={() => {
+                            confirmationModal?.onConfirm();
+                            setConfirmationModal(null);
+                        }}
+                    />
+                </Suspense>
+            )}
 
             {/* Extractor Modal */}
-            <ExtractorModal
-                isOpen={!!extractorModal}
-                data={extractorModal}
-                onClose={() => setExtractorModal(null)}
-                onSave={(data) => {
-                    handleSaveExtractor(data);
-                    setExtractorModal(null);
-                }}
-            />
+            {extractorModal && (
+                <Suspense fallback={null}>
+                    <ExtractorModal
+                        isOpen={!!extractorModal}
+                        data={extractorModal}
+                        onClose={() => setExtractorModal(null)}
+                        onSave={(data) => {
+                            handleSaveExtractor(data);
+                            setExtractorModal(null);
+                        }}
+                    />
+                </Suspense>
+            )}
 
             {/* Add to Project Modal */}
-            <AddToProjectModal
-                open={!!pendingAddInterface}
-                onClose={() => setPendingAddInterface(null)}
-                existingProjects={projects.map(p => p.name)}
-                interfaceName={(pendingAddInterface as any)?._addAll ? `All ${exploredInterfaces.length} interfaces` : pendingAddInterface?.name}
-                onSelectProject={(projectName) => {
-                    if (pendingAddInterface) {
-                        const isAddAll = (pendingAddInterface as any)._addAll;
-                        if (isAddAll) {
-                            // Add all explored interfaces to existing project
-                            exploredInterfaces.forEach(iface => {
-                                addInterfaceToNamedProject(iface, projectName, false);
-                            });
-                        } else {
-                            addInterfaceToNamedProject(pendingAddInterface, projectName, false);
-                        }
-                        // Switch to workspace tab after adding
-                        setActiveView(SidebarView.PROJECTS);
-                    }
-                }}
-                onCreateProject={(projectName) => {
-                    if (pendingAddInterface) {
-                        const isAddAll = (pendingAddInterface as any)._addAll;
-                        if (isAddAll) {
-                            // Create new project with all explored interfaces
-                            // First interface creates the project, rest are added
-                            exploredInterfaces.forEach((iface, i) => {
-                                addInterfaceToNamedProject(iface, projectName, i === 0);
-                            });
-                        } else {
-                            addInterfaceToNamedProject(pendingAddInterface, projectName, true);
-                        }
-                        // Switch to workspace tab after adding
-                        setActiveView(SidebarView.PROJECTS);
-                    }
-                }}
-            />
+            {pendingAddInterface && (
+                <Suspense fallback={null}>
+                    <AddToProjectModal
+                        open={!!pendingAddInterface}
+                        onClose={() => setPendingAddInterface(null)}
+                        existingProjects={projects.map(p => p.name)}
+                        interfaceName={(pendingAddInterface as any)?._addAll ? `All ${exploredInterfaces.length} interfaces` : pendingAddInterface?.name}
+                        onSelectProject={(projectName) => {
+                            if (pendingAddInterface) {
+                                const isAddAll = (pendingAddInterface as any)._addAll;
+                                if (isAddAll) {
+                                    // Add all explored interfaces to existing project
+                                    exploredInterfaces.forEach(iface => {
+                                        addInterfaceToNamedProject(iface, projectName, false);
+                                    });
+                                } else {
+                                    addInterfaceToNamedProject(pendingAddInterface, projectName, false);
+                                }
+                                // Switch to workspace tab after adding
+                                setActiveView(SidebarView.PROJECTS);
+                            }
+                        }}
+                        onCreateProject={(projectName) => {
+                            if (pendingAddInterface) {
+                                const isAddAll = (pendingAddInterface as any)._addAll;
+                                if (isAddAll) {
+                                    // Create new project with all explored interfaces
+                                    // First interface creates the project, rest are added
+                                    exploredInterfaces.forEach((iface, i) => {
+                                        addInterfaceToNamedProject(iface, projectName, i === 0);
+                                    });
+                                } else {
+                                    addInterfaceToNamedProject(pendingAddInterface, projectName, true);
+                                }
+                                // Switch to workspace tab after adding
+                                setActiveView(SidebarView.PROJECTS);
+                            }
+                        }}
+                    />
+                </Suspense>
+            )}
 
             {/* Bulk Import Modal */}
-            <BulkImportModal
-                open={showBulkImportModal}
-                onClose={() => setShowBulkImportModal(false)}
-                existingProjects={projects.filter(p => !p.readOnly).map(p => p.name)}
-                onImportComplete={(results: BulkImportResult[], projectName: string, isNew: boolean) => {
-                    // Collect all successful interfaces
-                    const successfulInterfaces = results
-                        .filter(r => r.success && r.interfaces)
-                        .flatMap(r => r.interfaces || []);
+            {showBulkImportModal && (
+                <Suspense fallback={null}>
+                    <BulkImportModal
+                        open={showBulkImportModal}
+                        onClose={() => setShowBulkImportModal(false)}
+                        existingProjects={projects.filter(p => !p.readOnly).map(p => p.name)}
+                        onImportComplete={(results: BulkImportResult[], projectName: string, isNew: boolean) => {
+                            // Collect all successful interfaces
+                            const successfulInterfaces = results
+                                .filter(r => r.success && r.interfaces)
+                                .flatMap(r => r.interfaces || []);
 
-                    if (successfulInterfaces.length === 0) return;
+                            if (successfulInterfaces.length === 0) return;
 
-                    // Add all interfaces to the project
-                    successfulInterfaces.forEach((iface, i) => {
-                        addInterfaceToNamedProject(iface, projectName, isNew && i === 0);
-                    });
-
-                    // Switch to workspace view
-                    setActiveView(SidebarView.PROJECTS);
-                }}
-                onParseUrl={async (url: string) => {
-                    const response = await bridge.sendMessageAsync({
-                        command: FrontendCommand.LoadWsdl,
-                        url
-                    });
-
-                    // Convert ApiService[] to ApiInterface[] (same logic as useMessageHandler.ts)
-                    const data = response as any[];
-                    const newInterfaces: ApiInterface[] = [];
-
-                    if (Array.isArray(data)) {
-                        // WSDL Handling: Convert SoapService[] to ApiInterface[]
-                        data.forEach((svc: any) => {
-                            // Group operations by Port
-                            const operationsByPort = new Map<string, any[]>();
-                            (svc.operations || []).forEach((op: any) => {
-                                const port = op.portName || 'Default';
-                                if (!operationsByPort.has(port)) {
-                                    operationsByPort.set(port, []);
-                                }
-                                operationsByPort.get(port)!.push(op);
+                            // Add all interfaces to the project
+                            successfulInterfaces.forEach((iface, i) => {
+                                addInterfaceToNamedProject(iface, projectName, isNew && i === 0);
                             });
 
-                            // Create an Interface for each Port
-                            operationsByPort.forEach((ops, portName) => {
-                                const interfaceName = portName === 'Default' ? svc.name : portName;
+                            // Switch to workspace view
+                            setActiveView(SidebarView.PROJECTS);
+                        }}
+                        onParseUrl={async (url: string) => {
+                            const response = await bridge.sendMessageAsync({
+                                command: FrontendCommand.LoadWsdl,
+                                url
+                            });
 
-                                newInterfaces.push({
-                                    id: crypto.randomUUID(),
-                                    name: interfaceName,
-                                    type: 'wsdl',
-                                    bindingName: portName,
-                                    soapVersion: portName.includes('12') ? '1.2' : '1.1',
-                                    definition: url,
-                                    expanded: false,
-                                    operations: ops.map((op: any) => ({
-                                        id: crypto.randomUUID(),
-                                        name: op.name,
-                                        action: '',
-                                        input: op.input,
-                                        fullSchema: op.fullSchema,
-                                        targetNamespace: op.targetNamespace || svc.targetNamespace,
-                                        originalEndpoint: op.originalEndpoint,
-                                        expanded: false,
-                                        requests: [{
+                            // Convert ApiService[] to ApiInterface[] (same logic as useMessageHandler.ts)
+                            const data = response as any[];
+                            const newInterfaces: ApiInterface[] = [];
+
+                            if (Array.isArray(data)) {
+                                // WSDL Handling: Convert SoapService[] to ApiInterface[]
+                                data.forEach((svc: any) => {
+                                    // Group operations by Port
+                                    const operationsByPort = new Map<string, any[]>();
+                                    (svc.operations || []).forEach((op: any) => {
+                                        const port = op.portName || 'Default';
+                                        if (!operationsByPort.has(port)) {
+                                            operationsByPort.set(port, []);
+                                        }
+                                        operationsByPort.get(port)!.push(op);
+                                    });
+
+                                    // Create an Interface for each Port
+                                    operationsByPort.forEach((ops, portName) => {
+                                        const interfaceName = portName === 'Default' ? svc.name : portName;
+
+                                        newInterfaces.push({
                                             id: crypto.randomUUID(),
-                                            name: 'Sample',
-                                            endpoint: op.originalEndpoint,
-                                            contentType: portName.includes('12') ? 'application/soap+xml' : 'text/xml',
-                                            headers: {
-                                                'Content-Type': portName.includes('12') ? 'application/soap+xml' : 'text/xml'
-                                            },
-                                            request: generateInitialXmlForOperation(op),
-                                            requestType: 'soap' as const,
-                                            bodyType: 'xml' as const
-                                        }]
-                                    }))
+                                            name: interfaceName,
+                                            type: 'wsdl',
+                                            bindingName: portName,
+                                            soapVersion: portName.includes('12') ? '1.2' : '1.1',
+                                            definition: url,
+                                            expanded: false,
+                                            operations: ops.map((op: any) => ({
+                                                id: crypto.randomUUID(),
+                                                name: op.name,
+                                                action: '',
+                                                input: op.input,
+                                                fullSchema: op.fullSchema,
+                                                targetNamespace: op.targetNamespace || svc.targetNamespace,
+                                                originalEndpoint: op.originalEndpoint,
+                                                expanded: false,
+                                                requests: [{
+                                                    id: crypto.randomUUID(),
+                                                    name: 'Sample',
+                                                    endpoint: op.originalEndpoint,
+                                                    contentType: portName.includes('12') ? 'application/soap+xml' : 'text/xml',
+                                                    headers: {
+                                                        'Content-Type': portName.includes('12') ? 'application/soap+xml' : 'text/xml'
+                                                    },
+                                                    request: generateInitialXmlForOperation(op),
+                                                    requestType: 'soap' as const,
+                                                    bodyType: 'xml' as const
+                                                }]
+                                            }))
+                                        });
+                                    });
                                 });
-                            });
-                        });
-                    } else if (data && (data as any).interfaces) {
-                        // OpenAPI Handling: Already correctly formatted
-                        newInterfaces.push(...(data as any).interfaces);
-                    }
+                            } else if (data && (data as any).interfaces) {
+                                // OpenAPI Handling: Already correctly formatted
+                                newInterfaces.push(...(data as any).interfaces);
+                            }
 
-                    return newInterfaces;
-                }}
-            />
+                            return newInterfaces;
+                        }}
+                    />
+                </Suspense>
+            )}
 
             </div>{/* end content-row */}
 
             {wsdlDiff && (
-                <WsdlSyncModal
-                    diff={wsdlDiff}
-                    onClose={() => setWsdlDiff(null)}
-                    onSync={handleApplyWsdlSync}
-                />
+                <Suspense fallback={null}>
+                    <WsdlSyncModal
+                        diff={wsdlDiff}
+                        onClose={() => setWsdlDiff(null)}
+                        onSync={handleApplyWsdlSync}
+                    />
+                </Suspense>
             )}
 
             {/* Import to Performance Suite Modal */}
-            <ImportTestCaseModal
-                open={importToPerformanceModal.open}
-                suiteId={importToPerformanceModal.suiteId}
-                projects={projects}
-                onClose={() => setImportToPerformanceModal({ open: false, suiteId: null })}
-            />
+            {importToPerformanceModal.open && (
+                <Suspense fallback={null}>
+                    <ImportTestCaseModal
+                        open={importToPerformanceModal.open}
+                        suiteId={importToPerformanceModal.suiteId}
+                        projects={projects}
+                        onClose={() => setImportToPerformanceModal({ open: false, suiteId: null })}
+                    />
+                </Suspense>
+            )}
         </Container >
     );
 }

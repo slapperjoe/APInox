@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { Play, ChevronLeft, GitBranch } from 'lucide-react';
+import 'monaco-editor/min/vs/editor/editor.main.css';
 // Models imported via props.ts indirections, specific enums kept if needed locally (TestStepType is used in code?)
 // Checking code: TestStepType is used in props interface but not local var?
 // Actually TestStepType is used in onAddStep signature but onAddStep comes from props.
@@ -10,24 +11,9 @@ import { CustomXPathEvaluator } from '../utils/xpathEvaluator';
 import { XPathGenerator } from '../utils/xpathGenerator';
 import { useMobileLayout } from '../hooks/useMobileLayout';
 
-// Import Monaco editor components from @apinox/request-editor package
-import { RequestWorkspace, ErrorBoundary } from '@apinox/request-editor';
-import type { ApiRequest as PackageApiRequest, ExecutionResponse as PackageExecutionResponse, Variable as PackageVariable } from '@apinox/request-editor';
-import { MonacoRequestEditorWithToolbar as MonacoRequestEditor } from '@apinox/request-editor';
-import type { MonacoRequestEditorHandle } from '@apinox/request-editor';
-import { MonacoResponseViewer, formatXml, stripCausalityData, formatContent, formatJson, validateUrl, validateJson, validateXml } from '@apinox/request-editor';
-import { MonacoSingleLineInput } from '@apinox/request-editor';
-import type { MonacoSingleLineInputHandle } from '@apinox/request-editor';
-import { AssertionsPanel } from '@apinox/request-editor';
-import { HeadersPanel } from '@apinox/request-editor';
-import { SecurityPanel } from '@apinox/request-editor';
-import { AttachmentsPanel } from '@apinox/request-editor';
-import { ExtractorsPanel } from '@apinox/request-editor';
-import { VariablesPanel } from '@apinox/request-editor';
-import { QueryParamsPanel } from '@apinox/request-editor';
-import { RestAuthPanel } from '@apinox/request-editor';
-import { GraphQLVariablesPanel } from '@apinox/request-editor';
-import { ScriptEditor } from '@apinox/request-editor';
+import { ErrorBoundary, formatXml, stripCausalityData, formatContent, formatJson, validateUrl, validateJson, validateXml } from '@apinox/request-editor/core';
+import { RequestWorkspace, MonacoRequestEditorWithToolbar as MonacoRequestEditor, MonacoResponseViewer, MonacoSingleLineInput, AssertionsPanel, HeadersPanel, SecurityPanel, AttachmentsPanel, ExtractorsPanel, VariablesPanel, QueryParamsPanel, RestAuthPanel, GraphQLVariablesPanel, ScriptEditor } from '@apinox/request-editor/monaco';
+import type { ApiRequest as PackageApiRequest, ExecutionResponse as PackageExecutionResponse, Variable as PackageVariable, MonacoRequestEditorHandle, MonacoSingleLineInputHandle } from '@apinox/request-editor/monaco';
 import { WelcomePanel, TestCaseView, EmptyTestCase } from './workspace';
 import { WorkflowSummary } from './workspace/WorkflowSummary';
 import { WorkflowEditor } from './workspace/WorkflowEditor';
@@ -42,11 +28,18 @@ import { InterfaceSummary } from './workspace/InterfaceSummary';
 import { TestSuiteSummary } from './workspace/TestSuiteSummary';
 import { OperationSummary } from './workspace/OperationSummary';
 import { PerformanceSuiteEditor } from './workspace/PerformanceSuiteEditor';
-import { ProxyPanel } from './proxy/ProxyPanel';
-import { RulesAndMockPage } from './proxy/RulesAndMockPage';
-import { FileWatcherPage } from './proxy/FileWatcherPage';
 import { findPathToRequest } from '../utils/projectUtils';
 import { useWorkspace } from '../contexts/WorkspaceContext';
+
+const ProxyPanel = React.lazy(() =>
+    import('./proxy/ProxyPanel').then(module => ({ default: module.ProxyPanel }))
+);
+const RulesAndMockPage = React.lazy(() =>
+    import('./proxy/RulesAndMockPage').then(module => ({ default: module.RulesAndMockPage }))
+);
+const FileWatcherPage = React.lazy(() =>
+    import('./proxy/FileWatcherPage').then(module => ({ default: module.FileWatcherPage }))
+);
 
 /**
  * Get Content-Type header based on body type
@@ -940,7 +933,9 @@ export const WorkspaceLayout: React.FC = () => {
     if (activeView === SidebarView.PROXY) {
         return (
             <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                <ProxyPanel onNavigateTo={(_view) => workspace.selectInterface(null)} />
+                <Suspense fallback={<div style={{ flex: 1, background: 'var(--apinox-editor-background)' }} />}>
+                    <ProxyPanel onNavigateTo={(_view) => workspace.selectInterface(null)} />
+                </Suspense>
             </div>
         );
     }
@@ -949,7 +944,9 @@ export const WorkspaceLayout: React.FC = () => {
     if (activeView === SidebarView.MOCK) {
         return (
             <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                <RulesAndMockPage />
+                <Suspense fallback={<div style={{ flex: 1, background: 'var(--apinox-editor-background)' }} />}>
+                    <RulesAndMockPage />
+                </Suspense>
             </div>
         );
     }
@@ -958,7 +955,9 @@ export const WorkspaceLayout: React.FC = () => {
     if (activeView === SidebarView.WATCHER) {
         return (
             <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                <FileWatcherPage />
+                <Suspense fallback={<div style={{ flex: 1, background: 'var(--apinox-editor-background)' }} />}>
+                    <FileWatcherPage />
+                </Suspense>
             </div>
         );
     }

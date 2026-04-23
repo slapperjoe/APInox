@@ -2,20 +2,23 @@ use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
 
 use crate::proxy_models::{FileWatch, SoapMessage, SoapPair, WatcherSoapEvent};
-use crate::ProxyAppState;
+use crate::{ensure_proxy_state, LazyProxyAppState};
 use crate::filewatcher::xml_parser;
 
 #[tauri::command]
-pub async fn get_file_watches(state: State<'_, ProxyAppState>) -> Result<Vec<FileWatch>, String> {
-    Ok(state.filewatcher.lock().await.get_watches())
+pub async fn get_file_watches(state: State<'_, LazyProxyAppState>, app: AppHandle) -> Result<Vec<FileWatch>, String> {
+    let state = ensure_proxy_state(state, &app).await?;
+    let watches = state.filewatcher.lock().await.get_watches();
+    Ok(watches)
 }
 
 #[tauri::command]
 pub async fn add_file_watch(
     watch: FileWatch,
-    state: State<'_, ProxyAppState>,
+    state: State<'_, LazyProxyAppState>,
     app: AppHandle,
 ) -> Result<FileWatch, String> {
+    let state = ensure_proxy_state(state, &app).await?;
     let watch = if watch.id.is_empty() {
         FileWatch { id: Uuid::new_v4().to_string(), ..watch }
     } else {
@@ -34,9 +37,10 @@ pub async fn add_file_watch(
 pub async fn update_file_watch(
     id: String,
     watch: FileWatch,
-    state: State<'_, ProxyAppState>,
+    state: State<'_, LazyProxyAppState>,
     app: AppHandle,
 ) -> Result<FileWatch, String> {
+    let state = ensure_proxy_state(state, &app).await?;
     let mut svc = state.filewatcher.lock().await;
     let updated = svc.update_watch(&id, watch.clone());
     if updated {
@@ -56,7 +60,8 @@ pub async fn update_file_watch(
 }
 
 #[tauri::command]
-pub async fn delete_file_watch(id: String, state: State<'_, ProxyAppState>) -> Result<(), String> {
+pub async fn delete_file_watch(id: String, state: State<'_, LazyProxyAppState>, app: AppHandle) -> Result<(), String> {
+    let state = ensure_proxy_state(state, &app).await?;
     let mut svc = state.filewatcher.lock().await;
     let deleted = svc.delete_watch(&id);
     if deleted {
@@ -74,8 +79,10 @@ pub async fn delete_file_watch(id: String, state: State<'_, ProxyAppState>) -> R
 #[tauri::command]
 pub async fn get_soap_pairs(
     watch_id: Option<String>,
-    state: State<'_, ProxyAppState>,
+    state: State<'_, LazyProxyAppState>,
+    app: AppHandle,
 ) -> Result<Vec<SoapPair>, String> {
+    let state = ensure_proxy_state(state, &app).await?;
     let svc = state.filewatcher.lock().await;
     Ok(svc.get_pairs(watch_id.as_deref()))
 }
@@ -84,14 +91,15 @@ pub async fn get_soap_pairs(
 #[tauri::command]
 pub async fn get_watcher_events(
     _limit: Option<usize>,
-    _state: State<'_, ProxyAppState>,
+    _state: State<'_, LazyProxyAppState>,
 ) -> Result<Vec<serde_json::Value>, String> {
     Ok(vec![])
 }
 
 /// Kept for backward compatibility — clears all in-memory pairs.
 #[tauri::command]
-pub async fn clear_watcher_events(state: State<'_, ProxyAppState>) -> Result<(), String> {
+pub async fn clear_watcher_events(state: State<'_, LazyProxyAppState>, app: AppHandle) -> Result<(), String> {
+    let state = ensure_proxy_state(state, &app).await?;
     state.filewatcher.lock().await.clear_pairs(None);
     Ok(())
 }

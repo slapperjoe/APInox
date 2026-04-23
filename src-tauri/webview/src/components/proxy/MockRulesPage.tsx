@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useImperativeHandle, forwardRef } from 'react';
 import { open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog';
-import { MonacoRequestEditor } from '@apinox/request-editor';
+import { MonacoRequestEditor } from '@apinox/request-editor/monaco';
 import { invokeTauriCommand } from '../../utils/bridge';
 import { tokens } from './tokens';
 

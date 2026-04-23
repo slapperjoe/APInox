@@ -1,22 +1,25 @@
 use serde::Serialize;
-use tauri::State;
+use tauri::{AppHandle, State};
 
 use crate::certificates::manager::CertInfo;
-use crate::ProxyAppState;
+use crate::{ensure_proxy_state, LazyProxyAppState};
 
 #[tauri::command]
-pub async fn get_ca_certificate_info(state: State<'_, ProxyAppState>) -> Result<CertInfo, String> {
+pub async fn get_ca_certificate_info(state: State<'_, LazyProxyAppState>, app: AppHandle) -> Result<CertInfo, String> {
+    let state = ensure_proxy_state(state, &app).await?;
     Ok(state.cert_manager.info())
 }
 
 #[tauri::command]
-pub async fn generate_ca_certificate(state: State<'_, ProxyAppState>) -> Result<CertInfo, String> {
+pub async fn generate_ca_certificate(state: State<'_, LazyProxyAppState>, app: AppHandle) -> Result<CertInfo, String> {
+    let state = ensure_proxy_state(state, &app).await?;
     state.cert_manager.generate().map_err(|e| e.to_string())
 }
 
 /// Remove the CA certificate from the OS trust store (useful for testing the trust flow).
 #[tauri::command]
-pub async fn untrust_ca_certificate(state: State<'_, ProxyAppState>) -> Result<TrustResult, String> {
+pub async fn untrust_ca_certificate(state: State<'_, LazyProxyAppState>, app: AppHandle) -> Result<TrustResult, String> {
+    let state = ensure_proxy_state(state, &app).await?;
     #[cfg(target_os = "macos")]
     let mut result = remove_macos();
 
@@ -46,7 +49,8 @@ pub async fn untrust_ca_certificate(state: State<'_, ProxyAppState>) -> Result<T
 /// Firefox on all platforms uses its own NSS store and is NOT affected by
 /// these commands. Manual steps are always included.
 #[tauri::command]
-pub async fn trust_ca_certificate(state: State<'_, ProxyAppState>) -> Result<TrustResult, String> {
+pub async fn trust_ca_certificate(state: State<'_, LazyProxyAppState>, app: AppHandle) -> Result<TrustResult, String> {
+    let state = ensure_proxy_state(state, &app).await?;
     let cert_path = state.cert_manager.cert_path();
     if !cert_path.exists() {
         return Err("CA certificate not found — generate it first".to_string());

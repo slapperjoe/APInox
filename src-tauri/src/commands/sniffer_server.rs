@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::process::Command;
 use tauri::State;
 
-use crate::ProxyAppState;
+use crate::LazyProxyAppState;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -23,7 +23,7 @@ pub struct SystemProxyStatus {
 
 /// Get the current system HTTP proxy configuration.
 #[tauri::command]
-pub async fn get_system_proxy_status(_state: State<'_, ProxyAppState>) -> Result<SystemProxyStatus, String> {
+pub async fn get_system_proxy_status(_state: State<'_, LazyProxyAppState>) -> Result<SystemProxyStatus, String> {
     #[cfg(target_os = "windows")]
     {
         get_system_proxy_windows()
@@ -53,7 +53,7 @@ pub async fn get_system_proxy_status(_state: State<'_, ProxyAppState>) -> Result
 /// Set the system HTTP+HTTPS proxy to 127.0.0.1:{port}.
 /// On macOS this triggers a Touch ID / password prompt via osascript.
 #[tauri::command]
-pub async fn set_system_proxy(port: u16, _state: State<'_, ProxyAppState>) -> Result<(), String> {
+pub async fn set_system_proxy(port: u16, _state: State<'_, LazyProxyAppState>) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
         set_proxy_windows(port)
@@ -72,7 +72,7 @@ pub async fn set_system_proxy(port: u16, _state: State<'_, ProxyAppState>) -> Re
 /// Clear the system HTTP+HTTPS proxy.
 /// On macOS this triggers a Touch ID / password prompt via osascript.
 #[tauri::command]
-pub async fn clear_system_proxy(_state: State<'_, ProxyAppState>) -> Result<(), String> {
+pub async fn clear_system_proxy(_state: State<'_, LazyProxyAppState>) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
         clear_proxy_windows()

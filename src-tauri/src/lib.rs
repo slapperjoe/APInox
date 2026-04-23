@@ -3,10 +3,11 @@
 
 use std::sync::{
     atomic::{AtomicBool, Ordering},
-    Arc, Mutex, OnceLock,
+    Arc, Mutex as StdMutex, OnceLock,
 };
 use std::time::Instant;
 use tauri::Manager;
+use tokio::sync::Mutex;
 
 mod project_storage;
 mod history_storage;
@@ -45,7 +46,7 @@ use windows::Win32::Graphics::Dwm::{DwmSetWindowAttribute, DWMWA_BORDER_COLOR};
 #[cfg(windows)]
 use windows::Win32::Foundation::HWND;
 
-static LOG_FILE_PATH: Mutex<Option<String>> = Mutex::new(None);
+static LOG_FILE_PATH: StdMutex<Option<String>> = StdMutex::new(None);
 static STARTUP_TIMER: OnceLock<Instant> = OnceLock::new();
 static STARTUP_REPORTED: AtomicBool = AtomicBool::new(false);
 
@@ -62,6 +63,7 @@ fn report_startup_timing() {
 }
 
 /// Shared state for all proxy/mock/cert services (APIprox integration).
+#[derive(Clone)]
 pub struct ProxyAppState {
     pub proxy: proxy::state::SharedProxyState,
     pub mock: mock::state::SharedMockState,
@@ -70,6 +72,42 @@ pub struct ProxyAppState {
     pub filewatcher: filewatcher::service::SharedFileWatcherService,
     pub storage: Arc<storage::rules::RulesStorage>,
     pub cert_manager: Arc<certificates::manager::CertManager>,
+}
+
+pub struct LazyProxyAppState {
+    inner: Mutex<Option<ProxyAppState>>,
+}
+
+impl LazyProxyAppState {
+    fn new() -> Self {
+        Self {
+            inner: Mutex::new(None),
+        }
+    }
+}
+
+pub async fn ensure_proxy_state(
+    state: tauri::State<'_, LazyProxyAppState>,
+    app: &tauri::AppHandle,
+) -> Result<ProxyAppState, String> {
+    let mut guard = state.inner.lock().await;
+
+    if let Some(existing) = guard.as_ref() {
+        return Ok(existing.clone());
+    }
+
+    let started_at = Instant::now();
+    log::info!("[Proxy] Lazy initialization starting");
+
+    let initialized = build_proxy_state(app).await?;
+
+    *guard = Some(initialized.clone());
+
+    let elapsed_ms = started_at.elapsed().as_millis();
+    println!("[startup] proxy state initialized in {} ms", elapsed_ms);
+    log::info!("[Proxy] Lazy initialization completed in {} ms", elapsed_ms);
+
+    Ok(initialized)
 }
 
 #[cfg(desktop)]
@@ -378,11 +416,11 @@ fn init_window(app: &mut tauri::App) {
 }
 
 /// Initialise and register proxy/mock/cert Tauri state.
-fn init_proxy_state(app: &mut tauri::App) {
+async fn build_proxy_state(app: &tauri::AppHandle) -> Result<ProxyAppState, String> {
     let config_dir = dirs_next::home_dir()
         .unwrap_or_else(|| std::path::PathBuf::from("."))
         .join(".apinox");
-    std::fs::create_dir_all(&config_dir).ok();
+    std::fs::create_dir_all(&config_dir).map_err(|e| format!("Failed to create config dir: {}", e))?;
 
     let proxy_storage = Arc::new(storage::rules::RulesStorage::new(config_dir.clone()));
 
@@ -396,13 +434,13 @@ fn init_proxy_state(app: &mut tauri::App) {
 
     let breakpoint_svc = breakpoint::service::new_shared();
     {
-        let mut svc = breakpoint_svc.blocking_lock();
+        let mut svc = breakpoint_svc.lock().await;
         svc.set_rules(proxy_storage.load_breakpoint_rules());
     }
 
     let filewatcher_svc = filewatcher::service::new_shared();
     {
-        let mut svc = filewatcher_svc.blocking_lock();
+        let mut svc = filewatcher_svc.lock().await;
         for watch in proxy_storage.load_file_watches() {
             svc.add_watch(watch);
         }
@@ -410,7 +448,7 @@ fn init_proxy_state(app: &mut tauri::App) {
 
     let mock_state = mock::state::new_shared();
     {
-        let mut state = mock_state.blocking_lock();
+        let mut state = mock_state.lock().await;
         state.config.rules = proxy_storage.load_mock_rules();
     }
 
@@ -423,17 +461,17 @@ fn init_proxy_state(app: &mut tauri::App) {
 
     // Re-spawn file watchers for persisted watches.
     {
-        let watches = filewatcher_svc.blocking_lock().get_watches();
+        let watches = filewatcher_svc.lock().await.get_watches();
         for watch in watches {
             commands::filewatcher_server::spawn_watcher(
                 watch,
                 filewatcher_svc.clone(),
-                app.handle().clone(),
+                app.clone(),
             );
         }
     }
 
-    app.manage(ProxyAppState {
+    let state = ProxyAppState {
         proxy: proxy::state::new_shared(),
         mock: mock_state,
         replacer: replacer_svc,
@@ -441,9 +479,10 @@ fn init_proxy_state(app: &mut tauri::App) {
         filewatcher: filewatcher_svc,
         storage: proxy_storage,
         cert_manager,
-    });
+    };
 
     log::info!("[Proxy] Proxy/mock/cert services initialised");
+    Ok(state)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -583,7 +622,7 @@ pub fn run() {
         .setup(|app| {
             init_logging(app)?;
             init_window(app);
-            init_proxy_state(app);
+            app.manage(LazyProxyAppState::new());
             Ok(())
         })
         .on_window_event(|_window, event| {

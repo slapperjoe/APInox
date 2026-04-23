@@ -7,6 +7,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { themes, ThemeName } from '../styles/themes';
+import { getMonacoThemeId } from '../utils/monacoTheme';
 
 interface ThemeContextType {
     theme: ThemeName;
@@ -93,42 +94,7 @@ export const ThemeProvider = ({ children, standalone = true }: ThemeProviderProp
 
         updateBorderColor();
 
-        // Apply Monaco theme globally
-        const applyMonacoTheme = async () => {
-            try {
-                const monaco = await import('monaco-editor');
-                const getVar = (name: string, fallback: string) => {
-                    const value = getComputedStyle(root).getPropertyValue(name).trim();
-                    return value || fallback;
-                };
-
-                const isLight = theme.includes('light');
-                const themeId = `apinox-${theme}`;
-
-                monaco.editor.defineTheme(themeId, {
-                    base: isLight ? 'vs' : 'vs-dark',
-                    inherit: true,
-                    rules: [],
-                    colors: {
-                        'editor.background': getVar('--apinox-editor-background', isLight ? '#ffffff' : '#1e1e1e'),
-                        'editor.foreground': getVar('--apinox-editor-foreground', isLight ? '#000000' : '#d4d4d4'),
-                        'editor.selectionBackground': getVar('--apinox-editor-selectionBackground', isLight ? '#add6ff' : '#264f78'),
-                        'editor.lineHighlightBackground': getVar('--apinox-editor-lineHighlightBackground', 'transparent'),
-                        'editorCursor.foreground': getVar('--apinox-editorCursor-foreground', isLight ? '#000000' : '#ffffff'),
-                        'editorLineNumber.foreground': getVar('--apinox-editorLineNumber-foreground', isLight ? '#999999' : '#858585'),
-                        'editorLineNumber.activeForeground': getVar('--apinox-editorLineNumber-activeForeground', isLight ? '#000000' : '#c6c6c6'),
-                        'editorWhitespace.foreground': getVar('--apinox-editorWhitespace-foreground', isLight ? '#d3d3d3' : '#404040')
-                    }
-                });
-
-                monaco.editor.setTheme(themeId);
-                setMonacoTheme(themeId);
-            } catch (e) {
-                console.warn('[ThemeContext] Failed to apply Monaco theme:', e);
-            }
-        };
-
-        applyMonacoTheme();
+        setMonacoTheme(getMonacoThemeId(theme));
     }, [theme, isStandalone]);
 
     // Wrapper to save theme preference

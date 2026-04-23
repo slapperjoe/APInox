@@ -132,8 +132,6 @@ export function useMessageHandler(state: MessageHandlerState) {
     // Silence unused variable warning until migration is complete
     void setSavedProjects;
 
-    const hasPerformedInitialLoad = useRef(false);
-
     // Use refs for values that change frequently to avoid re-registering message listener
     const projectsRef = useRef(projects);
     const selectedRequestRef = useRef(selectedRequest);
@@ -526,23 +524,6 @@ export function useMessageHandler(state: MessageHandlerState) {
                         if (message.config.ui.showLineNumbers !== undefined) setShowLineNumbers(message.config.ui.showLineNumbers);
                         if (message.config.ui.splitRatio !== undefined) setSplitRatio(message.config.ui.splitRatio);
                         if (message.config.ui.inlineElementValues !== undefined) setInlineElementValues(message.config.ui.inlineElementValues);
-                    }
-
-                    // Auto-load projects defined in settings (if not already handled by App restore)
-                    // We check hasPerformedInitialLoad to avoid repeated loads on settings updates
-                    if (!hasPerformedInitialLoad.current && message.config.openProjects && message.config.openProjects.length > 0) {
-                        debugLog('settingsUpdate: Auto-loading projects', { count: message.config.openProjects.length });
-                        hasPerformedInitialLoad.current = true;
-                        message.config.openProjects.forEach((path: string) => {
-                            bridge.sendMessage({ command: FrontendCommand.LoadProject, path });
-                        });
-                    }
-                    else if (projects.length === 0 && message.config.openProjects && message.config.openProjects.length > 0) {
-                        // Fallback: If for some reason we have no projects and get an update (e.g. settings change manually),
-                        // maybe we should load? But "openProjects" comes from settings, which might not change often.
-                        // Let's stick to the initial load or explicit user action.
-                        // Actually, keeping the length==0 check as a secondary gate might be okay, but
-                        // the initial load flag is the primary fix.
                     }
 
                     if (message.config.lastConfigPath) {
