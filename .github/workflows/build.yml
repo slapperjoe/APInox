@@ -85,6 +85,8 @@ jobs:
       - name: Build Tauri app
         run: npm run tauri:build -- --target ${{ matrix.target }}
         env:
+          # Increase Node heap on macOS to prevent intermittent Vite/Node OOM during beforeBuildCommand
+          NODE_OPTIONS: ${{ matrix.platform == 'macos-latest' && '--max-old-space-size=8192' || '' }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
