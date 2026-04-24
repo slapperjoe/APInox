@@ -49,6 +49,7 @@
     "styled-components": "^6.0.0"
   },
   "dependencies": {
+    "@monaco-editor/loader": "^1.4.0",
     "@monaco-editor/react": "^4.7.0",
     "lucide-react": "^0.263.1",
     "monaco-editor": "^0.55.1"

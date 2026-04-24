@@ -54,7 +54,6 @@ export default defineConfig({
     },
     optimizeDeps: {
         exclude: [
-            'monaco-editor',
             '@monaco-editor/react',
             'monaco-editor/esm/vs/language/json/json.worker',
             '@shared/messages',
