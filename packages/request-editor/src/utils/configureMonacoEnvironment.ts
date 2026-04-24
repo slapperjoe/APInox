@@ -1,6 +1,11 @@
+import loader from '@monaco-editor/loader';
+import * as monaco from 'monaco-editor';
+import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
+import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker';
+
 type MonacoWindow = Window & {
     MonacoEnvironment?: {
-        getWorkerUrl: (_moduleId: string, label: string) => string;
+        getWorker: (moduleId: string, label: string) => Worker;
     };
 };
 
@@ -9,26 +14,24 @@ export function configureMonacoEnvironment(): void {
         return;
     }
 
+    // Use the locally bundled Monaco instead of the jsdelivr CDN default.
+    // In the installed Tauri app the CSP (script-src 'self') blocks CDN scripts,
+    // which causes @monaco-editor/react to hang on "Loading…".
+    loader.config({ monaco });
+
     const monacoWindow = window as MonacoWindow;
     if (monacoWindow.MonacoEnvironment) {
         return;
     }
 
+    // Use ?worker imports so Vite emits proper worker bundles at build time.
+    // The old getWorkerUrl string paths don't exist in the production bundle.
     monacoWindow.MonacoEnvironment = {
-        getWorkerUrl: (_moduleId: string, label: string) => {
+        getWorker(_moduleId: string, label: string): Worker {
             if (label === 'json') {
-                return './monaco-editor/esm/vs/language/json/json.worker.js';
+                return new jsonWorker();
             }
-            if (label === 'css' || label === 'scss' || label === 'less') {
-                return './monaco-editor/esm/vs/language/css/css.worker.js';
-            }
-            if (label === 'html' || label === 'handlebars' || label === 'razor') {
-                return './monaco-editor/esm/vs/language/html/html.worker.js';
-            }
-            if (label === 'typescript' || label === 'javascript') {
-                return './monaco-editor/esm/vs/language/typescript/ts.worker.js';
-            }
-            return './monaco-editor/esm/vs/editor/editor.worker.js';
+            return new editorWorker();
         }
     };
 }
