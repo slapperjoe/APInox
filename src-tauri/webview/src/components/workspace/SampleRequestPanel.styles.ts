@@ -74,7 +74,7 @@ export const XmlTreeContainer = styled.div`
 `;
 
 export const TreeNode = styled.div<{ depth: number }>`
-    padding-left: ${props => props.depth * 20}px;
+    padding-left: ${props => props.depth === 0 ? 0 : 20}px;
     margin: 2px 0;
 `;
 
