@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { debugLog } from './utils/logger';
 import { ThemeProvider, EditorSettingsProvider, ErrorBoundary } from '@apinox/request-editor/core'; // Use package providers
 import type { EditorSettings } from '@apinox/request-editor/core';
+import { applyUIFont, UIFontValue } from './utils/fontLoader';
 import { ProjectProvider } from './contexts/ProjectContext';
 import { SelectionProvider } from './contexts/SelectionContext';
 import { UIProvider } from './contexts/UIContext';
@@ -18,6 +19,10 @@ import { MacOSTitleBarSearch } from './components/MacOSTitleBarSearch';
 
 // Editor settings persistence
 const EDITOR_SETTINGS_KEY = 'apinox-editor-settings';
+
+// Apply saved UI font on startup
+const savedUIFont = localStorage.getItem('apinox-ui-font') as UIFontValue | null;
+applyUIFont(savedUIFont ?? 'fira-code');
 
 function loadEditorSettings(): EditorSettings | undefined {
     try {

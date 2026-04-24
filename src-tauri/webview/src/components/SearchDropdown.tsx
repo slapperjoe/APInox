@@ -20,20 +20,22 @@ import { FileText, Folder, Box, Layers, TestTube, Workflow, Clock } from 'lucide
 
 const DropdownContainer = styled.div<{ $isMacOS?: boolean }>`
     position: fixed;
-    top: ${props => props.$isMacOS ? '40px' : '40px'}; /* Below titlebar (now 40px for both) */
-    left: ${props => props.$isMacOS ? '92px' : '95px'}; /* Align with search bar (after logo + padding) */
-    width: 450px;
-    max-width: calc(100vw - ${props => props.$isMacOS ? '280px' : '240px'}); /* Leave room for breadcrumb and version */
+    top: ${props => props.$isMacOS ? '32px' : '32px'}; /* Below titlebar (now 32px) */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    max-width: calc(100vw - 120px);
     max-height: 500px;
     background: var(--apinox-dropdown-background, var(--vscode-dropdown-background));
     border: 1px solid var(--apinox-dropdown-border, var(--vscode-dropdown-border));
-    border-radius: 6px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    border-radius: 8px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
     z-index: 1000;
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: var(--apinox-ui-font-family, var(--apinox-font-family));
 `;
 
 const ResultsList = styled.div`
@@ -42,7 +44,7 @@ const ResultsList = styled.div`
     
     /* Better scrollbar styling */
     &::-webkit-scrollbar {
-        width: 10px;
+        width: 4px;
     }
     
     &::-webkit-scrollbar-track {
@@ -69,7 +71,7 @@ const GroupHeader = styled.div`
     background: var(--vscode-sideBar-background);
     border-bottom: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.2));
     user-select: none;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: var(--apinox-ui-font-family, var(--apinox-font-family));
     opacity: 0.9;
     position: sticky;
     top: 0;
@@ -84,7 +86,7 @@ const ResultItem = styled.div<{ $selected: boolean }>`
     gap: 12px;
     transition: background-color 0.1s ease, border-left 0.1s ease;
     border-left: 3px solid transparent;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: var(--apinox-ui-font-family, var(--apinox-font-family));
     
     ${props => props.$selected ? `
         background: var(--vscode-list-activeSelectionBackground, rgba(51, 153, 255, 0.4)) !important;
@@ -140,7 +142,7 @@ const ResultName = styled.div`
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: var(--apinox-ui-font-family, var(--apinox-font-family));
     line-height: 1.4;
 `;
 
@@ -151,7 +153,7 @@ const ResultBreadcrumb = styled.div`
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: var(--apinox-ui-font-family, var(--apinox-font-family));
     line-height: 1.3;
 `;
 
@@ -160,7 +162,7 @@ const EmptyState = styled.div`
     text-align: center;
     color: var(--vscode-descriptionForeground);
     font-size: 13px;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: var(--apinox-ui-font-family, var(--apinox-font-family));
     opacity: 0.8;
 `;
 
@@ -169,7 +171,7 @@ const LoadingState = styled.div`
     text-align: center;
     color: var(--vscode-descriptionForeground);
     font-size: 13px;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: var(--apinox-ui-font-family, var(--apinox-font-family));
     opacity: 0.8;
 `;
 
@@ -182,7 +184,7 @@ const Footer = styled.div`
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: var(--apinox-ui-font-family, var(--apinox-font-family));
 `;
 
 const KeyboardHint = styled.span`

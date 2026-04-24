@@ -4,11 +4,37 @@
  * These CSS variables define the visual theme for APInox.
  * The ThemeContext dynamically sets all variables based on the selected theme.
  */
+
+/* Bundled Fira Code — available offline, used as default UI font */
+@font-face {
+    font-family: 'Fira Code';
+    src: url('/fonts/FiraCode-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Fira Code';
+    src: url('/fonts/FiraCode-Medium.woff2') format('woff2');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Fira Code';
+    src: url('/fonts/FiraCode-SemiBold.woff2') format('woff2');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+
 :root {
-    /* APInox Default Dark Theme Fallback */
-    --apinox-font-family: "Segoe UI", system-ui, sans-serif;
+    /* APInox Default Font — Fira Code bundled locally */
+    --apinox-font-family: 'Fira Code', "Segoe UI", system-ui, sans-serif;
     --apinox-font-size: 13px;
     --apinox-font-weight: 400;
+    /* Set by fontLoader.ts when a UI font is selected — overrides --apinox-font-family everywhere */
+    --apinox-ui-font-family: ;
 
     --apinox-editor-background: #1e1e1e;
     --apinox-editor-foreground: #d4d4d4;
@@ -61,11 +87,13 @@
     color-scheme: dark; /* default – matches the dark fallback theme */
 }
 body[data-theme="light"],
-body[data-theme="solarized-light"] {
+body[data-theme="solarized-light"],
+body[data-theme="dankshell-light"] {
     color-scheme: light;
 }
 body[data-theme="dark"],
-body[data-theme="solarized-dark"] {
+body[data-theme="solarized-dark"],
+body[data-theme="zed-dark"] {
     color-scheme: dark;
 }
 
@@ -103,6 +131,8 @@ body[data-platform="ios"] {
 
 * {
     box-sizing: border-box;
+    /* If a UI font override is set, use it; otherwise fall through to theme font */
+    font-family: var(--apinox-ui-font-family, var(--apinox-font-family, "Segoe UI", system-ui, sans-serif));
 }
 
 /* iOS/Android: enable momentum scrolling on all overflow containers */
@@ -111,26 +141,38 @@ body[data-platform="android"] * {
     -webkit-overflow-scrolling: touch;
 }
 
-/* Scrollbar styling for a native feel */
+/* Scrollbar styling — thin overlay style (Zed-inspired) */
 ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 4px;
+    height: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: var(--apinox-scrollbarSlider-background, #79797966);
+    background: var(--apinox-scrollbarSlider-background, rgba(121,121,121,0.3));
+    border-radius: 2px;
+    transition: background 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: var(--apinox-scrollbarSlider-hoverBackground, #646464b3);
+    background: var(--apinox-scrollbarSlider-hoverBackground, rgba(100,100,100,0.7));
 }
 
 ::-webkit-scrollbar-thumb:active {
-    background: var(--apinox-scrollbarSlider-activeBackground, #bfbfbf66);
+    background: var(--apinox-scrollbarSlider-activeBackground, rgba(191,191,191,0.4));
 }
 
 ::-webkit-scrollbar-track {
     background: transparent;
+}
+
+/* Sidebar section header typography — Zed-style ALL CAPS labels */
+.section-header-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--apinox-sideBarSectionHeader-foreground);
+    opacity: 0.75;
 }
 
 /* Wildcard Highlighting */
@@ -187,7 +229,7 @@ select {
     background-color: var(--apinox-dropdown-background, #3c3c3c);
     color: var(--apinox-dropdown-foreground, #cccccc);
     border: 1px solid var(--apinox-dropdown-border, #3c3c3c);
-    font-family: var(--apinox-font-family, "Segoe UI", system-ui, sans-serif);
+    font-family: var(--apinox-ui-font-family, var(--apinox-font-family, "Segoe UI", system-ui, sans-serif));
     font-size: var(--apinox-font-size, 13px);
     padding-right: 22px;
     background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M0 0L5 6L10 0' fill='%23888888'/></svg>");
@@ -310,14 +352,14 @@ code,
         top: 68px; /* 44px header + 24px status bar */
     }
 
-    /* Narrow desktop (Windows/Linux/macOS): TitleBar is 40px, not the mobile 44px header */
+    /* Narrow desktop (Windows/Linux/macOS): TitleBar is 32px, not the mobile 44px header */
     body:not([data-platform="android"]):not([data-platform="ios"])
         .sidebar-drawer {
-        top: 40px;
+        top: 32px;
     }
     body:not([data-platform="android"]):not([data-platform="ios"])
         .sidebar-backdrop {
-        top: 40px;
+        top: 32px;
     }
 
     .sidebar-drawer.sidebar-open {
@@ -413,9 +455,9 @@ code,
     position: fixed;
     top: 0;
     left: 0;
-    width: 40px;
-    height: 40px;
-    margin: -4px 0 0 0;
+    width: 32px;
+    height: 32px;
+    margin: 0;
     padding: 0;
     box-sizing: border-box;
     z-index: 1002;

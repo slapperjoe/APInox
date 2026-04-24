@@ -453,6 +453,7 @@ export interface ApinoxConfig {
         autoFoldElements?: string[];
         editorFontSize?: number;
         editorFontFamily?: string;
+        uiFontFamily?: string;
     };
     activeEnvironment?: string;
     lastConfigPath?: string;

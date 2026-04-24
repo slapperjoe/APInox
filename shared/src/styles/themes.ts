@@ -725,11 +725,446 @@ export const solarizedLightTheme: Theme = {
     },
 };
 
+// Zed Dark Theme (One Dark Pro / Zed-inspired warm-blue palette)
+export const zedDarkTheme: Theme = {
+    name: 'Zed Dark',
+    variables: {
+        // Font — monospace-forward like Zed
+        '--apinox-font-family': '"JetBrains Mono", "Fira Code", "Cascadia Code", system-ui, sans-serif',
+        '--apinox-font-size': '13px',
+        '--apinox-font-weight': '400',
+        '--apinox-editor-font-family': '"JetBrains Mono", "Fira Code", Consolas, monospace',
+        '--apinox-editor-font-size': '14px',
+
+        // Editor
+        '--apinox-editor-background': '#212337',
+        '--apinox-editor-foreground': '#c8d3f5',
+        '--apinox-editor-selectionBackground': '#2f3354',
+        '--apinox-editor-inactiveSelectionBackground': '#2a2e4a',
+        '--apinox-editor-lineHighlightBackground': '#2a2e4a',
+        '--apinox-editorCursor-foreground': '#82aaff',
+        '--apinox-editorWhitespace-foreground': '#3b3f5c',
+        '--apinox-editorLineNumber-foreground': '#464b6e',
+        '--apinox-editorLineNumber-activeForeground': '#82aaff',
+        '--apinox-editorError-foreground': '#ff757f',
+        '--apinox-editorWarning-foreground': '#ffc777',
+        '--apinox-editorInfo-foreground': '#82aaff',
+        '--apinox-editorWidget-background': '#1e2030',
+        '--apinox-editorWidget-foreground': '#c8d3f5',
+        '--apinox-editorWidget-border': 'rgba(255,255,255,0.08)',
+
+        // Sidebar
+        '--apinox-sideBar-background': '#1a1b2e',
+        '--apinox-sideBar-foreground': '#c8d3f5',
+        '--apinox-sideBarTitle-foreground': '#737aa2',
+        '--apinox-sideBarSectionHeader-background': '#00000000',
+        '--apinox-sideBarSectionHeader-foreground': '#737aa2',
+        '--apinox-sideBarSectionHeader-border': 'rgba(255,255,255,0.06)',
+
+        // Lists and Trees
+        '--apinox-list-hoverBackground': '#2a2e4a',
+        '--apinox-list-activeSelectionBackground': '#2f3354',
+        '--apinox-list-activeSelectionForeground': '#c8d3f5',
+        '--apinox-list-inactiveSelectionBackground': '#252840',
+        '--apinox-list-inactiveSelectionForeground': '#c8d3f5',
+        '--apinox-list-focusBackground': '#2f3354',
+        '--apinox-list-focusForeground': '#c8d3f5',
+
+        // Buttons
+        '--apinox-button-background': '#82aaff',
+        '--apinox-button-foreground': '#1e2030',
+        '--apinox-button-hoverBackground': '#9ab8ff',
+        '--apinox-button-border': 'transparent',
+        '--apinox-button-secondaryBackground': '#2f3354',
+        '--apinox-button-secondaryForeground': '#c8d3f5',
+        '--apinox-button-secondaryHoverBackground': '#3a3f60',
+
+        // Inputs
+        '--apinox-input-background': '#2a2e4a',
+        '--apinox-input-foreground': '#c8d3f5',
+        '--apinox-input-border': 'rgba(255,255,255,0.08)',
+        '--apinox-input-placeholderForeground': '#737aa2',
+        '--apinox-inputOption-activeBackground': '#82aaff33',
+        '--apinox-inputOption-activeForeground': '#c8d3f5',
+        '--apinox-inputValidation-errorBackground': '#4a1a20',
+        '--apinox-inputValidation-errorBorder': '#ff757f',
+        '--apinox-inputValidation-errorForeground': '#ff757f',
+        '--apinox-inputValidation-warningBackground': '#3d2e10',
+        '--apinox-inputValidation-warningBorder': '#ffc777',
+        '--apinox-inputValidation-warningForeground': '#ffc777',
+        '--apinox-inputValidation-infoBackground': '#1a2a4a',
+        '--apinox-inputValidation-infoBorder': '#82aaff',
+        '--apinox-inputValidation-infoForeground': '#82aaff',
+
+        // Dropdowns
+        '--apinox-dropdown-background': '#2a2e4a',
+        '--apinox-dropdown-foreground': '#c8d3f5',
+        '--apinox-dropdown-border': 'rgba(255,255,255,0.08)',
+        '--apinox-dropdown-listBackground': '#1e2030',
+
+        // Panels and Borders
+        '--apinox-panel-background': '#1e2030',
+        '--apinox-panel-border': 'rgba(255,255,255,0.07)',
+        '--apinox-panelTitle-activeBorder': '#82aaff',
+        '--apinox-panelTitle-activeForeground': '#c8d3f5',
+        '--apinox-panelTitle-inactiveForeground': '#737aa299',
+
+        // Surface / Border tokens
+        '--apinox-surface-elevated': '#252840',
+        '--apinox-border-default': 'rgba(255,255,255,0.1)',
+        '--apinox-border-subtle': 'rgba(255,255,255,0.06)',
+
+        // Status Bar
+        '--apinox-statusBar-background': '#1a1b2e',
+        '--apinox-statusBar-foreground': '#737aa2',
+        '--apinox-statusBar-noFolderBackground': '#6c71c4',
+        '--apinox-statusBar-debuggingBackground': '#cc6633',
+
+        // Activity Bar
+        '--apinox-activityBar-background': '#1a1b2e',
+        '--apinox-activityBar-foreground': '#c8d3f5',
+        '--apinox-activityBar-inactiveForeground': '#737aa2',
+        '--apinox-activityBar-border': '#1a1b2e',
+        '--apinox-activityBar-activeBorder': '#82aaff',
+        '--apinox-activityBarBadge-background': '#82aaff',
+        '--apinox-activityBarBadge-foreground': '#1e2030',
+
+        // Title Bar
+        '--apinox-titleBar-activeBackground': '#1e2030',
+        '--apinox-titleBar-activeForeground': '#c8d3f5',
+        '--apinox-titleBar-inactiveBackground': '#1a1b2e',
+        '--apinox-titleBar-border': 'rgba(255,255,255,0.07)',
+
+        // Badges
+        '--apinox-badge-background': '#82aaff',
+        '--apinox-badge-foreground': '#1e2030',
+        '--apinox-notifications-background': '#1e2030',
+        '--apinox-notifications-border': 'rgba(255,255,255,0.08)',
+        '--apinox-notificationCenter-border': 'rgba(255,255,255,0.08)',
+        '--apinox-notificationToast-border': 'rgba(255,255,255,0.08)',
+        '--apinox-notificationsInfoIcon-foreground': '#82aaff',
+
+        // Scrollbars
+        '--apinox-scrollbar-shadow': '#00000040',
+        '--apinox-scrollbarSlider-background': '#737aa240',
+        '--apinox-scrollbarSlider-hoverBackground': '#737aa280',
+        '--apinox-scrollbarSlider-activeBackground': '#82aaff60',
+
+        // Focus and Borders
+        '--apinox-focusBorder': '#82aaff',
+        '--apinox-contrastBorder': 'transparent',
+        '--apinox-contrastActiveBorder': '#82aaff',
+
+        // Text and Links
+        '--apinox-foreground': '#c8d3f5',
+        '--apinox-descriptionForeground': '#737aa2',
+        '--apinox-disabledForeground': '#464b6e',
+        '--apinox-errorForeground': '#ff757f',
+        '--apinox-textLink-foreground': '#82aaff',
+        '--apinox-textLink-activeForeground': '#9ab8ff',
+        '--apinox-textCodeBlock-background': '#2a2e4a',
+        '--apinox-textPreformat-foreground': '#c3e88d',
+        '--apinox-textBlockQuote-background': '#2a2e4a',
+        '--apinox-textBlockQuote-border': '#82aaff80',
+
+        // Menus
+        '--apinox-menu-background': '#1e2030',
+        '--apinox-menu-foreground': '#c8d3f5',
+        '--apinox-menu-border': 'rgba(255,255,255,0.1)',
+        '--apinox-menu-selectionBackground': '#2f3354',
+        '--apinox-menu-selectionForeground': '#c8d3f5',
+        '--apinox-menu-separatorBackground': 'rgba(255,255,255,0.08)',
+
+        // Toolbar
+        '--apinox-toolbar-hoverBackground': 'rgba(130,170,255,0.1)',
+        '--apinox-toolbar-activeBackground': 'rgba(130,170,255,0.18)',
+
+        // Icons
+        '--apinox-icon-foreground': '#737aa2',
+
+        // Charts
+        '--apinox-charts-foreground': '#c8d3f5',
+        '--apinox-charts-green': '#c3e88d',
+        '--apinox-charts-blue': '#82aaff',
+        '--apinox-charts-purple': '#c792ea',
+        '--apinox-charts-orange': '#ff966c',
+        '--apinox-charts-red': '#ff757f',
+        '--apinox-charts-yellow': '#ffc777',
+
+        // Widget
+        '--apinox-widget-shadow': 'rgba(0,0,0,0.5)',
+        '--apinox-widget-border': 'rgba(255,255,255,0.1)',
+
+        // Syntax
+        '--apinox-editorBracketHighlight-foreground1': '#ffd700',
+        '--apinox-editorBracketHighlight-foreground2': '#c792ea',
+        '--apinox-editorBracketHighlight-foreground3': '#82aaff',
+        '--apinox-editorBracketHighlight-foreground4': '#4fd6be',
+        '--apinox-editorBracketHighlight-foreground5': '#ff966c',
+        '--apinox-editorBracketHighlight-foreground6': '#c3e88d',
+
+        // Testing
+        '--apinox-testing-iconPassed': '#c3e88d',
+        '--apinox-testing-iconFailed': '#ff757f',
+        '--apinox-testing-iconQueued': '#ffc777',
+        '--apinox-debugIcon-breakpointForeground': '#ff757f',
+        '--apinox-debugTokenExpression-name': '#c792ea',
+
+        // Diff
+        '--apinox-diffEditor-insertedTextBackground': '#c3e88d22',
+        '--apinox-diffEditor-removedTextBackground': '#ff757f22',
+
+        // Tabs
+        '--apinox-tab-activeBackground': '#212337',
+        '--apinox-tab-activeForeground': '#c8d3f5',
+        '--apinox-tab-inactiveForeground': '#737aa2',
+
+        // Progress Bar
+        '--apinox-progressBar-background': '#82aaff',
+
+        // Symbol Icons
+        '--apinox-symbolIcon-classForeground': '#ffc777',
+        '--apinox-symbolIcon-fieldForeground': '#82aaff',
+        '--apinox-symbolIcon-propertyForeground': '#82aaff',
+        '--apinox-symbolIcon-variableForeground': '#82aaff',
+        '--apinox-symbolIcon-stringForeground': '#c3e88d',
+
+        // Proxy/Mock UI Colors
+        '--apinox-surface-deep': '#161728',
+        '--apinox-text-faint': '#3b3f5c',
+        '--apinox-surface-danger': '#3a1a20',
+        '--apinox-surface-danger-dark': '#5a0010',
+        '--apinox-surface-success-dark': '#0d4d1f',
+        '--apinox-surface-tag': '#1a2a4a',
+        '--apinox-text-danger': '#ff757f',
+        '--apinox-text-tag': '#82aaff',
+    },
+};
+
+// DankShell Light Transparent Theme
+// Colors sourced from ~/.config/zed/themes/dank-zed-theme.json "DankShell Light Transparent"
+export const dankShellLightTheme: Theme = {
+    name: 'DankShell Light',
+    variables: {
+        // Font
+        '--apinox-font-family': '"JetBrains Mono", "Fira Code", system-ui, sans-serif',
+        '--apinox-font-size': '13px',
+        '--apinox-font-weight': '400',
+        '--apinox-editor-font-family': '"JetBrains Mono", "Fira Code", Consolas, monospace',
+        '--apinox-editor-font-size': '14px',
+
+        // Editor — #f5fafcB6 with alpha stripped to solid for CSS var use
+        '--apinox-editor-background': 'rgba(245,250,252,0.71)',
+        '--apinox-editor-foreground': '#171d1e',
+        '--apinox-editor-selectionBackground': '#009eaf3D',
+        '--apinox-editor-inactiveSelectionBackground': '#009eaf20',
+        '--apinox-editor-lineHighlightBackground': 'rgba(233,239,240,0.4)',
+        '--apinox-editorCursor-foreground': '#009eaf',
+        '--apinox-editorWhitespace-foreground': '#dbe4e633',
+        '--apinox-editorLineNumber-foreground': '#3f484a',
+        '--apinox-editorLineNumber-activeForeground': '#0097a7',
+        '--apinox-editorError-foreground': '#b3261e',
+        '--apinox-editorWarning-foreground': '#c8ba00',
+        '--apinox-editorInfo-foreground': '#0097a7',
+        '--apinox-editorWidget-background': 'rgba(227,233,235,0.71)',
+        '--apinox-editorWidget-foreground': '#171d1e',
+        '--apinox-editorWidget-border': '#dbe4e6',
+
+        // Sidebar
+        '--apinox-sideBar-background': 'rgba(233,239,240,0.71)',
+        '--apinox-sideBar-foreground': '#171d1e',
+        '--apinox-sideBarTitle-foreground': '#3f484a',
+        '--apinox-sideBarSectionHeader-background': '#00000000',
+        '--apinox-sideBarSectionHeader-foreground': '#3f484a',
+        '--apinox-sideBarSectionHeader-border': 'rgba(63,72,74,0.15)',
+
+        // Lists and Trees
+        '--apinox-list-hoverBackground': 'rgba(233,239,240,0.5)',
+        '--apinox-list-activeSelectionBackground': 'rgba(227,233,235,0.71)',
+        '--apinox-list-activeSelectionForeground': '#171d1e',
+        '--apinox-list-inactiveSelectionBackground': 'rgba(219,228,230,0.5)',
+        '--apinox-list-inactiveSelectionForeground': '#171d1e',
+        '--apinox-list-focusBackground': '#009eaf3D',
+        '--apinox-list-focusForeground': '#171d1e',
+
+        // Buttons
+        '--apinox-button-background': '#0097a7',
+        '--apinox-button-foreground': '#ffffff',
+        '--apinox-button-hoverBackground': '#00bcd4',
+        '--apinox-button-border': 'transparent',
+        '--apinox-button-secondaryBackground': 'rgba(219,228,230,0.71)',
+        '--apinox-button-secondaryForeground': '#171d1e',
+        '--apinox-button-secondaryHoverBackground': 'rgba(227,233,235,0.71)',
+
+        // Inputs
+        '--apinox-input-background': 'rgba(245,250,252,0.71)',
+        '--apinox-input-foreground': '#171d1e',
+        '--apinox-input-border': '#dbe4e6',
+        '--apinox-input-placeholderForeground': '#3f484a99',
+        '--apinox-inputOption-activeBackground': '#009eaf20',
+        '--apinox-inputOption-activeForeground': '#171d1e',
+        '--apinox-inputValidation-errorBackground': '#f9dedc',
+        '--apinox-inputValidation-errorBorder': '#b3261e',
+        '--apinox-inputValidation-errorForeground': '#b3261e',
+        '--apinox-inputValidation-warningBackground': '#fdf6d0',
+        '--apinox-inputValidation-warningBorder': '#c8ba00',
+        '--apinox-inputValidation-warningForeground': '#7a6e00',
+        '--apinox-inputValidation-infoBackground': '#e0f2f1',
+        '--apinox-inputValidation-infoBorder': '#0097a7',
+        '--apinox-inputValidation-infoForeground': '#0097a7',
+
+        // Dropdowns
+        '--apinox-dropdown-background': 'rgba(245,250,252,0.9)',
+        '--apinox-dropdown-foreground': '#171d1e',
+        '--apinox-dropdown-border': '#dbe4e6',
+        '--apinox-dropdown-listBackground': 'rgba(233,239,240,0.95)',
+
+        // Panels and Borders
+        '--apinox-panel-background': 'rgba(245,250,252,0.71)',
+        '--apinox-panel-border': 'rgba(219,228,230,0.8)',
+        '--apinox-panelTitle-activeBorder': '#0097a7',
+        '--apinox-panelTitle-activeForeground': '#171d1e',
+        '--apinox-panelTitle-inactiveForeground': '#3f484a99',
+
+        // Surface / Border tokens
+        '--apinox-surface-elevated': 'rgba(227,233,235,0.71)',
+        '--apinox-border-default': '#dbe4e6',
+        '--apinox-border-subtle': 'rgba(219,228,230,0.6)',
+
+        // Status Bar
+        '--apinox-statusBar-background': 'rgba(233,239,240,0.71)',
+        '--apinox-statusBar-foreground': '#3f484a',
+        '--apinox-statusBar-noFolderBackground': '#6c71c4',
+        '--apinox-statusBar-debuggingBackground': '#cc6633',
+
+        // Activity Bar
+        '--apinox-activityBar-background': 'rgba(233,239,240,0.71)',
+        '--apinox-activityBar-foreground': '#171d1e',
+        '--apinox-activityBar-inactiveForeground': '#3f484a',
+        '--apinox-activityBar-border': 'rgba(219,228,230,0.5)',
+        '--apinox-activityBar-activeBorder': '#0097a7',
+        '--apinox-activityBarBadge-background': '#0097a7',
+        '--apinox-activityBarBadge-foreground': '#ffffff',
+
+        // Title Bar
+        '--apinox-titleBar-activeBackground': 'rgba(233,239,240,0.71)',
+        '--apinox-titleBar-activeForeground': '#171d1e',
+        '--apinox-titleBar-inactiveBackground': 'rgba(233,239,240,0.71)',
+        '--apinox-titleBar-border': 'rgba(219,228,230,0.5)',
+
+        // Badges
+        '--apinox-badge-background': '#0097a7',
+        '--apinox-badge-foreground': '#ffffff',
+        '--apinox-notifications-background': 'rgba(245,250,252,0.9)',
+        '--apinox-notifications-border': '#dbe4e6',
+        '--apinox-notificationCenter-border': '#dbe4e6',
+        '--apinox-notificationToast-border': '#dbe4e6',
+        '--apinox-notificationsInfoIcon-foreground': '#0097a7',
+
+        // Scrollbars
+        '--apinox-scrollbar-shadow': 'rgba(0,0,0,0.1)',
+        '--apinox-scrollbarSlider-background': 'rgba(63,72,74,0.31)',
+        '--apinox-scrollbarSlider-hoverBackground': 'rgba(63,72,74,0.75)',
+        '--apinox-scrollbarSlider-activeBackground': 'rgba(0,151,167,0.6)',
+
+        // Focus and Borders
+        '--apinox-focusBorder': '#0097a7',
+        '--apinox-contrastBorder': 'transparent',
+        '--apinox-contrastActiveBorder': '#0097a7',
+
+        // Text and Links
+        '--apinox-foreground': '#171d1e',
+        '--apinox-descriptionForeground': '#3f484a',
+        '--apinox-disabledForeground': '#3f484a60',
+        '--apinox-errorForeground': '#b3261e',
+        '--apinox-textLink-foreground': '#0097a7',
+        '--apinox-textLink-activeForeground': '#00bcd4',
+        '--apinox-textCodeBlock-background': 'rgba(233,239,240,0.5)',
+        '--apinox-textPreformat-foreground': '#007d0b',
+        '--apinox-textBlockQuote-background': 'rgba(233,239,240,0.5)',
+        '--apinox-textBlockQuote-border': '#0097a780',
+
+        // Menus
+        '--apinox-menu-background': 'rgba(245,250,252,0.95)',
+        '--apinox-menu-foreground': '#171d1e',
+        '--apinox-menu-border': '#dbe4e6',
+        '--apinox-menu-selectionBackground': 'rgba(227,233,235,0.71)',
+        '--apinox-menu-selectionForeground': '#171d1e',
+        '--apinox-menu-separatorBackground': '#dbe4e6',
+
+        // Toolbar
+        '--apinox-toolbar-hoverBackground': 'rgba(0,151,167,0.08)',
+        '--apinox-toolbar-activeBackground': 'rgba(0,151,167,0.15)',
+
+        // Icons
+        '--apinox-icon-foreground': '#171d1e',
+
+        // Charts
+        '--apinox-charts-foreground': '#171d1e',
+        '--apinox-charts-green': '#007d0b',
+        '--apinox-charts-blue': '#009eaf',
+        '--apinox-charts-purple': '#7b1fa2',
+        '--apinox-charts-orange': '#e65100',
+        '--apinox-charts-red': '#b3261e',
+        '--apinox-charts-yellow': '#c8ba00',
+
+        // Widget
+        '--apinox-widget-shadow': 'rgba(0,0,0,0.15)',
+        '--apinox-widget-border': '#dbe4e6',
+
+        // Syntax
+        '--apinox-editorBracketHighlight-foreground1': '#c8ba00',
+        '--apinox-editorBracketHighlight-foreground2': '#7b1fa2',
+        '--apinox-editorBracketHighlight-foreground3': '#009eaf',
+        '--apinox-editorBracketHighlight-foreground4': '#007d0b',
+        '--apinox-editorBracketHighlight-foreground5': '#e65100',
+        '--apinox-editorBracketHighlight-foreground6': '#0097a7',
+
+        // Testing
+        '--apinox-testing-iconPassed': '#007d0b',
+        '--apinox-testing-iconFailed': '#b3261e',
+        '--apinox-testing-iconQueued': '#c8ba00',
+        '--apinox-debugIcon-breakpointForeground': '#b3261e',
+        '--apinox-debugTokenExpression-name': '#7b1fa2',
+
+        // Diff
+        '--apinox-diffEditor-insertedTextBackground': '#007d0b1A',
+        '--apinox-diffEditor-removedTextBackground': '#9e00371A',
+
+        // Tabs
+        '--apinox-tab-activeBackground': 'rgba(245,250,252,0.71)',
+        '--apinox-tab-activeForeground': '#171d1e',
+        '--apinox-tab-inactiveForeground': '#3f484a',
+
+        // Progress Bar
+        '--apinox-progressBar-background': '#0097a7',
+
+        // Symbol Icons
+        '--apinox-symbolIcon-classForeground': '#c8ba00',
+        '--apinox-symbolIcon-fieldForeground': '#009eaf',
+        '--apinox-symbolIcon-propertyForeground': '#009eaf',
+        '--apinox-symbolIcon-variableForeground': '#009eaf',
+        '--apinox-symbolIcon-stringForeground': '#007d0b',
+
+        // Proxy/Mock UI Colors
+        '--apinox-surface-deep': 'rgba(219,228,230,0.5)',
+        '--apinox-text-faint': '#3f484a60',
+        '--apinox-surface-danger': 'rgba(249,222,220,0.7)',
+        '--apinox-surface-danger-dark': '#b3261e',
+        '--apinox-surface-success-dark': '#007d0b',
+        '--apinox-surface-tag': 'rgba(224,242,241,0.8)',
+        '--apinox-text-danger': '#b3261e',
+        '--apinox-text-tag': '#0097a7',
+    },
+};
+
 export const themes = {
     dark: darkTheme,
     light: lightTheme,
     'solarized-dark': solarizedDarkTheme,
     'solarized-light': solarizedLightTheme,
+    'zed-dark': zedDarkTheme,
+    'dankshell-light': dankShellLightTheme,
 };
 
 export type ThemeName = keyof typeof themes;

@@ -49,7 +49,7 @@ export const SidebarHeaderTitle = styled.div`
     font-weight: 700;
     text-transform: uppercase;
     color: var(--apinox-sideBarTitle-foreground);
-    letter-spacing: 0.3px;
+    letter-spacing: 0.08em;
     flex: 1;
     display: flex;
     align-items: center;

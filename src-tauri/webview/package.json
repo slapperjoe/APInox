@@ -1,7 +1,7 @@
 {
   "name": "APInox-webview",
   "private": true,
-  "version": "0.19.225",
+  "version": "0.19.232",
   "scripts": {
     "dev": "npx vite",
     "build": "tsc && npx vite build",

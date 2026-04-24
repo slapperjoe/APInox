@@ -186,13 +186,13 @@ export const RequestPane = styled.div<{ $hasResponse: boolean; $splitRatio: numb
 `;
 
 export const BreadcrumbBar = styled.div`
-    padding: 10px 15px;
+    padding: 6px 12px;
     background-color: var(--apinox-editor-background);
     border-bottom: 1px solid var(--apinox-panel-border);
     display: flex;
     align-items: center;
     gap: 5px;
-    font-size: 0.9em;
+    font-size: 0.85em;
     color: var(--apinox-descriptionForeground);
 `;
 

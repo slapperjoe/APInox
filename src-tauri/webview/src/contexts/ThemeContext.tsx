@@ -9,12 +9,15 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { isVsCode } from '../utils/bridge';
 import { themes, ThemeName } from '../styles/themes';
 import { debugLog } from '../utils/logger';
+import { applyUIFont, UIFontValue } from '../utils/fontLoader';
 
 interface ThemeContextType {
     theme: ThemeName;
     setTheme: (theme: ThemeName) => void;
     isTauriMode: boolean;
     monacoTheme: string;
+    uiFont: UIFontValue;
+    setUIFont: (font: UIFontValue) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -38,15 +41,21 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
     // Default to dark theme
     const [theme, setThemeState] = useState<ThemeName>('dark');
     const [monacoTheme, setMonacoTheme] = useState<string>('vs-dark');
+    const [uiFont, setUIFontState] = useState<UIFontValue>('fira-code');
 
     // Load saved theme preference on mount (Tauri only)
     useEffect(() => {
         if (!isTauriMode) return;
 
-        // Try to load from localStorage
         const saved = localStorage.getItem('apinox-theme');
         if (saved && saved in themes) {
             setThemeState(saved as ThemeName);
+        }
+
+        const savedFont = localStorage.getItem('apinox-ui-font') as UIFontValue | null;
+        if (savedFont) {
+            setUIFontState(savedFont);
+            applyUIFont(savedFont);
         }
     }, [isTauriMode]);
 
@@ -97,7 +106,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
                     return value || fallback;
                 };
 
-                const isLight = theme.includes('light');
+                const isLight = theme.includes('light') || theme === 'dankshell-light';
                 const themeId = `apinox-${theme}`;
 
                 monaco.editor.defineTheme(themeId, {
@@ -138,8 +147,15 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
         debugLog(`[ThemeContext] Theme changed to`, newTheme);
     };
 
+    const setUIFont = (font: UIFontValue) => {
+        setUIFontState(font);
+        localStorage.setItem('apinox-ui-font', font);
+        applyUIFont(font);
+        debugLog(`[ThemeContext] UI font changed to`, font);
+    };
+
     return (
-        <ThemeContext.Provider value={{ theme, setTheme, isTauriMode, monacoTheme }}>
+        <ThemeContext.Provider value={{ theme, setTheme, isTauriMode, monacoTheme, uiFont, setUIFont }}>
             {children}
         </ThemeContext.Provider>
     );

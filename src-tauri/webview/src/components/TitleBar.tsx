@@ -15,7 +15,7 @@ const TitleBarContainer = styled.div`
   top: 0;
   left: 0;
   right: 0;
-  height: 40px; /* Increased from 32px to match macOS titlebar height */
+  height: 32px;
   background: var(--apinox-titleBar-activeBackground);
   color: var(--apinox-titleBar-activeForeground);
   display: flex;
@@ -74,9 +74,9 @@ const LogoIcon = styled.img`
 `;
 
 const AppTitle = styled.span`
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--apinox-ui-font-family, var(--apinox-font-family));
   letter-spacing: 0.3px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   -webkit-background-clip: text;
@@ -92,13 +92,13 @@ const SearchContainer = styled.div`
   align-items: center;
   gap: 8px;
   padding: 0 10px;
-  height: 26px; /* Increased from 24px for better visual alignment */
+  height: 22px;
   background: var(--vscode-input-background);
   border: 1px solid var(--vscode-input-border, rgba(128, 128, 128, 0.3));
   border-radius: 4px;
   -webkit-app-region: no-drag;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--apinox-ui-font-family, var(--apinox-font-family));
   
   &:focus-within {
     border-color: var(--vscode-focusBorder, #007ACC);
@@ -133,7 +133,7 @@ const SearchInput = styled.input`
   color: var(--vscode-input-foreground);
   font-size: 12px;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--apinox-ui-font-family, var(--apinox-font-family));
   line-height: 1.4;
   
   &::placeholder {
@@ -181,7 +181,7 @@ const LastSearchBreadcrumb = styled.button`
   color: var(--vscode-foreground);
   font-size: 11px;
   font-weight: 500;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--apinox-ui-font-family, var(--apinox-font-family));
   cursor: pointer;
   opacity: 0.8;
   transition: all 0.15s ease;
@@ -230,7 +230,8 @@ const WindowControls = styled.div`
 
 const WindowButton = styled.button<{ $isClose?: boolean }>`
   width: 46px;
-  height: 100%;
+  height: 32px;
+  max-height: 32px;
   border: none;
   background: transparent;
   color: var(--apinox-titleBar-activeForeground);
