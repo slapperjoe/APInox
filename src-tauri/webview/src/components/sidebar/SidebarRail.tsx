@@ -31,33 +31,38 @@ interface SidebarRailProps {
 const NavItem = ({ icon: Icon, active, onClick, title, showBadge }: any) => (
   <div
     onClick={onClick}
+    title={title}
     style={{
-      padding: "10px 0",
+      padding: "4px 6px",
       cursor: "pointer",
       display: "flex",
       justifyContent: "center",
-      color: active
-        ? "var(--apinox-activityBar-foreground)"
-        : "var(--apinox-activityBar-inactiveForeground)",
-      borderLeft: active
-        ? "2px solid var(--apinox-activityBar-activeBorder)"
-        : "2px solid transparent",
-      backgroundColor: active
-        ? "var(--apinox-list-activeSelectionBackground)"
-        : "transparent",
     }}
-    title={title}
   >
-    <div style={{ position: "relative", display: "inline-flex" }}>
-      <Icon size={24} strokeWidth={active ? 2.5 : 2} />
+    <div
+      style={{
+        position: "relative",
+        display: "inline-flex",
+        padding: "5px",
+        borderRadius: "6px",
+        color: active
+          ? "var(--apinox-activityBar-foreground)"
+          : "var(--apinox-activityBar-inactiveForeground)",
+        backgroundColor: active
+          ? "var(--apinox-list-activeSelectionBackground)"
+          : "transparent",
+        transition: "background-color 0.12s ease, color 0.12s ease",
+      }}
+    >
+      <Icon size={20} strokeWidth={active ? 2.5 : 2} />
       {showBadge && (
         <div
           style={{
             position: "absolute",
-            top: -2,
-            right: -2,
-            width: 8,
-            height: 8,
+            top: 2,
+            right: 2,
+            width: 7,
+            height: 7,
             borderRadius: "50%",
             backgroundColor: "var(--apinox-badge-background, #e85b4a)",
             border: "1px solid var(--apinox-activityBar-background, #333)",

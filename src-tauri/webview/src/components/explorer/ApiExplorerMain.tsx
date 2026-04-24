@@ -340,113 +340,105 @@ export const ApiExplorerMain: React.FC<ApiExplorerMainProps> = ({
                     }}>
                         Sample APIs
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
-                        <button
-                            onClick={() => {
-                                setWsdlUrl('https://petstore.swagger.io/v2/swagger.json');
-                                setInputType('url');
-                            }}
-                            style={{
-                                textAlign: 'left', padding: '12px',
-                                backgroundColor: 'var(--apinox-editor-background)',
-                                border: '1px solid var(--apinox-widget-border)',
-                                borderRadius: 6, cursor: 'pointer',
-                                color: 'var(--apinox-foreground)',
-                                display: 'flex', flexDirection: 'column', gap: 4
-                            }}
-                        >
-                            <span style={{ fontWeight: 500 }}>Swagger Petstore</span>
-                            <span style={{ fontSize: 11, color: 'var(--apinox-descriptionForeground)' }}>OpenAPI 2.0 (JSON)</span>
-                        </button>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                        {/* OpenAPI group */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--apinox-descriptionForeground)', paddingLeft: 2 }}>OpenAPI</span>
+                            <button
+                                onClick={() => { setWsdlUrl('https://petstore.swagger.io/v2/swagger.json'); setInputType('url'); }}
+                                style={{
+                                    textAlign: 'left', padding: '10px 12px',
+                                    backgroundColor: 'var(--apinox-editor-background)',
+                                    border: '1px solid var(--apinox-widget-border)',
+                                    borderRadius: 6, cursor: 'pointer',
+                                    color: 'var(--apinox-foreground)',
+                                    display: 'flex', flexDirection: 'column', gap: 3
+                                }}
+                            >
+                                <span style={{ fontWeight: 500 }}>Swagger Petstore</span>
+                                <span style={{ fontSize: 11, color: 'var(--apinox-descriptionForeground)' }}>JSON</span>
+                            </button>
+                            <button
+                                onClick={() => { setWsdlUrl('https://petstore.swagger.io/v2/swagger.yaml'); setInputType('url'); }}
+                                style={{
+                                    textAlign: 'left', padding: '10px 12px',
+                                    backgroundColor: 'var(--apinox-editor-background)',
+                                    border: '1px solid var(--apinox-widget-border)',
+                                    borderRadius: 6, cursor: 'pointer',
+                                    color: 'var(--apinox-foreground)',
+                                    display: 'flex', flexDirection: 'column', gap: 3
+                                }}
+                            >
+                                <span style={{ fontWeight: 500 }}>Petstore YAML</span>
+                                <span style={{ fontSize: 11, color: 'var(--apinox-descriptionForeground)' }}>YAML</span>
+                            </button>
+                        </div>
 
-                        <button
-                            onClick={() => {
-                                setWsdlUrl('http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso?WSDL');
-                                setInputType('url');
-                            }}
-                            style={{
-                                textAlign: 'left', padding: '12px',
-                                backgroundColor: 'var(--apinox-editor-background)',
-                                border: '1px solid var(--apinox-widget-border)',
-                                borderRadius: 6, cursor: 'pointer',
-                                color: 'var(--apinox-foreground)',
-                                display: 'flex', flexDirection: 'column', gap: 4
-                            }}
-                        >
-                            <span style={{ fontWeight: 500 }}>Country Info</span>
-                            <span style={{ fontSize: 11, color: 'var(--apinox-descriptionForeground)' }}>SOAP WSDL</span>
-                        </button>
+                        {/* SOAP group */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--apinox-descriptionForeground)', paddingLeft: 2 }}>SOAP</span>
+                            <button
+                                onClick={() => { setWsdlUrl('http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso?WSDL'); setInputType('url'); }}
+                                style={{
+                                    textAlign: 'left', padding: '10px 12px',
+                                    backgroundColor: 'var(--apinox-editor-background)',
+                                    border: '1px solid var(--apinox-widget-border)',
+                                    borderRadius: 6, cursor: 'pointer',
+                                    color: 'var(--apinox-foreground)',
+                                    display: 'flex', flexDirection: 'column', gap: 3
+                                }}
+                            >
+                                <span style={{ fontWeight: 500 }}>Country Info</span>
+                                <span style={{ fontSize: 11, color: 'var(--apinox-descriptionForeground)' }}>WSDL</span>
+                            </button>
+                            <button
+                                onClick={() => { setWsdlUrl('http://www.dneonline.com/calculator.asmx?wsdl'); setInputType('url'); }}
+                                style={{
+                                    textAlign: 'left', padding: '10px 12px',
+                                    backgroundColor: 'var(--apinox-editor-background)',
+                                    border: '1px solid var(--apinox-widget-border)',
+                                    borderRadius: 6, cursor: 'pointer',
+                                    color: 'var(--apinox-foreground)',
+                                    display: 'flex', flexDirection: 'column', gap: 3
+                                }}
+                            >
+                                <span style={{ fontWeight: 500 }}>Calculator</span>
+                                <span style={{ fontSize: 11, color: 'var(--apinox-descriptionForeground)' }}>WSDL</span>
+                            </button>
+                        </div>
 
-                        <button
-                            onClick={() => {
-                                setWsdlUrl('http://www.dneonline.com/calculator.asmx?wsdl');
-                                setInputType('url');
-                            }}
-                            style={{
-                                textAlign: 'left', padding: '12px',
-                                backgroundColor: 'var(--apinox-editor-background)',
-                                border: '1px solid var(--apinox-widget-border)',
-                                borderRadius: 6, cursor: 'pointer',
-                                color: 'var(--apinox-foreground)',
-                                display: 'flex', flexDirection: 'column', gap: 4
-                            }}
-                        >
-                            <span style={{ fontWeight: 500 }}>Calculator</span>
-                            <span style={{ fontSize: 11, color: 'var(--apinox-descriptionForeground)' }}>SOAP WSDL</span>
-                        </button>
-
-                        <button
-                            onClick={() => {
-                                setWsdlUrl('https://petstore.swagger.io/v2/swagger.yaml');
-                                setInputType('url');
-                            }}
-                            style={{
-                                textAlign: 'left', padding: '12px',
-                                backgroundColor: 'var(--apinox-editor-background)',
-                                border: '1px solid var(--apinox-widget-border)',
-                                borderRadius: 6, cursor: 'pointer',
-                                color: 'var(--apinox-foreground)',
-                                display: 'flex', flexDirection: 'column', gap: 4
-                            }}
-                        >
-                            <span style={{ fontWeight: 500 }}>Petstore YAML</span>
-                            <span style={{ fontSize: 11, color: 'var(--apinox-descriptionForeground)' }}>OpenAPI 2.0 (YAML)</span>
-                        </button>
-                        <button
-                            onClick={() => {
-                                setWsdlUrl('https://spacex-production.up.railway.app/graphql');
-                                setInputType('url');
-                            }}
-                            style={{
-                                textAlign: 'left', padding: '12px',
-                                backgroundColor: 'var(--apinox-editor-background)',
-                                border: '1px solid var(--apinox-widget-border)',
-                                borderRadius: 6, cursor: 'pointer',
-                                color: 'var(--apinox-foreground)',
-                                display: 'flex', flexDirection: 'column', gap: 4
-                            }}
-                        >
-                            <span style={{ fontWeight: 500 }}>SpaceX</span>
-                            <span style={{ fontSize: 11, color: 'var(--apinox-descriptionForeground)' }}>GraphQL</span>
-                        </button>
-
-                        <button
-                            onClick={() => {
-                                setWsdlUrl('https://rickandmortyapi.com/graphql');
-                                setInputType('url');
-                            }}
-                            style={{
-                                textAlign: 'left', padding: '12px',
-                                backgroundColor: 'var(--apinox-editor-background)',
-                                border: '1px solid var(--apinox-widget-border)',
-                                borderRadius: 6, cursor: 'pointer',
-                                color: 'var(--apinox-foreground)',
-                                display: 'flex', flexDirection: 'column', gap: 4
-                            }}
-                        >
-                            <span style={{ fontWeight: 500 }}>Rick & Morty</span>
-                            <span style={{ fontSize: 11, color: 'var(--apinox-descriptionForeground)' }}>GraphQL</span>
-                        </button>
+                        {/* GraphQL group */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--apinox-descriptionForeground)', paddingLeft: 2 }}>GraphQL</span>
+                            <button
+                                onClick={() => { setWsdlUrl('https://spacex-production.up.railway.app/graphql'); setInputType('url'); }}
+                                style={{
+                                    textAlign: 'left', padding: '10px 12px',
+                                    backgroundColor: 'var(--apinox-editor-background)',
+                                    border: '1px solid var(--apinox-widget-border)',
+                                    borderRadius: 6, cursor: 'pointer',
+                                    color: 'var(--apinox-foreground)',
+                                    display: 'flex', flexDirection: 'column', gap: 3
+                                }}
+                            >
+                                <span style={{ fontWeight: 500 }}>SpaceX</span>
+                                <span style={{ fontSize: 11, color: 'var(--apinox-descriptionForeground)' }}>GraphQL</span>
+                            </button>
+                            <button
+                                onClick={() => { setWsdlUrl('https://rickandmortyapi.com/graphql'); setInputType('url'); }}
+                                style={{
+                                    textAlign: 'left', padding: '10px 12px',
+                                    backgroundColor: 'var(--apinox-editor-background)',
+                                    border: '1px solid var(--apinox-widget-border)',
+                                    borderRadius: 6, cursor: 'pointer',
+                                    color: 'var(--apinox-foreground)',
+                                    display: 'flex', flexDirection: 'column', gap: 3
+                                }}
+                            >
+                                <span style={{ fontWeight: 500 }}>Rick & Morty</span>
+                                <span style={{ fontSize: 11, color: 'var(--apinox-descriptionForeground)' }}>GraphQL</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 

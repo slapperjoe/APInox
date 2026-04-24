@@ -46,7 +46,6 @@ const EmptyMessage = styled.div`
     color: var(--apinox-descriptionForeground);
     padding: ${SPACING_XS} 0;
     font-size: 0.9em;
-    font-weight: 600;
 `;
 
 const Divider = styled.div`

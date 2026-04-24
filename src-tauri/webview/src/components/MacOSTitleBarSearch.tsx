@@ -79,7 +79,7 @@ const SearchWrapper = styled.div`
   border: 1px solid rgba(128, 128, 128, 0.3);
   border-radius: 5px;
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--apinox-ui-font-family, var(--apinox-font-family));
   pointer-events: auto;
   -webkit-app-region: no-drag;  /* Prevent dragging on search bar */
   
@@ -121,7 +121,7 @@ const SearchInput = styled.input`
   color: var(--vscode-input-foreground);
   font-size: 12px;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--apinox-ui-font-family, var(--apinox-font-family));
   line-height: 1.4;
   
   &::placeholder {

@@ -33,8 +33,8 @@ export const Container = styled.div<{ $showCustomTitleBar?: boolean; $isMacOS?: 
     width: ${props => props.$isMobile ? 'auto' : '100vw'};
     padding-top: ${props => {
         if (props.$isMobile) return '0';  /* Mobile header handles its own clearance */
-        if (props.$isMacOS) return '40px';  /* macOS native title bar with overlay - need space for traffic lights */
-        if (props.$showCustomTitleBar) return '40px';  /* Windows/Linux custom title bar */
+        if (props.$isMacOS) return '32px';  /* macOS native title bar with overlay - need space for traffic lights */
+        if (props.$showCustomTitleBar) return '32px';  /* Windows/Linux custom title bar */
         return '0';
     }};
     padding-bottom: 0;

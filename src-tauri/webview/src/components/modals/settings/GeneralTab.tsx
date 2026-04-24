@@ -15,8 +15,9 @@ import {
   SectionHeader,
   CustomSelect,
 } from "./SettingsTypes";
- import { useTheme } from "@apinox/request-editor/core"; // Use package ThemeContext
+ import { useTheme } from "@apinox/request-editor/core";
 import { useUI } from "../../../contexts/UIContext";
+import { UI_FONTS, applyUIFont, UIFontValue } from "../../../utils/fontLoader";
 
 interface GeneralTabProps {
   config: ApinoxConfig;
@@ -24,8 +25,17 @@ interface GeneralTabProps {
 }
 
 export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange }) => {
-  const { theme, setTheme, isStandalone } = useTheme();
+  const { theme, setTheme, isStandalone } = useTheme() as any;
   const { configDir } = useUI();
+  const [uiFont, setUIFontState] = useState<UIFontValue>(
+    (localStorage.getItem('apinox-ui-font') as UIFontValue) ?? 'fira-code'
+  );
+
+  const setUIFont = (font: UIFontValue) => {
+    setUIFontState(font);
+    localStorage.setItem('apinox-ui-font', font);
+    applyUIFont(font);
+  };
   const [tauriConfigDir, setTauriConfigDir] = useState<string | null>(null);
 
   useEffect(() => {
@@ -62,7 +72,21 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange }) => {
                   { value: "light", label: "Light" },
                   { value: "solarized-dark", label: "Solarized Dark" },
                   { value: "solarized-light", label: "Solarized Light" },
+                  { value: "zed-dark", label: "Zed Dark" },
+                  { value: "dankshell-light", label: "DankShell Light" },
                 ]}
+              />
+            </FormGroup>
+          )}
+
+          {/* UI Font Selector - Only in Tauri Mode */}
+          {isStandalone && (
+            <FormGroup>
+              <Label>UI Font</Label>
+              <CustomSelect
+                value={uiFont ?? 'system'}
+                onChange={(v) => setUIFont(v)}
+                options={UI_FONTS.map(f => ({ value: f.value, label: f.label }))}
               />
             </FormGroup>
           )}
