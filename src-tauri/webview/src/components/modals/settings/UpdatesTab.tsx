@@ -18,6 +18,7 @@ interface UpdateCheckResult {
     current_version: string;
     latest_version: string;
     has_update: boolean;
+    check_error: string | null;
     download_url: string | null;
     release_url: string;
     release_notes: string;
@@ -168,10 +169,18 @@ export const UpdatesTab: React.FC = () => {
                     </StatusRow>
                 )}
 
-                {checkState === 'done' && result && !result.has_update && (
+                {checkState === 'done' && result && !result.has_update && !result.check_error && (
                     <StatusRow icon={<CheckCircle size={14} color="var(--apinox-testing-pass, #4caf50)" />}>
                         <span style={{ color: 'var(--apinox-testing-pass, #4caf50)' }}>
                             You are running the latest version.
+                        </span>
+                    </StatusRow>
+                )}
+
+                {checkState === 'done' && result?.check_error && (
+                    <StatusRow icon={<AlertTriangle size={14} color="var(--apinox-descriptionForeground, #888)" />}>
+                        <span style={{ color: 'var(--apinox-descriptionForeground, #888)' }}>
+                            {result.check_error}
                         </span>
                     </StatusRow>
                 )}
