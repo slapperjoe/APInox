@@ -19,6 +19,8 @@ pub struct UpdateCheckResult {
     pub current_version: String,
     pub latest_version: String,
     pub has_update: bool,
+    /// Human-readable reason why the update check could not complete.
+    pub check_error: Option<String>,
     /// Windows NSIS installer download URL, or `None` when not on Windows or
     /// when no matching asset was found in the release.
     pub download_url: Option<String>,
@@ -202,18 +204,62 @@ fn build_client() -> Result<reqwest::Client, String> {
     builder.build().map_err(|e| format!("Failed to build HTTP client: {}", e))
 }
 
+/// Builds an HTTP client that bypasses all proxies.
+///
+/// Used as the first attempt for update checks so WPAD/PAC mis-detection
+/// does not block environments where direct egress to GitHub works.
+fn build_direct_client() -> Result<reqwest::Client, String> {
+    reqwest::Client::builder()
+        .user_agent(format!("APInox/{}", APP_VERSION))
+        .no_proxy()
+        .build()
+        .map_err(|e| format!("Failed to build direct HTTP client: {}", e))
+}
+
+fn unavailable_result(reason: String) -> UpdateCheckResult {
+    log::warn!("[Updater] Update check unavailable: {}", reason);
+    UpdateCheckResult {
+        current_version: APP_VERSION.to_string(),
+        latest_version: APP_VERSION.to_string(),
+        has_update: false,
+        check_error: Some(reason),
+        download_url: None,
+        release_url: String::new(),
+        release_notes: String::new(),
+    }
+}
+
 // ── Tauri commands ─────────────────────────────────────────────────────────
 
 /// Calls the GitHub Releases API to determine whether a newer version exists.
 #[tauri::command]
 pub async fn check_for_updates() -> Result<UpdateCheckResult, String> {
-    let client = build_client()?;
-
-    let response = client
+    let direct_client = build_direct_client()?;
+    let direct_response = direct_client
         .get(GITHUB_API_URL)
         .send()
-        .await
-        .map_err(|e| format!("Failed to reach GitHub: {}", e))?;
+        .await;
+
+    let response = match direct_response {
+        Ok(response) => response,
+        Err(direct_error) => {
+            log::warn!(
+                "[Updater] Direct update check failed, retrying with proxy-aware client: {}",
+                direct_error
+            );
+
+            let proxied_client = build_client()?;
+            match proxied_client.get(GITHUB_API_URL).send().await {
+                Ok(response) => response,
+                Err(proxy_error) => {
+                    return Ok(unavailable_result(format!(
+                        "Failed to reach GitHub directly ({}) and via proxy-aware client ({})",
+                        direct_error, proxy_error
+                    )));
+                }
+            }
+        }
+    };
 
     let status = response.status();
     if status == reqwest::StatusCode::NOT_FOUND {
@@ -223,19 +269,28 @@ pub async fn check_for_updates() -> Result<UpdateCheckResult, String> {
             current_version: APP_VERSION.to_string(),
             latest_version: APP_VERSION.to_string(),
             has_update: false,
+            check_error: None,
             download_url: None,
             release_url: String::new(),
             release_notes: String::new(),
         });
     }
     if !status.is_success() {
-        return Err(format!("GitHub API returned status {}", status));
+        return Ok(unavailable_result(format!(
+            "GitHub API returned status {}",
+            status
+        )));
     }
 
-    let release: GitHubRelease = response
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse GitHub response: {}", e))?;
+    let release: GitHubRelease = match response.json().await {
+        Ok(release) => release,
+        Err(error) => {
+            return Ok(unavailable_result(format!(
+                "Failed to parse GitHub response: {}",
+                error
+            )));
+        }
+    };
 
     let latest_version = release.tag_name.trim_start_matches('v').to_string();
     let current_version = APP_VERSION.to_string();
@@ -271,6 +326,7 @@ pub async fn check_for_updates() -> Result<UpdateCheckResult, String> {
         current_version,
         latest_version,
         has_update,
+        check_error: None,
         download_url,
         release_url: release.html_url,
         release_notes,
