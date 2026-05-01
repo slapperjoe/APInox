@@ -341,6 +341,18 @@ fn init_window(app: &mut tauri::App) {
     // Size and centre the splashscreen to half the primary monitor dimensions.
     #[cfg(desktop)]
     if let Some(splash) = app.get_webview_window("splashscreen") {
+        // Check config for splashscreenEnabled (default: false)
+        let splashscreen_enabled = settings_manager::load_config_internal()
+            .ok()
+            .and_then(|c| c.ui)
+            .and_then(|u| u.splashscreen_enabled)
+            .unwrap_or(false);
+        
+        if !splashscreen_enabled {
+            log::info!("Splash screen disabled by config, skipping");
+            return;
+        }
+        
         if let Ok(Some(monitor)) = splash.primary_monitor() {
             let scale = monitor.scale_factor();
             let phys = monitor.size();

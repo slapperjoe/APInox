@@ -74,6 +74,8 @@ pub struct UiConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub show_debug_indicator: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub splashscreen_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub split_ratio: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub auto_fold_elements: Option<Vec<String>>,
@@ -98,6 +100,7 @@ impl Default for ApinoxConfig {
                 align_attributes: Some(false),
                 inline_element_values: Some(false),
                 show_debug_indicator: None,
+                splashscreen_enabled: None,
                 split_ratio: Some(0.5),
                 auto_fold_elements: None,
                 editor_font_size: None,
@@ -259,6 +262,7 @@ pub async fn update_ui_settings(ui: UiConfig) -> Result<(), String> {
             align_attributes: ui.align_attributes.or(existing_ui.align_attributes),
             inline_element_values: ui.inline_element_values.or(existing_ui.inline_element_values),
             show_debug_indicator: ui.show_debug_indicator.or(existing_ui.show_debug_indicator),
+            splashscreen_enabled: ui.splashscreen_enabled.or(existing_ui.splashscreen_enabled),
             split_ratio: ui.split_ratio.or(existing_ui.split_ratio),
             auto_fold_elements: ui.auto_fold_elements.or_else(|| existing_ui.auto_fold_elements.clone()),
             editor_font_size: ui.editor_font_size.or(existing_ui.editor_font_size),

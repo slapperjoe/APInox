@@ -104,6 +104,18 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange }) => {
             </CheckboxLabel>
           </FormGroup>
           <FormGroup>
+            <CheckboxLabel>
+              <input
+                type="checkbox"
+                checked={config.ui?.splashscreenEnabled ?? false}
+                onChange={(e) =>
+                  onChange("ui", "splashscreenEnabled", e.target.checked)
+                }
+              />
+              Show Splash Screen
+            </CheckboxLabel>
+          </FormGroup>
+          <FormGroup>
             <Label>Auto-Fold XML Elements</Label>
             <div
               style={{

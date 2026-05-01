@@ -1,150 +1,169 @@
-import React, { useRef, useState, useEffect } from 'react';
-import styled from 'styled-components';
-import Editor, { Monaco } from '@monaco-editor/react';
-import { ChevronLeft } from 'lucide-react';
-import { useTheme } from '../contexts/ThemeContext';
-import { applyMonacoTheme } from '../utils/monacoTheme';
+import React, { useRef, useState, useEffect } from "react";
+import styled from "styled-components";
+import Editor, { Monaco } from "@monaco-editor/react";
+import { ChevronLeft } from "lucide-react";
+import { useTheme } from "../contexts/ThemeContext";
+import { applyMonacoTheme } from "../utils/monacoTheme";
+import { debugLog } from "../utils/logger";
 // import { ScriptPlaygroundModal } from './modals/ScriptPlaygroundModal'; // TODO: Add ScriptPlaygroundModal
 
 // Stub types
 interface TestStep {
-    id: string;
-    name: string;
-    type: string;
-    config: {
-        scriptContent?: string;
-        [key: string]: any;
-    };
+  id: string;
+  name: string;
+  type: string;
+  config: {
+    scriptContent?: string;
+    [key: string]: any;
+  };
 }
 
 // Styled components (replacing missing imports)
 const Toolbar = styled.div`
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    background: var(--apinox-toolbar-background);
-    border-bottom: 1px solid var(--apinox-panel-border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--apinox-toolbar-background);
+  border-bottom: 1px solid var(--apinox-panel-border);
 `;
 
 const ToolbarButton = styled.button`
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 8px;
-    background: transparent;
-    color: var(--apinox-foreground);
-    border: 1px solid var(--apinox-input-border);
-    border-radius: 3px;
-    cursor: pointer;
-    font-size: 12px;
-    &:hover {
-        background: var(--apinox-button-hoverBackground);
-    }
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: transparent;
+  color: var(--apinox-foreground);
+  border: 1px solid var(--apinox-input-border);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  &:hover {
+    background: var(--apinox-button-hoverBackground);
+  }
 `;
 
 const ToolbarSeparator = styled.div`
-    width: 1px;
-    height: 16px;
-    background: var(--apinox-panel-border);
+  width: 1px;
+  height: 16px;
+  background: var(--apinox-panel-border);
 `;
 
 interface ScriptEditorProps {
-    step: TestStep;
-    onUpdate: (step: TestStep) => void;
-    isReadOnly?: boolean;
-    onBack?: () => void;
+  step: TestStep;
+  onUpdate: (step: TestStep) => void;
+  isReadOnly?: boolean;
+  onBack?: () => void;
 }
 
-export const ScriptEditor: React.FC<ScriptEditorProps> = ({ step, onUpdate, isReadOnly, onBack }) => {
-    const editorRef = useRef<any>(null);
-    const monacoRef = useRef<Monaco | null>(null);
-    // Initialize local state from prop
-    const [scriptContent, setScriptContent] = useState(step.config.scriptContent || '');
-    // const showPlayground = false; // TODO: Enable when ScriptPlaygroundModal is added
-    const { theme } = useTheme();
-    const [editorTheme, setEditorTheme] = useState<string>('vs-dark');
+export const ScriptEditor: React.FC<ScriptEditorProps> = ({
+  step,
+  onUpdate,
+  isReadOnly,
+  onBack,
+}) => {
+  const editorRef = useRef<any>(null);
+  const monacoRef = useRef<Monaco | null>(null);
+  // Initialize local state from prop
+  const [scriptContent, setScriptContent] = useState(
+    step.config.scriptContent || "",
+  );
+  // const showPlayground = false; // TODO: Enable when ScriptPlaygroundModal is added
+  const { theme } = useTheme();
+  const [editorTheme, setEditorTheme] = useState<string>("vs-dark");
 
-    // Track previous prop value to detect actual remote changes
-    const prevStepContent = useRef(step.config.scriptContent);
+  // Track previous prop value to detect actual remote changes
+  const prevStepContent = useRef(step.config.scriptContent);
 
-    // Update local state and ref ONLY if prop actually changes remotely (e.g. undo/redo or initial load)
-    useEffect(() => {
-        if (step.config.scriptContent !== prevStepContent.current) {
-            // Only update if the incoming prop is different from what we expect
-            // This prevents local typing from being overwritten by the prop update it triggered
-            if (scriptContent !== step.config.scriptContent) {
-                setScriptContent(step.config.scriptContent || '');
-            }
-            prevStepContent.current = step.config.scriptContent;
-        }
-    }, [step.config.scriptContent]); // Removed scriptContent dep to avoid loops
+  // Update local state and ref ONLY if prop actually changes remotely (e.g. undo/redo or initial load)
+  useEffect(() => {
+    if (step.config.scriptContent !== prevStepContent.current) {
+      // Only update if the incoming prop is different from what we expect
+      // This prevents local typing from being overwritten by the prop update it triggered
+      if (scriptContent !== step.config.scriptContent) {
+        setScriptContent(step.config.scriptContent || "");
+      }
+      prevStepContent.current = step.config.scriptContent;
+    }
+  }, [step.config.scriptContent]); // Removed scriptContent dep to avoid loops
 
-    // Refs for flush-on-unmount pattern
-    const latestScriptContent = useRef(scriptContent);
-    const latestStep = useRef(step);
-    const onUpdateRef = useRef(onUpdate);
+  // Refs for flush-on-unmount pattern
+  const latestScriptContent = useRef(scriptContent);
+  const latestStep = useRef(step);
+  const onUpdateRef = useRef(onUpdate);
 
-    // Keep refs in sync
-    useEffect(() => {
-        latestScriptContent.current = scriptContent;
-        latestStep.current = step;
-        onUpdateRef.current = onUpdate;
-    }, [scriptContent, step, onUpdate]);
+  // Keep refs in sync
+  useEffect(() => {
+    latestScriptContent.current = scriptContent;
+    latestStep.current = step;
+    onUpdateRef.current = onUpdate;
+  }, [scriptContent, step, onUpdate]);
 
-    // Auto-save effect with debounce AND flush on unmount
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            // Debounced Save
-            if (latestScriptContent.current !== latestStep.current.config.scriptContent) {
-                console.log('[ScriptEditor] Auto-saving step (debounce):', latestStep.current.id);
-                onUpdateRef.current({
-                    ...latestStep.current,
-                    config: {
-                        ...latestStep.current.config,
-                        scriptContent: latestScriptContent.current
-                    }
-                });
-                prevStepContent.current = latestScriptContent.current;
-            }
-        }, 800);
-
-        return () => {
-            clearTimeout(timer);
-            // Flush on Unmount / Cleanup
-            // If content is still different from prop, save immediately
-            if (latestScriptContent.current !== latestStep.current.config.scriptContent) {
-                console.log('[ScriptEditor] Auto-saving step (flush):', latestStep.current.id);
-                onUpdateRef.current({
-                    ...latestStep.current,
-                    config: {
-                        ...latestStep.current.config,
-                        scriptContent: latestScriptContent.current
-                    }
-                });
-                prevStepContent.current = latestScriptContent.current;
-            }
-        };
-    }, [scriptContent]); // Trigger on every keystroke (for debounce reset)
-
-    const applyEditorTheme = (monacoInstance: Monaco) => {
-        setEditorTheme(applyMonacoTheme(monacoInstance, theme));
-    };
-
-    const handleEditorDidMount = (editor: any, monaco: Monaco) => {
-        editorRef.current = editor;
-        monacoRef.current = monaco;
-        applyEditorTheme(monaco);
-
-        // Configure JavaScript defaults for the Sandbox API
-        monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
-            noSemanticValidation: false,
-            noSyntaxValidation: false,
+  // Auto-save effect with debounce AND flush on unmount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // Debounced Save
+      if (
+        latestScriptContent.current !== latestStep.current.config.scriptContent
+      ) {
+        debugLog(
+          "[ScriptEditor] Auto-saving step (debounce):",
+          latestStep.current.id,
+        );
+        onUpdateRef.current({
+          ...latestStep.current,
+          config: {
+            ...latestStep.current.config,
+            scriptContent: latestScriptContent.current,
+          },
         });
+        prevStepContent.current = latestScriptContent.current;
+      }
+    }, 800);
 
-        // Add extra lib for API autocomplete
-        const libUri = 'ts:filename/sandbox.d.ts';
-        monaco.languages.typescript.javascriptDefaults.addExtraLib(`
+    return () => {
+      clearTimeout(timer);
+      // Flush on Unmount / Cleanup
+      // If content is still different from prop, save immediately
+      if (
+        latestScriptContent.current !== latestStep.current.config.scriptContent
+      ) {
+        debugLog(
+          "[ScriptEditor] Auto-saving step (flush):",
+          latestStep.current.id,
+        );
+        onUpdateRef.current({
+          ...latestStep.current,
+          config: {
+            ...latestStep.current.config,
+            scriptContent: latestScriptContent.current,
+          },
+        });
+        prevStepContent.current = latestScriptContent.current;
+      }
+    };
+  }, [scriptContent]); // Trigger on every keystroke (for debounce reset)
+
+  const applyEditorTheme = (monacoInstance: Monaco) => {
+    setEditorTheme(applyMonacoTheme(monacoInstance, theme));
+  };
+
+  const handleEditorDidMount = (editor: any, monaco: Monaco) => {
+    editorRef.current = editor;
+    monacoRef.current = monaco;
+    applyEditorTheme(monaco);
+
+    // Configure JavaScript defaults for the Sandbox API
+    monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
+      noSemanticValidation: false,
+      noSyntaxValidation: false,
+    });
+
+    // Add extra lib for API autocomplete
+    const libUri = "ts:filename/sandbox.d.ts";
+    monaco.languages.typescript.javascriptDefaults.addExtraLib(
+      `
             /**
              * Log a message to the test runner output.
              * @param message The message to log.
@@ -173,74 +192,98 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ step, onUpdate, isRe
              * Shared context object for storing variables across steps.
              */
             declare const context: Record<string, any>;
-        `, libUri);
-    };
+        `,
+      libUri,
+    );
+  };
 
-    useEffect(() => {
-        if (monacoRef.current) {
-            applyEditorTheme(monacoRef.current);
-        }
-    }, [theme]);
+  useEffect(() => {
+    if (monacoRef.current) {
+      applyEditorTheme(monacoRef.current);
+    }
+  }, [theme]);
 
-    const handleChange = (value: string | undefined) => {
-        if (value !== undefined) {
-            setScriptContent(value);
-        }
-    };
+  const handleChange = (value: string | undefined) => {
+    if (value !== undefined) {
+      setScriptContent(value);
+    }
+  };
 
-    const handleBack = () => {
-        if (onBack) {
-            onBack();
-        }
-    };
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+    }
+  };
 
-    return (
-        <div style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', width: '100%' }}>
-            <Toolbar>
-                {onBack && (
-                    <>
-                        <ToolbarButton onClick={handleBack} title="Back to Test Case">
-                            <ChevronLeft size={14} /> Back
-                        </ToolbarButton>
-                        <ToolbarSeparator />
-                    </>
-                )}
-                <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-                    <span style={{ fontWeight: 'bold', marginLeft: 10 }}>Script: {step.name}</span>
-                </div>
+  return (
+    <div
+      style={{
+        flex: 1,
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        width: "100%",
+      }}
+    >
+      <Toolbar>
+        {onBack && (
+          <>
+            <ToolbarButton onClick={handleBack} title="Back to Test Case">
+              <ChevronLeft size={14} /> Back
+            </ToolbarButton>
+            <ToolbarSeparator />
+          </>
+        )}
+        <div style={{ display: "flex", alignItems: "center", flex: 1 }}>
+          <span style={{ fontWeight: "bold", marginLeft: 10 }}>
+            Script: {step.name}
+          </span>
+        </div>
 
-                {/* TODO: Restore when ScriptPlaygroundModal is added
+        {/* TODO: Restore when ScriptPlaygroundModal is added
                 <ToolbarButton onClick={() => setShowPlayground(true)} title="Run in Playground">
                     <Play size={14} /> Playground
                 </ToolbarButton>
                 */}
-            </Toolbar>
+      </Toolbar>
 
-            <div style={{ padding: '5px 10px', background: 'var(--apinox-editor-background)', borderBottom: '1px solid var(--apinox-panel-border)' }}>
-                <span style={{ fontSize: '0.8em', color: 'var(--apinox-descriptionForeground)' }}>
-                    API: <code>log(msg)</code>, <code>context</code>, <code>goto(step)</code>, <code>delay(ms)</code>.
-                </span>
-            </div>
+      <div
+        style={{
+          padding: "5px 10px",
+          background: "var(--apinox-editor-background)",
+          borderBottom: "1px solid var(--apinox-panel-border)",
+        }}
+      >
+        <span
+          style={{
+            fontSize: "0.8em",
+            color: "var(--apinox-descriptionForeground)",
+          }}
+        >
+          API: <code>log(msg)</code>, <code>context</code>,{" "}
+          <code>goto(step)</code>, <code>delay(ms)</code>.
+        </span>
+      </div>
 
-            <div style={{ flex: 1, overflow: 'hidden' }}>
-                <Editor
-                    height="100%"
-                    defaultLanguage="javascript"
-                    theme={editorTheme}
-                    value={scriptContent}
-                    onChange={handleChange}
-                    onMount={handleEditorDidMount}
-                    options={{
-                        minimap: { enabled: false },
-                        scrollBeyondLastLine: false,
-                        fontSize: 14,
-                        readOnly: isReadOnly,
-                        automaticLayout: true,
-                    }}
-                />
-            </div>
+      <div style={{ flex: 1, overflow: "hidden" }}>
+        <Editor
+          height="100%"
+          defaultLanguage="javascript"
+          theme={editorTheme}
+          value={scriptContent}
+          onChange={handleChange}
+          onMount={handleEditorDidMount}
+          options={{
+            minimap: { enabled: false },
+            scrollBeyondLastLine: false,
+            fontSize: 14,
+            readOnly: isReadOnly,
+            automaticLayout: true,
+          }}
+        />
+      </div>
 
-            {/* TODO: Add ScriptPlaygroundModal component
+      {/* TODO: Add ScriptPlaygroundModal component
             {showPlayground && (
                 <ScriptPlaygroundModal
                     scriptType="step"
@@ -252,6 +295,6 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({ step, onUpdate, isRe
                 />
             )}
             */}
-        </div>
-    );
+    </div>
+  );
 };
