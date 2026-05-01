@@ -449,6 +449,7 @@ export interface ApinoxConfig {
         alignAttributes?: boolean;
         inlineElementValues?: boolean;
         showDebugIndicator?: boolean;
+        splashscreenEnabled?: boolean;
         splitRatio?: number;
         autoFoldElements?: string[];
         editorFontSize?: number;
