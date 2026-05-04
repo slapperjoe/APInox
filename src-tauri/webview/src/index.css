@@ -457,6 +457,7 @@ code,
     left: 0;
     width: 32px;
     height: 32px;
+    min-height: 32px; /* Opt out of the global 44px touch-target min-height so the button stays within the 32px titlebar */
     margin: 0;
     padding: 0;
     box-sizing: border-box;

@@ -1,9 +1,10 @@
 /**
  * UpdatesTab.tsx
  *
- * Checks GitHub Releases for a newer version of APInox and, on Windows,
- * lets the user download and run the NSIS installer from within the app.
- * On macOS/Linux a link to the release page is shown instead.
+ * Checks GitHub Releases for a newer version of APInox.
+ * On Windows: downloads and runs the NSIS installer from within the app.
+ * On macOS:   downloads the DMG, mounts it, copies the new .app, and relaunches.
+ * On Linux:   opens the GitHub release page in the browser.
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -49,6 +50,8 @@ const btnStyle = (primary: boolean): React.CSSProperties => ({
 // ── Component ──────────────────────────────────────────────────────────────
 
 export const UpdatesTab: React.FC = () => {
+    const isMacOS = document.body.dataset.platform === 'macos';
+
     const [checkState, setCheckState] = useState<CheckState>('idle');
     const [result, setResult] = useState<UpdateCheckResult | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -226,11 +229,11 @@ export const UpdatesTab: React.FC = () => {
 
                 {checkState === 'done' && result?.has_update && (
                     <>
-                        {/* Windows: download & run installer */}
+                        {/* Windows / macOS: download installer/DMG then apply it */}
                         {result.download_url && (downloadState === 'idle' || downloadState === 'error') && (
                             <button style={btnStyle(true)} onClick={handleDownload}>
                                 <Download size={13} />
-                                Download update
+                                {isMacOS ? 'Download & install' : 'Download update'}
                             </button>
                         )}
 
@@ -246,7 +249,7 @@ export const UpdatesTab: React.FC = () => {
                             </button>
                         )}
 
-                        {/* Non-Windows or no NSIS asset: open release page */}
+                        {/* Linux or no asset: open release page */}
                         {!result.download_url && (
                             <button style={btnStyle(true)} onClick={handleOpenReleasePage}>
                                 <ExternalLink size={13} />
@@ -254,10 +257,10 @@ export const UpdatesTab: React.FC = () => {
                             </button>
                         )}
 
-                        {/* After download: run installer */}
+                        {/* After download: apply the update */}
                         {downloadState === 'ready' && downloadedPath && (
                             <button style={btnStyle(true)} onClick={handleRunInstaller}>
-                                Run installer
+                                {isMacOS ? 'Install & relaunch' : 'Run installer'}
                             </button>
                         )}
                     </>
