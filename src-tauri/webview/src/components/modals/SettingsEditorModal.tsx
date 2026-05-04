@@ -10,6 +10,8 @@ import { TAG_COLORS } from '../../styles/colors';
 import { SPACING_SM, SPACING_MD } from '../../styles/spacing';
 import { ProxySettingsPanel } from '../proxy/ProxySettingsPanel';
 import { useIgnoreList } from '../../utils/useIgnoreList';
+import { bridge } from '../../utils/bridge';
+import { FrontendCommand } from '@shared/messages';
 
 // Hex-only palette for deterministic env color assignment (stored in config)
 const ENV_HEX_COLORS = ['#58A6FF', '#7EE787', '#FF7B72', '#FFA657', '#D29922', '#A371F7', '#79C0FF', '#FFA198', '#FFCB6B', '#C9D1D9'];

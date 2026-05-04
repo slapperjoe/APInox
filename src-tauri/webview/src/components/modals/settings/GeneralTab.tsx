@@ -85,7 +85,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange }) => {
               <Label>UI Font</Label>
               <CustomSelect
                 value={uiFont ?? 'system'}
-                onChange={(v) => setUIFont(v)}
+                onChange={(v) => setUIFont(v as UIFontValue)}
                 options={UI_FONTS.map(f => ({ value: f.value, label: f.label }))}
               />
             </FormGroup>

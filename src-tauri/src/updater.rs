@@ -1,7 +1,10 @@
 //! Self-update mechanism for APInox.
 //!
-//! Checks GitHub Releases for newer versions, downloads the Windows NSIS
-//! installer, and launches it so the user can update without leaving the app.
+//! Checks GitHub Releases for newer versions, downloads the platform-appropriate
+//! installer (Windows NSIS `.exe`, macOS `.dmg`), and applies it without leaving
+//! the app.  On macOS the app mounts the DMG, copies the new bundle to a staging
+//! path, then launches a small shell script that swaps the bundles after the app
+//! has exited and re-opens it.
 
 use serde::{Deserialize, Serialize};
 use tauri::Emitter;
@@ -21,8 +24,10 @@ pub struct UpdateCheckResult {
     pub has_update: bool,
     /// Human-readable reason why the update check could not complete.
     pub check_error: Option<String>,
-    /// Windows NSIS installer download URL, or `None` when not on Windows or
-    /// when no matching asset was found in the release.
+    /// Platform-appropriate installer download URL:
+    /// - Windows: NSIS `.exe` URL, or `None` when no matching asset was found.
+    /// - macOS: `.dmg` URL, or `None` when no matching asset was found.
+    /// - Other platforms: always `None` (use `release_url` for browser download).
     pub download_url: Option<String>,
     /// HTML URL of the release page — used for browser-open on non-Windows.
     pub release_url: String,
@@ -298,11 +303,17 @@ pub async fn check_for_updates() -> Result<UpdateCheckResult, String> {
 
     // Only resolve a download URL when there is actually an update to grab.
     let download_url = if has_update {
-        release
-            .assets
-            .iter()
+        #[cfg(target_os = "windows")]
+        let url = release.assets.iter()
             .find(|a| a.name.ends_with("_x64-setup.exe"))
-            .map(|a| a.browser_download_url.clone())
+            .map(|a| a.browser_download_url.clone());
+        #[cfg(target_os = "macos")]
+        let url = release.assets.iter()
+            .find(|a| a.name.ends_with(".dmg"))
+            .map(|a| a.browser_download_url.clone());
+        #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+        let url: Option<String> = None;
+        url
     } else {
         None
     };
@@ -358,6 +369,9 @@ pub async fn download_update(
     }
 
     let total_bytes = response.content_length().unwrap_or(0);
+    #[cfg(target_os = "macos")]
+    let dest_path = std::env::temp_dir().join("apinox-update.dmg");
+    #[cfg(not(target_os = "macos"))]
     let dest_path = std::env::temp_dir().join("apinox-update.exe");
 
     let mut file = tokio::fs::File::create(&dest_path)
@@ -405,9 +419,15 @@ pub async fn download_update(
     Ok(path_str)
 }
 
-/// Spawns the downloaded NSIS installer and exits the app so the installer
-/// can replace the running executable.  Windows-only; returns an error on
-/// other platforms.
+/// Applies the downloaded installer and relaunches APInox.
+///
+/// - **Windows**: spawns the NSIS `.exe` installer and exits so it can replace
+///   the running binary.
+/// - **macOS**: mounts the `.dmg`, copies the new `.app` to a temp staging path,
+///   strips the quarantine attribute, detaches the DMG, writes a small shell
+///   script that swaps the bundles after the app has quit, launches it detached,
+///   then exits.
+/// - **Other platforms**: returns an error; use the browser link instead.
 #[tauri::command]
 pub async fn launch_installer(
     app: tauri::AppHandle,
@@ -423,11 +443,127 @@ pub async fn launch_installer(
         return Ok(());
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "macos")]
     {
-        let _ = app;
-        let _ = installer_path;
-        Err("Installer launch is only supported on Windows".to_string())
+        // Locate the running .app bundle: exe is at APInox.app/Contents/MacOS/APInox.
+        let exe_path = std::env::current_exe()
+            .map_err(|e| format!("Failed to locate running executable: {}", e))?;
+        let app_bundle = exe_path
+            .parent()                        // …/Contents/MacOS
+            .and_then(|p| p.parent())        // …/Contents
+            .and_then(|p| p.parent())        // …/APInox.app
+            .ok_or_else(|| "Could not determine app bundle path from executable path".to_string())?
+            .to_path_buf();
+
+        let mount_point = std::env::temp_dir().join("apinox-dmg-mount");
+        let temp_app    = std::env::temp_dir().join("APInox-update.app");
+
+        // Strip quarantine from the DMG before hdiutil touches it.
+        std::process::Command::new("xattr")
+            .args(["-dr", "com.apple.quarantine", &installer_path])
+            .output()
+            .ok();
+
+        // Detach any stale mount left from a previous update attempt.
+        if mount_point.exists() {
+            std::process::Command::new("hdiutil")
+                .args(["detach", mount_point.to_str().unwrap_or(""), "-force"])
+                .output()
+                .ok();
+        }
+
+        // Mount the DMG silently (no Finder window).
+        let mount_out = std::process::Command::new("hdiutil")
+            .args([
+                "attach", &installer_path,
+                "-mountpoint", mount_point.to_str().unwrap_or(""),
+                "-nobrowse",
+                "-noverify",
+            ])
+            .output()
+            .map_err(|e| format!("Failed to run hdiutil: {}", e))?;
+
+        if !mount_out.status.success() {
+            return Err(format!(
+                "hdiutil attach failed: {}",
+                String::from_utf8_lossy(&mount_out.stderr).trim()
+            ));
+        }
+
+        // Find the .app bundle inside the mounted volume.
+        let app_in_dmg = std::fs::read_dir(&mount_point)
+            .map_err(|e| format!("Failed to read mounted DMG at {}: {}", mount_point.display(), e))?
+            .filter_map(|e| e.ok())
+            .find(|e| e.file_name().to_string_lossy().ends_with(".app"))
+            .map(|e| e.path())
+            .ok_or_else(|| "No .app bundle found in DMG".to_string())?;
+
+        // Remove any stale staging copy.
+        if temp_app.exists() {
+            std::fs::remove_dir_all(&temp_app).ok();
+        }
+
+        // Copy the .app out of the DMG to a temp staging path.
+        let cp_out = std::process::Command::new("cp")
+            .args(["-r",
+                app_in_dmg.to_str().unwrap_or(""),
+                temp_app.to_str().unwrap_or(""),
+            ])
+            .output()
+            .map_err(|e| format!("Failed to copy app bundle: {}", e))?;
+
+        // Detach now — we have everything we need.
+        std::process::Command::new("hdiutil")
+            .args(["detach", mount_point.to_str().unwrap_or(""), "-force"])
+            .output()
+            .ok();
+
+        if !cp_out.status.success() {
+            return Err(format!(
+                "Failed to copy app bundle from DMG: {}",
+                String::from_utf8_lossy(&cp_out.stderr).trim()
+            ));
+        }
+
+        // Strip quarantine from the staged .app so Gatekeeper won't block it.
+        std::process::Command::new("xattr")
+            .args(["-dr", "com.apple.quarantine", temp_app.to_str().unwrap_or("")])
+            .output()
+            .ok();
+
+        // Write a shell script that runs after we quit and swaps the bundles.
+        let app_bundle_str = app_bundle.to_string_lossy();
+        let temp_app_str   = temp_app.to_string_lossy();
+        let script = format!(
+            "#!/bin/bash\nsleep 2\nrm -rf \"{0}\"\nmv \"{1}\" \"{0}\"\nopen \"{0}\"\n",
+            app_bundle_str, temp_app_str
+        );
+        let script_path = std::env::temp_dir().join("apinox-updater.sh");
+        std::fs::write(&script_path, &script)
+            .map_err(|e| format!("Failed to write update script: {}", e))?;
+        std::process::Command::new("chmod")
+            .args(["+x", script_path.to_str().unwrap_or("")])
+            .output()
+            .map_err(|e| format!("Failed to chmod update script: {}", e))?;
+
+        // Launch the script detached so it survives this process exiting.
+        std::process::Command::new("bash")
+            .arg(script_path.to_str().unwrap_or(""))
+            .spawn()
+            .map_err(|e| format!("Failed to launch update script: {}", e))?;
+
+        log::info!(
+            "[Updater] macOS update staged: {} → {}; quitting for replacement",
+            temp_app_str, app_bundle_str
+        );
+        app.exit(0);
+        return Ok(());
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    {
+        let _ = (app, installer_path);
+        Err("In-app installer launch is not supported on this platform — use the browser link instead".to_string())
     }
 }
 
