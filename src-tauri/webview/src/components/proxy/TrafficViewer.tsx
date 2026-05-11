@@ -250,13 +250,16 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = [], onAddIgnore
 
   const filteredLogs = useMemo(() => {
     const isAllStatus = statusGroups.size === STATUS_GROUPS.length;
-    return logs.filter((log) => {
-      if (ignoreRules.length > 0 && matchesAnyIgnoreRule(log.url, ignoreRules)) return false;
-      if (urlFilter && !log.url.toLowerCase().includes(urlFilter.toLowerCase())) return false;
-      if (methodFilter !== 'ALL' && log.method !== methodFilter) return false;
-      if (!isAllStatus && !statusGroups.has(getStatusGroup(log.status))) return false;
-      return true;
-    });
+    return logs
+      .filter((log) => {
+        if (ignoreRules.length > 0 && matchesAnyIgnoreRule(log.url, ignoreRules)) return false;
+        if (urlFilter && !log.url.toLowerCase().includes(urlFilter.toLowerCase())) return false;
+        if (methodFilter !== 'ALL' && log.method !== methodFilter) return false;
+        if (!isAllStatus && !statusGroups.has(getStatusGroup(log.status))) return false;
+        return true;
+      })
+      .slice()
+      .reverse();
   }, [logs, urlFilter, methodFilter, statusGroups, ignoreRules]);
 
   function handleSelect(log: TrafficLog) {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { Plus, FolderPlus, ChevronDown, ChevronRight, Trash2, Lock, Save, Download, Upload, GripVertical, Package } from 'lucide-react';
+import { Plus, FolderPlus, ChevronDown, ChevronRight, Trash2, Lock, Save, Download, Upload, GripVertical, Package, Loader } from 'lucide-react';
 import { ApinoxProject, ApiInterface, ApiOperation, ApiRequest } from '@shared/models';
 import { HeaderButton, OperationItem, SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle } from './shared/SidebarStyles';
 import { ServiceTree } from './ServiceTree';
@@ -170,6 +170,17 @@ const ProjectRow = styled(OperationItem)<{ $isDragging?: boolean; $dropPosition?
     `}
 `;
 
+const LoadingSpinner = styled(Loader)`
+    flex-shrink: 0;
+    opacity: 0.75;
+    animation: spin 1s linear infinite;
+
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+`;
+
 const DragHandle = styled.div`
     display: flex;
     align-items: center;
@@ -207,6 +218,13 @@ const ProjectName = styled.span`
     text-overflow: ellipsis;
     white-space: nowrap;
     margin-left: 5px;
+`;
+
+const LoadingLabel = styled.span`
+    font-size: 0.8em;
+    color: var(--apinox-descriptionForeground);
+    margin-left: 8px;
+    flex-shrink: 0;
 `;
 
 const SaveButton = styled(HeaderButton)<{ $hasError?: boolean }>`
@@ -522,6 +540,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                         const isProjectActive = isProjectSelected && selectedInterface === null;
                         const isRenaming = renameId === (proj.id || proj.name) && renameType === 'project';
                         const isReadOnly = !!proj.readOnly;
+                        const isLoading = Boolean((proj as ApinoxProject & { loading?: boolean }).loading);
                         const projId = proj.id || proj.name;
                         
                         // Drag state for this project
@@ -539,30 +558,38 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                                     $active={isProjectActive}
                                     $isDragging={isDragging}
                                     $dropPosition={dropPosition}
-                                    $draggable={!isReadOnly && !isRenaming}
-                                    draggable={!isReadOnly && !isRenaming}
-                                    onDragStart={(!isReadOnly && !isRenaming) ? (e) => handleDragStart(e, projId, 'project') : undefined}
-                                    onDragEnd={(!isReadOnly && !isRenaming) ? handleDragEnd : undefined}
+                                    $draggable={!isReadOnly && !isRenaming && !isLoading}
+                                    draggable={!isReadOnly && !isRenaming && !isLoading}
+                                    onDragStart={(!isReadOnly && !isRenaming && !isLoading) ? (e) => handleDragStart(e, projId, 'project') : undefined}
+                                    onDragEnd={(!isReadOnly && !isRenaming && !isLoading) ? handleDragEnd : undefined}
                                     onDragOver={(e) => handleDragOver(e, projId, 'project')}
                                     onDragLeave={handleDragLeave}
                                     onDrop={(e) => handleDrop(e, projId, 'project')}
                                     onClick={() => {
+                                        if (isLoading) return;
                                         // Select project, clear interface/operation/request
                                         setSelectedProjectName(proj.name);
                                         setSelectedInterface(null);
                                         setSelectedOperation(null);
                                         setSelectedRequest(null);
                                     }}
-                                    onContextMenu={(e) => handleLocalContextMenu(e, 'project', proj)}
+                                    onContextMenu={(e) => {
+                                        if (isLoading) return;
+                                        handleLocalContextMenu(e, 'project', proj);
+                                    }}
                                 >
-                                    {!isReadOnly && !isRenaming && (
+                                    {!isReadOnly && !isRenaming && !isLoading && (
                                         <DragHandle className="project-drag-handle">
                                             <GripVertical size={14} />
                                         </DragHandle>
                                     )}
                                     
                                     <ProjectToggle
-                                        onClick={(e) => { e.stopPropagation(); toggleProjectExpand(proj.name); }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (isLoading) return;
+                                            toggleProjectExpand(proj.name);
+                                        }}
                                     >
                                         {(proj as any).expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                                     </ProjectToggle>
@@ -592,8 +619,15 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                                         </ProjectName>
                                     )}
 
+                                    {isLoading && (
+                                        <>
+                                            <LoadingSpinner size={14} aria-hidden="true" />
+                                            <LoadingLabel>Loading...</LoadingLabel>
+                                        </>
+                                    )}
+
                                     {/* Unsaved Project: Show Manual Save Button (Required for first save) */}
-                                    {(!(proj as any).fileName) && !isRenaming && !isReadOnly && (
+                                    {(!(proj as any).fileName) && !isRenaming && !isReadOnly && !isLoading && (
                                         <SaveButton
                                             $hasError={saveErrors.has(proj.name)}
                                             onClick={(e) => { e.stopPropagation(); saveProject(proj); }}
@@ -608,7 +642,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                                     {isReadOnly && <ReadOnlyIcon size={12} />}
 
                                     {/* Add Folder button - only on selected project */}
-                                    {isProjectActive && onAddFolder && !isRenaming && !isReadOnly && (
+                                    {isProjectActive && onAddFolder && !isRenaming && !isReadOnly && !isLoading && (
                                         <HeaderButton
                                             onClick={(e) => { e.stopPropagation(); onAddFolder(proj.name); }}
                                             title="Add Folder"
@@ -617,7 +651,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                                         </HeaderButton>
                                     )}
                                     {/* Close button only when selected */}
-                                    {isProjectActive && !isRenaming && !isReadOnly && (
+                                    {isProjectActive && !isRenaming && !isReadOnly && !isLoading && (
                                         <HeaderButton
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -639,7 +673,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                                         </HeaderButton>
                                     )}
                                 </ProjectRow>
-                                {(proj as any).expanded && (
+                                {(proj as any).expanded && !isLoading && (
                                     <>
                                         {/* Interfaces */}
                                         <ServiceTree
