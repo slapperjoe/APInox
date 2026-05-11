@@ -14,7 +14,7 @@
  */
 
 // ─── BUILD NUMBER (auto-managed — do not edit manually) ───────────────────
-const BUILD_NO = 245;
+const BUILD_NO = 246;
 // ─────────────────────────────────────────────────────────────────────────
 
 const fs = require("fs");
