@@ -476,9 +476,14 @@ code,
         display: flex;
     }
 
-    /* Shift TitleBar content right so it clears the 40px hamburger button */
-    [data-tauri-drag-region] {
+    /* Shift TitleBar content right so it clears the 40px hamburger button (Windows/Linux) */
+    body:not([data-platform="macos"]) [data-tauri-drag-region] {
         padding-left: 48px !important;
+    }
+
+    /* On macOS, drag region needs more padding to clear traffic lights + hamburger */
+    body[data-platform="macos"] [data-tauri-drag-region] {
+        padding-left: 112px !important;
     }
 
     /* On macOS, shift hamburger past traffic lights (~78px) so they don't overlap */
