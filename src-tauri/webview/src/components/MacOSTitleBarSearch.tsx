@@ -20,14 +20,15 @@ const SearchBarContainer = styled.div`
   display: flex;
   align-items: center;
   gap: 12px;
-  pointer-events: none;
-  padding: 0 16px 0 78px;  /* Left padding for traffic lights */
+  pointer-events: auto;
+  user-select: none;
+  padding: 0 16px 0 76px;  /* Left padding clears macOS traffic lights */
   -webkit-app-region: drag;  /* Enable window dragging */
 
-  /* In narrow mode the hamburger button appears at left:80px (after traffic lights).
-     Increase left padding so the search bar content doesn't hide behind it. */
+  /* In narrow mode the hamburger button appears after the traffic lights — increase
+     padding so the search bar content doesn't overlap it. */
   @media (max-width: 899px) {
-    padding-left: 126px;
+    padding-left: 112px;
   }
 `;
 
@@ -226,7 +227,7 @@ export const MacOSTitleBarSearch: React.FC = () => {
 
   return (
     <>
-      <SearchBarContainer>
+      <SearchBarContainer data-tauri-drag-region>
         <AppLogo onClick={handleLogoClick} title="Double-click to open Debug Console">
           <LogoIcon src={apinoxIcon} alt="APInox" />
           <AppTitle>APInox {pkg.version}</AppTitle>
