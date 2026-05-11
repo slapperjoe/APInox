@@ -22,6 +22,8 @@ import {
 } from '@shared/models';
 import { useNavigation } from '../contexts/NavigationContext';
 
+type SidebarProjectState = ApinoxProject & { loading?: boolean };
+
 // Debug logger - console only to prevent message flooding
 // Note: Sending log messages back to the backend on every received message
 // creates a flood that can lock up the UI, especially on first start
@@ -466,22 +468,23 @@ export function useMessageHandler(state: MessageHandlerState) {
                     }
 
                     console.log(`[useMessageHandler] ProjectLoaded for: ${message.project?.name}. FileName: ${message.filename}`);
-                    const newProj = message.project;
+                    const newProj = message.project as SidebarProjectState;
                     setProjects(prev => {
                         const existingIndex = prev.findIndex(p => (p.id && p.id === newProj.id) || p.name === newProj.name);
 
                         if (existingIndex !== -1) {
-                            const existing = prev[existingIndex];
+                            const existing = prev[existingIndex] as SidebarProjectState;
                             // MERGE logic: Take new project data, but preserve UI state (expanded, dirty?) 
                             // and user-created folders (not yet persisted to disk)
-                            const updated = {
+                            const updated: SidebarProjectState = {
                                 ...newProj,
                                 fileName: message.filename,
                                 expanded: existing.expanded,
                                 folders: existing.folders || newProj.folders, // Preserve in-memory folders
                                 // If we have local changes (dirty=true), should we overwrite? 
                                 // "Load Project" usually implies "Reload from Disk", so yes, overwrite.
-                                dirty: false
+                                dirty: false,
+                                loading: false
                             };
 
                             // Ensure ID is stable if missing in newProj (though it should be there)
@@ -491,7 +494,7 @@ export function useMessageHandler(state: MessageHandlerState) {
                             newArr[existingIndex] = updated;
                             return newArr;
                         }
-                        return [...prev, { ...newProj, fileName: message.filename, expanded: true }];
+                        return [...prev, { ...newProj, fileName: message.filename, expanded: true, loading: false }];
                     });
                     setWorkspaceDirty(true);
                     break;
@@ -553,7 +556,8 @@ export function useMessageHandler(state: MessageHandlerState) {
                                     // No existing projects, use autosave directly but preserve expanded
                                     return savedProjects.map((p: any) => ({
                                         ...p,
-                                        expanded: p.expanded !== false // Default to true if not set
+                                        expanded: p.expanded !== false, // Default to true if not set
+                                        loading: Boolean(p.fileName)
                                     }));
                                 }
                                 // Merge: for each saved project, update existing or add new
@@ -566,11 +570,12 @@ export function useMessageHandler(state: MessageHandlerState) {
                                         // Merge - preserve expanded state from existing
                                         merged[existingIdx] = {
                                             ...saved,
-                                            expanded: merged[existingIdx].expanded ?? saved.expanded ?? true
+                                            expanded: merged[existingIdx].expanded ?? saved.expanded ?? true,
+                                            loading: Boolean(saved.fileName)
                                         };
                                     } else {
                                         // Add new with expanded true
-                                        merged.push({ ...saved, expanded: saved.expanded !== false });
+                                        merged.push({ ...saved, expanded: saved.expanded !== false, loading: Boolean(saved.fileName) });
                                     }
                                 });
                                 return merged;

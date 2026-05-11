@@ -29,3 +29,4 @@ export { ScriptEditor } from './components/ScriptEditor';
 
 export { applyAutoFolding } from './utils/xmlFoldingUtils';
 export { useWildcardDecorations } from './hooks/useWildcardDecorations';
+export { toMonacoColor, applyMonacoTheme, getMonacoThemeId } from './utils/monacoTheme';

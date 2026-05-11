@@ -160,5 +160,51 @@ describe('useMessageHandler', () => {
 
         expect(mockState.setProjects).toHaveBeenCalled();
         expect(mockState.setWorkspaceDirty).toHaveBeenCalledWith(true);
+
+        const updater = vi.mocked(mockState.setProjects).mock.calls[0][0] as (prev: any[]) => any[];
+        const updatedProjects = updater([{ id: 'p1', name: 'New Project', loading: true, expanded: false }]);
+        expect(updatedProjects[0]).toMatchObject({
+            id: 'p1',
+            name: 'New Project',
+            fileName: 'test.xml',
+            loading: false,
+            expanded: false
+        });
+    });
+
+    it('should mark autosaved projects as loading before reloading them from disk', () => {
+        renderHook(() => useMessageHandler(mockState), { wrapper: Wrapper });
+
+        messageHandlerCallback({
+            command: BackendCommand.RestoreAutosave,
+            content: JSON.stringify({
+                projects: [
+                    { id: 'p1', name: 'Workspace A', fileName: '/tmp/workspace-a', expanded: false },
+                    { id: 'p2', name: 'Scratch Project', expanded: true }
+                ],
+                lastSelectedProject: 'Workspace A'
+            })
+        });
+
+        expect(mockState.setProjects).toHaveBeenCalled();
+        const updater = vi.mocked(mockState.setProjects).mock.calls[0][0] as (prev: any[]) => any[];
+        const restoredProjects = updater([]);
+
+        expect(restoredProjects).toEqual([
+            expect.objectContaining({
+                id: 'p1',
+                name: 'Workspace A',
+                fileName: '/tmp/workspace-a',
+                expanded: false,
+                loading: true
+            }),
+            expect.objectContaining({
+                id: 'p2',
+                name: 'Scratch Project',
+                expanded: true,
+                loading: false
+            })
+        ]);
+        expect(bridge.sendMessage).toHaveBeenCalledWith({ command: 'loadProject', path: '/tmp/workspace-a' });
     });
 });

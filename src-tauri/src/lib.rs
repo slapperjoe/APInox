@@ -507,6 +507,14 @@ pub fn run() {
     std::env::set_var("NO_PROXY", "*");
     std::env::set_var("no_proxy", "*");
 
+    // On Linux, WebKitGTK's DMA-BUF renderer can produce "Error 71 (Protocol error)"
+    // on some Wayland compositors (KDE Plasma, etc.). Disabling it avoids the crash
+    // while keeping Wayland support for everything else.
+    #[cfg(target_os = "linux")]
+    if std::env::var("WEBKIT_DISABLE_DMABUF_RENDERER").is_err() {
+        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())

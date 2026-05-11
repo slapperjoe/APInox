@@ -250,6 +250,7 @@ export function TrafficDetails({ log }: TrafficDetailsProps) {
               <PaneLabel>Request</PaneLabel>
               {reqCT && <PaneMeta>{reqCT}</PaneMeta>}
               <MonacoRequestEditorWithToolbar
+                key={log.id}
                 value={formattedRequest}
                 onChange={() => {}}
                 language={requestLang}

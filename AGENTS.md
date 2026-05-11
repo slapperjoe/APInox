@@ -308,6 +308,20 @@ When adding an interface from API Explorer:
 - Save logic includes it (line 96 in `FolderProjectStorage.ts`)
 - Operations in memory have it (check before save)
 
+## Coding Standards
+
+These standards are the default for future edits. Apply them to files you touch, but avoid repo-wide reformatting unless the task is specifically a formatting cleanup.
+
+- **Frontend and config files** (`.ts`, `.tsx`, `.js`, `.jsx`, `.json`, `.css`, `.scss`, `.md`, `.yml`, `.yaml`):
+  - Use **double quotes** instead of single quotes where the language allows either.
+  - Use **spaces, not tabs**.
+  - Use **2-space indentation**.
+- **Rust files** (`.rs`):
+  - Follow `rustfmt` defaults instead of forcing the frontend spacing rules.
+  - Use spaces for indentation.
+
+The root `.editorconfig` reflects the indentation rules above so editors pick them up automatically.
+
 ## Build & Development Workflow
 
 ### Development Build Process
