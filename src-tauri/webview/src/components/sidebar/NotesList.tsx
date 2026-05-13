@@ -1,5 +1,11 @@
 import React, { useState } from "react";
-import styled from "styled-components";
+import styled, { keyframes } from "styled-components";
+
+const shake = keyframes`
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+`;
 import {
   FilePlus,
   FolderOpen,
@@ -12,8 +18,10 @@ import {
 } from "lucide-react";
 import { NoteEntry } from "@shared/models";
 import {
+  SidebarHeader,
   SidebarHeaderTitle,
   SidebarHeaderActions,
+  HeaderButton,
 } from "./shared/SidebarStyles";
 import { useNotes, noteDirtyKind } from "../../notes/NotesContext";
 
@@ -24,31 +32,6 @@ const Panel = styled.div`
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-`;
-
-const Header = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 10px 6px;
-  border-bottom: 1px solid var(--apinox-panel-border, rgba(128,128,128,0.2));
-  flex-shrink: 0;
-`;
-
-const HeaderBtn = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px;
-  border: none;
-  border-radius: 3px;
-  background: transparent;
-  color: var(--apinox-foreground, #ccc);
-  cursor: pointer;
-
-  &:hover {
-    background: var(--apinox-list-hoverBackground, rgba(255,255,255,0.08));
-  }
 `;
 
 const List = styled.div`
@@ -95,16 +78,17 @@ const ItemActions = styled.div`
   flex-shrink: 0;
 `;
 
-const SmallBtn = styled.button`
+const SmallBtn = styled.button<{ $confirming?: boolean }>`
   display: flex;
   align-items: center;
   padding: 2px;
   border: none;
   border-radius: 3px;
   background: transparent;
-  color: var(--apinox-foreground, #aaa);
+  color: ${(p) => p.$confirming ? "var(--apinox-errorForeground, #f44)" : "var(--apinox-foreground, #aaa)"};
   cursor: pointer;
   opacity: 0.7;
+  animation: ${(p) => p.$confirming ? `${shake} 0.4s ease-in-out` : "none"};
 
   &:hover {
     background: var(--apinox-list-hoverBackground, rgba(255,255,255,0.1));
@@ -168,26 +152,33 @@ export const NotesList: React.FC = () => {
     setRenameValue(entry.name);
   };
 
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+
   const handleDelete = async (e: React.MouseEvent, entry: NoteEntry) => {
     e.stopPropagation();
-    if (confirm(`Delete "${entry.name}"? This cannot be undone.`)) {
+    if (deleteConfirm === entry.id) {
+      // Second click: actually delete
       await deleteNote(entry.id);
+      setDeleteConfirm(null);
+    } else {
+      // First click: enter confirmation mode
+      setDeleteConfirm(entry.id);
     }
   };
 
   return (
     <Panel>
-      <Header>
+      <SidebarHeader>
         <SidebarHeaderTitle>Notes</SidebarHeaderTitle>
         <SidebarHeaderActions>
-          <HeaderBtn onClick={() => newNote()} title="New note">
+          <HeaderButton onClick={() => newNote()} title="New note">
             <FilePlus size={15} />
-          </HeaderBtn>
-          <HeaderBtn onClick={openFileDialog} title="Open file…">
+          </HeaderButton>
+          <HeaderButton onClick={openFileDialog} title="Open file…">
             <FolderOpen size={15} />
-          </HeaderBtn>
+          </HeaderButton>
         </SidebarHeaderActions>
-      </Header>
+      </SidebarHeader>
 
       <List>
         {notes.length === 0 && (
@@ -246,7 +237,7 @@ export const NotesList: React.FC = () => {
                 <SmallBtn onClick={(e) => startRename(e, entry)} title="Rename">
                   <Edit2 size={12} />
                 </SmallBtn>
-                <SmallBtn onClick={(e) => handleDelete(e, entry)} title="Delete">
+                <SmallBtn onClick={(e) => handleDelete(e, entry)} title={deleteConfirm === entry.id ? "Click again to Confirm Delete" : "Delete"} $confirming={deleteConfirm === entry.id}>
                   <Trash2 size={12} />
                 </SmallBtn>
               </ItemActions>

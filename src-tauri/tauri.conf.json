@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "APInox",
-  "version": "0.19.250",
+  "version": "0.19.251",
   "identifier": "app.apinox.dev1",
   "build": {
     "frontendDist": "webview/dist",
@@ -17,7 +17,7 @@
         "height": 900,
         "resizable": true,
         "fullscreen": false,
-        "decorations": true,
+        "decorations": false,
         "transparent": false,
         "visible": false,
         "titleBarStyle": "Overlay",

@@ -111,7 +111,8 @@ const EmptyState = styled.div`
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   gap: 12px;
   color: var(--apinox-descriptionForeground, rgba(204,204,204,0.5));
 `;
@@ -295,10 +296,12 @@ export const NotesEditor: React.FC = () => {
 
   if (!activeNote) {
     return (
-      <EmptyState>
-        <FileText size={48} strokeWidth={1} />
-        <p>Select a note from the sidebar, or create a new one.</p>
-      </EmptyState>
+      <Root>
+        <EmptyState>
+          <FileText size={48} strokeWidth={1} />
+          <p style={{ margin: 0 }}>Select a note from the sidebar, or create a new one.</p>
+        </EmptyState>
+      </Root>
     );
   }
 
@@ -432,7 +435,7 @@ export const NotesEditor: React.FC = () => {
               onChange={(v) => updateContent(v ?? "")}
               theme={colorScheme === "light" ? "vs" : "vs-dark"}
               options={{
-                minimap: { enabled: settings.showMinimap },
+                minimap: { enabled: false },
                 wordWrap: "on",
                 scrollBeyondLastLine: false,
                 fontSize: settings.fontSize,
@@ -497,21 +500,12 @@ export const NotesEditor: React.FC = () => {
               )}
             </SettingsSelect>
           </SettingsRow>
-          <SettingsDivider />
           <SettingsRow>
             Line numbers
             <input
               type="checkbox"
               checked={settings.showLineNumbers}
               onChange={(e) => updateSettings({ showLineNumbers: e.target.checked })}
-            />
-          </SettingsRow>
-          <SettingsRow>
-            Minimap
-            <input
-              type="checkbox"
-              checked={settings.showMinimap}
-              onChange={(e) => updateSettings({ showMinimap: e.target.checked })}
             />
           </SettingsRow>
         </SettingsPopup>

@@ -234,36 +234,62 @@ fn unavailable_result(reason: String) -> UpdateCheckResult {
     }
 }
 
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+/// Makes a GET request, trying a direct (no-proxy) connection first.
+///
+/// Falls back to the proxy-aware client when the direct attempt:
+/// - fails at the network level (connection refused, timeout, …), OR
+/// - returns a non-success HTTP status other than 404.
+///
+/// 404 is passed through without a retry because it has a specific meaning in
+/// the update-check context (no releases published yet), and a proxy will not
+/// change the answer.
+async fn get_with_fallback(url: &str) -> Result<reqwest::Response, String> {
+    let direct_client = build_direct_client()?;
+    let direct_result = direct_client.get(url).send().await;
+
+    let needs_fallback = match &direct_result {
+        Ok(resp) => {
+            !resp.status().is_success() && resp.status() != reqwest::StatusCode::NOT_FOUND
+        }
+        Err(_) => true,
+    };
+
+    if !needs_fallback {
+        return direct_result.map_err(|e| e.to_string());
+    }
+
+    let direct_reason = match &direct_result {
+        Ok(resp) => format!("HTTP {}", resp.status()),
+        Err(e) => e.to_string(),
+    };
+    log::warn!(
+        "[Updater] Direct request to {} failed ({}), retrying via proxy-aware client",
+        url,
+        direct_reason
+    );
+
+    build_client()?
+        .get(url)
+        .send()
+        .await
+        .map_err(|proxy_err| {
+            format!(
+                "Direct request failed ({}) and proxy-aware request also failed ({})",
+                direct_reason, proxy_err
+            )
+        })
+}
+
 // ── Tauri commands ─────────────────────────────────────────────────────────
 
 /// Calls the GitHub Releases API to determine whether a newer version exists.
 #[tauri::command]
 pub async fn check_for_updates() -> Result<UpdateCheckResult, String> {
-    let direct_client = build_direct_client()?;
-    let direct_response = direct_client
-        .get(GITHUB_API_URL)
-        .send()
-        .await;
-
-    let response = match direct_response {
-        Ok(response) => response,
-        Err(direct_error) => {
-            log::warn!(
-                "[Updater] Direct update check failed, retrying with proxy-aware client: {}",
-                direct_error
-            );
-
-            let proxied_client = build_client()?;
-            match proxied_client.get(GITHUB_API_URL).send().await {
-                Ok(response) => response,
-                Err(proxy_error) => {
-                    return Ok(unavailable_result(format!(
-                        "Failed to reach GitHub directly ({}) and via proxy-aware client ({})",
-                        direct_error, proxy_error
-                    )));
-                }
-            }
-        }
+    let response = match get_with_fallback(GITHUB_API_URL).await {
+        Ok(r) => r,
+        Err(e) => return Ok(unavailable_result(e)),
     };
 
     let status = response.status();
@@ -348,18 +374,16 @@ pub async fn check_for_updates() -> Result<UpdateCheckResult, String> {
 ///
 /// Emits `update-download-progress` events with payload `{ "percent": u32 }`
 /// while streaming the download.  Returns the local file path on completion.
+///
+/// Tries a direct connection first; if that fails at the network or HTTP level
+/// (e.g. a corporate proxy intercepts and blocks the request) the download is
+/// retried via the proxy-aware client.
 #[tauri::command]
 pub async fn download_update(
     app: tauri::AppHandle,
     download_url: String,
 ) -> Result<String, String> {
-    let client = build_client()?;
-
-    let response = client
-        .get(&download_url)
-        .send()
-        .await
-        .map_err(|e| format!("Failed to start download: {}", e))?;
+    let response = get_with_fallback(&download_url).await?;
 
     if !response.status().is_success() {
         return Err(format!(
