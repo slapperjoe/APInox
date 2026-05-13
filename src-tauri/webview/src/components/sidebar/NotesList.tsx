@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import styled, { keyframes } from "styled-components";
+import styled, { keyframes, css } from "styled-components";
 
 const shake = keyframes`
   0%, 100% { transform: translateX(0); }
@@ -88,7 +88,7 @@ const SmallBtn = styled.button<{ $confirming?: boolean }>`
   color: ${(p) => p.$confirming ? "var(--apinox-errorForeground, #f44)" : "var(--apinox-foreground, #aaa)"};
   cursor: pointer;
   opacity: 0.7;
-  animation: ${(p) => p.$confirming ? `${shake} 0.4s ease-in-out` : "none"};
+  animation: ${(p) => p.$confirming ? css`${shake} 0.4s ease-in-out` : "none"};
 
   &:hover {
     background: var(--apinox-list-hoverBackground, rgba(255,255,255,0.1));
@@ -185,7 +185,7 @@ export const NotesList: React.FC = () => {
           <EmptyHint>
             No notes yet.
             <br />
-            Click <strong>+</strong> to create one, or <strong>📂</strong> to open a file.
+            Click <strong><FilePlus size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /></strong> to create one, or <strong><FolderOpen size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /></strong> to open a file.
           </EmptyHint>
         )}
 

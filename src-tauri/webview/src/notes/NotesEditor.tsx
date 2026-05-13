@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useState, useEffect } from "react";
 import styled from "styled-components";
+import "@apinox/request-editor/monaco";
 import Editor from "@monaco-editor/react";
 import {
   Save,
@@ -35,7 +36,7 @@ const Toolbar = styled.div`
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
-  background: var(--apinox-editorGroupHeader-tabsBackground, #252526);
+  background: var(--apinox-sideBar-background, #252526);
   border-bottom: 1px solid var(--apinox-panel-border, rgba(128,128,128,0.2));
   flex-shrink: 0;
   min-height: 34px;
@@ -117,6 +118,17 @@ const EmptyState = styled.div`
   color: var(--apinox-descriptionForeground, rgba(204,204,204,0.5));
 `;
 
+const LoadingOverlay = styled.div`
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
+  background: var(--apinox-editor-background, #1e1e1e);
+  color: var(--apinox-foreground, #ccc);
+  font-size: 14px;
+`;
+
 const Separator = styled.div`
   width: 1px;
   height: 18px;
@@ -126,7 +138,7 @@ const Separator = styled.div`
 
 const SavedFlash = styled.span`
   font-size: 11px;
-  color: var(--apinox-gitDecoration-addedResourceForeground, #81b88b);
+  color: var(--apinox-testing-iconPassed, #81b88b);
   flex-shrink: 0;
 `;
 
@@ -294,6 +306,16 @@ export const NotesEditor: React.FC = () => {
     setShowSettings((prev) => !prev);
   }, [showSettings]);
 
+  if (isLoading) {
+    return (
+      <Root>
+        <LoadingOverlay>
+          <span>Loading...</span>
+        </LoadingOverlay>
+      </Root>
+    );
+  }
+
   if (!activeNote) {
     return (
       <Root>
@@ -376,7 +398,7 @@ export const NotesEditor: React.FC = () => {
           <Save size={13} /> Save
         </ToolbarBtn>
         <ToolbarBtn onClick={saveAsDialog} title="Save As…">
-          <ChevronDown size={13} />
+          <ChevronDown size={13} /> Save As
         </ToolbarBtn>
 
         {/* Editor settings gear */}
