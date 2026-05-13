@@ -33,6 +33,11 @@ import { useLayoutHandler } from '../hooks/useLayoutHandler';
 import { useFolderManager } from '../hooks/useFolderManager';
 import { useMobileLayout } from '../hooks/useMobileLayout';
 import { useWorkflowHandlers } from '../hooks/useWorkflowHandlers';
+import { NotesProvider } from '../notes/NotesContext';
+
+const NotesEditorLazy = React.lazy(() =>
+    import('../notes/NotesEditor').then(module => ({ default: module.NotesEditor }))
+);
 
 interface ConfirmationState {
     title: string;
@@ -1623,6 +1628,7 @@ const MainContent: React.FC = () => {
             )}
 
             {/* Content row: sidebar + main workspace side by side */}
+            <NotesProvider>
             <div className="content-row">
 
             {/* Sidebar — all props supplied via SidebarContext */}
@@ -1655,12 +1661,17 @@ const MainContent: React.FC = () => {
                 </div>
             )}
             {/* WorkspaceLayout using WorkspaceContext - no props needed */}
-            {activeView !== SidebarView.PROXY && activeView !== SidebarView.MOCK && activeView !== SidebarView.WATCHER && (
+            {activeView !== SidebarView.PROXY && activeView !== SidebarView.MOCK && activeView !== SidebarView.WATCHER && activeView !== SidebarView.NOTES && (
                 <WorkspaceContext.Provider value={workspaceContextValue}>
                     <Suspense fallback={<div style={{ flex: 1, background: 'var(--apinox-editor-background)' }} />}>
                         <WorkspaceLayout />
                     </Suspense>
                 </WorkspaceContext.Provider>
+            )}
+            {activeView === SidebarView.NOTES && (
+                <Suspense fallback={<div style={{ flex: 1, background: 'var(--apinox-editor-background)' }} />}>
+                    <NotesEditorLazy />
+                </Suspense>
             )}
             <Suspense fallback={null}>
                 {
@@ -2151,6 +2162,7 @@ const MainContent: React.FC = () => {
             )}
 
             </div>{/* end content-row */}
+            </NotesProvider>
 
             {wsdlDiff && (
                 <Suspense fallback={null}>

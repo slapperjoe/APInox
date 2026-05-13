@@ -256,6 +256,43 @@ export interface ScrapbookState {
     requests: ScrapbookRequest[];
 }
 
+// ============================================================================
+// NOTES TYPES (Hybrid markdown / code / binary scratchpad)
+// ============================================================================
+
+/** Language type detected or chosen for a note */
+export type NoteLanguage =
+    | 'markdown'
+    | 'xml'
+    | 'json'
+    | 'typescript'
+    | 'javascript'
+    | 'csharp'
+    | 'python'
+    | 'html'
+    | 'css'
+    | 'rust'
+    | 'plaintext'
+    | 'binary';
+
+/** A single entry in the notes index */
+export interface NoteEntry {
+    id: string;               // UUID
+    name: string;             // Display name (filename without path for managed notes)
+    filePath: string;         // Absolute path on disk
+    language: NoteLanguage;   // Detected or user-overridden language
+    isBinary: boolean;        // True if file is binary (use hex editor)
+    isManaged: boolean;       // True if stored under ~/.apinox/notes/
+    lastModified: string;     // ISO timestamp of last known disk state
+    createdAt: string;        // ISO timestamp
+}
+
+/** Notes index stored in ~/.apinox/notes/index.json */
+export interface NotesIndex {
+    entries: NoteEntry[];
+    recentPaths: string[];    // Paths of recently opened external files
+}
+
 export interface SampleRequestMetadata {
     endpoint?: string;
     soapAction?: string;
@@ -434,6 +471,7 @@ export enum SidebarView {
     PROXY = 'proxy',     // Proxy/traffic interceptor (from APIprox)
     MOCK = 'mock',       // Mock server (from APIprox)
     WATCHER = 'watcher', // File watcher / SOAP pair viewer (from APIprox)
+    NOTES = 'notes',     // Notes / markdown scratchpad
 }
 
 export interface ApinoxConfig {

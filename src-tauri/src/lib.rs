@@ -12,6 +12,7 @@ use tokio::sync::Mutex;
 mod project_storage;
 mod history_storage;
 mod scrapbook_storage;
+mod notes_storage;
 mod secret_storage;
 pub mod settings_manager;
 pub mod updater;
@@ -550,6 +551,17 @@ pub fn run() {
             scrapbook_storage::update_scrapbook_request,
             scrapbook_storage::delete_scrapbook_request,
             scrapbook_storage::get_scrapbook_request,
+            notes_storage::load_notes_index,
+            notes_storage::load_note_content,
+            notes_storage::load_note_bytes,
+            notes_storage::save_note,
+            notes_storage::save_note_bytes,
+            notes_storage::delete_note,
+            notes_storage::rename_note,
+            notes_storage::upsert_note_index,
+            notes_storage::add_recent_note_path,
+            notes_storage::sniff_file_type,
+            notes_storage::get_notes_dir_path,
             secret_storage::store_secret,
             secret_storage::get_secret,
             secret_storage::delete_secret,

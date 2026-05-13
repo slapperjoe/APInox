@@ -11,6 +11,7 @@ import { PerformanceUi } from './sidebar/PerformanceUi';
 // @ts-ignore - TS export detection issue; runtime export exists.
 import HistorySidebar from './sidebar/HistorySidebar';
 import { ScrapbookPanel } from './sidebar/ScrapbookPanel';
+import { NotesList } from './sidebar/NotesList';
 import { SidebarRail } from './sidebar/SidebarRail';
 import { useSidebarContext } from '../contexts/SidebarContext';
 
@@ -202,6 +203,10 @@ export const Sidebar: React.FC = () => {
                         onBulkImport={onBulkImport}
                         onImportSoapUI={onImportSoapUI}
                     />
+                )}
+
+                {activeView === SidebarView.NOTES && (
+                    <NotesList />
                 )}
 
             </SidebarContent>
