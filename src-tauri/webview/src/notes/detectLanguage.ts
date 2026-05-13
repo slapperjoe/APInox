@@ -125,6 +125,6 @@ export function detectLanguage(
     return detectByContent(content);
   }
 
-  // Default: new unnamed buffer → markdown
-  return { language: "markdown", isMarkdown: true, isBinary: false };
+  // Default: new unnamed buffer → plain text
+  return { language: "plaintext", isMarkdown: false, isBinary: false };
 }

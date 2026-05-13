@@ -64,10 +64,14 @@ jobs:
             exit 1
           fi
 
-      - name: Bump patch version
+      - name: Bump version (minor = run number)
         run: |
           node scripts/version.js increment
-          node scripts/version.js sync
+          MAJOR=$(jq -r '.version' package.json | cut -d. -f1)
+          RUN_NO=$GITHUB_RUN_NUMBER
+          BUILD_NO=$(grep 'const BUILD_NO' scripts/version.js | grep -oE '[0-9]+' | head -1)
+          VERSION="${MAJOR}.${RUN_NO}.${BUILD_NO}"
+          node scripts/version.js sync "$VERSION"
 
       - name: Read bumped version
         id: version

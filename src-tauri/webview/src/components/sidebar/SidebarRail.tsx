@@ -147,6 +147,8 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
         title="History"
       />
 
+      <RailSeparator />
+
       <NavItem
         icon={FileText}
         active={activeView === SidebarView.NOTES}

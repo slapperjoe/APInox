@@ -163,14 +163,14 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const newNote = useCallback(async (name?: string) => {
     const notesDir = await invoke<string>("get_notes_dir_path");
     const safeName = (name ?? "Untitled").replace(/[^a-zA-Z0-9_\- ]/g, "_");
-    const fileName = `${safeName}.md`;
+    const fileName = `${safeName}.txt`;
     const filePath = `${notesDir}/${fileName}`;
 
     const entry: NoteEntry = {
       id: crypto.randomUUID(),
       name: safeName,
       filePath,
-      language: "markdown",
+      language: "plaintext",
       lastModified: new Date().toISOString(),
       isBinary: false,
       isManaged: true,
@@ -185,8 +185,8 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       entry,
       content: "",
       savedContent: "",
-      detected: { language: "markdown", isMarkdown: true, isBinary: false },
-      viewMode: "interactive",
+      detected: { language: "plaintext", isMarkdown: false, isBinary: false },
+      viewMode: "raw",
       loadedAt: Date.now(),
     });
   }, []);

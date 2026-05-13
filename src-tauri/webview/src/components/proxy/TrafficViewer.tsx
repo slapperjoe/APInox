@@ -409,6 +409,32 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = [], onAddIgnore
   );
 }
 
+// ── SOAP clipboard helpers ───────────────────────────────────────────────────
+/**
+ * Extract the inner XML from a SOAP Body element.
+ * Given `<ns:Envelope>...<ns:Body>...</ns:Body>...</ns:Envelope>`
+ * returns the inner XML content (inside Body).
+ */
+function extractSoapBodyXml(body: string | undefined): string {
+  if (!body) return '';
+  const match = body.match(/<Body[^>]*>([\s\S]*?)<\/Body>/);
+  return match ? match[1].trim() : '';
+}
+
+function copySoapBody(log: TrafficLog): string {
+  const path = extractPath(log.url);
+  const innerXml = extractSoapBodyXml(log.requestBody);
+  return `URL: ${path}\n${innerXml}`;
+}
+
+function copyFullRequest(log: TrafficLog): string {
+  return `URL: ${log.url}\n${log.requestBody}`;
+}
+
+function copyFullExchange(log: TrafficLog): string {
+  return `URL: ${log.url}\n\nREQUEST:\n${log.requestBody}\n\nRESPONSE:\n${log.responseBody}`;
+}
+
 // ── TrafficContextMenu ────────────────────────────────────────────────────
 function TrafficContextMenu({
   x, y, log, onIgnore, onCreateMockRule, onCreateReplaceRule, onCreateBreakpoint, onAddToApinoxProject, onClose,
@@ -423,6 +449,7 @@ function TrafficContextMenu({
 }) {
   const hostPattern     = ignorePatternFor(log.url, 'host');
   const hostPathPattern = ignorePatternFor(log.url, 'host+path');
+  const isSoap = extractSoapAction(log) !== null;
 
   const hasCreate = !!(onCreateMockRule || onCreateReplaceRule || onCreateBreakpoint);
   const hasApinox = !!onAddToApinoxProject;
@@ -495,6 +522,38 @@ function TrafficContextMenu({
             label="Add to APInox Project..."
             sub="Save request to project workspace"
             onClick={() => onAddToApinoxProject!(log)}
+          />
+          <div style={{ borderTop: `1px solid ${tokens.border.default}` }} />
+        </>
+      )}
+
+      {/* Copy to Clipboard section (SOAP only) */}
+      {isSoap && (
+        <>
+          <div style={{
+            padding: '6px 12px',
+            background: tokens.surface.elevated,
+            borderBottom: `1px solid ${tokens.border.default}`,
+            fontSize: 10, fontWeight: 600, color: tokens.text.muted,
+            textTransform: 'uppercase', letterSpacing: '0.06em',
+          }}>Copy to Clipboard</div>
+          <CtxItem
+            icon="📋"
+            label="Copy SOAP Body"
+            sub="URL + inner XML"
+            onClick={() => navigator.clipboard.writeText(copySoapBody(log))}
+          />
+          <CtxItem
+            icon="📄"
+            label="Copy Full Request"
+            sub="URL + full SOAP envelope"
+            onClick={() => navigator.clipboard.writeText(copyFullRequest(log))}
+          />
+          <CtxItem
+            icon="🔄"
+            label="Copy Full Exchange"
+            sub="URL + request + response"
+            onClick={() => navigator.clipboard.writeText(copyFullExchange(log))}
           />
           <div style={{ borderTop: `1px solid ${tokens.border.default}` }} />
         </>
