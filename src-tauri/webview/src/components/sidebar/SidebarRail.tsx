@@ -12,6 +12,7 @@ import {
   Server,
   Eye,
   Activity,
+  FileText,
 } from "lucide-react";
 import { SidebarView } from "@shared/models";
 import { EnvironmentSelector } from "./EnvironmentSelector";
@@ -144,6 +145,13 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
         active={activeView === SidebarView.HISTORY}
         onClick={() => onChangeView(SidebarView.HISTORY)}
         title="History"
+      />
+
+      <NavItem
+        icon={FileText}
+        active={activeView === SidebarView.NOTES}
+        onClick={() => onChangeView(SidebarView.NOTES)}
+        title="Notes"
       />
 
       <RailSeparator />
