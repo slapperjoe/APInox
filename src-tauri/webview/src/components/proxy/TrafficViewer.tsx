@@ -417,7 +417,7 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = [], onAddIgnore
  */
 function extractSoapBodyXml(body: string | undefined): string {
   if (!body) return '';
-  const match = body.match(/<Body[^>]*>([\s\S]*?)<\/Body>/);
+  const match = body.match(/<(?:[a-zA-Z0-9]+:)?Body[^>]*>([\s\S]*?)<\/(?:[a-zA-Z0-9]+:)?Body>/);
   return match ? match[1].trim() : '';
 }
 
@@ -428,11 +428,14 @@ function copySoapBody(log: TrafficLog): string {
 }
 
 function copyFullRequest(log: TrafficLog): string {
-  return `URL: ${log.url}\n${log.requestBody}`;
+  const body = log.requestBody || '';
+  return `URL: ${log.url}\n${body}`;
 }
 
 function copyFullExchange(log: TrafficLog): string {
-  return `URL: ${log.url}\n\nREQUEST:\n${log.requestBody}\n\nRESPONSE:\n${log.responseBody}`;
+  const reqBody = log.requestBody || '';
+  const resBody = log.responseBody || '';
+  return `URL: ${log.url}\n\nREQUEST:\n${reqBody}\n\nRESPONSE:\n${resBody}`;
 }
 
 // ── TrafficContextMenu ────────────────────────────────────────────────────
@@ -450,9 +453,17 @@ function TrafficContextMenu({
   const hostPattern     = ignorePatternFor(log.url, 'host');
   const hostPathPattern = ignorePatternFor(log.url, 'host+path');
   const isSoap = extractSoapAction(log) !== null;
+  const [copied, setCopied] = useState(false);
 
   const hasCreate = !!(onCreateMockRule || onCreateReplaceRule || onCreateBreakpoint);
   const hasApinox = !!onAddToApinoxProject;
+  const handleCopy = async (text: string) => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+    onClose();
+  };
+
   const menuH = (hasCreate ? 260 : 0) + (hasApinox ? 55 : 0) + 120;
   const top = y + menuH > window.innerHeight ? y - menuH : y;
 
@@ -473,7 +484,7 @@ function TrafficContextMenu({
       {hasCreate && (
         <>
           <div style={{
-            padding: '6px 12px',
+            padding: '8px 14px',
             background: tokens.surface.elevated,
             borderBottom: `1px solid ${tokens.border.default}`,
             fontSize: 10, fontWeight: 600, color: tokens.text.muted,
@@ -511,7 +522,7 @@ function TrafficContextMenu({
       {hasApinox && (
         <>
           <div style={{
-            padding: '6px 12px',
+            padding: '8px 14px',
             background: tokens.surface.elevated,
             borderBottom: `1px solid ${tokens.border.default}`,
             fontSize: 10, fontWeight: 600, color: tokens.text.muted,
@@ -531,7 +542,7 @@ function TrafficContextMenu({
       {isSoap && (
         <>
           <div style={{
-            padding: '6px 12px',
+            padding: '8px 14px',
             background: tokens.surface.elevated,
             borderBottom: `1px solid ${tokens.border.default}`,
             fontSize: 10, fontWeight: 600, color: tokens.text.muted,
@@ -541,19 +552,19 @@ function TrafficContextMenu({
             icon="📋"
             label="Copy SOAP Body"
             sub="URL + inner XML"
-            onClick={() => navigator.clipboard.writeText(copySoapBody(log))}
+            onClick={() => handleCopy(copySoapBody(log))}
           />
           <CtxItem
             icon="📄"
             label="Copy Full Request"
             sub="URL + full SOAP envelope"
-            onClick={() => navigator.clipboard.writeText(copyFullRequest(log))}
+            onClick={() => handleCopy(copyFullRequest(log))}
           />
           <CtxItem
             icon="🔄"
             label="Copy Full Exchange"
             sub="URL + request + response"
-            onClick={() => navigator.clipboard.writeText(copyFullExchange(log))}
+            onClick={() => handleCopy(copyFullExchange(log))}
           />
           <div style={{ borderTop: `1px solid ${tokens.border.default}` }} />
         </>
@@ -561,7 +572,7 @@ function TrafficContextMenu({
 
       {/* Ignore section */}
       <div style={{
-        padding: '6px 12px',
+        padding: '8px 14px',
         background: tokens.surface.elevated,
         borderBottom: `1px solid ${tokens.border.default}`,
         fontSize: 10, fontWeight: 600, color: tokens.text.muted,
@@ -579,8 +590,19 @@ function TrafficContextMenu({
         sub={hostPathPattern}
         onClick={() => onIgnore('host+path')}
       />
-      <div style={{ borderTop: `1px solid ${tokens.border.default}` }} />
-      <CtxItem icon="✕" label="Cancel" sub="" onClick={onClose} danger />
+      {/* Copied feedback */}
+      {copied && (
+        <div style={{
+          position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+          background: tokens.surface.panel, color: tokens.text.primary,
+          padding: '8px 20px', borderRadius: tokens.radius.lg,
+          boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+          fontSize: 13, fontWeight: 600, zIndex: 100000,
+          animation: 'ctxFadeIn 0.2s ease',
+        }}>
+          ✓ Copied!
+        </div>
+      )}
     </div>
   );
 }

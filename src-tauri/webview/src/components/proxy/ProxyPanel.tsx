@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { ServerControl } from './ServerControl';
 import { TrafficViewer, type TrafficLog } from './TrafficViewer';
@@ -6,6 +6,11 @@ import { TrafficDetails } from './TrafficDetails';
 import { BreakpointsPage } from './BreakpointsPage';
 import { useIgnoreList } from '../../utils/useIgnoreList';
 import { tokens } from './tokens';
+
+const SPLIT_KEY = 'apinox-traffic-split-px';
+const DEFAULT_SPLIT_PX = 280;
+const MIN_SPLIT_PX = 160;
+const MAX_SPLIT_RATIO = 0.75;
 
 type ProxyTab = 'traffic' | 'breakpoints';
 
@@ -19,6 +24,45 @@ export function ProxyPanel({ onNavigateTo, onAddToApinoxProject }: ProxyPanelPro
   const [logs, setLogs] = useState<TrafficLog[]>([]);
   const [selectedLog, setSelectedLog] = useState<TrafficLog | null>(null);
   const { rules: ignoreRules, addRule: addIgnoreRule, removeRule: removeIgnoreRule } = useIgnoreList();
+
+  // Resizable split pane
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [splitPx, setSplitPx] = useState<number>(() => {
+    const saved = localStorage.getItem(SPLIT_KEY);
+    return saved ? parseInt(saved, 10) : DEFAULT_SPLIT_PX;
+  });
+  const [isDragging, setIsDragging] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
+
+  const handleDividerMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startPx = splitPx;
+    setIsDragging(true);
+
+    const onMove = (ev: MouseEvent) => {
+      if (!containerRef.current) return;
+      const maxW = containerRef.current.getBoundingClientRect().width;
+      const maxPx = Math.floor(maxW * MAX_SPLIT_RATIO);
+      const delta = ev.clientX - startX;
+      const clamped = startPx + delta;
+      if (clamped < MIN_SPLIT_PX) {
+        setSplitPx(MIN_SPLIT_PX);
+      } else if (clamped > maxPx) {
+        setSplitPx(maxPx);
+      } else {
+        setSplitPx(clamped);
+      }
+    };
+    const onUp = () => {
+      setIsDragging(false);
+      localStorage.setItem(SPLIT_KEY, String(splitPx));
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [splitPx]);
 
   useEffect(() => {
     const unlisten = listen<TrafficLog>('traffic-event', (event) => {
@@ -87,10 +131,10 @@ export function ProxyPanel({ onNavigateTo, onAddToApinoxProject }: ProxyPanelPro
       </div>
 
       {/* Tab content */}
-      <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
+      <div ref={containerRef} style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
         {activeTab === 'traffic' && (
           <>
-            <div style={{ flex: selectedLog ? '0 0 45%' : 1, overflow: 'hidden', minWidth: 0 }}>
+            <div style={{ flex: `0 0 ${splitPx}px`, overflow: 'hidden', minWidth: 0 }}>
               <TrafficViewer
                 logs={logs}
                 onSelectLog={setSelectedLog}
@@ -104,9 +148,24 @@ export function ProxyPanel({ onNavigateTo, onAddToApinoxProject }: ProxyPanelPro
               />
             </div>
             {selectedLog && (
-              <div style={{ flex: 1, borderLeft: `1px solid ${tokens.border.default}`, overflow: 'hidden', minWidth: 0 }}>
-                <TrafficDetails log={selectedLog} />
-              </div>
+              <>
+                <div
+                  style={{
+                    width: '5px',
+                    background: isDragging || isHovering ? tokens.status.accentDark : tokens.surface.elevated,
+                    cursor: 'ew-resize',
+                    flexShrink: 0,
+                    transition: 'background 0.15s',
+                    userSelect: 'none',
+                  }}
+                  onMouseDown={handleDividerMouseDown}
+                  onMouseEnter={() => setIsHovering(true)}
+                  onMouseLeave={() => setIsHovering(false)}
+                />
+                <div style={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>
+                  <TrafficDetails log={selectedLog} />
+                </div>
+              </>
             )}
           </>
         )}

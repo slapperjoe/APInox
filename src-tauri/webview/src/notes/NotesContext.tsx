@@ -254,9 +254,8 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (!dest) return;
 
       const name = dest.split(/[/\\]/).pop() ?? dest;
-      const newEntry: NoteEntry = {
+      const updatedEntry: NoteEntry = {
         ...activeNote.entry,
-        id: crypto.randomUUID(),
         name,
         filePath: dest,
         lastModified: new Date().toISOString(),
@@ -269,10 +268,10 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         await invoke("save_note", { filePath: dest, content: activeNote.content });
       }
 
-      await invoke("upsert_note_index", { entry: newEntry });
-      setNotes((prev) => [newEntry, ...prev]);
+      await invoke("upsert_note_index", { entry: updatedEntry });
+      setNotes((prev) => prev.map((n) => n.id === updatedEntry.id ? updatedEntry : n));
       setActiveNote((prev) =>
-        prev ? { ...prev, entry: newEntry, savedContent: prev.content } : prev
+        prev ? { ...prev, entry: updatedEntry, savedContent: prev.content, savedBytes: prev.detected.isBinary && prev.bytes ? new Uint8Array(prev.bytes) : prev.savedBytes } : prev
       );
     } catch (e) {
       setError(String(e));
@@ -291,7 +290,7 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const entry = notes.find((n) => n.id === id);
     if (!entry) return;
     try {
-      await invoke("delete_note", { filePath: entry.filePath });
+      await invoke("delete_note", { id });
       setNotes((prev) => prev.filter((n) => n.id !== id));
       if (activeNote?.entry.id === id) setActiveNote(null);
     } catch (e) {
