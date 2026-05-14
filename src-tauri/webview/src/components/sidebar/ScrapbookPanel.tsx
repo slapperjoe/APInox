@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import styled from 'styled-components';
 import { Plus, Trash2, Play } from 'lucide-react';
+import { SidebarContextMenu, CtxMenuSection } from './shared/SidebarContextMenu';
 import { ScrapbookRequest } from '@shared/models';
 import { HeaderButton, SidebarHeaderActions, SidebarHeaderTitle, RequestItem as BaseRequestItem } from './shared/SidebarStyles';
 import { SPACING_SM } from '../../styles/spacing';
@@ -94,8 +95,18 @@ export const ScrapbookPanel: React.FC<ScrapbookPanelProps> = ({
     onCreateRequest,
     onSelectRequest,
     onDeleteRequest,
-    onExecuteRequest
+    onExecuteRequest,
 }) => {
+    const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; request: ScrapbookRequest } | null>(null);
+
+    const handleContextMenu = (e: React.MouseEvent, request: ScrapbookRequest) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setCtxMenu({ x: e.clientX, y: e.clientY, request });
+    };
+
+    const closeCtxMenu = () => setCtxMenu(null);
+
     return (
         <>
             <SectionHeader>
@@ -123,6 +134,7 @@ export const ScrapbookPanel: React.FC<ScrapbookPanelProps> = ({
                             $selected={selectedRequest?.id === request.id}
                             $active={selectedRequest?.id === request.id}
                             onClick={() => onSelectRequest(request)}
+                            onContextMenu={(e) => handleContextMenu(e, request)}
                         >
                             <RequestName title={request.name}>
                                 {request.name}
@@ -150,6 +162,22 @@ export const ScrapbookPanel: React.FC<ScrapbookPanelProps> = ({
                         </RequestItem>
                     ))}
                 </RequestList>
+            )}
+
+            {/* Context Menu */}
+            {ctxMenu && (
+                <SidebarContextMenu
+                    x={ctxMenu.x}
+                    y={ctxMenu.y}
+                    sections={[{
+                        title: 'Actions',
+                        items: [
+                            { icon: Play, label: 'Execute Request', onClick: () => { onExecuteRequest(ctxMenu.request); closeCtxMenu(); } },
+                            { icon: Trash2, label: 'Delete', danger: true, onClick: () => { onDeleteRequest(ctxMenu.request.id); closeCtxMenu(); } },
+                        ],
+                    }] as CtxMenuSection[]}
+                    onClose={closeCtxMenu}
+                />
             )}
         </>
     );

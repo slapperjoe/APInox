@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { Plus, FolderPlus, ChevronDown, ChevronRight, Trash2, Lock, Save, Download, Upload, GripVertical, Package, Loader } from 'lucide-react';
+import { Plus, FolderPlus, ChevronDown, ChevronRight, Lock, Save, Download, Upload, GripVertical, Package, Loader } from 'lucide-react';
 import { ApinoxProject, ApiInterface, ApiOperation, ApiRequest } from '@shared/models';
 import { HeaderButton, OperationItem, SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle } from './shared/SidebarStyles';
 import { ServiceTree } from './ServiceTree';
 import { FolderTree } from './FolderTree';
-import { ContextMenu, ContextMenuItem } from '../../styles/App.styles';
+import { SidebarContextMenu, CtxMenuSection, CtxMenuItem, Pencil, Trash2, RefreshCw } from './shared/SidebarContextMenu';
 import { updateProjectWithRename } from '../../utils/projectUtils';
 import { SaveErrorDialog } from '../SaveErrorDialog';
 import { useDragAndDrop } from '../../hooks/useDragAndDrop';
@@ -814,56 +814,41 @@ export const ProjectList: React.FC<ProjectListProps> = ({
             </ProjectContent>
 
             {/* Local Context Menu */}
-            {localContextMenu && (
-                <ContextMenu top={localContextMenu.y} left={localContextMenu.x}>
-                    {(localContextMenu.type === 'project' || 
-                      localContextMenu.type === 'folder' || 
-                      localContextMenu.type === 'request' ||
-                      localContextMenu.type === 'interface' ||
-                      localContextMenu.type === 'operation') && (
-                        <ContextMenuItem onClick={() => {
-                            console.log('Clicked: Rename');
-                            handleRenameStart();
-                        }}>Rename</ContextMenuItem>
-                    )}
+            {localContextMenu && (() => {
+                const items: CtxMenuItem[] = [
+                    {
+                        icon: Pencil, label: 'Rename', 
+                        onClick: () => handleRenameStart()
+                    },
+                ];
+                if (localContextMenu.type === 'request' && onDeleteRequest) {
+                    items.push({ icon: Trash2, label: 'Delete', danger: true, onClick: () => { onDeleteRequest(localContextMenu.data); closeLocalContextMenu(); } });
+                }
+                if (localContextMenu.type === 'folder' && onDeleteFolder) {
+                    items.push({ icon: Trash2, label: 'Delete', danger: true, onClick: () => { onDeleteFolder((localContextMenu.data as any).projectName || selectedProjectName || '', localContextMenu.data.id); closeLocalContextMenu(); } });
+                }
+                if (localContextMenu.type === 'interface' && onRefreshInterface) {
+                    items.push({ 
+                        icon: RefreshCw, label: 'Refresh Definition', 
+                        onClick: () => {
+                            const iface = localContextMenu.data as ApiInterface;
+                            const proj = projects.find(p => p.interfaces.some(i => i.name === iface.name));
+                            if (proj) onRefreshInterface(proj.name, iface);
+                            closeLocalContextMenu();
+                        } 
+                    });
+                }
 
-                    {/* Replica of Global Menu Items for Fallback */}
-                    {localContextMenu.type === 'request' && onDeleteRequest && (
-                        <ContextMenuItem onClick={() => { onDeleteRequest(localContextMenu.data); closeLocalContextMenu(); }}>Delete</ContextMenuItem>
-                    )}
-                    {localContextMenu.type === 'folder' && onDeleteFolder && (
-                        <ContextMenuItem onClick={() => { onDeleteFolder((localContextMenu.data as any).projectName || selectedProjectName || '', localContextMenu.data.id); closeLocalContextMenu(); }}>Delete</ContextMenuItem>
-                    )}
-
-                    {localContextMenu.type === 'interface' && onRefreshInterface && (
-                        <>
-                            <MenuSeparator />
-                            <ContextMenuItem onClick={() => {
-                                // We need project name. 
-                                // `data` is ApiInterface. We need parent project.
-                                // How do we get parent project name? 
-                                // We don't have it easily in local data unless we passed it.
-                                // But we can find it in projects array.
-                                const iface = localContextMenu.data as ApiInterface;
-                                const proj = projects.find(p => p.interfaces.some(i => i.name === iface.name));
-                                // Pass interface object instead of just name for better identification
-                                if (proj) {
-                                    onRefreshInterface(proj.name, iface);
-                                }
-                                closeLocalContextMenu();
-                            }}>
-                                Refresh Definition
-                            </ContextMenuItem>
-                        </>
-                    )}
-
-                    {/* Note: This is a simplified menu. Complex global actions like "Export Native" or "Add to Project" might be missing if not handled here. 
-                           However, standard Rename/Delete are covered. 
-                           To be safe, we could offer "More..." that triggers global handleContextMenu?
-                           Or simpler: we just handle Rename here and forward others? NO, standard context menu implies replacing it.
-                        */}
-                </ContextMenu>
-            )}
+                const sections: CtxMenuSection[] = [{ title: 'Actions', items }];
+                return (
+                    <SidebarContextMenu
+                        x={localContextMenu.x}
+                        y={localContextMenu.y}
+                        sections={sections}
+                        onClose={closeLocalContextMenu}
+                    />
+                );
+            })()}
 
             {/* Save Error Dialog */}
             {errorDialogProject && saveErrors.has(errorDialogProject) && (

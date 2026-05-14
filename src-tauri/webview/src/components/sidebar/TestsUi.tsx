@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { Play, Plus, Trash2, ChevronDown, ChevronRight, FlaskConical, FolderOpen, ListChecks, Edit2, Clock, FileCode, ArrowRight, FileText } from 'lucide-react';
+import { Play, Plus, Trash2, ChevronDown, ChevronRight, FlaskConical, FolderOpen, ListChecks, Clock, FileCode, ArrowRight, FileText } from 'lucide-react';
 import { ApinoxProject, TestSuite } from '@shared/models';
-import { OperationItem, RequestItem, SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle } from './shared/SidebarStyles';
+import { SidebarContextMenu, CtxMenuSection, CtxMenuItem, Pencil } from './shared/SidebarContextMenu';
+import { SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle, OperationItem, RequestItem } from './shared/SidebarStyles';
 import { EmptyState } from '../common/EmptyState';
 import { HeaderButton } from '../common/Button';
 import { InlineFormInput } from '../common/Form';
@@ -158,42 +159,6 @@ interface FlatSuite {
     suite: TestSuite;
     projectName: string;
 }
-
-// Context menu styled components
-const ContextMenuOverlay = styled.div`
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 1500;
-`;
-
-const ContextMenuDropdown = styled.div<{ x: number; y: number }>`
-    position: fixed;
-    top: ${props => props.y}px;
-    left: ${props => props.x}px;
-    background-color: var(--apinox-menu-background);
-    color: var(--apinox-menu-foreground);
-    border: 1px solid var(--apinox-menu-border);
-    box-shadow: 0 2px 8px var(--apinox-widget-shadow);
-    z-index: 2000;
-    min-width: 150px;
-    padding: 4px 0;
-`;
-
-const ContextMenuItem = styled.div`
-    padding: ${SPACING_XS} 12px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: ${SPACING_XS};
-
-    &:hover {
-        background-color: var(--apinox-menu-selectionBackground);
-        color: var(--apinox-menu-selectionForeground);
-    }
-`;
 
 export const TestsUi: React.FC<TestsUiProps> = ({
     projects,
@@ -549,15 +514,12 @@ export const TestsUi: React.FC<TestsUiProps> = ({
 
             {/* Context Menu */}
             {contextMenu && (
-                <>
-                    <ContextMenuOverlay onClick={closeContextMenu} />
-                    <ContextMenuDropdown x={contextMenu.x} y={contextMenu.y}>
-                        <ContextMenuItem onClick={handleRenameFromMenu}>
-                            <Edit2 size={14} />
-                            Rename
-                        </ContextMenuItem>
-                    </ContextMenuDropdown>
-                </>
+                <SidebarContextMenu
+                    x={contextMenu.x}
+                    y={contextMenu.y}
+                    sections={[{ title: 'Actions', items: [{ icon: Pencil, label: 'Rename', onClick: handleRenameFromMenu }] }] as CtxMenuSection[]}
+                    onClose={closeContextMenu}
+                />
             )}
         </>
     );

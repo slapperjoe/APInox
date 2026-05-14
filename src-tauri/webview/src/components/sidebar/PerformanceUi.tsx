@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { Play, Square, Trash2, Plus, ChevronRight, ChevronDown } from 'lucide-react';
+import { Play, Square, Plus, ChevronRight, ChevronDown } from 'lucide-react';
 import { SidebarPerformanceProps } from '../../types/props';
-import { ContextMenu, ContextMenuItem } from '../../styles/App.styles';
+import { SidebarContextMenu, CtxMenuSection, CtxMenuItem, Pencil, Trash2 } from './shared/SidebarContextMenu';
 import { SidebarContainer, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle } from './shared/SidebarStyles';
 import { IconButton, RunButton } from '../common/Button';
 import { InlineFormInput } from '../common/Form';
@@ -323,22 +323,35 @@ export const PerformanceUi: React.FC<SidebarPerformanceProps> = ({
             </List>
 
             {contextMenu && (
-                <ContextMenu top={contextMenu.y} left={contextMenu.x} onClick={(e: any) => e.stopPropagation()}>
-                    <ContextMenuItem onClick={() => startRename(contextMenu.id, contextMenu.name, contextMenu.type, contextMenu.parentId)}>
-                        Rename
-                    </ContextMenuItem>
-                    <ContextMenuItem onClick={() => {
-                        if (contextMenu.type === 'request' && onDeleteRequest && contextMenu.parentId) {
-                            onDeleteRequest(contextMenu.parentId, contextMenu.id);
-                        }
-                        if (contextMenu.type === 'suite') {
-                            onDeleteSuite(contextMenu.id);
-                        }
-                        setContextMenu(null);
-                    }}>
-                        Delete
-                    </ContextMenuItem>
-                </ContextMenu>
+                (() => {
+                    const sections: CtxMenuSection[] = [
+                        {
+                            title: 'Actions',
+                            items: [
+                                { icon: Pencil, label: 'Rename', onClick: () => startRename(contextMenu.id, contextMenu.name, contextMenu.type, contextMenu.parentId) },
+                                {
+                                    icon: Trash2, label: 'Delete', danger: true, onClick: () => {
+                                        if (contextMenu.type === 'request' && onDeleteRequest && contextMenu.parentId) {
+                                            onDeleteRequest(contextMenu.parentId, contextMenu.id);
+                                        }
+                                        if (contextMenu.type === 'suite') {
+                                            onDeleteSuite(contextMenu.id);
+                                        }
+                                        setContextMenu(null);
+                                    },
+                                },
+                            ],
+                        },
+                    ];
+                    return (
+                        <SidebarContextMenu
+                            x={contextMenu.x}
+                            y={contextMenu.y}
+                            sections={sections}
+                            onClose={() => setContextMenu(null)}
+                        />
+                    );
+                })()
             )}
         </Container>
     );
