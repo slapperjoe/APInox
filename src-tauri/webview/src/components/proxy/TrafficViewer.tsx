@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { SidebarContextMenu, CtxMenuSection, CtxMenuItem, VenetianMask, Pencil, Pause, Download, Copy, FileText, RefreshCw, Globe, Link, Code, File } from '../sidebar/shared/SidebarContextMenu';
 import { tokens } from './tokens';
+import { formatXml } from '@shared/utils/xmlFormatter';
 import { IgnoreRule, matchesAnyIgnoreRule, ignorePatternFor } from '../../utils/useIgnoreList';
 
 export interface TrafficLog {
@@ -389,27 +391,83 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = [], onAddIgnore
       </div>
 
       {/* Right-click context menu */}
-      {ctxMenu && (
-        <TrafficContextMenu
-          x={ctxMenu.x}
-          y={ctxMenu.y}
-          log={ctxMenu.log}
-          onIgnore={(mode) => {
-            onAddIgnoreRule?.(ctxMenu.log.url, mode);
-            setCtxMenu(null);
-          }}
-          onCreateMockRule={onCreateMockRule ? (log) => { onCreateMockRule(log); setCtxMenu(null); } : undefined}
-          onCreateReplaceRule={onCreateReplaceRule ? (log) => { onCreateReplaceRule(log); setCtxMenu(null); } : undefined}
-          onCreateBreakpoint={onCreateBreakpoint ? (log) => { onCreateBreakpoint(log); setCtxMenu(null); } : undefined}
-          onAddToApinoxProject={onAddToApinoxProject ? (log) => { onAddToApinoxProject(log); setCtxMenu(null); } : undefined}
-          onClose={() => setCtxMenu(null)}
-        />
-      )}
+      {ctxMenu && (() => {
+        const log = ctxMenu.log;
+        const hostPattern = ignorePatternFor(log.url, 'host');
+        const hostPathPattern = ignorePatternFor(log.url, 'host+path');
+        const isSoap = extractSoapAction(log) !== null;
+        const sections: CtxMenuSection[] = [];
+
+        // Create Rule section
+        const hasCreate = !!(onCreateMockRule || onCreateReplaceRule || onCreateBreakpoint);
+        if (hasCreate) {
+          const items: CtxMenuItem[] = [];
+          if (onCreateMockRule) {
+            items.push({ icon: VenetianMask, label: 'Create Mock Rule', sub: 'Pre-fill response from this traffic', onClick: () => { onCreateMockRule!(log); setCtxMenu(null); } });
+          }
+          if (onCreateReplaceRule) {
+            items.push({ icon: Pencil, label: 'Create Replace Rule', sub: 'Open replace rule editor', onClick: () => { onCreateReplaceRule!(log); setCtxMenu(null); } });
+          }
+          if (onCreateBreakpoint) {
+            items.push({ icon: Pause, label: 'Create Breakpoint', sub: 'Pause matching traffic for inspection', onClick: () => { onCreateBreakpoint!(log); setCtxMenu(null); } });
+          }
+          sections.push({ title: 'Create Rule From Traffic', items });
+        }
+
+        // APInox section
+        if (onAddToApinoxProject) {
+          sections.push({
+            title: 'APInox',
+            items: [{ icon: Download, label: 'Add to APInox Project...', sub: 'Save request to project workspace', onClick: () => { onAddToApinoxProject!(log); setCtxMenu(null); } }],
+          });
+        }
+
+        // Copy to Clipboard (available for all traffic)
+        const copyItems: CtxMenuItem[] = [
+          { icon: Code, label: 'Copy URL + Request', sub: 'Method, URL and request body', copyText: copyFullRequest(log) },
+          { icon: FileText, label: 'Copy Full Exchange', sub: 'URL, request and response', copyText: copyFullExchange(log) },
+          { icon: File, label: 'Copy All (URL + Request + Response)', sub: 'Formatted with XML', copyText: copyAllTraffic(log) },
+        ];
+        if (isSoap) {
+          copyItems.unshift({ icon: Copy, label: 'Copy SOAP Body', sub: 'URL + inner XML', copyText: copySoapBody(log) });
+        }
+        sections.push({
+          title: 'Copy to Clipboard',
+          items: copyItems,
+        });
+
+        // Ignore Traffic section
+        sections.push({
+          title: 'Ignore Traffic',
+          items: [
+            { icon: Globe, label: 'Ignore host', sub: hostPattern, onClick: () => { onAddIgnoreRule?.(log.url, 'host'); setCtxMenu(null); } },
+            { icon: Link, label: 'Ignore host + path', sub: hostPathPattern, onClick: () => { onAddIgnoreRule?.(log.url, 'host+path'); setCtxMenu(null); } },
+          ],
+        });
+
+        return (
+          <SidebarContextMenu
+            x={ctxMenu.x}
+            y={ctxMenu.y}
+            sections={sections}
+            onClose={() => setCtxMenu(null)}
+          />
+        );
+      })()}
     </div>
   );
 }
 
-// ── SOAP clipboard helpers ───────────────────────────────────────────────────
+// ── Clipboard helpers ──────────────────────────────────────────────────────
+const SEP = '==============================';
+
+function formatIfNeeded(content: string): string {
+  if (content && (content.trim().startsWith('<') && content.includes('</'))) {
+    return formatXml(content);
+  }
+  return content;
+}
+
 /**
  * Extract the inner XML from a SOAP Body element.
  * Given `<ns:Envelope>...<ns:Body>...</ns:Body>...</ns:Envelope>`
@@ -424,218 +482,41 @@ function extractSoapBodyXml(body: string | undefined): string {
 function copySoapBody(log: TrafficLog): string {
   const path = extractPath(log.url);
   const innerXml = extractSoapBodyXml(log.requestBody);
-  return `URL: ${path}\n${innerXml}`;
+  const formatted = innerXml.startsWith('<') ? formatXml(innerXml) : innerXml;
+  return `URL: ${path}\n${formatted}`;
 }
 
 function copyFullRequest(log: TrafficLog): string {
   const body = log.requestBody || '';
-  return `URL: ${log.url}\n${body}`;
+  const formatted = formatIfNeeded(body);
+  return `URL: ${log.url}\n${formatted}`;
 }
 
 function copyFullExchange(log: TrafficLog): string {
   const reqBody = log.requestBody || '';
   const resBody = log.responseBody || '';
-  return `URL: ${log.url}\n\nREQUEST:\n${reqBody}\n\nRESPONSE:\n${resBody}`;
+  const fmtReq = formatIfNeeded(reqBody);
+  const fmtRes = formatIfNeeded(resBody);
+  return `URL: ${log.url}\n\nREQUEST:\n${fmtReq}\n\nRESPONSE:\n${fmtRes}`;
 }
 
-// ── TrafficContextMenu ────────────────────────────────────────────────────
-function TrafficContextMenu({
-  x, y, log, onIgnore, onCreateMockRule, onCreateReplaceRule, onCreateBreakpoint, onAddToApinoxProject, onClose,
-}: {
-  x: number; y: number; log: TrafficLog;
-  onIgnore: (mode: 'host' | 'host+path') => void;
-  onCreateMockRule?: (log: TrafficLog) => void;
-  onCreateReplaceRule?: (log: TrafficLog) => void;
-  onCreateBreakpoint?: (log: TrafficLog) => void;
-  onAddToApinoxProject?: (log: TrafficLog) => void;
-  onClose: () => void;
-}) {
-  const hostPattern     = ignorePatternFor(log.url, 'host');
-  const hostPathPattern = ignorePatternFor(log.url, 'host+path');
-  const isSoap = extractSoapAction(log) !== null;
-  const [copied, setCopied] = useState(false);
-
-  const hasCreate = !!(onCreateMockRule || onCreateReplaceRule || onCreateBreakpoint);
-  const hasApinox = !!onAddToApinoxProject;
-  const handleCopy = async (text: string) => {
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-    onClose();
-  };
-
-  const menuH = (hasCreate ? 260 : 0) + (hasApinox ? 55 : 0) + 120;
-  const top = y + menuH > window.innerHeight ? y - menuH : y;
-
-  return (
-    <div
-      onMouseDown={e => e.stopPropagation()}
-      style={{
-        position: 'fixed', top, left: x, zIndex: 99999,
-        background: tokens.surface.panel,
-        border: `1px solid ${tokens.border.default}`,
-        borderRadius: tokens.radius.lg,
-        boxShadow: '0 14px 40px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4)',
-        minWidth: 260, overflow: 'hidden',
-        animation: 'ctxFadeIn 0.1s ease',
-      }}
-    >
-      {/* Create Rule section */}
-      {hasCreate && (
-        <>
-          <div style={{
-            padding: '8px 14px',
-            background: tokens.surface.elevated,
-            borderBottom: `1px solid ${tokens.border.default}`,
-            fontSize: 10, fontWeight: 600, color: tokens.text.muted,
-            textTransform: 'uppercase', letterSpacing: '0.06em',
-          }}>Create Rule From Traffic</div>
-          {onCreateMockRule && (
-            <CtxItem
-              icon="🎭"
-              label="Create Mock Rule"
-              sub="Pre-fill response from this traffic"
-              onClick={() => onCreateMockRule(log)}
-            />
-          )}
-          {onCreateReplaceRule && (
-            <CtxItem
-              icon="✏️"
-              label="Create Replace Rule"
-              sub="Open replace rule editor"
-              onClick={() => onCreateReplaceRule(log)}
-            />
-          )}
-          {onCreateBreakpoint && (
-            <CtxItem
-              icon="⏸️"
-              label="Create Breakpoint"
-              sub="Pause matching traffic for inspection"
-              onClick={() => onCreateBreakpoint(log)}
-            />
-          )}
-          <div style={{ borderTop: `1px solid ${tokens.border.default}` }} />
-        </>
-      )}
-
-      {/* APInox section */}
-      {hasApinox && (
-        <>
-          <div style={{
-            padding: '8px 14px',
-            background: tokens.surface.elevated,
-            borderBottom: `1px solid ${tokens.border.default}`,
-            fontSize: 10, fontWeight: 600, color: tokens.text.muted,
-            textTransform: 'uppercase', letterSpacing: '0.06em',
-          }}>APInox</div>
-          <CtxItem
-            icon="📥"
-            label="Add to APInox Project..."
-            sub="Save request to project workspace"
-            onClick={() => onAddToApinoxProject!(log)}
-          />
-          <div style={{ borderTop: `1px solid ${tokens.border.default}` }} />
-        </>
-      )}
-
-      {/* Copy to Clipboard section (SOAP only) */}
-      {isSoap && (
-        <>
-          <div style={{
-            padding: '8px 14px',
-            background: tokens.surface.elevated,
-            borderBottom: `1px solid ${tokens.border.default}`,
-            fontSize: 10, fontWeight: 600, color: tokens.text.muted,
-            textTransform: 'uppercase', letterSpacing: '0.06em',
-          }}>Copy to Clipboard</div>
-          <CtxItem
-            icon="📋"
-            label="Copy SOAP Body"
-            sub="URL + inner XML"
-            onClick={() => handleCopy(copySoapBody(log))}
-          />
-          <CtxItem
-            icon="📄"
-            label="Copy Full Request"
-            sub="URL + full SOAP envelope"
-            onClick={() => handleCopy(copyFullRequest(log))}
-          />
-          <CtxItem
-            icon="🔄"
-            label="Copy Full Exchange"
-            sub="URL + request + response"
-            onClick={() => handleCopy(copyFullExchange(log))}
-          />
-          <div style={{ borderTop: `1px solid ${tokens.border.default}` }} />
-        </>
-      )}
-
-      {/* Ignore section */}
-      <div style={{
-        padding: '8px 14px',
-        background: tokens.surface.elevated,
-        borderBottom: `1px solid ${tokens.border.default}`,
-        fontSize: 10, fontWeight: 600, color: tokens.text.muted,
-        textTransform: 'uppercase', letterSpacing: '0.06em',
-      }}>Ignore Traffic</div>
-      <CtxItem
-        icon="🌐"
-        label="Ignore host"
-        sub={hostPattern}
-        onClick={() => onIgnore('host')}
-      />
-      <CtxItem
-        icon="🔗"
-        label="Ignore host + path"
-        sub={hostPathPattern}
-        onClick={() => onIgnore('host+path')}
-      />
-      {/* Copied feedback */}
-      {copied && (
-        <div style={{
-          position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
-          background: tokens.surface.panel, color: tokens.text.primary,
-          padding: '8px 20px', borderRadius: tokens.radius.lg,
-          boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
-          fontSize: 13, fontWeight: 600, zIndex: 100000,
-          animation: 'ctxFadeIn 0.2s ease',
-        }}>
-          ✓ Copied!
-        </div>
-      )}
-    </div>
-  );
-}
-
-function CtxItem({ icon, label, sub, onClick, danger = false }: {
-  icon: string; label: string; sub: string; onClick: () => void; danger?: boolean;
-}) {
-  const [hov, setHov] = useState(false);
-  return (
-    <div
-      onClick={onClick}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        padding: '8px 14px', cursor: 'pointer',
-        background: hov ? (danger ? 'rgba(156,14,14,0.18)' : tokens.surface.stripe) : 'transparent',
-        transition: 'background 0.1s',
-      }}
-    >
-      <span style={{ fontSize: 14, flexShrink: 0 }}>{icon}</span>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: danger ? tokens.text.danger : tokens.text.primary }}>{label}</div>
-        {sub && (
-          <div style={{
-            fontSize: 10, color: tokens.text.hint,
-            fontFamily: 'monospace', whiteSpace: 'nowrap',
-            overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200,
-          }}>{sub}</div>
-        )}
-      </div>
-    </div>
-  );
+function copyAllTraffic(log: TrafficLog): string {
+  const reqBody = log.requestBody || '';
+  const resBody = log.responseBody || '';
+  const fmtReq = formatIfNeeded(reqBody);
+  const fmtRes = formatIfNeeded(resBody);
+  const lines = [
+    `URL: ${log.url}`,
+    SEP,
+    '',
+    'REQUEST:',
+    fmtReq,
+    SEP,
+    '',
+    'RESPONSE:',
+    fmtRes,
+  ];
+  return lines.join('\n');
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────

@@ -15,7 +15,10 @@ import {
   Binary,
   Code2,
   MoreVertical,
+  Pencil,
+  ExternalLink,
 } from "lucide-react";
+import { SidebarContextMenu, CtxMenuSection, CtxMenuItem } from "./shared/SidebarContextMenu";
 import { NoteEntry } from "@shared/models";
 import {
   SidebarHeader,
@@ -152,6 +155,16 @@ export const NotesList: React.FC = () => {
     setRenameValue(entry.name);
   };
 
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; entry: NoteEntry } | null>(null);
+
+  const handleContextMenu = (e: React.MouseEvent, entry: NoteEntry) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCtxMenu({ x: e.clientX, y: e.clientY, entry });
+  };
+
+  const closeCtxMenu = () => setCtxMenu(null);
+
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const handleDelete = async (e: React.MouseEvent, entry: NoteEntry) => {
@@ -163,6 +176,16 @@ export const NotesList: React.FC = () => {
     } else {
       // First click: enter confirmation mode
       setDeleteConfirm(entry.id);
+    }
+  };
+
+  const handleOpenInExplorer = async (entry: NoteEntry) => {
+    closeCtxMenu();
+    if (entry.filePath) {
+      // Open the parent folder in explorer
+      const { open } = await import('@tauri-apps/plugin-shell');
+      const { join, dirname } = await import('path');
+      open(join(dirname(entry.filePath)));
     }
   };
 
@@ -198,6 +221,7 @@ export const NotesList: React.FC = () => {
               key={entry.id}
               $active={isActive}
               onClick={() => openNote(entry)}
+              onContextMenu={(e) => handleContextMenu(e, entry)}
             >
               {langIcon(entry)}
 
@@ -245,6 +269,23 @@ export const NotesList: React.FC = () => {
           );
         })}
       </List>
+
+      {/* Context Menu */}
+      {ctxMenu && (
+        <SidebarContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          sections={[{
+            title: 'Actions',
+            items: [
+              { icon: Pencil, label: 'Rename', onClick: (e: any) => { e?.stopPropagation?.(); startRename(e as any, ctxMenu.entry); closeCtxMenu(); } },
+              { icon: Trash2, label: 'Delete', danger: true, onClick: () => { handleDelete({ stopPropagation: () => {} } as any, ctxMenu.entry); closeCtxMenu(); } },
+              { icon: ExternalLink, label: 'Show in Explorer', onClick: () => handleOpenInExplorer(ctxMenu.entry) },
+            ],
+          }] as CtxMenuSection[]}
+          onClose={closeCtxMenu}
+        />
+      )}
     </Panel>
   );
 };

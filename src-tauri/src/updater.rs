@@ -75,34 +75,61 @@ fn is_newer(latest: &str, current: &str) -> bool {
 
 /// Reads the Windows system proxy from the Internet Settings registry key.
 /// Returns `Some("http://host:port")` when a *manual* proxy is enabled, `None` otherwise.
-/// Note: this does NOT handle WPAD/PAC-only setups — use `resolve_wpad_proxy` for those.
+/// Checks both HKCU (user) and HKLM (machine/Group Policy) registry hives.
 #[cfg(target_os = "windows")]
 fn read_windows_system_proxy() -> Option<String> {
-    use winreg::enums::HKEY_CURRENT_USER;
+    use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
     use winreg::RegKey;
 
-    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-    let settings = hkcu
-        .open_subkey(r"Software\Microsoft\Windows\CurrentVersion\Internet Settings")
-        .ok()?;
-
-    let enabled: u32 = settings.get_value("ProxyEnable").ok()?;
-    if enabled == 0 {
-        return None;
+    // Try HKCU first (user-level manual proxy).
+    if let Ok(hkcu) = RegKey::predef(HKEY_CURRENT_USER).open_subkey(r"Software\Microsoft\Windows\CurrentVersion\Internet Settings") {
+        if let Ok(enabled) = hkcu.get_value::<u32>("ProxyEnable") {
+            if enabled == 1 {
+                if let Ok(server) = hkcu.get_value::<String>("ProxyServer") {
+                    if !server.is_empty() {
+                        if !server.contains("://") {
+                            return Some(format!("http://{}", server));
+                        }
+                        return Some(server);
+                    }
+                }
+            }
+        }
     }
 
-    let server: String = settings.get_value("ProxyServer").ok()?;
-    if server.is_empty() {
-        return None;
+    // Fallback: try HKLM (Group Policy machine-level proxy).
+    if let Ok(hklm) = RegKey::predef(HKEY_LOCAL_MACHINE).open_subkey(r"Software\Policies\Microsoft\Windows\CurrentVersion\Internet Settings") {
+        if let Ok(enabled) = hklm.get_value::<u32>("ProxyEnable") {
+            if enabled == 1 {
+                if let Ok(server) = hklm.get_value::<String>("ProxyServer") {
+                    if !server.is_empty() {
+                        if !server.contains("://") {
+                            return Some(format!("http://{}", server));
+                        }
+                        return Some(server);
+                    }
+                }
+            }
+        }
     }
 
-    // The registry value may be bare `host:port` or already `http://host:port`.
-    // reqwest requires a full URL scheme.
-    if server.contains("://") {
-        Some(server)
-    } else {
-        Some(format!("http://{}", server))
+    // Also try the standard HKLM Internet Settings path (sometimes used by enterprise tools).
+    if let Ok(hklm) = RegKey::predef(HKEY_LOCAL_MACHINE).open_subkey(r"Software\Microsoft\Windows\CurrentVersion\Internet Settings") {
+        if let Ok(enabled) = hklm.get_value::<u32>("ProxyEnable") {
+            if enabled == 1 {
+                if let Ok(server) = hklm.get_value::<String>("ProxyServer") {
+                    if !server.is_empty() {
+                        if !server.contains("://") {
+                            return Some(format!("http://{}", server));
+                        }
+                        return Some(server);
+                    }
+                }
+            }
+        }
     }
+
+    None
 }
 
 /// Asks .NET (via a PowerShell subprocess) for the effective proxy for a given URL.
@@ -128,11 +155,27 @@ fn resolve_wpad_proxy(target_url: &str) -> Option<String> {
     fn wpad_probe(target_url: &str) -> Option<String> {
         const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
-        // Ask .NET for the proxy.  GetSystemWebProxy() honours WPAD/PAC/env-var
-        // chains the same way the Windows HTTP stack does.
+        // Use a more robust PowerShell script that handles null returns and edge cases.
+        // GetSystemWebProxy() can return null if .NET cannot initialize the proxy,
+        // so we handle that gracefully.
         let script = format!(
-            "[System.Net.WebRequest]::GetSystemWebProxy().GetProxy('{}').AbsoluteUri",
-            target_url
+            r#"
+                try {{
+                    $proxy = [System.Net.WebRequest]::GetSystemWebProxy();
+                    if ($proxy -ne $null) {{
+                        $uri = $proxy.GetProxy('{}');
+                        if ($uri -ne $null) {{
+                            $result = $uri.AbsoluteUri;
+                            if ($result -ne '{}' -and $result.Trim() -ne '') {{
+                                Write-Host $result;
+                            }}
+                        }}
+                    }}
+                }} catch {{
+                    # .NET not available or proxy lookup failed
+                }}
+            "#,
+            target_url, target_url
         );
 
         let output = Command::new("powershell")
@@ -142,6 +185,7 @@ fn resolve_wpad_proxy(target_url: &str) -> Option<String> {
             .ok()?;
 
         if !output.status.success() {
+            log::debug!("[Updater] PowerShell proxy lookup failed: {}", String::from_utf8_lossy(&output.stderr));
             return None;
         }
 
@@ -159,9 +203,9 @@ fn resolve_wpad_proxy(target_url: &str) -> Option<String> {
 
 /// Builds an HTTP client that honours (in priority order):
 ///   1. The proxy configured in APInox settings (`network.proxy`)
-///   2. The Windows manual system proxy (Internet Settings registry)
+///   2. The Windows manual system proxy (HKCU + HKLM registry)
 ///   3. WPAD / PAC file via .NET's GetSystemWebProxy() (PowerShell shim)
-///   4. Environment variables `HTTPS_PROXY` / `HTTP_PROXY` (reqwest default)
+///   4. Environment variables `HTTPS_PROXY` / `HTTP_PROXY` (explicit check)
 fn build_client() -> Result<reqwest::Client, String> {
     let mut builder = reqwest::Client::builder()
         .user_agent(format!("APInox/{}", APP_VERSION));
@@ -180,17 +224,17 @@ fn build_client() -> Result<reqwest::Client, String> {
             Err(e) => { log::warn!("[Updater] Invalid APInox proxy URL '{}': {}", proxy_url, e); }
         }
     } else {
-        // 2. Windows manual system proxy (works when ProxyEnable = 1).
+        // 2. Windows system proxy (HKCU and HKLM registry - covers manual and Group Policy).
         #[cfg(target_os = "windows")]
-        let manual_proxy = read_windows_system_proxy();
+        let sys_proxy = read_windows_system_proxy();
         #[cfg(not(target_os = "windows"))]
-        let manual_proxy: Option<String> = None;
+        let sys_proxy: Option<String> = None;
 
-        if let Some(sys_proxy) = manual_proxy {
-            log::debug!("[Updater] Using Windows manual system proxy: {}", sys_proxy);
-            match reqwest::Proxy::all(&sys_proxy) {
+        if let Some(proxy_url) = sys_proxy {
+            log::debug!("[Updater] Using Windows system proxy: {}", proxy_url);
+            match reqwest::Proxy::all(&proxy_url) {
                 Ok(proxy) => { builder = builder.proxy(proxy); }
-                Err(e) => { log::warn!("[Updater] Invalid system proxy URL '{}': {}", sys_proxy, e); }
+                Err(e) => { log::warn!("[Updater] Invalid system proxy URL '{}': {}", proxy_url, e); }
             }
         } else {
             // 3. WPAD / PAC — ask .NET for the effective proxy.
@@ -202,7 +246,21 @@ fn build_client() -> Result<reqwest::Client, String> {
                     Err(e) => { log::warn!("[Updater] Invalid WPAD proxy URL '{}': {}", wpad_proxy, e); }
                 }
             }
-            // 4. reqwest will automatically pick up HTTPS_PROXY / HTTP_PROXY env vars.
+
+            // 4. Explicit environment variable fallback (HTTPS_PROXY, HTTP_PROXY, ALL_PROXY).
+            let env_proxy = std::env::var("HTTPS_PROXY")
+                .or_else(|_| std::env::var("HTTP_PROXY"))
+                .or_else(|_| std::env::var("ALL_PROXY"))
+                .ok();
+            if let Some(env_url) = env_proxy {
+                if !env_url.is_empty() {
+                    log::debug!("[Updater] Using environment proxy: {}", env_url);
+                    match reqwest::Proxy::all(&env_url) {
+                        Ok(proxy) => { builder = builder.proxy(proxy); }
+                        Err(e) => { log::warn!("[Updater] Invalid env proxy URL '{}': {}", env_url, e); }
+                    }
+                }
+            }
         }
     }
 

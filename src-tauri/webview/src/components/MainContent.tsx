@@ -14,7 +14,7 @@ import type { TrafficLog } from './proxy/TrafficViewer';
 // import { CodeSnippetModal } from './modals/CodeSnippetModal';
 import type { PickRequestItem } from './modals/PickRequestModal';
 import type { BulkImportResult } from './modals/BulkImportModal';
-import { ApiRequest, TestCase, TestStep, SidebarView, RequestHistoryEntry, WsdlDiff, ApiInterface, Workflow, WorkflowStep, ApinoxProject } from '@shared/models';
+import { ApiRequest, TestCase, TestStep, SidebarView, RequestHistoryEntry, WsdlDiff, ApiInterface, ApiOperation, Workflow, WorkflowStep, ApinoxProject } from '@shared/models';
 import { BackendCommand, FrontendCommand } from '@shared/messages';
 import { PERF_REQUEST_ID_PREFIX } from '../constants';
 import { useMessageHandler } from '../hooks/useMessageHandler';
@@ -202,6 +202,7 @@ const MainContent: React.FC = () => {
     // ==========================================================================
     const {
         exploredInterfaces,
+        setExploredInterfaces,
         explorerExpanded,
         setExplorerExpanded,
         pendingAddInterface,
@@ -466,7 +467,10 @@ const MainContent: React.FC = () => {
         handleDeleteInterface: _handleDeleteInterface,
         handleDeleteOperation: _handleDeleteOperation,
         handleViewSample,
-        handleExportNative
+        handleExportNative,
+        handleCopyUrl,
+        handleCopyRequestXml,
+        handleCopyResponseXml
     } = useContextMenu({
         setProjects,
         saveProject,
@@ -1804,6 +1808,9 @@ const MainContent: React.FC = () => {
                         )}
                         {!contextMenu.isExplorer && contextMenu.type === 'request' && (
                             <>
+                                <ContextMenuItem onClick={handleCopyUrl}>Copy URL</ContextMenuItem>
+                                <ContextMenuItem onClick={handleCopyRequestXml}>Copy Request XML</ContextMenuItem>
+                                <ContextMenuItem onClick={handleCopyResponseXml}>Copy Response XML</ContextMenuItem>
                                 <ContextMenuItem onClick={handleCloneRequest}>Clone Request</ContextMenuItem>
                                 {/* Code snippet temporarily disabled during package migration
                                 <ContextMenuItem onClick={() => {
@@ -1824,12 +1831,73 @@ const MainContent: React.FC = () => {
                         )}
                         {(contextMenu.type === 'operation') && (
                             <>
+                                <ContextMenuItem onClick={handleCopyRequestXml}>Copy Request XML</ContextMenuItem>
                                 <ContextMenuItem onClick={() => handleGenerateTestSuite(contextMenu.data)}>Generate Test Suite</ContextMenuItem>
                                 <ContextMenuItem onClick={() => handleAddRequest()}>Add Request</ContextMenuItem>
                                 <ContextMenuItem onClick={handleViewSample}>View Sample Schema</ContextMenuItem>
                             </>
                         )}
-                        {(contextMenu.type === 'interface') && (
+                        {(contextMenu.type === 'request') && contextMenu.isExplorer && (
+                            <>
+                                <ContextMenuItem
+                                    onClick={() => {
+                                        const req = contextMenu.data as ApiRequest;
+                                        // Find parent interface and operation from exploredInterfaces
+                                        let parentIface: ApiInterface | null = null;
+                                        let parentOp: ApiOperation | null = null;
+                                        for (const iface of exploredInterfaces) {
+                                            for (const op of iface.operations) {
+                                                if (op.requests.includes(req)) {
+                                                    parentIface = iface;
+                                                    parentOp = op;
+                                                    break;
+                                                }
+                                            }
+                                            if (parentIface && parentOp) break;
+                                        }
+                                        if (parentIface) setSelectedInterface(parentIface);
+                                        if (parentOp) setSelectedOperation(parentOp);
+                                        setSelectedRequest(req);
+                                        setResponse(null);
+                                        bridge.sendMessage({
+                                            command: FrontendCommand.ExecuteRequest,
+                                            url: req.endpoint,
+                                            operation: req.name,
+                                            xml: req.request,
+                                            contentType: req.contentType || 'application/xml',
+                                            headers: req.headers,
+                                            requestType: req.requestType || 'soap',
+                                            method: req.method || 'POST',
+                                            bodyType: req.bodyType || 'xml'
+                                        });
+                                        closeContextMenu();
+                                    }}
+                                >Execute</ContextMenuItem>
+                                <ContextMenuItem onClick={handleCopyUrl}>Copy URL</ContextMenuItem>
+                                <ContextMenuItem onClick={handleCopyRequestXml}>Copy Request XML</ContextMenuItem>
+                                <ContextMenuItem onClick={handleCopyResponseXml}>Copy Response XML</ContextMenuItem>
+                                <DangerMenuItem
+                                    onClick={() => {
+                                        const req = contextMenu.data as ApiRequest;
+                                        setExploredInterfaces(prev => prev.map(iface => ({
+                                            ...iface,
+                                            operations: iface.operations.map(op => ({
+                                                ...op,
+                                                requests: op.requests.filter(r => r !== req)
+                                            }))
+                                        })));
+                                        closeContextMenu();
+                                    }}
+                                >Delete</DangerMenuItem>
+                            </>
+                        )}
+                        {(contextMenu.type === 'interface') && contextMenu.isExplorer && (
+                            <>
+                                <ContextMenuItem onClick={() => { addToProject(contextMenu.data as ApiInterface); closeContextMenu(); }}>Add to Project</ContextMenuItem>
+                                <DangerMenuItem onClick={() => { removeFromExplorer(contextMenu.data as ApiInterface); closeContextMenu(); }}>Remove from Explorer</DangerMenuItem>
+                            </>
+                        )}
+                        {(contextMenu.type === 'interface') && !contextMenu.isExplorer && (
                             <>
                                 <ContextMenuItem onClick={handleRename}>Rename</ContextMenuItem>
                                 <ContextMenuItem onClick={() => handleGenerateTestSuite(contextMenu.data)}>Generate Test Suite</ContextMenuItem>

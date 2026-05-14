@@ -55,6 +55,9 @@ interface UseContextMenuReturn {
     handleDeleteOperation: (op: ApiOperation, iface: ApiInterface) => void;
     handleViewSample: () => void;
     handleExportNative: (project: ApinoxProject) => void;
+    handleCopyUrl: () => void;
+    handleCopyRequestXml: () => void;
+    handleCopyResponseXml: () => void;
 }
 
 export function useContextMenu({
@@ -77,11 +80,13 @@ export function useContextMenu({
         setContextMenu(null);
     }, []);
 
-    const handleContextMenu = useCallback((e: React.MouseEvent, type: string, data: any, isExplorer = false) => {
-        // Prevent empty context menus
-        if (type === 'interface') return;
-        if (isExplorer && type === 'request') return; // Requests in explorer are read-only
+    const formatXmlCopy = (label: string, xml: string): string => {
+        const separator = '==============================';
+        if (!xml) return `${label}\n${separator}`;
+        return `${label}\n${separator}\n${xml}\n${separator}`;
+    };
 
+    const handleContextMenu = useCallback((e: React.MouseEvent, type: string, data: any, isExplorer = false) => {
         e.preventDefault();
         setContextMenu({ x: e.clientX, y: e.clientY, type, data, isExplorer });
     }, []);
@@ -301,6 +306,41 @@ export function useContextMenu({
         closeContextMenu();
     }, [closeContextMenu]);
 
+    const copyToClipboard = useCallback(async (text: string) => {
+        await navigator.clipboard.writeText(text);
+        closeContextMenu();
+    }, [closeContextMenu]);
+
+    const handleCopyUrl = useCallback(() => {
+        if (contextMenu && contextMenu.type === 'request') {
+            const req = contextMenu.data as ApiRequest;
+            copyToClipboard(req.endpoint || '');
+        }
+    }, [contextMenu, copyToClipboard]);
+
+    const handleCopyRequestXml = useCallback(() => {
+        if (contextMenu && (contextMenu.type === 'request' || contextMenu.type === 'operation')) {
+            if (contextMenu.type === 'request') {
+                const req = contextMenu.data as ApiRequest;
+                const xml = req.request || '';
+                copyToClipboard(formatXmlCopy('Request XML', xml));
+            } else {
+                const op = contextMenu.data as ApiOperation;
+                const firstReq = op.requests && op.requests.length > 0 ? op.requests[0] : null;
+                const xml = firstReq?.request || '';
+                copyToClipboard(formatXmlCopy('Request XML', xml));
+            }
+        }
+    }, [contextMenu, copyToClipboard]);
+
+    const handleCopyResponseXml = useCallback(() => {
+        if (contextMenu && contextMenu.type === 'request') {
+            const req = contextMenu.data as ApiRequest;
+            const responseText = '';
+            copyToClipboard(formatXmlCopy('Response XML', responseText));
+        }
+    }, [contextMenu, copyToClipboard]);
+
     return {
         // State
         contextMenu,
@@ -318,6 +358,9 @@ export function useContextMenu({
         handleDeleteInterface,
         handleDeleteOperation,
         handleViewSample,
-        handleExportNative
+        handleExportNative,
+        handleCopyUrl,
+        handleCopyRequestXml,
+        handleCopyResponseXml
     };
 }
