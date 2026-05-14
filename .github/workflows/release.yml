@@ -119,10 +119,13 @@ jobs:
           node-version: 20
 
       - name: Install Rust
-        uses: rust-lang/setup-rust-toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          rust-channel: stable
-          target: ${{ matrix.target }}
+          targets: ${{ matrix.target }}
+
+      - name: Ensure cargo is available (macOS)
+        if: runner.os == 'macOS'
+        run: rustup default stable && cargo --version
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
@@ -299,10 +302,9 @@ jobs:
           node-version: 20
 
       - name: Install Rust
-        uses: rust-lang/setup-rust-toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          rust-channel: stable
-          target: aarch64-linux-android
+          targets: aarch64-linux-android
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
@@ -388,9 +390,8 @@ jobs:
           node-version: 20
 
       - name: Install Rust
-        uses: rust-lang/setup-rust-toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          rust-channel: stable
           targets: aarch64-apple-ios,aarch64-apple-ios-sim
 
       - name: Cache Rust build
