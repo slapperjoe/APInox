@@ -83,9 +83,9 @@ fn read_windows_system_proxy() -> Option<String> {
 
     // Try HKCU first (user-level manual proxy).
     if let Ok(hkcu) = RegKey::predef(HKEY_CURRENT_USER).open_subkey(r"Software\Microsoft\Windows\CurrentVersion\Internet Settings") {
-        if let Ok(enabled) = hkcu.get_value("ProxyEnable") {
+        if let Ok(enabled) = hkcu.get_value::<u32, &str>("ProxyEnable") {
             if enabled == 1 {
-                if let Ok(server) = hkcu.get_value("ProxyServer") {
+                if let Ok(server) = hkcu.get_value::<String, &str>("ProxyServer") {
                     if !server.is_empty() {
                         if !server.contains("://") {
                             return Some(format!("http://{}", server));
@@ -99,9 +99,9 @@ fn read_windows_system_proxy() -> Option<String> {
 
     // Fallback: try HKLM (Group Policy machine-level proxy).
     if let Ok(hklm) = RegKey::predef(HKEY_LOCAL_MACHINE).open_subkey(r"Software\Policies\Microsoft\Windows\CurrentVersion\Internet Settings") {
-        if let Ok(enabled) = hklm.get_value("ProxyEnable") {
+        if let Ok(enabled) = hklm.get_value::<u32, &str>("ProxyEnable") {
             if enabled == 1 {
-                if let Ok(server) = hklm.get_value("ProxyServer") {
+                if let Ok(server) = hklm.get_value::<String, &str>("ProxyServer") {
                     if !server.is_empty() {
                         if !server.contains("://") {
                             return Some(format!("http://{}", server));
@@ -115,9 +115,9 @@ fn read_windows_system_proxy() -> Option<String> {
 
     // Also try the standard HKLM Internet Settings path (sometimes used by enterprise tools).
     if let Ok(hklm) = RegKey::predef(HKEY_LOCAL_MACHINE).open_subkey(r"Software\Microsoft\Windows\CurrentVersion\Internet Settings") {
-        if let Ok(enabled) = hklm.get_value("ProxyEnable") {
+        if let Ok(enabled) = hklm.get_value::<u32, &str>("ProxyEnable") {
             if enabled == 1 {
-                if let Ok(server) = hklm.get_value("ProxyServer") {
+                if let Ok(server) = hklm.get_value::<String, &str>("ProxyServer") {
                     if !server.is_empty() {
                         if !server.contains("://") {
                             return Some(format!("http://{}", server));
