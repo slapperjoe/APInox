@@ -119,9 +119,10 @@ jobs:
           node-version: 20
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: rust-lang/setup-rust-toolchain@v1
         with:
-          targets: ${{ matrix.target }}
+          rust-channel: stable
+          target: ${{ matrix.target }}
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
@@ -298,9 +299,10 @@ jobs:
           node-version: 20
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: rust-lang/setup-rust-toolchain@v1
         with:
-          targets: aarch64-linux-android
+          rust-channel: stable
+          target: aarch64-linux-android
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
@@ -386,8 +388,9 @@ jobs:
           node-version: 20
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: rust-lang/setup-rust-toolchain@v1
         with:
+          rust-channel: stable
           targets: aarch64-apple-ios,aarch64-apple-ios-sim
 
       - name: Cache Rust build
