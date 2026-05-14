@@ -57,10 +57,13 @@ jobs:
           cache: 'npm'
 
       - name: Install Rust
-        uses: rust-lang/setup-rust-toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          rust-channel: stable
-          target: ${{ matrix.rust_target }}
+          targets: ${{ matrix.rust_target }}
+
+      - name: Ensure cargo is available (macOS)
+        if: runner.os == 'macOS'
+        run: rustup default stable && cargo --version
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -285,10 +288,13 @@ jobs:
           cache: 'npm'
 
       - name: Install Rust
-        uses: rust-lang/setup-rust-toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          rust-channel: stable
-          target: aarch64-apple-ios
+          targets: aarch64-apple-ios
+
+      - name: Ensure cargo is available (macOS)
+        if: runner.os == 'macOS'
+        run: rustup default stable && cargo --version
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -324,7 +330,7 @@ jobs:
       # it to $RUNNER_TEMP/apinox.xcarchive for the packaging step below.
       #
       # The "Build Rust Code" Xcode phase also runs in a sanitised subprocess
-      # that does NOT inherit the PATH set by rust-lang/setup-rust-toolchain, so cargo
+      # that does NOT inherit the PATH set by dtolnay/rust-toolchain, so cargo
       # must be sourced explicitly.  The shellScript in project.pbxproj already
       # contains the `. "$HOME/.cargo/env"` prefix (committed fix); the step
       # below is belt-and-suspenders in case Tauri tooling regenerates the file.
@@ -510,10 +516,9 @@ jobs:
           cache: 'npm'
 
       - name: Install Rust
-        uses: rust-lang/setup-rust-toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          rust-channel: stable
-          target: aarch64-linux-android
+          targets: aarch64-linux-android
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
