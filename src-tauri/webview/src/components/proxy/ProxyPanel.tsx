@@ -134,7 +134,7 @@ export function ProxyPanel({ onNavigateTo, onAddToApinoxProject }: ProxyPanelPro
       <div ref={containerRef} style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
         {activeTab === 'traffic' && (
           <>
-            <div style={{ flex: `0 0 ${splitPx}px`, overflow: 'hidden', minWidth: 0 }}>
+            <div style={{ flex: logs.length === 0 ? '1' : `0 0 ${splitPx}px`, overflow: 'hidden', minWidth: 0 }}>
               <TrafficViewer
                 logs={logs}
                 onSelectLog={setSelectedLog}

@@ -1,7 +1,11 @@
 import React, { useCallback, useRef, useState, useEffect } from "react";
 import styled from "styled-components";
-import "@apinox/request-editor/monaco";
+import { configureMonacoEnvironment } from "@apinox/request-editor/monaco";
 import Editor from "@monaco-editor/react";
+
+// Configure Monaco to use the local bundle instead of CDN (blocked by Tauri CSP).
+// Must be called before <Editor> mounts.
+configureMonacoEnvironment();
 import {
   Save,
   Eye,

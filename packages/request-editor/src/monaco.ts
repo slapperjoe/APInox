@@ -1,6 +1,6 @@
 import { configureMonacoEnvironment } from './utils/configureMonacoEnvironment';
 
-configureMonacoEnvironment();
+export { configureMonacoEnvironment };
 
 export { MonacoRequestEditor } from './components/MonacoRequestEditor';
 export type { MonacoRequestEditorHandle } from './components/MonacoRequestEditor';
