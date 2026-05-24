@@ -43,6 +43,10 @@ export interface CtxMenuItem {
   copyText?: string;
   /** Danger styling for destructive actions */
   danger?: boolean;
+  /** Optional nested sub-items (creates a submenu on hover) */
+  subItems?: CtxMenuItem[];
+  /** Optional icon for sub-menu parent items */
+  subIcon?: typeof Pencil;
 }
 
 export interface CtxMenuSection {
@@ -139,11 +143,36 @@ const Toast = styled.div`
   animation: ctxFadeIn 0.2s ease;
 `;
 
+const SubMenu = styled.div`
+  position: fixed;
+  z-index: 100000;
+  background: ${tokens.surface.panel};
+  border: 1px solid ${tokens.border.default};
+  border-radius: ${tokens.radius.lg};
+  box-shadow: 0 14px 40px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4);
+  min-width: 220px;
+  overflow: hidden;
+  animation: ctxFadeIn 0.1s ease;
+`;
+
+const ChevronRight = styled.div`
+  margin-left: auto;
+  font-size: 16px;
+  color: ${tokens.text.hint};
+  transition: transform 0.15s ease;
+`;
+
 // ─── Sub-components ───────────────────────────────────────────────────────
+
+const ItemContainer = styled.div`
+  position: relative;
+`;
 
 function MenuItemRow({ item, onCopy }: { item: CtxMenuItem; onCopy: (text: string) => Promise<void> }) {
   const [hover, setHover] = useState(false);
   const IconComp = item.icon;
+  const hasSubItems = item.subItems && item.subItems.length > 0;
+
   const handleClick = async () => {
     if (item.copyText !== undefined) {
       await onCopy(item.copyText);
@@ -151,24 +180,43 @@ function MenuItemRow({ item, onCopy }: { item: CtxMenuItem; onCopy: (text: strin
       item.onClick();
     }
   };
+
   return (
-    <MenuItem
-      $danger={item.danger}
-      $hover={hover}
-      onClick={handleClick}
+    <ItemContainer
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >
-      <IconWrapper>
-        <IconComp size={14} />
-      </IconWrapper>
-      <LabelWrapper>
-        <Label $danger={item.danger}>{item.label}</Label>
-        {item.sub && <SubLabel>{item.sub}</SubLabel>}
-      </LabelWrapper>
-    </MenuItem>
+      <MenuItem
+        $danger={item.danger}
+        $hover={hover || false}
+        onClick={hasSubItems ? undefined : handleClick}
+      >
+        <IconWrapper>
+          <IconComp size={14} />
+        </IconWrapper>
+        <LabelWrapper>
+          <Label $danger={item.danger}>{item.label}</Label>
+          {item.sub && <SubLabel>{item.sub}</SubLabel>}
+        </LabelWrapper>
+        {hasSubItems && <ChevronRight>▶</ChevronRight>}
+      </MenuItem>
+      {hasSubItems && hover && (
+        <SubMenu
+          style={{
+            position: 'absolute',
+            left: '100%',
+            top: 0,
+          }}
+        >
+          {item.subItems!.map((subItem, ii) => (
+            <MenuItemRow key={ii} item={subItem} onCopy={onCopy} />
+          ))}
+        </SubMenu>
+      )}
+    </ItemContainer>
   );
 }
+
 
 // ─── Main Component ───────────────────────────────────────────────────────
 
