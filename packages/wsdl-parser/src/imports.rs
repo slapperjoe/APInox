@@ -257,9 +257,17 @@ impl ImportResolver {
         depth: usize,
         max_depth: usize,
     ) -> Result<SchemaDefinition> {
-        // Check recursion depth
+        // Check recursion depth — warn and return a partial schema rather than
+        // failing the entire parse, since the visited-set already prevents true
+        // infinite loops.
         if depth > max_depth {
-            return Err(anyhow!("Maximum import depth exceeded: {}", max_depth));
+            log::warn!(
+                "Import depth limit ({}) reached for namespace '{}'; skipping further imports at this branch",
+                max_depth,
+                target_namespace
+            );
+            return SchemaParser::parse_schema(schema_xml, target_namespace)
+                .map_err(|e| anyhow!("Schema parse error at depth limit: {}", e));
         }
 
         log::debug!("Resolving imports at depth {}/{} for namespace: {}", depth, max_depth, target_namespace);
