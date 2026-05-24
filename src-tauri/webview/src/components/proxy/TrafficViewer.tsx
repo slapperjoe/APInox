@@ -398,23 +398,26 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = [], onAddIgnore
         const isSoap = extractSoapAction(log) !== null;
         const sections: CtxMenuSection[] = [];
 
-        // Create Rule section
+        // Create Rule From Traffic — collapsed into single parent item with sub-menu
         const hasCreate = !!(onCreateMockRule || onCreateReplaceRule || onCreateBreakpoint);
         if (hasCreate) {
-          const items: CtxMenuItem[] = [];
+          const createSubItems: CtxMenuItem[] = [];
           if (onCreateMockRule) {
-            items.push({ icon: VenetianMask, label: 'Create Mock Rule', sub: 'Pre-fill response from this traffic', onClick: () => { onCreateMockRule!(log); setCtxMenu(null); } });
+            createSubItems.push({ icon: VenetianMask, label: 'Create Mock Rule', sub: 'Pre-fill response from this traffic', onClick: () => { onCreateMockRule!(log); setCtxMenu(null); } });
           }
           if (onCreateReplaceRule) {
-            items.push({ icon: Pencil, label: 'Create Replace Rule', sub: 'Open replace rule editor', onClick: () => { onCreateReplaceRule!(log); setCtxMenu(null); } });
+            createSubItems.push({ icon: Pencil, label: 'Create Replace Rule', sub: 'Open replace rule editor', onClick: () => { onCreateReplaceRule!(log); setCtxMenu(null); } });
           }
           if (onCreateBreakpoint) {
-            items.push({ icon: Pause, label: 'Create Breakpoint', sub: 'Pause matching traffic for inspection', onClick: () => { onCreateBreakpoint!(log); setCtxMenu(null); } });
+            createSubItems.push({ icon: Pause, label: 'Create Breakpoint', sub: 'Pause matching traffic for inspection', onClick: () => { onCreateBreakpoint!(log); setCtxMenu(null); } });
           }
-          sections.push({ title: 'Create Rule From Traffic', items });
+          sections.push({
+            title: 'Create Rule From Traffic',
+            items: [{ icon: VenetianMask, label: 'Create Rule From Traffic', sub: 'Generate rules from this request', subItems: createSubItems }],
+          });
         }
 
-        // APInox section
+        // APInox section — single item, no nesting needed
         if (onAddToApinoxProject) {
           sections.push({
             title: 'APInox',
@@ -422,27 +425,27 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = [], onAddIgnore
           });
         }
 
-        // Copy to Clipboard (available for all traffic)
-        const copyItems: CtxMenuItem[] = [
-          { icon: Code, label: 'Copy URL + Request', sub: 'Method, URL and request body', copyText: copyFullRequest(log) },
-          { icon: FileText, label: 'Copy Full Exchange', sub: 'URL, request and response', copyText: copyFullExchange(log) },
-          { icon: File, label: 'Copy All (URL + Request + Response)', sub: 'Formatted with XML', copyText: copyAllTraffic(log) },
+        // Copy to Clipboard — collapsed into single parent item with sub-menu
+        const copySubItems: CtxMenuItem[] = [
+          { icon: Code, label: 'URL + Request', sub: 'Method, URL and request body', copyText: copyFullRequest(log) },
+          { icon: FileText, label: 'Full Exchange', sub: 'URL, request and response', copyText: copyFullExchange(log) },
+          { icon: File, label: 'All (URL + Request + Response)', sub: 'Formatted with XML', copyText: copyAllTraffic(log) },
         ];
         if (isSoap) {
-          copyItems.unshift({ icon: Copy, label: 'Copy SOAP Body', sub: 'URL + inner XML', copyText: copySoapBody(log) });
+          copySubItems.unshift({ icon: Copy, label: 'SOAP Body', sub: 'URL + inner XML', copyText: copySoapBody(log) });
         }
         sections.push({
           title: 'Copy to Clipboard',
-          items: copyItems,
+          items: [{ icon: Copy, label: 'Copy to Clipboard', sub: 'Choose what to copy', subItems: copySubItems }],
         });
 
-        // Ignore Traffic section
+        // Ignore Traffic — collapsed into single parent item with sub-menu
         sections.push({
           title: 'Ignore Traffic',
-          items: [
+          items: [{ icon: Globe, label: 'Ignore Traffic', sub: 'Filter matching requests', subItems: [
             { icon: Globe, label: 'Ignore host', sub: hostPattern, onClick: () => { onAddIgnoreRule?.(log.url, 'host'); setCtxMenu(null); } },
             { icon: Link, label: 'Ignore host + path', sub: hostPathPattern, onClick: () => { onAddIgnoreRule?.(log.url, 'host+path'); setCtxMenu(null); } },
-          ],
+          ]}],
         });
 
         return (

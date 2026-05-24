@@ -11,6 +11,7 @@
   "scripts": {
     "clean": "node scripts/clean.js",
     "clean:rust": "cargo clean --manifest-path src-tauri/Cargo.toml",
+    "distrobox:make": "bash scripts/distrobox-make.sh",
     "tauri:init": "node scripts/tauri-init.js",
     "build:packages": "cd packages/request-editor && npm install && npm run build",
     "compile-webview": "npm run build:packages && cd src-tauri/webview && npm install && npm run build:skip-check",
