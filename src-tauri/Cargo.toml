@@ -1,6 +1,6 @@
 [package]
 name = "apinox"
-version = "0.38.263"
+version = "0.39.264"
 description = "APInox - API Testing & Development Tool"
 authors = ["Dev1"]
 license = "MIT"
