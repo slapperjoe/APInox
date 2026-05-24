@@ -1,0 +1,4 @@
+[apinox]
+image=fedora:latest
+additional_packages=gcc gcc-c++ make pkgconf nodejs npm rust-packaging webkit2gtk4.1-devel javascriptcoregtk4.1-devel libxml2-devel curl-devel openssl-devel zlib-devel
+init_hooks=curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal

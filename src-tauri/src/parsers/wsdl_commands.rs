@@ -62,7 +62,7 @@ pub async fn parse_wsdl(request: ParseWsdlRequest) -> Result<ParseWsdlResponse, 
     // Parse WSDL
     log::info!("Starting parse (resolve_imports={})", resolve_imports);
     let services = if resolve_imports {
-        WsdlParser::parse_with_imports(&request.url, &wsdl_xml, 10)
+        WsdlParser::parse_with_imports(&request.url, &wsdl_xml, 20)
             .await
             .map_err(|e| {
                 log::error!("Parse error: {}", e);
