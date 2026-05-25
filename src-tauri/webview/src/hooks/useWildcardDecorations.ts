@@ -1,9 +1,9 @@
 import { useRef, useEffect } from 'react';
-import { Monaco } from '@monaco-editor/react';
+import type { MonacoType } from '@apinox/request-editor/monaco';
 
 export const useWildcardDecorations = (
     editor: any, 
-    monaco: Monaco | null, 
+    monaco: MonacoType | null, 
     value: string,
     availableChainVariables?: Array<{ name: string; value: string | null; source: string }>,
     availableEnvVariables?: Array<{ name: string; value: string | null }>

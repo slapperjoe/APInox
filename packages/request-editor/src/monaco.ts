@@ -1,6 +1,8 @@
-import { configureMonacoEnvironment } from './utils/configureMonacoEnvironment';
+export { MonacoEditorWrapper } from './components/MonacoEditorWrapper';
+export type { MonacoEditorWrapperProps } from './components/MonacoEditorWrapper';
 
-export { configureMonacoEnvironment };
+export { useMonaco } from './hooks/useMonaco';
+export type { Monaco, Monaco as MonacoType } from './hooks/useMonaco';
 
 export { MonacoRequestEditor } from './components/MonacoRequestEditor';
 export type { MonacoRequestEditorHandle } from './components/MonacoRequestEditor';

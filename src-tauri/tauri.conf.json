@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "APInox",
-  "version": "0.39.264",
+  "version": "0.39.284",
   "identifier": "app.apinox.dev1",
   "build": {
     "frontendDist": "webview/dist",
@@ -48,6 +48,7 @@
     "targets": [
       "nsis",
       "dmg",
+      "appimage",
       "deb",
       "rpm"
     ],
@@ -60,6 +61,13 @@
     ],
     "resources": {
       "../CHANGELOG.md": "CHANGELOG.md"
+    },
+    "linux": {
+      "appimage": {
+        "files": {
+          "apinox.png": "icons/icon.png"
+        }
+      }
     },
     "windows": {
       "nsis": {

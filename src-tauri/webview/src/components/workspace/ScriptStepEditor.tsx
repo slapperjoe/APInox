@@ -4,7 +4,7 @@ import { WorkflowStep } from '@shared/models';
 import { SPACING_SM, SPACING_MD } from '../../styles/spacing';
 import { Code } from 'lucide-react';
 import { PrimaryButton } from '../common/Button';
-import Editor from '@monaco-editor/react';
+import { MonacoEditorWrapper } from '@apinox/request-editor/monaco';
 
 const Container = styled.div`
     display: flex;
@@ -142,7 +142,7 @@ export const ScriptStepEditor: React.FC<ScriptStepEditorProps> = ({ step, onUpda
             <FlexSection>
                 <Label>JavaScript Code</Label>
                 <EditorContainer>
-                    <Editor
+                    <MonacoEditorWrapper
                         language="javascript"
                         theme="vs-dark"
                         value={script}

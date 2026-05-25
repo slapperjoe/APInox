@@ -1,11 +1,6 @@
 import React, { useCallback, useRef, useState, useEffect } from "react";
 import styled from "styled-components";
-import { configureMonacoEnvironment } from "@apinox/request-editor/monaco";
-import Editor from "@monaco-editor/react";
-
-// Configure Monaco to use the local bundle instead of CDN (blocked by Tauri CSP).
-// Must be called before <Editor> mounts.
-configureMonacoEnvironment();
+import { MonacoEditorWrapper, MonacoEditorWrapperProps } from "@apinox/request-editor/monaco";
 import {
   Save,
   Eye,
@@ -454,7 +449,7 @@ export const NotesEditor: React.FC = () => {
             />
           ) : (
             /* Non-markdown: Monaco */
-            <Editor
+            <MonacoEditorWrapper
               height="100%"
               language={monacoLang}
               value={activeNote.content}

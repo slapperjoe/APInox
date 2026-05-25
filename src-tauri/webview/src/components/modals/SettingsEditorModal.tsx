@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
-import Editor, { Monaco } from '@monaco-editor/react';
+import { MonacoEditorWrapper } from '@apinox/request-editor/monaco';
 import { AlertTriangle, Settings, FileJson, Globe, Cloud, Server, ArrowUpCircle } from 'lucide-react';
 import { GeneralTab, EnvironmentsTab, GlobalsTab, IntegrationsTab, UpdatesTab, ApinoxConfig } from './settings';
 
@@ -508,7 +508,7 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
                                     {parseError}
                                 </div>
                             )}
-                            <Editor
+                            <MonacoEditorWrapper
                                 height="100%"
                                 language="json"
                                 theme={editorTheme}

@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { Trash2, CheckCircle2, XCircle, Clock, ListChecks } from 'lucide-react';
 import { Assertion } from '../types';
 import { StatusCodePicker } from './StatusCodePicker';
-import Editor from '@monaco-editor/react';
+import { MonacoEditorWrapper } from '../monaco';
 // import { ScriptPlaygroundModal } from './modals/ScriptPlaygroundModal'; // TODO: Add ScriptPlaygroundModal
 const SPACING_XS = '4px';
 const SPACING_SM = '8px';
@@ -380,9 +380,9 @@ export const AssertionsPanel: React.FC<AssertionsPanelProps> = ({ assertions, on
                                                 {/* TODO: Restore ScriptPlaygroundModal button */}
                                             </ScriptHeader>
                                             <ScriptEditorWrapper>
-                                                <Editor
+                                                <MonacoEditorWrapper
                                                     height="100px"
-                                                    defaultLanguage="javascript"
+                                                    language="javascript"
                                                     theme="vs-dark"
                                                     value={a.configuration?.script || ''}
                                                     onChange={(val) => updateConfig(a.id!, 'script', val || '')}
@@ -392,7 +392,7 @@ export const AssertionsPanel: React.FC<AssertionsPanelProps> = ({ assertions, on
                                                             id: 'insert-newline',
                                                             label: 'Insert Newline',
                                                             keybindings: [monaco.KeyCode.Enter],
-                                                            run: (ed) => {
+                                                            run: (ed: any) => {
                                                                 ed.trigger('keyboard', 'type', { text: '\n' });
                                                             }
                                                         });

@@ -4,7 +4,7 @@ import {
   forwardRef,
   useEffect,
 } from "react";
-import Editor, { Monaco } from "@monaco-editor/react";
+import { MonacoEditorWrapper, Monaco } from "../monaco";
 import styled from "styled-components";
 import { debugWarn } from "../utils/logger";
 import { useWildcardDecorations } from "../hooks/useWildcardDecorations";
@@ -233,9 +233,9 @@ export const MonacoSingleLineInput = forwardRef<
                 /* Hide cursor when not focused? No, input needs cursor. */
                 `}
       </style>
-      <Editor
+      <MonacoEditorWrapper
         height="26px" // Explicit height to match container
-        defaultLanguage="text"
+        language="text"
         value={value}
         onChange={handleChange}
         theme="vs-dark"

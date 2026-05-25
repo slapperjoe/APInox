@@ -40,10 +40,11 @@ export default defineConfig({
     server: {
         strictPort: true,
         fs: {
-            // Allow serving files from the packages directory (for monaco CSS imports)
+            // The webview imports source files from packages/ and shared/ during dev,
+            // and Monaco CSS is resolved from the package-local node_modules tree.
             allow: [
-                '.', // Current directory (webview)
-                '../../packages', // Packages directory (for @apinox/request-editor)
+                '.',
+                '../..',
             ]
         }
     },
@@ -54,7 +55,6 @@ export default defineConfig({
     },
     optimizeDeps: {
         exclude: [
-            '@monaco-editor/react',
             'monaco-editor/esm/vs/language/json/json.worker',
             '@shared/messages',
             '@shared/models'
@@ -84,7 +84,7 @@ export default defineConfig({
                 assetFileNames: `assets/[name].[ext]`,
                 manualChunks: {
                     vendor: ['react', 'react-dom'],
-                    monaco: ['monaco-editor', '@monaco-editor/react']
+                    monaco: ['monaco-editor']
                 },
                 // Help IDEs map source paths correctly
                 sourcemapPathTransform: (relativeSourcePath) => {
@@ -95,4 +95,3 @@ export default defineConfig({
         }
     }
 })
-

@@ -31,8 +31,7 @@ export default defineConfig(({ mode }) => {
       ],
       optimizeDeps: {
         exclude: [
-          'monaco-editor',
-          '@monaco-editor/react'
+          'monaco-editor'
         ]
       },
       server: {
