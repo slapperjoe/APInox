@@ -1,10 +1,10 @@
 import { useRef, useEffect } from "react";
-import { Monaco } from "@monaco-editor/react";
+import type { MonacoType } from "../monaco";
 import { debugLog, debugError, debugWarn } from "../utils/logger";
 
 export const useWildcardDecorations = (
   editor: any,
-  monaco: Monaco | null,
+  monaco: MonacoType | null,
   value: string,
   availableChainVariables?: Array<{
     name: string;

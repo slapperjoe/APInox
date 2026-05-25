@@ -5,7 +5,7 @@ import {
   useEffect,
   useState,
 } from "react";
-import Editor, { Monaco } from "@monaco-editor/react";
+import { MonacoEditorWrapper, Monaco } from "../monaco";
 import styled from "styled-components";
 import { useWildcardDecorations } from "../hooks/useWildcardDecorations";
 import { applyAutoFolding } from "../utils/xmlFoldingUtils";
@@ -536,11 +536,11 @@ export const MonacoRequestEditor = forwardRef<
     return (
       <EditorContainer>
         <style></style>
-        <Editor
+        <MonacoEditorWrapper
           height="100%"
           key={`request-editor-${theme}`}
-          defaultLanguage={language}
-          defaultValue={value}
+          language={language}
+          value={value}
           onChange={(val) => {
             debugLog(
               "[MonacoRequestEditor] onChange fired",

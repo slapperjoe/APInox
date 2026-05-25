@@ -7,7 +7,7 @@
     "url": "https://github.com/slapperjoe/apinox.git"
   },
   "license": "MIT",
-  "version": "0.39.264",
+  "version": "0.39.284",
   "scripts": {
     "clean": "node scripts/clean.js",
     "clean:rust": "cargo clean --manifest-path src-tauri/Cargo.toml",
@@ -29,6 +29,7 @@
     "tauri:test": "npm run build:packages && cd src-tauri/webview && npm install && cd ../.. && npx tauri dev",
     "tauri:run": "npx tauri dev",
     "tauri:dev": "node scripts/version.js increment && node scripts/version.js sync && npm run build:packages && cd src-tauri/webview && npm install && cd ../.. && npx tauri dev",
+    "appimage": "APP=$(ls -t target/release/bundle/appimage/APInox*.AppImage 2>/dev/null | head -1) && [ -n \"$APP\" ] && chmod +x \"$APP\" && LD_LIBRARY_PATH=$APP/usr/lib \"$APP\" || { echo 'No AppImage found.'; exit 1; }",
     "tauri:build": "node scripts/version.js build",
     "tauri:ios": "node scripts/version.js increment && node scripts/version.js sync && npm run compile-webview && npx tauri ios dev",
     "tauri:android": "node scripts/version.js increment && node scripts/version.js sync && npx tauri android dev",

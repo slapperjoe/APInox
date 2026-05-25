@@ -1,4 +1,4 @@
-import type { Monaco } from '@monaco-editor/react';
+import type { MonacoType } from '../monaco';
 
 export function getMonacoThemeId(theme: string): string {
     return `apinox-${theme}`;
@@ -31,7 +31,7 @@ export function toMonacoColor(color: string): string {
     return trimmed;
 }
 
-export function applyMonacoTheme(monacoInstance: Monaco, theme: string): string {
+export function applyMonacoTheme(monacoInstance: MonacoType, theme: string): string {
     const root = document.documentElement;
     const getVar = (name: string, fallback: string) => {
         const value = getComputedStyle(root).getPropertyValue(name).trim();

@@ -21,4 +21,20 @@ npm install
 echo "[3/3] Building shared packages..."
 npm run build:packages
 
+# Configure zsh prompt to show container name when in distrobox
+ZSHRC_FILE="/home/mark/.zshrc"
+if [[ -f "$ZSHRC_FILE" ]]; then
+  if ! grep -q "CONTAINER_ID" "$ZSHRC_FILE"; then
+    printf '\n# Distrobox: show container name in prompt\n' >> "$ZSHRC_FILE"
+    printf 'if [[ -n "${CONTAINER_ID:-}" ]]; then\n' >> "$ZSHRC_FILE"
+    printf '  PS1="%%n@${CONTAINER_ID}:%%~%%# "\n' >> "$ZSHRC_FILE"
+    printf 'fi\n' >> "$ZSHRC_FILE"
+  fi
+else
+  printf '# Distrobox: show container name in prompt\n' > "$ZSHRC_FILE"
+  printf 'if [[ -n "${CONTAINER_ID:-}" ]]; then\n' >> "$ZSHRC_FILE"
+  printf '  PS1="%%n@${CONTAINER_ID}:%%~%%# "\n' >> "$ZSHRC_FILE"
+  printf 'fi\n' >> "$ZSHRC_FILE"
+fi
+
 echo "=== Setup complete ==="

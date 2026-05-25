@@ -14,7 +14,7 @@
  */
 
 // ─── BUILD NUMBER (auto-managed — do not edit manually) ───────────────────
-const BUILD_NO = 264;
+const BUILD_NO = 284;
 // ─────────────────────────────────────────────────────────────────────────
 
 const fs = require("fs");
@@ -35,6 +35,80 @@ const configFiles = {
 function run(cmd, opts = {}) {
   console.log(`\n> ${cmd}`);
   execSync(cmd, { stdio: "inherit", cwd: root, ...opts });
+}
+
+function wantsLinuxAppImage(extraArgs) {
+  if (process.platform !== "linux") {
+    return false;
+  }
+
+  const bundlesIndex = extraArgs.findIndex((arg) => arg === "--bundles");
+  if (bundlesIndex === -1) {
+    return true;
+  }
+
+  const bundles = (extraArgs[bundlesIndex + 1] || "")
+    .split(",")
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean);
+
+  return bundles.includes("appimage") || bundles.includes("all");
+}
+
+function tryFinalizeLinuxAppImage() {
+  const tauriConf = JSON.parse(fs.readFileSync(configFiles.tauriConfig, "utf8"));
+  const productName = tauriConf.productName || "app";
+  const bundleDir = path.join(root, "target", "release", "bundle", "appimage");
+  const appDir = path.join(bundleDir, `${productName}.AppDir`);
+  const desktopIcon = path.join(appDir, `${productName}.png`);
+  const rootIcon = path.join(appDir, productName.toLowerCase() + ".png");
+  const pluginPath = path.join(
+    process.env.HOME || "",
+    ".cache",
+    "tauri",
+    "linuxdeploy-plugin-appimage.AppImage",
+  );
+
+  if (!fs.existsSync(appDir) || !fs.existsSync(desktopIcon) || !fs.existsSync(pluginPath)) {
+    return false;
+  }
+
+  if (!fs.existsSync(rootIcon)) {
+    fs.copyFileSync(desktopIcon, rootIcon);
+  }
+
+  console.log("\n> linuxdeploy-plugin-appimage --appdir " + path.basename(appDir));
+  const result = spawnSync(pluginPath, ["--appdir", path.basename(appDir)], {
+    cwd: bundleDir,
+    env: {
+      ...process.env,
+      APPIMAGE_EXTRACT_AND_RUN: "1",
+    },
+    encoding: "utf8",
+    maxBuffer: 50 * 1024 * 1024,
+  });
+
+  if (result.stdout) {
+    process.stdout.write(result.stdout);
+  }
+  if (result.stderr) {
+    process.stderr.write(result.stderr);
+  }
+
+  if (result.status !== 0) {
+    return false;
+  }
+
+  const generatedAppImage = path.join(bundleDir, `${productName}-x86_64.AppImage`);
+  if (fs.existsSync(generatedAppImage)) {
+    const version = JSON.parse(fs.readFileSync(configFiles.rootPackage, "utf8")).version;
+    const tauriStyleName = path.join(bundleDir, `${productName}_${version}_amd64.AppImage`);
+    if (generatedAppImage !== tauriStyleName) {
+      fs.copyFileSync(generatedAppImage, tauriStyleName);
+    }
+  }
+
+  return true;
 }
 
 // ── increment ──────────────────────────────────────────────────────────────
@@ -218,13 +292,34 @@ function build(extraArgs) {
   run("npm install", { cwd: path.join(root, "src-tauri", "webview") });
 
   console.log(`\n> npx tauri build ${extraArgs.join(" ")}`);
+  const env = { ...process.env };
+  if (process.platform === "linux") {
+    env.APPIMAGE_EXTRACT_AND_RUN = "1";
+  }
   const result = spawnSync("npx", ["tauri", "build", ...extraArgs], {
-    stdio: "inherit",
     cwd: root,
     shell: true,
+    env,
+    encoding: "utf8",
+    maxBuffer: 50 * 1024 * 1024,
   });
+  if (result.stdout) {
+    process.stdout.write(result.stdout);
+  }
+  if (result.stderr) {
+    process.stderr.write(result.stderr);
+  }
   if (result.status !== 0) {
-    process.exit(result.status ?? 1);
+    const combinedOutput = `${result.stdout || ""}\n${result.stderr || ""}`;
+    if (
+      wantsLinuxAppImage(extraArgs)
+      && combinedOutput.includes("failed to run linuxdeploy")
+      && tryFinalizeLinuxAppImage()
+    ) {
+      console.log("\n✅ AppImage completed via post-build workaround.");
+    } else {
+      process.exit(result.status ?? 1);
+    }
   }
 
   // On Linux, produce an Arch Linux package only when makepkg is available

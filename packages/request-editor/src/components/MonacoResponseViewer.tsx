@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
-import Editor, { Monaco } from '@monaco-editor/react';
+import { MonacoEditorWrapper } from '../monaco';
+import type { MonacoType as Monaco } from '../monaco';
 import styled from 'styled-components';
 import { applyAutoFolding } from '../utils/xmlFoldingUtils';
 import { useTheme } from '../contexts/ThemeContext';
@@ -71,10 +72,10 @@ export const MonacoResponseViewer: React.FC<MonacoResponseViewerProps> = ({
 
     return (
         <ViewerContainer style={{ opacity: isReady ? 1 : 0, transition: 'opacity 0.1s' }}>
-            <Editor
+            <MonacoEditorWrapper
                 height="100%"
                 key={`response-viewer-${theme}`}
-                defaultLanguage={language}
+                language={language}
                 value={value}
                 theme={viewerTheme}
                 options={{
@@ -127,7 +128,7 @@ export const MonacoResponseViewer: React.FC<MonacoResponseViewerProps> = ({
                         setTimeout(() => { wasMouseSelection = false; }, 100);
                     });
 
-                    editor.onDidChangeCursorSelection((e) => {
+                    editor.onDidChangeCursorSelection((e: any) => {
                         pendingSelection = e.selection;
 
                         // Only immediately notify for keyboard-based selections (not mouse-based)

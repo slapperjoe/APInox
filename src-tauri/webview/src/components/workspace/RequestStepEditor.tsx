@@ -4,7 +4,7 @@ import { WorkflowStep } from '@shared/models';
 import { SPACING_SM, SPACING_MD } from '../../styles/spacing';
 import { GitBranch, AlertCircle, Plus } from 'lucide-react';
 import { PrimaryButton, SecondaryButton } from '../common/Button';
-import Editor from '@monaco-editor/react';
+import { MonacoEditorWrapper } from '@apinox/request-editor/monaco';
 
 const Container = styled.div`
     display: flex;
@@ -189,7 +189,7 @@ export const RequestStepEditor: React.FC<RequestStepEditorProps> = ({ step, onUp
                     <FlexSection>
                         <Label>Request Body (use {`{{varName}}`} for variables)</Label>
                         <EditorContainer>
-                            <Editor
+                            <MonacoEditorWrapper
                                 height="100%"
                                 language="xml"
                                 theme="vs-dark"

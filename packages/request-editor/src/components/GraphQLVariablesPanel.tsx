@@ -4,7 +4,7 @@
 
 import React from 'react';
 import styled from 'styled-components';
-import Editor from '@monaco-editor/react';
+import { MonacoEditorWrapper } from '../monaco';
 import { SPACING_XS, SPACING_SM } from '../styles/spacing';
 
 const Container = styled.div`
@@ -133,7 +133,7 @@ export const GraphQLVariablesPanel: React.FC<GraphQLVariablesPanelProps> = ({
             </Header>
 
             <EditorContainer>
-                <Editor
+                <MonacoEditorWrapper
                     height="100%"
                     language="json"
                     value={jsonString}

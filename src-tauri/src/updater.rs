@@ -42,9 +42,11 @@ struct GitHubRelease {
     tag_name: String,
     html_url: String,
     body: Option<String>,
+    #[cfg(any(target_os = "windows", target_os = "macos"))]
     assets: Vec<GitHubAsset>,
 }
 
+#[cfg(any(target_os = "windows", target_os = "macos"))]
 #[derive(Debug, Deserialize)]
 struct GitHubAsset {
     name: String,

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import Editor from '@monaco-editor/react';
+import { MonacoEditorWrapper } from '@apinox/request-editor/monaco';
 import { Play, Loader2, HelpCircle } from 'lucide-react';
 import { bridge, isTauri, isStandalone } from '../../utils/bridge';
 import { PrimaryButton, SecondaryButton } from '../common/Button';
@@ -400,9 +400,9 @@ export const ScriptPlaygroundModal: React.FC<ScriptPlaygroundModalProps> = ({ on
                                 <MiniButton onClick={() => setResponseBody('{\n  "status": "success",\n  "data": {\n    "id": 123,\n    "name": "Test Item"\n  }\n}')}>Sample JSON</MiniButton>
                                 <MiniButton onClick={() => setResponseBody('')}>Clear</MiniButton>
                             </SectionToolbar>
-                            <Editor
+                            <MonacoEditorWrapper
                                 height="100%"
-                                defaultLanguage="xml"
+                                language="xml"
                                 theme={monacoTheme}
                                 value={responseBody}
                                 onChange={(v) => setResponseBody(v || '')}
@@ -437,9 +437,9 @@ export const ScriptPlaygroundModal: React.FC<ScriptPlaygroundModalProps> = ({ on
                                 <MiniButton onClick={() => setVariables('{\n  "env": "dev",\n  "userId": 101,\n  "token": "abc-123"\n}')}>Default</MiniButton>
                                 <MiniButton onClick={() => setVariables('{}')}>Clear</MiniButton>
                             </SectionToolbar>
-                            <Editor
+                            <MonacoEditorWrapper
                                 height="100%"
-                                defaultLanguage="json"
+                                language="json"
                                 theme={monacoTheme}
                                 value={variables}
                                 onChange={(v) => setVariables(v || '')}
@@ -451,9 +451,9 @@ export const ScriptPlaygroundModal: React.FC<ScriptPlaygroundModalProps> = ({ on
                     <RightPanel>
                         <Section $flex={2}>
                             <SectionTitle>Script</SectionTitle>
-                            <Editor
+                            <MonacoEditorWrapper
                                 height="100%"
-                                defaultLanguage="javascript"
+                                language="javascript"
                                 theme={monacoTheme}
                                 value={script}
                                 onChange={(v) => setScript(v || '')}

@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from "react";
 import styled from "styled-components";
-import Editor, { Monaco } from "@monaco-editor/react";
+import { MonacoEditorWrapper, Monaco } from "../monaco";
 import { ChevronLeft } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
 import { applyMonacoTheme } from "../utils/monacoTheme";
@@ -155,14 +155,15 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
     applyEditorTheme(monaco);
 
     // Configure JavaScript defaults for the Sandbox API
-    monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
+    const ts = monaco.languages.typescript as any;
+    ts.javascriptDefaults.setDiagnosticsOptions({
       noSemanticValidation: false,
       noSyntaxValidation: false,
     });
 
     // Add extra lib for API autocomplete
     const libUri = "ts:filename/sandbox.d.ts";
-    monaco.languages.typescript.javascriptDefaults.addExtraLib(
+    ts.javascriptDefaults.addExtraLib(
       `
             /**
              * Log a message to the test runner output.
@@ -266,9 +267,9 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
       </div>
 
       <div style={{ flex: 1, overflow: "hidden" }}>
-        <Editor
+        <MonacoEditorWrapper
           height="100%"
-          defaultLanguage="javascript"
+          language="javascript"
           theme={editorTheme}
           value={scriptContent}
           onChange={handleChange}

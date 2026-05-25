@@ -7,7 +7,7 @@ import { PrimaryButton, SecondaryButton, IconButton } from '../common/Button';
 import { SPACING_SM, SPACING_MD, SPACING_XS } from '../../styles/spacing';
 import { v4 as uuidv4 } from 'uuid';
 import { PickRequestModal, PickRequestItem } from './PickRequestModal';
-import Editor from '@monaco-editor/react';
+import { MonacoEditorWrapper } from '@apinox/request-editor/monaco';
 
 const WorkflowBuilderContent = styled.div`
     display: flex;
@@ -1021,7 +1021,7 @@ export const WorkflowBuilderModal: React.FC<WorkflowBuilderModalProps> = ({
                                             overflow: 'hidden',
                                             height: '300px'
                                         }}>
-                                            <Editor
+                                            <MonacoEditorWrapper
                                                 height="300px"
                                                 language="javascript"
                                                 theme="vs-dark"
@@ -1088,7 +1088,7 @@ export const WorkflowBuilderModal: React.FC<WorkflowBuilderModalProps> = ({
                                                     overflow: 'hidden',
                                                     height: '300px'
                                                 }}>
-                                                    <Editor
+                                                    <MonacoEditorWrapper
                                                         height="300px"
                                                         language="xml"
                                                         theme="vs-dark"
