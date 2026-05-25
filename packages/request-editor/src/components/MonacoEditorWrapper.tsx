@@ -1,6 +1,9 @@
 import React, { useRef, useEffect, useState } from "react";
 import * as monaco from "monaco-editor";
 
+// Unique instance counter for per-editor model URIs
+let _monacoWrapperId = 0;
+
 // Monaco type alias for consumers
 export type Monaco = typeof monaco;
 
@@ -71,33 +74,25 @@ export const MonacoEditorWrapper = React.forwardRef<
     const modelRef = useRef<any>(null);
     const [isReady, setIsReady] = useState(false);
 
-    // Create model helper
+    // Create model helper - each editor gets a unique URI via instance ID
     const createModel = (
       text: string,
       lang: string,
-      uriPath?: string
+      instanceId: number
     ): any => {
-      if (uriPath) {
-        // Check if a model with this URI already exists and reuse it
-        const existing = monaco.editor.getModel(monaco.Uri.parse(uriPath));
-        if (existing) {
-          existing.setValue(text);
-          monaco.editor.setModelLanguage(existing, lang);
-          return existing;
-        }
-      }
-      const uri = uriPath ? monaco.Uri.parse(uriPath) : undefined;
-      return monaco.editor.createModel(text, lang, uri);
+      const uriPath = `editor://monaco-wrapper-${instanceId}`;
+      return monaco.editor.createModel(text, lang, monaco.Uri.parse(uriPath));
     };
 
     // Initialize editor on mount
     useEffect(() => {
       if (!containerRef.current || editorRef.current) return;
 
-      const uriPath = "editor://monaco-wrapper";
+      const instanceId = _monacoWrapperId;
+      _monacoWrapperId += 1;
       const initialLang = language || defaultLanguage;
       const initialText = value !== undefined ? value : defaultValue;
-      const model = createModel(initialText, initialLang, uriPath);
+      const model = createModel(initialText, initialLang, instanceId);
       modelRef.current = model;
 
       const editor = monaco.editor.create(containerRef.current, {
