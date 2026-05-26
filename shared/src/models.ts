@@ -384,6 +384,27 @@ export interface ApinoxProject {
 /** @deprecated Use ApinoxProject instead - kept for backward compatibility */
 export type SoapUIProject = ApinoxProject;
 
+// ============================================================================
+// UNIFIED EXPLORER TYPES
+// ============================================================================
+
+/** Project type for the unified API explorer (WSDL/OpenAPI as top-level entities) */
+export interface UnifiedProject {
+    name: string;
+    description?: string;
+    /** Source type that created this project */
+    source: 'wsdl' | 'openapi' | 'manual';
+    /** URL of the WSDL/OpenAPI source (for refresh/sync) */
+    sourceUrl?: string;
+    /** Timestamp when the WSDL/OpenAPI was first parsed */
+    parsedAt: Date;
+    /** Timestamp of the last refresh/sync */
+    lastRefreshedAt?: Date;
+    /** Operations (which contain requests) */
+    operations: ApiOperation[];
+    id?: string;
+}
+
 // Test Runner Types
 export type TestStepType = 'request' | 'delay' | 'transfer' | 'script' | 'workflow';
 

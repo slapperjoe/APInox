@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use crate::utils::resolve_config_dir;
 
 /// Returns the ~/.apinox/projects/ directory, creating it if needed.
-fn projects_dir() -> Result<PathBuf, String> {
+pub fn projects_dir() -> Result<PathBuf, String> {
     let dir = resolve_config_dir()?.join("projects");
     fs::create_dir_all(&dir)
         .map_err(|e| format!("Failed to create projects directory: {}", e))?;
@@ -618,4 +618,290 @@ pub async fn delete_project(dir_path: String) -> Result<(), String> {
 #[tauri::command]
 pub async fn close_project(_project_id: String) -> Result<serde_json::Value, String> {
     Ok(serde_json::json!({ "success": true }))
+}
+
+// ============================================================================
+// Unified Project Storage (WSDL service = top-level project)
+// ============================================================================
+
+/// Unified project properties for properties.json
+#[derive(Debug, Serialize, Deserialize)]
+struct UnifiedProperties {
+    name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    source: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    source_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    parsed_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    last_refreshed_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    format: Option<String>,
+}
+
+/// Save a unified project (flat layout: no interfaces/ wrapper)
+/// Disk layout:
+///   ProjectDir/
+///   ├── properties.json
+///   ├── Operation1/
+///   │   ├── operation.json
+///   │   ├── sample.xml
+///   │   └── sample.json
+///   └── Operation2/
+///       ├── operation.json
+///       ├── custom.xml
+///       └── custom.json
+#[tauri::command]
+pub fn save_unified_project(dir_path: String, project: serde_json::Value) -> Result<(), String> {
+    let dir = PathBuf::from(&dir_path);
+    fs::create_dir_all(&dir)
+        .map_err(|e| format!("Failed to create project directory: {}", e))?;
+
+    // Write properties.json with unified fields
+    let props = UnifiedProperties {
+        name: project["name"].as_str()
+            .ok_or("Missing project name")?
+            .to_string(),
+        description: project["description"].as_str().map(|s| s.to_string()),
+        source: project["source"].as_str().map(|s| s.to_string()),
+        source_url: project["sourceUrl"].as_str().map(|s| s.to_string()),
+        parsed_at: project["parsedAt"].as_str().map(|s| s.to_string()),
+        last_refreshed_at: project["lastRefreshedAt"].as_str().map(|s| s.to_string()),
+        id: project["id"].as_str().map(|s| s.to_string()),
+        format: Some("APInox-unified-v1".to_string()),
+    };
+    let props_val = serde_json::to_value(&props)
+        .map_err(|e| format!("Failed to build properties value: {}", e))?;
+    write_json(&dir.join("properties.json"), &props_val)?;
+
+    // Save operations directly under project dir (no interfaces/ wrapper)
+    let operations = project["operations"]
+        .as_array()
+        .ok_or("Missing or invalid operations array")?;
+
+    let op_names = sanitized_names(operations, "name");
+    cleanup_orphan_dirs(&dir, &op_names);
+
+    for op in operations {
+        save_unified_operation(op, &dir)?;
+    }
+
+    Ok(())
+}
+
+/// Save a single operation under the unified project
+fn save_unified_operation(op: &serde_json::Value, project_dir: &Path) -> Result<(), String> {
+    let name = op["name"].as_str().ok_or("Missing operation name")?;
+    let safe_name = sanitize_name(name);
+    let op_dir = project_dir.join(&safe_name);
+
+    fs::create_dir_all(&op_dir)
+        .map_err(|e| format!("Failed to create operation directory: {}", e))?;
+
+    write_json(&op_dir.join("operation.json"), &serde_json::json!({
+        "name": name,
+        "action": op["action"],
+        "input": op["input"],
+        "targetNamespace": op["targetNamespace"],
+        "originalEndpoint": op["originalEndpoint"],
+        "fullSchema": op["fullSchema"],
+        "displayName": op["displayName"],
+    }))?;
+
+    let requests = op["requests"]
+        .as_array()
+        .ok_or("Missing or invalid requests array")?;
+
+    // Cleanup orphaned request files
+    let current_request_names = sanitized_names(requests, "name");
+    if let Ok(entries) = fs::read_dir(&op_dir) {
+        let mut existing_bases = std::collections::HashSet::new();
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_file() {
+                if let Some(filename) = path.file_name().and_then(|f| f.to_str()) {
+                    if filename != "operation.json" {
+                        if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                            if ext == "xml" || ext == "json" {
+                                if let Some(base) = path.file_stem().and_then(|s| s.to_str()) {
+                                    existing_bases.insert(base.to_string());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        for base in existing_bases {
+            if !current_request_names.contains(&base) {
+                let _ = fs::remove_file(op_dir.join(format!("{}.xml", base)));
+                let _ = fs::remove_file(op_dir.join(format!("{}.json", base)));
+            }
+        }
+    }
+
+    for req in requests {
+        save_unified_request(req, &op_dir)?;
+    }
+
+    Ok(())
+}
+
+/// Save a single request (body + metadata) for unified project
+fn save_unified_request(req: &serde_json::Value, op_dir: &Path) -> Result<(), String> {
+    let name = req["name"].as_str().ok_or("Missing request name")?;
+    let safe_name = sanitize_name(name);
+
+    let body = req["request"].as_str().unwrap_or("");
+    fs::write(op_dir.join(format!("{}.xml", safe_name)), body)
+        .map_err(|e| format!("Failed to write request body: {}", e))?;
+
+    write_json(&op_dir.join(format!("{}.json", safe_name)), &serde_json::json!({
+        "name": name,
+        "endpoint": req["endpoint"],
+        "method": req["method"],
+        "contentType": req["contentType"],
+        "headers": req["headers"],
+        "assertions": req["assertions"],
+        "id": req["id"],
+        "requestType": req["requestType"],
+        "bodyType": req["bodyType"],
+        "restConfig": req["restConfig"],
+        "graphqlConfig": req["graphqlConfig"],
+        "extractors": req["extractors"],
+        "wsSecurity": req["wsSecurity"],
+        "attachments": req["attachments"],
+    }))?;
+
+    Ok(())
+}
+
+/// Load a unified project from disk
+#[tauri::command]
+pub fn load_unified_project(dir_path: String) -> Result<serde_json::Value, String> {
+    let dir = PathBuf::from(&dir_path);
+
+    if !dir.exists() || !dir.is_dir() {
+        return Err(format!("Project directory does not exist: {}", dir.display()));
+    }
+
+    // Load properties.json
+    let props_path = dir.join("properties.json");
+    let props_json = fs::read_to_string(&props_path)
+        .map_err(|e| format!("Failed to read properties.json: {}", e))?;
+    let props: UnifiedProperties = serde_json::from_str(&props_json)
+        .map_err(|e| format!("Failed to parse properties.json: {}", e))?;
+
+    // Load operations directly under project dir
+    let mut operations = Vec::new();
+    if let Ok(entries) = fs::read_dir(&dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                if let Ok(op) = load_unified_operation(&path) {
+                    operations.push(op);
+                }
+            }
+        }
+    }
+
+    Ok(serde_json::json!({
+        "name": props.name,
+        "description": props.description,
+        "source": props.source.unwrap_or("manual".to_string()),
+        "sourceUrl": props.source_url,
+        "parsedAt": props.parsed_at,
+        "lastRefreshedAt": props.last_refreshed_at,
+        "id": props.id,
+        "operations": operations,
+    }))
+}
+
+/// Load a single operation from a unified project
+fn load_unified_operation(op_dir: &Path) -> Result<serde_json::Value, String> {
+    let op_path = op_dir.join("operation.json");
+    let op_json = fs::read_to_string(&op_path)
+        .map_err(|e| format!("Failed to read operation.json: {}", e))?;
+
+    // Load requests
+    let mut requests = Vec::new();
+    if let Ok(entries) = fs::read_dir(op_dir) {
+        let mut request_bases = std::collections::HashSet::new();
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_file() {
+                if let Some(filename) = path.file_name().and_then(|f| f.to_str()) {
+                    if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                        if ext == "json" && filename != "operation.json" {
+                            if let Some(base) = path.file_stem().and_then(|s| s.to_str()) {
+                                request_bases.insert(base.to_string());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        for base in request_bases {
+            let meta_path = op_dir.join(format!("{}.json", base));
+            let body_path = op_dir.join(format!("{}.xml", base));
+            if meta_path.exists() {
+                let meta_json = fs::read_to_string(&meta_path)
+                    .map_err(|e| format!("Failed to read request metadata: {}", e))?;
+                let body = if body_path.exists() {
+                    fs::read_to_string(&body_path).ok()
+                } else {
+                    None
+                };
+                let mut meta: serde_json::Value = serde_json::from_str(&meta_json)
+                    .map_err(|e| format!("Failed to parse request metadata: {}", e))?;
+                if let Some(b) = body {
+                    meta["request"] = serde_json::Value::String(b);
+                }
+                requests.push(meta);
+            }
+        }
+    }
+
+    let op_data: serde_json::Value = serde_json::from_str(&op_json)
+        .map_err(|e| format!("Failed to parse operation.json: {}", e))?;
+    let name = op_data["name"].as_str().ok_or("Missing operation name")?;
+
+    Ok(serde_json::json!({
+        "name": name,
+        "action": op_data["action"],
+        "input": op_data["input"],
+        "targetNamespace": op_data["targetNamespace"],
+        "originalEndpoint": op_data["originalEndpoint"],
+        "fullSchema": op_data["fullSchema"],
+        "displayName": op_data["displayName"],
+        "requests": requests,
+    }))
+}
+
+/// List all unified projects in ~/.apinox/projects/
+#[tauri::command]
+pub fn list_unified_projects() -> Result<Vec<serde_json::Value>, String> {
+    let dir = projects_dir()?;
+    let mut projects = Vec::new();
+
+    if let Ok(entries) = fs::read_dir(&dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() && path.join("properties.json").exists() {
+                if let Ok(project) = load_unified_project(path.to_string_lossy().into()) {
+                    projects.push(project);
+                }
+            }
+        }
+    }
+    projects.sort_by(|a, b| {
+        a["name"].as_str().cmp(&b["name"].as_str())
+    });
+    Ok(projects)
 }
