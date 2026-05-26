@@ -168,10 +168,33 @@ const ItemContainer = styled.div`
   position: relative;
 `;
 
+const SubMenuContainer = styled.div`
+  position: relative;
+`;
+
 function MenuItemRow({ item, onCopy }: { item: CtxMenuItem; onCopy: (text: string) => Promise<void> }) {
   const [hover, setHover] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [subMenuPos, setSubMenuPos] = useState<{ left: number; top: number } | null>(null);
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const IconComp = item.icon;
   const hasSubItems = item.subItems && item.subItems.length > 0;
+
+  // Calculate viewport position for the sub-menu
+  const updateSubMenuPos = () => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      // Position submenu to the right of the parent item
+      setSubMenuPos({ left: rect.right, top: rect.top });
+    }
+  };
+
+  const clearHoverTimeout = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+  };
 
   const handleClick = async () => {
     if (item.copyText !== undefined) {
@@ -181,39 +204,68 @@ function MenuItemRow({ item, onCopy }: { item: CtxMenuItem; onCopy: (text: strin
     }
   };
 
+  const handleParentLeave = () => {
+    // Debounce: delay hiding so user can move to submenu without flicker
+    clearHoverTimeout();
+    hoverTimeoutRef.current = setTimeout(() => {
+      setHover(false);
+    }, 150);
+  };
+
+  const handleSubMenuEnter = () => {
+    clearHoverTimeout();
+    setHover(true);
+  };
+
+  const handleSubMenuLeave = () => {
+    clearHoverTimeout();
+    hoverTimeoutRef.current = setTimeout(() => {
+      setHover(false);
+    }, 150);
+  };
+
   return (
-    <ItemContainer
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-    >
-      <MenuItem
-        $danger={item.danger}
-        $hover={hover || false}
-        onClick={hasSubItems ? undefined : handleClick}
+    <SubMenuContainer>
+      <ItemContainer
+        ref={containerRef}
+        onMouseEnter={() => {
+          clearHoverTimeout();
+          setHover(true);
+          if (hasSubItems) updateSubMenuPos();
+        }}
+        onMouseLeave={handleParentLeave}
       >
-        <IconWrapper>
-          <IconComp size={14} />
-        </IconWrapper>
-        <LabelWrapper>
-          <Label $danger={item.danger}>{item.label}</Label>
-          {item.sub && <SubLabel>{item.sub}</SubLabel>}
-        </LabelWrapper>
-        {hasSubItems && <ChevronRight>▶</ChevronRight>}
-      </MenuItem>
-      {hasSubItems && hover && (
-        <SubMenu
-          style={{
-            position: 'absolute',
-            left: '100%',
-            top: 0,
-          }}
+        <MenuItem
+          $danger={item.danger}
+          $hover={hover || false}
+          onClick={hasSubItems ? undefined : handleClick}
         >
-          {item.subItems!.map((subItem, ii) => (
-            <MenuItemRow key={ii} item={subItem} onCopy={onCopy} />
-          ))}
-        </SubMenu>
-      )}
-    </ItemContainer>
+          <IconWrapper>
+            <IconComp size={14} />
+          </IconWrapper>
+          <LabelWrapper>
+            <Label $danger={item.danger}>{item.label}</Label>
+            {item.sub && <SubLabel>{item.sub}</SubLabel>}
+          </LabelWrapper>
+          {hasSubItems && <ChevronRight>▶</ChevronRight>}
+        </MenuItem>
+        {hasSubItems && hover && subMenuPos && (
+          <SubMenu
+            style={{
+              position: 'fixed',
+              left: subMenuPos.left,
+              top: subMenuPos.top,
+            }}
+            onMouseEnter={handleSubMenuEnter}
+            onMouseLeave={handleSubMenuLeave}
+          >
+            {item.subItems!.map((subItem, ii) => (
+              <MenuItemRow key={ii} item={subItem} onCopy={onCopy} />
+            ))}
+          </SubMenu>
+        )}
+      </ItemContainer>
+    </SubMenuContainer>
   );
 }
 

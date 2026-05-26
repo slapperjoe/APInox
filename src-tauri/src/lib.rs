@@ -586,6 +586,8 @@ pub fn run() {
             parsers::wsdl_commands::parse_wsdl,
             parsers::wsdl_commands::refresh_wsdl,
             parsers::wsdl_commands::apply_wsdl_sync,
+            parsers::unified_explorer_commands::parse_wsdl_as_project,
+            parsers::unified_explorer_commands::refresh_unified_project,
             soap::commands::build_soap_envelope,
             soap::commands::execute_soap_request,
             soap::commands::cancel_request,
