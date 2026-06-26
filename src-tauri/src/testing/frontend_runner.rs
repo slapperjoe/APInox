@@ -2,7 +2,6 @@
 ///
 /// Executes test cases in the TypeScript format (FrontendTestCase) that the
 /// webview sends.
-
 use anyhow::Result;
 use reqwest::Client;
 use serde_json::Value;

@@ -304,13 +304,16 @@ export const generateSampleWithMetadata = (operation: any): {
     contentType?: string;
     targetNamespace?: string;
 } => {
-    const sampleXml = generateInitialXmlForOperation(operation);
+    const sampleRequest = Array.isArray(operation.requests)
+        ? operation.requests.find((request: any) => typeof request?.name === "string" && request.name.startsWith("sample_"))
+        : undefined;
+    const sampleXml = operation.sampleMetadata?.sampleXml || sampleRequest?.request || generateInitialXmlForOperation(operation);
     
     return {
         sampleXml,
-        endpoint: operation.originalEndpoint,
-        soapAction: operation.action,
-        contentType: 'text/xml; charset=utf-8',
-        targetNamespace: operation.targetNamespace || 'http://tempuri.org/'
+        endpoint: operation.sampleMetadata?.endpoint || sampleRequest?.endpoint || operation.originalEndpoint,
+        soapAction: operation.sampleMetadata?.soapAction || operation.action,
+        contentType: operation.sampleMetadata?.contentType || sampleRequest?.contentType || "text/xml; charset=utf-8",
+        targetNamespace: operation.sampleMetadata?.targetNamespace || operation.targetNamespace || "http://tempuri.org/"
     };
 };

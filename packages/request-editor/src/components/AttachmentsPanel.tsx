@@ -1,5 +1,6 @@
 import React, { useCallback } from "react";
 import styled from "styled-components";
+import { EmptyState } from "./common/EmptyState";
 import {
   Paperclip,
   Plus,
@@ -150,16 +151,6 @@ const DeleteButton = styled.button`
   }
 `;
 
-const EmptyState = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 20px;
-  text-align: center;
-  color: var(--apinox-descriptionForeground);
-  gap: 12px;
-`;
 
 const DropZone = styled.div<{ isDragging?: boolean }>`
   border: 2px dashed
@@ -185,15 +176,6 @@ const DropZone = styled.div<{ isDragging?: boolean }>`
   gap: ${SPACING_SM};
 `;
 
-const EmptyIcon = styled(Paperclip)`
-  margin-bottom: ${SPACING_SM};
-  opacity: 0.5;
-`;
-
-const EmptySubtext = styled.div`
-  font-size: 0.85em;
-  margin-top: ${SPACING_XS};
-`;
 
 const InlineDropZone = styled(DropZone)`
   padding: 12px;
@@ -294,20 +276,14 @@ export const AttachmentsPanel: React.FC<AttachmentsPanelProps> = ({
       </Header>
 
       {attachments.length === 0 ? (
-        <EmptyState>
+        <EmptyState icon={File} title="Click to add files or drag & drop here" description="Supports Base64 inline, SwA (Multipart), and MTOM">
           <DropZone
             isDragging={isDragging}
             onClick={handleAddClick}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-          >
-            <EmptyIcon size={32} />
-            <div>Click to add files or drag & drop here</div>
-            <EmptySubtext>
-              Supports Base64 inline, SwA (Multipart), and MTOM
-            </EmptySubtext>
-          </DropZone>
+          />
         </EmptyState>
       ) : (
         <AttachmentList>

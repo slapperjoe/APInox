@@ -439,6 +439,7 @@ pub async fn check_for_updates() -> Result<UpdateCheckResult, String> {
 /// (e.g. a corporate proxy intercepts and blocks the request) the download is
 /// retried via the proxy-aware client.
 #[tauri::command]
+#[allow(clippy::manual_checked_ops)] // total_bytes > 0 guard prevents division by zero
 pub async fn download_update(
     app: tauri::AppHandle,
     download_url: String,

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import styled from 'styled-components';
 import { Modal, Button } from './Modal';
+import { EmptyState } from '../common/EmptyState';
 import { ApinoxProject } from '@shared/models';
 
 const ProjectList = styled.div`
@@ -67,11 +68,6 @@ const LinkButton = styled.button`
   }
 `;
 
-const EmptyMessage = styled.div`
-  text-align: center;
-  padding: 20px;
-  color: var(--apinox-descriptionForeground);
-`;
 
 interface ExportWorkspaceModalProps {
   isOpen: boolean;
@@ -149,9 +145,7 @@ export const ExportWorkspaceModal: React.FC<ExportWorkspaceModalProps> = ({
       }
     >
       {projectsWithPaths.length === 0 ? (
-        <EmptyMessage>
-          No projects loaded in workspace
-        </EmptyMessage>
+        <EmptyState title="No projects loaded in workspace" />
       ) : (
         <>
           <SelectionControls>

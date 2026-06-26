@@ -1,11 +1,7 @@
 import React, { useState } from "react";
-import styled, { keyframes, css } from "styled-components";
-
-const shake = keyframes`
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-2px); }
-  75% { transform: translateX(2px); }
-`;
+import styled, { css } from "styled-components";
+import { EmptyState } from "../common/EmptyState";
+import { shake } from "../common/Button";
 import {
   FilePlus,
   FolderOpen,
@@ -24,8 +20,8 @@ import {
   SidebarHeader,
   SidebarHeaderTitle,
   SidebarHeaderActions,
-  HeaderButton,
 } from "./shared/SidebarStyles";
+import { HeaderButton } from "../common/Button";
 import { useNotes, noteDirtyKind } from "../../notes/NotesContext";
 
 // ─── Styled ───────────────────────────────────────────────────────────────────
@@ -108,14 +104,6 @@ const DirtyDot = styled.span<{ $kind: "external" | "managed" }>`
       ? "var(--apinox-charts-orange, #e8965e)"
       : "var(--apinox-disabledForeground, #888)"};
   flex-shrink: 0;
-`;
-
-const EmptyHint = styled.div`
-  padding: 24px 16px;
-  text-align: center;
-  font-size: 12px;
-  color: var(--apinox-descriptionForeground, rgba(204,204,204,0.4));
-  line-height: 1.6;
 `;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -205,11 +193,7 @@ export const NotesList: React.FC = () => {
 
       <List>
         {notes.length === 0 && (
-          <EmptyHint>
-            No notes yet.
-            <br />
-            Click <strong><FilePlus size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /></strong> to create one, or <strong><FolderOpen size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /></strong> to open a file.
-          </EmptyHint>
+          <EmptyState icon={FileText} title="No notes yet" description="Use the buttons above to create or open notes." />
         )}
 
         {notes.map((entry) => {

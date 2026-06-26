@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
+import { EmptyState } from '../common/EmptyState';
 import { ApinoxProject } from '@shared/models';
 import { FlaskConical, Play } from 'lucide-react';
 import { Modal, Button } from './Modal';
@@ -41,11 +42,6 @@ const Item = styled.div<{ $active?: boolean; $depth: number }>`
     }
 `;
 
-const EmptyMessage = styled.div`
-    padding-left: 20px;
-    font-style: italic;
-    opacity: 0.6;
-`;
 
 const SecondaryButton = styled(Button)`
     background: transparent;
@@ -121,7 +117,7 @@ export const AddToTestCaseModal: React.FC<AddToTestCaseModalProps> = ({ projects
                             </div>
                         ))}
                         {(!p.testSuites || p.testSuites.length === 0) && (
-                            <EmptyMessage>No Test Suites</EmptyMessage>
+                            <EmptyState title="No Test Suites" />
                         )}
                     </ProjectSection>
                 ))}

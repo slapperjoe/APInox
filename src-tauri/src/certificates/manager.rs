@@ -20,6 +20,7 @@ const LEAF_VALIDITY_DAYS: i64 = 365;
 /// The full details returned to the UI (matches the TypeScript CertInfo interface).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[derive(Default)]
 pub struct CertInfo {
     pub exists: bool,
     pub cert_path: String,
@@ -60,22 +61,6 @@ impl std::fmt::Debug for CertManager {
             .field("config_dir", &self.config_dir)
             .field("cached_domains", &self.leaf_cache.lock().map(|c| c.len()).unwrap_or(0))
             .finish()
-    }
-}
-
-impl Default for CertInfo {
-    fn default() -> Self {
-        Self {
-            exists: false,
-            cert_path: String::new(),
-            key_path: String::new(),
-            subject: None,
-            issuer: None,
-            valid_from: None,
-            valid_to: None,
-            fingerprint: None,
-            is_trusted: false,
-        }
     }
 }
 

@@ -2,7 +2,8 @@ import React, { useRef, useState } from 'react';
 import styled from 'styled-components';
 import { ChevronRight, ChevronDown, Plus, Trash2, Code, Globe, Zap, GripVertical, Network } from 'lucide-react';
 import { ApiInterface, ApiOperation, ApiRequest, ApinoxProject } from '@shared/models';
-import { HeaderButton, OperationItem, RequestItem } from './shared/SidebarStyles';
+import { OperationItem, RequestItem } from './shared/SidebarStyles';
+import { HeaderButton } from '../common/Button';
 import { ICON_COLORS } from '../../styles/colors';
 
 const DragHandle = styled.div`

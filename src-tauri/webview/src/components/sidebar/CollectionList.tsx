@@ -6,8 +6,10 @@
 import React from 'react';
 import styled, { css } from 'styled-components';
 import { Plus, ChevronDown, ChevronRight, Folder, FolderOpen, Trash2, FileJson } from 'lucide-react';
+import { EmptyState } from '../common/EmptyState';
 import { RestCollection, RestFolder, ApiRequest } from '@shared/models';
-import { HeaderButton, OperationItem, SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle, shake } from './shared/SidebarStyles';
+import { OperationItem, SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle, shake } from './shared/SidebarStyles';
+import { HeaderButton } from '../common/Button';
 
 interface CollectionListProps {
     collections: RestCollection[];
@@ -101,13 +103,6 @@ const FolderName = styled.span`
     font-weight: 500;
 `;
 
-const EmptyCollections = styled.div`
-    opacity: 0.6;
-    font-style: italic;
-    text-align: center;
-    padding: 20px;
-    font-size: 12px;
-`;
 
 const CollectionRow = styled(OperationItem)<{ $isDeleting: boolean; $isSelected: boolean }>`
     font-weight: bold;
@@ -307,11 +302,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
             {/* Collections List */}
             <CollectionContent>
                 {collections.length === 0 && (
-                    <EmptyCollections>
-                        No REST collections yet.
-                        <br />
-                        Click + to create one.
-                    </EmptyCollections>
+                    <EmptyState icon={null} title="No REST collections yet" description="Click + to create one." />
                 )}
 
                 {collections.map(collection => {

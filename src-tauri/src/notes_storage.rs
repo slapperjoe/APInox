@@ -142,7 +142,7 @@ fn sniff_is_binary(path: &Path) -> bool {
         return false;
     }
     let sample = &buf[..n];
-    let non_text = sample.iter().filter(|&&b| b == 0 || (b < 9 && b != 0) || (b > 13 && b < 32)).count();
+    let non_text = sample.iter().filter(|&&b| b < 9 || (b > 13 && b < 32)).count();
     non_text * 10 > n
 }
 

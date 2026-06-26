@@ -4,6 +4,7 @@ import { Play, Edit2, Clock, GitBranch, AlertCircle, Code, Repeat } from 'lucide
 import styled from 'styled-components';
 import { SPACING_SM, SPACING_MD, SPACING_LG } from '../../styles/spacing';
 import { PrimaryButton, SecondaryButton } from '../common/Button';
+import { EmptyState } from '../common/EmptyState';
 
 const Container = styled.div`
     padding: ${SPACING_LG};
@@ -137,11 +138,6 @@ const StepDetails = styled.div`
     text-overflow: ellipsis;
 `;
 
-const EmptyState = styled.div`
-    padding: ${SPACING_LG};
-    text-align: center;
-    color: var(--apinox-descriptionForeground);
-`;
 
 interface WorkflowSummaryProps {
     workflow: Workflow;
@@ -245,9 +241,7 @@ export const WorkflowSummary: React.FC<WorkflowSummaryProps> = ({
 
             <StepsHeading>Workflow Steps</StepsHeading>
             {steps.length === 0 ? (
-                <EmptyState>
-                    No steps in this workflow yet. Click Edit to add steps.
-                </EmptyState>
+                <EmptyState title="No steps" description="Click Edit to add steps." />
             ) : (
                 <StepsList>
                     {steps.map((step, index) => (

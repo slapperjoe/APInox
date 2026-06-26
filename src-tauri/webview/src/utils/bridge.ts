@@ -969,6 +969,21 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
             }
         }
 
+        if (message.command === FrontendCommand.StartCoordinator) {
+            return await tauriInvoke('start_coordinator', {
+                port: message.port,
+                expectedWorkers: message.expectedWorkers,
+            });
+        }
+
+        if (message.command === FrontendCommand.StopCoordinator) {
+            return await tauriInvoke('stop_coordinator', {});
+        }
+
+        if (message.command === FrontendCommand.GetCoordinatorStatus) {
+            return await tauriInvoke('get_coordinator_status', {});
+        }
+
         // Route RefreshWsdl to Rust refresh_wsdl command
         if (message.command === FrontendCommand.RefreshWsdl) {
             debugLog('[Bridge] Routing RefreshWsdl to Rust backend');
@@ -1129,6 +1144,18 @@ function mapResponseToBackendEvent(command: string, data: any): BackendMessage |
             raw: data?.raw,
             configDir: data?.configDir,
             configPath: data?.configPath
+        }),
+        [FrontendCommand.StartCoordinator]: (data) => ({
+            command: BackendCommand.CoordinatorStatus,
+            status: data,
+        }),
+        [FrontendCommand.StopCoordinator]: (data) => ({
+            command: BackendCommand.CoordinatorStatus,
+            status: data,
+        }),
+        [FrontendCommand.GetCoordinatorStatus]: (data) => ({
+            command: BackendCommand.CoordinatorStatus,
+            status: data,
         }),
         [FrontendCommand.SaveProject]: (data) => ({
             command: BackendCommand.ProjectSaved,

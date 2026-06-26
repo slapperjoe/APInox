@@ -10,21 +10,13 @@ struct PendingTraffic {
 }
 
 /// Manages breakpoint rules and holds currently paused traffic.
+#[derive(Default)]
 pub struct BreakpointService {
     pub rules: Vec<BreakpointRule>,
     pending: HashMap<String, PendingTraffic>,
 }
 
 pub type SharedBreakpointService = Arc<Mutex<BreakpointService>>;
-
-impl Default for BreakpointService {
-    fn default() -> Self {
-        Self {
-            rules: Vec::new(),
-            pending: HashMap::new(),
-        }
-    }
-}
 
 pub fn new_shared() -> SharedBreakpointService {
     Arc::new(Mutex::new(BreakpointService::default()))

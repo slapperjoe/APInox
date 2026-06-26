@@ -13,7 +13,8 @@ import {
     PerformanceSuite,
     RequestHistoryEntry,
     Workflow,
-    WorkflowStep
+    WorkflowStep,
+    UnifiedProject,
     // SidebarView
 } from '@shared/models';
 
@@ -166,6 +167,20 @@ export interface SidebarHistoryProps {
     onReplay: (entry: RequestHistoryEntry) => void;
     onToggleStar: (id: string) => void;
     onDelete: (id: string) => void;
+}
+
+export interface SidebarUnifiedProps {
+    projects: UnifiedProject[];
+    selectedNode: { type: string; id: string } | null;
+    onSelectNode: (type: string, id: string) => void;
+    onRefreshProject: (projectName: string) => void;
+    onDeleteProject: (projectName: string) => void;
+    onDeleteOperation: (projectName: string, operationName: string) => void;
+    onDeleteRequest: (projectName: string, operationName: string, requestName: string) => void;
+    onNewRequest: (projectName: string, operationName: string) => void;
+    onExportProject: (projectName: string) => void;
+    onReorderOperation: (projectName: string, fromIndex: number, toIndex: number) => void;
+    onReorderRequest: (projectName: string, operationName: string, fromIndex: number, toIndex: number) => void;
 }
 
 // ============================================================================

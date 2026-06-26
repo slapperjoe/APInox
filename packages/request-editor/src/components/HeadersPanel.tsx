@@ -1,5 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
+import { EmptyState } from './common/EmptyState';
 import { Plus, Trash2, List } from 'lucide-react';
 import { MonacoSingleLineInput } from './MonacoSingleLineInput';
 import { SPACING_XS, SPACING_SM } from '../styles/spacing';
@@ -54,12 +55,6 @@ const LockIndicator = styled.div`
     opacity: 0.5;
 `;
 
-const EmptyState = styled.div`
-    opacity: 0.6;
-    font-style: italic;
-    padding: ${SPACING_SM};
-    text-align: center;
-`;
 
 const IconButton = styled.button`
     background: transparent;
@@ -148,9 +143,7 @@ export const HeadersPanel: React.FC<HeadersPanelProps> = ({ headers, onChange, c
             </HeaderRow>
 
             {entries.length === 0 && (
-                <EmptyState>
-                    No custom headers defined.
-                </EmptyState>
+                <EmptyState title="No custom headers defined." />
             )}
 
             {entries.map(([key, value], index) => (

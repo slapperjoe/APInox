@@ -1,5 +1,4 @@
 /// Shared HTTP utilities for proxy and mock servers.
-
 use tauri::{AppHandle, Emitter};
 use crate::proxy_models::TrafficEvent;
 

@@ -3,7 +3,6 @@
 /// These types match the TypeScript `TestCase`, `TestStep`, and `ApiRequest`
 /// interfaces from shared/src/models.ts, allowing the Rust backend to receive
 /// and execute test cases sent from the webview.
-
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

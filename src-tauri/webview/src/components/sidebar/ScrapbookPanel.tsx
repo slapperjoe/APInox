@@ -3,8 +3,10 @@ import styled from 'styled-components';
 import { Plus, Trash2, Play } from 'lucide-react';
 import { SidebarContextMenu, CtxMenuSection } from './shared/SidebarContextMenu';
 import { ScrapbookRequest } from '@shared/models';
-import { HeaderButton, SidebarHeaderActions, SidebarHeaderTitle, RequestItem as BaseRequestItem } from './shared/SidebarStyles';
+import { SidebarHeaderActions, SidebarHeaderTitle, RequestItem as BaseRequestItem } from './shared/SidebarStyles';
+import { HeaderButton } from '../common/Button';
 import { SPACING_SM } from '../../styles/spacing';
+import { EmptyState } from '../common/EmptyState';
 
 export interface ScrapbookPanelProps {
     requests: ScrapbookRequest[];
@@ -81,13 +83,6 @@ const IconButton = styled.button`
     }
 `;
 
-const EmptyMessage = styled.div`
-    text-align: center;
-    color: var(--apinox-descriptionForeground);
-    padding: 20px;
-    font-size: 0.9em;
-`;
-
 export const ScrapbookPanel: React.FC<ScrapbookPanelProps> = ({
     requests,
     selectedRequest,
@@ -119,13 +114,9 @@ export const ScrapbookPanel: React.FC<ScrapbookPanelProps> = ({
             </SectionHeader>
 
             {loading ? (
-                <EmptyMessage>Loading...</EmptyMessage>
+                <EmptyState icon={null} title="Loading..." />
             ) : requests.length === 0 ? (
-                <EmptyMessage>
-                    No quick requests yet.
-                    <br /><br />
-                    Click <Plus size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> to create one.
-                </EmptyMessage>
+                <EmptyState icon={null} title="No quick requests yet" description="Click + to create one." />
             ) : (
                 <RequestList>
                     {requests.map(request => (

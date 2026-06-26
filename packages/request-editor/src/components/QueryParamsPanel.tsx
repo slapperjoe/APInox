@@ -5,6 +5,7 @@
 
 import React from 'react';
 import styled from 'styled-components';
+import { EmptyState } from './common/EmptyState';
 import { Plus, Trash2, Code } from 'lucide-react';
 import { MonacoSingleLineInput } from './MonacoSingleLineInput';
 import { SPACING_XS, SPACING_SM } from '../styles/spacing';
@@ -77,12 +78,6 @@ const Label = styled.div`
     margin-bottom: ${SPACING_XS};
 `;
 
-const EmptyMessage = styled.div`
-    opacity: 0.6;
-    font-style: italic;
-    padding: ${SPACING_SM};
-    text-align: center;
-`;
 
 const PreviewBox = styled.div`
     margin-top: ${SPACING_SM};
@@ -159,9 +154,7 @@ export const QueryParamsPanel: React.FC<QueryParamsPanelProps> = ({
             </HeaderRow>
 
             {entries.length === 0 && (
-                <EmptyMessage>
-                    {readOnly ? `No ${title.toLowerCase()} defined.` : `No ${title.toLowerCase()} defined. Click "Add" to create one.`}
-                </EmptyMessage>
+                <EmptyState title={readOnly ? `No ${title.toLowerCase()} defined.` : `No ${title.toLowerCase()} defined. Click "Add" to create one.`} />
             )}
 
             {entries.map(([key, value], index) => (

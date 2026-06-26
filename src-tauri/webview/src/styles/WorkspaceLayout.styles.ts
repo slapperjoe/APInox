@@ -5,8 +5,9 @@
  * Extracted for maintainability and reduced file size.
  */
 
-import styled, { keyframes, css } from 'styled-components';
+import styled, { css } from 'styled-components';
 import { ChevronLeft } from 'lucide-react';
+import { shake } from '../components/common/Button';
 
 export const Logo = styled.img`
     position: fixed;
@@ -397,19 +398,6 @@ export const Toolbar = styled.div`
     height: 40px;
 `;
 
-/** Read-only info bar for displaying endpoint URL in proxy/watcher view */
-export const InfoBar = styled.div`
-    display: flex;
-    padding: 8px 12px;
-    background-color: var(--apinox-editor-inactiveSelectionBackground);
-    border-bottom: 1px solid var(--apinox-panel-border);
-    align-items: center;
-    gap: 12px;
-    font-family: var(--apinox-editor-font-family);
-    font-size: 12px;
-    color: var(--apinox-descriptionForeground);
-`;
-
 export const InfoBarMethod = styled.span`
     font-weight: 600;
     color: var(--apinox-badge-foreground);
@@ -418,14 +406,11 @@ export const InfoBarMethod = styled.span`
     border-radius: 3px;
 `;
 
-export const InfoBarUrl = styled.span`
+export const InfoBarUrlPrimary = styled.span`
     flex: 1;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-`;
-
-export const InfoBarUrlPrimary = styled(InfoBarUrl)`
     margin-left: 10px;
     font-size: 1em;
 `;
@@ -484,20 +469,6 @@ export const MiniToolbarButton = styled(ToolbarButton)`
     height: 20px;
 `;
 
-export const ToolbarSelect = styled.select`
-    background-color: var(--apinox-dropdown-background);
-    color: var(--apinox-dropdown-foreground);
-    border: 1px solid var(--apinox-dropdown-border);
-    padding: 4px;
-    outline: none;
-    height: 26px;
-    box-sizing: border-box;
-    font-size: 11px;
-
-    &:focus {
-        border-color: var(--apinox-focusBorder);
-    }
-`;
 
 export const ToolbarSeparator = styled.div`
     width: 1px;
@@ -514,14 +485,6 @@ export const MainFooter = styled.div`
     gap: 10px;
     justify-content: flex-end;
     background-color: var(--apinox-editor-background);
-`;
-
-export const shake = keyframes`
-    0% { transform: translateX(0); }
-    25% { transform: translateX(2px) rotate(5deg); }
-    50% { transform: translateX(-2px) rotate(-5deg); }
-    75% { transform: translateX(2px) rotate(5deg); }
-    100% { transform: translateX(0); }
 `;
 
 export const IconButton = styled.button<{ active?: boolean; shake?: boolean }>`
@@ -558,21 +521,6 @@ export const CompactIconButtonWarning = styled(CompactIconButton)`
     color: var(--apinox-charts-orange);
 `;
 
-export const EmptyStateContainer = styled.div`
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: var(--apinox-descriptionForeground);
-    padding: 20px;
-    text-align: center;
-`;
-
-export const EmptyStateTitle = styled.h2`
-    margin-bottom: 10px;
-    color: var(--apinox-foreground);
-`;
 
 export const ProjectContainer = styled.div`
     padding: 40px;
@@ -830,25 +778,6 @@ export const StatsGridSpaced = styled(StatsGrid)`
 
 export const OperationContainer = styled(ProjectContainer)``;
 
-export const RequestsHeading = styled.h2`
-    margin-top: 30px;
-    border-bottom: 1px solid var(--apinox-panel-border);
-    padding-bottom: 10px;
-`;
-
-export const RequestGrid = styled.div`
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 15px;
-    margin-top: 15px;
-`;
-
-export const RequestCard = styled(OperationItem)`
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    `;
-
 export const LinkText = styled.a`
     color: var(--apinox-textLink-foreground);
 `;
@@ -861,8 +790,4 @@ export const ChevronIcon = styled(ChevronLeft)`
 export const ChevronIconFaint = styled(ChevronLeft)`
     transform: rotate(180deg);
     opacity: 0.3;
-`;
-
-export const RequestName = styled.span`
-    font-weight: 500;
 `;

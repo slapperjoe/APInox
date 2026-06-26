@@ -5,6 +5,7 @@ use super::client::{HttpClient, HttpRequest, HttpResponse};
 use std::collections::HashMap;
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)] // All parameters map 1:1 to HttpRequest fields
 pub async fn execute_http_request(
     method: String,
     url: String,

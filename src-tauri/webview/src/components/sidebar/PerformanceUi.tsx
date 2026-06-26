@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
+import { EmptyState } from '../common/EmptyState';
 import { Play, Square, Plus, ChevronRight, ChevronDown } from 'lucide-react';
 import { SidebarPerformanceProps } from '../../types/props';
 import { SidebarContextMenu, CtxMenuSection, CtxMenuItem, Pencil, Trash2 } from './shared/SidebarContextMenu';
@@ -22,12 +23,6 @@ const RequestIndent = styled.div`
     width: 14px;
 `;
 
-const EmptyMessage = styled.div`
-    padding: 20px;
-    text-align: center;
-    color: var(--apinox-descriptionForeground);
-    font-size: 13px;
-`;
 
 const List = styled.div`
     flex: 1;
@@ -315,10 +310,7 @@ export const PerformanceUi: React.FC<SidebarPerformanceProps> = ({
                 })}
 
                 {suites.length === 0 && !isAdding && (
-                    <EmptyMessage>
-                        No performance suites.<br />
-                        Click + to create one.
-                    </EmptyMessage>
+                    <EmptyState icon={null} title="No performance suites" description="Click + to create one." />
                 )}
             </List>
 

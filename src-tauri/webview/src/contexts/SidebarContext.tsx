@@ -20,6 +20,7 @@ import type {
     SidebarWorkflowsProps,
     SidebarPerformanceProps,
     SidebarHistoryProps,
+    SidebarUnifiedProps,
 } from '../types/props';
 
 export interface SidebarContextValue {
@@ -35,6 +36,7 @@ export interface SidebarContextValue {
     workflowsProps?: SidebarWorkflowsProps;
     performanceProps?: SidebarPerformanceProps;
     historyProps?: SidebarHistoryProps;
+    unifiedProps?: SidebarUnifiedProps;
 
     // ==================== VIEW STATE ====================
     activeView: SidebarView;

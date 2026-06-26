@@ -1,7 +1,6 @@
 /// Test Runner
 /// 
 /// Executes test cases and test suites with variable context and assertions
-
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -18,7 +17,7 @@ use crate::parsers::wsdl::types::ServiceOperation;
 pub enum TestStepType {
     /// SOAP request step
     Soap {
-        operation: ServiceOperation,
+        operation: Box<ServiceOperation>,
         soap_version: String,
         values: HashMap<String, String>,
         endpoint: Option<String>,
@@ -187,6 +186,7 @@ impl TestRunner {
         }
     }
     
+    #[allow(clippy::too_many_arguments)]
     async fn run_soap_step(
         &self,
         step: &TestStep,

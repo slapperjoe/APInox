@@ -11,7 +11,6 @@
 /// - URL caching (avoids duplicate fetches)
 /// - Relative URL resolution (handles relative paths)
 /// - Namespace merging (combines type registries)
-
 use std::collections::{HashMap, HashSet};
 use anyhow::{Result, Context, anyhow};
 use async_recursion::async_recursion;
@@ -80,30 +79,38 @@ impl ImportResolver {
             return Err(anyhow!("Circular import detected: {}", resolved_url));
         }
 
-        log::info!("Fetching remote document: {}", resolved_url);
+        log::info!("Fetching document: {}", resolved_url);
 
         // Mark as visiting
         self.visiting.insert(resolved_url.clone());
 
-        // Fetch the document using reqwest directly
-        let response = self.http_client
-            .get(&resolved_url)
-            .send()
-            .await
-            .with_context(|| format!("Failed to fetch {}", resolved_url))?;
+        // Handle file:// URLs by reading from disk
+        let content = if resolved_url.starts_with("file://") {
+            let file_path = resolved_url
+                .strip_prefix("file://")
+                .unwrap_or(&resolved_url);
+            std::fs::read_to_string(file_path)
+                .with_context(|| format!("Failed to read local file: {}", file_path))?
+        } else {
+            let response = self.http_client
+                .get(&resolved_url)
+                .send()
+                .await
+                .with_context(|| format!("Failed to fetch {}", resolved_url))?;
 
-        if !response.status().is_success() {
-            return Err(anyhow!(
-                "Failed to fetch {}: HTTP {}",
-                resolved_url,
-                response.status()
-            ));
-        }
+            if !response.status().is_success() {
+                return Err(anyhow!(
+                    "Failed to fetch {}: HTTP {}",
+                    resolved_url,
+                    response.status()
+                ));
+            }
 
-        let content = response
-            .text()
-            .await
-            .with_context(|| format!("Failed to read response body from {}", resolved_url))?;
+            response
+                .text()
+                .await
+                .with_context(|| format!("Failed to read response body from {}", resolved_url))?
+        };
 
         // Cache the result
         self.document_cache.insert(resolved_url.clone(), content.clone());
@@ -160,7 +167,7 @@ impl ImportResolver {
                 Ok(Event::Empty(e)) => {
                     let name_bytes = e.name();
                     let tag_name = String::from_utf8_lossy(name_bytes.as_ref());
-                    let local_name = tag_name.split(':').last().unwrap_or(&tag_name);
+                    let local_name = tag_name.split(':').next_back().unwrap_or(&tag_name);
 
                     match local_name {
                         "import" => {
@@ -170,17 +177,15 @@ impl ImportResolver {
                             let mut namespace = None;
                             let mut location = None;
 
-                            for attr_result in e.attributes() {
-                                if let Ok(attr) = attr_result {
-                                    let key = String::from_utf8_lossy(attr.key.as_ref());
-                                    let value = String::from_utf8_lossy(&attr.value).to_string();
+                            for attr in e.attributes().flatten() {
+                                let key = String::from_utf8_lossy(attr.key.as_ref());
+                                let value = String::from_utf8_lossy(&attr.value).to_string();
 
-                                    match key.as_ref() {
-                                        "namespace" => namespace = Some(value),
-                                        "schemaLocation" => location = Some(value), // xsd:import
-                                        "location" => location = Some(value),       // wsdl:import
-                                        _ => {}
-                                    }
+                                match key.as_ref() {
+                                    "namespace" => namespace = Some(value),
+                                    "schemaLocation" => location = Some(value), // xsd:import
+                                    "location" => location = Some(value),       // wsdl:import
+                                    _ => {}
                                 }
                             }
 

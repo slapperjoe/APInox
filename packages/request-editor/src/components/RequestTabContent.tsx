@@ -1,5 +1,6 @@
 import React from 'react';
 import * as S from './RequestWorkspace.styles';
+import { EmptyState } from './common/EmptyState';
 import { MonacoRequestEditor } from './MonacoRequestEditor';
 import { HeadersPanel } from './HeadersPanel';
 import { AssertionsPanel } from './AssertionsPanel';
@@ -100,9 +101,7 @@ export const RequestTabContent: React.FC<RequestTabContentProps> = ({
 
       if (request.bodyType === 'none') {
         return (
-          <S.EmptyState>
-            <S.EmptyStateText>No request body for this request type</S.EmptyStateText>
-          </S.EmptyState>
+          <EmptyState title="No request body for this request type" />
         );
       }
 

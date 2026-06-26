@@ -285,7 +285,7 @@ impl WsdlParser {
                 Ok(Event::Start(ref e)) => {
                     let name_bytes = e.name();
                     let name = String::from_utf8_lossy(name_bytes.as_ref());
-                    let local_name = name.split(':').last().unwrap_or(&name);
+                    let local_name = name.split(':').next_back().unwrap_or(&name);
                     
                     if depth == 0 {
                         match local_name {
@@ -311,27 +311,23 @@ impl WsdlParser {
                         depth += 1;
                     }
                 }
-                Ok(Event::End(_)) => {
-                    if depth > 0 {
-                        element_xml.push_str(&String::from_utf8_lossy(&buf));
-                        depth -= 1;
-                        
-                        if depth == 0 {
-                            match current_type.as_str() {
-                                "binding" => bindings.push(element_xml.clone()),
-                                "portType" => port_types.push(element_xml.clone()),
-                                "message" => messages.push(element_xml.clone()),
-                                _ => {}
-                            }
-                            element_xml.clear();
-                            current_type.clear();
+                Ok(Event::End(_)) if depth > 0 => {
+                    element_xml.push_str(&String::from_utf8_lossy(&buf));
+                    depth -= 1;
+                    
+                    if depth == 0 {
+                        match current_type.as_str() {
+                            "binding" => bindings.push(element_xml.clone()),
+                            "portType" => port_types.push(element_xml.clone()),
+                            "message" => messages.push(element_xml.clone()),
+                            _ => {}
                         }
+                        element_xml.clear();
+                        current_type.clear();
                     }
                 }
-                Ok(Event::Empty(_)) | Ok(Event::Text(_)) => {
-                    if depth > 0 {
-                        element_xml.push_str(&String::from_utf8_lossy(&buf));
-                    }
+                Ok(Event::Empty(_)) | Ok(Event::Text(_)) if depth > 0 => {
+                    element_xml.push_str(&String::from_utf8_lossy(&buf));
                 }
                 Ok(Event::Eof) => break,
                 Err(e) => return Err(anyhow::anyhow!("XML parse error while merging: {}", e)),
@@ -421,7 +417,7 @@ impl WsdlParser {
                 Ok(Event::Start(e)) => {
                     let name_bytes = e.name();
                     let tag_name_full = String::from_utf8_lossy(name_bytes.as_ref());
-                    let tag_name = tag_name_full.split(':').last().unwrap_or(&tag_name_full);
+                    let tag_name = tag_name_full.split(':').next_back().unwrap_or(&tag_name_full);
                     schema_xml.push_str(&format!("<{}", tag_name));
                     
                     // Add attributes
@@ -441,13 +437,13 @@ impl WsdlParser {
                     }
                     let name_bytes = e.name();
                     let tag_name_full = String::from_utf8_lossy(name_bytes.as_ref());
-                    let tag_name = tag_name_full.split(':').last().unwrap_or(&tag_name_full);
+                    let tag_name = tag_name_full.split(':').next_back().unwrap_or(&tag_name_full);
                     schema_xml.push_str(&format!("</{}>", tag_name));
                 }
                 Ok(Event::Empty(e)) => {
                     let name_bytes = e.name();
                     let tag_name_full = String::from_utf8_lossy(name_bytes.as_ref());
-                    let tag_name = tag_name_full.split(':').last().unwrap_or(&tag_name_full);
+                    let tag_name = tag_name_full.split(':').next_back().unwrap_or(&tag_name_full);
                     schema_xml.push_str(&format!("<{}", tag_name));
                     
                     for attr in e.attributes().flatten() {
@@ -480,20 +476,18 @@ impl WsdlParser {
         // Pass 1: Get root namespaces
         loop {
             match reader.read_event_into(&mut buf) {
-                Ok(Event::Start(e)) | Ok(Event::Empty(e)) => {
-                    if Self::local_name(&e) == "definitions" {
-                        for attr in e.attributes().flatten() {
-                            let key = String::from_utf8_lossy(attr.key.as_ref()).to_string();
-                            let value = String::from_utf8_lossy(&attr.value).to_string();
-                            
-                            if key == "targetNamespace" {
-                                target_namespace = value;
-                            } else if let Some(prefix) = key.strip_prefix("xmlns:") {
-                                namespaces.insert(prefix.to_string(), value);
-                            }
+                Ok(Event::Start(e)) | Ok(Event::Empty(e)) if Self::local_name(&e) == "definitions" => {
+                    for attr in e.attributes().flatten() {
+                        let key = String::from_utf8_lossy(attr.key.as_ref()).to_string();
+                        let value = String::from_utf8_lossy(&attr.value).to_string();
+                        
+                        if key == "targetNamespace" {
+                            target_namespace = value;
+                        } else if let Some(prefix) = key.strip_prefix("xmlns:") {
+                            namespaces.insert(prefix.to_string(), value);
                         }
-                        break;
                     }
+                    break;
                 }
                 Ok(Event::Eof) => break,
                 Err(e) => return Err(anyhow::anyhow!("XML parse error: {}", e)),
@@ -599,7 +593,7 @@ impl WsdlParser {
                 Ok(Event::Start(e)) => {
                     let name_bytes = e.name();
                     let tag_name_full = String::from_utf8_lossy(name_bytes.as_ref());
-                    let tag_name = tag_name_full.split(':').last().unwrap_or(&tag_name_full);
+                    let tag_name = tag_name_full.split(':').next_back().unwrap_or(&tag_name_full);
                     schema_xml.push_str(&format!("<{}", tag_name));
                     for attr in e.attributes().flatten() {
                         let key = String::from_utf8_lossy(attr.key.as_ref());
@@ -612,7 +606,7 @@ impl WsdlParser {
                 Ok(Event::End(e)) => {
                     let name_bytes = e.name();
                     let tag_name_full = String::from_utf8_lossy(name_bytes.as_ref());
-                    let tag_name = tag_name_full.split(':').last().unwrap_or(&tag_name_full);
+                    let tag_name = tag_name_full.split(':').next_back().unwrap_or(&tag_name_full);
                     depth -= 1;
                     if depth == 0 {
                         schema_xml.push_str("</schema>");
@@ -623,7 +617,7 @@ impl WsdlParser {
                 Ok(Event::Empty(e)) => {
                     let name_bytes = e.name();
                     let tag_name_full = String::from_utf8_lossy(name_bytes.as_ref());
-                    let tag_name = tag_name_full.split(':').last().unwrap_or(&tag_name_full);
+                    let tag_name = tag_name_full.split(':').next_back().unwrap_or(&tag_name_full);
                     schema_xml.push_str(&format!("<{}", tag_name));
                     for attr in e.attributes().flatten() {
                         let key = String::from_utf8_lossy(attr.key.as_ref());
@@ -661,20 +655,18 @@ impl WsdlParser {
         
         loop {
             match reader.read_event_into(buf) {
-                Ok(Event::Start(e)) | Ok(Event::Empty(e)) => {
-                    if Self::local_name(&e) == "port" {
-                        let port_name = Self::get_attr(&e, "name")?;
-                        let binding = Self::get_attr(&e, "binding")?;
-                        let binding = Self::strip_namespace_prefix(&binding);
-                        
-                        let location = Self::parse_port_location(reader, buf)?;
-                        
-                        ports.insert(port_name.clone(), WsdlPort {
-                            name: port_name,
-                            binding,
-                            location,
-                        });
-                    }
+                Ok(Event::Start(e)) | Ok(Event::Empty(e)) if Self::local_name(&e) == "port" => {
+                    let port_name = Self::get_attr(&e, "name")?;
+                    let binding = Self::get_attr(&e, "binding")?;
+                    let binding = Self::strip_namespace_prefix(&binding);
+                    
+                    let location = Self::parse_port_location(reader, buf)?;
+                    
+                    ports.insert(port_name.clone(), WsdlPort {
+                        name: port_name,
+                        binding,
+                        location,
+                    });
                 }
                 Ok(Event::End(e)) if String::from_utf8_lossy(e.name().as_ref()).ends_with("service") => break,
                 Ok(Event::Eof) => break,
@@ -754,11 +746,9 @@ impl WsdlParser {
     fn parse_operation_action(reader: &mut Reader<&[u8]>, buf: &mut Vec<u8>) -> Result<String> {
         loop {
             match reader.read_event_into(buf) {
-                Ok(Event::Empty(e)) | Ok(Event::Start(e)) => {
-                    if Self::local_name(&e) == "operation" {
-                        if let Ok(action) = Self::get_attr(&e, "soapAction") {
-                            return Ok(action);
-                        }
+                Ok(Event::Empty(e)) | Ok(Event::Start(e)) if Self::local_name(&e) == "operation" => {
+                    if let Ok(action) = Self::get_attr(&e, "soapAction") {
+                        return Ok(action);
                     }
                 }
                 Ok(Event::End(e)) if String::from_utf8_lossy(e.name().as_ref()).ends_with("operation") => break,
@@ -776,16 +766,14 @@ impl WsdlParser {
         
         loop {
             match reader.read_event_into(buf) {
-                Ok(Event::Start(e)) => {
-                    if Self::local_name(&e) == "operation" {
-                        let op_name = Self::get_attr(&e, "name")?;
-                        let (input_msg, output_msg) = Self::parse_operation_messages(reader, buf)?;
-                        operations.insert(op_name.clone(), WsdlOperation {
-                            name: op_name,
-                            input_message: input_msg,
-                            output_message: output_msg,
-                        });
-                    }
+                Ok(Event::Start(e)) if Self::local_name(&e) == "operation" => {
+                    let op_name = Self::get_attr(&e, "name")?;
+                    let (input_msg, output_msg) = Self::parse_operation_messages(reader, buf)?;
+                    operations.insert(op_name.clone(), WsdlOperation {
+                        name: op_name,
+                        input_message: input_msg,
+                        output_message: output_msg,
+                    });
                 }
                 Ok(Event::End(e)) if String::from_utf8_lossy(e.name().as_ref()).ends_with("portType") => break,
                 Ok(Event::Eof) => break,
@@ -831,18 +819,16 @@ impl WsdlParser {
         
         loop {
             match reader.read_event_into(buf) {
-                Ok(Event::Empty(e)) | Ok(Event::Start(e)) => {
-                    if Self::local_name(&e) == "part" {
-                        let part_name = Self::get_attr(&e, "name")?;
-                        let element = Self::get_attr(&e, "element").ok().map(|e| Self::strip_namespace_prefix(&e));
-                        let type_name = Self::get_attr(&e, "type").ok().map(|t| Self::strip_namespace_prefix(&t));
-                        
-                        parts.push(WsdlMessagePart {
-                            name: part_name,
-                            element,
-                            type_name,
-                        });
-                    }
+                Ok(Event::Empty(e)) | Ok(Event::Start(e)) if Self::local_name(&e) == "part" => {
+                    let part_name = Self::get_attr(&e, "name")?;
+                    let element = Self::get_attr(&e, "element").ok().map(|e| Self::strip_namespace_prefix(&e));
+                    let type_name = Self::get_attr(&e, "type").ok().map(|t| Self::strip_namespace_prefix(&t));
+                    
+                    parts.push(WsdlMessagePart {
+                        name: part_name,
+                        element,
+                        type_name,
+                    });
                 }
                 Ok(Event::End(e)) if String::from_utf8_lossy(e.name().as_ref()).ends_with("message") => break,
                 Ok(Event::Eof) => break,
@@ -948,18 +934,28 @@ impl WsdlParser {
         // Get the input message
         let message = defs.messages.get(&operation.input_message)?;
         
-        // Get the first part's element
+        // Get the first part
         let part = message.parts.first()?;
-        let element_name = part.element.as_ref()?;
         
-        // Find the element in schemas
-        for schema in &defs.schemas {
-            if let Some(schema_tree) = SchemaParser::build_schema_tree(element_name, schema) {
-                return Some(schema_tree);
+        // Try element-based lookup first
+        if let Some(element_name) = &part.element {
+            for schema in &defs.schemas {
+                if let Some(schema_tree) = SchemaParser::build_schema_tree(element_name, schema) {
+                    return Some(schema_tree);
+                }
             }
         }
         
-        log::warn!("No schema found for element: {}", element_name);
+        // Fall back to type-based lookup for parts that use type="ns:SomeType" instead of element="ns:SomeElement"
+        if let Some(type_name) = &part.type_name {
+            for schema in &defs.schemas {
+                if let Some(schema_tree) = SchemaParser::build_schema_tree_from_type(type_name, schema) {
+                    return Some(schema_tree);
+                }
+            }
+        }
+        
+        log::warn!("No schema found for operation '{}'", operation.name);
         None
     }
 
@@ -967,7 +963,7 @@ impl WsdlParser {
     fn local_name(e: &BytesStart) -> String {
         let name_bytes = e.name();
         let full_name = String::from_utf8_lossy(name_bytes.as_ref());
-        let name_str = full_name.split(':').last().unwrap_or(&full_name);
+        let name_str = full_name.split(':').next_back().unwrap_or(&full_name);
         name_str.to_string()
     }
 
@@ -982,7 +978,7 @@ impl WsdlParser {
     }
 
     fn strip_namespace_prefix(name: &str) -> String {
-        name.split(':').last().unwrap_or(name).to_string()
+        name.split(':').next_back().unwrap_or(name).to_string()
     }
 }
 
@@ -998,29 +994,29 @@ mod tests {
              xmlns:tns="http://example.com/hello"
              xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
              xmlns="http://schemas.xmlsoap.org/wsdl/">
-  
+
   <message name="SayHelloRequest">
     <part name="name" type="xsd:string"/>
   </message>
-  
+
   <message name="SayHelloResponse">
     <part name="greeting" type="xsd:string"/>
   </message>
-  
+
   <portType name="HelloPortType">
     <operation name="sayHello">
       <input message="tns:SayHelloRequest"/>
       <output message="tns:SayHelloResponse"/>
     </operation>
   </portType>
-  
+
   <binding name="HelloBinding" type="tns:HelloPortType">
     <soap:binding transport="http://schemas.xmlsoap.org/soap/http"/>
     <operation name="sayHello">
       <soap:operation soapAction="sayHello"/>
     </operation>
   </binding>
-  
+
   <service name="HelloService">
     <port name="HelloPort" binding="tns:HelloBinding">
       <soap:address location="http://example.com/hello"/>
@@ -1034,4 +1030,30 @@ mod tests {
         assert_eq!(services[0].operations.len(), 1);
         assert_eq!(services[0].operations[0].name, "sayHello");
     }
+
+   #[test]
+   fn test_parse_country_info_wsdl() {
+       let wsdl = std::fs::read_to_string("../../src-tauri/wsdl-downloads/CountryInfoService_wso.wsdl").unwrap();
+       let services = WsdlParser::parse(&wsdl).unwrap();
+
+       // CountryInfoService WSDL should have services and operations
+       assert!(!services.is_empty(), "Should parse at least one service");
+
+       // Check the target namespace
+       let service = &services[0];
+       assert_eq!(service.operations.len(), 21, "Should have 21 operations");
+
+       // Check one operation's schema
+       let op = &service.operations[0];
+       assert!(op.full_schema.is_some(), "Operation {} should have full_schema", op.name);
+       assert!(op.target_namespace.is_some(), "Operation {} should have target_namespace", op.name);
+
+       log::debug!("Operation {}: full_schema={:?}, target_namespace={:?}", op.name, op.full_schema.is_some(), op.target_namespace);
+
+       // Verify first operation has a non-empty schema node
+       if let Some(ref schema) = op.full_schema {
+           assert!(!schema.name.is_empty(), "Schema node name should not be empty");
+           log::debug!("Schema node name: {}, kind: {}, children_count: {:?}", schema.name, schema.kind, schema.children.as_ref().map(|c| c.len()));
+       }
+   }
 }

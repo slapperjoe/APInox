@@ -6,6 +6,7 @@ import { DEFAULT_EDITOR_SETTINGS } from '@apinox/request-editor/core';
 import type { EditorSettings } from '@apinox/request-editor/core';
 import { MonacoRequestEditorWithToolbar, MonacoResponseViewer } from '@apinox/request-editor/monaco';
 import { invokeTauriCommand } from '../../utils/bridge';
+import { EmptyState } from '../common/EmptyState';
 import { ConditionPickerModal, suggestConditionsFromSoapXml } from './ConditionPickerModel';
 import { tokens } from './tokens';
 
@@ -293,17 +294,6 @@ const Placeholder = styled.div`
   justify-content: center;
   color: ${tokens.text.faint};
   font-size: 12px;
-`;
-
-const EmptyState = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: ${tokens.text.faint};
-  gap: 6px;
-  p { margin: 0; font-size: 12px; }
 `;
 
 const Btn = styled.button`
@@ -811,9 +801,7 @@ export const FileWatcherPage: React.FC = () => {
           </PairListHeader>
           <PairScroll>
             {visiblePairs.length === 0 ? (
-              <EmptyState style={{ padding: '32px 16px' }}>
-                <p>{watches.length === 0 ? 'Add a watch to start.' : 'Waiting for file changes…'}</p>
-              </EmptyState>
+              <EmptyState title={watches.length === 0 ? "No file watches" : "No matched pairs"} description={watches.length === 0 ? "Add a watch to start." : "Waiting for file changes…"} />
             ) : (
               visiblePairs.map(pair => (
                 <PairRow
@@ -864,9 +852,7 @@ export const FileWatcherPage: React.FC = () => {
               </DetailBody>
             </>
           ) : (
-            <EmptyState>
-              <p>Select a pair to view request &amp; response</p>
-            </EmptyState>
+            <EmptyState title="No pair selected" description="Select a pair to view request & response" />
           )}
         </DetailPanel>
       </MainArea>

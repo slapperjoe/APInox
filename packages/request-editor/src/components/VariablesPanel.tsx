@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import styled from 'styled-components';
+import { EmptyState } from './common/EmptyState';
 import { Variable, CheckCircle, XCircle, Circle, Copy } from 'lucide-react';
 import { CustomXPathEvaluator } from '../utils/xpathEvaluator';
 
@@ -46,21 +47,6 @@ const Header = styled.div`
     color: var(--apinox-foreground);
 `;
 
-const EmptyMessage = styled.div`
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    color: var(--apinox-descriptionForeground);
-    text-align: center;
-    padding: 32px;
-    
-    svg {
-        opacity: 0.5;
-    }
-`;
 
 const VariablesList = styled.div`
     display: flex;
@@ -238,17 +224,7 @@ export const VariablesPanel: React.FC<VariablesPanelProps> = ({
                     <Variable size={16} />
                     Available Variables
                 </Header>
-                <EmptyMessage>
-                    <Variable size={48} />
-                    <div>
-                        <strong>No variables available</strong>
-                        <div style={{ fontSize: '12px', marginTop: '8px' }}>
-                            Add extractors to prior steps to capture values from responses.
-                            <br />
-                            Variables can be used in subsequent requests using <code>${'{variableName}'}</code> syntax.
-                        </div>
-                    </div>
-                </EmptyMessage>
+                <EmptyState icon={Variable} title="No variables available" description="Add extractors to prior steps to capture values from responses. Variables can be used in subsequent requests using ${variableName} syntax." />
             </Container>
         );
     }

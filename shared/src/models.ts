@@ -205,6 +205,17 @@ export interface BinaryFile {
     size: number;
 }
 
+/** Stored response from the last execution of a request */
+export interface RequestResponse {
+    rawResponse?: string;
+    status?: number;
+    statusText?: string;
+    time?: number;
+    size?: number;
+    headers?: Record<string, string>;
+    contentType?: string;
+}
+
 export interface ApiRequest {
     name: string;
     request: string; // The body content (XML, JSON, GraphQL query, etc.)
@@ -218,6 +229,8 @@ export interface ApiRequest {
     id?: string;
     wsSecurity?: WSSecurityConfig;
     attachments?: RequestAttachment[];
+    /** Response from the last execution, persisted across restarts */
+    lastResponse?: RequestResponse;
 
     // REST/GraphQL Support (Phase 1)
     /** Request type discriminator - defaults to 'soap' for backward compatibility */
@@ -485,6 +498,7 @@ export enum SidebarView {
     PROJECTS = 'projects',
     COLLECTIONS = 'collections', // REST/GraphQL collections
     EXPLORER = 'explorer',
+    UNIFIED_EXPLORER = 'unified_explorer', // Merged projects + explorer
     TESTS = 'tests',
     WORKFLOWS = 'workflows', // NEW: Request chaining workflows
     PERFORMANCE = 'performance',

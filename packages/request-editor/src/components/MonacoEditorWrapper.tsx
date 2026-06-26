@@ -69,7 +69,7 @@ export const MonacoEditorWrapper = React.forwardRef<
     },
     ref
   ) {
-    const containerRef = useRef<HTMLDivElement>(null);
+    const editorHostRef = useRef<HTMLDivElement>(null);
     const editorRef = useRef<any>(null);
     const modelRef = useRef<any>(null);
     const [isReady, setIsReady] = useState(false);
@@ -86,7 +86,17 @@ export const MonacoEditorWrapper = React.forwardRef<
 
     // Initialize editor on mount
     useEffect(() => {
-      if (!containerRef.current || editorRef.current) return;
+      if (!editorHostRef.current) return;
+
+      if (editorRef.current?.isDisposed?.()) {
+        editorRef.current = null;
+      }
+
+      if (modelRef.current?.isDisposed?.()) {
+        modelRef.current = null;
+      }
+
+      if (editorRef.current) return;
 
       const instanceId = _monacoWrapperId;
       _monacoWrapperId += 1;
@@ -95,7 +105,7 @@ export const MonacoEditorWrapper = React.forwardRef<
       const model = createModel(initialText, initialLang, instanceId);
       modelRef.current = model;
 
-      const editor = monaco.editor.create(containerRef.current, {
+      const editor = monaco.editor.create(editorHostRef.current, {
         model,
         automaticLayout: true,
         ...options,
@@ -190,11 +200,21 @@ export const MonacoEditorWrapper = React.forwardRef<
     // Cleanup on unmount
     useEffect(() => {
       return () => {
-        if (editorRef.current) {
-          const model = editorRef.current.getModel();
-          if (model) model.dispose();
-          editorRef.current.dispose();
+        const editor = editorRef.current;
+        if (editor) {
+          const model = editor.getModel();
+          if (model && !model.isDisposed?.()) model.dispose();
+          editor.dispose();
+        } else if (modelRef.current && !modelRef.current.isDisposed?.()) {
+          modelRef.current.dispose();
         }
+
+        if (editorHostRef.current) {
+          editorHostRef.current.replaceChildren();
+        }
+
+        editorRef.current = null;
+        modelRef.current = null;
       };
     }, []);
 
@@ -204,32 +224,36 @@ export const MonacoEditorWrapper = React.forwardRef<
       textAlign: "initial",
       width,
       height,
+      overflow: "hidden",
     };
 
-    const containerStyle: React.CSSProperties = {
+    const loadingStyle: React.CSSProperties = {
       display: "flex",
+      position: "absolute",
+      inset: 0,
       height: "100%",
       width: "100%",
       justifyContent: "center",
       alignItems: "center",
+      pointerEvents: "none",
+      zIndex: 1,
     };
 
     const editorContainerStyle: React.CSSProperties = {
+      height: "100%",
       width: "100%",
-      ...(isReady ? {} : { display: "none" }),
     };
 
     return (
       <div
-        ref={containerRef}
         className={className}
         style={wrapperStyle}
         {...wrapperProps}
       >
         {!isReady && (
-          <div style={containerStyle}>{loading}</div>
+          <div style={loadingStyle}>{loading}</div>
         )}
-        <div style={editorContainerStyle} />
+        <div ref={editorHostRef} style={editorContainerStyle} />
       </div>
     );
   }

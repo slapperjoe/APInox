@@ -2,10 +2,6 @@
  * SidebarStyles.tsx
  * Shared styled components for sidebar UI elements.
  * 
- * NOTE: Some components in this file are being migrated to common components:
- * - HeaderButton → Use components/common/Button.tsx > HeaderButton
- * - Input → Use components/common/Form.tsx > FormInput or InlineFormInput
- * 
  * These sidebar-specific components remain:
  * - Layout components (SidebarContainer, SidebarHeader, SidebarContent)
  * - Tree item components (SectionHeader, ServiceItem, OperationItem, RequestItem)
@@ -174,56 +170,8 @@ export const RequestItem = styled.div<{ $active?: boolean }>`
 `;
 
 /**
- * Shake animation for attention-grabbing effects
- * Used for delete confirmations and warnings
- * NOTE: Also exported from components/common/Button.tsx
+ * Shake animation - re-exported from common/Button.tsx to avoid duplication.
+ * Used for delete confirmations and warnings.
  */
-export const shake = keyframes`
-    0% { transform: translateX(0); }
-    25% { transform: translateX(2px) rotate(5deg); }
-    50% { transform: translateX(-2px) rotate(-5deg); }
-    75% { transform: translateX(2px) rotate(5deg); }
-    100% { transform: translateX(0); }
-`;
-
-/**
- * HeaderButton - Button for sidebar headers
- * @deprecated Prefer using HeaderButton from components/common/Button.tsx
- * This version remains for backward compatibility during migration.
- */
-export const HeaderButton = styled.button<{ $shake?: boolean }>`
-    background: transparent;
-    border: none;
-    color: currentColor;
-    cursor: pointer;
-    padding: 2px;
-    margin-left: 5px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    ${props => props.$shake && css`animation: ${shake} 0.5s ease-in-out;`}
-    &:hover {
-        background-color: var(--apinox-toolbar-hoverBackground);
-        border-radius: 3px;
-    }
-`;
-
-/**
- * Input - Basic text input
- * @deprecated Prefer using FormInput or InlineFormInput from components/common/Form.tsx
- * This version remains for backward compatibility during migration.
- * 
- * Note: This has 4px padding vs. FormInput's 6px padding.
- * Use InlineFormInput (2px 4px) for compact inline editing.
- */
-export const Input = styled.input`
-    background-color: var(--apinox-input-background);
-    color: var(--apinox-input-foreground);
-    border: 1px solid var(--apinox-input-border);
-    padding: 4px;
-    flex: 1;
-    outline: none;
-    &:focus {
-        border-color: var(--apinox-focusBorder);
-    }
-`;
+import { shake } from '../../common/Button';
+export { shake };

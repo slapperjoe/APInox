@@ -193,9 +193,11 @@ export const SampleRequestPanel: React.FC<SampleRequestPanelProps> = ({
                     <S.ActionButton onClick={handleCopy}>
                         <Copy size={14} /> Copy XML
                     </S.ActionButton>
-                    <S.PrimaryActionButton onClick={handleCreateRequest}>
-                        <Plus size={14} /> Create Request
-                    </S.PrimaryActionButton>
+                    {onCreateRequest && (
+                        <S.PrimaryActionButton onClick={handleCreateRequest}>
+                            <Plus size={14} /> Create Request
+                        </S.PrimaryActionButton>
+                    )}
                 </S.SamplePanelActions>
             </S.SamplePanelHeader>
             

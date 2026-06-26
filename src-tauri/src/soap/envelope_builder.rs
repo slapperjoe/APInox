@@ -2,7 +2,6 @@
 /// 
 /// Generates SOAP 1.1 and 1.2 envelopes from WSDL operation schemas.
 /// Builds request XML from SchemaNode trees with proper namespaces.
-
 use anyhow::{Result, anyhow};
 use std::collections::HashMap;
 
@@ -187,7 +186,7 @@ impl EnvelopeBuilder {
 /// Generate a sample value for an XSD type
 fn generate_sample_value(xsd_type: &str) -> String {
     // Extract the local name (remove namespace prefix if present)
-    let local_type = xsd_type.split(':').last().unwrap_or(xsd_type);
+    let local_type = xsd_type.split(':').next_back().unwrap_or(xsd_type);
     
     match local_type {
         // String types
@@ -313,5 +312,44 @@ mod tests {
         assert!(envelope.contains("soap:Envelope"));
         assert!(envelope.contains("http://schemas.xmlsoap.org/soap/envelope/"));
         assert!(envelope.contains("tns:GetUser"));
+    }
+
+    #[test]
+    fn test_build_envelope_with_empty_sequence() {
+        use crate::parsers::wsdl::types::SchemaNode;
+        use serde_json::json;
+        
+        // Simulate a request element with an empty sequence (like the CountryInfoService request elements)
+        let schema_node = SchemaNode {
+            name: "ListOfContinentsByName".to_string(),
+            node_type: "xsd:ListOfContinentsByName".to_string(),
+            kind: "element".to_string(),
+            children: Some(vec![]), // empty sequence
+            min_occurs: Some("0".to_string()),
+            max_occurs: Some("1".to_string()),
+            documentation: None,
+            options: None,
+            is_optional: Some(true),
+        };
+        
+        let operation = ServiceOperation {
+            name: "ListOfContinentsByName".to_string(),
+            target_namespace: Some("http://www.oorsprong.org/websamples.countryinfo/CountryInfoService".to_string()),
+            original_endpoint: Some("http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso".to_string()),
+            action: None,
+            input: Some(json!("ListOfContinentsByName")),
+            output: json!("ListOfContinentsByNameResponse"),
+            full_schema: Some(schema_node),
+            description: None,
+            port_name: None,
+        };
+        
+        let builder = EnvelopeBuilder::new(SoapVersion::Soap11, operation);
+        let envelope = builder.build().unwrap();
+        
+        assert!(envelope.contains("soap:Envelope"));
+        // With an empty sequence and optional top-level element, the body might be nearly empty
+        // Let's check what we get
+        log::debug!("Envelope with empty sequence:\n{}", envelope);
     }
 }

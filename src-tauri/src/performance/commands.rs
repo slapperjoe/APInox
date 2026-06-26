@@ -23,6 +23,24 @@ static PERF_RUN_STORE: Lazy<Arc<Mutex<HashMap<String, PerfRunData>>>> =
 static ABORT_FLAGS: Lazy<Arc<Mutex<HashMap<String, bool>>>> =
     Lazy::new(|| Arc::new(Mutex::new(HashMap::new())));
 
+#[derive(Debug, Clone, Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct CoordinatorStatusResponse {
+    pub running: bool,
+    pub port: u16,
+    pub workers: Vec<Value>,
+    pub expected_workers: u32,
+}
+
+static COORDINATOR_STATUS: Lazy<Arc<Mutex<CoordinatorStatusResponse>>> = Lazy::new(|| {
+    Arc::new(Mutex::new(CoordinatorStatusResponse {
+        running: false,
+        port: 0,
+        workers: Vec::new(),
+        expected_workers: 0,
+    }))
+});
+
 fn push_update(run_id: &str, update: Value) {
     let mut store = PERF_RUN_STORE.lock().unwrap();
     if let Some(data) = store.get_mut(run_id) {
@@ -89,6 +107,48 @@ pub struct PerformanceRunUpdatesResponse {
 }
 
 // ── Commands ──────────────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub async fn start_coordinator(
+    port: u16,
+    expected_workers: u32,
+) -> Result<CoordinatorStatusResponse, String> {
+    let mut status = COORDINATOR_STATUS
+        .lock()
+        .map_err(|e| format!("Failed to lock coordinator status: {}", e))?;
+
+    status.running = true;
+    status.port = port;
+    status.expected_workers = expected_workers;
+    status.workers.clear();
+
+    log::warn!(
+        "[performance] start_coordinator is using placeholder backend status only"
+    );
+
+    Ok(status.clone())
+}
+
+#[tauri::command]
+pub async fn stop_coordinator() -> Result<CoordinatorStatusResponse, String> {
+    let mut status = COORDINATOR_STATUS
+        .lock()
+        .map_err(|e| format!("Failed to lock coordinator status: {}", e))?;
+
+    status.running = false;
+    status.workers.clear();
+
+    Ok(status.clone())
+}
+
+#[tauri::command]
+pub async fn get_coordinator_status() -> Result<CoordinatorStatusResponse, String> {
+    let status = COORDINATOR_STATUS
+        .lock()
+        .map_err(|e| format!("Failed to lock coordinator status: {}", e))?;
+
+    Ok(status.clone())
+}
 
 #[tauri::command]
 pub async fn run_performance_suite(

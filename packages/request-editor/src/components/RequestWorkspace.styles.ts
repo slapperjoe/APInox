@@ -643,18 +643,3 @@ export const Divider = styled.div`
   margin: 0 4px;
 `;
 
-// Empty State (for "none" body type)
-export const EmptyState = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  padding: 40px;
-  color: var(--apinox-descriptionForeground, #999);
-`;
-
-export const EmptyStateText = styled.p`
-  font-size: 14px;
-  margin: 0;
-`;

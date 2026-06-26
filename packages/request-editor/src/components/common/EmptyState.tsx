@@ -1,20 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
 
-// Inline Button component (replacing missing import)
-const Button = styled.button`
-    padding: 8px 16px;
-    background: var(--apinox-button-background);
-    color: var(--apinox-button-foreground);
-    border: none;
-    border-radius: 3px;
-    cursor: pointer;
-    font-size: 13px;
-    &:hover {
-        background: var(--apinox-button-hoverBackground);
-    }
-`;
-
 const Container = styled.div`
     flex: 1;
     display: flex;
@@ -24,8 +10,7 @@ const Container = styled.div`
     color: var(--apinox-descriptionForeground);
     padding: var(--space-xl);
     text-align: center;
-    height: 100%;
-    min-height: 200px;
+    min-height: 100px;
 `;
 
 const IconWrapper = styled.div`
@@ -80,7 +65,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ icon: Icon, title, descr
             {description && <Description>{description}</Description>}
             {action && (
                 <ActionContainer>
-                    <Button onClick={action.onClick}>{action.label}</Button>
+                    <button onClick={action.onClick}>{action.label}</button>
                 </ActionContainer>
             )}
             {children}

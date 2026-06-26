@@ -1,5 +1,6 @@
 import React, { useState, type ReactNode } from 'react';
 import styled from 'styled-components';
+import { EmptyState } from './common/EmptyState';
 import { MonacoResponseViewer } from './MonacoResponseViewer';
 import {
   TabsHeader,
@@ -69,12 +70,6 @@ const HeaderKey = styled(HeaderCell)`
   font-weight: 500;
 `;
 
-const EmptyState = styled.div`
-  opacity: 0.6;
-  font-style: italic;
-  padding: ${SPACING_SM};
-  text-align: center;
-`;
 
 // ---------------------------------------------------------------------------
 // Props interface
@@ -115,7 +110,7 @@ const ReadOnlyHeadersPanel: React.FC<{ headers: Record<string, string> }> = ({ h
     <HeadersContainer>
       <HeadersTitle>Response Headers</HeadersTitle>
       {entries.length === 0 ? (
-        <EmptyState>No response headers.</EmptyState>
+        <EmptyState title="No response headers." />
       ) : (
         entries.map(([key, value]) => (
           <HeaderRow key={key}>
