@@ -413,6 +413,10 @@ export interface UnifiedProject {
     parsedAt: Date;
     /** Timestamp of the last refresh/sync */
     lastRefreshedAt?: Date;
+    /** SOAP version (1.1 or 1.2) */
+    soapVersion?: string;
+    /** Binding name derived from the WSDL service */
+    bindingName?: string;
     /** Operations (which contain requests) */
     operations: ApiOperation[];
     id?: string;
