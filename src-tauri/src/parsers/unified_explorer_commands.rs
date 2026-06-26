@@ -42,6 +42,14 @@ pub async fn parse_wsdl_as_project(url: String) -> Result<serde_json::Value, Str
     let service = &result.services[0];
     let now = chrono::Utc::now().to_rfc3339();
 
+    // Derive SOAP version and binding name from service name
+    let soap_version = if service.name.ends_with("Soap12") { "1.2" } else { "1.1" };
+    let binding_name = service.name
+        .strip_suffix("Soap12")
+        .or_else(|| service.name.strip_suffix("Soap"))
+        .unwrap_or(&service.name)
+        .to_string();
+
     // Build operations array from parsed service
     let operations = build_operations_json(service);
 
@@ -53,6 +61,8 @@ pub async fn parse_wsdl_as_project(url: String) -> Result<serde_json::Value, Str
         "parsedAt": now,
         "lastRefreshedAt": serde_json::Value::Null,
         "id": Uuid::new_v4().to_string(),
+        "soapVersion": soap_version,
+        "bindingName": binding_name,
         "operations": operations,
     });
 
@@ -166,6 +176,8 @@ pub async fn refresh_unified_project(service_name: String) -> Result<serde_json:
         "parsedAt": existing["parsedAt"],
         "lastRefreshedAt": now,
         "id": existing["id"],
+        "soapVersion": existing["soapVersion"].as_str().unwrap_or("1.1"),
+        "bindingName": existing["bindingName"].as_str().unwrap_or(""),
         "operations": merged_operations,
     });
 
@@ -217,6 +229,7 @@ fn build_operation_json(op: &ServiceOperation) -> serde_json::Value {
         "input": op.input.as_ref().map(|v| json!(v)).unwrap_or(json!(null)),
         "targetNamespace": op.target_namespace,
         "originalEndpoint": op.original_endpoint,
+        "fullSchema": op.full_schema.as_ref().map(|s| serde_json::to_value(s).unwrap_or(json!(null))).unwrap_or(json!(null)),
         "requests": json!([
             json!({
                 "name": format!("sample_{}", op.name),

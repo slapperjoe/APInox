@@ -467,6 +467,48 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                             </div>
                         </div>
 
+                        {/* Operation Details Grid */}
+                        <div style={{
+                            padding: 15,
+                            backgroundColor: 'var(--apinox-editor-background)',
+                            border: '1px solid var(--apinox-widget-border)',
+                            borderRadius: 6,
+                            marginBottom: 20,
+                        }}>
+                            <h3 style={{ marginTop: 0, marginBottom: 15, fontSize: 14, fontWeight: 500 }}>
+                                Operation Details
+                            </h3>
+                            <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 10, fontSize: 13 }}>
+                                <div style={{ opacity: 0.7 }}>SOAP Action:</div>
+                                <div style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>{selected.operation.action || '(uses endpoint)'}</div>
+
+                                <div style={{ opacity: 0.7 }}>Input:</div>
+                                {selected.operation.fullSchema ? (
+                                    <div style={{ fontFamily: 'monospace' }}>
+                                        <div style={{ marginBottom: 5 }}>{selected.operation.fullSchema.name} ({selected.operation.fullSchema.type})</div>
+                                        {selected.operation.fullSchema.children && selected.operation.fullSchema.children.length > 0 && (
+                                            <div style={{ marginLeft: 15, opacity: 0.8 }}>
+                                                {selected.operation.fullSchema.children.map((child: any, idx: number) => (
+                                                    <div key={idx}>• {child.name}: {child.type}</div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div style={{ fontFamily: 'monospace', opacity: 0.5 }}>None</div>
+                                )}
+
+                                <div style={{ opacity: 0.7 }}>SOAP Version:</div>
+                                <div style={{ fontFamily: 'monospace' }}>{selected.project.soapVersion || '1.1'}</div>
+
+                                <div style={{ opacity: 0.7 }}>Binding:</div>
+                                <div style={{ fontFamily: 'monospace' }}>{selected.project.bindingName || '(not available)'}</div>
+
+                                <div style={{ opacity: 0.7 }}>Target Namespace:</div>
+                                <div style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>{selected.operation.targetNamespace || '(not available)'}</div>
+                            </div>
+                        </div>
+
                         <div style={{ marginBottom: 20 }}>
                             <SampleRequestPanel
                                 operation={selected.operation}
