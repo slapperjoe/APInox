@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
 use std::fs;
 use std::path::{Path, PathBuf};
 use crate::utils::resolve_config_dir;
@@ -20,6 +21,94 @@ struct ProjectProperties {
     #[serde(skip_serializing_if = "Option::is_none")]
     id: Option<String>,
     format: String,
+}
+
+// ---------------------------------------------------------------------------
+// Typed storage structs – compile-time validation for saved JSON files.
+// Deeply nested / schema-variant fields remain as serde_json::Value to avoid
+// over-modelling the WSDL-derived trees.
+// ---------------------------------------------------------------------------
+
+/// Data written to interfaces/{name}/interface.json
+#[derive(Debug, Serialize, Deserialize)]
+struct InterfaceMeta {
+    name: String,
+    #[serde(rename = "type")]
+    type_: String,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "bindingName")]
+    binding_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "soapVersion")]
+    soap_version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    definition: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "displayName")]
+    display_name: Option<String>,
+}
+
+/// Data written to interfaces/{name}/{op}/operation.json
+#[derive(Debug, Serialize, Deserialize)]
+struct OperationMeta {
+    name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    action: Option<String>,
+    #[serde(default, skip_serializing_if = "JsonValue::is_null")]
+    input: JsonValue,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "targetNamespace")]
+    target_namespace: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "originalEndpoint")]
+    original_endpoint: Option<String>,
+    #[serde(default, skip_serializing_if = "JsonValue::is_null", rename = "fullSchema")]
+    full_schema: JsonValue,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "displayName")]
+    display_name: Option<String>,
+}
+
+/// Data written to interfaces/{name}/{op}/{req}.json (request metadata)
+#[derive(Debug, Serialize, Deserialize)]
+struct RequestMeta {
+    name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    endpoint: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    method: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "contentType")]
+    content_type: Option<String>,
+    #[serde(default, skip_serializing_if = "JsonValue::is_null")]
+    headers: JsonValue,
+    #[serde(default, skip_serializing_if = "JsonValue::is_null")]
+    assertions: JsonValue,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "requestType")]
+    request_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "bodyType")]
+    body_type: Option<String>,
+    #[serde(default, skip_serializing_if = "JsonValue::is_null", rename = "restConfig")]
+    rest_config: JsonValue,
+    #[serde(default, skip_serializing_if = "JsonValue::is_null", rename = "graphqlConfig")]
+    graphql_config: JsonValue,
+    #[serde(default, skip_serializing_if = "JsonValue::is_null")]
+    extractors: JsonValue,
+    #[serde(default, skip_serializing_if = "JsonValue::is_null", rename = "wsSecurity")]
+    ws_security: JsonValue,
+    #[serde(default, skip_serializing_if = "JsonValue::is_null")]
+    attachments: JsonValue,
+}
+
+/// Data written to tests/{suite}/suite.json
+#[derive(Debug, Serialize, Deserialize)]
+struct TestSuiteMeta {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    id: Option<String>,
+    name: String,
+}
+
+/// Data written to tests/{suite}/{case}/case.json
+#[derive(Debug, Serialize, Deserialize)]
+struct TestCaseMeta {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    id: Option<String>,
+    name: String,
 }
 
 /// Sanitize a name for use as a folder/file name
@@ -190,7 +279,7 @@ pub async fn list_projects() -> Result<Vec<String>, String> {
 }
 
 /// Save an interface to its directory
-fn save_interface(iface: &serde_json::Value, interfaces_dir: &Path) -> Result<(), String> {
+fn save_interface(iface: &JsonValue, interfaces_dir: &Path) -> Result<(), String> {
     let name = iface["name"]
         .as_str()
         .ok_or("Missing interface name")?;
@@ -200,14 +289,17 @@ fn save_interface(iface: &serde_json::Value, interfaces_dir: &Path) -> Result<()
     fs::create_dir_all(&iface_dir)
         .map_err(|e| format!("Failed to create interface directory: {}", e))?;
 
-    write_json(&iface_dir.join("interface.json"), &serde_json::json!({
-        "name": name,
-        "type": iface["type"],
-        "bindingName": iface["bindingName"],
-        "soapVersion": iface["soapVersion"],
-        "definition": iface["definition"],
-        "displayName": iface["displayName"],
-    }))?;
+    let meta = InterfaceMeta {
+        name: name.to_string(),
+        type_: iface["type"].as_str().unwrap_or("soap").to_string(),
+        binding_name: iface["bindingName"].as_str().map(|s| s.to_string()),
+        soap_version: iface["soapVersion"].as_str().map(|s| s.to_string()),
+        definition: iface["definition"].as_str().map(|s| s.to_string()),
+        display_name: iface["displayName"].as_str().map(|s| s.to_string()),
+    };
+    let meta_val = serde_json::to_value(&meta)
+        .map_err(|e| format!("Failed to serialize interface meta: {}", e))?;
+    write_json(&iface_dir.join("interface.json"), &meta_val)?;
 
     let operations = iface["operations"]
         .as_array()
@@ -223,7 +315,7 @@ fn save_interface(iface: &serde_json::Value, interfaces_dir: &Path) -> Result<()
 }
 
 /// Save an operation to its directory
-fn save_operation(op: &serde_json::Value, iface_dir: &Path) -> Result<(), String> {
+fn save_operation(op: &JsonValue, iface_dir: &Path) -> Result<(), String> {
     let name = op["name"].as_str().ok_or("Missing operation name")?;
     let safe_name = sanitize_name(name);
     let op_dir = iface_dir.join(&safe_name);
@@ -231,15 +323,18 @@ fn save_operation(op: &serde_json::Value, iface_dir: &Path) -> Result<(), String
     fs::create_dir_all(&op_dir)
         .map_err(|e| format!("Failed to create operation directory: {}", e))?;
 
-    write_json(&op_dir.join("operation.json"), &serde_json::json!({
-        "name": name,
-        "action": op["action"],
-        "input": op["input"],
-        "targetNamespace": op["targetNamespace"],
-        "originalEndpoint": op["originalEndpoint"],
-        "fullSchema": op["fullSchema"],
-        "displayName": op["displayName"],
-    }))?;
+    let meta = OperationMeta {
+        name: name.to_string(),
+        action: op["action"].as_str().map(|s| s.to_string()),
+        input: op["input"].clone(),
+        target_namespace: op["targetNamespace"].as_str().map(|s| s.to_string()),
+        original_endpoint: op["originalEndpoint"].as_str().map(|s| s.to_string()),
+        full_schema: op["fullSchema"].clone(),
+        display_name: op["displayName"].as_str().map(|s| s.to_string()),
+    };
+    let meta_val = serde_json::to_value(&meta)
+        .map_err(|e| format!("Failed to serialize operation meta: {}", e))?;
+    write_json(&op_dir.join("operation.json"), &meta_val)?;
 
     let requests = op["requests"]
         .as_array()
@@ -281,7 +376,7 @@ fn save_operation(op: &serde_json::Value, iface_dir: &Path) -> Result<(), String
 }
 
 /// Save a request (body + metadata)
-fn save_request(req: &serde_json::Value, op_dir: &Path) -> Result<(), String> {
+fn save_request(req: &JsonValue, op_dir: &Path) -> Result<(), String> {
     let name = req["name"].as_str().ok_or("Missing request name")?;
     let safe_name = sanitize_name(name);
 
@@ -289,26 +384,29 @@ fn save_request(req: &serde_json::Value, op_dir: &Path) -> Result<(), String> {
     fs::write(op_dir.join(format!("{}.xml", safe_name)), body)
         .map_err(|e| format!("Failed to write request body: {}", e))?;
 
-    write_json(&op_dir.join(format!("{}.json", safe_name)), &serde_json::json!({
-        "name": name,
-        "endpoint": req["endpoint"],
-        "method": req["method"],
-        "contentType": req["contentType"],
-        "headers": req["headers"],
-        "assertions": req["assertions"],
-        "id": req["id"],
-        "requestType": req["requestType"],
-        "bodyType": req["bodyType"],
-        "restConfig": req["restConfig"],
-        "graphqlConfig": req["graphqlConfig"],
-        "extractors": req["extractors"],
-        "wsSecurity": req["wsSecurity"],
-        "attachments": req["attachments"],
-    }))
+    let meta = RequestMeta {
+        name: name.to_string(),
+        endpoint: req["endpoint"].as_str().map(|s| s.to_string()),
+        method: req["method"].as_str().map(|s| s.to_string()),
+        content_type: req["contentType"].as_str().map(|s| s.to_string()),
+        headers: req["headers"].clone(),
+        assertions: req["assertions"].clone(),
+        id: req["id"].as_str().map(|s| s.to_string()),
+        request_type: req["requestType"].as_str().map(|s| s.to_string()),
+        body_type: req["bodyType"].as_str().map(|s| s.to_string()),
+        rest_config: req["restConfig"].clone(),
+        graphql_config: req["graphqlConfig"].clone(),
+        extractors: req["extractors"].clone(),
+        ws_security: req["wsSecurity"].clone(),
+        attachments: req["attachments"].clone(),
+    };
+    let meta_val = serde_json::to_value(&meta)
+        .map_err(|e| format!("Failed to serialize request meta: {}", e))?;
+    write_json(&op_dir.join(format!("{}.json", safe_name)), &meta_val)
 }
 
 /// Save a test suite to its directory
-fn save_test_suite(suite: &serde_json::Value, tests_dir: &Path) -> Result<(), String> {
+fn save_test_suite(suite: &JsonValue, tests_dir: &Path) -> Result<(), String> {
     let name = suite["name"].as_str().ok_or("Missing test suite name")?;
     let safe_name = sanitize_name(name);
     let suite_dir = tests_dir.join(&safe_name);
@@ -316,10 +414,13 @@ fn save_test_suite(suite: &serde_json::Value, tests_dir: &Path) -> Result<(), St
     fs::create_dir_all(&suite_dir)
         .map_err(|e| format!("Failed to create test suite directory: {}", e))?;
 
-    write_json(&suite_dir.join("suite.json"), &serde_json::json!({
-        "id": suite["id"],
-        "name": name,
-    }))?;
+    let meta = TestSuiteMeta {
+        id: suite["id"].as_str().map(|s| s.to_string()),
+        name: name.to_string(),
+    };
+    let meta_val = serde_json::to_value(&meta)
+        .map_err(|e| format!("Failed to serialize test suite meta: {}", e))?;
+    write_json(&suite_dir.join("suite.json"), &meta_val)?;
 
     if let Some(test_cases) = suite["testCases"].as_array() {
         cleanup_orphan_dirs(&suite_dir, &sanitized_names(test_cases, "name"));
@@ -332,7 +433,7 @@ fn save_test_suite(suite: &serde_json::Value, tests_dir: &Path) -> Result<(), St
 }
 
 /// Save a test case to its directory
-fn save_test_case(tc: &serde_json::Value, suite_dir: &Path) -> Result<(), String> {
+fn save_test_case(tc: &JsonValue, suite_dir: &Path) -> Result<(), String> {
     let name = tc["name"].as_str().ok_or("Missing test case name")?;
     let safe_name = sanitize_name(name);
     let case_dir = suite_dir.join(&safe_name);
@@ -340,10 +441,13 @@ fn save_test_case(tc: &serde_json::Value, suite_dir: &Path) -> Result<(), String
     fs::create_dir_all(&case_dir)
         .map_err(|e| format!("Failed to create test case directory: {}", e))?;
 
-    write_json(&case_dir.join("case.json"), &serde_json::json!({
-        "id": tc["id"],
-        "name": name,
-    }))?;
+    let meta = TestCaseMeta {
+        id: tc["id"].as_str().map(|s| s.to_string()),
+        name: name.to_string(),
+    };
+    let meta_val = serde_json::to_value(&meta)
+        .map_err(|e| format!("Failed to serialize test case meta: {}", e))?;
+    write_json(&case_dir.join("case.json"), &meta_val)?;
 
     // Remove all existing step files before rewriting them in order.
     if let Ok(entries) = fs::read_dir(&case_dir) {
@@ -460,16 +564,19 @@ pub(crate) async fn load_project_internal(dir_path: &str) -> Result<serde_json::
 }
 
 /// Load an interface from its directory
-fn load_interface(iface_dir: &Path) -> Result<serde_json::Value, String> {
+fn load_interface(iface_dir: &Path) -> Result<JsonValue, String> {
     let meta_path = iface_dir.join("interface.json");
     let meta_json = fs::read_to_string(&meta_path)
         .map_err(|e| format!("Failed to read interface.json: {}", e))?;
-    let mut meta: serde_json::Value = serde_json::from_str(&meta_json)
+    let meta: InterfaceMeta = serde_json::from_str(&meta_json)
         .map_err(|e| format!("Failed to parse interface.json: {}", e))?;
-    
+
+    let mut meta_val = serde_json::to_value(&meta)
+        .map_err(|e| format!("Failed to serialize interface meta: {}", e))?;
+
     // Load operations
     let mut operations = Vec::new();
-    
+
     if let Ok(entries) = fs::read_dir(iface_dir) {
         for entry in entries.flatten() {
             let path = entry.path();
@@ -480,24 +587,27 @@ fn load_interface(iface_dir: &Path) -> Result<serde_json::Value, String> {
             }
         }
     }
-    
-    meta["operations"] = serde_json::Value::Array(operations);
-    
-    Ok(meta)
+
+    meta_val["operations"] = JsonValue::Array(operations);
+
+    Ok(meta_val)
 }
 
 /// Load an operation from its directory
-fn load_operation(op_dir: &Path) -> Result<serde_json::Value, String> {
+fn load_operation(op_dir: &Path) -> Result<JsonValue, String> {
     let meta_path = op_dir.join("operation.json");
     let meta_json = fs::read_to_string(&meta_path)
         .map_err(|e| format!("Failed to read operation.json: {}", e))?;
-    let mut meta: serde_json::Value = serde_json::from_str(&meta_json)
+    let meta: OperationMeta = serde_json::from_str(&meta_json)
         .map_err(|e| format!("Failed to parse operation.json: {}", e))?;
-    
+
+    let mut meta_val = serde_json::to_value(&meta)
+        .map_err(|e| format!("Failed to serialize operation meta: {}", e))?;
+
     // Load requests
     let mut requests = Vec::new();
     let mut request_bases = std::collections::HashSet::new();
-    
+
     if let Ok(entries) = fs::read_dir(op_dir) {
         for entry in entries.flatten() {
             let path = entry.path();
@@ -512,45 +622,51 @@ fn load_operation(op_dir: &Path) -> Result<serde_json::Value, String> {
             }
         }
     }
-    
+
     for base in request_bases {
         if let Ok(req) = load_request(op_dir, &base) {
             requests.push(req);
         }
     }
-    
-    meta["requests"] = serde_json::Value::Array(requests);
-    
-    Ok(meta)
+
+    meta_val["requests"] = JsonValue::Array(requests);
+
+    Ok(meta_val)
 }
 
 /// Load a request (body + metadata)
-fn load_request(op_dir: &Path, base_name: &str) -> Result<serde_json::Value, String> {
+fn load_request(op_dir: &Path, base_name: &str) -> Result<JsonValue, String> {
     let meta_path = op_dir.join(format!("{}.json", base_name));
     let body_path = op_dir.join(format!("{}.xml", base_name));
-    
+
     let meta_json = fs::read_to_string(&meta_path)
         .map_err(|e| format!("Failed to read request metadata: {}", e))?;
-    let mut meta: serde_json::Value = serde_json::from_str(&meta_json)
+    let meta: RequestMeta = serde_json::from_str(&meta_json)
         .map_err(|e| format!("Failed to parse request metadata: {}", e))?;
-    
+
+    let mut meta_val = serde_json::to_value(&meta)
+        .map_err(|e| format!("Failed to serialize request meta: {}", e))?;
+
     let body = fs::read_to_string(&body_path).unwrap_or_default();
-    meta["request"] = serde_json::Value::String(body);
-    
-    Ok(meta)
+    meta_val["request"] = JsonValue::String(body);
+
+    Ok(meta_val)
 }
 
 /// Load a test suite from its directory
-fn load_test_suite(suite_dir: &Path) -> Result<serde_json::Value, String> {
+fn load_test_suite(suite_dir: &Path) -> Result<JsonValue, String> {
     let meta_path = suite_dir.join("suite.json");
     let meta_json = fs::read_to_string(&meta_path)
         .map_err(|e| format!("Failed to read suite.json: {}", e))?;
-    let mut meta: serde_json::Value = serde_json::from_str(&meta_json)
+    let meta: TestSuiteMeta = serde_json::from_str(&meta_json)
         .map_err(|e| format!("Failed to parse suite.json: {}", e))?;
-    
+
+    let mut meta_val = serde_json::to_value(&meta)
+        .map_err(|e| format!("Failed to serialize suite meta: {}", e))?;
+
     // Load test cases
     let mut test_cases = Vec::new();
-    
+
     if let Ok(entries) = fs::read_dir(suite_dir) {
         for entry in entries.flatten() {
             let path = entry.path();
@@ -561,23 +677,26 @@ fn load_test_suite(suite_dir: &Path) -> Result<serde_json::Value, String> {
             }
         }
     }
-    
-    meta["testCases"] = serde_json::Value::Array(test_cases);
-    
-    Ok(meta)
+
+    meta_val["testCases"] = JsonValue::Array(test_cases);
+
+    Ok(meta_val)
 }
 
 /// Load a test case from its directory
-fn load_test_case(case_dir: &Path) -> Result<serde_json::Value, String> {
+fn load_test_case(case_dir: &Path) -> Result<JsonValue, String> {
     let meta_path = case_dir.join("case.json");
     let meta_json = fs::read_to_string(&meta_path)
         .map_err(|e| format!("Failed to read case.json: {}", e))?;
-    let mut meta: serde_json::Value = serde_json::from_str(&meta_json)
+    let meta: TestCaseMeta = serde_json::from_str(&meta_json)
         .map_err(|e| format!("Failed to parse case.json: {}", e))?;
-    
+
+    let mut meta_val = serde_json::to_value(&meta)
+        .map_err(|e| format!("Failed to serialize case meta: {}", e))?;
+
     // Load steps (ordered by filename)
     let mut steps = Vec::new();
-    
+
     if let Ok(entries) = fs::read_dir(case_dir) {
         let mut step_files: Vec<_> = entries
             .filter_map(|e| e.ok())
@@ -588,21 +707,21 @@ fn load_test_case(case_dir: &Path) -> Result<serde_json::Value, String> {
                     && path.file_name().and_then(|f| f.to_str()) != Some("case.json")
             })
             .collect();
-        
+
         step_files.sort_by_key(|e| e.file_name());
-        
+
         for entry in step_files {
             if let Ok(step_json) = fs::read_to_string(entry.path()) {
-                if let Ok(step) = serde_json::from_str::<serde_json::Value>(&step_json) {
+                if let Ok(step) = serde_json::from_str::<JsonValue>(&step_json) {
                     steps.push(step);
                 }
             }
         }
     }
-    
-    meta["steps"] = serde_json::Value::Array(steps);
-    
-    Ok(meta)
+
+    meta_val["steps"] = JsonValue::Array(steps);
+
+    Ok(meta_val)
 }
 
 /// Delete a project by name
