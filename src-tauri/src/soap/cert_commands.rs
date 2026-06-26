@@ -1,7 +1,6 @@
 /// Tauri Commands for Certificate Management
 /// 
 /// Frontend-facing commands for certificate operations
-
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use crate::soap::{CertificateManager, CertificateWithKey};

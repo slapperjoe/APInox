@@ -18,6 +18,7 @@ import { NotesContextToolbar } from "./NotesContextToolbar";
 import { NotesPreview, DebouncedNotesPreview } from "./NotesPreview";
 import { NotesHexEditor } from "./NotesHexEditor";
 import { useEditorSettings } from "@apinox/request-editor/core";
+import { EmptyState } from "../components/common/EmptyState";
 
 // ─── Styled ───────────────────────────────────────────────────────────────────
 
@@ -104,17 +105,6 @@ const EditorPane = styled.div`
   flex: 1;
   min-width: 0;
   overflow: hidden;
-`;
-
-const EmptyState = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
-  min-height: 0;
-  gap: 12px;
-  color: var(--apinox-descriptionForeground, rgba(204,204,204,0.5));
 `;
 
 const LoadingOverlay = styled.div`
@@ -318,10 +308,7 @@ export const NotesEditor: React.FC = () => {
   if (!activeNote) {
     return (
       <Root>
-        <EmptyState>
-          <FileText size={48} strokeWidth={1} />
-          <p style={{ margin: 0 }}>Select a note from the sidebar, or create a new one.</p>
-        </EmptyState>
+        <EmptyState icon={FileText} title="No note selected" description="Select a note from the sidebar, or create a new one." />
       </Root>
     );
   }

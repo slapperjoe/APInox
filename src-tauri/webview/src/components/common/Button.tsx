@@ -20,7 +20,7 @@
 import styled, { css, keyframes } from 'styled-components';
 
 // Shake animation for danger states (e.g., delete confirmation)
-const shake = keyframes`
+export const shake = keyframes`
     0% { transform: translateX(0); }
     25% { transform: translateX(2px) rotate(5deg); }
     50% { transform: translateX(-2px) rotate(-5deg); }

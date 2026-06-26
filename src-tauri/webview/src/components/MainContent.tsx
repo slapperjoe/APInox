@@ -14,7 +14,7 @@ import type { TrafficLog } from './proxy/TrafficViewer';
 // import { CodeSnippetModal } from './modals/CodeSnippetModal';
 import type { PickRequestItem } from './modals/PickRequestModal';
 import type { BulkImportResult } from './modals/BulkImportModal';
-import { ApiRequest, TestCase, TestStep, SidebarView, RequestHistoryEntry, WsdlDiff, ApiInterface, ApiOperation, Workflow, WorkflowStep, ApinoxProject } from '@shared/models';
+import { ApiRequest, TestCase, TestStep, SidebarView, RequestHistoryEntry, WsdlDiff, ApiInterface, ApiOperation, Workflow, WorkflowStep, ApinoxProject, UnifiedProject } from '@shared/models';
 import { BackendCommand, FrontendCommand } from '@shared/messages';
 import { PERF_REQUEST_ID_PREFIX } from '../constants';
 import { useMessageHandler } from '../hooks/useMessageHandler';
@@ -56,6 +56,9 @@ const RulesAndMockPage = React.lazy(() =>
 );
 const FileWatcherPage = React.lazy(() =>
     import('./proxy/FileWatcherPage').then(module => ({ default: module.FileWatcherPage }))
+);
+const UnifiedExplorerView = React.lazy(() =>
+    import('./explorer/UnifiedExplorerView').then(module => ({ default: module.UnifiedExplorerView }))
 );
 const HelpModal = React.lazy(() =>
     import('./HelpModal').then(module => ({ default: module.HelpModal }))
@@ -220,8 +223,230 @@ const MainContent: React.FC = () => {
     // ==========================================================================
     // LOCAL STATE - Remaining state that stays in App
     // ==========================================================================
+    
+    // Unified Explorer State
+    const [unifiedProjects, setUnifiedProjects] = useState<UnifiedProject[]>([]);
+    const [unifiedSelectedNode, setUnifiedSelectedNode] = useState<{ type: string; id: string } | null>(null);
+    const [unifiedLoading, setUnifiedLoading] = useState(true);
+    
+    // Load unified projects on mount
+    useEffect(() => {
+        (async () => {
+            try {
+                const data: any = await bridge.invokeTauriCommand('list_unified_projects');
+                const projectList: UnifiedProject[] = Array.isArray(data) ? data : [];
+                setUnifiedProjects(projectList);
+            } catch (e) {
+                console.error('[UnifiedExplorer] Failed to load projects:', e);
+            } finally {
+                setUnifiedLoading(false);
+            }
+        })();
+    }, []);
+    
+    // Unified Explorer Handlers
+    const handleUnifiedSelectNode = useCallback((type: string, id: string) => {
+        setUnifiedSelectedNode({ type, id });
+    }, []);
+    
+    const handleUnifiedRefresh = useCallback(async (projectName: string) => {
+        const project = unifiedProjects.find(p => p.name === projectName);
+        if (!project?.sourceUrl) return;
+        try {
+            const existingRequests = project.operations?.flatMap(op => op.requests || []) || [];
+            const refreshed: UnifiedProject = await bridge.invokeTauriCommand('refresh_project_wsdl', {
+                sourceUrl: project.sourceUrl,
+                existingRequests,
+            });
+            // Enrich refreshed project: add XML bodies for any sample requests missing them
+            const enrichedProject: UnifiedProject = {
+                ...refreshed,
+                operations: (refreshed.operations || []).map(op => {
+                    const enrichedRequests = (op.requests || []).map(req => {
+                        if (!req.request && op.input && op.targetNamespace) {
+                            return { ...req, request: generateInitialXmlForOperation(op) };
+                        }
+                        return req;
+                    });
+                    return { ...op, requests: enrichedRequests };
+                }),
+            };
+            setUnifiedProjects(prev => prev.map(p => p.name === projectName ? enrichedProject : p));
+        } catch (e) {
+            console.error('[UnifiedExplorer] Refresh failed:', e);
+        }
+    }, [unifiedProjects]);
+    
+    const handleUnifiedDeleteProject = useCallback(async (projectName: string) => {
+        try {
+            await bridge.invokeTauriCommand('delete_unified_project', { name: projectName });
+            setUnifiedProjects(prev => prev.filter(p => p.name !== projectName));
+        } catch (e) {
+            console.error('[UnifiedExplorer] Delete project failed:', e);
+        }
+    }, []);
+    
+    const handleUnifiedDeleteOperation = useCallback(async (projectName: string, operationName: string) => {
+        try {
+            await bridge.invokeTauriCommand('delete_unified_operation', { projectName, operationName });
+            setUnifiedProjects(prev => prev.map(p => {
+                if (p.name !== projectName) return p;
+                return { ...p, operations: p.operations.filter(op => op.name !== operationName) };
+            }));
+        } catch (e) {
+            console.error('[UnifiedExplorer] Delete operation failed:', e);
+        }
+    }, []);
+    
+    const handleUnifiedDeleteRequest = useCallback(async (projectName: string, operationName: string, requestName: string) => {
+        try {
+            await bridge.invokeTauriCommand('delete_unified_request', { projectName, operationName, requestName });
+            setUnifiedProjects(prev => prev.map(p => {
+                if (p.name !== projectName) return p;
+                return {
+                    ...p,
+                    operations: p.operations.map(op => {
+                        if (op.name !== operationName) return op;
+                        return { ...op, requests: op.requests?.filter(r => r.name !== requestName) || [] };
+                    })
+                };
+            }));
+        } catch (e) {
+            console.error('[UnifiedExplorer] Delete request failed:', e);
+        }
+    }, []);
+    
+    const handleUnifiedNewRequest = useCallback(async (projectName: string, operationName: string) => {
+        const project = unifiedProjects.find(p => p.name === projectName);
+        const operation = project?.operations.find(op => op.name === operationName);
+        if (!project || !operation) return;
 
+        const existingRequests = operation.requests || [];
+        const existingNames = new Set(existingRequests.map(req => req.name));
+        const sampleRequest = existingRequests.find(req => req.name.startsWith("sample_"));
 
+        let requestNumber = existingRequests.filter(req => !req.name.startsWith("sample_")).length + 1;
+        let requestName = `Request${requestNumber}.xml`;
+        while (existingNames.has(requestName)) {
+            requestNumber += 1;
+            requestName = `Request${requestNumber}.xml`;
+        }
+
+        const newReq: ApiRequest = {
+            ...(sampleRequest || {}),
+            id: crypto.randomUUID(),
+            name: requestName,
+            request: sampleRequest?.request || generateInitialXmlForOperation(operation),
+            endpoint: sampleRequest?.endpoint || operation.originalEndpoint || "",
+            method: sampleRequest?.method || "POST",
+            contentType: sampleRequest?.contentType || operation.input?.contentType || "application/soap+xml",
+            dirty: true,
+            readOnly: false,
+        };
+
+        const updatedProject: UnifiedProject = {
+            ...project,
+            operations: project.operations.map(op => {
+                if (op.name !== operationName) return op;
+                return { ...op, requests: [...(op.requests || []), newReq] };
+            }),
+        };
+
+        try {
+            await bridge.invokeTauriCommand("save_unified_project", {
+                dirPath: project.name,
+                project: JSON.parse(JSON.stringify(updatedProject)),
+            });
+            setUnifiedProjects(prev => prev.map(p => p.name === projectName ? updatedProject : p));
+            setUnifiedSelectedNode({ type: "request", id: newReq.id || newReq.name });
+        } catch (e) {
+            console.error("[UnifiedExplorer] New request failed:", e);
+        }
+    }, [unifiedProjects]);
+    
+    const handleUnifiedExport = useCallback(async (projectName: string) => {
+        const project = unifiedProjects.find(p => p.name === projectName);
+        if (!project) return;
+        try {
+            const { save } = await import('@tauri-apps/plugin-dialog');
+            const filePath = await save({
+                defaultPath: `${projectName}.apinox`,
+                filters: [{ name: 'APInox Project', extensions: ['apinox', 'json'] }]
+            });
+            if (!filePath) return;
+            await bridge.invokeTauriCommand('export_unified_project', { projectName, filePath });
+        } catch (e) {
+            console.error('[UnifiedExplorer] Export failed:', e);
+        }
+    }, [unifiedProjects]);
+    
+    const handleUnifiedWsdlLoaded = useCallback((project: UnifiedProject) => {
+        // Enrich sample requests with generated XML bodies
+        const enrichedProject: UnifiedProject = {
+            ...project,
+            operations: project.operations.map(op => {
+                const enrichedRequests = (op.requests || []).map(req => {
+                    // If the request has no 'request' field (no body), generate one
+                    if (!req.request && op.input && op.targetNamespace) {
+                        return {
+                            ...req,
+                            request: generateInitialXmlForOperation(op),
+                        };
+                    }
+                    return req;
+                });
+                return { ...op, requests: enrichedRequests };
+            }),
+        };
+        setUnifiedProjects(prev => [...prev, enrichedProject]);
+    }, []);
+    
+    const handleUnifiedReorderOperation = useCallback(async (projectName: string, fromIndex: number, toIndex: number) => {
+        const project = unifiedProjects.find(p => p.name === projectName);
+        if (!project) return;
+        const ops = [...project.operations];
+        const [moved] = ops.splice(fromIndex, 1);
+        // When moving down (fromIndex < original toIndex), removal shifts all later indices left
+        const adjustedTo = fromIndex < toIndex ? toIndex - 1 : toIndex;
+        ops.splice(adjustedTo, 0, moved);
+        const updated = { ...project, operations: ops };
+        try {
+            await bridge.invokeTauriCommand("save_unified_project", {
+                dirPath: project.name,
+                project: JSON.parse(JSON.stringify(updated)),
+            });
+            setUnifiedProjects(prev => prev.map(p => p.name === projectName ? updated : p));
+        } catch (e) {
+            console.error("[UnifiedExplorer] Reorder operation failed:", e);
+        }
+    }, [unifiedProjects]);
+
+    const handleUnifiedReorderRequest = useCallback(async (projectName: string, operationName: string, fromIndex: number, toIndex: number) => {
+        const project = unifiedProjects.find(p => p.name === projectName);
+        if (!project) return;
+        const updated = {
+            ...project,
+            operations: project.operations.map(op => {
+                if (op.name !== operationName) return op;
+                const reqs = [...(op.requests || [])];
+                const [moved] = reqs.splice(fromIndex, 1);
+                // When moving down (fromIndex < original toIndex), removal shifts all later indices left
+                const adjustedTo = fromIndex < toIndex ? toIndex - 1 : toIndex;
+                reqs.splice(adjustedTo, 0, moved);
+                return { ...op, requests: reqs };
+            }),
+        };
+        try {
+            await bridge.invokeTauriCommand("save_unified_project", {
+                dirPath: project.name,
+                project: JSON.parse(JSON.stringify(updated)),
+            });
+            setUnifiedProjects(prev => prev.map(p => p.name === projectName ? updated : p));
+        } catch (e) {
+            console.error("[UnifiedExplorer] Reorder request failed:", e);
+        }
+    }, [unifiedProjects]);
+    
     // Backend Connection
     const [backendConnected, setBackendConnected] = useState(false);
 
@@ -235,10 +460,14 @@ const MainContent: React.FC = () => {
         setSidebarExpanded
     } = useNavigation();
     const [hasOpenedProxyView, setHasOpenedProxyView] = useState(activeView === SidebarView.PROXY);
+    const [hasOpenedUnifiedExplorer, setHasOpenedUnifiedExplorer] = useState(activeView === SidebarView.UNIFIED_EXPLORER);
 
     useEffect(() => {
         if (activeView === SidebarView.PROXY) {
             setHasOpenedProxyView(true);
+        }
+        if (activeView === SidebarView.UNIFIED_EXPLORER) {
+            setHasOpenedUnifiedExplorer(true);
         }
     }, [activeView]);
 
@@ -1541,6 +1770,19 @@ const MainContent: React.FC = () => {
             onToggleStar: handleToggleHistoryStar,
             onDelete: handleDeleteHistory,
         },
+        unifiedProps: {
+            projects: unifiedProjects,
+            selectedNode: unifiedSelectedNode,
+            onSelectNode: handleUnifiedSelectNode,
+            onRefreshProject: handleUnifiedRefresh,
+            onDeleteProject: handleUnifiedDeleteProject,
+            onDeleteOperation: handleUnifiedDeleteOperation,
+            onDeleteRequest: handleUnifiedDeleteRequest,
+            onNewRequest: handleUnifiedNewRequest,
+            onExportProject: handleUnifiedExport,
+            onReorderOperation: handleUnifiedReorderOperation,
+            onReorderRequest: handleUnifiedReorderRequest,
+        },
         activeView,
         onChangeView: handleSetActiveViewWrapper,
         sidebarExpanded,
@@ -1585,6 +1827,10 @@ const MainContent: React.FC = () => {
         handleAddPerformanceSuite, handleDeletePerformanceSuite, handleRunPerformanceSuite,
         handleSelectPerformanceSuite, handleStopPerformanceRun, handleAddPerformanceRequestForUi,
         requestHistory, handleReplayRequest, handleToggleHistoryStar, handleDeleteHistory,
+        unifiedProjects, unifiedSelectedNode,
+        handleUnifiedSelectNode, handleUnifiedRefresh, handleUnifiedDeleteProject,
+        handleUnifiedDeleteOperation, handleUnifiedDeleteRequest, handleUnifiedNewRequest,
+        handleUnifiedExport, handleUnifiedReorderOperation, handleUnifiedReorderRequest,
         activeView, handleSetActiveViewWrapper, sidebarExpanded, backendConnected,
         workspaceDirty, handleSaveUiState, setShowSettings, setShowHelp,
         isMobileDrawerOpen, isMobilePlatform, setIsMobileDrawerOpen, hasUpdate,
@@ -1641,7 +1887,7 @@ const MainContent: React.FC = () => {
             </SidebarContext.Provider>
 
             {hasOpenedProxyView && (
-                <div style={{ display: activeView === SidebarView.PROXY ? 'flex' : 'none', flex: 1, overflow: 'hidden', flexDirection: 'column' }}>
+                <div style={{ display: activeView === SidebarView.PROXY ? 'flex' : 'none', flex: 1, overflow: 'hidden', flexDirection: 'column', minHeight: 0 }}>
                     <Suspense fallback={<div style={{ flex: 1, background: 'var(--apinox-editor-background)' }} />}>
                         <ProxyPanel
                             onNavigateTo={(view) => handleSetActiveViewWrapper(view as SidebarView)}
@@ -1651,26 +1897,40 @@ const MainContent: React.FC = () => {
                 </div>
             )}
             {activeView === SidebarView.MOCK && (
-                <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                     <Suspense fallback={<div style={{ flex: 1, background: 'var(--apinox-editor-background)' }} />}>
                         <RulesAndMockPage />
                     </Suspense>
                 </div>
             )}
             {activeView === SidebarView.WATCHER && (
-                <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                     <Suspense fallback={<div style={{ flex: 1, background: 'var(--apinox-editor-background)' }} />}>
                         <FileWatcherPage />
                     </Suspense>
                 </div>
             )}
             {/* WorkspaceLayout using WorkspaceContext - no props needed */}
-            {activeView !== SidebarView.PROXY && activeView !== SidebarView.MOCK && activeView !== SidebarView.WATCHER && activeView !== SidebarView.NOTES && (
-                <WorkspaceContext.Provider value={workspaceContextValue}>
-                    <Suspense fallback={<div style={{ flex: 1, background: 'var(--apinox-editor-background)' }} />}>
-                        <WorkspaceLayout />
+            {activeView !== SidebarView.PROXY && activeView !== SidebarView.MOCK && activeView !== SidebarView.WATCHER && activeView !== SidebarView.NOTES && activeView !== SidebarView.UNIFIED_EXPLORER && (
+                <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                    <WorkspaceContext.Provider value={workspaceContextValue}>
+                        <Suspense fallback={<div style={{ flex: 1, background: 'var(--apinox-editor-background)' }} />}>
+                            <WorkspaceLayout />
                     </Suspense>
                 </WorkspaceContext.Provider>
+                </div>
+            )}
+            {hasOpenedUnifiedExplorer && (
+                <div style={{ display: activeView === SidebarView.UNIFIED_EXPLORER ? 'flex' : 'none', flex: 1, overflow: 'hidden', flexDirection: 'column', minHeight: 0 }}>
+                    <UnifiedExplorerView
+                        projects={unifiedProjects}
+                        selectedNode={unifiedSelectedNode}
+                        onSelectNode={handleUnifiedSelectNode}
+                        onRefreshProject={handleUnifiedRefresh}
+                        onNewRequest={handleUnifiedNewRequest}
+                        onWsdlLoaded={handleUnifiedWsdlLoaded}
+                    />
+                </div>
             )}
             {activeView === SidebarView.NOTES && (
                 <Suspense fallback={<div style={{ flex: 1, background: 'var(--apinox-editor-background)' }} />}>

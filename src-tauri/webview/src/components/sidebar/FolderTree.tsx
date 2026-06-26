@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import { ChevronRight, ChevronDown, FolderPlus, Plus, Trash2, Folder, Code, Globe, Zap } from 'lucide-react';
 import { ApinoxFolder, ApiRequest } from '@shared/models';
-import { HeaderButton, OperationItem, RequestItem } from './shared/SidebarStyles';
+import { OperationItem, RequestItem } from './shared/SidebarStyles';
+import { HeaderButton } from '../common/Button';
 import { ICON_COLORS } from '../../styles/colors';
 
 const FolderWrapper = styled.div<{ $level: number }>`

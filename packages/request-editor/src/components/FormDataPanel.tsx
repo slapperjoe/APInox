@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import styled from "styled-components";
+import { EmptyState } from "./common/EmptyState";
 import { Plus, Trash2, Upload, File, X } from "lucide-react";
 import { MonacoSingleLineInput } from "./MonacoSingleLineInput";
 import { SPACING_XS, SPACING_SM } from "../styles/spacing";
@@ -123,12 +124,6 @@ const Checkbox = styled.input`
   }
 `;
 
-const EmptyState = styled.div`
-  opacity: 0.6;
-  font-style: italic;
-  padding: ${SPACING_SM};
-  text-align: center;
-`;
 
 const Hint = styled.div`
   font-size: 11px;
@@ -244,7 +239,7 @@ export const FormDataPanel: React.FC<FormDataPanelProps> = ({
       )}
 
       {fields.length === 0 ? (
-        <EmptyState>No form fields. Click + to add a field.</EmptyState>
+        <EmptyState title="No form fields" description="Click + to add a field." />
       ) : (
         fields.map((field, index) => (
           <FieldRow key={index} $dimmed={!field.enabled}>

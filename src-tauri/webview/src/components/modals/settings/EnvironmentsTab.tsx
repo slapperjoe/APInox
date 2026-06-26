@@ -5,9 +5,10 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Trash2, Check, Download, Upload, Eye, EyeOff, Lock, X } from 'lucide-react';
-import styled, { keyframes, css } from 'styled-components';
+import { Plus, Trash2, Check, Download, Upload, Eye, EyeOff, Lock, X, Pencil } from 'lucide-react';
+import styled, { css } from 'styled-components';
 import { bridge } from '../../../utils/bridge';
+import { shake } from '../../common/Button';
 import {
     ApinoxConfig,
     EnvList,
@@ -21,19 +22,10 @@ import {
     PrimaryButton,
 } from './SettingsTypes';
 
-// Shake animation for delete confirmation
-const shakeAnimation = keyframes`
-    0% { transform: translateX(0); }
-    25% { transform: translateX(2px) rotate(5deg); }
-    50% { transform: translateX(-2px) rotate(-5deg); }
-    75% { transform: translateX(2px) rotate(5deg); }
-    100% { transform: translateX(0); }
-`;
-
-const DeleteButton = styled(IconButton) <{ confirming?: boolean }>`
+const DeleteButton = styled(IconButton)<{ confirming?: boolean }>`
     color: ${props => props.confirming ? 'var(--apinox-errorForeground)' : 'var(--apinox-foreground)'};
     ${props => props.confirming && css`
-        animation: ${shakeAnimation} 0.5s ease-in-out infinite;
+        animation: ${shake} 0.5s ease-in-out infinite;
     `}
 `;
 
@@ -80,6 +72,7 @@ interface EnvironmentsTabProps {
     onDeleteEnv: (key: string) => void;
     onSetActive: (key: string) => void;
     onEnvChange: (envKey: string, field: string, value: string) => void;
+    onRenameEnv?: (oldKey: string, newKey: string) => void;
     onImportEnvironments?: (environments: Record<string, any>, activeEnv?: string) => void;
 }
 
@@ -91,11 +84,29 @@ export const EnvironmentsTab: React.FC<EnvironmentsTabProps> = ({
     onDeleteEnv,
     onSetActive,
     onEnvChange,
+    onRenameEnv,
     onImportEnvironments,
 }) => {
     const environments = config.environments || {};
     const envKeys = Object.keys(environments);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Inline rename state
+    const [renameKey, setRenameKey] = useState<string | null>(null);
+    const [renameValue, setRenameValue] = useState('');
+    const renameInputRef = useRef<HTMLInputElement>(null);
+    const prevSelectedEnvKey = useRef<string | null>(null);
+
+    // Auto-enter rename mode for newly created environments
+    useEffect(() => {
+        if (selectedEnvKey && selectedEnvKey !== prevSelectedEnvKey.current && selectedEnvKey.startsWith('NewEnvironment')) {
+            setRenameKey(selectedEnvKey);
+            setRenameValue(selectedEnvKey);
+            // Focus the input after render
+            setTimeout(() => renameInputRef.current?.focus(), 50);
+        }
+        prevSelectedEnvKey.current = selectedEnvKey;
+    }, [selectedEnvKey]);
 
     // Delete confirmation state
     const [confirmDelete, setConfirmDelete] = useState(false);
@@ -392,7 +403,48 @@ export const EnvironmentsTab: React.FC<EnvironmentsTabProps> = ({
                 {selectedEnvKey && environments[selectedEnvKey] ? (
                     <>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                            <h3 style={{ margin: 0, textTransform: 'uppercase', fontSize: 12 }}>{selectedEnvKey}</h3>
+                            {renameKey === selectedEnvKey ? (
+                                <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                                    <Input
+                                        ref={renameInputRef as any}
+                                        type="text"
+                                        value={renameValue}
+                                        onChange={e => setRenameValue(e.target.value)}
+                                        onKeyDown={e => {
+                                            if (e.key === 'Enter') {
+                                                const trimmed = renameValue.trim();
+                                                if (trimmed && trimmed !== selectedEnvKey && onRenameEnv) {
+                                                    onRenameEnv(selectedEnvKey, trimmed);
+                                                }
+                                                setRenameKey(null);
+                                            } else if (e.key === 'Escape') {
+                                                setRenameKey(null);
+                                            }
+                                        }}
+                                        onBlur={() => {
+                                            const trimmed = renameValue.trim();
+                                            if (trimmed && trimmed !== selectedEnvKey && onRenameEnv) {
+                                                onRenameEnv(selectedEnvKey, trimmed);
+                                            }
+                                            setRenameKey(null);
+                                        }}
+                                        autoFocus
+                                        style={{ fontSize: 14, fontWeight: 600, width: 200 }}
+                                    />
+                                </div>
+                            ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <h3 style={{ margin: 0, textTransform: 'uppercase', fontSize: 12 }}>{selectedEnvKey}</h3>
+                                    {onRenameEnv && (
+                                        <IconButton
+                                            onClick={() => { setRenameKey(selectedEnvKey); setRenameValue(selectedEnvKey); }}
+                                            title="Rename Environment"
+                                        >
+                                            <Pencil size={12} />
+                                        </IconButton>
+                                    )}
+                                </div>
+                            )}
                             <div style={{ display: 'flex', gap: 8 }}>
                                 {config.activeEnvironment !== selectedEnvKey && (
                                     <PrimaryButton onClick={() => onSetActive(selectedEnvKey)} style={{ height: '20px', background: 'var(--apinox-button-secondaryBackground)', color: 'var(--apinox-button-secondaryForeground)' }}>

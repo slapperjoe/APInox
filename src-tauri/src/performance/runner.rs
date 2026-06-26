@@ -100,8 +100,8 @@ pub async fn execute_request(
 
 /// Extract a value from XML using the last element name in an XPath-like path.
 fn extract_xpath(xml: &str, path: &str) -> Option<String> {
-    let element = path.split('/').filter(|s| !s.is_empty()).last()?;
-    let element = element.split(':').last().unwrap_or(element);
+    let element = path.split('/').rfind(|s| !s.is_empty())?;
+    let element = element.split(':').next_back().unwrap_or(element);
 
     let open_tag = format!("<{}", element);
     let close_tag = format!("</{}>", element);

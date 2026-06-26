@@ -1,6 +1,5 @@
 /// Shared data models for APIprox.
 /// These mirror the TypeScript definitions that were in shared/src/models.ts.
-
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

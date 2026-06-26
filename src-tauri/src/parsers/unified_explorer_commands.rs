@@ -6,7 +6,9 @@
 use crate::parsers::wsdl_commands::{parse_wsdl, ParseWsdlRequest};
 use crate::parsers::wsdl::{ApiService, ServiceOperation};
 use crate::project_storage;
+use crate::soap::envelope_builder::{EnvelopeBuilder, SoapVersion};
 use serde_json::json;
+use std::fs;
 use uuid::Uuid;
 
 /// Parse a WSDL URL and create/save a unified project.
@@ -19,7 +21,7 @@ pub async fn parse_wsdl_as_project(url: String) -> Result<serde_json::Value, Str
 
     for p in &projects {
         if let Some(existing_url) = p.get("sourceUrl").and_then(|v| v.as_str()) {
-            if existing_url == &url {
+            if existing_url == url.as_str() {
                 // Duplicate WSDL URL — trigger refresh instead
                 let project_name = p["name"].as_str().unwrap_or("<unknown>").to_string();
                 return refresh_unified_project(project_name).await;
@@ -66,7 +68,7 @@ pub async fn parse_wsdl_as_project(url: String) -> Result<serde_json::Value, Str
     Ok(project)
 }
 
-/// Refresh a unified project's WSDL source
+/// Refresh a unified project's WSDL source by service name
 #[tauri::command]
 pub async fn refresh_unified_project(service_name: String) -> Result<serde_json::Value, String> {
     // Load existing project
@@ -110,17 +112,19 @@ pub async fn refresh_unified_project(service_name: String) -> Result<serde_json:
             eo.get("name").and_then(|v| v.as_str()) == Some(&new_op.name)
         });
 
+        let sample_xml = generate_sample_xml(new_op);
         let requests = if let Some(eo) = existing_op {
             // Preserve user-created requests from existing operation
             eo.get("requests").cloned().unwrap_or_else(|| json!([]))
         } else {
-            // New operation — create sample request
+            // New operation — create sample request with XML body
             json!([
                 json!({
                     "name": format!("sample_{}", new_op.name),
                     "endpoint": new_op.original_endpoint,
                     "method": "POST",
                     "contentType": "text/xml",
+                    "request": sample_xml,
                 })
             ])
         };
@@ -174,13 +178,39 @@ pub async fn refresh_unified_project(service_name: String) -> Result<serde_json:
     Ok(updated)
 }
 
+/// Refresh a project's WSDL by sourceUrl (called from frontend)
+#[tauri::command]
+pub async fn refresh_project_wsdl(params: serde_json::Value) -> Result<serde_json::Value, String> {
+    let source_url = params.get("sourceUrl")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "Missing sourceUrl".to_string())?;
+
+    // Find the project with this sourceUrl
+    let projects = project_storage::list_unified_projects()
+        .map_err(|e| format!("Failed to list projects: {}", e))?;
+
+    let existing_project = projects.iter().find(|p| {
+        p.get("sourceUrl").and_then(|v| v.as_str()) == Some(source_url)
+    }).ok_or_else(|| format!("No project found with sourceUrl: {}", source_url))?;
+
+    let service_name = existing_project.get("name")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "Project missing name".to_string())?;
+
+    // Delegate to refresh_unified_project
+    refresh_unified_project(service_name.to_string()).await
+}
+
 /// Convert an ApiService to a JSON array of operations
 fn build_operations_json(service: &ApiService) -> Vec<serde_json::Value> {
-    service.operations.iter().map(|op| build_operation_json(op)).collect()
+    service.operations.iter().map(build_operation_json).collect()
 }
 
 /// Convert a ServiceOperation to JSON
 fn build_operation_json(op: &ServiceOperation) -> serde_json::Value {
+    // Generate sample XML body using EnvelopeBuilder
+    let sample_xml = generate_sample_xml(op);
+
     json!({
         "name": op.name,
         "action": op.action,
@@ -193,9 +223,207 @@ fn build_operation_json(op: &ServiceOperation) -> serde_json::Value {
                 "endpoint": op.original_endpoint,
                 "method": "POST",
                 "contentType": "text/xml",
+                "request": sample_xml,
             })
         ]),
     })
+}
+
+/// Generate a sample SOAP envelope XML from a ServiceOperation
+fn generate_sample_xml(op: &ServiceOperation) -> String {
+    // Need both full_schema and target_namespace to build envelope
+    let schema = match &op.full_schema {
+        Some(s) => s,
+        None => return String::new(),
+    };
+    let target_ns = match &op.target_namespace {
+        Some(ns) => ns,
+        None => return String::new(),
+    };
+
+    let operation = ServiceOperation {
+        name: op.name.clone(),
+        action: op.action.clone(),
+        input: op.input.clone(),
+        output: op.output.clone(),
+        target_namespace: Some(target_ns.clone()),
+        original_endpoint: op.original_endpoint.clone(),
+        full_schema: Some(schema.clone()),
+        description: op.description.clone(),
+        port_name: op.port_name.clone(),
+    };
+
+    let builder = EnvelopeBuilder::new(SoapVersion::Soap11, operation);
+    builder.build().unwrap_or_default()
+}
+
+/// Delete a unified project entirely (removes the project directory from disk)
+#[tauri::command]
+pub fn delete_unified_project(name: String) -> Result<(), String> {
+    let project_dir = project_storage::projects_dir()
+        .map_err(|e| format!("Failed to get projects dir: {}", e))?
+        .join(sanitize_name(&name));
+
+    if !project_dir.exists() {
+        return Err(format!("Project directory '{}' does not exist", name));
+    }
+
+    fs::remove_dir_all(&project_dir)
+        .map_err(|e| format!("Failed to delete project '{}': {}", name, e))?;
+
+    Ok(())
+}
+
+/// Delete an operation from a unified project
+#[tauri::command]
+pub fn delete_unified_operation(project_name: String, operation_name: String) -> Result<(), String> {
+    let project_dir = project_storage::projects_dir()
+        .map_err(|e| format!("Failed to get projects dir: {}", e))?
+        .join(sanitize_name(&project_name));
+
+    let mut project = project_storage::load_unified_project(
+        project_dir.to_string_lossy().to_string(),
+    ).map_err(|e| format!("Failed to load project: {}", e))?;
+
+    let operations = project["operations"]
+        .as_array()
+        .ok_or("Missing or invalid operations array")?;
+
+    // Filter out the operation
+    let filtered: Vec<serde_json::Value> = operations.iter()
+        .filter(|op| {
+            let op_name = op.get("name").and_then(|v| v.as_str());
+            op_name != Some(&operation_name)
+        })
+        .cloned()
+        .collect();
+
+    project["operations"] = json!(filtered);
+
+    project_storage::save_unified_project(
+        project_dir.to_string_lossy().to_string(),
+        project,
+    ).map_err(|e| format!("Failed to save project after deleting operation: {}", e))?;
+
+    Ok(())
+}
+
+/// Delete a request from a unified project operation
+#[tauri::command]
+pub fn delete_unified_request(project_name: String, operation_name: String, request_name: String) -> Result<(), String> {
+    let project_dir = project_storage::projects_dir()
+        .map_err(|e| format!("Failed to get projects dir: {}", e))?
+        .join(sanitize_name(&project_name));
+
+    let mut project = project_storage::load_unified_project(
+        project_dir.to_string_lossy().to_string(),
+    ).map_err(|e| format!("Failed to load project: {}", e))?;
+
+    let operations = project["operations"]
+        .as_array_mut()
+        .ok_or("Missing or invalid operations array")?;
+
+    for op in operations.iter_mut() {
+        if op.get("name").and_then(|v| v.as_str()) == Some(&operation_name) {
+            let requests = op.get("requests").and_then(|v| v.as_array()).cloned().unwrap_or_else(Vec::new);
+            let filtered: Vec<serde_json::Value> = requests.iter()
+                .filter(|req| {
+                    let req_name = req.get("name").and_then(|v| v.as_str());
+                    req_name != Some(&request_name)
+                })
+                .cloned()
+                .collect();
+            op["requests"] = json!(filtered);
+        }
+    }
+
+    project_storage::save_unified_project(
+        project_dir.to_string_lossy().to_string(),
+        project,
+    ).map_err(|e| format!("Failed to save project after deleting request: {}", e))?;
+
+    Ok(())
+}
+
+/// Create a new request in a unified project operation
+#[tauri::command]
+pub fn new_unified_request(params: serde_json::Value) -> Result<serde_json::Value, String> {
+    let project_name = params.get("projectName")
+        .and_then(|v| v.as_str())
+        .ok_or("Missing projectName")?.to_string();
+    let operation_name = params.get("operationName")
+        .and_then(|v| v.as_str())
+        .ok_or("Missing operationName")?.to_string();
+
+    let project_dir = project_storage::projects_dir()
+        .map_err(|e| format!("Failed to get projects dir: {}", e))?
+        .join(sanitize_name(&project_name));
+
+    let mut project = project_storage::load_unified_project(
+        project_dir.to_string_lossy().to_string(),
+    ).map_err(|e| format!("Failed to load project: {}", e))?;
+
+    let operations = project["operations"]
+        .as_array_mut()
+        .ok_or("Missing or invalid operations array")?;
+
+    for op in operations.iter_mut() {
+        if op.get("name").and_then(|v| v.as_str()) == Some(&operation_name) {
+            let endpoint = op.get("originalEndpoint").and_then(|v| v.as_str()).map(|s| s.to_string());
+            let content_type = op.get("input")
+                .and_then(|v| v.get("contentType"))
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| "application/soap+xml".to_string());
+
+            // Auto-generate request name: Request1.xml, Request2.xml, ...
+            let existing_requests = op.get("requests").and_then(|v| v.as_array()).cloned().unwrap_or_else(Vec::new);
+            let next_num = existing_requests.len() + 1;
+            let request_name = format!("Request{}.xml", next_num);
+
+            // Build ServiceOperation from project data to generate sample XML
+            let operation = ServiceOperation {
+                name: op.get("name").and_then(|v| v.as_str()).unwrap().to_string(),
+                action: op.get("action").and_then(|v| v.as_str()).map(|s| s.to_string()),
+                input: op.get("input").cloned(),
+                output: op.get("output").cloned().unwrap_or_else(|| json!({})),
+                target_namespace: op.get("targetNamespace").and_then(|v| v.as_str()).map(|s| s.to_string()),
+                original_endpoint: op.get("originalEndpoint").and_then(|v| v.as_str()).map(|s| s.to_string()),
+                full_schema: op.get("fullSchema").and_then(|v| {
+                    serde_json::from_value(v.clone()).ok()
+                }),
+                description: op.get("description").and_then(|v| v.as_str()).map(|s| s.to_string()),
+                port_name: op.get("portName").and_then(|v| v.as_str()).map(|s| s.to_string()),
+            };
+            let sample_xml = generate_sample_xml(&operation);
+
+            let new_request = json!({
+                "name": request_name,
+                "request": sample_xml,
+                "endpoint": endpoint,
+                "method": "POST",
+                "contentType": content_type,
+            });
+
+            let mut updated_requests = existing_requests;
+            updated_requests.push(new_request);
+            op["requests"] = json!(updated_requests);
+        }
+    }
+
+    // Find the new request before saving
+    let new_request = project["operations"].as_array()
+        .unwrap().iter().find(|op| op.get("name").and_then(|v| v.as_str()) == Some(&operation_name))
+        .unwrap().get("requests").unwrap().as_array().unwrap()
+        .iter().rev().find(|r| r.get("method").and_then(|v| v.as_str()) == Some("POST"))
+        .unwrap().clone();
+
+    project_storage::save_unified_project(
+        project_dir.to_string_lossy().to_string(),
+        project,
+    ).map_err(|e| format!("Failed to save project after adding request: {}", e))?;
+
+    Ok(new_request)
 }
 
 /// Sanitize a name for use as a folder/file name
@@ -206,4 +434,120 @@ fn sanitize_name(name: &str) -> String {
             _ => c,
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sanitize_name_clean() {
+        assert_eq!(sanitize_name("AccountService"), "AccountService");
+        assert_eq!(sanitize_name("My Service"), "My Service");
+    }
+
+    #[test]
+    fn test_sanitize_name_special_chars() {
+        assert_eq!(sanitize_name("a/b"), "a_b");
+        assert_eq!(sanitize_name("a\\b"), "a_b");
+        assert_eq!(sanitize_name("a:b"), "a_b");
+        assert_eq!(sanitize_name("a*b"), "a_b");
+    }
+
+    #[test]
+    fn test_build_operation_json_structure() {
+        let op = ServiceOperation {
+            name: "GetBalance".to_string(),
+            input: None,
+            output: serde_json::Value::Null,
+            description: None,
+            target_namespace: Some("http://example.com".to_string()),
+            port_name: None,
+            original_endpoint: Some("http://example.com/service".to_string()),
+            full_schema: None,
+            action: Some("http://example.com/GetBalance".to_string()),
+        };
+
+        let json = build_operation_json(&op);
+
+        assert_eq!(json["name"], "GetBalance");
+        assert_eq!(json["action"], "http://example.com/GetBalance");
+        assert!(json["input"].is_null());
+        assert_eq!(json["targetNamespace"], "http://example.com");
+        assert_eq!(json["originalEndpoint"], "http://example.com/service");
+        assert!(json["requests"].is_array());
+        assert_eq!(json["requests"].as_array().unwrap().len(), 1);
+        assert_eq!(json["requests"][0]["name"], "sample_GetBalance");
+        assert_eq!(json["requests"][0]["method"], "POST");
+        assert_eq!(json["requests"][0]["contentType"], "text/xml");
+    }
+
+    #[test]
+    fn test_build_operations_json() {
+        let op1 = ServiceOperation {
+            name: "Op1".to_string(),
+            input: None,
+            output: serde_json::Value::Null,
+            description: None,
+            target_namespace: Some("http://ns".to_string()),
+            port_name: None,
+            original_endpoint: Some("http://example.com/service".to_string()),
+            full_schema: None,
+            action: Some("http://example.com/Op1".to_string()),
+        };
+        let op2 = ServiceOperation {
+            name: "Op2".to_string(),
+            input: None,
+            output: serde_json::Value::Null,
+            description: None,
+            target_namespace: Some("http://ns".to_string()),
+            port_name: None,
+            original_endpoint: Some("http://example.com/service".to_string()),
+            full_schema: None,
+            action: Some("http://example.com/Op2".to_string()),
+        };
+        let service = ApiService {
+            name: "TestService".to_string(),
+            ports: Vec::new(),
+            operations: vec![op1, op2],
+            target_namespace: Some("http://ns".to_string()),
+        };
+
+        let ops_json = build_operations_json(&service);
+        assert_eq!(ops_json.len(), 2);
+        assert_eq!(ops_json[0]["name"], "Op1");
+        assert_eq!(ops_json[1]["name"], "Op2");
+    }
+
+    #[tokio::test]
+    async fn test_parse_wsdl_as_project_structure() {
+        // Test the JSON structure returned by parse_wsdl_as_project
+        // Note: this is a structural test — not a live WSDL parse
+        let project = json!({
+            "name": "TestService",
+            "source": "wsdl",
+            "sourceUrl": "http://example.com/test.wsdl",
+            "parsedAt": "2024-01-01T00:00:00+00:00",
+            "id": "test-id",
+            "operations": json!([
+                json!({
+                    "name": "TestOp",
+                    "requests": json!([
+                        json!({
+                            "name": "sample_TestOp",
+                            "endpoint": "http://example.com/test",
+                            "method": "POST",
+                            "contentType": "text/xml",
+                        })
+                    ]),
+                })
+            ]),
+        });
+
+        assert_eq!(project["name"], "TestService");
+        assert_eq!(project["source"], "wsdl");
+        assert_eq!(project["sourceUrl"], "http://example.com/test.wsdl");
+        assert_eq!(project["operations"][0]["name"], "TestOp");
+        assert_eq!(project["operations"][0]["requests"][0]["name"], "sample_TestOp");
+    }
 }

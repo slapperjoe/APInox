@@ -1,7 +1,6 @@
 /// SOAP Client
 /// 
 /// Executes SOAP requests with proper headers and response parsing
-
 use anyhow::{Result, anyhow};
 use reqwest::{Client, Proxy};
 use quick_xml::events::Event;
@@ -267,14 +266,12 @@ fn parse_soap_response(xml: &str) -> Result<(Option<String>, Option<SoapFault>)>
                         body_content.push_str(&name);
                         
                         // Add attributes
-                        for attr in e.attributes() {
-                            if let Ok(attr) = attr {
-                                body_content.push(' ');
-                                body_content.push_str(&String::from_utf8_lossy(attr.key.as_ref()));
-                                body_content.push_str("=\"");
-                                body_content.push_str(&String::from_utf8_lossy(&attr.value));
-                                body_content.push('"');
-                            }
+                        for attr in e.attributes().flatten() {
+                            body_content.push(' ');
+                            body_content.push_str(&String::from_utf8_lossy(attr.key.as_ref()));
+                            body_content.push_str("=\"");
+                            body_content.push_str(&String::from_utf8_lossy(&attr.value));
+                            body_content.push('"');
                         }
                         
                         body_content.push('>');
@@ -303,41 +300,38 @@ fn parse_soap_response(xml: &str) -> Result<(Option<String>, Option<SoapFault>)>
                     }
                 }
             }
-            Ok(Event::Text(e)) => {
-                if in_body && in_fault {
-                    let text = e.unescape()?.to_string();
-                    match current_element.as_str() {
-                        "faultcode" => faultcode = text,
-                        "faultstring" => faultstring = text,
-                        "faultactor" => faultactor = Some(text),
-                        "detail" => detail = Some(text),
-                        _ => {}
-                    }
-                } else if in_body && !in_fault {
-                    let text = e.unescape()?.to_string();
-                    body_content.push_str(&text);
+            Ok(Event::Text(e)) if in_body && in_fault => {
+                let text = e.unescape()?.to_string();
+                match current_element.as_str() {
+                    "faultcode" => faultcode = text,
+                    "faultstring" => faultstring = text,
+                    "faultactor" => faultactor = Some(text),
+                    "detail" => detail = Some(text),
+                    _ => {}
                 }
             }
-            Ok(Event::Empty(e)) => {
-                if in_body && !in_fault {
-                    let name = String::from_utf8_lossy(e.local_name().as_ref()).to_string();
-                    body_content.push('<');
-                    body_content.push_str(&name);
-                    
-                    // Add attributes
-                    for attr in e.attributes() {
-                        if let Ok(attr) = attr {
-                            body_content.push(' ');
-                            body_content.push_str(&String::from_utf8_lossy(attr.key.as_ref()));
-                            body_content.push_str("=\"");
-                            body_content.push_str(&String::from_utf8_lossy(&attr.value));
-                            body_content.push('"');
-                        }
-                    }
-                    
-                    body_content.push_str("/>");
-                }
+            Ok(Event::Text(e)) if in_body && !in_fault => {
+                let text = e.unescape()?.to_string();
+                body_content.push_str(&text);
             }
+            Ok(Event::Text(_)) => {}
+            Ok(Event::Empty(e)) if in_body && !in_fault => {
+                let name = String::from_utf8_lossy(e.local_name().as_ref()).to_string();
+                body_content.push('<');
+                body_content.push_str(&name);
+                
+                // Add attributes
+                for attr in e.attributes().flatten() {
+                    body_content.push(' ');
+                    body_content.push_str(&String::from_utf8_lossy(attr.key.as_ref()));
+                    body_content.push_str("=\"");
+                    body_content.push_str(&String::from_utf8_lossy(&attr.value));
+                    body_content.push('"');
+                }
+                
+                body_content.push_str("/>");
+            }
+            Ok(Event::Empty(_)) => {}
             Ok(Event::Eof) => break,
             Err(e) => return Err(anyhow!("Error parsing SOAP response: {}", e)),
             _ => {}

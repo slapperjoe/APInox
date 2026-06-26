@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
+import { EmptyState } from '../common/EmptyState';
 import { Plus, Trash2 } from 'lucide-react';
 import { ApiInterface, ApiOperation, ApiRequest } from '@shared/models';
-import { HeaderButton, SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle } from './shared/SidebarStyles';
+import { SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle } from './shared/SidebarStyles';
+import { HeaderButton } from '../common/Button';
 import { ServiceTree } from './ServiceTree';
 import { ScrapbookPanel } from './ScrapbookPanel';
 import { useScrapbook } from '../../contexts/ScrapbookContext';
@@ -41,12 +43,6 @@ const ExplorerContent = styled(SidebarContent)`
     gap: ${SPACING_SM};
 `;
 
-const EmptyMessage = styled.div`
-    text-align: center;
-    color: var(--apinox-descriptionForeground);
-    padding: ${SPACING_XS} 0;
-    font-size: 0.9em;
-`;
 
 const Divider = styled.div`
     height: 1px;
@@ -163,11 +159,7 @@ export const ApiExplorerSidebar: React.FC<ApiExplorerSidebarProps> = ({
 
             <ExplorerContent>
                 {exploredInterfaces.length === 0 ? (
-                    <EmptyMessage>
-                        No APIs loaded.
-                        <br /><br />
-                        Use the main view to load a WSDL or OpenAPI spec.
-                    </EmptyMessage>
+                    <EmptyState icon={null} title="No APIs loaded" description="Use the main view to load a WSDL or OpenAPI spec." />
                 ) : (
                     <ServiceTree
                         interfaces={exploredInterfaces}

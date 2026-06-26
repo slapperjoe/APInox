@@ -14,7 +14,7 @@
  */
 
 // ─── BUILD NUMBER (auto-managed — do not edit manually) ───────────────────
-const BUILD_NO = 286;
+const BUILD_NO = 338;
 // ─────────────────────────────────────────────────────────────────────────
 
 const fs = require("fs");
@@ -333,6 +333,36 @@ function build(extraArgs) {
     }
     if (hasMakepkg) {
       run("npm run package:arch");
+    }
+  }
+
+  // On Linux, run the generated AppImage to verify it launches
+  if (process.platform === "linux" && wantsLinuxAppImage(extraArgs)) {
+    const tauriConf = JSON.parse(fs.readFileSync(configFiles.tauriConfig, "utf8"));
+    const productName = tauriConf.productName || "APInox";
+    const bundleDir = path.join(root, "target", "release", "bundle", "appimage");
+    const files = fs.existsSync(bundleDir) ? fs.readdirSync(bundleDir) : [];
+    const appImageFiles = files
+      .filter((f) => f.startsWith(productName) && f.endsWith(".AppImage"))
+      .sort()
+      .reverse();
+
+    if (appImageFiles.length > 0) {
+      const appImage = path.join(bundleDir, appImageFiles[0]);
+      console.log(`\n🚀 Launching AppImage: ${appImageFiles[0]}`);
+      run(`chmod +x "${appImage}"`);
+      console.log(`LD_LIBRARY_PATH=${path.join(bundleDir, "usr", "lib")}`);
+      const result = spawnSync(appImage, [], {
+        cwd: bundleDir,
+        env: {
+          ...process.env,
+          LD_LIBRARY_PATH: path.join(bundleDir, "usr", "lib"),
+        },
+        stdio: "inherit",
+      });
+      console.log(`AppImage exited with code: ${result.status}`);
+    } else {
+      console.log("ℹ️  No AppImage found to run.");
     }
   }
 }

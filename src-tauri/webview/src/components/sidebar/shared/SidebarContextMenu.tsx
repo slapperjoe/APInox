@@ -75,7 +75,6 @@ const MenuContainer = styled.div<{ $top: number; $left: number }>`
   border-radius: ${tokens.radius.lg};
   box-shadow: 0 14px 40px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4);
   min-width: 260px;
-  overflow: hidden;
   animation: ctxFadeIn 0.1s ease;
 `;
 
@@ -151,7 +150,6 @@ const SubMenu = styled.div`
   border-radius: ${tokens.radius.lg};
   box-shadow: 0 14px 40px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4);
   min-width: 220px;
-  overflow: hidden;
   animation: ctxFadeIn 0.1s ease;
 `;
 
@@ -175,17 +173,47 @@ const SubMenuContainer = styled.div`
 function MenuItemRow({ item, onCopy }: { item: CtxMenuItem; onCopy: (text: string) => Promise<void> }) {
   const [hover, setHover] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const menuItemRef = useRef<HTMLDivElement>(null);
   const [subMenuPos, setSubMenuPos] = useState<{ left: number; top: number } | null>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const IconComp = item.icon;
   const hasSubItems = item.subItems && item.subItems.length > 0;
 
-  // Calculate viewport position for the sub-menu
+  // Calculate viewport position for the sub-menu with edge clamping
   const updateSubMenuPos = () => {
-    if (containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      // Position submenu to the right of the parent item
-      setSubMenuPos({ left: rect.right, top: rect.top });
+    // Synchronous estimate for immediate rendering
+    if (menuItemRef.current) {
+      const rect = menuItemRef.current.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        // Ref is laid out - use the real dimensions immediately
+        const subMenuW = 220;
+        let left = rect.right;
+        if (left + subMenuW > window.innerWidth) {
+          left = rect.left - subMenuW;
+        }
+        let top = rect.top;
+        if (rect.bottom + 100 > window.innerHeight) {
+          top = window.innerHeight - 110;
+        }
+        setSubMenuPos({ left, top });
+      } else {
+        // Ref not laid out yet - defer to next frame
+        requestAnimationFrame(() => {
+          if (menuItemRef.current) {
+            const rect = menuItemRef.current.getBoundingClientRect();
+            const subMenuW = 220;
+            let left = rect.right;
+            if (left + subMenuW > window.innerWidth) {
+              left = rect.left - subMenuW;
+            }
+            let top = rect.top;
+            if (rect.bottom + 100 > window.innerHeight) {
+              top = window.innerHeight - 110;
+            }
+            setSubMenuPos({ left, top });
+          }
+        });
+      }
     }
   };
 
@@ -209,7 +237,7 @@ function MenuItemRow({ item, onCopy }: { item: CtxMenuItem; onCopy: (text: strin
     clearHoverTimeout();
     hoverTimeoutRef.current = setTimeout(() => {
       setHover(false);
-    }, 150);
+    }, 80);
   };
 
   const handleSubMenuEnter = () => {
@@ -221,7 +249,7 @@ function MenuItemRow({ item, onCopy }: { item: CtxMenuItem; onCopy: (text: strin
     clearHoverTimeout();
     hoverTimeoutRef.current = setTimeout(() => {
       setHover(false);
-    }, 150);
+    }, 80);
   };
 
   return (
@@ -236,6 +264,7 @@ function MenuItemRow({ item, onCopy }: { item: CtxMenuItem; onCopy: (text: strin
         onMouseLeave={handleParentLeave}
       >
         <MenuItem
+          ref={menuItemRef}
           $danger={item.danger}
           $hover={hover || false}
           onClick={hasSubItems ? undefined : handleClick}
@@ -249,12 +278,12 @@ function MenuItemRow({ item, onCopy }: { item: CtxMenuItem; onCopy: (text: strin
           </LabelWrapper>
           {hasSubItems && <ChevronRight>▶</ChevronRight>}
         </MenuItem>
-        {hasSubItems && hover && subMenuPos && (
+        {hasSubItems && hover && (
           <SubMenu
             style={{
               position: 'fixed',
-              left: subMenuPos.left,
-              top: subMenuPos.top,
+              left: subMenuPos ? subMenuPos.left : 0,
+              top: subMenuPos ? subMenuPos.top : 0,
             }}
             onMouseEnter={handleSubMenuEnter}
             onMouseLeave={handleSubMenuLeave}

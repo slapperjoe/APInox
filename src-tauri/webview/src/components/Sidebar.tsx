@@ -13,26 +13,65 @@ import HistorySidebar from './sidebar/HistorySidebar';
 import { ScrapbookPanel } from './sidebar/ScrapbookPanel';
 import { NotesList } from './sidebar/NotesList';
 import { SidebarRail } from './sidebar/SidebarRail';
+import { UnifiedExplorerSidebar } from './explorer/UnifiedExplorerSidebar';
 import { useSidebarContext } from '../contexts/SidebarContext';
 
-const SidebarContainer = styled.div<{ $collapsed: boolean }>`
+const SidebarContainer = styled.div<{ $collapsed: boolean; $width?: number }>`
     display: flex;
     height: 100%;
     flex-direction: row;
-    min-width: ${props => props.$collapsed ? '50px' : '300px'};
-    width: ${props => props.$collapsed ? '50px' : 'auto'};
+    min-width: ${props => props.$collapsed ? '50px' : '160px'};
+    width: ${props => props.$collapsed ? '50px' : (props.$width ?? 240) + 'px'};
     flex-shrink: 0;
+    border-right: 1px solid var(--color-border);
+    background: var(--color-surface);
+`;
+
+const ResizeHandle = styled.div`
+    width: 4px;
+    height: 100%;
+    cursor: col-resize;
+    background: transparent;
+    transition: background 0.2s;
+
+    &:hover {
+        background: var(--color-primary);
+    }
 `;
 
 const SidebarContent = styled.div<{ $hidden: boolean }>`
     flex: ${props => props.$hidden ? 0 : 1};
     display: ${props => props.$hidden ? 'none' : 'flex'};
     flex-direction: column;
+    min-height: 0;
     overflow: hidden;
     background-color: var(--apinox-sideBar-background);
 `;
 
 export const Sidebar: React.FC = () => {
+    const [sidebarWidth, setSidebarWidth] = React.useState(240);
+    const isResizing = React.useRef(false);
+
+    const handleResizeStart = (e: React.MouseEvent) => {
+        isResizing.current = true;
+        const startX = e.clientX;
+        const startWidth = sidebarWidth;
+
+        const handleResizeMove = (e: MouseEvent) => {
+            if (!isResizing.current) return;
+            const delta = e.clientX - startX;
+            setSidebarWidth(Math.max(160, Math.min(600, startWidth + delta)));
+        };
+
+        const handleResizeEnd = () => {
+            isResizing.current = false;
+            document.removeEventListener('mousemove', handleResizeMove);
+            document.removeEventListener('mouseup', handleResizeEnd);
+        };
+
+        document.addEventListener('mousemove', handleResizeMove);
+        document.addEventListener('mouseup', handleResizeEnd);
+    };
     const {
         projectProps,
         explorerProps,
@@ -41,6 +80,7 @@ export const Sidebar: React.FC = () => {
         workflowsProps,
         performanceProps,
         historyProps,
+        unifiedProps,
         workspaceDirty,
         onOpenSettings,
         onOpenHelp,
@@ -75,6 +115,7 @@ export const Sidebar: React.FC = () => {
     return (
         <SidebarContainer
             $collapsed={hideContent}
+            $width={sidebarWidth}
             className={`sidebar-drawer${isMobileOpen ? ' sidebar-open' : ''}`}
         >
             <SidebarRail
@@ -209,7 +250,26 @@ export const Sidebar: React.FC = () => {
                     <NotesList />
                 )}
 
+                {unifiedProps && (
+                    <div style={{ display: activeView === SidebarView.UNIFIED_EXPLORER ? 'flex' : 'none', flex: 1, flexDirection: 'column', overflow: 'hidden' }}>
+                        <UnifiedExplorerSidebar
+                            projects={unifiedProps.projects}
+                            selectedNode={unifiedProps.selectedNode}
+                            onSelectNode={unifiedProps.onSelectNode}
+                            onRefreshProject={unifiedProps.onRefreshProject}
+                            onDeleteProject={unifiedProps.onDeleteProject}
+                            onDeleteOperation={unifiedProps.onDeleteOperation}
+                            onDeleteRequest={unifiedProps.onDeleteRequest}
+                            onNewRequest={unifiedProps.onNewRequest}
+                            onExportProject={unifiedProps.onExportProject}
+                            onReorderOperation={unifiedProps.onReorderOperation}
+                            onReorderRequest={unifiedProps.onReorderRequest}
+                        />
+                    </div>
+                )}
+
             </SidebarContent>
+            <ResizeHandle onMouseDown={handleResizeStart} />
         </SidebarContainer>
     );
 };

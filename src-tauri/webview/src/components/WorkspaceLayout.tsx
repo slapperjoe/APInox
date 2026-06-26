@@ -1,6 +1,5 @@
 import React, { Suspense } from 'react';
 import { Play, ChevronLeft, GitBranch } from 'lucide-react';
-import 'monaco-editor/min/vs/editor/editor.main.css';
 // Models imported via props.ts indirections, specific enums kept if needed locally (TestStepType is used in code?)
 // Checking code: TestStepType is used in props interface but not local var?
 // Actually TestStepType is used in onAddStep signature but onAddStep comes from props.
@@ -22,7 +21,8 @@ import { ConditionStepEditor } from './workspace/ConditionStepEditor';
 import { LoopStepEditor } from './workspace/LoopStepEditor';
 import { ScriptStepEditor } from './workspace/ScriptStepEditor';
 import { ApiExplorerMain } from './explorer/ApiExplorerMain';
-import { EmptyState, EmptyFileWatcher, EmptyApiExplorer, EmptyServer, EmptyProject, EmptyHistory } from './workspace/EmptyStates';
+import { EmptyFileWatcher, EmptyApiExplorer, EmptyServer, EmptyProject, EmptyHistory } from './workspace/EmptyStates';
+import { EmptyState } from './common/EmptyState';
 import { ProjectSummary } from './workspace/ProjectSummary';
 import { InterfaceSummary } from './workspace/InterfaceSummary';
 import { TestSuiteSummary } from './workspace/TestSuiteSummary';
@@ -1220,6 +1220,5 @@ export const WorkspaceLayout: React.FC = () => {
         </Content >
     );
 };
-
 
 

@@ -1,7 +1,6 @@
 /// Variable Extractor
 /// 
 /// Extracts values from responses using XPath, JSONPath, regex, etc.
-
 use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;

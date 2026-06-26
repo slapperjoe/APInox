@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
-import { MonacoEditorWrapper } from '@apinox/request-editor/monaco';
+import { MonacoEditorWrapper, Monaco } from '@apinox/request-editor/monaco';
 import { AlertTriangle, Settings, FileJson, Globe, Cloud, Server, ArrowUpCircle } from 'lucide-react';
 import { GeneralTab, EnvironmentsTab, GlobalsTab, IntegrationsTab, UpdatesTab, ApinoxConfig } from './settings';
 
@@ -297,6 +297,30 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
         setSelectedEnvKey(finalName);
     };
 
+    const handleRenameEnv = (oldKey: string, newKey: string) => {
+        if (oldKey === newKey) return;
+        setGuiConfig(prev => {
+            const updated = { ...prev };
+            if (!updated.environments) return prev;
+            const envs = { ...updated.environments };
+            // Preserve insertion order by rebuilding the object
+            const ordered: Record<string, any> = {};
+            for (const [k, v] of Object.entries(envs)) {
+                if (k === oldKey) {
+                    ordered[newKey] = v;
+                } else {
+                    ordered[k] = v;
+                }
+            }
+            updated.environments = ordered;
+            if (updated.activeEnvironment === oldKey) {
+                updated.activeEnvironment = newKey;
+            }
+            return updated;
+        });
+        if (selectedEnvKey === oldKey) setSelectedEnvKey(newKey);
+    };
+
     const handleDeleteEnv = (key: string) => {
         setGuiConfig(prev => {
             const updated = { ...prev };
@@ -456,6 +480,7 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
                             onDeleteEnv={handleDeleteEnv}
                             onSetActive={handleSetActive}
                             onEnvChange={handleEnvChange}
+                            onRenameEnv={handleRenameEnv}
                             onImportEnvironments={(envs, activeEnv) => {
                                 setGuiConfig(prev => ({
                                     ...prev,

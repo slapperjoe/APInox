@@ -1,5 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
+import { EmptyState } from './common/EmptyState';
 import { Trash2, CheckCircle2, XCircle, Clock, ListChecks } from 'lucide-react';
 import { Assertion } from '../types';
 import { StatusCodePicker } from './StatusCodePicker';
@@ -107,10 +108,6 @@ const Select = styled.select`
     }
 `;
 
-const EmptyState = styled.div`
-    opacity: 0.5;
-    font-style: italic;
-`;
 
 const Label = styled.label`
     margin-left: ${SPACING_MD};
@@ -279,7 +276,7 @@ export const AssertionsPanel: React.FC<AssertionsPanelProps> = ({ assertions, on
             </Toolbar>
 
             <AssertionList>
-                {assertions.length === 0 && <EmptyState>No assertions defined.</EmptyState>}
+                {assertions.length === 0 && <EmptyState title="No assertions defined." />}
 
                 {assertions.map((a, i) => {
                     const status = getStatus(a.id || '');

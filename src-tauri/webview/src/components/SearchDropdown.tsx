@@ -11,6 +11,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import styled from 'styled-components';
+import { EmptyState } from './common/EmptyState';
 import { SearchResult } from '../utils/workspaceSearch';
 import { FileText, Folder, Box, Layers, TestTube, Workflow, Clock } from 'lucide-react';
 
@@ -155,15 +156,6 @@ const ResultBreadcrumb = styled.div`
     text-overflow: ellipsis;
     font-family: var(--apinox-ui-font-family, var(--apinox-font-family));
     line-height: 1.3;
-`;
-
-const EmptyState = styled.div`
-    padding: 32px 16px;
-    text-align: center;
-    color: var(--vscode-descriptionForeground);
-    font-size: 13px;
-    font-family: var(--apinox-ui-font-family, var(--apinox-font-family));
-    opacity: 0.8;
 `;
 
 const LoadingState = styled.div`
@@ -333,7 +325,7 @@ export const SearchDropdown: React.FC<SearchDropdownProps> = ({
     if (flatResults.length === 0) {
         return (
             <DropdownContainer ref={dropdownRef} $isMacOS={isMacOS}>
-                <EmptyState>No results found</EmptyState>
+                <EmptyState title="No results found" />
             </DropdownContainer>
         );
     }

@@ -299,7 +299,7 @@ fn get_system_proxy_windows() -> Result<SystemProxyStatus, String> {
     let proxy_server = server_stdout
         .lines()
         .find(|l| l.contains("ProxyServer"))
-        .and_then(|l| l.split_whitespace().last())
+        .and_then(|l| l.split_whitespace().next_back())
         .unwrap_or("")
         .to_string();
 

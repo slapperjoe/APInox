@@ -4,7 +4,7 @@ set -euo pipefail
 # setup.sh - Runs inside the distrobox container
 # Installs project dependencies and builds shared packages
 
-REPO_ROOT="/var/home/mark/Code/APInox"
+REPO_ROOT="/var/home/mark/code/APInox"
 echo "=== APInox Container Setup ==="
 
 # Step 1: Verify Node.js (installed by additional_packages)

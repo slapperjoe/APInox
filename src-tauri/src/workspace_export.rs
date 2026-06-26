@@ -217,3 +217,62 @@ pub struct ImportResult {
     pub projects: Vec<serde_json::Value>,
     pub project_count: usize,
 }
+
+/// Export a single unified project to file.
+/// Looks up the project by name, wraps it in a workspace envelope,
+/// and writes it to the target path (.apinox = compressed, .json = plain).
+#[tauri::command]
+pub async fn export_unified_project(
+    project_name: String,
+    file_path: String,
+) -> Result<ExportResult, String> {
+    log::info!("export_unified_project: Exporting '{}' to {}", project_name, file_path);
+
+    let projects = crate::project_storage::list_unified_projects()?;
+    let project = projects
+        .into_iter()
+        .find(|p| p["name"].as_str() == Some(&project_name))
+        .ok_or_else(|| format!("Unified project '{}' not found", project_name))?;
+
+    let path = Path::new(&file_path);
+    let name = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or(&project_name)
+        .to_string();
+
+    let workspace = Workspace {
+        version: "1.0".to_string(),
+        name,
+        exported_at: Utc::now().to_rfc3339(),
+        projects: vec![project],
+    };
+
+    let json_content =
+        serde_json::to_string_pretty(&workspace).map_err(|e| format!("Failed to serialize: {}", e))?;
+
+    if file_path.ends_with(".apinox") {
+        use flate2::write::GzEncoder;
+        use flate2::Compression;
+        let file = fs::File::create(&file_path)
+            .map_err(|e| format!("Failed to create file: {}", e))?;
+        let mut encoder = GzEncoder::new(file, Compression::default());
+        encoder
+            .write_all(json_content.as_bytes())
+            .map_err(|e| format!("Failed to write compressed data: {}", e))?;
+        encoder
+            .finish()
+            .map_err(|e| format!("Failed to finalize compression: {}", e))?;
+    } else {
+        fs::write(&file_path, json_content)
+            .map_err(|e| format!("Failed to write file: {}", e))?;
+    }
+
+    log::info!("export_unified_project: Wrote '{}' to {}", project_name, file_path);
+
+    Ok(ExportResult {
+        exported: true,
+        project_count: 1,
+        file_path,
+    })
+}

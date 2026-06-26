@@ -43,6 +43,12 @@ impl NoVerify {
     }
 }
 
+impl Default for NoVerify {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl rustls::client::danger::ServerCertVerifier for NoVerify {
     fn verify_server_cert(
         &self,

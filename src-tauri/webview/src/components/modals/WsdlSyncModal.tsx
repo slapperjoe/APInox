@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { Plus, Trash2, RefreshCw } from 'lucide-react';
 import { WsdlDiff } from '@shared/models';
 import { Modal, Button } from './Modal';
+import { EmptyState } from '../common/EmptyState';
 import { SPACING_XS, SPACING_SM, SPACING_XL } from '../../styles/spacing';
 import { CHANGE_COLORS } from '../../styles/colors';
 
@@ -10,12 +11,6 @@ const Content = styled.div`
     display: flex;
     flex-direction: column;
     gap: ${SPACING_XL};
-`;
-
-const EmptyState = styled.div`
-    padding: ${SPACING_XL};
-    text-align: center;
-    opacity: 0.7;
 `;
 
 const DiffSection = styled.div`
@@ -159,9 +154,7 @@ export const WsdlSyncModal: React.FC<WsdlSyncModalProps> = ({ diff, onClose, onS
         >
             <Content>
                 {!hasChanges && (
-                    <EmptyState>
-                        No changes detected. The interface is up to date.
-                    </EmptyState>
+                    <EmptyState title="Up to date" description="No changes detected. The interface is up to date." />
                 )}
 
                 {diff.addedOperations.length > 0 && (

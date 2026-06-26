@@ -26,7 +26,7 @@ cleanup_stale_build_artifacts
 
 # Step 1: Create container from assemble file
 echo "[1/3] Creating distrobox container..."
-distrobox assemble create --file "${ASSEMBLE_FILE}" --name "${CONTAINER_NAME}" --replace || true
+distrobox assemble create --file "${ASSEMBLE_FILE}" --name "${CONTAINER_NAME}" || true
 
 # Step 2: Enter container and run setup
 echo "[2/3] Running setup inside container..."

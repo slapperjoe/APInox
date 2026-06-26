@@ -44,14 +44,7 @@ const ChartTitle = styled.div`
     color: var(--apinox-foreground);
 `;
 
-const EmptyState = styled.div<{ $height: number }>`
-    height: ${props => props.$height}px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--apinox-descriptionForeground);
-    font-size: 12px;
-`;
+import { EmptyState } from '../common/EmptyState';
 
 const Legend = styled.div`
     display: flex;
@@ -85,9 +78,7 @@ export const ResponseTimeChart: React.FC<ResponseTimeChartProps> = ({
         return (
             <ChartContainer>
                 {title && <ChartTitle>{title}</ChartTitle>}
-                <EmptyState $height={height}>
-                    No data to display
-                </EmptyState>
+                <EmptyState title="No data" description="No data to display" />
             </ChartContainer>
         );
     }

@@ -1,13 +1,13 @@
 import React from "react";
 import styled from "styled-components";
-import { Trash2, Pencil, Variable } from "lucide-react";
+import { EmptyState } from "./common/EmptyState";
+import { Trash2, Pencil, Variable, Plus } from "lucide-react";
 import { CustomXPathEvaluator } from "../utils/xpathEvaluator";
 import { RequestExtractor } from "../types";
 import { debugLog, debugError } from "../utils/logger";
 const SPACING_XS = "4px";
 const SPACING_SM = "8px";
 const SPACING_MD = "16px";
-const SPACING_LG = "24px";
 
 const Container = styled.div`
   display: flex;
@@ -108,12 +108,6 @@ const ToolbarTitle = styled.div`
   color: var(--apinox-foreground);
 `;
 
-const EmptyState = styled.div`
-  padding: ${SPACING_LG};
-  opacity: 0.7;
-  font-style: italic;
-  text-align: center;
-`;
 
 const VariableValue = styled(Value)`
   color: var(--apinox-debugTokenExpression-name);
@@ -160,6 +154,20 @@ export const ExtractorsPanel: React.FC<ExtractorsPanelProps> = ({
     onChange(newExtractors);
   };
 
+  const handleAdd = () => {
+    const newExtractor: RequestExtractor = {
+      id: `ext-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      name: "",
+      type: "XPath",
+      enabled: true,
+      query: "",
+      path: "",
+      variable: "",
+      source: "body",
+    };
+    onChange([...extractors, newExtractor]);
+  };
+
   debugLog("[ExtractorsPanel] Rendering. Extractors:", extractors.length);
 
   return (
@@ -169,13 +177,13 @@ export const ExtractorsPanel: React.FC<ExtractorsPanelProps> = ({
           <Variable size={16} />
           Context Variables extracted from this Step
         </ToolbarTitle>
+        <IconButton onClick={handleAdd} title="Add Extractor">
+          <Plus size={16} />
+        </IconButton>
       </Toolbar>
       <ExtractorList>
         {extractors.length === 0 ? (
-          <EmptyState>
-            No extractors defined. Select text in the Response panel to create
-            one.
-          </EmptyState>
+          <EmptyState title="No extractors defined" description="Click + to add one, or select text in the Response panel." />
         ) : (
           extractors.map((ex, index) => {
             let currentValue: string | null = null;

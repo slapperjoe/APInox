@@ -2,8 +2,10 @@ import React from 'react';
 import styled from 'styled-components';
 import { Clock, Play, Square, Trash2, Download } from 'lucide-react';
 import { WatcherEvent } from '@shared/models';
-import { HeaderButton, ServiceItem, SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle } from './shared/SidebarStyles';
+import { ServiceItem, SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle } from './shared/SidebarStyles';
+import { HeaderButton } from '../common/Button';
 import { exportWatcherEvents } from '../../utils/csvExport';
+import { EmptyState } from '../common/EmptyState';
 import { SPACING_XS } from '../../styles/spacing';
 
 interface WatcherPanelProps {
@@ -14,12 +16,6 @@ interface WatcherPanelProps {
     onClear: () => void;
     onSelectEvent: (event: WatcherEvent) => void;
 }
-
-const EmptyMessage = styled.div`
-    color: var(--apinox-descriptionForeground);
-    text-align: center;
-    margin-top: 20px;
-`;
 
 const EventContent = styled.div`
     flex: 1;
@@ -91,17 +87,7 @@ export const WatcherPanel: React.FC<WatcherPanelProps> = ({
             {/* List */}
             <SidebarContent>
                 {history.length === 0 ? (
-                    <EmptyMessage>
-                        {isRunning ? (
-                            <>
-                                Watching C:\temp\requestXML.xml...<br />Waiting for events.
-                            </>
-                        ) : (
-                            <>
-                                Watcher is stopped.<br />Press Play to begin.
-                            </>
-                        )}
-                    </EmptyMessage>
+                    <EmptyState icon={Clock} title={isRunning ? "Watching for events..." : "Watcher stopped"} description={isRunning ? "Waiting for file changes." : "Press Play to begin." />
                 ) : (
                     history.map(event => (
                         <ServiceItem key={event.id} onClick={() => onSelectEvent(event)}>

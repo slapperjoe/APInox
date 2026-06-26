@@ -6,7 +6,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
-import styled, { keyframes, css } from 'styled-components';
+import styled, { css } from 'styled-components';
+import { shake } from '../../common/Button';
 import {
     ApinoxConfig,
     EnvList,
@@ -18,19 +19,10 @@ import {
     IconButton,
 } from './SettingsTypes';
 
-// Shake animation for delete confirmation
-const shakeAnimation = keyframes`
-    0% { transform: translateX(0); }
-    25% { transform: translateX(2px) rotate(5deg); }
-    50% { transform: translateX(-2px) rotate(-5deg); }
-    75% { transform: translateX(2px) rotate(5deg); }
-    100% { transform: translateX(0); }
-`;
-
-const DeleteButton = styled(IconButton) <{ confirming?: boolean }>`
+const DeleteButton = styled(IconButton)<{ confirming?: boolean }>`
     color: ${props => props.confirming ? 'var(--apinox-errorForeground)' : 'var(--apinox-foreground)'};
     ${props => props.confirming && css`
-        animation: ${shakeAnimation} 0.5s ease-in-out infinite;
+        animation: ${shake} 0.5s ease-in-out infinite;
     `}
 `;
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
+import { EmptyState } from "../common/EmptyState";
 import { WorkflowStep } from "@shared/models";
 import { SPACING_SM, SPACING_MD, SPACING_XS } from "../../styles/spacing";
 import {
@@ -218,21 +219,6 @@ const DropdownItem = styled.div`
   }
 `;
 
-const EmptyStateContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  padding: ${SPACING_MD};
-  text-align: center;
-  gap: ${SPACING_MD};
-`;
-
-const EmptyStateText = styled.div`
-  opacity: 0.6;
-  font-size: 13px;
-`;
 
 interface LoopStepEditorProps {
   step: WorkflowStep;
@@ -533,12 +519,7 @@ export const LoopStepEditor: React.FC<LoopStepEditorProps> = ({
         step.loopSteps[selectedNestedStepIndex] ? (
           renderNestedStepEditor()
         ) : (
-          <EmptyStateContainer>
-            <EmptyStateText>
-              Select a step from the list to view and edit it,
-              <br />
-              or add a new step to the loop
-            </EmptyStateText>
+          <EmptyState title="Select a step from the list to view and edit it" description="or add a new step to the loop">
             <AddStepDropdown>
               <DropdownButton
                 onClick={() => setAddStepDropdownOpen(!addStepDropdownOpen)}
@@ -573,7 +554,7 @@ export const LoopStepEditor: React.FC<LoopStepEditorProps> = ({
                 </DropdownMenu>
               )}
             </AddStepDropdown>
-          </EmptyStateContainer>
+          </EmptyState>
         )}
       </RightPanel>
     </Container>

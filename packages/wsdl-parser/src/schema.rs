@@ -81,13 +81,10 @@ impl SchemaParser {
                     let name = Self::local_name(&e);
                     
                     // Handle self-closing elements
-                    match name.as_str() {
-                        "element" => {
-                            if let Some(element) = Self::parse_empty_element(&e)? {
-                                elements.insert(element.name.clone(), element);
-                            }
+                    if name.as_str() == "element" {
+                        if let Some(element) = Self::parse_empty_element(&e)? {
+                            elements.insert(element.name.clone(), element);
                         }
-                        _ => {}
                     }
                 }
                 Ok(Event::Start(e)) => {
@@ -159,11 +156,9 @@ impl SchemaParser {
         
         loop {
             match reader.read_event_into(buf) {
-                Ok(Event::Start(e)) => {
-                    if Self::local_name(&e) == "complexType" {
-                        let mut ct_buf = Vec::new();
-                        inline_type = Self::parse_complex_type(reader, &e, &mut ct_buf)?;
-                    }
+                Ok(Event::Start(e)) if Self::local_name(&e) == "complexType" => {
+                    let mut ct_buf = Vec::new();
+                    inline_type = Self::parse_complex_type(reader, &e, &mut ct_buf)?;
                 }
                 Ok(Event::End(e)) if String::from_utf8_lossy(e.name().as_ref()).ends_with("element") => break,
                 Ok(Event::Eof) => break,
@@ -246,20 +241,16 @@ impl SchemaParser {
         
         loop {
             match reader.read_event_into(buf) {
-                Ok(Event::Empty(e)) => {
-                    if Self::local_name(&e) == "element" {
-                        // Self-closing element, no inline complexType
-                        if let Some(element) = Self::parse_empty_element(&e)? {
-                            elements.push(element);
-                        }
+                Ok(Event::Empty(e)) if Self::local_name(&e) == "element" => {
+                    // Self-closing element, no inline complexType
+                    if let Some(element) = Self::parse_empty_element(&e)? {
+                        elements.push(element);
                     }
                 }
-                Ok(Event::Start(e)) => {
-                    if Self::local_name(&e) == "element" {
-                        let mut elem_buf = Vec::new();
-                        if let Some(element) = Self::parse_element(reader, &e, &mut elem_buf)? {
-                            elements.push(element);
-                        }
+                Ok(Event::Start(e)) if Self::local_name(&e) == "element" => {
+                    let mut elem_buf = Vec::new();
+                    if let Some(element) = Self::parse_element(reader, &e, &mut elem_buf)? {
+                        elements.push(element);
                     }
                 }
                 Ok(Event::End(e)) => {
@@ -284,12 +275,10 @@ impl SchemaParser {
         
         loop {
             match reader.read_event_into(buf) {
-                Ok(Event::Start(e)) | Ok(Event::Empty(e)) => {
-                    if Self::local_name(&e) == "element" {
-                        let mut elem_buf = Vec::new();
-                        if let Some(element) = Self::parse_element(reader, &e, &mut elem_buf)? {
-                            elements.push(element);
-                        }
+                Ok(Event::Start(e)) | Ok(Event::Empty(e)) if Self::local_name(&e) == "element" => {
+                    let mut elem_buf = Vec::new();
+                    if let Some(element) = Self::parse_element(reader, &e, &mut elem_buf)? {
+                        elements.push(element);
                     }
                 }
                 Ok(Event::End(e)) if String::from_utf8_lossy(e.name().as_ref()).ends_with("choice") => break,
@@ -327,13 +316,10 @@ impl SchemaParser {
                 Ok(Event::Start(e)) | Ok(Event::Empty(e)) => {
                     let tag_name = Self::local_name(&e);
                     
-                    match tag_name.as_str() {
-                        "restriction" => {
-                            base_type = Self::get_attr(&e, "base").ok().map(|b| Self::strip_namespace_prefix(&b));
-                            let mut rest_buf = Vec::new();
-                            restrictions = Self::parse_restrictions(reader, &mut rest_buf)?;
-                        }
-                        _ => {}
+                    if tag_name.as_str() == "restriction" {
+                        base_type = Self::get_attr(&e, "base").ok().map(|b| Self::strip_namespace_prefix(&b));
+                        let mut rest_buf = Vec::new();
+                        restrictions = Self::parse_restrictions(reader, &mut rest_buf)?;
                     }
                 }
                 Ok(Event::End(e)) => {
@@ -427,6 +413,54 @@ impl SchemaParser {
         Self::build_node_from_element(element, schema, 0)
     }
     
+    /// Build a schema tree from a type name (for type-based message parts)
+    pub fn build_schema_tree_from_type(
+        type_name: &str,
+        schema: &SchemaDefinition,
+    ) -> Option<SchemaNode> {
+        log::debug!("Building schema tree for type: {}", type_name);
+        
+        // Try complex types first
+        if let Some(complex_type) = schema.complex_types.get(type_name) {
+            let children = Some(Self::build_children_from_complex_type(complex_type, schema, 1));
+            return Some(SchemaNode {
+                name: complex_type.name.clone().unwrap_or_else(|| type_name.to_string()),
+                node_type: type_name.to_string(),
+                kind: "complex".to_string(),
+                min_occurs: None,
+                max_occurs: None,
+                documentation: None,
+                children,
+                options: None,
+                is_optional: None,
+            });
+        }
+        
+        // Fall back to simple types
+        if let Some(simple_type) = schema.simple_types.get(type_name) {
+            let mut options = None;
+            for restriction in &simple_type.restrictions {
+                if let Restriction::Enumeration(enums) = restriction {
+                    options = Some(enums.clone());
+                    break;
+                }
+            }
+            return Some(SchemaNode {
+                name: simple_type.name.clone(),
+                node_type: type_name.to_string(),
+                kind: "simple".to_string(),
+                min_occurs: None,
+                max_occurs: None,
+                documentation: None,
+                children: None,
+                options,
+                is_optional: None,
+            });
+        }
+        
+        None
+    }
+    
     fn build_node_from_element(
         element: &ElementDef,
         schema: &SchemaDefinition,
@@ -506,7 +540,7 @@ impl SchemaParser {
     fn local_name(e: &BytesStart) -> String {
         let name_bytes = e.name();
         let full_name = String::from_utf8_lossy(name_bytes.as_ref());
-        let name_str = full_name.split(':').last().unwrap_or(&full_name);
+        let name_str = full_name.split(':').next_back().unwrap_or(&full_name);
         name_str.to_string()
     }
     
@@ -521,7 +555,7 @@ impl SchemaParser {
     }
     
     fn strip_namespace_prefix(name: &str) -> String {
-        name.split(':').last().unwrap_or(name).to_string()
+        name.split(':').next_back().unwrap_or(name).to_string()
     }
 }
 

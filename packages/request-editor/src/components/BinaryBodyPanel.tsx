@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import styled from "styled-components";
+import { EmptyState } from "./common/EmptyState";
 import { Upload, X, File } from "lucide-react";
 import { debugError } from "../utils/logger";
 import { BinaryBodyPanelProps, BinaryFile } from "../types";
@@ -15,33 +16,6 @@ const Container = styled.div`
   overflow: auto;
 `;
 
-const EmptyState = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  padding: 48px 24px;
-  text-align: center;
-  color: var(--vscode-descriptionForeground, #858585);
-  flex: 1;
-`;
-
-const EmptyStateIcon = styled.div`
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: var(--vscode-input-background, #3c3c3c);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--vscode-descriptionForeground, #858585);
-`;
-
-const EmptyStateText = styled.div`
-  font-size: 14px;
-  line-height: 1.5;
-`;
 
 const UploadButton = styled.button`
   display: inline-flex;
@@ -213,15 +187,7 @@ export const BinaryBodyPanel: React.FC<BinaryBodyPanelProps> = ({
   if (!file) {
     return (
       <Container>
-        <EmptyState>
-          <EmptyStateIcon>
-            <Upload size={32} />
-          </EmptyStateIcon>
-          <EmptyStateText>
-            No binary file selected.
-            <br />
-            Upload a file to use as the request body.
-          </EmptyStateText>
+        <EmptyState icon={Upload} title="No binary file selected" description="Upload a file to use as the request body.">
           {onPickFile && (
             <UploadButton
               onClick={handlePickFile}

@@ -65,6 +65,16 @@ fn write_json(path: &Path, data: &serde_json::Value) -> Result<(), String> {
         .map_err(|e| format!("Failed to write {}: {}", path.display(), e))
 }
 
+fn resolve_unified_project_dir(dir_path: &str, project_name: Option<&str>) -> Result<PathBuf, String> {
+    let path = PathBuf::from(dir_path);
+    if path.is_absolute() {
+        return Ok(path);
+    }
+
+    let name = project_name.unwrap_or(dir_path);
+    Ok(projects_dir()?.join(sanitize_name(name)))
+}
+
 /// Save a project to disk.
 ///
 /// The save location is always `~/.apinox/projects/{sanitized_name}/`.
@@ -595,17 +605,29 @@ fn load_test_case(case_dir: &Path) -> Result<serde_json::Value, String> {
     Ok(meta)
 }
 
-/// Delete a project directory
+/// Delete a project by name
 #[tauri::command]
-pub async fn delete_project(dir_path: String) -> Result<(), String> {
-    let dir = PathBuf::from(&dir_path);
+pub fn delete_project(params: serde_json::Value) -> Result<(), String> {
+    let project_name = params.get("name")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "Missing project name".to_string())?;
+    
+    let projects_base = projects_dir().map_err(|e| format!("Failed to get projects dir: {}", e))?;
+    // Sanitize name for use as directory name
+    let sanitized: String = project_name.chars().map(|c| match c {
+        '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => '_',
+        _ => c,
+    }).collect();
+    let dir = projects_base.join(&sanitized);
     
     if !dir.exists() {
-        return Err(format!("Project directory does not exist: {}", dir_path));
+        return Err(format!("Project directory does not exist: {}", sanitized));
     }
     
     fs::remove_dir_all(&dir)
         .map_err(|e| format!("Failed to delete project: {}", e))?;
+    
+    log::info!("Deleted project: {}", project_name);
     
     Ok(())
 }
@@ -658,7 +680,7 @@ struct UnifiedProperties {
 ///       └── custom.json
 #[tauri::command]
 pub fn save_unified_project(dir_path: String, project: serde_json::Value) -> Result<(), String> {
-    let dir = PathBuf::from(&dir_path);
+    let dir = resolve_unified_project_dir(&dir_path, project["name"].as_str())?;
     fs::create_dir_all(&dir)
         .map_err(|e| format!("Failed to create project directory: {}", e))?;
 
@@ -776,6 +798,7 @@ fn save_unified_request(req: &serde_json::Value, op_dir: &Path) -> Result<(), St
         "extractors": req["extractors"],
         "wsSecurity": req["wsSecurity"],
         "attachments": req["attachments"],
+        "lastResponse": req["lastResponse"],
     }))?;
 
     Ok(())
@@ -784,7 +807,7 @@ fn save_unified_request(req: &serde_json::Value, op_dir: &Path) -> Result<(), St
 /// Load a unified project from disk
 #[tauri::command]
 pub fn load_unified_project(dir_path: String) -> Result<serde_json::Value, String> {
-    let dir = PathBuf::from(&dir_path);
+    let dir = resolve_unified_project_dir(&dir_path, None)?;
 
     if !dir.exists() || !dir.is_dir() {
         return Err(format!("Project directory does not exist: {}", dir.display()));
@@ -860,8 +883,17 @@ fn load_unified_operation(op_dir: &Path) -> Result<serde_json::Value, String> {
                 };
                 let mut meta: serde_json::Value = serde_json::from_str(&meta_json)
                     .map_err(|e| format!("Failed to parse request metadata: {}", e))?;
-                if let Some(b) = body {
-                    meta["request"] = serde_json::Value::String(b);
+                if let Some(ref b) = body {
+                    log::info!(
+                        "Loading request '{}': body_path={}, body exists={}, body_len={}",
+                        base,
+                        body_path.display(),
+                        body_path.exists(),
+                        b.len()
+                    );
+                    meta["request"] = serde_json::Value::String(b.clone());
+                } else {
+                    log::warn!("Loading request '{}': body_path={} does not exist", base, body_path.display());
                 }
                 requests.push(meta);
             }
@@ -904,4 +936,18 @@ pub fn list_unified_projects() -> Result<Vec<serde_json::Value>, String> {
         a["name"].as_str().cmp(&b["name"].as_str())
     });
     Ok(projects)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn resolve_unified_project_dir_maps_relative_names_to_projects_dir() {
+        let resolved = resolve_unified_project_dir("CountryInfoServiceSoap", Some("CountryInfoServiceSoap"))
+            .expect("should resolve project dir");
+
+        assert!(resolved.ends_with("CountryInfoServiceSoap"));
+        assert!(resolved.is_absolute());
+    }
 }

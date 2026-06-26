@@ -5,7 +5,6 @@
 /// - Timestamp (Created/Expires)
 /// - Nonce generation
 /// - X.509 certificate support (stub for Phase 6)
-
 use anyhow::Result;
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use chrono::{DateTime, Utc, Duration};

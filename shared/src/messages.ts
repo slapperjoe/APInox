@@ -183,4 +183,8 @@ export enum BackendCommand {
     // Mock/Proxy
     MockHistoryStart = 'mockHistoryStart',
     MockHistoryUpdate = 'mockHistoryUpdate',
+
+    // Unified Explorer
+    UnifiedProjectParsed = 'unifiedProjectParsed',
+    UnifiedProjectRefreshed = 'unifiedProjectRefreshed',
 }

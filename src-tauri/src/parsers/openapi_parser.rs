@@ -158,7 +158,7 @@ impl OpenApiParser {
 
                     let parameters = op_obj.get("parameters")
                         .and_then(|v| v.as_array())
-                        .map(|arr| Self::extract_parameters(arr))
+                        .map(Self::extract_parameters)
                         .unwrap_or_default();
 
                     // Generate sample body for methods that typically have a body
@@ -309,6 +309,7 @@ impl OpenApiParser {
         Some(current)
     }
 
+    #[allow(clippy::ptr_arg)] // Called with &Vec from as_array(), closure handles coercion
     fn extract_parameters(params_array: &Vec<Value>) -> Vec<OpenApiParameter> {
         params_array.iter()
             .filter_map(|param| {

@@ -13,6 +13,7 @@ import {
   Eye,
   Activity,
   FileText,
+  Layers,
 } from "lucide-react";
 import { SidebarView } from "@shared/models";
 import { EnvironmentSelector } from "./EnvironmentSelector";
@@ -121,6 +122,12 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
         active={activeView === SidebarView.EXPLORER}
         onClick={() => onChangeView(SidebarView.EXPLORER)}
         title="WSDL Explorer"
+      />
+      <NavItem
+        icon={Layers}
+        active={activeView === SidebarView.UNIFIED_EXPLORER}
+        onClick={() => onChangeView(SidebarView.UNIFIED_EXPLORER)}
+        title="Unified Explorer"
       />
       <NavItem
         icon={FlaskConical}

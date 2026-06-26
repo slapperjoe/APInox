@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, startTransition, ReactNode } from 'react';
 import { SidebarView, ApiInterface } from '@shared/models';
 import { BackendCommand } from '@shared/messages';
 
@@ -36,13 +36,22 @@ export const useNavigation = () => {
 };
 
 export const NavigationProvider = ({ children }: { children: ReactNode }) => {
-    const [activeView, setActiveView] = useState<SidebarView>(
+    const [activeView, _setActiveView] = useState<SidebarView>(
         () => shouldShowWelcomeOnStartup() ? SidebarView.HOME : SidebarView.EXPLORER
     );
     const [sidebarExpanded, setSidebarExpanded] = useState<boolean>(true);
     const [exploredInterfaces, setExploredInterfaces] = useState<ApiInterface[]>([]);
 
     const toggleSidebar = () => setSidebarExpanded(prev => !prev);
+
+    // Wrap setActiveView in startTransition to handle lazy-loaded views
+    // This prevents "component suspended while responding to synchronous input" errors
+    // when switching to views that contain React.lazy components (NotesEditor, ProxyPanel, etc.)
+    const setActiveView = (view: React.SetStateAction<SidebarView>) => {
+        startTransition(() => {
+            _setActiveView(view);
+        });
+    };
 
     // Message Handling
     useEffect(() => {
