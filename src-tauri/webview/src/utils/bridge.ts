@@ -502,9 +502,7 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
             const success = statusCode >= 200 && statusCode < 300;
 
             // Save history
-            const historyEntry: any = {
-                id: crypto.randomUUID(),
-                timestamp: Date.now(),
+            saveRequestHistory({
                 requestName: message.operation || url,
                 endpoint: url,
                 method,
@@ -513,18 +511,12 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                 operationName: message.operation || '',
                 requestBody: body || '',
                 headers,
-                status: statusCode,
+                statusCode,
                 duration,
                 responseBody,
                 responseHeaders,
-                responseSize: responseBody.length,
                 success,
-                starred: false,
-            };
-            tauriInvoke('add_history_entry', { entry: historyEntry }).catch((e: any) =>
-                console.warn('[Bridge] Failed to save history entry:', e)
-            );
-            listeners.forEach(cb => cb({ command: BackendCommand.HistoryUpdate, entry: historyEntry } as any));
+            });
 
             if (!success && !response.body) {
                 return {
@@ -597,9 +589,7 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
             const responseBody: string = response.body || response.rawXml || '';
 
             // Save history entry
-            const historyEntry: any = {
-                id: crypto.randomUUID(),
-                timestamp: Date.now(),
+            saveRequestHistory({
                 requestName: message.operation || message.url || 'Request',
                 endpoint: message.url || '',
                 method: 'POST',
@@ -608,20 +598,13 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                 operationName: message.operation || '',
                 requestBody: message.xml || '',
                 headers: message.headers || {},
-                status: response.statusCode || (response.success ? 200 : 500),
+                statusCode: response.statusCode || (response.success ? 200 : 500),
                 duration,
                 responseBody,
                 responseHeaders,
-                responseSize: responseBody.length,
                 success: !!response.success,
                 error: response.success ? undefined : (response.error || undefined),
-                starred: false,
-            };
-            tauriInvoke('add_history_entry', { entry: historyEntry }).catch((e: any) =>
-                console.warn('[Bridge] Failed to save history entry:', e)
-            );
-            // Immediately surface in UI
-            listeners.forEach(cb => cb({ command: BackendCommand.HistoryUpdate, entry: historyEntry } as any));
+            });
 
             if (!response.success) {
                 return {
@@ -1192,6 +1175,56 @@ function mapResponseToBackendEvent(command: string, data: any): BackendMessage |
 
 type MessageListener = (message: BackendMessage) => void;
 const listeners: Set<MessageListener> = new Set();
+
+/**
+ * Build a history entry from request/response data and persist it.
+ * Used by both REST and SOAP execution paths to avoid duplication.
+ */
+interface HistoryParams {
+    requestName: string;
+    endpoint: string;
+    method: string;
+    projectName: string;
+    interfaceName: string;
+    operationName: string;
+    requestBody: string;
+    headers: Record<string, string>;
+    statusCode: number;
+    duration: number;
+    responseBody: string;
+    responseHeaders: Record<string, string>;
+    success: boolean;
+    error?: string;
+}
+
+function saveRequestHistory(params: HistoryParams): void {
+    const historyEntry: any = {
+        id: crypto.randomUUID(),
+        timestamp: Date.now(),
+        requestName: params.requestName,
+        endpoint: params.endpoint,
+        method: params.method,
+        projectName: params.projectName,
+        interfaceName: params.interfaceName,
+        operationName: params.operationName,
+        requestBody: params.requestBody,
+        headers: params.headers,
+        status: params.statusCode,
+        duration: params.duration,
+        responseBody: params.responseBody,
+        responseHeaders: params.responseHeaders,
+        responseSize: params.responseBody.length,
+        success: params.success,
+        starred: false,
+        error: params.error,
+    };
+
+    tauriInvoke('add_history_entry', { entry: historyEntry }).catch((e: any) =>
+        console.warn('[Bridge] Failed to save history entry:', e)
+    );
+
+    listeners.forEach(cb => cb({ command: BackendCommand.HistoryUpdate, entry: historyEntry } as any));
+}
 
 export const bridge = {
     /**
