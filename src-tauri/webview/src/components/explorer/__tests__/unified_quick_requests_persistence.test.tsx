@@ -135,17 +135,30 @@ describe('loadQuickRequestsHeight / saveQuickRequestsHeight', () => {
     });
 
     it('does not throw when storage is unavailable', () => {
-        const setSpy = vi.spyOn(window.localStorage, 'setItem').mockImplementation(() => {
-            throw new Error('quota exceeded');
+        // Swap the whole storage object instead of spying on its methods:
+        // the ambient Storage backing `window.localStorage` differs across
+        // runtimes (jsdom's wrapper on Node 20 vs Node's native localStorage
+        // on Node >= 22), and vi.spyOn on its methods does not intercept
+        // uniformly. Swapping the object itself is environment-agnostic —
+        // vitest installs globals as configurable properties.
+        const failingStorage = {
+            getItem: () => { throw new Error('denied'); },
+            setItem: () => { throw new Error('quota exceeded'); },
+        } as unknown as Storage;
+        const original = Object.getOwnPropertyDescriptor(window, 'localStorage');
+        Object.defineProperty(window, 'localStorage', {
+            value: failingStorage,
+            configurable: true,
+            writable: true,
         });
-        expect(() => saveQuickRequestsHeight(300)).not.toThrow();
-        setSpy.mockRestore();
-
-        const getSpy = vi.spyOn(window.localStorage, 'getItem').mockImplementation(() => {
-            throw new Error('denied');
-        });
-        expect(loadQuickRequestsHeight()).toBe(QUICK_REQUESTS_DEFAULT_HEIGHT);
-        getSpy.mockRestore();
+        try {
+            expect(() => saveQuickRequestsHeight(300)).not.toThrow();
+            expect(loadQuickRequestsHeight()).toBe(QUICK_REQUESTS_DEFAULT_HEIGHT);
+        } finally {
+            if (original) {
+                Object.defineProperty(window, 'localStorage', original);
+            }
+        }
     });
 });
 
