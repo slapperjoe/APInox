@@ -137,6 +137,8 @@ describe('UnifiedExplorerSidebar — Quick Requests resizable subwindow', () => 
         const handle = screen.getByTestId('unified-quick-requests-resize-handle');
         expect(handle).toBeInTheDocument();
         expect(handle.style.cursor).toBe('row-resize');
+        // The handle is a visible line at rest — not transparent until hover.
+        expect(handle.style.background).not.toBe('transparent');
 
         const section = screen.getByTestId('unified-quick-requests');
         expect(section.style.height).toBe(`${QUICK_REQUESTS_DEFAULT_HEIGHT}px`);
@@ -152,14 +154,16 @@ describe('UnifiedExplorerSidebar — Quick Requests resizable subwindow', () => 
         const section = screen.getByTestId('unified-quick-requests');
 
         fireEvent.mouseDown(handle);
-        // Pointer 300px below the container top → 300px subwindow.
-        fireEvent.mouseMove(document, { clientY: 300 });
+        // The subwindow is bottom-pinned: its height is the distance from the
+        // pointer down to the container bottom. Pointer 200px below the top
+        // of the 500px container → 300px subwindow.
+        fireEvent.mouseMove(document, { clientY: 200 });
         expect(section.style.height).toBe('300px');
-        // Enlarge further: more room for the request list.
-        fireEvent.mouseMove(document, { clientY: 400 });
-        expect(section.style.height).toBe('400px');
-        // Shrink below the default.
+        // Drag the handle up: the subwindow grows with the pointer.
         fireEvent.mouseMove(document, { clientY: 100 });
+        expect(section.style.height).toBe('400px');
+        // Drag the handle down: the subwindow shrinks.
+        fireEvent.mouseMove(document, { clientY: 400 });
         expect(section.style.height).toBe('100px');
 
         fireEvent.mouseUp(document);
@@ -173,8 +177,9 @@ describe('UnifiedExplorerSidebar — Quick Requests resizable subwindow', () => 
         const section = screen.getByTestId('unified-quick-requests');
 
         fireEvent.mouseDown(handle);
-        // Pointer above the subwindow / near the tree top: clamps to min.
-        fireEvent.mouseMove(document, { clientY: 5 });
+        // Pointer near the bottom edge: the subwindow would be 2px tall,
+        // so it clamps to the minimum.
+        fireEvent.mouseMove(document, { clientY: 498 });
         expect(section.style.height).toBe(`${QUICK_REQUESTS_MIN_HEIGHT}px`);
         fireEvent.mouseUp(document);
     });
@@ -187,10 +192,10 @@ describe('UnifiedExplorerSidebar — Quick Requests resizable subwindow', () => 
         const section = screen.getByTestId('unified-quick-requests');
 
         fireEvent.mouseDown(handle);
-        // Pointer at the very bottom of the 300px container: the tree must
+        // Pointer at the very top of the 300px container: the tree must
         // still keep QUICK_REQUESTS_MIN_HEIGHT, so the subwindow caps at
         // 300 - 64 = 236.
-        fireEvent.mouseMove(document, { clientY: 299 });
+        fireEvent.mouseMove(document, { clientY: 1 });
         expect(section.style.height).toBe(`${300 - QUICK_REQUESTS_MIN_HEIGHT}px`);
         fireEvent.mouseUp(document);
     });
@@ -204,7 +209,7 @@ describe('UnifiedExplorerSidebar — Quick Requests resizable subwindow', () => 
 
         fireEvent.mouseDown(handle);
         fireEvent.mouseMove(document, { clientY: 320 });
-        expect(section.style.height).toBe('320px');
+        expect(section.style.height).toBe('180px');
         expect(document.body.style.userSelect).toBe('none');
         expect(document.body.style.cursor).toBe('row-resize');
 
@@ -214,7 +219,7 @@ describe('UnifiedExplorerSidebar — Quick Requests resizable subwindow', () => 
 
         // Pointer moves after the drag must no longer resize the subwindow.
         fireEvent.mouseMove(document, { clientY: 100 });
-        expect(section.style.height).toBe('320px');
+        expect(section.style.height).toBe('180px');
     });
 
     it('renders every request row inside the subwindow when enlarged (more than 4 visible)', () => {
@@ -233,10 +238,11 @@ describe('UnifiedExplorerSidebar — Quick Requests resizable subwindow', () => 
         }
         expect(screen.getAllByText(/^Quick Request \d+$/).length).toBeGreaterThan(4);
 
-        // Enlarge via drag; every row remains inside the subwindow and the
-        // section keeps its exact (resized) height — no overflow leakage.
+        // Enlarge via drag (handle up); every row remains inside the
+        // subwindow and the section keeps its exact (resized) height —
+        // no overflow leakage.
         fireEvent.mouseDown(handle);
-        fireEvent.mouseMove(document, { clientY: 436 });
+        fireEvent.mouseMove(document, { clientY: 64 });
         expect(section.style.height).toBe('436px');
         fireEvent.mouseUp(document);
         for (let i = 1; i <= 8; i++) {

@@ -379,11 +379,14 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
         const handleMove = (ev: MouseEvent) => {
             if (!isResizingQuickRequests.current) return;
             const containerHeight = container.getBoundingClientRect().height;
-            // New subwindow height = distance from the pointer down to the
-            // container's top edge, clamped to [min, max]; the max also keeps
-            // the project tree visible (it needs at least the min height).
+            // The subwindow is pinned to the container's bottom edge, so its
+            // height is the distance from the pointer down to the container's
+            // bottom: dragging the handle up grows it, dragging it down
+            // shrinks it (the drag direction matches the pointer). Clamped to
+            // [min, max]; the max also keeps the project tree visible (it
+            // needs at least the min height).
             const max = Math.max(QUICK_REQUESTS_MIN_HEIGHT, Math.floor(containerHeight - QUICK_REQUESTS_MIN_HEIGHT));
-            const next = ev.clientY - containerTop;
+            const next = containerHeight - (ev.clientY - containerTop);
             const clamped = Math.min(max, Math.max(QUICK_REQUESTS_MIN_HEIGHT, Math.round(next)));
             quickRequestsHeightRef.current = clamped;
             setQuickRequestsHeight(clamped);
@@ -939,9 +942,14 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
         {scrapbook && (
             <>
                 {/* Vertical resize handle between the project tree and the
-                    Quick Requests subwindow. */}
+                    Quick Requests subwindow. Always visible as a thin line
+                    (not only on hover) so the grip is easy to find; it
+                    brightens to the accent color while hovered. It doubles
+                    as the section separator, so the subwindow below has no
+                    border of its own. */}
                 <div
                     data-testid="unified-quick-requests-resize-handle"
+                    title="Drag to resize Quick Requests"
                     onMouseDown={handleQuickRequestsResizeStart}
                     onMouseEnter={() => setHandleHovered(true)}
                     onMouseLeave={() => setHandleHovered(false)}
@@ -951,7 +959,7 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                         cursor: 'row-resize',
                         background: handleHovered
                             ? 'var(--apinox-tab-active-border, var(--apinox-border, #3c3c3c))'
-                            : 'transparent',
+                            : 'var(--apinox-border, #3c3c3c)',
                         transition: 'background 0.2s',
                     }}
                 />
@@ -960,7 +968,6 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                     data-testid="unified-quick-requests"
                     style={{
                         flexShrink: 0,
-                        borderTop: '1px solid var(--apinox-border)',
                         height: quickRequestsHeight,
                         minHeight: QUICK_REQUESTS_MIN_HEIGHT,
                         display: 'flex',
