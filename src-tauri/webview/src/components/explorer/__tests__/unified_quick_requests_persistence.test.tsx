@@ -198,17 +198,20 @@ describe('UnifiedExplorerSidebar — Quick Requests height persistence', () => {
 
         const handle = screen.getByTestId('unified-quick-requests-resize-handle');
         fireEvent.mouseDown(handle);
+        // Bottom-pinned subwindow: height = container height − pointer
+        // distance from the container top (500 − 300 = 200, then 500 − 260
+        // = 240).
         fireEvent.mouseMove(document, { clientY: 300 });
         expect(localStorage.getItem(QUICK_REQUESTS_HEIGHT_STORAGE_KEY)).toBeNull();
-        fireEvent.mouseMove(document, { clientY: 340 });
+        fireEvent.mouseMove(document, { clientY: 260 });
         expect(localStorage.getItem(QUICK_REQUESTS_HEIGHT_STORAGE_KEY)).toBeNull();
 
         fireEvent.mouseUp(document);
-        expect(localStorage.getItem(QUICK_REQUESTS_HEIGHT_STORAGE_KEY)).toBe('340');
+        expect(localStorage.getItem(QUICK_REQUESTS_HEIGHT_STORAGE_KEY)).toBe('240');
 
         // Pointer moves after the drag must not re-write storage.
         fireEvent.mouseMove(document, { clientY: 100 });
-        expect(localStorage.getItem(QUICK_REQUESTS_HEIGHT_STORAGE_KEY)).toBe('340');
+        expect(localStorage.getItem(QUICK_REQUESTS_HEIGHT_STORAGE_KEY)).toBe('240');
     });
 
     it('persists the clamped value when a drag ends at the minimum', () => {
@@ -217,7 +220,9 @@ describe('UnifiedExplorerSidebar — Quick Requests height persistence', () => {
 
         const handle = screen.getByTestId('unified-quick-requests-resize-handle');
         fireEvent.mouseDown(handle);
-        fireEvent.mouseMove(document, { clientY: 2 });
+        // Pointer at the very bottom: 1px would be below the minimum, so the
+        // clamped minimum is what gets persisted.
+        fireEvent.mouseMove(document, { clientY: 499 });
         fireEvent.mouseUp(document);
         expect(localStorage.getItem(QUICK_REQUESTS_HEIGHT_STORAGE_KEY)).toBe(String(QUICK_REQUESTS_MIN_HEIGHT));
     });
@@ -231,7 +236,7 @@ describe('UnifiedExplorerSidebar — Quick Requests height persistence', () => {
         fireEvent.mouseMove(document, { clientY: 310 });
         window.dispatchEvent(new Event('blur'));
 
-        expect(localStorage.getItem(QUICK_REQUESTS_HEIGHT_STORAGE_KEY)).toBe('310');
+        expect(localStorage.getItem(QUICK_REQUESTS_HEIGHT_STORAGE_KEY)).toBe('190');
         expect(document.body.style.userSelect).toBe('');
         expect(document.body.style.cursor).toBe('');
     });
@@ -251,7 +256,7 @@ describe('UnifiedExplorerSidebar — Quick Requests height persistence', () => {
             fireEvent.mouseUp(document);
         }).not.toThrow();
         // The resize still applied even though the write was skipped.
-        expect(section.style.height).toBe('290px');
+        expect(section.style.height).toBe('210px');
         setSpy.mockRestore();
     });
 
@@ -262,12 +267,12 @@ describe('UnifiedExplorerSidebar — Quick Requests height persistence', () => {
         fireEvent.mouseDown(screen.getByTestId('unified-quick-requests-resize-handle'));
         fireEvent.mouseMove(document, { clientY: 380 });
         fireEvent.mouseUp(document);
-        expect(localStorage.getItem(QUICK_REQUESTS_HEIGHT_STORAGE_KEY)).toBe('380');
+        expect(localStorage.getItem(QUICK_REQUESTS_HEIGHT_STORAGE_KEY)).toBe('120');
         first.unmount();
 
         // Session 2: a fresh mount restores the saved height on first paint.
         const second = renderSidebar();
-        expect(screen.getByTestId('unified-quick-requests').style.height).toBe('380px');
+        expect(screen.getByTestId('unified-quick-requests').style.height).toBe('120px');
         second.unmount();
     });
 });

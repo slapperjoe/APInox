@@ -148,15 +148,6 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
       <RailSeparator />
 
       <NavItem
-        icon={FileText}
-        active={activeView === SidebarView.NOTES}
-        onClick={() => onChangeView(SidebarView.NOTES)}
-        title="Notes"
-      />
-
-      <RailSeparator />
-
-      <NavItem
         icon={Shuffle}
         active={activeView === SidebarView.PROXY}
         onClick={() => onChangeView(SidebarView.PROXY)}
@@ -176,6 +167,16 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
       />
 
       <div style={{ flex: 1 }}></div>
+
+      {/* Notes sits at the bottom of the rail, above the separating bar
+          that divides it from the environment selector — it's a
+          scratchpad/utility view, not a primary nav entry. */}
+      <NavItem
+        icon={FileText}
+        active={activeView === SidebarView.NOTES}
+        onClick={() => onChangeView(SidebarView.NOTES)}
+        title="Notes"
+      />
 
       <RailSeparator />
 

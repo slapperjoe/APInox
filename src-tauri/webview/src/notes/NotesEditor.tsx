@@ -19,6 +19,7 @@ import { NotesPreview, DebouncedNotesPreview } from "./NotesPreview";
 import { NotesHexEditor } from "./NotesHexEditor";
 import { useEditorSettings } from "@apinox/request-editor/core";
 import { EmptyState } from "../components/common/EmptyState";
+import { CustomSelect } from "../components/common/CustomSelect";
 
 // ─── Styled ───────────────────────────────────────────────────────────────────
 
@@ -81,17 +82,6 @@ const ToolbarBtn = styled.button<{ $active?: boolean }>`
   &:hover {
     background: var(--apinox-list-hoverBackground, rgba(255,255,255,0.08));
   }
-`;
-
-const LangBadge = styled.select`
-  font-size: 11px;
-  padding: 2px 4px;
-  border: 1px solid var(--apinox-panel-border, rgba(128,128,128,0.3));
-  border-radius: 3px;
-  background: var(--apinox-input-background, #3c3c3c);
-  color: var(--apinox-foreground, #ccc);
-  cursor: pointer;
-  flex-shrink: 0;
 `;
 
 const EditorBody = styled.div`
@@ -365,17 +355,17 @@ export const NotesEditor: React.FC = () => {
           </>
         )}
 
-        {/* Language selector */}
+        {/* Language selector — themed CustomSelect (a native <select>'s
+            option popup is OS-controlled and would ignore the theme vars). */}
         {!isBinary && (
-          <LangBadge
-            value={detected.language}
-            onChange={(e) => setLanguageOverride(e.target.value as NoteLanguage)}
-            title="Language override"
-          >
-            {LANGUAGES.map((l) => (
-              <option key={l.value} value={l.value}>{l.label}</option>
-            ))}
-          </LangBadge>
+          <span title="Language override" style={{ flexShrink: 0 }}>
+            <CustomSelect
+              value={detected.language}
+              onChange={(v) => setLanguageOverride(v as NoteLanguage)}
+              options={LANGUAGES}
+              style={{ width: 116 }}
+            />
+          </span>
         )}
 
         <Separator />

@@ -130,20 +130,21 @@ describe("UnifiedExplorerSidebar — Quick Requests list scrolls inside a bounde
         const handle = screen.getByTestId("unified-quick-requests-resize-handle");
         const section = screen.getByTestId("unified-quick-requests");
 
-        // At a pointer position below the minimum, the list overflows the
-        // visible area; the overflow is clipped by the container (overflow-y:
-        // auto), not by the section.
+        // Drag the handle up: the subwindow grows to the max (container
+        // height minus the min tree height); all rows remain in the DOM.
         fireEvent.mouseDown(handle);
         fireEvent.mouseMove(document, { clientY: 5 });
-        expect(section.style.height).toBe(`${QUICK_REQUESTS_MIN_HEIGHT}px`);
-
-        // Enlarging grows the visible area up to the max (container height
-        // minus the min tree height); all rows remain in the DOM.
-        fireEvent.mouseMove(document, { clientY: 500 });
         expect(section.style.height).toBe("436px");
         for (let i = 1; i <= 10; i++) {
             expect(screen.getByText(`Quick Request ${i}`)).toBeInTheDocument();
         }
+
+        // Drag the handle down below the minimum: the list overflows the
+        // visible area; the overflow is clipped by the internal scroll
+        // container (overflow-y: auto), not by the section, which clamps to
+        // the min height.
+        fireEvent.mouseMove(document, { clientY: 498 });
+        expect(section.style.height).toBe(`${QUICK_REQUESTS_MIN_HEIGHT}px`);
         fireEvent.mouseUp(document);
     });
 
