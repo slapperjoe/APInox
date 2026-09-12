@@ -88,59 +88,15 @@ pub struct HttpResponse {
     pub truncated: bool,
 }
 
-pub struct HttpClient {
-    client: Client,
-}
+pub struct HttpClient;
 
 impl HttpClient {
-    /// Create a new HTTP client with default settings
-    pub fn new() -> Result<Self> {
-        let client = Client::builder()
-            .timeout(Duration::from_secs(30))
-            .build()
-            .context("Failed to create HTTP client")?;
-        
-        Ok(Self { client })
-    }
-
-    /// Create a custom HTTP client with specific settings
-    pub fn with_settings(
-        timeout_ms: Option<u64>,
-        follow_redirects: bool,
-        verify_ssl: bool,
-        proxy_url: Option<String>,
-        proxy_username: Option<String>,
-        proxy_password: Option<String>,
-    ) -> Result<Self> {
-        let mut builder = Client::builder()
-            .danger_accept_invalid_certs(!verify_ssl);
-
-        if let Some(timeout) = timeout_ms {
-            builder = builder.timeout(Duration::from_millis(timeout));
-        }
-
-        if follow_redirects {
-            builder = builder.redirect(reqwest::redirect::Policy::limited(10));
-        } else {
-            builder = builder.redirect(reqwest::redirect::Policy::none());
-        }
-
-        // Configure proxy if provided
-        if let Some(proxy_url_str) = proxy_url {
-            let mut proxy = Proxy::all(&proxy_url_str)
-                .context("Failed to configure proxy")?;
-            
-            if let (Some(username), Some(password)) = (proxy_username, proxy_password) {
-                proxy = proxy.basic_auth(&username, &password);
-            }
-            
-            builder = builder.proxy(proxy);
-        }
-
-        let client = builder.build()
-            .context("Failed to create HTTP client")?;
-        
-        Ok(Self { client })
+    /// Create a new HTTP client.
+    ///
+    /// No per-client state is held: requests execute through the cached,
+    /// per-config `reqwest::Client` built in `build_reqwest_client`.
+    pub fn new() -> Self {
+        Self
     }
 
     /// Execute an HTTP request
@@ -386,12 +342,6 @@ impl HttpClient {
             proxy_username: None,
             proxy_password: None,
         }).await
-    }
-}
-
-impl Default for HttpClient {
-    fn default() -> Self {
-        Self::new().expect("Failed to create default HTTP client")
     }
 }
 

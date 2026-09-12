@@ -46,8 +46,7 @@ pub async fn execute_http_request(
         log::debug!("Request body:\n{}", b);
     }
 
-    let client = HttpClient::new()
-        .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
+    let client = HttpClient::new();
 
     let request = HttpRequest {
         method,
@@ -108,8 +107,7 @@ pub async fn execute_rest_request(
         token
     };
 
-    let client = HttpClient::new()
-        .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
+    let client = HttpClient::new();
 
     let request = HttpRequest {
         method,

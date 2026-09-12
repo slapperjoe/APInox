@@ -21,8 +21,7 @@ pub async fn parse_openapi_spec(url_or_json: String) -> Result<OpenApiSpec, Stri
         url_or_json
     } else {
         log::info!("Fetching OpenAPI spec from URL: {}", url_or_json);
-        let client = HttpClient::new()
-            .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
+        let client = HttpClient::new();
 
         let response = client.get(&url_or_json, HashMap::new()).await;
 
