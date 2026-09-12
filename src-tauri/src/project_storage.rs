@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use std::fs;
 use std::path::{Path, PathBuf};
-use tauri::Emitter;
+#[cfg(test)]
 use uuid::Uuid;
 use crate::utils::resolve_config_dir;
 
@@ -1705,24 +1705,6 @@ pub async fn list_unified_projects_skeleton() -> Result<Vec<serde_json::Value>, 
 #[tauri::command]
 pub async fn load_unified_project_detail(dir_path: String) -> Result<serde_json::Value, String> {
     load_unified_project(dir_path)
-}
-
-/// Emit a `unified-load-*` progress event to the webview (t_aafaf92b —
-/// contract §3.2). Payload shape per event name:
-/// - `unified-load-progress`: `{ loaded, total, name? }`
-/// - `unified-load-project`:  `{ project }` (skeleton or full project)
-/// - `unified-load-done`:     `{ total, errors: [{ name, message }] }`
-/// - `unified-load-refresh`:  `{ reason: 'migration' | 'external' }`
-///
-/// Emission is best-effort (`let _ =`) — a missing/failed listener must never
-/// break the load itself. `AppHandle` is injected by Tauri in commands;
-/// direct calls in tests pass it explicitly.
-pub fn emit_unified_load_event(
-    app: &tauri::AppHandle,
-    event_name: &str,
-    payload: &serde_json::Value,
-) {
-    let _ = app.emit(event_name, payload);
 }
 
 /// True if `dir/properties.json` declares the unified project format.

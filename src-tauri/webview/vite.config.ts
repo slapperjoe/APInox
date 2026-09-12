@@ -82,9 +82,15 @@ export default defineConfig({
                 entryFileNames: `assets/[name].js`,
                 chunkFileNames: `assets/[name].js`,
                 assetFileNames: `assets/[name].[ext]`,
+                // Note: no manual chunk for monaco-editor. An object-form
+                // `monaco: ['monaco-editor']` entry only matched monaco's
+                // CSS virtual modules (0.99 kB of JS), so the full
+                // stylesheet was emitted twice — once as an eagerly-loaded
+                // `monaco.css` and again with the lazy chunk carrying the
+                // JS. Letting monaco follow its importers yields a single
+                // copy, loaded with the first editor view.
                 manualChunks: {
                     vendor: ['react', 'react-dom'],
-                    monaco: ['monaco-editor']
                 },
                 // Help IDEs map source paths correctly
                 sourcemapPathTransform: (relativeSourcePath) => {

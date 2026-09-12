@@ -1087,7 +1087,7 @@ async fn execute_graphql_request(
     url: &str,
     body: &str,
 ) -> Result<crate::http::client::HttpResponse, String> {
-    let client = HttpClient::new().map_err(|e| format!("Failed to create HTTP client: {}", e))?;
+    let client = HttpClient::new();
 
     let mut headers = HashMap::new();
     headers.insert("Content-Type".to_string(), "application/json".to_string());

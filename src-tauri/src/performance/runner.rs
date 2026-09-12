@@ -24,50 +24,39 @@ pub async fn execute_request(
     let body = substitute_variables(&req.request_body, variables);
 
     let start = Instant::now();
-    let mut status: u16 = 0;
-    let mut success = false;
     let mut error: Option<String> = None;
-    let mut response_body = String::new();
     let mut extracted_values: HashMap<String, String> = HashMap::new();
 
-    match HttpClient::new() {
-        Ok(client) => {
-            let mut headers = req.headers.clone();
-            if let Some(ref action) = req.soap_action {
-                headers
-                    .entry("SOAPAction".to_string())
-                    .or_insert_with(|| format!("\"{}\"", action));
-                headers
-                    .entry("Content-Type".to_string())
-                    .or_insert_with(|| CONTENT_TYPE_XML.to_string());
-            }
+    let client = HttpClient::new();
+    let mut headers = req.headers.clone();
+    if let Some(ref action) = req.soap_action {
+        headers
+            .entry("SOAPAction".to_string())
+            .or_insert_with(|| format!("\"{}\"", action));
+        headers
+            .entry("Content-Type".to_string())
+            .or_insert_with(|| CONTENT_TYPE_XML.to_string());
+    }
 
-            let http_req = HttpRequest {
-                method: req.method.clone(),
-                url: endpoint.clone(),
-                headers,
-                body: if body.is_empty() { None } else { Some(body) },
-                timeout_ms: Some(30_000),
-                follow_redirects: Some(true),
-                verify_ssl: Some(false),
-                proxy_url: None,
-                proxy_username: None,
-                proxy_password: None,
-            };
+    let http_req = HttpRequest {
+        method: req.method.clone(),
+        url: endpoint.clone(),
+        headers,
+        body: if body.is_empty() { None } else { Some(body) },
+        timeout_ms: Some(30_000),
+        follow_redirects: Some(true),
+        verify_ssl: Some(false),
+        proxy_url: None,
+        proxy_username: None,
+        proxy_password: None,
+    };
 
-            let resp = client.execute_with_cancel(http_req, cancel_token).await;
-            status = resp.status;
-            success = resp.status >= 200 && resp.status < 300;
-            if let Some(e) = resp.error {
-                if !success {
-                    error = Some(e);
-                }
-            }
-            response_body = resp.body;
-        }
-        Err(e) => {
-            error = Some(format!("Failed to create HTTP client: {}", e));
-        }
+    let resp = client.execute_with_cancel(http_req, cancel_token).await;
+    let status = resp.status;
+    let success = status >= 200 && status < 300;
+    let response_body = resp.body;
+    if !success {
+        error = resp.error;
     }
 
     let duration = start.elapsed().as_secs_f64() * 1000.0;

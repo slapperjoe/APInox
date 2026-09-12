@@ -5,7 +5,7 @@ use std::net::SocketAddr;
 use anyhow::{Context, Result};
 use bytes::Bytes;
 use chrono::Utc;
-use http_body_util::{BodyExt, Full};
+use http_body_util::Full;
 use hyper::body::Incoming;
 use hyper::service::service_fn;
 use hyper::{Request, Response, StatusCode};
