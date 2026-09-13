@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { invokeTauriCommand } from '../../utils/bridge';
 import { tokens } from './tokens';
+import { ProxyModal } from './ProxyModal';
+import { languageFromContentType } from './trafficStyles';
+import { ConditionRow, addCondition as addCond, removeCondition as removeCond, updateCondition as updateCond } from './ConditionRowEditor';
 import { HeadersPanel, MonacoRequestEditorWithToolbar } from '@apinox/request-editor/monaco';
 
 interface BreakpointCondition {
@@ -198,32 +201,17 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
 
   function addCondition() {
     if (!editingRule) return;
-    setEditingRule({
-      ...editingRule,
-      conditions: [...editingRule.conditions, { type: 'url', pattern: '', isRegex: false }]
-    });
+    setEditingRule({ ...editingRule, conditions: addCond(editingRule.conditions) });
   }
 
   function removeCondition(index: number) {
     if (!editingRule) return;
-    setEditingRule({
-      ...editingRule,
-      conditions: editingRule.conditions.filter((_, i) => i !== index)
-    });
+    setEditingRule({ ...editingRule, conditions: removeCond(editingRule.conditions, index) });
   }
 
   function updateCondition(index: number, updates: Partial<BreakpointCondition>) {
     if (!editingRule) return;
-    const newConditions = [...editingRule.conditions];
-    newConditions[index] = { ...newConditions[index], ...updates };
-    setEditingRule({ ...editingRule, conditions: newConditions });
-  }
-
-  function detectLanguage(headers: Record<string, string> = {}): string {
-    const ct = headers['content-type'] || headers['Content-Type'] || '';
-    if (ct.includes('xml') || ct.includes('soap')) return 'xml';
-    if (ct.includes('json')) return 'json';
-    return 'text';
+    setEditingRule({ ...editingRule, conditions: updateCond(editingRule.conditions, index, updates) });
   }
 
   function getDirectText(el: Element): string {
@@ -432,7 +420,7 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
                         setEditingTraffic(item);
                         const body = item.pauseType === 'request' ? item.requestBody : (item.responseBody ?? '');
                         const headers = item.pauseType === 'request' ? (item.requestHeaders ?? {}) : (item.responseHeaders ?? {});
-                        const lang = detectLanguage(headers);
+                        const lang = languageFromContentType(headers);
                         const fmtBody = lang === 'xml' ? formatXmlForDisplay(body) : body;
                         setRawBody(body);
                         setFormattedOriginalBody(fmtBody);
@@ -605,18 +593,7 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
 
       {/* Edit Rule Modal */}
       {editingRule && (
-        <div style={{
-          position: 'fixed',
-          top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0, 0, 0, 0.8)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 1000, padding: tokens.space['6']
-        }}>
-          <div style={{
-            background: tokens.surface.panel, padding: '24px',
-            borderRadius: tokens.radius.lg,
-            maxWidth: '700px', width: '100%', maxHeight: '90vh', overflow: 'auto'
-          }}>
+        <ProxyModal maxWidth="700px" width="100%" maxHeight="90vh" scroll>
             <h3 style={{ margin: `0 0 ${tokens.space['6']} 0`, fontSize: tokens.fontSize.lg }}>
               {rules.find(r => r.id === editingRule.id) ? 'Edit' : 'Add'} Breakpoint
             </h3>
@@ -687,71 +664,21 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
               </div>
 
               {editingRule.conditions.map((condition, idx) => (
-                <div key={idx} style={{
-                  display: 'grid',
-                  gridTemplateColumns: '120px 1fr 80px 40px',
-                  gap: '8px',
-                  marginBottom: '8px',
-                  alignItems: 'center'
-                }}>
-                  <select
-                    value={condition.type}
-                    onChange={(e) => updateCondition(idx, { type: e.target.value as BreakpointCondition['type'] })}
-                    style={{
-                      padding: '6px',
-                      background: tokens.surface.input,
-                      border: `1px solid ${tokens.border.subtle}`,
-                      borderRadius: tokens.radius.md,
-                      color: tokens.text.secondary,
-                      fontSize: tokens.fontSize.sm
-                    }}
-                  >
-                    <option value="url">URL</option>
-                    <option value="method">Method</option>
-                    <option value="statusCode">Status Code</option>
-                    <option value="header">Header</option>
-                    <option value="contains">Body Contains</option>
-                  </select>
-
-                  <input
-                    type="text"
-                    value={condition.pattern}
-                    onChange={(e) => updateCondition(idx, { pattern: e.target.value })}
-                    placeholder={condition.type === 'url' ? '/api/*' : 'pattern'}
-                    style={{
-                      padding: `6px ${tokens.space['2']}`,
-                      background: tokens.surface.input,
-                      border: `1px solid ${tokens.border.subtle}`,
-                      borderRadius: tokens.radius.md,
-                      color: tokens.text.secondary,
-                      fontSize: tokens.fontSize.sm
-                    }}
+                <div key={idx} style={{ marginBottom: '8px' }}>
+                  <ConditionRow
+                    condition={condition}
+                    typeColWidth="120px"
+                    typeOptions={[
+                      { value: 'url', label: 'URL' },
+                      { value: 'method', label: 'Method' },
+                      { value: 'statusCode', label: 'Status Code' },
+                      { value: 'header', label: 'Header' },
+                      { value: 'contains', label: 'Body Contains' },
+                    ]}
+                    onTypeChange={(newType) => updateCondition(idx, { type: newType as BreakpointCondition['type'] })}
+                    onFieldChange={(updates) => updateCondition(idx, updates as Partial<BreakpointCondition>)}
+                    onRemove={() => removeCondition(idx)}
                   />
-
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={condition.isRegex || false}
-                      onChange={(e) => updateCondition(idx, { isRegex: e.target.checked })}
-                      style={{ width: '14px', height: '14px' }}
-                    />
-                    Regex
-                  </label>
-
-                  <button
-                    onClick={() => removeCondition(idx)}
-                    style={{
-                      padding: '6px',
-                      background: tokens.surface.danger,
-                      border: 'none',
-                      borderRadius: tokens.radius.md,
-                      color: tokens.text.danger,
-                      fontSize: tokens.fontSize.sm,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    ✕
-                  </button>
                 </div>
               ))}
             </div>
@@ -787,24 +714,12 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
                 Save
               </button>
             </div>
-          </div>
-        </div>
+          </ProxyModal>
       )}
 
       {/* Edit Traffic Modal */}
       {editingTraffic && (
-        <div style={{
-          position: 'fixed',
-          top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0, 0, 0, 0.8)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 1000, padding: tokens.space['6']
-        }}>
-          <div style={{
-            background: tokens.surface.panel, padding: '24px',
-            borderRadius: tokens.radius.lg,
-            maxWidth: '900px', width: '100%', maxHeight: '90vh', overflow: 'auto'
-          }}>
+        <ProxyModal maxWidth="900px" width="100%" maxHeight="90vh" scroll>
             <h3 style={{ margin: `0 0 ${tokens.space['4']} 0`, fontSize: tokens.fontSize.lg }}>
               Edit {editingTraffic.pauseType === 'request' ? 'Request' : 'Response'}
             </h3>
@@ -835,7 +750,7 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
                 <MonacoRequestEditorWithToolbar
                   value={editedBody}
                   onChange={setEditedBody}
-                  language={detectLanguage(editedHeaders)}
+                  language={languageFromContentType(editedHeaders)}
                   autoFormat={false}
                 />
               </div>
@@ -873,7 +788,7 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
               </button>
               <button
                 onClick={() => {
-                  const lang = detectLanguage(editedHeaders);
+                  const lang = languageFromContentType(editedHeaders);
                   const finalBody = lang === 'xml'
                     ? patchXmlBody(rawBody, formattedOriginalBody, editedBody)
                     : editedBody;
@@ -895,8 +810,7 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
                 Continue with Changes
               </button>
             </div>
-          </div>
-        </div>
+          </ProxyModal>
       )}
     </div>
   );

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { invokeTauriCommand } from '../../utils/bridge';
 import { tokens } from './tokens';
+import { ProxyModal } from './ProxyModal';
 
 interface ReplaceRule {
   id: string;
@@ -247,25 +248,7 @@ export const RulesPage = forwardRef<RulesPageHandle, {
       )}
 
       {showAddRule && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.7)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            background: tokens.surface.panel,
-            padding: '24px',
-            borderRadius: '8px',
-            maxWidth: '500px',
-            width: '90%'
-          }}>
+        <ProxyModal dim={0.7} padding="0" maxWidth="500px" width="90%" radius="8px">
             <h3 style={{ margin: '0 0 16px 0' }}>{editingRule ? 'Edit Replace Rule' : 'Add Replace Rule'}</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
               <label style={{ fontSize: '13px' }}>
@@ -359,8 +342,7 @@ export const RulesPage = forwardRef<RulesPageHandle, {
                 {editingRule ? 'Save' : 'Create'}
               </button>
             </div>
-          </div>
-        </div>
+          </ProxyModal>
       )}
     </div>
   );
