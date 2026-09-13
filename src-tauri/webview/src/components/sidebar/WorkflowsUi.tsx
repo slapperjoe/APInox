@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import { Play, Plus, Trash2, GitBranch, Edit2, Copy, ChevronDown, ChevronRight } from 'lucide-react';
 import { Workflow, WorkflowStep } from '@shared/models';
-import { SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle } from './shared/SidebarStyles';
+import { SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle, RowActions } from './shared/SidebarStyles';
 import { EmptyState } from '../common/EmptyState';
 import { HeaderButton, IconButton } from '../common/Button';
 import { SPACING_SM, SPACING_XS } from '../../styles/spacing';
@@ -43,16 +43,6 @@ const WorkflowStepCount = styled.div`
     font-size: 0.8em;
     opacity: 0.6;
     margin-right: ${SPACING_XS};
-`;
-
-const WorkflowActions = styled.div`
-    display: flex;
-    gap: 4px;
-    opacity: 0;
-
-    ${WorkflowItem}:hover & {
-        opacity: 1;
-    }
 `;
 
 const StepItem = styled.div`
@@ -163,7 +153,7 @@ export const WorkflowsUi: React.FC<WorkflowsUiProps> = ({
                                     <WorkflowStepCount>
                                         {workflow.steps?.length || 0} steps
                                     </WorkflowStepCount>
-                                    <WorkflowActions>
+                                    <RowActions $parent={WorkflowItem}>
                                         <IconButton
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -209,7 +199,7 @@ export const WorkflowsUi: React.FC<WorkflowsUiProps> = ({
                                         >
                                             <Trash2 size={14} />
                                         </IconButton>
-                                    </WorkflowActions>
+                                    </RowActions>
                                 </WorkflowItem>
                                 
                                 {/* Show steps when expanded */}
