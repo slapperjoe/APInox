@@ -4,15 +4,10 @@ import { Type, Braces, WrapText, AlignLeft, ListOrdered, Map, Minus, Plus, Layou
 import * as S from './RequestWorkspace.styles';
 import { useEditorSettings } from '../contexts/EditorSettingsContext';
 import type { MonoFont } from '../utils/fontDetection';
-
-interface MenuPosition {
-  top: number;
-  right: number;
-  maxHeight: number;
-}
+import type { SettingsMenuPosition } from '../hooks/useSettingsDropdown';
 
 export interface EditorSettingsMenuProps {
-  menuPosition: MenuPosition;
+  menuPosition: SettingsMenuPosition;
   settingsMenuRef: React.RefObject<HTMLDivElement>;
   installedFonts: MonoFont[];
   layoutMode: 'vertical' | 'horizontal';
@@ -46,7 +41,7 @@ export const EditorSettingsMenu: React.FC<EditorSettingsMenuProps> = ({
     >
       {/* maxHeight + overflow on the menu itself so fixed-position portal isn't clipped */}
       <S.EditorSettingsMenu style={{
-        maxHeight: `${menuPosition.maxHeight}px`,
+        maxHeight: menuPosition.maxHeight != null ? `${menuPosition.maxHeight}px` : undefined,
         overflowY: 'auto',
         WebkitOverflowScrolling: 'touch' as any,
       }}>

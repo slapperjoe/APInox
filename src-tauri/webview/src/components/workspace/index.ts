@@ -3,7 +3,6 @@ export { WelcomePanel } from './WelcomePanel';
 // (pruned unused type re-exports)
 export { TestCaseView, EmptyTestCase } from './TestCaseView';
 // (pruned unused type re-exports)
-export { WorkflowSummary } from './WorkflowSummary';
 export { WorkflowEditor } from './WorkflowEditor';
 export { WorkflowPropertiesPanel } from './WorkflowPropertiesPanel';
 export { DelayStepEditor } from './DelayStepEditor';

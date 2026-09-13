@@ -3,6 +3,9 @@ import { open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialo
 import { MonacoRequestEditor } from '@apinox/request-editor/monaco';
 import { invokeTauriCommand } from '../../utils/bridge';
 import { tokens } from './tokens';
+import { languageFromContentType } from './trafficStyles';
+import { ProxyModal } from './ProxyModal';
+import { ConditionRow, addCondition as addCond, removeCondition as removeCond, updateCondition as updateCond } from './ConditionRowEditor';
 
 import type { MockCondition } from './ConditionPickerModel';
 
@@ -27,14 +30,6 @@ const CONTENT_TYPES = [
   { label: 'HTML (text/html)', value: 'text/html; charset=utf-8' },
   { label: 'Custom…', value: '' },
 ];
-
-function contentTypeToLanguage(ct: string): string {
-  if (!ct) return 'plaintext';
-  if (ct.includes('json')) return 'json';
-  if (ct.includes('xml')) return 'xml';
-  if (ct.includes('html')) return 'html';
-  return 'plaintext';
-}
 
 function statusColor(code: number): string {
   if (code >= 200 && code < 300) return tokens.httpStatus.success;
@@ -246,17 +241,7 @@ function ExportModal({ rules, onClose }: { rules: MockRule[]; onClose: () => voi
   };
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      zIndex: 2000, padding: tokens.space['6'],
-    }}>
-      <div style={{
-        background: tokens.surface.panel, padding: '24px',
-        borderRadius: tokens.radius.lg,
-        width: '520px', maxHeight: '85vh',
-        display: 'flex', flexDirection: 'column', gap: tokens.space['5'],
-      }}>
+    <ProxyModal zIndex={2000} width="520px" maxHeight="85vh" columnGap={tokens.space['5']}>
         <h3 style={{ margin: 0, fontSize: tokens.fontSize.lg, fontWeight: 500 }}>Export Mock Collection</h3>
 
         <div>
@@ -319,8 +304,7 @@ function ExportModal({ rules, onClose }: { rules: MockRule[]; onClose: () => voi
             fontSize: tokens.fontSize.base, cursor: busy ? 'default' : 'pointer',
           }}>{busy ? 'Exporting…' : 'Export'}</button>
         </div>
-      </div>
-    </div>
+      </ProxyModal>
   );
 }
 
@@ -632,25 +616,17 @@ export const MockRulesPage = forwardRef<MockRulesPageHandle, {
 
   function addCondition() {
     if (!editingRule) return;
-    setEditingRule({
-      ...editingRule,
-      conditions: [...editingRule.conditions, { type: 'url', pattern: '', isRegex: false }]
-    });
+    setEditingRule({ ...editingRule, conditions: addCond(editingRule.conditions) });
   }
 
   function removeCondition(index: number) {
     if (!editingRule) return;
-    setEditingRule({
-      ...editingRule,
-      conditions: editingRule.conditions.filter((_, i) => i !== index)
-    });
+    setEditingRule({ ...editingRule, conditions: removeCond(editingRule.conditions, index) });
   }
 
   function updateCondition(index: number, updates: Partial<MockCondition>) {
     if (!editingRule) return;
-    const newConditions = [...editingRule.conditions];
-    newConditions[index] = { ...newConditions[index], ...updates };
-    setEditingRule({ ...editingRule, conditions: newConditions });
+    setEditingRule({ ...editingRule, conditions: updateCond(editingRule.conditions, index, updates) });
   }
 
   function openEdit(rule: MockRule) {
@@ -767,17 +743,7 @@ export const MockRulesPage = forwardRef<MockRulesPageHandle, {
 
       {/* ── Duplicate conflict modal ── */}
       {duplicateConflict && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 2100, padding: tokens.space['6'],
-        }}>
-          <div style={{
-            background: tokens.surface.panel, borderRadius: tokens.radius.lg,
-            border: `1px solid ${tokens.border.default}`,
-            padding: '24px', width: '460px', maxWidth: '100%',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
-          }}>
+        <ProxyModal dim={0.85} zIndex={2100} width="460px" bordered shadow>
             <div style={{ fontSize: '15px', fontWeight: 600, color: tokens.text.secondary, marginBottom: '10px' }}>
               Duplicate Conditions Detected
             </div>
@@ -806,24 +772,12 @@ export const MockRulesPage = forwardRef<MockRulesPageHandle, {
                 }}
               >Overwrite Existing</button>
             </div>
-          </div>
-        </div>
+          </ProxyModal>
       )}
 
       {/* ── Edit / Add modal ── */}
       {editingRule && (
-        <div style={{
-          position: 'fixed',
-          top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0, 0, 0, 0.8)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 1000, padding: tokens.space['6'],
-        }}>
-          <div style={{
-            background: tokens.surface.panel, padding: '24px',
-            borderRadius: tokens.radius.lg,
-            maxWidth: '760px', width: '100%', maxHeight: '90vh', overflow: 'auto',
-          }}>
+        <ProxyModal maxWidth="760px" width="100%" maxHeight="90vh" scroll>
             <h3 style={{ margin: `0 0 ${tokens.space['6']} 0`, fontSize: tokens.fontSize.lg, fontWeight: 500 }}>
               {rules.find(r => r.id === editingRule.id) ? 'Edit' : 'Add'} Mock Rule
             </h3>
@@ -874,71 +828,32 @@ export const MockRulesPage = forwardRef<MockRulesPageHandle, {
 
               {editingRule.conditions.map((condition, idx) => (
                 <div key={idx} style={{ marginBottom: '8px' }}>
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: condition.type === 'header' || condition.type === 'queryParam'
-                      ? '130px 140px 1fr 80px 40px'
-                      : '130px 1fr 80px 40px',
-                    gap: '8px',
-                    alignItems: 'center',
-                  }}>
-                    <select
-                      value={condition.type}
-                      onChange={(e) => {
-                        const newType = e.target.value as MockCondition['type'];
-                        const namePreservingTypes = new Set(['header', 'queryParam']);
-                        const keepName = namePreservingTypes.has(newType) && namePreservingTypes.has(condition.type);
-                        updateCondition(idx, { type: newType, headerName: keepName ? condition.headerName : undefined });
-                      }}
-                      style={{ padding: '6px', background: tokens.surface.input, border: `1px solid ${tokens.border.subtle}`, borderRadius: tokens.radius.md, color: tokens.text.secondary, fontSize: tokens.fontSize.sm }}
-                    >
-                      <option value="url">URL Path</option>
-                      <option value="method">HTTP Method</option>
-                      <option value="header">Header</option>
-                      <option value="queryParam">Query Param</option>
-                      <option value="xpath">XPath</option>
-                      <option value="contains">Body Contains</option>
-                      <option value="soapAction">SOAP Action</option>
-                    </select>
-
-                    {(condition.type === 'header' || condition.type === 'queryParam') && (
-                      <input
-                        type="text"
-                        value={condition.headerName || ''}
-                        onChange={(e) => updateCondition(idx, { headerName: e.target.value })}
-                        placeholder={condition.type === 'header' ? 'Header name' : 'Param name'}
-                        style={{ padding: `6px ${tokens.space['2']}`, background: tokens.surface.input, border: `1px solid ${tokens.border.subtle}`, borderRadius: tokens.radius.md, color: tokens.text.secondary, fontSize: tokens.fontSize.sm }}
-                      />
-                    )}
-
-                    <input
-                      type="text"
-                      value={condition.pattern}
-                      onChange={(e) => updateCondition(idx, { pattern: e.target.value })}
-                      placeholder={
-                        condition.type === 'method' ? 'GET, POST, …'
-                          : condition.type === 'xpath' ? '//Body/GetUser'
-                            : condition.type === 'header' || condition.type === 'queryParam' ? 'Expected value'
-                              : '/api/*'
-                      }
-                      style={{ padding: `6px ${tokens.space['2']}`, background: tokens.surface.input, border: `1px solid ${tokens.border.subtle}`, borderRadius: tokens.radius.md, color: tokens.text.secondary, fontSize: tokens.fontSize.sm }}
-                    />
-
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', cursor: 'pointer' }}>
-                      <input
-                        type="checkbox"
-                        checked={condition.isRegex || false}
-                        onChange={(e) => updateCondition(idx, { isRegex: e.target.checked })}
-                        style={{ width: '14px', height: '14px' }}
-                      />
-                      Regex
-                    </label>
-
-                    <button
-                      onClick={() => removeCondition(idx)}
-                      style={{ padding: '6px', background: tokens.surface.danger, border: 'none', borderRadius: tokens.radius.md, color: tokens.text.danger, fontSize: tokens.fontSize.sm, cursor: 'pointer' }}
-                    >✕</button>
-                  </div>
+                  <ConditionRow
+                    condition={condition}
+                    typeOptions={[
+                      { value: 'url', label: 'URL Path' },
+                      { value: 'method', label: 'HTTP Method' },
+                      { value: 'header', label: 'Header' },
+                      { value: 'queryParam', label: 'Query Param' },
+                      { value: 'xpath', label: 'XPath' },
+                      { value: 'contains', label: 'Body Contains' },
+                      { value: 'soapAction', label: 'SOAP Action' },
+                    ]}
+                    nameTypes={['header', 'queryParam']}
+                    namePlaceholder={(t) => (t === 'header' ? 'Header name' : 'Param name')}
+                    patternPlaceholder={(t) =>
+                      t === 'method' ? 'GET, POST, …'
+                        : t === 'xpath' ? '//Body/GetUser'
+                          : t === 'header' || t === 'queryParam' ? 'Expected value'
+                            : '/api/*'}
+                    onTypeChange={(newType) => {
+                      const namePreservingTypes = new Set(['header', 'queryParam']);
+                      const keepName = namePreservingTypes.has(newType) && namePreservingTypes.has(condition.type);
+                      updateCondition(idx, { type: newType as MockCondition['type'], headerName: keepName ? condition.headerName : undefined });
+                    }}
+                    onFieldChange={(updates) => updateCondition(idx, updates as Partial<MockCondition>)}
+                    onRemove={() => removeCondition(idx)}
+                  />
                 </div>
               ))}
             </div>
@@ -1011,7 +926,7 @@ export const MockRulesPage = forwardRef<MockRulesPageHandle, {
                 <button
                   title="Format JSON / XML"
                   onClick={() => {
-                    const lang = contentTypeToLanguage(editingRule.contentType || '');
+                    const lang = languageFromContentType(editingRule.contentType || '');
                     try {
                       let formatted = editingRule.responseBody;
                       if (lang === 'json') {
@@ -1064,7 +979,7 @@ export const MockRulesPage = forwardRef<MockRulesPageHandle, {
                 <MonacoRequestEditor
                   value={editingRule.responseBody}
                   onChange={(value) => setEditingRule({ ...editingRule, responseBody: value })}
-                  language={contentTypeToLanguage(editingRule.contentType || '')}
+                  language={languageFromContentType(editingRule.contentType || '')}
                 />
               </div>
             </div>
@@ -1090,8 +1005,7 @@ export const MockRulesPage = forwardRef<MockRulesPageHandle, {
                 }}
               >Save Rule</button>
             </div>
-          </div>
-        </div>
+          </ProxyModal>
       )}
     </div>
   );

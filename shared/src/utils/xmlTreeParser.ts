@@ -124,31 +124,3 @@ export const serializeTreeToXml = (
 
   return "";
 };
-
-export const flattenTreeForDisplay = (
-  node: XmlTreeNode,
-): Array<{
-  node: XmlTreeNode;
-  path: string;
-}> => {
-  const result: Array<{ node: XmlTreeNode; path: string }> = [];
-
-  const traverse = (current: XmlTreeNode, pathParts: string[]) => {
-    const currentPath = pathParts.join("/");
-
-    if (current.type === "element") {
-      result.push({ node: current, path: currentPath });
-
-      if (current.children) {
-        current.children
-          .filter((c) => c.type === "element")
-          .forEach((child) => {
-            traverse(child, [...pathParts, child.name || ""]);
-          });
-      }
-    }
-  };
-
-  traverse(node, [node.name || "root"]);
-  return result;
-};

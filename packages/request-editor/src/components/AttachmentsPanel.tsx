@@ -13,20 +13,8 @@ import {
 } from "lucide-react";
 import { debugLog } from "../utils/logger";
 import { RequestAttachment, AttachmentType } from "../types";
-const SPACING_XS = "4px";
-const SPACING_SM = "8px";
-
-const Container = styled.div`
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  color: var(--apinox-foreground);
-  background: var(--apinox-editor-background);
-  padding: ${SPACING_SM};
-  gap: ${SPACING_SM};
-  overflow-y: auto;
-`;
-
+import { SPACING_XS, SPACING_SM } from "../styles/spacing";
+import { PanelContainer } from "./common/PanelShell";
 const Header = styled.div`
   display: flex;
   align-items: center;
@@ -263,7 +251,7 @@ export const AttachmentsPanel: React.FC<AttachmentsPanelProps> = ({
   );
 
   return (
-    <Container>
+    <PanelContainer>
       <Header>
         <Title>
           <Paperclip size={16} />
@@ -335,6 +323,6 @@ export const AttachmentsPanel: React.FC<AttachmentsPanelProps> = ({
           </InlineDropZone>
         </AttachmentList>
       )}
-    </Container>
+    </PanelContainer>
   );
 };

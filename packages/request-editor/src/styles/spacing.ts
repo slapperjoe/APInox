@@ -106,22 +106,3 @@ export const SPACING_PATTERNS = {
     /** Section margin: 20px */
     sectionMargin: SPACING_XL,
 };
-
-/**
- * Deprecated spacing values
- * These are common hardcoded values found in the codebase.
- * Migrate to standardized values above.
- */
-export const DEPRECATED_SPACING = {
-    /** Use SPACING_XS (4px) instead */
-    legacy_4px: '4px',
-    
-    /** Use SPACING_SM (8px) or SPACING_MD (12px) instead */
-    legacy_10px: '10px',
-    
-    /** Use SPACING_LG (16px) instead */
-    legacy_15px: '15px',
-    
-    /** Use SPACING_XL (20px) instead */
-    legacy_20px: '20px',
-};

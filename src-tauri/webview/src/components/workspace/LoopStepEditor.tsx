@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { EmptyState } from "../common/EmptyState";
 import { WorkflowStep } from "@shared/models";
-import { SPACING_SM, SPACING_MD, SPACING_XS } from "../../styles/spacing";
+import { SPACING_SM, SPACING_MD } from "../../styles/spacing";
 import {
   Repeat,
   Clock,
@@ -16,6 +16,17 @@ import { DelayStepEditor } from "./DelayStepEditor";
 import { ConditionStepEditor } from "./ConditionStepEditor";
 import { ScriptStepEditor } from "./ScriptStepEditor";
 import { RequestStepEditor } from "./RequestStepEditor";
+import {
+  StepHeader,
+  StepIcon,
+  StepTitle,
+  StepSection,
+  StepLabel,
+  StepInput,
+  StepInfoBox,
+  StepActionRow,
+  StepNameField,
+} from "./StepEditorShell";
 import { v4 as uuidv4 } from "uuid";
 import { CustomSelect } from "../common/CustomSelect";
 
@@ -42,62 +53,6 @@ const RightPanel = styled.div`
   display: flex;
   flex-direction: column;
   overflow: hidden;
-`;
-
-const Header = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${SPACING_SM};
-  padding-bottom: ${SPACING_SM};
-  border-bottom: 1px solid var(--apinox-panel-border);
-`;
-
-const IconContainer = styled.div`
-  color: var(--apinox-charts-blue);
-`;
-
-const Title = styled.h2`
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-`;
-
-const Section = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${SPACING_SM};
-`;
-
-const Label = styled.label`
-  font-size: 12px;
-  font-weight: 600;
-  opacity: 0.8;
-  display: block;
-`;
-
-const Input = styled.input`
-  background: var(--apinox-input-background);
-  color: var(--apinox-input-foreground);
-  border: 1px solid var(--apinox-input-border);
-  padding: 6px 8px;
-  border-radius: 4px;
-  font-size: 13px;
-  font-family: var(--apinox-font-family);
-  width: 100%;
-
-  &:focus {
-    outline: 1px solid var(--apinox-focusBorder);
-  }
-`;
-
-const InfoBox = styled.div`
-  padding: ${SPACING_SM};
-  background: var(--apinox-textCodeBlock-background);
-  border: 1px solid var(--apinox-panel-border);
-  border-radius: 4px;
-  font-size: 11px;
-  opacity: 0.8;
-  line-height: 1.4;
 `;
 
 const StepsList = styled.div`
@@ -133,7 +88,7 @@ const StepItem = styled.div<{ $isSelected?: boolean }>`
   }
 `;
 
-const StepIcon = styled.div`
+const StepIconWrapper = styled.div`
   display: flex;
   align-items: center;
   opacity: 0.7;
@@ -163,11 +118,6 @@ const EmptySteps = styled.div`
   text-align: center;
   opacity: 0.6;
   font-size: 12px;
-`;
-
-const ButtonContainer = styled.div`
-  display: flex;
-  gap: ${SPACING_SM};
 `;
 
 const AddStepDropdown = styled.div`
@@ -383,25 +333,17 @@ export const LoopStepEditor: React.FC<LoopStepEditorProps> = ({
   return (
     <Container>
       <LeftPanel>
-        <Header>
-          <IconContainer>
+        <StepHeader>
+          <StepIcon $color="var(--apinox-charts-blue)">
             <Repeat size={20} />
-          </IconContainer>
-          <Title>Loop Configuration</Title>
-        </Header>
+          </StepIcon>
+          <StepTitle>Loop Configuration</StepTitle>
+        </StepHeader>
 
-        <Section>
-          <Label>Step Name</Label>
-          <Input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Enter step name"
-          />
-        </Section>
+        <StepNameField value={name} onChange={setName} />
 
-        <Section>
-          <Label>Loop Type</Label>
+        <StepSection>
+          <StepLabel>Loop Type</StepLabel>
           <CustomSelect
             value={loopType}
             onChange={(v) => setLoopType(v as any)}
@@ -411,60 +353,60 @@ export const LoopStepEditor: React.FC<LoopStepEditorProps> = ({
               { value: "while", label: "While Condition" },
             ]}
           />
-        </Section>
+        </StepSection>
 
         {loopType === "count" && (
-          <Section>
-            <Label>Number of Iterations</Label>
-            <Input
+          <StepSection>
+            <StepLabel>Number of Iterations</StepLabel>
+            <StepInput
               type="number"
               min="1"
               value={count}
               onChange={(e) => setCount(parseInt(e.target.value) || 1)}
               placeholder="Number of times to loop"
             />
-          </Section>
+          </StepSection>
         )}
 
         {loopType === "list" && (
-          <Section>
-            <Label>List Variable</Label>
-            <Input
+          <StepSection>
+            <StepLabel>List Variable</StepLabel>
+            <StepInput
               type="text"
               value={listVariable}
               onChange={(e) => setListVariable(e.target.value)}
               placeholder="e.g., {{items}} or {{users}}"
             />
-            <InfoBox>
+            <StepInfoBox>
               Specify a workflow variable containing an array to iterate over
-            </InfoBox>
-          </Section>
+            </StepInfoBox>
+          </StepSection>
         )}
 
         {loopType === "while" && (
-          <InfoBox>
+          <StepInfoBox>
             While loops require condition configuration. This will be available
             in a future update.
-          </InfoBox>
+          </StepInfoBox>
         )}
 
-        <Section>
-          <Label>Iterator Variable Name</Label>
-          <Input
+        <StepSection>
+          <StepLabel>Iterator Variable Name</StepLabel>
+          <StepInput
             type="text"
             value={iteratorVariable}
             onChange={(e) => setIteratorVariable(e.target.value)}
             placeholder="Variable name for current iteration"
           />
-          <InfoBox>
+          <StepInfoBox>
             This variable will be available in subsequent steps:{" "}
             {`{{${iteratorVariable}}}`}
-          </InfoBox>
-        </Section>
+          </StepInfoBox>
+        </StepSection>
 
-        <Section>
-          <Label>Maximum Iterations (Safety Limit)</Label>
-          <Input
+        <StepSection>
+          <StepLabel>Maximum Iterations (Safety Limit)</StepLabel>
+          <StepInput
             type="number"
             min="1"
             max="10000"
@@ -472,13 +414,13 @@ export const LoopStepEditor: React.FC<LoopStepEditorProps> = ({
             onChange={(e) => setMaxIterations(parseInt(e.target.value) || 100)}
             placeholder="Maximum iterations allowed"
           />
-          <InfoBox>
+          <StepInfoBox>
             Loop will stop after this many iterations to prevent infinite loops
-          </InfoBox>
-        </Section>
+          </StepInfoBox>
+        </StepSection>
 
-        <Section>
-          <Label>Steps in Loop ({(step.loopSteps || []).length})</Label>
+        <StepSection>
+          <StepLabel>Steps in Loop ({(step.loopSteps || []).length})</StepLabel>
           <StepsList>
             {!step.loopSteps || step.loopSteps.length === 0 ? (
               <EmptySteps>
@@ -493,7 +435,7 @@ export const LoopStepEditor: React.FC<LoopStepEditorProps> = ({
                   $isSelected={selectedNestedStepIndex === index}
                   onClick={() => setSelectedNestedStepIndex(index)}
                 >
-                  <StepIcon>{getStepIcon(nestedStep.type)}</StepIcon>
+                  <StepIconWrapper>{getStepIcon(nestedStep.type)}</StepIconWrapper>
                   <StepDetails>
                     <StepName>{nestedStep.name}</StepName>
                     <StepType>{nestedStep.type}</StepType>
@@ -502,15 +444,15 @@ export const LoopStepEditor: React.FC<LoopStepEditorProps> = ({
               ))
             )}
           </StepsList>
-          <InfoBox>
+          <StepInfoBox>
             Click a step to view/edit it on the right. Add/remove steps in the
             workflow builder.
-          </InfoBox>
-        </Section>
+          </StepInfoBox>
+        </StepSection>
 
-        <ButtonContainer>
+        <StepActionRow>
           <PrimaryButton onClick={handleSave}>Save Loop Config</PrimaryButton>
-        </ButtonContainer>
+        </StepActionRow>
       </LeftPanel>
 
       <RightPanel>

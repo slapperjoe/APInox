@@ -22,15 +22,7 @@ import {
 import { ScrapbookPanel } from '../sidebar/ScrapbookPanel';
 import { RenameModal } from '../modals/RenameModal';
 import { useUnifiedProjectsSafe } from '../../contexts/UnifiedProjectContext';
-
-// Drag-and-drop helper functions (extracted to avoid TS1005 JSX brace ambiguity)
-const makeDragData = (data: { type: string; projectName: string; fromIndex: number; operationName?: string }): string => {
-    return JSON.stringify(data);
-};
-
-const handleDragStart = (e: React.DragEvent<HTMLElement>, data: string) => {
-    e.dataTransfer.setData('application/x-tree-drag', data);
-};
+import { useReorderDrag, ReorderGapRow } from '../../hooks/useReorderDrag';
 
 // Find the closest TreeItem row from a drop event that landed between rows.
 // Walks up from elementFromPoint to find an element with data-drop-index.
@@ -341,16 +333,9 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
         }
     }, [renameTarget, onRenameProject, onRenameOperation, onRenameRequest]);
 
-    // Drop gap indicator: purely visual, rendered as a gap between tree items during drag.
-    // The actual drop index is computed from the native event in onDrop (not from state).
-    interface DropGap {
-        type: 'operation' | 'request';
-        projectName: string;
-        operationName?: string;
-        index: number;
-    }
-    const [dropGap, setDropGap] = useState<DropGap | null>(null);
-    const clearDropGap = useCallback(() => setDropGap(null), []);
+    // Drop gap indicator + drag handlers (visual gap row only; the actual
+    // drop index is computed from the native event inside the handlers).
+    const { dropGap, clearDropGap, rowHandlers, gapRowHandlers } = useReorderDrag();
 
     // Quick Requests subwindow height (vertical resize via the handle above
     // the section). Seeded synchronously from localStorage during the first
@@ -709,22 +694,14 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                             return (
                                 <React.Fragment key={opId}>
                                     {showOpGapBefore && (
-                                        <div
-                                            style={{ height: 24, display: 'flex', alignItems: 'center', paddingLeft: 24 }}
-                                            onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
-                                            onDrop={(e) => {
-                                                e.preventDefault(); e.stopPropagation();
-                                                clearDropGap();
-                                                const data = e.dataTransfer.getData('application/x-tree-drag');
-                                                if (!data) return;
-                                                const { type, projectName: dragProject, fromIndex } = JSON.parse(data);
-                                                if (type === 'operation' && dragProject === project.name) {
-                                                    onReorderOperation(project.name, fromIndex, opIndex);
-                                                }
-                                            }}
-                                        >
-                                            <div style={{ flex: 1, height: 2, background: 'var(--apinox-tab-active-border, #4a9eff)', borderRadius: 1 }} />
-                                        </div>
+                                        <ReorderGapRow
+                                            paddingLeft={24}
+                                            {...gapRowHandlers(
+                                                { type: 'operation', projectName: project.name },
+                                                opIndex,
+                                                (fromIndex) => onReorderOperation(project.name, fromIndex, opIndex),
+                                            )}
+                                        />
                                     )}
                                 <TreeItem
                                     key={opId}
@@ -741,47 +718,11 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                                     onClick={() => onSelectNode('operation', opId)}
                                     onToggle={() => toggleNode(opId)}
                                     onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, type: 'operation', data: op, projectName: project.name }); }}
-                                    onDragStart={(e) => {
-                                        const dragObj = { type: 'operation', projectName: project.name, fromIndex: opIndex };
-                                        handleDragStart(e, makeDragData(dragObj));
-                                        const el = e.currentTarget as HTMLElement;
-                                        el.style.opacity = '0.3';
-                                        el.style.fontSize = '10px';
-                                    }}
-                                    onDragOver={(e) => {
-                                        e.preventDefault();
-                                        e.dataTransfer.dropEffect = 'move';
-                                        const el = e.currentTarget as HTMLElement;
-                                        const rect = el.getBoundingClientRect();
-                                        const midY = rect.top + rect.height / 2;
-                                        const dropAbove = e.clientY < midY;
-                                        setDropGap({
-                                            type: 'operation',
-                                            projectName: project.name,
-                                            index: dropAbove ? opIndex : opIndex + 1,
-                                        });
-                                    }}
-                                    onDrop={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        clearDropGap();
-                                        const el = e.currentTarget as HTMLElement;
-                                        const rect = el.getBoundingClientRect();
-                                        const midY = rect.top + rect.height / 2;
-                                        const targetIndex = e.clientY < midY ? opIndex : opIndex + 1;
-                                        const data = e.dataTransfer.getData('application/x-tree-drag');
-                                        if (!data) return;
-                                        const { type, projectName: dragProject, fromIndex } = JSON.parse(data);
-                                        if (type === 'operation' && dragProject === project.name) {
-                                            onReorderOperation(project.name, fromIndex, targetIndex);
-                                        }
-                                    }}
-                                    onDragEnd={(e) => {
-                                        const el = e.currentTarget as HTMLElement;
-                                        el.style.opacity = '';
-                                        el.style.fontSize = '';
-                                        clearDropGap();
-                                    }}
+                                    {...rowHandlers(
+                                        { type: 'operation', projectName: project.name },
+                                        opIndex,
+                                        (fromIndex, targetIndex) => onReorderOperation(project.name, fromIndex, targetIndex),
+                                    )}
                                 >
                                     {(op.requests || []).filter(req => !req.name.startsWith('sample_')).map((req: ApiRequest) => {
                                         const reqId = req.id || req.name;
@@ -791,22 +732,14 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                                         return (
                                             <React.Fragment key={reqId}>
                                                 {showReqGapBefore && (
-                                                    <div
-                                                        style={{ height: 24, display: 'flex', alignItems: 'center', paddingLeft: 48 }}
-                                                        onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
-                                                        onDrop={(e) => {
-                                                            e.preventDefault(); e.stopPropagation();
-                                                            clearDropGap();
-                                                            const data = e.dataTransfer.getData('application/x-tree-drag');
-                                                            if (!data) return;
-                                                            const { type, projectName: dragProject, operationName: dragOp, fromIndex } = JSON.parse(data);
-                                                            if (type === 'request' && dragProject === project.name && dragOp === op.name) {
-                                                                onReorderRequest(project.name, op.name, fromIndex, fullReqIndex);
-                                                            }
-                                                        }}
-                                                    >
-                                                        <div style={{ flex: 1, height: 2, background: 'var(--apinox-tab-active-border, #4a9eff)', borderRadius: 1 }} />
-                                                    </div>
+                                                    <ReorderGapRow
+                                                        paddingLeft={48}
+                                                        {...gapRowHandlers(
+                                                            { type: 'request', projectName: project.name, operationName: op.name },
+                                                            fullReqIndex,
+                                                            (fromIndex) => onReorderRequest(project.name, op.name, fromIndex, fullReqIndex),
+                                                        )}
+                                                    />
                                                 )}
                                             <TreeItem
                                                 key={reqId}
@@ -821,70 +754,25 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                                                 selected={isSelected('request', reqId)}
                                                 onClick={() => onSelectNode('request', reqId)}
                                                 onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, type: 'request', data: req, projectName: project.name, operationName: op.name }); }}
-                                                onDragStart={(e) => {
-                                                    const dragObj = { type: 'request', projectName: project.name, operationName: op.name, fromIndex: fullReqIndex };
-                                                    handleDragStart(e, makeDragData(dragObj));
-                                                    const el = e.currentTarget as HTMLElement;
-                                                    el.style.opacity = '0.3';
-                                                    el.style.fontSize = '10px';
-                                                }}
-                                                onDragOver={(e) => {
-                                                    e.preventDefault();
-                                                    e.dataTransfer.dropEffect = 'move';
-                                                    const el = e.currentTarget as HTMLElement;
-                                                    const rect = el.getBoundingClientRect();
-                                                    const midY = rect.top + rect.height / 2;
-                                                    const dropAbove = e.clientY < midY;
-                                                    setDropGap({
-                                                        type: 'request',
-                                                        projectName: project.name,
-                                                        operationName: op.name,
-                                                        index: dropAbove ? fullReqIndex : fullReqIndex + 1,
-                                                    });
-                                                }}
-                                                onDrop={(e) => {
-                                                    e.preventDefault();
-                                                    e.stopPropagation();
-                                                    clearDropGap();
-                                                    const el = e.currentTarget as HTMLElement;
-                                                    const rect = el.getBoundingClientRect();
-                                                    const midY = rect.top + rect.height / 2;
-                                                    const targetIndex = e.clientY < midY ? fullReqIndex : fullReqIndex + 1;
-                                                    const data = e.dataTransfer.getData('application/x-tree-drag');
-                                                    if (!data) return;
-                                                    const { type, projectName: dragProject, operationName, fromIndex } = JSON.parse(data);
-                                                    if (type === 'request' && dragProject === project.name && operationName === op.name) {
-                                                        onReorderRequest(project.name, op.name, fromIndex, targetIndex);
-                                                    }
-                                                }}
-                                                onDragEnd={(e) => {
-                                                    const el = e.currentTarget as HTMLElement;
-                                                    el.style.opacity = '';
-                                                    el.style.fontSize = '';
-                                                    clearDropGap();
-                                                }}
+                                                {...rowHandlers(
+                                                    { type: 'request', projectName: project.name, operationName: op.name },
+                                                    fullReqIndex,
+                                                    (fromIndex, targetIndex) => onReorderRequest(project.name, op.name, fromIndex, targetIndex),
+                                                )}
                                             />
                                             </React.Fragment>
                                         );
                                     })}
                                     {/* Gap after last request */}
                                     {dropGap?.type === 'request' && dropGap?.projectName === project.name && dropGap?.operationName === op.name && dropGap?.index === (op.requests || []).length && (
-                                        <div key="gap-after-last-req"
-                                            style={{ height: 24, display: 'flex', alignItems: 'center', paddingLeft: 48 }}
-                                            onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
-                                            onDrop={(e) => {
-                                                e.preventDefault(); e.stopPropagation();
-                                                clearDropGap();
-                                                const data = e.dataTransfer.getData('application/x-tree-drag');
-                                                if (!data) return;
-                                                const { type, projectName: dragProject, operationName: dragOp, fromIndex } = JSON.parse(data);
-                                                if (type === 'request' && dragProject === project.name && dragOp === op.name) {
-                                                    onReorderRequest(project.name, op.name, fromIndex, (op.requests || []).length);
-                                                }
-                                            }}
-                                        >
-                                            <div style={{ flex: 1, height: 2, background: 'var(--apinox-tab-active-border, #4a9eff)', borderRadius: 1 }} />
-                                        </div>
+                                        <ReorderGapRow key="gap-after-last-req"
+                                            paddingLeft={48}
+                                            {...gapRowHandlers(
+                                                { type: 'request', projectName: project.name, operationName: op.name },
+                                                (op.requests || []).length,
+                                                (fromIndex) => onReorderRequest(project.name, op.name, fromIndex, (op.requests || []).length),
+                                            )}
+                                        />
                                     )}
                                 </TreeItem>
                                 </React.Fragment>
@@ -892,22 +780,14 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                         })}
                         {/* Gap after last operation */}
                         {dropGap?.type === 'operation' && dropGap?.projectName === project.name && dropGap?.index === (project.operations || []).length && (
-                            <div key="gap-after-last-op"
-                                style={{ height: 24, display: 'flex', alignItems: 'center', paddingLeft: 24 }}
-                                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
-                                onDrop={(e) => {
-                                    e.preventDefault(); e.stopPropagation();
-                                    clearDropGap();
-                                    const data = e.dataTransfer.getData('application/x-tree-drag');
-                                    if (!data) return;
-                                    const { type, projectName: dragProject, fromIndex } = JSON.parse(data);
-                                    if (type === 'operation' && dragProject === project.name) {
-                                        onReorderOperation(project.name, fromIndex, (project.operations || []).length);
-                                    }
-                                }}
-                            >
-                                <div style={{ flex: 1, height: 2, background: 'var(--apinox-tab-active-border, #4a9eff)', borderRadius: 1 }} />
-                            </div>
+                            <ReorderGapRow key="gap-after-last-op"
+                                paddingLeft={24}
+                                {...gapRowHandlers(
+                                    { type: 'operation', projectName: project.name },
+                                    (project.operations || []).length,
+                                    (fromIndex) => onReorderOperation(project.name, fromIndex, (project.operations || []).length),
+                                )}
+                            />
                         )}
                     </TreeItem>
                 );

@@ -9,6 +9,8 @@ import { invokeTauriCommand } from '../../utils/bridge';
 import { EmptyState } from '../common/EmptyState';
 import { ConditionPickerModal, suggestConditionsFromSoapXml } from './ConditionPickerModel';
 import { tokens } from './tokens';
+import { EditorPane, SplitDivider, naturalPanePx, useSplitPaneDrag } from './splitPane';
+import { ProxyModal } from './ProxyModal';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -248,25 +250,6 @@ const DetailBody = styled.div`
   overflow: hidden;
 `;
 
-const EditorPane = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border-bottom: 1px solid ${tokens.border.default};
-  &:last-child { border-bottom: none; }
-`;
-
-const SplitDivider = styled.div<{ $dragging: boolean }>`
-  height: 5px;
-  background: ${p => p.$dragging ? tokens.status.accentDark : tokens.surface.elevated};
-  cursor: ns-resize;
-  flex-shrink: 0;
-  transition: background 0.15s;
-  user-select: none;
-  &:hover { background: ${tokens.status.accentDark}; }
-`;
-
 const PaneLabel = styled.div`
   padding: 6px 14px;
   font-size: 13px;
@@ -337,25 +320,6 @@ const AddBtn = styled(Btn)`
   color: white;
   padding: 3px 10px;
   &:hover { background: ${tokens.status.accentHover}; }
-`;
-
-const Overlay = styled.div`
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-`;
-
-const Modal = styled.div`
-  background: ${tokens.surface.panel};
-  border: 1px solid ${tokens.border.default};
-  border-radius: ${tokens.radius.lg};
-  width: 500px;
-  max-width: 90vw;
-  box-shadow: 0 8px 32px rgba(0,0,0,.5);
 `;
 
 const ModalHeader = styled.div`
@@ -543,8 +507,6 @@ export const FileWatcherPage: React.FC = () => {
 
   const detailBodyRef = useRef<HTMLDivElement>(null);
   const [detailBodyHeight, setDetailBodyHeight] = useState(0);
-  const [userRequestPx, setUserRequestPx] = useState<number | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
   const [editorSettings, setEditorSettings] = useState<EditorSettings>(loadEditorSettings);
   const [pickerPair, setPickerPair] = useState<SoapPair | null>(null);
 
@@ -716,40 +678,16 @@ export const FileWatcherPage: React.FC = () => {
   const selectedPair = pairs.find(p => p.id === selectedPairId) ?? null;
   const selectedWatchName = watches.find(w => w.id === selectedWatchId)?.name;
 
-  const LINE_HEIGHT = 19;
-  const PANE_OVERHEAD = 101;
   const requestLineCount = selectedPair?.request?.content
     ? selectedPair.request.content.split('\n').length
     : 0;
-  const requestNaturalPx = (requestLineCount + 3) * LINE_HEIGHT + PANE_OVERHEAD;
-  const calculatedRequestPx = detailBodyHeight > 0
-    ? Math.min(requestNaturalPx, detailBodyHeight * 0.6)
-    : undefined;
+  const calculatedRequestPx = naturalPanePx(requestLineCount, detailBodyHeight, 0.6);
+  const { isDragging, userPx: userRequestPx, setUserPx: setUserRequestPx, handleDividerMouseDown } = useSplitPaneDrag(
+    detailBodyHeight,
+    { minPx: 80 },
+  );
 
   const effectiveRequestPx = userRequestPx ?? calculatedRequestPx;
-
-  const handleDividerMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    const startY = e.clientY;
-    const startPx = effectiveRequestPx ?? 0;
-    setIsDragging(true);
-
-    const onMouseMove = (ev: MouseEvent) => {
-      const delta = ev.clientY - startY;
-      const min = 80;
-      const max = detailBodyHeight > 0 ? detailBodyHeight * 0.85 : 9999;
-      setUserRequestPx(Math.max(min, Math.min(startPx + delta, max)));
-    };
-
-    const onMouseUp = () => {
-      setIsDragging(false);
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-    };
-
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-  }, [effectiveRequestPx, detailBodyHeight]);
 
   return (
     <Container>
@@ -844,7 +782,7 @@ export const FileWatcherPage: React.FC = () => {
                   pair={selectedPair}
                   requestPanePx={effectiveRequestPx}
                   isDragging={isDragging}
-                  onDividerMouseDown={handleDividerMouseDown}
+                  onDividerMouseDown={(e) => handleDividerMouseDown(e, effectiveRequestPx ?? 0)}
                   editorSettings={editorSettings}
                   onSettingsChange={handleSettingsChange}
                   formatTime={formatTime}
@@ -890,8 +828,16 @@ export const FileWatcherPage: React.FC = () => {
 
       {/* ── Add / Edit Watch Modal ── */}
       {showAddModal && (
-        <Overlay onClick={() => setShowAddModal(false)}>
-          <Modal onClick={e => e.stopPropagation()}>
+        <ProxyModal
+          dim={0.6}
+          width="500px"
+          maxWidth="90vw"
+          bordered
+          shadow
+          padding="0"
+          panelPadding="0"
+          onBackdropClick={() => setShowAddModal(false)}
+        >
             <ModalHeader>{editingWatch ? 'Edit Watch' : 'Add Watch'}</ModalHeader>
             <ModalBody>
               <FormGroup>
@@ -945,8 +891,7 @@ export const FileWatcherPage: React.FC = () => {
                 {editingWatch ? 'Save' : 'Add Watch'}
               </PrimaryBtn>
             </ModalFooter>
-          </Modal>
-        </Overlay>
+        </ProxyModal>
       )}
     </Container>
   );

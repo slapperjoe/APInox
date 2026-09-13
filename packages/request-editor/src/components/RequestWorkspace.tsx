@@ -14,6 +14,7 @@ import { RequestTypeSelector } from './RequestTypeSelector';
 import { RequestTypeBadge, MethodBadge, BodyTypeBadge, ContentTypeBadge, BadgeGroup } from './RequestTypeBadges';
 import type { RequestType, BodyType, HttpMethod } from '../types';
 import { getInstalledFonts, type MonoFont } from '../utils/fontDetection';
+import { useSettingsDropdown } from '../hooks/useSettingsDropdown';
 import type { ExtraTab } from './MonacoRequestEditorWithToolbar';
 import { EditorSettingsMenu } from './EditorSettingsMenu';
 import { RequestTabContent } from './RequestTabContent';
@@ -150,8 +151,6 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
     request.bodyType === 'none' ? 'params' : 'request'
   );
   const [showVariables, setShowVariables] = useState(false);
-  const [showEditorSettings, setShowEditorSettings] = useState(false);
-  const [menuPosition, setMenuPosition] = useState<{ top: number; right: number; maxHeight: number } | null>(null);
   const [layoutMode, setLayoutMode] = useState<'vertical' | 'horizontal'>(controlledLayoutMode ?? initialLayoutMode ?? 'vertical');
 
   // Sync controlled layoutMode prop (e.g. forced vertical on mobile)
@@ -173,35 +172,15 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
   const urlInputRef = useRef<MonacoSingleLineInputHandle>(null);
   const requestEditorRef = useRef<MonacoRequestEditorHandle>(null);
   const resizerRef = useRef<HTMLDivElement>(null);
-  const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const settingsMenuRef = useRef<HTMLDivElement>(null);
+  const {
+    open: showEditorSettings,
+    setOpen: setShowEditorSettings,
+    position: menuPosition,
+    toggle: handleToggleSettings,
+    buttonRef: settingsButtonRef,
+  } = useSettingsDropdown(settingsMenuRef);
 
-  // Calculate menu position when opening
-  const handleToggleSettings = useCallback(() => {
-    if (!showEditorSettings && settingsButtonRef.current) {
-      const rect = settingsButtonRef.current.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom - 4 - 16; // available px below button
-      setMenuPosition({
-        top: rect.bottom + 4,
-        right: window.innerWidth - rect.right,
-        maxHeight: Math.max(200, spaceBelow) // at least 200px, capped to available space
-      });
-    }
-    setShowEditorSettings(!showEditorSettings);
-  }, [showEditorSettings]);
-
-  // Close settings menu on outside click
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (settingsMenuRef.current && !settingsMenuRef.current.contains(event.target as Node)) {
-        setShowEditorSettings(false);
-      }
-    };
-    if (showEditorSettings) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [showEditorSettings]);
 
   // When switching to a request with no body, jump to Params tab
   useEffect(() => {
