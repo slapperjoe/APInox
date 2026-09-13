@@ -2,20 +2,8 @@ import React from 'react';
 import styled from 'styled-components';
 import { Shield, Key, Clock, Hash } from 'lucide-react';
 import { WSSecurityConfig, WSSecurityType } from '../types';
-const SPACING_XS = '4px';
-const SPACING_SM = '8px';
-
-const Container = styled.div`
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    color: var(--apinox-foreground);
-    background: var(--apinox-editor-background);
-    padding: ${SPACING_SM};
-    gap: ${SPACING_SM};
-    overflow-y: auto;
-`;
-
+import { SPACING_XS, SPACING_SM } from "../styles/spacing";
+import { PanelContainer } from "./common/PanelShell";
 const Section = styled.div`
     display: flex;
     flex-direction: column;
@@ -129,7 +117,7 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({ security, onChange
     };
 
     return (
-        <Container>
+        <PanelContainer>
             <Section>
                 <SectionHeader>
                     <Shield size={16} />
@@ -276,6 +264,6 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({ security, onChange
                     Select "UsernameToken" or "Certificate" to add authentication.
                 </InfoText>
             )}
-        </Container>
+        </PanelContainer>
     );
 };

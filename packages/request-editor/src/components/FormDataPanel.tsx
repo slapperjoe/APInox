@@ -1,22 +1,12 @@
 import React, { useState } from "react";
 import styled from "styled-components";
 import { EmptyState } from "./common/EmptyState";
+import { PanelContainer, PanelIconButton, PanelFlexColumn } from "./common/PanelShell";
 import { Plus, Trash2, Upload, File, X } from "lucide-react";
 import { MonacoSingleLineInput } from "./MonacoSingleLineInput";
 import { SPACING_XS, SPACING_SM } from "../styles/spacing";
 import type { FormField, FormFieldType, EditorVariable } from "../types";
 import { debugError } from "../utils/logger";
-
-const Container = styled.div`
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  color: var(--apinox-foreground);
-  background: var(--apinox-editor-background);
-  padding: ${SPACING_SM};
-  gap: ${SPACING_SM};
-  overflow-y: auto;
-`;
 
 const HeaderRow = styled.div`
   display: flex;
@@ -43,10 +33,6 @@ const FieldRow = styled.div<{ $dimmed?: boolean }>`
   gap: ${SPACING_SM};
   align-items: center;
   opacity: ${(props) => (props.$dimmed ? 0.5 : 1)};
-`;
-
-const FlexColumn = styled.div`
-  flex: 1;
 `;
 
 const TypeSelector = styled.select`
@@ -91,27 +77,6 @@ const FileName = styled.span`
 const FileSize = styled.span`
   font-size: 11px;
   opacity: 0.7;
-`;
-
-const IconButton = styled.button`
-  background: transparent;
-  border: none;
-  color: var(--apinox-icon-foreground);
-  cursor: pointer;
-  padding: ${SPACING_XS};
-  border-radius: 3px;
-  display: flex;
-  align-items: center;
-
-  &:hover:not(:disabled) {
-    background: var(--apinox-toolbar-hoverBackground);
-    color: var(--apinox-foreground);
-  }
-
-  &:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
-  }
 `;
 
 const Checkbox = styled.input`
@@ -223,7 +188,7 @@ export const FormDataPanel: React.FC<FormDataPanelProps> = ({
   const supportsFiles = enctype === "multipart/form-data";
 
   return (
-    <Container>
+    <PanelContainer>
       <HeaderRow>
         <Title>Form Data</Title>
         <EncodingBadge>
@@ -252,14 +217,14 @@ export const FormDataPanel: React.FC<FormDataPanelProps> = ({
               disabled={readOnly}
             />
 
-            <FlexColumn>
+            <PanelFlexColumn>
               <MonacoSingleLineInput
                 value={field.key}
                 onChange={(value) => updateField(index, { key: value })}
                 placeholder="Key"
                 readOnly={readOnly}
               />
-            </FlexColumn>
+            </PanelFlexColumn>
 
             {supportsFiles && (
               <TypeSelector
@@ -274,7 +239,7 @@ export const FormDataPanel: React.FC<FormDataPanelProps> = ({
               </TypeSelector>
             )}
 
-            <FlexColumn>
+            <PanelFlexColumn>
               {field.type === "file" ? (
                 field.fileName ? (
                   <FilePreview>
@@ -284,16 +249,16 @@ export const FormDataPanel: React.FC<FormDataPanelProps> = ({
                       <FileSize>{formatFileSize(field.fileSize)}</FileSize>
                     )}
                     {!readOnly && (
-                      <IconButton
+                      <PanelIconButton
                         onClick={() => clearFile(index)}
                         title="Remove file"
                       >
                         <X size={14} />
-                      </IconButton>
+                      </PanelIconButton>
                     )}
                   </FilePreview>
                 ) : (
-                  <IconButton
+                  <PanelIconButton
                     onClick={() => handlePickFile(index)}
                     disabled={readOnly || isPickingFile === field.key}
                     title="Pick file"
@@ -306,7 +271,7 @@ export const FormDataPanel: React.FC<FormDataPanelProps> = ({
                   >
                     <Upload size={14} />
                     {isPickingFile === field.key ? "Picking..." : "Choose File"}
-                  </IconButton>
+                  </PanelIconButton>
                 )
               ) : (
                 <MonacoSingleLineInput
@@ -316,24 +281,24 @@ export const FormDataPanel: React.FC<FormDataPanelProps> = ({
                   readOnly={readOnly}
                 />
               )}
-            </FlexColumn>
+            </PanelFlexColumn>
 
-            <IconButton
+            <PanelIconButton
               onClick={() => removeField(index)}
               disabled={readOnly}
               title="Remove"
             >
               <Trash2 size={16} />
-            </IconButton>
+            </PanelIconButton>
           </FieldRow>
         ))
       )}
 
       {!readOnly && (
-        <IconButton onClick={addField} title="Add field">
+        <PanelIconButton onClick={addField} title="Add field">
           <Plus size={16} /> Add Field
-        </IconButton>
+        </PanelIconButton>
       )}
-    </Container>
+    </PanelContainer>
   );
 };

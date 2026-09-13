@@ -6,20 +6,8 @@ import { Assertion } from '../types';
 import { StatusCodePicker } from './StatusCodePicker';
 import { MonacoEditorWrapper } from '../monaco';
 // import { ScriptPlaygroundModal } from './modals/ScriptPlaygroundModal'; // TODO: Add ScriptPlaygroundModal
-const SPACING_XS = '4px';
-const SPACING_SM = '8px';
-const SPACING_MD = '16px';
-
-const Container = styled.div`
-    display: flex;
-    flex-direction: column;
-    padding: ${SPACING_SM};
-    gap: ${SPACING_SM};
-    height: 100%;
-    overflow-y: auto;
-    background-color: var(--apinox-editor-background);
-`;
-
+import { SPACING_XS, SPACING_SM, SPACING_LG } from "../styles/spacing";
+import { PanelContainer } from "./common/PanelShell";
 const Toolbar = styled.div`
     display: flex;
     gap: ${SPACING_SM};
@@ -62,7 +50,7 @@ const AssertionItem = styled.div`
     background: var(--apinox-list-hoverBackground);
     border: 1px solid var(--apinox-panel-border);
     border-radius: 4px;
-    gap: ${SPACING_MD};
+    gap: ${SPACING_LG};
 `;
 
 const IconWrapper = styled.div`
@@ -110,7 +98,7 @@ const Select = styled.select`
 
 
 const Label = styled.label`
-    margin-left: ${SPACING_MD};
+    margin-left: ${SPACING_LG};
 `;
 
 const FieldRow = styled.div`
@@ -257,7 +245,7 @@ export const AssertionsPanel: React.FC<AssertionsPanelProps> = ({ assertions, on
     };
 
     return (
-        <Container>
+        <PanelContainer>
             <Toolbar>
                 <ToolbarTitle>
                     <ListChecks size={16} />
@@ -438,6 +426,6 @@ export const AssertionsPanel: React.FC<AssertionsPanelProps> = ({ assertions, on
                 />
             )}
             */}
-        </Container>
+        </PanelContainer>
     );
 };
