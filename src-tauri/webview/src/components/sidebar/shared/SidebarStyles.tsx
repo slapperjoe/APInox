@@ -11,6 +11,23 @@
 import styled, { keyframes, css } from 'styled-components';
 
 /**
+ * RowActions - Inline action buttons inside a sidebar row.
+ * Hidden by default; revealed on hover of the parent row.
+ * Pass the row's styled component as `$parent` so the hover selector binds to it.
+ */
+export const RowActions = styled.div<{ $parent: any; $gap?: string }>`
+    display: flex;
+    align-items: center;
+    gap: ${p => p.$gap ?? '4px'};
+    flex-shrink: 0;
+    opacity: 0;
+
+    ${p => p.$parent}:hover & {
+        opacity: 1;
+    }
+`;
+
+/**
  * DirtyMarker - Visual indicator for unsaved changes
  * Used to show "*" next to modified items
  */

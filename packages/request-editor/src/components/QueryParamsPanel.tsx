@@ -6,20 +6,10 @@
 import React from 'react';
 import styled from 'styled-components';
 import { EmptyState } from './common/EmptyState';
+import { PanelContainer, PanelIconButton } from './common/PanelShell';
 import { Plus, Trash2, Code } from 'lucide-react';
 import { MonacoSingleLineInput } from './MonacoSingleLineInput';
 import { SPACING_XS, SPACING_SM } from '../styles/spacing';
-
-const Container = styled.div`
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    color: var(--apinox-foreground);
-    background: var(--apinox-editor-background);
-    padding: ${SPACING_SM};
-    gap: ${SPACING_SM};
-    overflow-y: auto;
-`;
 
 const Header = styled.div`
     display: flex;
@@ -54,21 +44,6 @@ const InputWrapper = styled.div`
 
 const Spacer = styled.div`
     width: 30px;
-`;
-
-const IconButton = styled.button`
-    background: transparent;
-    border: none;
-    color: var(--apinox-icon-foreground);
-    cursor: pointer;
-    padding: ${SPACING_XS};
-    border-radius: 3px;
-    display: flex;
-    align-items: center;
-    &:hover {
-        background: var(--apinox-toolbar-hoverBackground);
-        color: var(--apinox-foreground);
-    }
 `;
 
 const Label = styled.div`
@@ -133,16 +108,16 @@ export const QueryParamsPanel: React.FC<QueryParamsPanelProps> = ({
     };
 
     return (
-        <Container>
+        <PanelContainer>
             <Header>
                 <Title>
                     <Code size={16} />
                     {title}
                 </Title>
                 {!readOnly && (
-                    <IconButton onClick={addParam} title={`Add ${paramLabel}`}>
+                    <PanelIconButton onClick={addParam} title={`Add ${paramLabel}`}>
                         <Plus size={16} /> Add
-                    </IconButton>
+                    </PanelIconButton>
                 )}
             </Header>
 
@@ -176,9 +151,9 @@ export const QueryParamsPanel: React.FC<QueryParamsPanelProps> = ({
                         />
                     </InputWrapper>
                     {!readOnly && (
-                        <IconButton onClick={() => removeParam(key)} title={`Delete ${paramLabel}`}>
+                        <PanelIconButton onClick={() => removeParam(key)} title={`Delete ${paramLabel}`}>
                             <Trash2 size={14} />
-                        </IconButton>
+                        </PanelIconButton>
                     )}
                 </ParamRow>
             ))}
@@ -189,6 +164,6 @@ export const QueryParamsPanel: React.FC<QueryParamsPanelProps> = ({
                     ?{entries.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&')}
                 </PreviewBox>
             )}
-        </Container>
+        </PanelContainer>
     );
 };

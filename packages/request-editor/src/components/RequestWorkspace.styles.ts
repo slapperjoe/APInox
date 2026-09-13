@@ -257,32 +257,6 @@ export const CompactIconButton = styled.button<{ className?: string }>`
   }
 `;
 
-// Editor-local toolbar (sits above the Monaco editor surface)
-export const RequestEditorContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
-  overflow: hidden;
-`;
-
-export const RequestEditorToolbar = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  padding: 4px 8px;
-  background: var(--apinox-sideBar-background, #252526);
-  border-bottom: 1px solid var(--apinox-panel-border, #333);
-  min-height: 32px;
-`;
-
-export const RequestEditorSurface = styled.div`
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-`;
-
 // Content Area (split view)
 export const ContentArea = styled.div`
   flex: 1;
@@ -363,35 +337,6 @@ export const ResponseSection = styled.div`
   overflow: hidden;
 `;
 
-export const ResponseHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  background: var(--apinox-sideBar-background, #252526);
-  border-bottom: 1px solid var(--apinox-panel-border, #333);
-  min-height: 48px;
-`;
-
-export const ResponseHeaderLeft = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-`;
-
-export const ResponseTitle = styled.h3`
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--apinox-foreground, #cccccc);
-`;
-
-export const ResponseStats = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 16px;
-`;
-
 export const StatText = styled.span`
   font-size: 12px;
   color: var(--apinox-descriptionForeground, #999);
@@ -406,17 +351,6 @@ export const ResponseStatus = styled.span<{ $status?: number }>`
     if (props.$status >= 400) return 'var(--apinox-errorForeground, #f44336)';
     return 'var(--apinox-charts-orange, #ff9800)';
   }};
-`;
-
-export const ResponseContentType = styled.span`
-  font-size: 12px;
-  color: var(--apinox-descriptionForeground, #999);
-`;
-
-export const ResponseHeaderActions = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
 `;
 
 export const MiniToolbarButton = styled.button`
@@ -584,13 +518,6 @@ export const HeadersViewer = styled.div`
   padding: 16px;
 `;
 
-export const HeadersTitle = styled.h4`
-  margin: 0 0 12px 0;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--apinox-descriptionForeground, #999);
-`;
-
 export const HeadersRow = styled.div`
   display: flex;
   gap: 12px;
@@ -633,13 +560,5 @@ export const BreadcrumbBar = styled.div`
 export const BreadcrumbActive = styled.span`
   color: var(--apinox-foreground, #cccccc);
   font-weight: 500;
-`;
-
-// Utilities
-export const Divider = styled.div`
-  width: 1px;
-  height: 20px;
-  background: var(--apinox-input-border, #444);
-  margin: 0 4px;
 `;
 

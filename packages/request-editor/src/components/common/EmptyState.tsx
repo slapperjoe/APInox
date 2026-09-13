@@ -1,7 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
 
-const Container = styled.div`
+const Container = styled.div<{ $fill?: boolean }>`
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -10,14 +10,14 @@ const Container = styled.div`
     color: var(--apinox-descriptionForeground);
     padding: var(--space-xl);
     text-align: center;
-    min-height: 100px;
+    ${props => props.$fill ? 'height: 100%; min-height: 200px;' : 'min-height: 100px;'}
 `;
 
 const IconWrapper = styled.div`
     margin-bottom: var(--space-lg);
     opacity: 0.5;
     color: var(--apinox-foreground);
-    
+
     svg {
         width: 48px;
         height: 48px;
@@ -42,10 +42,42 @@ const ActionContainer = styled.div`
     margin-top: var(--space-lg);
 `;
 
-interface EmptyStateProps {
-    icon?: React.ElementType;
+const ActionButton = styled.button`
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: none;
+    outline: none;
+    font-family: var(--apinox-font-family);
+    font-size: 13px;
+    background-color: var(--apinox-button-background);
+    color: var(--apinox-button-foreground);
+    border: 1px solid transparent;
+    padding: 6px 14px;
+    border-radius: 2px;
+    font-weight: 500;
+
+    &:hover:not(:disabled) {
+        background-color: var(--apinox-button-hoverBackground);
+    }
+
+    &:active:not(:disabled) {
+        opacity: 0.9;
+    }
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+`;
+
+export interface EmptyStateProps {
+    icon?: React.ElementType | null;
     title: string;
     description?: string;
+    /** When true, fills the parent (webview layout); default is compact. */
+    fill?: boolean;
     action?: {
         label: string;
         onClick: () => void;
@@ -53,9 +85,9 @@ interface EmptyStateProps {
     children?: React.ReactNode;
 }
 
-export const EmptyState: React.FC<EmptyStateProps> = ({ icon: Icon, title, description, action, children }) => {
+export const EmptyState: React.FC<EmptyStateProps> = ({ icon: Icon, title, description, fill, action, children }) => {
     return (
-        <Container>
+        <Container $fill={fill}>
             {Icon && (
                 <IconWrapper>
                     <Icon />
@@ -65,7 +97,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ icon: Icon, title, descr
             {description && <Description>{description}</Description>}
             {action && (
                 <ActionContainer>
-                    <button onClick={action.onClick}>{action.label}</button>
+                    <ActionButton onClick={action.onClick}>{action.label}</ActionButton>
                 </ActionContainer>
             )}
             {children}

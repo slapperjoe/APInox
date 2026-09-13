@@ -1,89 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { WorkflowStep } from '@shared/models';
-import { SPACING_SM, SPACING_MD } from '../../styles/spacing';
 import { Code } from 'lucide-react';
 import { PrimaryButton } from '../common/Button';
 import { MonacoEditorWrapper } from '@apinox/request-editor/monaco';
-
-const Container = styled.div`
-    display: flex;
-    flex-direction: column;
-    gap: ${SPACING_MD};
-    padding: ${SPACING_MD};
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    box-sizing: border-box;
-`;
-
-const Header = styled.div`
-    display: flex;
-    align-items: center;
-    gap: ${SPACING_SM};
-    padding-bottom: ${SPACING_SM};
-    border-bottom: 1px solid var(--apinox-panel-border);
-`;
-
-const IconContainer = styled.div`
-    color: var(--apinox-charts-purple);
-`;
-
-const Title = styled.h2`
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-`;
-
-const Section = styled.div`
-    display: flex;
-    flex-direction: column;
-    gap: ${SPACING_SM};
-`;
-
-const FlexSection = styled(Section)`
-    flex: 1;
-    min-height: 0;
-`;
-
-const Label = styled.label`
-    font-size: 12px;
-    font-weight: 600;
-    opacity: 0.8;
-    display: block;
-`;
-
-const Input = styled.input`
-    background: var(--apinox-input-background);
-    color: var(--apinox-input-foreground);
-    border: 1px solid var(--apinox-input-border);
-    padding: 6px 8px;
-    border-radius: 4px;
-    font-size: 13px;
-    font-family: var(--apinox-font-family);
-    width: 100%;
-    
-    &:focus {
-        outline: 1px solid var(--apinox-focusBorder);
-    }
-`;
-
-const InfoBox = styled.div`
-    padding: ${SPACING_SM};
-    background: var(--apinox-textCodeBlock-background);
-    border: 1px solid var(--apinox-panel-border);
-    border-radius: 4px;
-    font-size: 11px;
-    opacity: 0.8;
-    line-height: 1.4;
-    
-    code {
-        background: var(--apinox-textPreformat-background);
-        padding: 2px 4px;
-        border-radius: 2px;
-        font-family: 'Consolas', 'Courier New', monospace;
-    }
-`;
+import {
+    StepEditorContainer,
+    StepHeader,
+    StepIcon,
+    StepTitle,
+    StepSection,
+    StepFlexSection,
+    StepLabel,
+    StepInfoBox,
+    StepActionRow,
+    StepNameField,
+} from './StepEditorShell';
 
 const EditorContainer = styled.div`
     border: 1px solid var(--apinox-panel-border);
@@ -91,11 +23,6 @@ const EditorContainer = styled.div`
     overflow: hidden;
     flex: 1;
     min-height: 300px;
-`;
-
-const ButtonContainer = styled.div`
-    display: flex;
-    gap: ${SPACING_SM};
 `;
 
 interface ScriptStepEditorProps {
@@ -121,26 +48,18 @@ export const ScriptStepEditor: React.FC<ScriptStepEditorProps> = ({ step, onUpda
     };
 
     return (
-        <Container>
-            <Header>
-                <IconContainer>
+        <StepEditorContainer $scroll={false}>
+            <StepHeader>
+                <StepIcon $color="var(--apinox-charts-purple)">
                     <Code size={20} />
-                </IconContainer>
-                <Title>Script Step</Title>
-            </Header>
+                </StepIcon>
+                <StepTitle>Script Step</StepTitle>
+            </StepHeader>
 
-            <Section>
-                <Label>Step Name</Label>
-                <Input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Enter step name"
-                />
-            </Section>
+            <StepNameField value={name} onChange={setName} />
 
-            <FlexSection>
-                <Label>JavaScript Code</Label>
+            <StepFlexSection>
+                <StepLabel>JavaScript Code</StepLabel>
                 <EditorContainer>
                     <MonacoEditorWrapper
                         language="javascript"
@@ -158,7 +77,7 @@ export const ScriptStepEditor: React.FC<ScriptStepEditorProps> = ({ step, onUpda
                         }}
                     />
                 </EditorContainer>
-                <InfoBox>
+                <StepInfoBox>
                     <strong>Available objects:</strong><br />
                     • <code>variables</code> - Read/write workflow variables: <code>variables.myVar = "value"</code><br />
                     • <code>console.log()</code> - Write to workflow execution log<br />
@@ -170,12 +89,12 @@ export const ScriptStepEditor: React.FC<ScriptStepEditorProps> = ({ step, onUpda
                         console.log("Processing user:", userId);<br />
                         variables.processed = true;
                     </code>
-                </InfoBox>
-            </FlexSection>
+                </StepInfoBox>
+            </StepFlexSection>
 
-            <ButtonContainer>
+            <StepActionRow>
                 <PrimaryButton onClick={handleSave}>Save Changes</PrimaryButton>
-            </ButtonContainer>
-        </Container>
+            </StepActionRow>
+        </StepEditorContainer>
     );
 };

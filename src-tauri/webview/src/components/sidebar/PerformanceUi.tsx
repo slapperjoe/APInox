@@ -4,7 +4,7 @@ import { EmptyState } from '../common/EmptyState';
 import { Play, Square, Plus, ChevronRight, ChevronDown } from 'lucide-react';
 import { SidebarPerformanceProps } from '../../types/props';
 import { SidebarContextMenu, CtxMenuSection, CtxMenuItem, Pencil, Trash2 } from './shared/SidebarContextMenu';
-import { SidebarContainer, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle } from './shared/SidebarStyles';
+import { SidebarContainer, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle, RowActions } from './shared/SidebarStyles';
 import { IconButton, RunButton } from '../common/Button';
 import { InlineFormInput } from '../common/Form';
 import { SPACING_XS, SPACING_SM } from '../../styles/spacing';
@@ -57,17 +57,11 @@ const SuiteLabel = styled.div`
     font-size: 13px;
 `;
 
-const Actions = styled.div`
-    display: flex;
-    gap: ${SPACING_XS};
-    opacity: 0;
-    ${SuiteItem}:hover & {
-        opacity: 1;
+const Actions = styled(RowActions)`
+    color: var(--apinox-icon-foreground);
+    ${SuiteItem}[data-active='true'] & {
+        color: var(--apinox-list-activeSelectionForeground);
     }
-        color: var(--apinox-icon-foreground);
-        ${SuiteItem}[data-active='true'] & {
-            color: var(--apinox-list-activeSelectionForeground);
-        }
 `;
 
 const RequestLabel = styled(SuiteLabel)`
@@ -87,13 +81,7 @@ const RequestItem = styled.div<{ active: boolean }>`
     }
 `;
 
-const RequestActions = styled.div`
-    display: flex;
-    gap: ${SPACING_XS};
-    opacity: 0;
-    ${RequestItem}:hover & {
-        opacity: 1;
-    }
+const RequestActions = styled(RowActions)`
     color: var(--apinox-icon-foreground);
     ${RequestItem}[data-active='true'] & {
         color: var(--apinox-list-activeSelectionForeground);
@@ -231,7 +219,7 @@ export const PerformanceUi: React.FC<SidebarPerformanceProps> = ({
                                     {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                                 </SuiteIcon>
                                 <SuiteLabel>{suite.name}</SuiteLabel>
-                                <Actions>
+                                <Actions $parent={SuiteItem}>
                                     <IconButton
                                         onClick={(e) => { e.stopPropagation(); onAddRequest?.(suite.id); }}
                                         title="Add Request"
@@ -289,7 +277,7 @@ export const PerformanceUi: React.FC<SidebarPerformanceProps> = ({
                                     ) : (
                                         <RequestLabel>{req.name}</RequestLabel>
                                     )}
-                                    <RequestActions>
+                                    <RequestActions $parent={RequestItem}>
                                         <IconButton
                                             $danger
                                             onClick={(e) => {

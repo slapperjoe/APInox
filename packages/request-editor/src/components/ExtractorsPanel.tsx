@@ -1,26 +1,12 @@
 import React from "react";
 import styled from "styled-components";
 import { EmptyState } from "./common/EmptyState";
+import { PanelContainer, PanelIconButton } from "./common/PanelShell";
 import { Trash2, Pencil, Variable, Plus } from "lucide-react";
 import { CustomXPathEvaluator } from "../utils/xpathEvaluator";
 import { RequestExtractor } from "../types";
 import { debugLog, debugError } from "../utils/logger";
-const SPACING_XS = "4px";
-const SPACING_SM = "8px";
-const SPACING_MD = "16px";
-
-const Container = styled.div`
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: auto;
-  padding: ${SPACING_SM};
-  gap: ${SPACING_SM};
-  font-family: var(--apinox-font-family);
-  color: var(--apinox-foreground);
-  background-color: var(--apinox-editor-background);
-`;
-
+import { SPACING_XS, SPACING_SM, SPACING_LG } from "../styles/spacing";
 const Toolbar = styled.div`
   display: flex;
   justify-content: space-between;
@@ -43,7 +29,7 @@ const ExtractorItem = styled.div`
   margin-bottom: ${SPACING_SM};
   border-radius: ${SPACING_XS};
   align-items: flex-start;
-  gap: ${SPACING_MD};
+  gap: ${SPACING_LG};
 `;
 
 const ExtractorInfo = styled.div`
@@ -73,24 +59,6 @@ const Value = styled.code`
   font-family: monospace;
   word-break: break-all;
   font-size: 0.9em;
-`;
-
-const IconButton = styled.button`
-  background: transparent;
-  color: var(--apinox-icon-foreground);
-  border: none;
-  cursor: pointer;
-  padding: ${SPACING_XS};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0.7;
-
-  &:hover {
-    opacity: 1;
-    background-color: var(--apinox-toolbar-hoverBackground);
-    border-radius: 3px;
-  }
 `;
 
 const ButtonGroup = styled.div`
@@ -131,7 +99,7 @@ const PreviewValue = styled(Value)`
   background-color: var(--apinox-editor-inactiveSelectionBackground);
 `;
 
-const DeleteButton = styled(IconButton)`
+const DeleteButton = styled(PanelIconButton)`
   color: var(--apinox-errorForeground);
 `;
 
@@ -171,15 +139,15 @@ export const ExtractorsPanel: React.FC<ExtractorsPanelProps> = ({
   debugLog("[ExtractorsPanel] Rendering. Extractors:", extractors.length);
 
   return (
-    <Container>
+    <PanelContainer>
       <Toolbar>
         <ToolbarTitle>
           <Variable size={16} />
           Context Variables extracted from this Step
         </ToolbarTitle>
-        <IconButton onClick={handleAdd} title="Add Extractor">
+        <PanelIconButton onClick={handleAdd} title="Add Extractor">
           <Plus size={16} />
-        </IconButton>
+        </PanelIconButton>
       </Toolbar>
       <ExtractorList>
         {extractors.length === 0 ? (
@@ -250,12 +218,12 @@ export const ExtractorsPanel: React.FC<ExtractorsPanelProps> = ({
                 </ExtractorInfo>
                 <ButtonGroup>
                   {onEdit && (
-                    <IconButton
+                    <PanelIconButton
                       onClick={() => onEdit(ex, index)}
                       title="Edit Extractor"
                     >
                       <Pencil size={16} />
-                    </IconButton>
+                    </PanelIconButton>
                   )}
                   <DeleteButton
                     onClick={() => handleDelete(index)}
@@ -269,6 +237,6 @@ export const ExtractorsPanel: React.FC<ExtractorsPanelProps> = ({
           })
         )}
       </ExtractorList>
-    </Container>
+    </PanelContainer>
   );
 };

@@ -1,80 +1,24 @@
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { WorkflowStep } from "@shared/models";
-import { SPACING_SM, SPACING_MD } from "../../styles/spacing";
 import { AlertCircle } from "lucide-react";
 import { PrimaryButton } from "../common/Button";
 import { CustomSelect } from "../common/CustomSelect";
-
-const Container = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${SPACING_MD};
-  padding: ${SPACING_MD};
-  width: 100%;
-  height: 100%;
-  overflow-y: auto;
-  box-sizing: border-box;
-`;
-
-const Header = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${SPACING_SM};
-  padding-bottom: ${SPACING_SM};
-  border-bottom: 1px solid var(--apinox-panel-border);
-`;
-
-const IconContainer = styled.div`
-  color: var(--apinox-charts-yellow);
-`;
-
-const Title = styled.h2`
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-`;
-
-const Section = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${SPACING_SM};
-`;
-
-const Label = styled.label`
-  font-size: 12px;
-  font-weight: 600;
-  opacity: 0.8;
-  display: block;
-`;
-
-const Input = styled.input`
-  background: var(--apinox-input-background);
-  color: var(--apinox-input-foreground);
-  border: 1px solid var(--apinox-input-border);
-  padding: 6px 8px;
-  border-radius: 4px;
-  font-size: 13px;
-  font-family: var(--apinox-font-family);
-  width: 100%;
-
-  &:focus {
-    outline: 1px solid var(--apinox-focusBorder);
-  }
-`;
-
-const InfoBox = styled.div`
-  padding: ${SPACING_SM};
-  background: var(--apinox-textCodeBlock-background);
-  border: 1px solid var(--apinox-panel-border);
-  border-radius: 4px;
-  font-size: 11px;
-  opacity: 0.8;
-  line-height: 1.4;
-`;
+import {
+  StepEditorContainer,
+  StepHeader,
+  StepIcon,
+  StepTitle,
+  StepSection,
+  StepLabel,
+  StepInput,
+  StepInfoBox,
+  StepActionRow,
+  StepNameField,
+} from "./StepEditorShell";
 
 const PreviewBox = styled.div`
-  padding: ${SPACING_MD};
+  padding: 12px;
   background: var(--apinox-editor-background);
   border: 1px solid var(--apinox-panel-border);
   border-radius: 4px;
@@ -83,12 +27,6 @@ const PreviewBox = styled.div`
   color: var(--apinox-editor-foreground);
   white-space: pre-wrap;
   word-break: break-word;
-`;
-
-const ButtonContainer = styled.div`
-  display: flex;
-  gap: ${SPACING_SM};
-  margin-top: auto;
 `;
 
 interface ConditionStepEditorProps {
@@ -151,39 +89,31 @@ export const ConditionStepEditor: React.FC<ConditionStepEditorProps> = ({
   };
 
   return (
-    <Container>
-      <Header>
-        <IconContainer>
+    <StepEditorContainer>
+      <StepHeader>
+        <StepIcon $color="var(--apinox-charts-yellow)">
           <AlertCircle size={20} />
-        </IconContainer>
-        <Title>Condition Step</Title>
-      </Header>
+        </StepIcon>
+        <StepTitle>Condition Step</StepTitle>
+      </StepHeader>
 
-      <Section>
-        <Label>Step Name</Label>
-        <Input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Enter step name"
-        />
-      </Section>
+      <StepNameField value={name} onChange={setName} />
 
-      <Section>
-        <Label>Expression / Variable</Label>
-        <Input
+      <StepSection>
+        <StepLabel>Expression / Variable</StepLabel>
+        <StepInput
           type="text"
           value={expression}
           onChange={(e) => setExpression(e.target.value)}
           placeholder="e.g., {{status}} or {{responseCode}}"
         />
-        <InfoBox>
+        <StepInfoBox>
           Reference workflow variables using {`{{variableName}}`} syntax
-        </InfoBox>
-      </Section>
+        </StepInfoBox>
+      </StepSection>
 
-      <Section>
-        <Label>Operator</Label>
+      <StepSection>
+        <StepLabel>Operator</StepLabel>
         <CustomSelect
           value={operator}
           onChange={(v) => setOperator(v as any)}
@@ -198,32 +128,32 @@ export const ConditionStepEditor: React.FC<ConditionStepEditorProps> = ({
             { value: "notExists", label: "Not Exists" },
           ]}
         />
-      </Section>
+      </StepSection>
 
       {operator !== "exists" && operator !== "notExists" && (
-        <Section>
-          <Label>Compare Value</Label>
-          <Input
+        <StepSection>
+          <StepLabel>Compare Value</StepLabel>
+          <StepInput
             type="text"
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="Value to compare against"
           />
-        </Section>
+        </StepSection>
       )}
 
-      <Section>
-        <Label>Preview</Label>
+      <StepSection>
+        <StepLabel>Preview</StepLabel>
         <PreviewBox>{getPreviewText()}</PreviewBox>
-        <InfoBox>
+        <StepInfoBox>
           Note: Branching to specific steps not yet fully implemented. If
           condition is false, remaining steps will be skipped.
-        </InfoBox>
-      </Section>
+        </StepInfoBox>
+      </StepSection>
 
-      <ButtonContainer>
+      <StepActionRow $pushDown>
         <PrimaryButton onClick={handleSave}>Save Changes</PrimaryButton>
-      </ButtonContainer>
-    </Container>
+      </StepActionRow>
+    </StepEditorContainer>
   );
 };

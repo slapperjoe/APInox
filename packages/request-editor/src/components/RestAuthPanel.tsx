@@ -2,9 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 import { RestAuthType } from '../types';
 import { MonacoSingleLineInput } from './MonacoSingleLineInput';
-const SPACING_XS = 4;
-const SPACING_SM = 8;
-const SPACING_MD = 16;
+import { SPACING_XS, SPACING_SM, SPACING_LG } from "../styles/spacing";
 
 // Extended RestAuthConfig with all fields needed
 interface RestAuthConfig {
@@ -37,15 +35,15 @@ const Label = styled.label`
     font-size: 12px;
     color: var(--apinox-descriptionForeground);
     display: block;
-    margin-bottom: ${SPACING_XS}px;
+    margin-bottom: ${SPACING_XS};
 `;
 
 const Select = styled.select`
     background: var(--apinox-input-background);
     color: var(--apinox-input-foreground);
     border: 1px solid var(--apinox-input-border);
-    padding: ${SPACING_SM}px 12px;
-    border-radius: ${SPACING_XS}px;
+    padding: ${SPACING_SM} 12px;
+    border-radius: ${SPACING_XS};
     font-size: 13px;
     width: 100%;
     cursor: pointer;
@@ -57,7 +55,7 @@ const Select = styled.select`
 
 const InputRow = styled.div`
     display: flex;
-    gap: ${SPACING_SM}px;
+    gap: ${SPACING_SM};
     align-items: flex-start;
 `;
 
@@ -68,7 +66,7 @@ const InputGroup = styled.div`
 const Hint = styled.div`
     font-size: 11px;
     color: var(--apinox-descriptionForeground);
-    margin-top: ${SPACING_XS}px;
+    margin-top: ${SPACING_XS};
     opacity: 0.8;
 `;
 
@@ -79,10 +77,10 @@ const SectionHeading = styled.h4`
 const NoAuthPlaceholder = styled.div`
     opacity: 0.6;
     font-style: italic;
-    padding: ${SPACING_MD}px;
+    padding: ${SPACING_LG};
     text-align: center;
     border: 1px dashed var(--apinox-panel-border);
-    border-radius: ${SPACING_XS}px;
+    border-radius: ${SPACING_XS};
 `;
 
 interface RestAuthPanelProps {

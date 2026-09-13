@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import styled from 'styled-components';
 import {
   formatXml,
@@ -12,38 +12,13 @@ import {
 } from '@apinox/request-editor/monaco';
 import type { TrafficLog } from './TrafficViewer';
 import { tokens } from './tokens';
+import { methodBg, statusStyle, languageFromContentType } from './trafficStyles';
+import { EditorPane, SplitDivider, naturalPanePx, useSplitPaneDrag } from './splitPane';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type DetailView = 'body' | 'raw';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-function methodBg(method: string): { bg: string; fg: string } {
-  switch (method.toUpperCase()) {
-    case 'GET':    return { bg: 'rgba(58,110,58,0.2)',   fg: 'var(--apinox-testing-iconPassed, #89d185)' };
-    case 'POST':   return { bg: 'rgba(14,99,156,0.2)',   fg: 'var(--apinox-focusBorder, #6db3e8)' };
-    case 'PUT':    return { bg: 'rgba(122,90,30,0.2)',   fg: 'var(--apinox-testing-iconQueued, #ddb165)' };
-    case 'PATCH':  return { bg: 'rgba(120,80,200,0.18)', fg: '#b89ee8' };
-    case 'DELETE': return { bg: 'rgba(156,14,14,0.2)',   fg: 'var(--apinox-testing-iconFailed, #f28b82)' };
-    default:       return { bg: 'rgba(60,60,60,0.15)',   fg: 'var(--apinox-descriptionForeground, #858585)' };
-  }
-}
-
-function statusStyle(status?: number) {
-  if (!status) return { bg: 'rgba(60,60,60,0.2)', fg: tokens.text.muted, border: 'rgba(100,100,100,0.4)' };
-  if (status < 300) return { bg: 'rgba(58,110,58,0.25)',  fg: 'var(--apinox-testing-iconPassed, #89d185)',  border: 'rgba(58,110,58,0.5)' };
-  if (status < 400) return { bg: 'rgba(14,99,156,0.25)',  fg: 'var(--apinox-focusBorder, #6db3e8)',         border: 'rgba(14,99,156,0.5)' };
-  if (status < 500) return { bg: 'rgba(122,90,30,0.25)',  fg: 'var(--apinox-testing-iconQueued, #ddb165)',  border: 'rgba(122,90,30,0.5)' };
-  return                     { bg: 'rgba(156,14,14,0.25)', fg: 'var(--apinox-testing-iconFailed, #f28b82)', border: 'rgba(156,14,14,0.5)' };
-}
-
-function getLanguage(headers?: Record<string, string>): string {
-  const ct = headers?.['content-type'] ?? headers?.['Content-Type'] ?? '';
-  if (ct.includes('xml') || ct.includes('soap')) return 'xml';
-  if (ct.includes('json')) return 'json';
-  if (ct.includes('html')) return 'html';
-  return 'text';
-}
-
 function formatBody(content: string | undefined, language: string, settings: { alignAttributes: boolean; inlineValues: boolean; hideCausality: boolean }): string {
   if (!content) return '';
   if (language === 'xml')  return formatXml(content, settings.alignAttributes, settings.inlineValues, settings.hideCausality);
@@ -130,24 +105,6 @@ const DetailBody = styled.div`
   overflow: hidden;
 `;
 
-const EditorPane = styled.div`
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border-bottom: 1px solid ${tokens.border.default};
-  &:last-child { border-bottom: none; }
-`;
-
-const SplitDivider = styled.div<{ $dragging: boolean }>`
-  height: 5px;
-  background: ${p => p.$dragging ? tokens.status.accentDark : tokens.surface.elevated};
-  cursor: ns-resize;
-  flex-shrink: 0;
-  transition: background 0.15s;
-  user-select: none;
-  &:hover { background: ${tokens.status.accentDark}; }
-`;
-
 const PaneLabel = styled.div`
   padding: 5px 14px;
   font-size: 12px;
@@ -175,10 +132,15 @@ interface TrafficDetailsProps {
 export function TrafficDetails({ log }: TrafficDetailsProps) {
   const [view, setView] = useState<DetailView>('body');
   const { settings, updateSettings } = useEditorSettings();
-  const [isDragging, setIsDragging] = useState(false);
-  const [userRequestPx, setUserRequestPx] = useState<number | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const [bodyHeight, setBodyHeight] = useState(0);
+
+  const {
+    isDragging,
+    userPx: userRequestPx,
+    setUserPx: setUserRequestPx,
+    handleDividerMouseDown,
+  } = useSplitPaneDrag(bodyHeight);
 
   // Reset split when switching to a different log entry
   useEffect(() => { setUserRequestPx(null); }, [log.id]);
@@ -193,8 +155,8 @@ export function TrafficDetails({ log }: TrafficDetailsProps) {
     return () => ro.disconnect();
   }, [view]);
 
-  const requestLang = getLanguage(log.requestHeaders);
-  const responseLang = getLanguage(log.responseHeaders);
+  const requestLang = languageFromContentType(log.requestHeaders);
+  const responseLang = languageFromContentType(log.responseHeaders);
   const ss = statusStyle(log.status);
   const reqCT = getContentType(log.requestHeaders);
   const resCT = getContentType(log.responseHeaders);
@@ -202,31 +164,9 @@ export function TrafficDetails({ log }: TrafficDetailsProps) {
   const formattedRequest  = formatBody(log.requestBody,  requestLang, settings);
   const formattedResponse = formatBody(log.responseBody, responseLang, settings);
 
-  const LINE_HEIGHT = 19;
-  const PANE_OVERHEAD = 101;
   const reqLineCount = formattedRequest ? formattedRequest.split('\n').length : 0;
-  const naturalPx = (reqLineCount + 3) * LINE_HEIGHT + PANE_OVERHEAD;
-  const calculatedPx = bodyHeight > 0 ? Math.min(naturalPx, bodyHeight * 0.5) : undefined;
+  const calculatedPx = naturalPanePx(reqLineCount, bodyHeight, 0.5);
   const effectivePx = userRequestPx ?? calculatedPx;
-
-  const handleDividerMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    const startY = e.clientY;
-    const startPx = effectivePx ?? 0;
-    setIsDragging(true);
-    const onMove = (ev: MouseEvent) => {
-      const min = 60;
-      const max = bodyHeight > 0 ? bodyHeight * 0.85 : 9999;
-      setUserRequestPx(Math.max(min, Math.min(startPx + (ev.clientY - startY), max)));
-    };
-    const onUp = () => {
-      setIsDragging(false);
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-    };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-  }, [effectivePx, bodyHeight]);
 
   return (
     <Panel>
@@ -261,7 +201,7 @@ export function TrafficDetails({ log }: TrafficDetailsProps) {
                 onSettingsChange={updateSettings}
               />
             </EditorPane>
-            <SplitDivider $dragging={isDragging} onMouseDown={handleDividerMouseDown} />
+            <SplitDivider $dragging={isDragging} onMouseDown={(e) => handleDividerMouseDown(e, effectivePx ?? 0)} />
             <EditorPane style={{ flex: 1, minHeight: 0 }}>
               <PaneLabel>Response</PaneLabel>
               {resCT && <PaneMeta>{resCT}</PaneMeta>}
