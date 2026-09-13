@@ -1,8 +1,7 @@
 export { MonacoEditorWrapper } from './components/MonacoEditorWrapper';
 export type { MonacoEditorWrapperProps } from './components/MonacoEditorWrapper';
 
-export { useMonaco } from './hooks/useMonaco';
-export type { Monaco, Monaco as MonacoType } from './hooks/useMonaco';
+export type { Monaco, Monaco as MonacoType } from './components/MonacoEditorWrapper';
 
 export { MonacoRequestEditor } from './components/MonacoRequestEditor';
 export type { MonacoRequestEditorHandle } from './components/MonacoRequestEditor';
@@ -31,4 +30,6 @@ export { ScriptEditor } from './components/ScriptEditor';
 
 export { applyAutoFolding } from './utils/xmlFoldingUtils';
 export { useWildcardDecorations } from './hooks/useWildcardDecorations';
+export { useSettingsDropdown } from './hooks/useSettingsDropdown';
+export type { SettingsMenuPosition } from './hooks/useSettingsDropdown';
 export { toMonacoColor, applyMonacoTheme, getMonacoThemeId } from './utils/monacoTheme';

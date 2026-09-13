@@ -47,26 +47,6 @@ export const Input = styled.input`
   }
 `;
 
-export const Select = styled.select`
-  width: 100%;
-  padding: 6px;
-  padding-right: 22px;
-  background: var(--apinox-dropdown-background);
-  color: var(--apinox-dropdown-foreground);
-  border: 1px solid var(--apinox-dropdown-border);
-  appearance: none;
-  -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M0 0L5 6L10 0' fill='%23888888'/></svg>");
-  background-repeat: no-repeat;
-  background-position: right 6px center;
-  background-size: 10px 6px;
-  cursor: pointer;
-  &:focus {
-    border-color: var(--apinox-focusBorder);
-    outline: none;
-  }
-`;
-
 export const CheckboxLabel = styled.label`
   display: flex;
   align-items: center;
@@ -134,35 +114,7 @@ export const Badge = styled.span`
   margin-left: 8px;
 `;
 
-export const IconButton = styled.button`
-  background: transparent;
-  border: none;
-  color: var(--apinox-foreground);
-  cursor: pointer;
-  padding: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 3px;
-  &:hover {
-    background: var(--apinox-list-hoverBackground);
-  }
-`;
-
-export const PrimaryButton = styled.button`
-  background: var(--apinox-button-background);
-  color: var(--apinox-button-foreground);
-  border: none;
-  padding: 6px 12px;
-  cursor: pointer;
-  font-size: 12px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  &:hover {
-    background: var(--apinox-button-hoverBackground);
-  }
-`;
+export { IconButton, PrimaryButton } from "../../common/Button";
 
 export { CustomSelect } from "../../common/CustomSelect";
 export type { CustomSelectOption } from "../../common/CustomSelect";

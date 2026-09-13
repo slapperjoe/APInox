@@ -20,6 +20,7 @@ import {
   SidebarHeader,
   SidebarHeaderTitle,
   SidebarHeaderActions,
+  RowActions,
 } from "./shared/SidebarStyles";
 import { HeaderButton } from "../common/Button";
 import { useNotes, noteDirtyKind } from "../../notes/NotesContext";
@@ -55,13 +56,6 @@ const Item = styled.div<{ $active: boolean }>`
       ? "var(--apinox-list-activeSelectionBackground, rgba(0,122,204,0.25))"
       : "var(--apinox-list-hoverBackground, rgba(255,255,255,0.06))"};
   }
-
-  .item-actions {
-    opacity: 0;
-  }
-  &:hover .item-actions {
-    opacity: 1;
-  }
 `;
 
 const ItemName = styled.span`
@@ -69,12 +63,6 @@ const ItemName = styled.span`
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-`;
-
-const ItemActions = styled.div`
-  display: flex;
-  gap: 2px;
-  flex-shrink: 0;
 `;
 
 const SmallBtn = styled.button<{ $confirming?: boolean }>`
@@ -241,14 +229,14 @@ export const NotesList: React.FC = () => {
                 />
               )}
 
-              <ItemActions className="item-actions">
+              <RowActions $parent={Item} $gap="2px">
                 <SmallBtn onClick={(e) => startRename(e, entry)} title="Rename">
                   <Edit2 size={12} />
                 </SmallBtn>
                 <SmallBtn onClick={(e) => handleDelete(e, entry)} title={deleteConfirm === entry.id ? "Click again to Confirm Delete" : "Delete"} $confirming={deleteConfirm === entry.id}>
                   <Trash2 size={12} />
                 </SmallBtn>
-              </ItemActions>
+              </RowActions>
             </Item>
           );
         })}

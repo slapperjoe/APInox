@@ -7,6 +7,7 @@ import { HeadersPanel } from './HeadersPanel';
 import { EditorSettingsProvider, useEditorSettings, EditorSettings } from '../contexts/EditorSettingsContext';
 import { formatXml } from '../utils/xmlFormatter';
 import { getInstalledFonts, type MonoFont } from '../utils/fontDetection';
+import { useSettingsDropdown } from '../hooks/useSettingsDropdown';
 import {
   TabsHeader,
   TabButton,
@@ -108,14 +109,18 @@ const EditorWithToolbarInternal = forwardRef<MonacoRequestEditorHandle, Omit<Mon
     const { settings, updateSettings, toggleAlignAttributes, toggleInlineValues, toggleHideCausality, toggleLineNumbers, toggleMinimap } = useEditorSettings();
 
     const [activeTab, setActiveTab] = useState<InternalTab>('body');
-    const [showSettings, setShowSettings] = useState(false);
-    const [menuPosition, setMenuPosition] = useState<{ top: number; right: number; maxHeight: number } | null>(null);
     const [installedFonts, setInstalledFonts] = useState<MonoFont[]>([]);
     const [internalValue, setInternalValue] = useState(value);
     const [localForceUpdateKey, setLocalForceUpdateKey] = useState(0);
 
-    const settingsButtonRef = useRef<HTMLButtonElement>(null);
     const settingsMenuRef = useRef<HTMLDivElement>(null);
+    const {
+      open: showSettings,
+      setOpen: setShowSettings,
+      position: menuPosition,
+      toggle: handleToggleSettings,
+      buttonRef: settingsButtonRef,
+    } = useSettingsDropdown(settingsMenuRef);
     const editorRef = useRef<MonacoRequestEditorHandle | null>(null);
 
     // Detect installed fonts on mount
@@ -142,30 +147,6 @@ const EditorWithToolbarInternal = forwardRef<MonacoRequestEditorHandle, Omit<Mon
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [settings.alignAttributes, settings.inlineValues, settings.hideCausality]);
 
-    // Close settings popup on outside click
-    useEffect(() => {
-      if (!showSettings) return;
-      const handleClickOutside = (e: MouseEvent) => {
-        if (settingsMenuRef.current && !settingsMenuRef.current.contains(e.target as Node)) {
-          setShowSettings(false);
-        }
-      };
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [showSettings]);
-
-    const handleToggleSettings = useCallback(() => {
-      if (!showSettings && settingsButtonRef.current) {
-        const rect = settingsButtonRef.current.getBoundingClientRect();
-        const spaceBelow = window.innerHeight - rect.bottom - 4 - 16;
-        setMenuPosition({
-          top: rect.bottom + 4,
-          right: window.innerWidth - rect.right,
-          maxHeight: Math.max(200, spaceBelow),
-        });
-      }
-      setShowSettings(prev => !prev);
-    }, [showSettings]);
 
     const handleFormatNow = useCallback(() => {
       if (language !== 'xml') return;

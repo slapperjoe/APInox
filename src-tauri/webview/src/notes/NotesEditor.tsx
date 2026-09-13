@@ -1,6 +1,6 @@
 import React, { useCallback, useRef, useState, useEffect } from "react";
 import styled from "styled-components";
-import { MonacoEditorWrapper, MonacoEditorWrapperProps } from "@apinox/request-editor/monaco";
+import { MonacoEditorWrapper, MonacoEditorWrapperProps, useSettingsDropdown } from "@apinox/request-editor/monaco";
 import {
   Save,
   Eye,
@@ -235,22 +235,14 @@ export const NotesEditor: React.FC = () => {
   const cmRef = useRef<NotesCodeMirrorEditorRef>(null);
   const [cmContext, setCmContext] = React.useState("Paragraph");
   const [showSaved, setShowSaved] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [settingsPos, setSettingsPos] = useState<{ top: number; right: number } | null>(null);
-  const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const settingsPopupRef = useRef<HTMLDivElement>(null);
-
-  // Close settings on outside click
-  useEffect(() => {
-    if (!showSettings) return;
-    const onMouseDown = (e: MouseEvent) => {
-      if (settingsPopupRef.current && !settingsPopupRef.current.contains(e.target as Node)) {
-        setShowSettings(false);
-      }
-    };
-    document.addEventListener("mousedown", onMouseDown);
-    return () => document.removeEventListener("mousedown", onMouseDown);
-  }, [showSettings]);
+  const {
+    open: showSettings,
+    setOpen: setShowSettings,
+    position: settingsPos,
+    toggle: handleToggleSettings,
+    buttonRef: settingsButtonRef,
+  } = useSettingsDropdown(settingsPopupRef, { includeMaxHeight: false });
 
   const handleSave = useCallback(async () => {
     await saveActive();
@@ -273,17 +265,6 @@ export const NotesEditor: React.FC = () => {
       await openNote(activeNote.entry);
     }
   }, [activeNote, openNote]);
-
-  const handleToggleSettings = useCallback(() => {
-    if (!showSettings && settingsButtonRef.current) {
-      const rect = settingsButtonRef.current.getBoundingClientRect();
-      setSettingsPos({
-        top: rect.bottom + 4,
-        right: window.innerWidth - rect.right,
-      });
-    }
-    setShowSettings((prev) => !prev);
-  }, [showSettings]);
 
   if (isLoading) {
     return (
