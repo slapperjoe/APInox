@@ -14,7 +14,6 @@ import { ErrorBoundary, formatXml, stripCausalityData, formatContent, formatJson
 import { RequestWorkspace, MonacoRequestEditorWithToolbar as MonacoRequestEditor, MonacoResponseViewer, MonacoSingleLineInput, AssertionsPanel, HeadersPanel, SecurityPanel, AttachmentsPanel, ExtractorsPanel, VariablesPanel, QueryParamsPanel, RestAuthPanel, GraphQLVariablesPanel, ScriptEditor } from '@apinox/request-editor/monaco';
 import type { ApiRequest as PackageApiRequest, ExecutionResponse as PackageExecutionResponse, Variable as PackageVariable, MonacoRequestEditorHandle, MonacoSingleLineInputHandle } from '@apinox/request-editor/monaco';
 import { WelcomePanel, TestCaseView, EmptyTestCase } from './workspace';
-import { WorkflowSummary } from './workspace/WorkflowSummary';
 import { WorkflowEditor } from './workspace/WorkflowEditor';
 import { DelayStepEditor } from './workspace/DelayStepEditor';
 import { ConditionStepEditor } from './workspace/ConditionStepEditor';
