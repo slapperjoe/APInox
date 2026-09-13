@@ -534,7 +534,13 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
                                 </div>
                             )}
                             <MonacoEditorWrapper
-                                height="100%"
+                                // Definite (viewport-relative) height, not "100%":
+                                // the modal's height is content-driven (max-height
+                                // only), so a percentage resolves against an
+                                // auto-height chain and the editor collapses to a
+                                // few pixels. ScriptPlaygroundModal uses the same
+                                // pattern (calc(95vh - 120px)).
+                                height="min(60vh, 480px)"
                                 language="json"
                                 theme={editorTheme}
                                 value={jsonContent}
@@ -542,6 +548,7 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
                                 options={{
                                     minimap: { enabled: false },
                                     automaticLayout: true,
+                                    scrollBeyondLastLine: false,
                                     formatOnPaste: true,
                                     formatOnType: true
                                 }}
