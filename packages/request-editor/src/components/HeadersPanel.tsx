@@ -1,20 +1,10 @@
 import React from 'react';
 import styled from 'styled-components';
 import { EmptyState } from './common/EmptyState';
+import { PanelContainer, PanelIconButton, PanelFlexColumn } from './common/PanelShell';
 import { Plus, Trash2, List } from 'lucide-react';
 import { MonacoSingleLineInput } from './MonacoSingleLineInput';
 import { SPACING_XS, SPACING_SM } from '../styles/spacing';
-
-const Container = styled.div`
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    color: var(--apinox-foreground);
-    background: var(--apinox-editor-background);
-    padding: ${SPACING_SM};
-    gap: ${SPACING_SM};
-    overflow-y: auto;
-`;
 
 const HeaderRow = styled.div<{ $dimmed?: boolean }>`
     display: flex;
@@ -34,10 +24,6 @@ const HeaderTitle = styled.div`
     color: var(--apinox-foreground);
 `;
 
-const FlexColumn = styled.div`
-    flex: 1;
-`;
-
 const ReadOnlyField = styled.div`
     padding: 6px ${SPACING_SM};
     background: var(--apinox-input-background);
@@ -55,21 +41,6 @@ const LockIndicator = styled.div`
     opacity: 0.5;
 `;
 
-
-const IconButton = styled.button`
-    background: transparent;
-    border: none;
-    color: var(--apinox-icon-foreground);
-    cursor: pointer;
-    padding: ${SPACING_XS};
-    border-radius: 3px;
-    display: flex;
-    align-items: center;
-    &:hover {
-        background: var(--apinox-toolbar-hoverBackground);
-        color: var(--apinox-foreground);
-    }
-`;
 
 interface HeadersPanelProps {
     headers: Record<string, string>;
@@ -114,29 +85,29 @@ export const HeadersPanel: React.FC<HeadersPanelProps> = ({ headers, onChange, c
     };
 
     return (
-        <Container>
+        <PanelContainer>
             <HeaderTitle>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <List size={16} />
                     HTTP Headers
                 </div>
-                <IconButton onClick={addHeader} title="Add Header">
+                <PanelIconButton onClick={addHeader} title="Add Header">
                     <Plus size={16} /> Add
-                </IconButton>
+                </PanelIconButton>
             </HeaderTitle>
 
             {/* Read-only Content-Type row */}
             <HeaderRow $dimmed>
-                <FlexColumn>
+                <PanelFlexColumn>
                     <ReadOnlyField>
                         Content-Type
                     </ReadOnlyField>
-                </FlexColumn>
-                <FlexColumn>
+                </PanelFlexColumn>
+                <PanelFlexColumn>
                     <ReadOnlyField>
                         {displayContentType}
                     </ReadOnlyField>
-                </FlexColumn>
+                </PanelFlexColumn>
                 <LockIndicator title="Managed by toolbar dropdown">
                     🔒
                 </LockIndicator>
@@ -148,25 +119,25 @@ export const HeadersPanel: React.FC<HeadersPanelProps> = ({ headers, onChange, c
 
             {entries.map(([key, value], index) => (
                 <HeaderRow key={index}>
-                    <FlexColumn>
+                    <PanelFlexColumn>
                         <MonacoSingleLineInput
                             value={key}
                             onChange={(newKey: string) => updateHeader(key, newKey, value)}
                             placeholder="Header Name"
                         />
-                    </FlexColumn>
-                    <FlexColumn>
+                    </PanelFlexColumn>
+                    <PanelFlexColumn>
                         <MonacoSingleLineInput
                             value={value}
                             onChange={(newValue: string) => updateHeader(key, key, newValue)}
                             placeholder="Value"
                         />
-                    </FlexColumn>
-                    <IconButton onClick={() => removeHeader(key)} title="Delete Header">
+                    </PanelFlexColumn>
+                    <PanelIconButton onClick={() => removeHeader(key)} title="Delete Header">
                         <Trash2 size={14} />
-                    </IconButton>
+                    </PanelIconButton>
                 </HeaderRow>
             ))}
-        </Container>
+        </PanelContainer>
     );
 };
