@@ -1,85 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { WorkflowStep } from '@shared/models';
-import { SPACING_SM, SPACING_MD } from '../../styles/spacing';
+import { SPACING_SM } from '../../styles/spacing';
 import { GitBranch, AlertCircle, Plus } from 'lucide-react';
 import { PrimaryButton, SecondaryButton } from '../common/Button';
 import { MonacoEditorWrapper } from '@apinox/request-editor/monaco';
-
-const Container = styled.div`
-    display: flex;
-    flex-direction: column;
-    gap: ${SPACING_MD};
-    padding: ${SPACING_MD};
-    width: 100%;
-    height: 100%;
-    overflow-y: auto;
-    box-sizing: border-box;
-`;
-
-const Header = styled.div`
-    display: flex;
-    align-items: center;
-    gap: ${SPACING_SM};
-    padding-bottom: ${SPACING_SM};
-    border-bottom: 1px solid var(--apinox-panel-border);
-`;
-
-const IconContainer = styled.div`
-    color: var(--apinox-charts-green);
-`;
-
-const Title = styled.h2`
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-`;
-
-const Section = styled.div`
-    display: flex;
-    flex-direction: column;
-    gap: ${SPACING_SM};
-`;
-
-const FlexSection = styled(Section)`
-    flex: 1;
-    min-height: 0;
-`;
-
-const Label = styled.label`
-    font-size: 12px;
-    font-weight: 600;
-    opacity: 0.8;
-    display: block;
-`;
-
-const Input = styled.input`
-    background: var(--apinox-input-background);
-    color: var(--apinox-input-foreground);
-    border: 1px solid var(--apinox-input-border);
-    padding: 6px 8px;
-    border-radius: 4px;
-    font-size: 13px;
-    font-family: var(--apinox-font-family);
-    width: 100%;
-    
-    &:focus {
-        outline: 1px solid var(--apinox-focusBorder);
-    }
-`;
-
-const InfoBox = styled.div`
-    padding: ${SPACING_SM};
-    background: var(--apinox-textCodeBlock-background);
-    border: 1px solid var(--apinox-panel-border);
-    border-radius: 4px;
-    font-size: 11px;
-    opacity: 0.8;
-    line-height: 1.4;
-    display: flex;
-    align-items: center;
-    gap: ${SPACING_SM};
-`;
+import {
+    StepEditorContainer,
+    StepHeader,
+    StepIcon,
+    StepTitle,
+    StepSection,
+    StepFlexSection,
+    StepLabel,
+    StepInput,
+    StepInfoBox,
+    StepActionRow,
+    StepNameField,
+} from './StepEditorShell';
 
 const RequestDetails = styled.div`
     padding: ${SPACING_SM};
@@ -87,10 +25,10 @@ const RequestDetails = styled.div`
     border: 1px solid var(--apinox-panel-border);
     border-radius: 4px;
     font-size: 12px;
-    
+
     div {
         margin-bottom: 4px;
-        
+
         &:last-child {
             margin-bottom: 0;
         }
@@ -103,11 +41,6 @@ const EditorContainer = styled.div`
     overflow: hidden;
     flex: 1;
     min-height: 200px;
-`;
-
-const ButtonContainer = styled.div`
-    display: flex;
-    gap: ${SPACING_SM};
 `;
 
 interface RequestStepEditorProps {
@@ -139,28 +72,20 @@ export const RequestStepEditor: React.FC<RequestStepEditorProps> = ({ step, onUp
     const hasRequest = step.projectName && step.interfaceName && step.operationName;
 
     return (
-        <Container>
-            <Header>
-                <IconContainer>
+        <StepEditorContainer>
+            <StepHeader>
+                <StepIcon $color="var(--apinox-charts-green)">
                     <GitBranch size={20} />
-                </IconContainer>
-                <Title>Request Step</Title>
-            </Header>
+                </StepIcon>
+                <StepTitle>Request Step</StepTitle>
+            </StepHeader>
 
-            <Section>
-                <Label>Step Name</Label>
-                <Input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Enter step name"
-                />
-            </Section>
+            <StepNameField value={name} onChange={setName} />
 
             {hasRequest ? (
                 <>
-                    <Section>
-                        <Label>Request Details</Label>
+                    <StepSection>
+                        <StepLabel>Request Details</StepLabel>
                         <RequestDetails>
                             <div><strong>Project:</strong> {step.projectName}</div>
                             <div><strong>Interface:</strong> {step.interfaceName}</div>
@@ -171,23 +96,23 @@ export const RequestStepEditor: React.FC<RequestStepEditorProps> = ({ step, onUp
                                 Change Request
                             </SecondaryButton>
                         )}
-                    </Section>
+                    </StepSection>
 
-                    <Section>
-                        <Label>Endpoint URL</Label>
-                        <Input
+                    <StepSection>
+                        <StepLabel>Endpoint URL</StepLabel>
+                        <StepInput
                             type="text"
                             value={endpoint}
                             onChange={(e) => setEndpoint(e.target.value)}
                             placeholder="Endpoint URL"
                         />
-                        <InfoBox>
+                        <StepInfoBox $inline>
                             Leave empty to use the default endpoint from the WSDL
-                        </InfoBox>
-                    </Section>
+                        </StepInfoBox>
+                    </StepSection>
 
-                    <FlexSection>
-                        <Label>Request Body (use {`{{varName}}`} for variables)</Label>
+                    <StepFlexSection>
+                        <StepLabel>Request Body (use {`{{varName}}`} for variables)</StepLabel>
                         <EditorContainer>
                             <MonacoEditorWrapper
                                 height="100%"
@@ -206,29 +131,29 @@ export const RequestStepEditor: React.FC<RequestStepEditorProps> = ({ step, onUp
                                 }}
                             />
                         </EditorContainer>
-                        <InfoBox>
+                        <StepInfoBox $inline>
                             Use workflow variables in the body: {`{{variableName}}`}
-                        </InfoBox>
-                    </FlexSection>
+                        </StepInfoBox>
+                    </StepFlexSection>
                 </>
             ) : (
-                <Section>
-                    <InfoBox>
+                <StepSection>
+                    <StepInfoBox $inline>
                         <AlertCircle size={16} />
                         <div>No request selected. {onPickRequest ? 'Pick a request from any project.' : 'Select a request in the workflow builder.'}</div>
-                    </InfoBox>
+                    </StepInfoBox>
                     {onPickRequest && (
                         <PrimaryButton onClick={onPickRequest} style={{ width: '100%' }}>
                             <Plus size={14} />
                             Pick Request
                         </PrimaryButton>
                     )}
-                </Section>
+                </StepSection>
             )}
 
-            <ButtonContainer>
+            <StepActionRow>
                 <PrimaryButton onClick={handleSave}>Save Changes</PrimaryButton>
-            </ButtonContainer>
-        </Container>
+            </StepActionRow>
+        </StepEditorContainer>
     );
 };

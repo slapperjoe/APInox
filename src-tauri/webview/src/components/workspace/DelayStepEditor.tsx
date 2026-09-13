@@ -2,90 +2,23 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import { Clock, Save } from 'lucide-react';
 import { WorkflowStep } from '@shared/models';
-import { SPACING_SM, SPACING_MD, SPACING_LG } from '../../styles/spacing';
+import { SPACING_SM } from '../../styles/spacing';
 import { PrimaryButton, SecondaryButton } from '../common/Button';
-
-const Container = styled.div`
-    display: flex;
-    flex-direction: column;
-    padding: ${SPACING_MD};
-    width: 100%;
-    height: 100%;
-    overflow-y: auto;
-    box-sizing: border-box;
-`;
-
-const Header = styled.div`
-    display: flex;
-    align-items: center;
-    gap: ${SPACING_SM};
-    margin-bottom: ${SPACING_LG};
-    padding-bottom: ${SPACING_MD};
-    border-bottom: 1px solid var(--apinox-panel-border);
-`;
-
-const Icon = styled.div`
-    display: flex;
-    align-items: center;
-    color: var(--apinox-symbolIcon-variableForeground);
-`;
-
-const Title = styled.h2`
-    margin: 0;
-    color: var(--apinox-foreground);
-    font-size: 18px;
-    font-weight: 600;
-`;
-
-const Section = styled.div`
-    margin-bottom: ${SPACING_LG};
-`;
-
-const Label = styled.label`
-    display: block;
-    margin-bottom: ${SPACING_SM};
-    color: var(--apinox-foreground);
-    font-size: 13px;
-    font-weight: 500;
-`;
-
-const Input = styled.input`
-    width: 100%;
-    padding: ${SPACING_SM};
-    background: var(--apinox-input-background);
-    color: var(--apinox-input-foreground);
-    border: 1px solid var(--apinox-input-border);
-    border-radius: 2px;
-    font-size: 13px;
-    font-family: inherit;
-
-    &:focus {
-        outline: none;
-        border-color: var(--apinox-focusBorder);
-    }
-
-    &:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-`;
-
-const Description = styled.div`
-    margin-top: 4px;
-    font-size: 11px;
-    color: var(--apinox-descriptionForeground);
-`;
-
-const Actions = styled.div`
-    display: flex;
-    gap: ${SPACING_SM};
-    justify-content: flex-end;
-    padding-top: ${SPACING_MD};
-    border-top: 1px solid var(--apinox-panel-border);
-`;
+import {
+    StepEditorContainer,
+    StepHeader,
+    StepIcon,
+    StepTitle,
+    StepSection,
+    StepLabel,
+    StepInput,
+    StepHint,
+    StepActionRow,
+    StepNameField,
+} from './StepEditorShell';
 
 const PreviewBox = styled.div`
-    padding: ${SPACING_MD};
+    padding: 12px;
     background: var(--apinox-textCodeBlock-background);
     border: 1px solid var(--apinox-panel-border);
     border-radius: 4px;
@@ -124,46 +57,35 @@ export const DelayStepEditor: React.FC<DelayStepEditorProps> = ({
     };
 
     return (
-        <Container>
-            <Header>
-                <Icon>
+        <StepEditorContainer>
+            <StepHeader>
+                <StepIcon $color="var(--apinox-symbolIcon-variableForeground)">
                     <Clock size={24} />
-                </Icon>
-                <Title>Delay Step</Title>
-            </Header>
+                </StepIcon>
+                <StepTitle>Delay Step</StepTitle>
+            </StepHeader>
 
-            <Section>
-                <Label>Step Name</Label>
-                <Input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Delay step name"
-                />
-                <Description>
-                    A friendly name for this delay step
-                </Description>
-            </Section>
+            <StepNameField value={name} onChange={setName} />
 
-            <Section>
-                <Label>Delay Duration (milliseconds)</Label>
-                <Input
+            <StepSection>
+                <StepLabel>Delay Duration (milliseconds)</StepLabel>
+                <StepInput
                     type="number"
                     value={delayMs}
                     onChange={(e) => setDelayMs(Math.max(0, parseInt(e.target.value) || 0))}
                     min="0"
                     step="100"
                 />
-                <Description>
+                <StepHint>
                     The workflow will pause for this duration before continuing to the next step
-                </Description>
+                </StepHint>
                 <PreviewBox>
                     ⏰ This step will wait for <strong>{formatDuration(delayMs)}</strong>
                 </PreviewBox>
-            </Section>
+            </StepSection>
 
-            <Section>
-                <Label>Common Durations</Label>
+            <StepSection>
+                <StepLabel>Common Durations</StepLabel>
                 <div style={{ display: 'flex', gap: SPACING_SM, flexWrap: 'wrap', marginTop: SPACING_SM }}>
                     {[
                         { label: '100ms', value: 100 },
@@ -184,9 +106,9 @@ export const DelayStepEditor: React.FC<DelayStepEditorProps> = ({
                         </SecondaryButton>
                     ))}
                 </div>
-            </Section>
+            </StepSection>
 
-            <Actions>
+            <StepActionRow $right $bordered>
                 {onCancel && (
                     <SecondaryButton onClick={onCancel}>
                         Cancel
@@ -196,7 +118,7 @@ export const DelayStepEditor: React.FC<DelayStepEditorProps> = ({
                     <Save size={14} />
                     Save Changes
                 </PrimaryButton>
-            </Actions>
-        </Container>
+            </StepActionRow>
+        </StepEditorContainer>
     );
 };
