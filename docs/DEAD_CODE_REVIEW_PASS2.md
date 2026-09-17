@@ -106,5 +106,5 @@ entry points); their registration lines were dropped.
    rule-recording server logic intertwined with the proxy traffic path; needs
    its own commit + gates + confirmation that the inline path fully covers
    passthrough recording.
-5. GitHub `origin/main` is now behind local main by 6 commits (icon + this
+5. GitHub `origin/main` is now behind local main by 5 commits (icon + this
    pass); local mirror is synced. Push to origin when ready.
