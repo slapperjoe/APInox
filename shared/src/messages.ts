@@ -6,30 +6,20 @@ export enum FrontendCommand {
     Log = 'log',
     SaveOpenProjects = 'saveOpenProjects',
     SaveWorkspace = 'saveWorkspace',
-    OpenWorkspace = 'openWorkspace',
-    ClipboardAction = 'clipboardAction',
     CancelRequest = 'cancelRequest',
     CancelAllRequests = 'cancelAllRequests',
     SaveSettings = 'saveSettings',
     GetSettings = 'getSettings',
     SetActiveEnvironment = 'setActiveEnvironment',
     SaveUiState = 'saveUiState',
-    UpdateActiveEnvironment = 'updateActiveEnvironment',
     AutoSaveWorkspace = 'autoSaveWorkspace',
-    GetAutosave = 'getAutosave',
-    SelectConfigFile = 'selectConfigFile',
 
     // Commands
-    DownloadWsdl = 'downloadWsdl',
     LoadWsdl = 'loadWsdl',
-    CancelWsdlLoad = 'cancelWsdlLoad',
-    GetLocalWsdls = 'getLocalWsdls',
-    SelectLocalWsdl = 'selectLocalWsdl',
     CloseProject = 'closeProject',
     SyncProjects = 'syncProjects', // New command for strict syncing
     RefreshWsdl = 'refreshWsdl',
     ApplyWsdlSync = 'applyWsdlSync',
-    BulkImportWsdls = 'bulkImportWsdls',
 
     // ADO
     AdoStorePat = 'adoStorePat',
@@ -44,7 +34,6 @@ export enum FrontendCommand {
     RunTestCase = 'runTestCase',
     GetTestRunUpdates = 'getTestRunUpdates',
     PickOperationForTestCase = 'pickOperationForTestCase',
-    UpdateTestStep = 'updateTestStep',
 
     // Workflow
     ExecuteWorkflow = 'executeWorkflow',
@@ -53,7 +42,6 @@ export enum FrontendCommand {
     GetWorkflows = 'getWorkflows',
 
     // Performance
-    GetPerformanceSuites = 'getPerformanceSuites',
     AddPerformanceSuite = 'addPerformanceSuite',
     UpdatePerformanceSuite = 'updatePerformanceSuite',
     DeletePerformanceSuite = 'deletePerfomanceSuite',
@@ -63,17 +51,7 @@ export enum FrontendCommand {
     DeletePerformanceRequest = 'deletePerformanceRequest',
     RunPerformanceSuite = 'runPerformanceSuite',
     AbortPerformanceSuite = 'abortPerformanceSuite',
-    GetPerformanceHistory = 'getPerformanceHistory',
     GetPerformanceRunUpdates = 'getPerformanceRunUpdates',
-    ImportTestSuiteToPerformance = 'importTestSuiteToPerformance',
-    ExportPerformanceResults = 'exportPerformanceResults',
-
-    // Schedule
-    GetSchedules = 'getSchedules',
-    AddSchedule = 'addSchedule',
-    UpdateSchedule = 'updateSchedule',
-    DeleteSchedule = 'deleteSchedule',
-    ToggleSchedule = 'toggleSchedule',
 
     // Coordinator
     StartCoordinator = 'startCoordinator',
@@ -83,9 +61,6 @@ export enum FrontendCommand {
     // Request History
     GetHistory = 'getHistory',
     ToggleStarHistory = 'toggleStarHistory',
-    DeleteHistoryEntry = 'deleteHistoryEntry',
-    ClearHistory = 'clearHistory',
-    UpdateHistoryConfig = 'updateHistoryConfig',
 
     // Attachments
     SelectAttachment = 'selectAttachment',
@@ -94,10 +69,7 @@ export enum FrontendCommand {
     ExecutePlaygroundScript = 'executePlaygroundScript',
 
     // Debug/Diagnostics
-    GetSidecarLogs = 'getSidecarLogs',
-    ClearSidecarLogs = 'clearSidecarLogs',
     GetDebugInfo = 'getDebugInfo',
-    OpenFile = 'openFile',
     CheckCertificate = 'checkCertificate',
     CheckCertificateStore = 'checkCertificateStore',
     InstallCertificateToLocalMachine = 'installCertificateToLocalMachine',
@@ -108,7 +80,6 @@ export enum FrontendCommand {
     // Workspace Export/Import
     ExportWorkspace = 'exportWorkspace',
     ImportWorkspace = 'importWorkspace',
-    DeleteProjectFiles = 'deleteProjectFiles',
 
     // Scrapbook (API Explorer Quick Requests)
     GetScrapbook = 'getScrapbook',
