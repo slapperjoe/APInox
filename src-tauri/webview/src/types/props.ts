@@ -108,6 +108,8 @@ export interface SidebarUnifiedProps {
     onExportWorkspace?: () => void;
     onBulkImport?: () => void;
     onImportSoapUI?: () => void;
+    /** "Import Workspace" — APInox .apinox / JSON / XML export (sidebar-level menu). */
+    onImportWorkspace?: () => void;
     /** Phase B (t_86c34d38): relocated "Generate Test Suite" (PROJECTS-view context menu). */
     onGenerateTestSuite?: (target: import('@shared/models').ApiOperation) => void;
     /** Phase B (t_86c34d38): relocated "Add to Test Case" (legacy shared context menu). */

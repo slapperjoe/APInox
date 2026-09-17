@@ -503,6 +503,77 @@ const MainContent: React.FC = () => {
         }
     }, [unifiedProjects]);
     
+    // Unified import pipeline (t_b2eae8b0): parse a workspace/project export
+    // file into nested projects via the `importWorkspace` command, persist
+    // each to the canonical UNIFIED store (save_imported_project_as_unified),
+    // publish the nested values for in-session legacy readers (PROXY /
+    // WORKFLOWS), and reload the unified list. Shared by the sidebar
+    // context menu's "Import SoapUI Workspace" and "Import Workspace"
+    // (APInox .apinox / .json / .xml exports).
+    const handleUnifiedImportFile = useCallback(async (opts: {
+        title: string;
+        filters: { name: string; extensions: string[] }[];
+    }) => {
+        if (!bridge.isTauri()) return;
+        const { open } = await import('@tauri-apps/plugin-dialog');
+        const selected = await open({
+            multiple: false,
+            directory: false,
+            filters: opts.filters,
+            title: opts.title,
+        });
+        if (!selected) return;
+        const targetPath = selected as string;
+        const response: any = await bridge.sendMessageAsync({
+            command: 'importWorkspace',
+            filePath: targetPath,
+        });
+        const imported: any[] =
+            response?.projects && Array.isArray(response.projects)
+                ? response.projects
+                : [];
+        if (imported.length > 0) {
+            // Persist each imported project to the canonical unified store
+            // (idempotent merge; additive nested write for PROXY/WORKFLOWS).
+            await saveImportedProjectsAsUnified(imported);
+            // In-session legacy list: PROXY (AddToProjectDialog) and
+            // WORKFLOWS (request-picker) read the nested model from
+            // useProject().projects IN THIS SESSION (they do not re-load from
+            // disk on demand), so publish each nested value now to keep it
+            // visible without a restart.
+            for (const project of imported) {
+                if (!project?.name) continue;
+                (project as any).fileName = targetPath;
+                bridge.emit({
+                    command: BackendCommand.ProjectLoaded,
+                    project,
+                    filename: targetPath,
+                });
+            }
+            // The unified store now owns these projects — reload the unified
+            // list so the explorer shows them immediately.
+            await refreshUnifiedProjects();
+        }
+    }, [refreshUnifiedProjects]);
+    
+    // "Import Workspace" (sidebar context menu): an APInox workspace or
+    // project export file. The Rust `import_workspace` command already
+    // accepts .apinox / .json / .xml, so the dialog only needs the filter.
+    const handleUnifiedImportWorkspace = useCallback(async () => {
+        await handleUnifiedImportFile({
+            title: 'Import APInox Workspace or Project',
+            filters: [{ name: 'APInox Workspace or Project', extensions: ['apinox', 'json', 'xml'] }],
+        });
+    }, [handleUnifiedImportFile]);
+    
+    // "Import SoapUI Workspace" (sidebar context menu).
+    const handleUnifiedImportSoapUI = useCallback(async () => {
+        await handleUnifiedImportFile({
+            title: 'Import SoapUI Workspace or Project',
+            filters: [{ name: 'SoapUI Workspace or Project', extensions: ['xml'] }],
+        });
+    }, [handleUnifiedImportFile]);
+    
     const handleUnifiedWsdlLoaded = useCallback((project: UnifiedProject) => {
         // Enrich sample requests with generated XML bodies
         const enrichedProject: UnifiedProject = {
@@ -1701,56 +1772,8 @@ const MainContent: React.FC = () => {
             // sidebar context menu.
             onExportWorkspace: () => setExportWorkspaceModal(true),
             onBulkImport: () => setShowBulkImportModal(true),
-            onImportSoapUI: async () => {
-                if (bridge.isTauri()) {
-                    const { open } = await import('@tauri-apps/plugin-dialog');
-                    const selected = await open({
-                        multiple: false,
-                        directory: false,
-                        filters: [{ name: 'SoapUI Workspace or Project', extensions: ['xml'] }],
-                        title: 'Import SoapUI Workspace or Project',
-                    });
-                    if (!selected) return;
-                    const targetPath = selected as string;
-                    // t_b2eae8b0: SoapUI import now writes the canonical UNIFIED
-                    // store directly (flat operations via
-                    // save_imported_project_as_unified) instead of the legacy
-                    // nested save_project. importWorkspace still parses the
-                    // SoapUI XML (and .apinox/.json/dir sources) to nested
-                    // projects; we persist each to the unified store.
-                    const response: any = await bridge.sendMessageAsync({
-                        command: 'importWorkspace',
-                        filePath: targetPath,
-                    });
-                    const imported: any[] =
-                        response?.projects && Array.isArray(response.projects)
-                            ? response.projects
-                            : [];
-                    if (imported.length > 0) {
-                        // Persist each imported project to the canonical unified
-                        // store (idempotent merge; additive nested write for
-                        // PROXY/WORKFLOWS).
-                        await saveImportedProjectsAsUnified(imported);
-                        // In-session legacy list: PROXY (AddToProjectDialog) and
-                        // WORKFLOWS (request-picker) read the nested model and
-                        // read from useProject().projects IN THIS SESSION (they
-                        // do not re-load from disk on demand), so publish each
-                        // nested value now to keep it visible without a restart.
-                        for (const project of imported) {
-                            if (!project?.name) continue;
-                            (project as any).fileName = targetPath;
-                            bridge.emit({
-                                command: BackendCommand.ProjectLoaded,
-                                project,
-                                filename: targetPath,
-                            });
-                        }
-                        // The unified store now owns these projects — reload the
-                        // unified list so the explorer shows them immediately.
-                        await refreshUnifiedProjects();
-                    }
-                }
-            },
+            onImportSoapUI: handleUnifiedImportSoapUI,
+            onImportWorkspace: handleUnifiedImportWorkspace,
             onGenerateTestSuite: handleGenerateTestSuite,
             onAddRequestToTestCase: (req: ApiRequest) => setAddToTestCaseModal({ open: true, request: req }),
             onReorderOperation: handleUnifiedReorderOperation,
@@ -1786,10 +1809,10 @@ const MainContent: React.FC = () => {
         // were removed with the deleted PROJECTS view; the remaining deps cover
         // testsProps / workflowsProps / performanceProps / historyProps /
         // unifiedProps and the view-state fields.
-        // t_b2eae8b0: SoapUI import writes the unified store directly, so the
-        // memoized onImportSoapUI depends on refreshUnifiedProjects (no longer
-        // on the legacy loadProject). saveProject stays (other handlers).
+        // t_b2eae8b0: import handlers (SoapUI + APInox workspace) write the
+        // unified store directly and depend on refreshUnifiedProjects.
         saveProject, refreshUnifiedProjects,
+        handleUnifiedImportSoapUI, handleUnifiedImportWorkspace,
         deleteConfirm, setDeleteConfirm, setExportWorkspaceModal, setShowBulkImportModal,
         handleAddSuite, handleDeleteSuite, handleRunTestSuiteWrapper,
         handleAddTestCase, handleDeleteTestCase, handleRenameTestCase,

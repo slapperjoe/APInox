@@ -3,6 +3,7 @@ import {
     ChevronRight,
     ChevronDown,
     FolderOpen,
+    FolderInput,
     FileCode,
     File,
     Server,
@@ -245,6 +246,15 @@ export interface UnifiedExplorerSidebarProps {
     onExportWorkspace?: () => void;
     onBulkImport?: () => void;
     onImportSoapUI?: () => void;
+    /**
+     * "Import Workspace" — open the native file dialog for an APInox
+     * workspace/project export (.apinox / .json / .xml) and import it.
+     * Lives in the sidebar-level context menu (right-click anywhere in
+     * the sidebar) so it is reachable with zero projects — the
+     * empty-tree import path. The prop is undefined in non-Tauri
+     * (browser) dev, so the menu item is omitted there.
+     */
+    onImportWorkspace?: () => void;
     /** Phase B (t_86c34d38): relocated "Generate Test Suite" (was PROJECTS-view context menu). */
     onGenerateTestSuite?: (target: ApiOperation) => void;
     /**
@@ -288,6 +298,7 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
     onExportWorkspace,
     onBulkImport,
     onImportSoapUI,
+    onImportWorkspace,
     onGenerateTestSuite,
     onAddRequestToTestCase,
     onReorderOperation,
@@ -296,7 +307,16 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
 }) => {
     const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
     const [ctxMenu, setCtxMenu] = useState<CtxMenuState | null>(null);
+    // Sidebar-level context menu (right-click anywhere in the sidebar).
+    // Distinct from the per-row `ctxMenu`: it is what makes the import
+    // actions reachable with zero projects — with no rows to right-click,
+    // the row-level menu would have no surface. Per-row and Scrapbook
+    // handlers stop propagation, so a row's own menu still wins when both
+    // would match; only unclaimed right-clicks (empty space, container
+    // padding) fall through to the container handler.
+    const [sidebarCtxMenu, setSidebarCtxMenu] = useState<{ x: number; y: number } | null>(null);
     const closeCtxMenu = () => setCtxMenu(null);
+    const closeSidebarCtxMenu = () => setSidebarCtxMenu(null);
 
     // Contract §4: loading-state indicator — reads the single source of truth
     // from the context (idle | loading(loaded,total,current) | ready(loaded,
@@ -428,6 +448,49 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
         }
     }, []);
 
+    const buildSidebarSections = (): CtxMenuSection[] => {
+        const items: CtxMenuItem[] = [];
+        if (onImportWorkspace) {
+            items.push({
+                icon: FolderInput,
+                label: 'Import Workspace',
+                sub: 'APInox .apinox / JSON / XML',
+                tooltip: 'Import an APInox workspace or project export file',
+                onClick: () => { onImportWorkspace(); closeSidebarCtxMenu(); },
+            });
+        }
+        if (onImportSoapUI) {
+            items.push({
+                icon: DownloadIcon,
+                label: 'Import SoapUI Workspace',
+                sub: 'SoapUI .xml',
+                tooltip: 'Import a SoapUI workspace or project XML',
+                onClick: () => { onImportSoapUI(); closeSidebarCtxMenu(); },
+            });
+        }
+        if (onBulkImport) {
+            items.push({
+                icon: DownloadIcon,
+                label: 'Bulk Import WSDLs',
+                tooltip: 'Import multiple WSDL files at once',
+                onClick: () => { onBulkImport(); closeSidebarCtxMenu(); },
+            });
+        }
+        return [{ title: 'Import', items }];
+    };
+
+    // Sidebar-level context menu: right-click anywhere in the sidebar
+    // (container padding, empty space, the tree area). TreeItem rows and the
+    // ScrapbookPanel stopPropagation on their own right-clicks, so this only
+    // fires for unclaimed surfaces. Guarded on at least one enabled import so
+    // an empty menu never opens (e.g. non-Tauri dev, where the props are
+    // undefined).
+    const handleSidebarContextMenu = (e: React.MouseEvent) => {
+        if (!onImportWorkspace && !onImportSoapUI && !onBulkImport) return;
+        e.preventDefault();
+        setSidebarCtxMenu({ x: e.clientX, y: e.clientY });
+    };
+
     const buildSections = (state: CtxMenuState): CtxMenuSection[] => {
         const items: CtxMenuItem[] = [];
 
@@ -555,6 +618,10 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                 overflowY: 'auto',
                 padding: '4px 0',
             }}
+            // Sidebar-level context menu: fires for right-clicks that no row
+            // or the ScrapbookPanel claimed (they stopPropagation). This is
+            // what makes the import actions reachable with zero projects.
+            onContextMenu={handleSidebarContextMenu}
             onDragOver={(e) => {
                 // Always allow drops — getData() is restricted during dragover in most browsers
                 e.preventDefault();
@@ -667,7 +734,7 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
             {projects.length === 0 && load.phase !== 'error' && (
                 <div style={{ padding: 16, textAlign: 'center', color: 'var(--apinox-foreground)', opacity: 0.7 }}>
                     <p style={{ margin: 0 }}>No projects yet</p>
-                    <p style={{ fontSize: 12, marginTop: 4 }}>Load a WSDL to create one</p>
+                    <p style={{ fontSize: 12, marginTop: 4 }}>Right-click here to import a workspace</p>
                 </div>
             )}
 
@@ -799,6 +866,18 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                     y={ctxMenu.y}
                     sections={buildSections(ctxMenu)}
                     onClose={closeCtxMenu}
+                />
+            )}
+
+            {/* Sidebar-level context menu — Import actions, shown for
+                right-clicks on unclaimed sidebar surfaces (incl. the empty
+                state, which has no rows). */}
+            {sidebarCtxMenu && (
+                <SidebarContextMenu
+                    x={sidebarCtxMenu.x}
+                    y={sidebarCtxMenu.y}
+                    sections={buildSidebarSections()}
+                    onClose={closeSidebarCtxMenu}
                 />
             )}
 

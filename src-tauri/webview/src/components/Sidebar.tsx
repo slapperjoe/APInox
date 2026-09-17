@@ -181,6 +181,7 @@ export const Sidebar: React.FC = () => {
                             onExportWorkspace={unifiedProps.onExportWorkspace}
                             onBulkImport={unifiedProps.onBulkImport}
                             onImportSoapUI={unifiedProps.onImportSoapUI}
+                            onImportWorkspace={unifiedProps.onImportWorkspace}
                             onGenerateTestSuite={unifiedProps.onGenerateTestSuite}
                             onAddRequestToTestCase={unifiedProps.onAddRequestToTestCase}
                             onReorderOperation={unifiedProps.onReorderOperation}

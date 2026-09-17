@@ -290,6 +290,7 @@ function MenuItemRow({ item, onCopy }: { item: CtxMenuItem; onCopy: (text: strin
             }}
             onMouseEnter={handleSubMenuEnter}
             onMouseLeave={handleSubMenuLeave}
+            onContextMenu={e => e.stopPropagation()}
           >
             {item.subItems!.map((subItem, ii) => (
               <MenuItemRow key={ii} item={subItem} onCopy={onCopy} />
@@ -356,7 +357,13 @@ export function SidebarContextMenu({ x, y, sections, onClose, onCopy }: SidebarC
 
   return (
     <>
-      <MenuContainer ref={menuRef} $top={top} $left={left} onMouseDown={e => e.stopPropagation()}>
+      <MenuContainer
+        ref={menuRef}
+        $top={top}
+        $left={left}
+        onMouseDown={e => e.stopPropagation()}
+        onContextMenu={e => e.stopPropagation()}
+      >
         {sections.map((section, si) => (
           <React.Fragment key={section.title}>
             <SectionHeader>{section.title}</SectionHeader>
