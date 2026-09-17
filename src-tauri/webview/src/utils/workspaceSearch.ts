@@ -456,34 +456,3 @@ export function searchTests(
     results.sort((a, b) => b.score - a.score);
     return results.slice(0, options.maxResults || 50);
 }
-
-// =============================================================================
-// UNIFIED SEARCH
-// =============================================================================
-
-/**
- * Search across all workspace views
- */
-export function searchWorkspace(
-    query: string,
-    projects: ApinoxProject[],
-    options: SearchOptions = {}
-): SearchResult[] {
-    const allResults: SearchResult[] = [];
-
-    const views = options.views || ['projects', 'tests'];
-
-    if (views.includes('projects')) {
-        allResults.push(...searchProjects(query, projects, options));
-    }
-
-    if (views.includes('tests')) {
-        allResults.push(...searchTests(query, projects, options));
-    }
-
-    // Sort by score and remove duplicates
-    allResults.sort((a, b) => b.score - a.score);
-
-    const maxResults = options.maxResults || 50;
-    return allResults.slice(0, maxResults);
-}

@@ -167,23 +167,6 @@ export const DangerButton = styled.button<{ $shake?: boolean }>`
 `;
 
 /**
- * TextButton - Minimal text-only button
- * Used for inline links or subtle actions
- */
-export const TextButton = styled.button`
-    ${baseButtonStyles}
-    background: transparent;
-    color: var(--apinox-textLink-foreground);
-    border: none;
-    padding: 2px 6px;
-    text-decoration: underline;
-    
-    &:hover:not(:disabled) {
-        color: var(--apinox-textLink-activeForeground);
-    }
-`;
-
-/**
  * ToggleButton - Button that shows active/inactive state
  * Used for mode selectors, filters, etc.
  */
@@ -219,23 +202,6 @@ export const RunButton = styled.button`
     ${baseButtonStyles}
     background: transparent;
     color: var(--apinox-testing-iconPassed);
-    border: none;
-    padding: 4px;
-    border-radius: 3px;
-    
-    &:hover:not(:disabled) {
-        background-color: var(--apinox-toolbar-hoverBackground);
-    }
-`;
-
-/**
- * StopButton - Error-colored button for stop actions
- * Used for stopping servers, canceling operations, etc.
- */
-export const StopButton = styled.button`
-    ${baseButtonStyles}
-    background: transparent;
-    color: var(--apinox-testing-iconFailed);
     border: none;
     padding: 4px;
     border-radius: 3px;
