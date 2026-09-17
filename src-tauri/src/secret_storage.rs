@@ -235,7 +235,6 @@ pub async fn delete_secret(env_name: String, field_name: String) -> Result<(), S
 }
 
 /// Resolve a value - if it's a secret reference, decrypt it
-#[tauri::command]
 pub async fn resolve_secret_value(value: String) -> Result<String, String> {
     if !is_secret_reference(&value) {
         return Ok(value);
@@ -246,17 +245,4 @@ pub async fn resolve_secret_value(value: String) -> Result<String, String> {
     let secrets = load_secrets()?;
     
     Ok(secrets.get(key).cloned().unwrap_or(value))
-}
-
-/// Check if value is a secret reference
-#[tauri::command]
-pub async fn is_secret_ref(value: String) -> Result<bool, String> {
-    Ok(is_secret_reference(&value))
-}
-
-/// List all secret keys (for debugging/management)
-#[tauri::command]
-pub async fn list_secret_keys() -> Result<Vec<String>, String> {
-    let secrets = load_secrets()?;
-    Ok(secrets.keys().cloned().collect())
 }

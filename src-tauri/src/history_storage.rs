@@ -155,16 +155,6 @@ pub async fn add_history_entry(
     Ok(())
 }
 
-/// Clear all history
-#[tauri::command]
-pub async fn clear_history(app_handle: tauri::AppHandle) -> Result<(), String> {
-    let history_path = get_history_path(&app_handle)?;
-    let mut data = load_history(&history_path);
-    data.entries.clear();
-    save_history(&history_path, &data)?;
-    Ok(())
-}
-
 /// Delete a specific history entry
 #[tauri::command]
 pub async fn delete_history_entry(
@@ -193,57 +183,4 @@ pub async fn toggle_star_history(
     }
     
     Ok(())
-}
-
-/// Get starred entries only
-#[tauri::command]
-pub async fn get_starred_history(app_handle: tauri::AppHandle) -> Result<Vec<RequestHistoryEntry>, String> {
-    let history_path = get_history_path(&app_handle)?;
-    let data = load_history(&history_path);
-    Ok(data.entries.into_iter().filter(|e| e.starred.unwrap_or(false)).collect())
-}
-
-/// Clear entries older than specified days
-#[tauri::command]
-pub async fn clear_history_older_than(
-    app_handle: tauri::AppHandle,
-    days: i64,
-) -> Result<(), String> {
-    let history_path = get_history_path(&app_handle)?;
-    let mut data = load_history(&history_path);
-    
-    let cutoff = chrono::Utc::now().timestamp_millis() - (days * 24 * 60 * 60 * 1000);
-    data.entries.retain(|e| e.timestamp > cutoff);
-    
-    save_history(&history_path, &data)?;
-    Ok(())
-}
-
-/// Update history configuration
-#[tauri::command]
-pub async fn update_history_config(
-    app_handle: tauri::AppHandle,
-    config: HistoryConfig,
-) -> Result<(), String> {
-    let history_path = get_history_path(&app_handle)?;
-    let mut data = load_history(&history_path);
-    
-    // Update config
-    data.config = config.clone();
-    
-    // Adjust entries if maxEntries changed
-    if data.entries.len() > config.max_entries {
-        data.entries.truncate(config.max_entries);
-    }
-    
-    save_history(&history_path, &data)?;
-    Ok(())
-}
-
-/// Get history configuration
-#[tauri::command]
-pub async fn get_history_config(app_handle: tauri::AppHandle) -> Result<HistoryConfig, String> {
-    let history_path = get_history_path(&app_handle)?;
-    let data = load_history(&history_path);
-    Ok(data.config)
 }

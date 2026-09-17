@@ -227,7 +227,6 @@ pub async fn parse_wsdl_as_project(
 }
 
 /// Refresh a unified project's WSDL source by service name
-#[tauri::command]
 pub async fn refresh_unified_project(service_name: String) -> Result<serde_json::Value, String> {
     // The frontend "Refresh WSDL" menu item re-parses the stored sourceUrl
     // directly (no proxy toggle in the menu); keep that behaviour. The
@@ -1457,7 +1456,6 @@ pub fn delete_unified_request(
 }
 
 /// Create a new request in a unified project operation
-#[tauri::command]
 pub fn new_unified_request(params: serde_json::Value) -> Result<serde_json::Value, String> {
     let project_name = params
         .get("projectName")

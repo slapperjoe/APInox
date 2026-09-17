@@ -87,15 +87,6 @@ pub async fn get_soap_pairs(
     Ok(svc.get_pairs(watch_id.as_deref()))
 }
 
-/// Kept for backward compatibility but returns empty — pairs replace events.
-#[tauri::command]
-pub async fn get_watcher_events(
-    _limit: Option<usize>,
-    _state: State<'_, LazyProxyAppState>,
-) -> Result<Vec<serde_json::Value>, String> {
-    Ok(vec![])
-}
-
 /// Kept for backward compatibility — clears all in-memory pairs.
 #[tauri::command]
 pub async fn clear_watcher_events(state: State<'_, LazyProxyAppState>, app: AppHandle) -> Result<(), String> {

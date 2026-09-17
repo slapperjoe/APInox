@@ -12,17 +12,6 @@ pub async fn get_breakpoint_rules(state: State<'_, LazyProxyAppState>, app: AppH
 }
 
 #[tauri::command]
-pub async fn set_breakpoint_rules(
-    rules: Vec<BreakpointRule>,
-    state: State<'_, LazyProxyAppState>,
-    app: AppHandle,
-) -> Result<(), String> {
-    let state = ensure_proxy_state(state, &app).await?;
-    state.breakpoint.lock().await.set_rules(rules.clone());
-    state.storage.save_breakpoint_rules(&rules).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
 pub async fn add_breakpoint_rule(
     rule: BreakpointRule,
     state: State<'_, LazyProxyAppState>,

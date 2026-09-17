@@ -13,13 +13,6 @@ pub async fn get_replace_rules(state: State<'_, LazyProxyAppState>, app: AppHand
 }
 
 #[tauri::command]
-pub async fn get_replacer_rule_errors(state: State<'_, LazyProxyAppState>, app: AppHandle) -> Result<HashMap<String, String>, String> {
-    let state = ensure_proxy_state(state, &app).await?;
-    let errors = state.replacer.lock().await.get_rule_errors();
-    Ok(errors)
-}
-
-#[tauri::command]
 pub async fn add_replace_rule(
     rule: ReplaceRule,
     state: State<'_, LazyProxyAppState>,

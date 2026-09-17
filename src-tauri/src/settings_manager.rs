@@ -221,28 +221,6 @@ pub async fn get_settings() -> Result<ApinoxConfig, String> {
     load_config()
 }
 
-/// Get raw config content (for text editor)
-#[tauri::command]
-pub async fn get_raw_settings() -> Result<String, String> {
-    let config_path = get_config_path()?;
-    
-    if !config_path.exists() {
-        let default_config = ApinoxConfig::default();
-        save_config(&default_config)?;
-    }
-    
-    fs::read_to_string(&config_path)
-        .map_err(|e| format!("Failed to read config file: {}", e))
-}
-
-/// Save raw config content (from text editor)
-#[tauri::command]
-pub async fn save_raw_settings(content: String) -> Result<(), String> {
-    let config_path = get_config_path()?;
-    fs::write(&config_path, content)
-        .map_err(|e| format!("Failed to write config file: {}", e))
-}
-
 /// Save full config
 #[tauri::command]
 pub async fn save_settings(config: ApinoxConfig) -> Result<(), String> {
@@ -272,30 +250,6 @@ pub async fn update_ui_settings(ui: UiConfig) -> Result<(), String> {
         config.ui = Some(ui);
     }
     
-    save_config(&config)
-}
-
-/// Update active environment
-#[tauri::command]
-pub async fn update_active_environment(env_name: String) -> Result<(), String> {
-    let mut config = load_config()?;
-    config.active_environment = Some(env_name);
-    save_config(&config)
-}
-
-/// Update open projects list
-#[tauri::command]
-pub async fn update_open_projects(paths: Vec<String>) -> Result<(), String> {
-    let mut config = load_config()?;
-    config.open_projects = Some(paths);
-    save_config(&config)
-}
-
-/// Update workflows
-#[tauri::command]
-pub async fn update_workflows(workflows: Vec<Value>) -> Result<(), String> {
-    let mut config = load_config()?;
-    config.workflows = Some(workflows);
     save_config(&config)
 }
 
@@ -340,18 +294,6 @@ pub(crate) fn delete_workflow_internal(workflow_id: &str) -> Result<(), String> 
     save_config(&config)
 }
 
-/// Get config directory path
-#[tauri::command]
-pub async fn get_config_dir_path() -> Result<String, String> {
-    Ok(get_config_dir()?.to_string_lossy().to_string())
-}
-
-/// Get config file path
-#[tauri::command]
-pub async fn get_config_file_path() -> Result<String, String> {
-    Ok(get_config_path()?.to_string_lossy().to_string())
-}
-
 /// Resolve environment variables (including secrets)
 #[tauri::command]
 pub async fn get_resolved_environment(env_name: String) -> Result<HashMap<String, String>, String> {
@@ -390,13 +332,6 @@ pub async fn get_resolved_environment(env_name: String) -> Result<HashMap<String
     }
     
     Ok(resolved)
-}
-
-/// Get global variables
-#[tauri::command]
-pub async fn get_global_variables() -> Result<HashMap<String, String>, String> {
-    let config = load_config()?;
-    Ok(config.globals.unwrap_or_default())
 }
 
 /// Public re-exports for use by other modules (e.g. performance runner)
