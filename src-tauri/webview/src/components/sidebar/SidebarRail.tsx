@@ -7,13 +7,13 @@ import {
   Home,
   Clock,
   Workflow,
-  Shuffle,
   Server,
   Eye,
   Activity,
   FileText,
   Layers,
 } from "lucide-react";
+import { TrafficLightIcon } from "../common/TrafficLightIcon";
 import { SidebarView } from "@shared/models";
 import { EnvironmentSelector } from "./EnvironmentSelector";
 
@@ -148,7 +148,7 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
       <RailSeparator />
 
       <NavItem
-        icon={Shuffle}
+        icon={TrafficLightIcon}
         active={activeView === SidebarView.PROXY}
         onClick={() => onChangeView(SidebarView.PROXY)}
         title="Proxy &amp; Traffic"
