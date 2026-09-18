@@ -2,10 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { MonacoEditorWrapper, Monaco } from '@apinox/request-editor/monaco';
 import { AlertTriangle, Settings, FileJson, Globe, Cloud, Server, ArrowUpCircle } from 'lucide-react';
-import { GeneralTab, EnvironmentsTab, GlobalsTab, IntegrationsTab, UpdatesTab, ApinoxConfig } from './settings';
+import { GeneralTab, EnvironmentsTab, GlobalsTab, IntegrationsTab, UpdatesTab, ApinoxConfig } from './tabs';
 
 import { useTheme } from '@apinox/request-editor/core'; // Use package ThemeContext
-import { Modal } from './Modal';
 import { TAG_COLORS } from '../../styles/colors';
 import { SPACING_SM, SPACING_MD } from '../../styles/spacing';
 import { ProxySettingsPanel } from '../proxy/ProxySettingsPanel';
@@ -31,14 +30,6 @@ const fillMissingEnvColors = (config: ApinoxConfig): [ApinoxConfig, boolean] => 
     }
     return changed ? [{ ...config, environments }, true] : [config, false];
 };
-
-const ModalWrapper = styled.div`
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-`;
 
 const TabContainer = styled.div`
     display: flex;
@@ -88,9 +79,9 @@ const ContentContainer = styled.div`
 
 // Save button removed - settings auto-save on tab changes/close
 
-// Types imported from ./settings/SettingsTypes.ts
+// Types imported from ./tabs/SettingsTypes.ts
 
-/** Enum for settings modal tab names */
+/** Enum for settings view tab names */
 enum SettingsTab {
     GUI = 'gui',
     ENVIRONMENTS = 'environments',
@@ -101,14 +92,15 @@ enum SettingsTab {
     JSON = 'json'
 }
 
-interface SettingsEditorModalProps {
+interface SettingsViewProps {
     rawConfig: string;
-    onClose: () => void;
+    /** Persisted by the parent (MainContent) — same contract as the old modal onSave. */
     onSave: (content: string, config?: any) => void;
+    /** Initial tab (e.g. deep-linked). Defaults to GUI. */
     initialTab?: string | null;
 }
 
-export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawConfig, onClose, onSave, initialTab }) => {
+export const SettingsView: React.FC<SettingsViewProps> = ({ rawConfig, onSave, initialTab }) => {
     const { theme } = useTheme();
     const monacoRef = useRef<Monaco | null>(null);
     const lastSavedConfigRef = useRef<string>('');
@@ -153,7 +145,7 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
                 'editor.lineHighlightBackground': getVar('--apinox-editor-lineHighlightBackground', 'transparent'),
                 'editorCursor.foreground': getVar('--apinox-editorCursor-foreground', isLight ? '#000000' : '#ffffff'),
                 'editorLineNumber.foreground': getVar('--apinox-editorLineNumber-foreground', isLight ? '#999999' : '#858585'),
-                'editorLineNumber.activeForeground': getVar('--apinox-editorLineNumber-activeForeground', isLight ? '#000000' : '#c6c6c6'),
+                'editorLineNumber.activeForeground': getVar('--apinox-editorLineNumber.activeForeground', isLight ? '#000000' : '#c6c6c6'),
                 'editorWhitespace.foreground': getVar('--apinox-editorWhitespace-foreground', isLight ? '#d3d3d3' : '#404040')
             }
         });
@@ -245,16 +237,6 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
         persistGuiConfig(guiConfig);
         setParseError(null);
         setActiveTab(tab);
-    };
-
-    const handleClose = () => {
-        if (activeTab === SettingsTab.JSON) {
-            if (!tryPersistJson()) return;
-        } else {
-            // Server config removed - proxy features moved to APIprox
-            persistGuiConfig(guiConfig);
-        }
-        onClose();
     };
 
     const handleGuiChange = (section: keyof ApinoxConfig, key: string, value: any) => {
@@ -419,6 +401,30 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
         }
     };
 
+    // Latest-ref mirrors: the unmount-time persist below captures the FIRST
+    // render's closures, and persistGuiConfig/tryPersistJson read `configLoaded`
+    // (and jsonContent) from those closures — stale-false on a first-render
+    // closure would silently skip the save. Re-running this effect (no deps)
+    // keeps the refs pointing at the current render's functions.
+    const persistRef = useRef({ tryPersistJson, persistGuiConfig });
+    useEffect(() => {
+        persistRef.current = { tryPersistJson, persistGuiConfig };
+    });
+
+    // Persist pending edits when the view unmounts (leaving the view == closing
+    // the old modal — the same moment handleClose used to fire).
+    const activeTabRef = useRef(activeTab);
+    const guiConfigRef = useRef(guiConfig);
+    useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
+    useEffect(() => { guiConfigRef.current = guiConfig; }, [guiConfig]);
+    useEffect(() => () => {
+        if (activeTabRef.current === SettingsTab.JSON) {
+            persistRef.current.tryPersistJson();
+        } else {
+            persistRef.current.persistGuiConfig(guiConfigRef.current);
+        }
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
     useEffect(() => {
         if (!configLoaded) return;
         if (activeTab === SettingsTab.JSON) return;
@@ -434,134 +440,122 @@ export const SettingsEditorModal: React.FC<SettingsEditorModalProps> = ({ rawCon
     }, [guiConfig, activeTab, configLoaded]);
 
     return (
-        <Modal
-            isOpen={true}
-            onClose={handleClose}
-            title="Settings"
-            size="large"
-            showCloseButton={true}
-        >
-            <ModalWrapper>
-                <TabContainer>
-                    <Tab $active={activeTab === SettingsTab.GUI} onClick={() => handleTabSwitch(SettingsTab.GUI)}>
-                        <Settings size={14} /> General
-                    </Tab>
-                    <Tab $active={activeTab === SettingsTab.ENVIRONMENTS} onClick={() => handleTabSwitch(SettingsTab.ENVIRONMENTS)}>
-                        <Globe size={14} /> Environments
-                    </Tab>
-                    <Tab $active={activeTab === SettingsTab.GLOBALS} onClick={() => handleTabSwitch(SettingsTab.GLOBALS)}>
-                        <Globe size={14} /> Globals
-                    </Tab>
-                    <Tab $active={activeTab === SettingsTab.INTEGRATIONS} onClick={() => handleTabSwitch(SettingsTab.INTEGRATIONS)}>
-                        <Cloud size={14} /> Integrations
-                    </Tab>
-                    <Tab $active={activeTab === SettingsTab.PROXY} onClick={() => handleTabSwitch(SettingsTab.PROXY)}>
-                        <Server size={14} /> Proxy
-                    </Tab>
-                    <Tab $active={activeTab === SettingsTab.UPDATES} onClick={() => handleTabSwitch(SettingsTab.UPDATES)}>
-                        <ArrowUpCircle size={14} /> Updates
-                    </Tab>
-                    <Tab $active={activeTab === SettingsTab.JSON} onClick={() => handleTabSwitch(SettingsTab.JSON)} style={{ marginLeft: 'auto', borderRight: 'none', borderLeft: '1px solid var(--apinox-panel-border)' }}>
-                        <FileJson size={14} /> JSON (Advanced)
-                    </Tab>
-                </TabContainer>
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+            <TabContainer>
+                <Tab $active={activeTab === SettingsTab.GUI} onClick={() => handleTabSwitch(SettingsTab.GUI)}>
+                    <Settings size={14} /> General
+                </Tab>
+                <Tab $active={activeTab === SettingsTab.ENVIRONMENTS} onClick={() => handleTabSwitch(SettingsTab.ENVIRONMENTS)}>
+                    <Globe size={14} /> Environments
+                </Tab>
+                <Tab $active={activeTab === SettingsTab.GLOBALS} onClick={() => handleTabSwitch(SettingsTab.GLOBALS)}>
+                    <Globe size={14} /> Globals
+                </Tab>
+                <Tab $active={activeTab === SettingsTab.INTEGRATIONS} onClick={() => handleTabSwitch(SettingsTab.INTEGRATIONS)}>
+                    <Cloud size={14} /> Integrations
+                </Tab>
+                <Tab $active={activeTab === SettingsTab.PROXY} onClick={() => handleTabSwitch(SettingsTab.PROXY)}>
+                    <Server size={14} /> Proxy
+                </Tab>
+                <Tab $active={activeTab === SettingsTab.UPDATES} onClick={() => handleTabSwitch(SettingsTab.UPDATES)}>
+                    <ArrowUpCircle size={14} /> Updates
+                </Tab>
+                <Tab $active={activeTab === SettingsTab.JSON} onClick={() => handleTabSwitch(SettingsTab.JSON)} style={{ marginLeft: 'auto', borderRight: 'none', borderLeft: '1px solid var(--apinox-panel-border)' }}>
+                    <FileJson size={14} /> JSON (Advanced)
+                </Tab>
+            </TabContainer>
 
-                <ContentContainer>
-                    {activeTab === SettingsTab.GUI && (
-                        <GeneralTab config={guiConfig} onChange={handleGuiChange} />
-                    )}
+            <ContentContainer>
+                {activeTab === SettingsTab.GUI && (
+                    <GeneralTab config={guiConfig} onChange={handleGuiChange} />
+                )}
 
-                    {activeTab === SettingsTab.ENVIRONMENTS && (
-                        <EnvironmentsTab
-                            config={guiConfig}
-                            selectedEnvKey={selectedEnvKey}
-                            setSelectedEnvKey={setSelectedEnvKey}
-                            onAddEnv={handleAddEnv}
-                            onDeleteEnv={handleDeleteEnv}
-                            onSetActive={handleSetActive}
-                            onEnvChange={handleEnvChange}
-                            onRenameEnv={handleRenameEnv}
-                            onImportEnvironments={(envs, activeEnv) => {
-                                setGuiConfig(prev => ({
-                                    ...prev,
-                                    environments: { ...prev.environments, ...envs },
-                                    activeEnvironment: activeEnv || prev.activeEnvironment
-                                }));
+                {activeTab === SettingsTab.ENVIRONMENTS && (
+                    <EnvironmentsTab
+                        config={guiConfig}
+                        selectedEnvKey={selectedEnvKey}
+                        setSelectedEnvKey={setSelectedEnvKey}
+                        onAddEnv={handleAddEnv}
+                        onDeleteEnv={handleDeleteEnv}
+                        onSetActive={handleSetActive}
+                        onEnvChange={handleEnvChange}
+                        onRenameEnv={handleRenameEnv}
+                        onImportEnvironments={(envs, activeEnv) => {
+                            setGuiConfig(prev => ({
+                                ...prev,
+                                environments: { ...prev.environments, ...envs },
+                                activeEnvironment: activeEnv || prev.activeEnvironment
+                            }));
+                        }}
+                    />
+                )}
+
+                {activeTab === SettingsTab.GLOBALS && (
+                    <GlobalsTab
+                        config={guiConfig}
+                        selectedGlobalKey={selectedGlobalKey}
+                        setSelectedGlobalKey={setSelectedGlobalKey}
+                        onAddGlobal={handleAddGlobal}
+                        onDeleteGlobal={handleDeleteGlobal}
+                        onGlobalKeyChange={handleGlobalKeyChange}
+                        onGlobalValueChange={handleGlobalValueChange}
+                    />
+                )}
+
+                {activeTab === SettingsTab.INTEGRATIONS && (
+                    <IntegrationsTab
+                        config={guiConfig}
+                        onConfigChange={(field, value) => setGuiConfig(prev => ({ ...prev, [field]: value }))}
+                        sendMessage={(msg) => bridge.sendMessage(msg)}
+                    />
+                )}
+
+                {activeTab === SettingsTab.PROXY && (
+                    <div style={{ flex: 1, overflow: 'auto' }}>
+                        <ProxySettingsPanel
+                            ignoreRules={ignoreRules}
+                            onRemoveIgnoreRule={removeIgnoreRule}
+                            onAddIgnoreRule={addIgnoreRule}
+                        />
+                    </div>
+                )}
+
+                {activeTab === SettingsTab.UPDATES && (
+                    <UpdatesTab />
+                )}
+
+                {activeTab === SettingsTab.JSON && (
+                    <>
+                        {parseError && (
+                            <div style={{ padding: '8px', background: 'var(--apinox-inputValidation-errorBackground)', color: 'var(--apinox-inputValidation-errorForeground)' }}>
+                                <AlertTriangle size={14} style={{ verticalAlign: 'middle', marginRight: '6px' }} />
+                                {parseError}
+                            </div>
+                        )}
+                        <MonacoEditorWrapper
+                            // Fills the remaining work-area height (the old modal
+                            // used a vh cap because its height was
+                            // content-driven).
+                            height="100%"
+                            language="json"
+                            theme={editorTheme}
+                            value={jsonContent}
+                            onChange={(val) => setJsonContent(val || '')}
+                            options={{
+                                minimap: { enabled: false },
+                                automaticLayout: true,
+                                scrollBeyondLastLine: false,
+                                formatOnPaste: true,
+                                formatOnType: true
+                            }}
+                            onMount={(_editor, monaco) => {
+                                monacoRef.current = monaco;
+                                applyEditorTheme(monaco);
                             }}
                         />
-                    )}
-
-                    {activeTab === SettingsTab.GLOBALS && (
-                        <GlobalsTab
-                            config={guiConfig}
-                            selectedGlobalKey={selectedGlobalKey}
-                            setSelectedGlobalKey={setSelectedGlobalKey}
-                            onAddGlobal={handleAddGlobal}
-                            onDeleteGlobal={handleDeleteGlobal}
-                            onGlobalKeyChange={handleGlobalKeyChange}
-                            onGlobalValueChange={handleGlobalValueChange}
-                        />
-                    )}
-
-                    {activeTab === SettingsTab.INTEGRATIONS && (
-                        <IntegrationsTab
-                            config={guiConfig}
-                            onConfigChange={(field, value) => setGuiConfig(prev => ({ ...prev, [field]: value }))}
-                            sendMessage={(msg) => bridge.sendMessage(msg)}
-                        />
-                    )}
-
-                    {activeTab === SettingsTab.PROXY && (
-                        <div style={{ flex: 1, overflow: 'auto' }}>
-                            <ProxySettingsPanel
-                                ignoreRules={ignoreRules}
-                                onRemoveIgnoreRule={removeIgnoreRule}
-                                onAddIgnoreRule={addIgnoreRule}
-                            />
-                        </div>
-                    )}
-
-                    {activeTab === SettingsTab.UPDATES && (
-                        <UpdatesTab />
-                    )}
-
-                    {activeTab === SettingsTab.JSON && (
-                        <>
-                            {parseError && (
-                                <div style={{ padding: '8px', background: 'var(--apinox-inputValidation-errorBackground)', color: 'var(--apinox-inputValidation-errorForeground)' }}>
-                                    <AlertTriangle size={14} style={{ verticalAlign: 'middle', marginRight: '6px' }} />
-                                    {parseError}
-                                </div>
-                            )}
-                            <MonacoEditorWrapper
-                                // Definite (viewport-relative) height, not "100%":
-                                // the modal's height is content-driven (max-height
-                                // only), so a percentage resolves against an
-                                // auto-height chain and the editor collapses to a
-                                // few pixels. ScriptPlaygroundModal uses the same
-                                // pattern (calc(95vh - 120px)).
-                                height="min(60vh, 480px)"
-                                language="json"
-                                theme={editorTheme}
-                                value={jsonContent}
-                                onChange={(val) => setJsonContent(val || '')}
-                                options={{
-                                    minimap: { enabled: false },
-                                    automaticLayout: true,
-                                    scrollBeyondLastLine: false,
-                                    formatOnPaste: true,
-                                    formatOnType: true
-                                }}
-                                onMount={(_editor, monaco) => {
-                                    monacoRef.current = monaco;
-                                    applyEditorTheme(monaco);
-                                }}
-                            />
-                        </>
-                    )}
-                </ContentContainer>
-
-            </ModalWrapper>
-        </Modal>
+                    </>
+                )}
+            </ContentContainer>
+        </div>
     );
 };
