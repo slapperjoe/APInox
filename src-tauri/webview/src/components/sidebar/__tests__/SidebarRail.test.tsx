@@ -61,4 +61,24 @@ describe('SidebarRail (workspace tab removal)', () => {
         // active rail item — they are only reachable programmatically.
         expect(screen.queryByTitle('Projects')).not.toBeInTheDocument();
     });
+
+    it('renders an active Settings rail item for SETTINGS and routes clicks to onOpenSettings', () => {
+        const onOpenSettings = vi.fn();
+        const { container } = render(
+            <SidebarRail
+                activeView={SidebarView.SETTINGS}
+                onChangeView={vi.fn()}
+                onOpenSettings={onOpenSettings}
+            />,
+        );
+
+        const settings = container.querySelector('div[title="Settings"]')!;
+        expect(settings).toBeTruthy();
+        // The active state highlights the icon wrapper (list selection background).
+        expect(settings.querySelector('div')!.style.backgroundColor).toBe(
+            'var(--apinox-list-activeSelectionBackground)',
+        );
+        fireEvent.click(settings);
+        expect(onOpenSettings).toHaveBeenCalledTimes(1);
+    });
 });
