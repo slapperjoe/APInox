@@ -590,6 +590,7 @@ export enum SidebarView {
     MOCK = 'mock',       // Mock server (from APIprox)
     WATCHER = 'watcher', // File watcher / SOAP pair viewer (from APIprox)
     NOTES = 'notes',     // Notes / markdown scratchpad
+    SETTINGS = 'settings', // Settings (full work-area view, was a modal)
 }
 
 export interface ApinoxConfig {

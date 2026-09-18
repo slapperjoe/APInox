@@ -76,7 +76,8 @@ export const NavigationProvider = ({ children }: { children: ReactNode }) => {
                             'watcher': SidebarView.WATCHER,
                             'tests': SidebarView.TESTS,
                             'performance': SidebarView.PERFORMANCE,
-                            'history': SidebarView.HISTORY
+                            'history': SidebarView.HISTORY,
+                            'settings': SidebarView.SETTINGS
                         };
                         const view = viewMap[message.view] || message.view as SidebarView;
                         setActiveView(view);
