@@ -89,7 +89,7 @@
 - `workspace/ScriptStepEditor.tsx`
 
 ### Modals (App-specific logic)
-- `modals/SettingsEditorModal.tsx`
+- `settings/SettingsView.tsx` (full work-area view, was `modals/SettingsEditorModal.tsx`)
 - `modals/AddToProjectModal.tsx`
 - `modals/AddToTestCaseModal.tsx`
 - `modals/BulkImportModal.tsx`

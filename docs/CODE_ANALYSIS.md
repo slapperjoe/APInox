@@ -126,7 +126,7 @@ The codebase has been significantly improved. Key accomplishments:
 Top Source Files (Updated 2026-01-01):
 1. webview/src/components/WorkspaceLayout.tsx   ~925 lines
 2. webview/src/App.tsx                          ~1,100 lines
-3. webview/src/components/modals/SettingsEditorModal.tsx  ~485 lines
+3. webview/src/components/settings/SettingsView.tsx  ~570 lines (full work-area view, was modals/SettingsEditorModal.tsx)
 4. webview/src/components/sidebar/ServerUi.tsx  ~400 lines
 5. src/services/ProxyService.ts                 ~400 lines
 ```
