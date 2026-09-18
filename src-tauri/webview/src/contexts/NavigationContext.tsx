@@ -2,19 +2,6 @@ import React, { createContext, useContext, useState, useEffect, startTransition,
 import { SidebarView } from '@shared/models';
 import { BackendCommand } from '@shared/messages';
 
-declare const __APP_VERSION__: string;
-
-const LAST_OPENED_VERSION_KEY = 'apinox:lastOpenedVersion';
-
-function shouldShowWelcomeOnStartup(): boolean {
-    const current = __APP_VERSION__; // e.g. "0.17.122"
-    const currentPatch = parseInt(current.split('.')[2] ?? '0', 10);
-    const stored = localStorage.getItem(LAST_OPENED_VERSION_KEY) ?? '';
-    const storedPatch = parseInt(stored.split('.')[2] ?? '0', 10);
-    localStorage.setItem(LAST_OPENED_VERSION_KEY, current);
-    return currentPatch > storedPatch;
-}
-
 interface NavigationContextType {
     activeView: SidebarView;
     setActiveView: React.Dispatch<React.SetStateAction<SidebarView>>;
@@ -34,9 +21,7 @@ export const useNavigation = () => {
 };
 
 export const NavigationProvider = ({ children }: { children: ReactNode }) => {
-    const [activeView, _setActiveView] = useState<SidebarView>(
-        () => shouldShowWelcomeOnStartup() ? SidebarView.HOME : SidebarView.UNIFIED_EXPLORER
-    );
+    const [activeView, _setActiveView] = useState<SidebarView>(SidebarView.UNIFIED_EXPLORER);
     const [sidebarExpanded, setSidebarExpanded] = useState<boolean>(true);
 
     const toggleSidebar = () => setSidebarExpanded(prev => !prev);
@@ -69,7 +54,6 @@ export const NavigationProvider = ({ children }: { children: ReactNode }) => {
                         const viewMap: Record<string, SidebarView> = {
                             'explorer': SidebarView.UNIFIED_EXPLORER,
                             'unified_explorer': SidebarView.UNIFIED_EXPLORER,
-                            'home': SidebarView.HOME,
                             'projects': SidebarView.UNIFIED_EXPLORER,
                             'proxy': SidebarView.PROXY,
                             'mock': SidebarView.MOCK,

@@ -25,8 +25,7 @@ export default defineConfig({
         dedupe: ['react', 'react-dom', 'react/jsx-runtime', 'styled-components']
     },
     define: {
-        '__APP_VERSION__': JSON.stringify(pkg.version),
-        '__CHANGELOG__': '""'
+        '__APP_VERSION__': JSON.stringify(pkg.version)
     },
     test: {
         globals: true,

@@ -1,40 +1,29 @@
 import React from 'react';
 import styled from 'styled-components';
-import ReactMarkdown from 'react-markdown';
-import { Logo, MarkdownContainer } from '../../styles/WorkspaceLayout.styles';
-import titleDark from '../../assets/app-title-dark.png';
-import titleLight from '../../assets/app-title-light.jpg';
-import { SPACING_XL } from '../../styles/spacing';
 
-declare const __CHANGELOG__: string;
+/**
+ * WelcomePanel.tsx
+ *
+ * Generic empty-state placeholder shown when a view (WORKFLOWS, fallback) has
+ * nothing selected. The former HOME/changelog welcome page (logo + embedded
+ * changelog) was removed — the unified explorer is the app entry point.
+ */
 
-interface WelcomePanelProps {
-    changelog?: string;
-}
-
-const WelcomeContainer = styled.div`
-    padding: ${SPACING_XL};
+const PlaceholderContainer = styled.div`
     flex: 1;
-    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
     color: var(--apinox-editor-foreground);
-    font-family: var(--apinox-font-family);
-    position: relative;
-    z-index: 1;
+    opacity: 0.6;
 `;
 
-export const WelcomePanel: React.FC<WelcomePanelProps> = ({ changelog }) => {
-    const content = changelog || __CHANGELOG__;
+export const WelcomePanel: React.FC = () => {
     return (
-        <WelcomeContainer>
-            <Logo src={titleDark} className="dark-only" alt="APInox" />
-            <Logo src={titleLight} className="light-only" alt="APInox" />
-            <h1>Welcome to APInox</h1>
-            <p>Load a WSDL to see available operations.</p>
-            {content && (
-                <MarkdownContainer>
-                    <ReactMarkdown>{content}</ReactMarkdown>
-                </MarkdownContainer>
-            )}
-        </WelcomeContainer>
+        <PlaceholderContainer>
+            <p style={{ margin: 0, fontSize: 'var(--apinox-fs-md, 14px)' }}>Nothing selected</p>
+        </PlaceholderContainer>
     );
 };

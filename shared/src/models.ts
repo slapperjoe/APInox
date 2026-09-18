@@ -576,7 +576,9 @@ export interface WatcherEvent {
 }
 
 export enum SidebarView {
-    HOME = 'home',
+    // Phase C: the legacy HOME (changelog/welcome) view + its rail item were
+    // removed — the unified explorer is the app entry point. The 'home'
+    // deep-link no longer resolves (no callers existed).
     // Phase B (t_86c34d38): the legacy PROJECTS view was deleted. Its
     // `PROJECTS = 'projects'` member is gone; the 'projects' string still
     // appears as a search-result view label (workspaceSearch) and as the

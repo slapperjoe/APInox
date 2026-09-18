@@ -59,9 +59,6 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": {
-      "../CHANGELOG.md": "CHANGELOG.md"
-    },
     "linux": {
       "appimage": {
         "files": {

@@ -1354,7 +1354,6 @@ const MainContent: React.FC = () => {
     }, [projects]);
 
     // Workspace State
-    const [changelog, setChangelog] = useState<string>('');
     const [requestHistory, setRequestHistory] = useState<RequestHistoryEntry[]>([]);
 
     useEffect(() => {
@@ -1445,7 +1444,6 @@ const MainContent: React.FC = () => {
         setWorkspaceDirty,
         setSavedProjects,
         setSaveErrors,
-        setChangelog,
         // Mock/Proxy setters moved to MockProxyContext but kept for useSidebarCallbacks via MainContent state
         setActiveView,
         setRequestHistory,

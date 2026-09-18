@@ -587,10 +587,6 @@ export const WorkspaceLayout: React.FC = () => {
         */
     };
 
-    if (activeView === SidebarView.HOME) {
-        return <WelcomePanel changelog={undefined} />;
-    }
-
     // PERFORMANCE VIEW - REMOVED: Moved to APIprox
     // Performance testing is now available in the APIprox project
 
@@ -772,11 +768,7 @@ export const WorkspaceLayout: React.FC = () => {
         
         if (!selectedWorkflowStep) {
             console.log('[WorkspaceLayout] No workflow step selected, showing welcome');
-            return (
-                <WelcomePanel 
-                    changelog={undefined}
-                />
-            );
+            return <WelcomePanel />;
         }
         
         // Check if a workflow is selected (but not a step within it)
@@ -897,7 +889,7 @@ export const WorkspaceLayout: React.FC = () => {
                 />
             );
         }
-        return <WelcomePanel changelog={undefined} />;
+        return <WelcomePanel />;
     }
 
     // TypeScript flow analysis: After the guard above, activeRequest is guaranteed to be non-null

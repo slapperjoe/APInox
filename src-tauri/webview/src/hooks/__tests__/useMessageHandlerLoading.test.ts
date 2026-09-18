@@ -59,7 +59,6 @@ describe('useMessageHandler loading states', () => {
             setWorkspaceDirty: vi.fn(),
             setSavedProjects: vi.fn(),
             setSaveErrors: vi.fn(),
-            setChangelog: vi.fn(),
             setActiveView: vi.fn(),
             setRequestHistory: vi.fn(),
             setWsdlDiff: vi.fn(),

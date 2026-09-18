@@ -96,7 +96,6 @@ export enum BackendCommand {
     CoordinatorStatus = 'coordinatorStatus',
     ClipboardText = 'clipboardText',
     SettingsUpdate = 'settingsUpdate',
-    Changelog = 'changelog',
     RestoreAutosave = 'restoreAutosave',
     ProjectSaved = 'projectSaved',
     WorkspaceSaved = 'workspaceSaved',

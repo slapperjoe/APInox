@@ -4,7 +4,6 @@ import {
   HelpCircle,
   Compass,
   FlaskConical,
-  Home,
   Clock,
   Workflow,
   Server,
@@ -195,12 +194,6 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
           gap: 10,
         }}
       >
-        <NavItem
-          icon={Home}
-          active={activeView === SidebarView.HOME}
-          onClick={() => onChangeView(SidebarView.HOME)}
-          title="Home"
-        />
         <NavItem
           icon={Settings}
           active={activeView === SidebarView.SETTINGS}

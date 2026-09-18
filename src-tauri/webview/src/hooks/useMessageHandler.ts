@@ -43,7 +43,6 @@ export interface MessageHandlerState {
     setWorkspaceDirty: React.Dispatch<React.SetStateAction<boolean>>;
     setSavedProjects: React.Dispatch<React.SetStateAction<Set<string>>>;
     setSaveErrors: React.Dispatch<React.SetStateAction<Map<string, string>>>;
-    setChangelog: React.Dispatch<React.SetStateAction<string>>;
     setActiveView: React.Dispatch<React.SetStateAction<SidebarView>>;
     setRequestHistory: React.Dispatch<React.SetStateAction<RequestHistoryEntry[]>>;
 
@@ -83,7 +82,6 @@ export function useMessageHandler(state: MessageHandlerState) {
         setWorkspaceDirty,
         setSavedProjects,
         setSaveErrors,
-        setChangelog,
         // setWatcherHistory, // Removed - watcher features
         // setProxyHistory,
         // setProxyRunning,
@@ -491,11 +489,6 @@ export function useMessageHandler(state: MessageHandlerState) {
                             debugLog('[useMessageHandler] restoreAutosave FAILED', { error: String(e) });
                         }
                     }
-                    break;
-
-                case BackendCommand.Changelog:
-                    debugLog('[useMessageHandler] changelog received', { length: message.content?.length });
-                    setChangelog(message.content);
                     break;
 
 

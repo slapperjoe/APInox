@@ -3,8 +3,8 @@ import "@testing-library/jest-dom";
 // ─────────────────────────────────────────────────────────────────────────────
 // jsdom environment polyfills (vitest v4 jsdom does not provide these)
 //
-// 1. localStorage — several contexts read/write it unconditionally
-//    (e.g. NavigationContext.shouldShowWelcomeOnStartup). jsdom without
+// 1. localStorage — several contexts/components read/write it unconditionally
+//    (e.g. ThemeContext, SelectionContext). jsdom without
 //    --localstorage-file leaves `localStorage` undefined, so provide a
 //    minimal in-memory Storage when (and only when) it is missing.
 // 2. document.queryCommandSupported — monaco-editor's clipboard contribution

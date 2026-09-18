@@ -8,18 +8,19 @@
  * resolution so they FAIL if the workspace/explorer tab reappears or the entry
  * points stop resolving to the unified explorer:
  *
- *   1. A returning user (no welcome) starts on UNIFIED_EXPLORER.
- *   2. A first-run user (welcome) starts on HOME.
- *   3. The `SwitchToView` deep-link ("direct URL access") for the legacy
+ *   1. Every user (returning or first-run) starts on UNIFIED_EXPLORER. The
+ *      former version-bump "welcome" (HOME) flow was removed with the
+ *      changelog page — there is no welcome screen to route to anymore.
+ *   2. The `SwitchToView` deep-link ("direct URL access") for the legacy
  *      `'explorer'` alias and `'unified_explorer'` both resolve to
  *      UNIFIED_EXPLORER — the old WSDL-explorer entry point now lands on the
  *      unified explorer.
- *   4. `'projects'` redirects to UNIFIED_EXPLORER (Phase B t_86c34d38 EXPLICIT
+ *   3. `'projects'` redirects to UNIFIED_EXPLORER (Phase B t_86c34d38 EXPLICIT
  *      DECISION: the PROJECTS view + enum member are deleted; the legacy
  *      deep-link key is retained for backward compat and resolves to the
  *      sole project surface — see audit §5/§6). This pins the redirect so a
  *      future change to it is deliberate.
- *   5. Other views (tests) are unaffected.
+ *   4. Other views (tests) are unaffected.
  *
  * This exercises the REAL NavigationProvider message handler + viewMap (no
  * context mocking), driving the same `window` `message` events the production
@@ -31,8 +32,6 @@ import React from 'react';
 import { NavigationProvider, useNavigation } from '../NavigationContext';
 import { SidebarView } from '@shared/models';
 import { BackendCommand } from '@shared/messages';
-
-const LAST_OPENED_VERSION_KEY = 'apinox:lastOpenedVersion';
 
 /** Reads the live activeView and surfaces it for assertions. */
 const Probe: React.FC = () => {
@@ -48,16 +47,9 @@ const Probe: React.FC = () => {
     );
 };
 
-/** Seed a "returning user" (patch >= current) so the welcome flow is skipped. */
-const seedReturningUser = () => {
+/** Reset localStorage so startup view resolution is deterministic. */
+const seedClean = () => {
     localStorage.clear();
-    localStorage.setItem(LAST_OPENED_VERSION_KEY, '9.99.999');
-};
-
-/** Seed a "first run" (patch < current) so the welcome flow triggers. */
-const seedFirstRun = () => {
-    localStorage.clear();
-    localStorage.setItem(LAST_OPENED_VERSION_KEY, '0.0.0');
 };
 
 /** Post a SwitchToView deep-link through the same window message channel. */
@@ -76,7 +68,7 @@ beforeEach(() => {
 
 describe('NavigationContext — unified explorer entry point (deep-link / direct-URL)', () => {
     it('starts a returning user on the unified explorer (not the legacy workspace)', () => {
-        seedReturningUser();
+        seedClean();
         render(
             <NavigationProvider>
                 <Probe />
@@ -86,19 +78,21 @@ describe('NavigationContext — unified explorer entry point (deep-link / direct
         expect(screen.getByTestId('probe')).toHaveAttribute('data-active', SidebarView.UNIFIED_EXPLORER);
     });
 
-    it('starts a first-run user on the welcome (HOME) screen', () => {
-        seedFirstRun();
+    it('starts a first-run user on the unified explorer (no welcome screen anymore)', () => {
+        seedClean();
         render(
             <NavigationProvider>
                 <Probe />
             </NavigationProvider>,
         );
 
-        expect(screen.getByTestId('probe')).toHaveAttribute('data-active', SidebarView.HOME);
+        // The version-bump "welcome" (HOME) flow was removed with the
+        // changelog page — a fresh install boots straight into the explorer.
+        expect(screen.getByTestId('probe')).toHaveAttribute('data-active', SidebarView.UNIFIED_EXPLORER);
     });
 
     it('redirects the legacy "explorer" deep-link to the unified explorer', async () => {
-        seedReturningUser();
+        seedClean();
         render(
             <NavigationProvider>
                 <Probe />
@@ -113,7 +107,7 @@ describe('NavigationContext — unified explorer entry point (deep-link / direct
     });
 
     it('resolves the "unified_explorer" deep-link to the unified explorer', async () => {
-        seedReturningUser();
+        seedClean();
         render(
             <NavigationProvider>
                 <Probe />
@@ -128,7 +122,7 @@ describe('NavigationContext — unified explorer entry point (deep-link / direct
     });
 
     it('redirects the legacy "projects" deep-link to the unified explorer (Phase B)', async () => {
-        seedReturningUser();
+        seedClean();
         render(
             <NavigationProvider>
                 <Probe />
@@ -148,7 +142,7 @@ describe('NavigationContext — unified explorer entry point (deep-link / direct
     });
 
     it('leaves other views (tests) unaffected', async () => {
-        seedReturningUser();
+        seedClean();
         render(
             <NavigationProvider>
                 <Probe />

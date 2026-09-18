@@ -9,50 +9,6 @@ import styled, { css } from 'styled-components';
 import { ChevronLeft } from 'lucide-react';
 import { shake } from '../components/common/Button';
 
-export const Logo = styled.img`
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    max-width: 800px;
-    width: 60vw;
-    opacity: 0.1;
-    pointer-events: none;
-    z-index: 0;
-    filter: grayscale(0.3);
-    
-    /* Show/hide based on theme */
-    &.dark-only {
-        display: block;
-    }
-    
-    &.light-only {
-        display: none;
-    }
-    
-    /* Solarized Light and Light themes: show light logo */
-    body[data-theme="light"] &.light-only,
-    body[data-theme="solarized-light"] &.light-only {
-        display: block;
-    }
-    
-    body[data-theme="light"] &.dark-only,
-    body[data-theme="solarized-light"] &.dark-only {
-        display: none;
-    }
-    
-    /* Dark and Solarized Dark themes: show dark logo (default) */
-    body[data-theme="dark"] &.dark-only,
-    body[data-theme="solarized-dark"] &.dark-only {
-        display: block;
-    }
-    
-    body[data-theme="dark"] &.light-only,
-    body[data-theme="solarized-dark"] &.light-only {
-        display: none;
-    }
-`;
-
 export const Content = styled.div`
     flex: 1;
     min-height: 0;
@@ -373,19 +329,6 @@ export const ResponseStatus = styled.span<{ $success: boolean }>`
 export const MiniButtonIcon = styled.span`
     display: inline-flex;
     margin-right: 4px;
-`;
-
-export const MarkdownContainer = styled.div`
-    margin-top: 20px;
-    padding-top: 10px;
-    border-top: 1px solid var(--apinox-panel-border);
-
-    h1, h2, h3 { border-bottom: 1px solid var(--apinox-panel-border); padding-bottom: 5px; margin-top: 1.5em; }
-    p { margin-bottom: 1em; }
-    ul { padding-left: 20px; }
-    code { background: var(--apinox-textCodeBlock-background); padding: 2px 4px; border-radius: 3px; font-family: monospace; }
-    pre { background: var(--apinox-textCodeBlock-background); padding: 10px; border-radius: 5px; overflow-x: auto; }
-    pre code { background: transparent; padding: 0; }
 `;
 
 export const Toolbar = styled.div`

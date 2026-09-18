@@ -80,7 +80,6 @@ describe('useMessageHandler', () => {
             setSelectedProjectName: vi.fn(),
             setWorkspaceDirty: vi.fn(),
             setSavedProjects: vi.fn(),
-            setChangelog: vi.fn(),
             setWatcherHistory: vi.fn(),
             setActiveView: vi.fn(),
             setActiveBreakpoint: vi.fn(),

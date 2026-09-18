@@ -171,7 +171,6 @@ export interface WorkspaceViewState {
 export interface WorkspaceConfigState {
     config?: any;
     defaultEndpoint?: string;
-    changelog?: string;
     onChangeEnvironment?: (env: string) => void;
     isReadOnly?: boolean;
     backendConnected?: boolean;

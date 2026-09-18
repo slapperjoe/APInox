@@ -1164,7 +1164,7 @@ function mapResponseToBackendEvent(command: string, data: any): BackendMessage |
                 filename: fileName
             };
         },
-        ['webviewReady']: (data) => data, // Pass through response with samplesProject and changelog
+        ['webviewReady']: (data) => data, // Pass through response with samplesProject
         ['getEnvironmentSecret']: (data) => ({
             command: 'environmentSecretResult',
             value: data?.value

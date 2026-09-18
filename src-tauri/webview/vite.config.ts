@@ -1,13 +1,9 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
-import fs from 'fs'
 
 // Read version from parent package.json
 const packageJson = require('../../package.json');
-
-// Embed changelog at build time
-const changelogContent = fs.readFileSync(path.resolve(__dirname, '../../CHANGELOG.md'), 'utf-8');
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -50,8 +46,7 @@ export default defineConfig({
     },
     envPrefix: ['VITE_', 'TAURI_'],
     define: {
-        '__APP_VERSION__': JSON.stringify(packageJson.version),
-        '__CHANGELOG__': JSON.stringify(changelogContent)
+        '__APP_VERSION__': JSON.stringify(packageJson.version)
     },
     optimizeDeps: {
         exclude: [
