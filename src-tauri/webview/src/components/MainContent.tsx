@@ -74,8 +74,8 @@ const ConfirmationModal = React.lazy(() =>
 const ExtractorModal = React.lazy(() =>
     import('./modals/ExtractorModal').then(module => ({ default: module.ExtractorModal }))
 );
-const SettingsEditorModal = React.lazy(() =>
-    import('./modals/SettingsEditorModal').then(module => ({ default: module.SettingsEditorModal }))
+const SettingsView = React.lazy(() =>
+    import('./settings/SettingsView').then(module => ({ default: module.SettingsView }))
 );
 const AddToDevOpsModal = React.lazy(() =>
     import('./modals/AddToDevOpsModal').then(module => ({ default: module.AddToDevOpsModal }))
@@ -503,6 +503,38 @@ const MainContent: React.FC = () => {
         }
     }, [unifiedProjects]);
     
+    // Settings save (moved verbatim from the old SettingsEditorModal render
+    // site): Tauri persists then re-fetches + emits SettingsUpdate so every
+    // consumer (env selector, proxy config, ...) sees the new config;
+    // browser dev falls back to fire-and-forget.
+    const handleSettingsSave = useCallback(async (content: string, config?: any) => {
+        if (isTauri()) {
+            try {
+                await bridge.sendMessageAsync({
+                    command: FrontendCommand.SaveSettings,
+                    raw: !config,
+                    content,
+                    config
+                });
+                const data: any = await bridge.sendMessageAsync({
+                    command: FrontendCommand.GetSettings
+                });
+                bridge.emit({
+                    command: BackendCommand.SettingsUpdate,
+                    config: data?.config ?? data ?? null,
+                    raw: data?.raw,
+                    configDir: data?.configDir,
+                    configPath: data?.configPath
+                } as any);
+            } catch (e) {
+                // fallback to fire-and-forget
+                bridge.sendMessage({ command: FrontendCommand.SaveSettings, raw: !config, content, config });
+            }
+            return;
+        }
+        bridge.sendMessage({ command: 'saveSettings', raw: !config, content, config });
+    }, []);
+    
     // Unified import pipeline (t_b2eae8b0): parse a workspace/project export
     // file into nested projects via the `importWorkspace` command, persist
     // each to the canonical UNIFIED store (save_imported_project_as_unified),
@@ -675,11 +707,6 @@ const MainContent: React.FC = () => {
         hideCausalityData,
         setHideCausalityData,
 
-        showSettings,
-        setShowSettings,
-        initialSettingsTab,
-        setInitialSettingsTab,
-        openSettings,
         showHelp,
         setShowHelp,
         helpSection,
@@ -1795,7 +1822,7 @@ const MainContent: React.FC = () => {
         backendConnected,
         workspaceDirty,
         showBackendStatus: true,
-        onOpenSettings: () => setShowSettings(true),
+        onOpenSettings: () => handleSetActiveViewWrapper(SidebarView.SETTINGS),
         onOpenHelp: () => setShowHelp(true),
         onSaveUiState: handleSaveUiState,
         activeEnvironment: config?.activeEnvironment,
@@ -1837,7 +1864,7 @@ const MainContent: React.FC = () => {
         handleUnifiedScrapbookDelete, handleUnifiedScrapbookExecute,
         registerUnifiedExecute,
         activeView, handleSetActiveViewWrapper, sidebarExpanded, backendConnected,
-        workspaceDirty, handleSaveUiState, setShowSettings, setShowHelp,
+        workspaceDirty, handleSaveUiState, setShowHelp,
         isMobileDrawerOpen, isMobilePlatform, setIsMobileDrawerOpen, hasUpdate,
     ]);
 
@@ -1916,7 +1943,7 @@ const MainContent: React.FC = () => {
                 </div>
             )}
             {/* WorkspaceLayout using WorkspaceContext - no props needed */}
-            {activeView !== SidebarView.PROXY && activeView !== SidebarView.MOCK && activeView !== SidebarView.WATCHER && activeView !== SidebarView.NOTES && activeView !== SidebarView.UNIFIED_EXPLORER && (
+            {activeView !== SidebarView.PROXY && activeView !== SidebarView.MOCK && activeView !== SidebarView.WATCHER && activeView !== SidebarView.NOTES && activeView !== SidebarView.UNIFIED_EXPLORER && activeView !== SidebarView.SETTINGS && (
                 <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                     <WorkspaceContext.Provider value={workspaceContextValue}>
                         <Suspense fallback={<div style={{ flex: 1, background: 'var(--apinox-editor-background)' }} />}>
@@ -1944,6 +1971,13 @@ const MainContent: React.FC = () => {
                     <NotesEditorLazy />
                 </Suspense>
             )}
+            {activeView === SidebarView.SETTINGS && (
+                <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                    <Suspense fallback={<div style={{ flex: 1, background: 'var(--apinox-editor-background)' }} />}>
+                        <SettingsView rawConfig={rawConfig} onSave={handleSettingsSave} />
+                    </Suspense>
+                </div>
+            )}
             <Suspense fallback={null}>
                 {
                     showDevOpsModal && config?.azureDevOps?.orgUrl && config?.azureDevOps?.project && selectedRequest && (
@@ -1958,46 +1992,6 @@ const MainContent: React.FC = () => {
                     )
                 }
 
-                {
-                    showSettings && (
-                        <SettingsEditorModal
-                            rawConfig={rawConfig}
-                            onClose={() => {
-                                setShowSettings(false);
-                                setInitialSettingsTab(null);
-                            }}
-                            onSave={async (content, config) => {
-                                if (isTauri()) {
-                                    try {
-                                        await bridge.sendMessageAsync({
-                                            command: FrontendCommand.SaveSettings,
-                                            raw: !config,
-                                            content,
-                                            config
-                                        });
-                                        const data: any = await bridge.sendMessageAsync({
-                                            command: FrontendCommand.GetSettings
-                                        });
-                                        bridge.emit({
-                                            command: BackendCommand.SettingsUpdate,
-                                            config: data?.config ?? data ?? null,
-                                            raw: data?.raw,
-                                            configDir: data?.configDir,
-                                            configPath: data?.configPath
-                                        } as any);
-                                    } catch (e) {
-                                        // fallback to fire-and-forget
-                                        bridge.sendMessage({ command: FrontendCommand.SaveSettings, raw: !config, content, config });
-                                    }
-                                    return;
-                                }
-
-                                bridge.sendMessage({ command: 'saveSettings', raw: !config, content, config });
-                            }}
-                            initialTab={initialSettingsTab}
-                        />
-                    )
-                }
                 {
                     showHelp && (
                         <HelpModal

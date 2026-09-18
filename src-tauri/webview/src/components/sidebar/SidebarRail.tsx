@@ -201,7 +201,13 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
           onClick={() => onChangeView(SidebarView.HOME)}
           title="Home"
         />
-        <NavItem icon={Settings} onClick={onOpenSettings} title="Settings" showBadge={hasUpdate} />
+        <NavItem
+          icon={Settings}
+          active={activeView === SidebarView.SETTINGS}
+          onClick={onOpenSettings}
+          title="Settings"
+          showBadge={hasUpdate}
+        />
         <NavItem icon={HelpCircle} onClick={onOpenHelp} title="Help" />
         {onMobileClose && (
           <div

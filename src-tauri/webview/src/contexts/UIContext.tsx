@@ -69,17 +69,6 @@ interface UIContextValue {
     // MODAL STATE
     // -------------------------------------------------------------------------
 
-    /** Settings modal visibility */
-    showSettings: boolean;
-    setShowSettings: React.Dispatch<React.SetStateAction<boolean>>;
-
-    /** Initial tab when opening settings modal */
-    initialSettingsTab: string | null;
-    setInitialSettingsTab: React.Dispatch<React.SetStateAction<string | null>>;
-
-    /** Helper to open settings on a specific tab */
-    openSettings: (tab?: string) => void;
-
     /** Help modal visibility */
     showHelp: boolean;
     setShowHelp: React.Dispatch<React.SetStateAction<boolean>>;
@@ -161,8 +150,6 @@ export function UIProvider({ children }: UIProviderProps) {
     // MODAL STATE
     // -------------------------------------------------------------------------
 
-    const [showSettings, setShowSettings] = useState(false);
-    const [initialSettingsTab, setInitialSettingsTab] = useState<string | null>(null);
     const [showHelp, setShowHelp] = useState(false);
     const [helpSection, setHelpSection] = useState<string | null>(null);
     const [showDevOpsModal, setShowDevOpsModal] = useState(false);
@@ -205,14 +192,6 @@ export function UIProvider({ children }: UIProviderProps) {
     }, []);
 
     /**
-     * Open settings modal, optionally on a specific tab.
-     */
-    const openSettings = useCallback((tab?: string) => {
-        setInitialSettingsTab(tab || null);
-        setShowSettings(true);
-    }, []);
-
-    /**
      * Open help modal, optionally to a specific section.
      */
     const openHelp = useCallback((sectionId?: string) => {
@@ -251,11 +230,6 @@ export function UIProvider({ children }: UIProviderProps) {
         setIsResizing,
 
         // Modal State
-        showSettings,
-        setShowSettings,
-        initialSettingsTab,
-        setInitialSettingsTab,
-        openSettings,
         showHelp,
         setShowHelp,
         helpSection,

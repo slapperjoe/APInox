@@ -94,9 +94,9 @@ export const Sidebar: React.FC = () => {
     // it. The remaining sidebar children (Tests/Workflows/Performance/
     // History/Unified) use their own prop groups below.
 
-    const proxyFullPanelView = activeView === SidebarView.PROXY || activeView === SidebarView.MOCK || activeView === SidebarView.WATCHER;
+    const fullPanelView = activeView === SidebarView.PROXY || activeView === SidebarView.MOCK || activeView === SidebarView.WATCHER || activeView === SidebarView.SETTINGS;
     const historyEmpty = activeView === SidebarView.HISTORY && (!historyProps || historyProps.history.length === 0);
-    const hideContent = !sidebarExpanded || activeView === SidebarView.HOME || proxyFullPanelView || historyEmpty;
+    const hideContent = !sidebarExpanded || activeView === SidebarView.HOME || fullPanelView || historyEmpty;
 
     return (
         <SidebarContainer
