@@ -14,7 +14,7 @@
  */
 
 // ─── BUILD NUMBER (auto-managed — do not edit manually) ───────────────────
-const BUILD_NO = 363;
+const BUILD_NO = 368;
 // ─────────────────────────────────────────────────────────────────────────
 
 const fs = require("fs");
@@ -26,11 +26,21 @@ const scriptFile = __filename;
 
 const configFiles = {
   rootPackage: path.join(root, "package.json"),
-  webviewPackage: path.join(root, "src-tauri", "webview", "package.json"),
-  cargo: path.join(root, "src-tauri", "Cargo.toml"),
   tauriConfig: path.join(root, "src-tauri", "tauri.conf.json"),
   changelog: path.join(root, "CHANGELOG.md"),
 };
+// Single source of truth: root package.json.
+// - webview __APP_VERSION__ (vite/vitest) reads the ROOT package.json.
+// - Rust reads it at build time (src-tauri/build.rs → APINOX_APP_VERSION).
+// - tauri.conf.json carries the version for OS bundle metadata and
+//   release.yml ("Read bumped version" reads it with jq).
+// Intentionally NOT synced:
+// - src-tauri/Cargo.toml + Cargo.lock: the crate version is build metadata
+//   only; Rust self-identifies from APINOX_APP_VERSION, so bumping the app
+//   version no longer churns the lockfile.
+// - src-tauri/webview/package.json (+ lock): nothing reads the webview
+//   package version at runtime or build time; mirroring it only produced a
+//   stale file that re-dirtied the tree on every dev run.
 
 function run(cmd, opts = {}) {
   console.log(`\n> ${cmd}`);
@@ -127,7 +137,11 @@ function increment() {
 }
 
 // ── sync ───────────────────────────────────────────────────────────────────
-// Composes major.minor.BUILD_NO and writes it to all four config files.
+// Composes major.minor.BUILD_NO and writes it to the files that are actually
+// consumed: root package.json (single source of truth — webview
+// __APP_VERSION__ + Rust build.rs) and tauri.conf.json (bundle metadata).
+// Cargo.toml / Cargo.lock / webview package.json are no longer mirrored
+// (see the configFiles note above).
 // When called as a fresh Node.js process (after increment), BUILD_NO will
 // already hold the incremented value.
 function sync(forcedVersion) {
@@ -160,21 +174,6 @@ function sync(forcedVersion) {
     JSON.stringify(rootPkg, null, 2) + "\n",
   );
   console.log(`✓ package.json → ${targetVersion}`);
-
-  const webviewPkg = JSON.parse(
-    fs.readFileSync(configFiles.webviewPackage, "utf8"),
-  );
-  webviewPkg.version = targetVersion;
-  fs.writeFileSync(
-    configFiles.webviewPackage,
-    JSON.stringify(webviewPkg, null, 2) + "\n",
-  );
-  console.log(`✓ src-tauri/webview/package.json → ${targetVersion}`);
-
-  let cargo = fs.readFileSync(configFiles.cargo, "utf8");
-  cargo = cargo.replace(/^version = ".+"$/m, `version = "${targetVersion}"`);
-  fs.writeFileSync(configFiles.cargo, cargo);
-  console.log(`✓ src-tauri/Cargo.toml → ${targetVersion}`);
 
   const tauriConf = JSON.parse(
     fs.readFileSync(configFiles.tauriConfig, "utf8"),

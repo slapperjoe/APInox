@@ -15,7 +15,11 @@ use crate::utils::resolve_config_dir;
 
 const GITHUB_API_URL: &str =
     "https://api.github.com/repos/slapperjoe/apinox/releases/latest";
-const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
+// The app's user-visible version comes from the root package.json via
+// build.rs (APINOX_APP_VERSION), so TitleBar, debug info and the updater all
+// self-identify with the same value the release pipeline stamps. CARGO_PKG_VERSION
+// is crate build metadata and intentionally does not track bumps.
+const APP_VERSION: &str = env!("APINOX_APP_VERSION");
 
 // Timeouts for update traffic so a dead proxy or a blocked/filtered direct
 // egress can never hang the UI indefinitely (previously: no timeouts at all).

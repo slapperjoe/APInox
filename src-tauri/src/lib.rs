@@ -181,7 +181,10 @@ fn set_border_color(window: tauri::Window, color: String) -> Result<(), String> 
 
 #[tauri::command]
 fn get_app_version() -> String {
-    env!("CARGO_PKG_VERSION").to_string()
+    // build.rs exposes the root package.json version (the single source of
+    // truth) — see src-tauri/build.rs. Not CARGO_PKG_VERSION, which is
+    // build metadata that no longer tracks release bumps.
+    env!("APINOX_APP_VERSION").to_string()
 }
 
 #[tauri::command]
@@ -230,7 +233,7 @@ fn get_debug_info() -> serde_json::Value {
 
     serde_json::json!({
         "mode": "Tauri",
-        "version": env!("CARGO_PKG_VERSION"),
+        "version": env!("APINOX_APP_VERSION"),
         "platform": platform,
         "arch": arch,
         "configDir": config_dir,
@@ -318,7 +321,7 @@ fn init_logging(app: &mut tauri::App) -> tauri::Result<()> {
     #[cfg(desktop)]
     app.handle().plugin(tauri_plugin_decorum::init())?;
 
-    log::info!("APInox starting (version: {})", env!("CARGO_PKG_VERSION"));
+    log::info!("APInox starting (version: {})", env!("APINOX_APP_VERSION"));
     log::info!("Debug mode: {}", cfg!(debug_assertions));
     if let Ok(guard) = LOG_FILE_PATH.lock() {
         if let Some(ref path) = *guard {
