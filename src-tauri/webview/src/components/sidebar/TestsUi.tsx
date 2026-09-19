@@ -6,6 +6,7 @@ import { SidebarContextMenu, CtxMenuSection, CtxMenuItem, Pencil } from './share
 import { SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle, OperationItem, RequestItem } from './shared/SidebarStyles';
 import { EmptyState } from '../common/EmptyState';
 import { HeaderButton } from '../common/Button';
+import { Tooltip } from '../common/Tooltip';
 import { InlineFormInput } from '../common/Form';
 import { SPACING_SM, SPACING_XS } from '../../styles/spacing';
 
@@ -351,13 +352,11 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                     </SidebarHeaderTitle>
                     <SidebarHeaderActions>
                         <HeaderActions>
-                            <HeaderButton
-                                ref={addSuiteBtnRef}
-                                onClick={openAddSuiteMenu}
-                                title="Add Test Suite"
-                            >
+                            <Tooltip content="Add Test Suite">
+                              <HeaderButton ref={addSuiteBtnRef} onClick={openAddSuiteMenu}>
                                 <Plus size={16} />
-                            </HeaderButton>
+                              </HeaderButton>
+                            </Tooltip>
 
                             {/* Project Selection Dropdown (t_894bcad3: viewport-fixed
                                 placement so the menu renders above the sidebar rail
@@ -454,12 +453,16 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                                     </SuiteCount>
                                     {isSuiteSelected && (
                                         <>
-                                            <HeaderButton onClick={(e) => { e.stopPropagation(); onRunSuite(suite.id); }} title="Run Suite">
+                                            <Tooltip content="Run Suite">
+                                              <HeaderButton onClick={(e) => { e.stopPropagation(); onRunSuite(suite.id); }}>
                                                 <Play size={12} />
-                                            </HeaderButton>
-                                            <HeaderButton onClick={(e) => { e.stopPropagation(); onAddTestCase(suite.id); }} title="Add Test Case">
+                                              </HeaderButton>
+                                            </Tooltip>
+                                            <Tooltip content="Add Test Case">
+                                              <HeaderButton onClick={(e) => { e.stopPropagation(); onAddTestCase(suite.id); }}>
                                                 <Plus size={12} />
-                                            </HeaderButton>
+                                              </HeaderButton>
+                                            </Tooltip>
                                             <HeaderButton
                                                 onClick={(e) => { e.stopPropagation(); onDeleteSuite(suite.id); }}
                                                 title={deleteConfirm === suite.id ? 'Click again to confirm' : 'Delete Suite'}
@@ -512,9 +515,11 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                                                 </CaseCount>
                                                 {isSelected && (
                                                     <>
-                                                        <HeaderButton onClick={(e) => { e.stopPropagation(); onRunCase(tc.id); }} title="Run Test Case">
+                                                        <Tooltip content="Run Test Case">
+                                                          <HeaderButton onClick={(e) => { e.stopPropagation(); onRunCase(tc.id); }}>
                                                             <Play size={12} />
-                                                        </HeaderButton>
+                                                          </HeaderButton>
+                                                        </Tooltip>
                                                         <HeaderButton
                                                             onClick={(e) => { e.stopPropagation(); onDeleteTestCase(tc.id); }}
                                                             title={deleteConfirm === tc.id ? 'Click again to confirm' : 'Delete Case'}

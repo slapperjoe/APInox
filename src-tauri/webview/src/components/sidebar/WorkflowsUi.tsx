@@ -5,6 +5,7 @@ import { Workflow, WorkflowStep } from '@shared/models';
 import { SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle, RowActions } from './shared/SidebarStyles';
 import { EmptyState } from '../common/EmptyState';
 import { HeaderButton, IconButton } from '../common/Button';
+import { Tooltip } from '../common/Tooltip';
 import { SPACING_SM, SPACING_XS } from '../../styles/spacing';
 
 const WorkflowsContainer = styled(SidebarContainer)``;
@@ -110,9 +111,11 @@ export const WorkflowsUi: React.FC<WorkflowsUiProps> = ({
             <SidebarHeader>
                 <SidebarHeaderTitle>Workflows ({workflows.length})</SidebarHeaderTitle>
                 <SidebarHeaderActions>
-                    <HeaderButton onClick={() => onAdd?.()} title="Create Workflow">
+                    <Tooltip content="Create Workflow">
+                      <HeaderButton onClick={() => onAdd?.()}>
                         <Plus size={16} />
-                    </HeaderButton>
+                      </HeaderButton>
+                    </Tooltip>
                 </SidebarHeaderActions>
             </SidebarHeader>
 

@@ -12,6 +12,7 @@ import {
   Layers,
 } from "lucide-react";
 import { TrafficLightIcon } from "../common/TrafficLightIcon";
+import { Tooltip } from "../common/Tooltip";
 import { SidebarView } from "@shared/models";
 import { EnvironmentSelector } from "./EnvironmentSelector";
 
@@ -28,16 +29,16 @@ interface SidebarRailProps {
 }
 
 const NavItem = ({ icon: Icon, active, onClick, title, showBadge }: any) => (
-  <div
-    onClick={onClick}
-    title={title}
-    style={{
-      padding: "4px 8px",
-      cursor: "pointer",
-      display: "flex",
-      justifyContent: "center",
-    }}
-  >
+  <Tooltip content={title} side="right">
+    <div
+      onClick={onClick}
+      style={{
+        padding: "4px 8px",
+        cursor: "pointer",
+        display: "flex",
+        justifyContent: "center",
+      }}
+    >
     <div
       style={{
         position: "relative",
@@ -70,7 +71,8 @@ const NavItem = ({ icon: Icon, active, onClick, title, showBadge }: any) => (
         />
       )}
     </div>
-  </div>
+    </div>
+    </Tooltip>
 );
 
 const RailSeparator = () => (
@@ -143,7 +145,7 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
         icon={TrafficLightIcon}
         active={activeView === SidebarView.PROXY}
         onClick={() => onChangeView(SidebarView.PROXY)}
-        title="Proxy &amp; Traffic"
+        title="Proxy / Traffic"
       />
       <NavItem
         icon={Server}

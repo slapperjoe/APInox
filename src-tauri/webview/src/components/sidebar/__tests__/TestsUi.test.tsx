@@ -95,7 +95,7 @@ describe('TestsUi', () => {
     it('should show add suite menu', () => {
         render(<TestsUi {...defaultProps} />);
 
-        fireEvent.click(screen.getByTitle('Add Test Suite'));
+        fireEvent.click(screen.getByLabelText('Add Test Suite'));
         expect(screen.getByText('Add suite to project:')).toBeInTheDocument();
         expect(screen.getByText('Project 1')).toBeInTheDocument();
 
@@ -149,7 +149,7 @@ describe('TestsUi', () => {
         // Select the suite (parent sets selectedTestSuite) to reveal suite actions.
         rerender(<TestsUi {...defaultProps} selectedTestSuite={{ id: 'suite-1' } as any} />);
 
-        const runSuiteBtn = screen.getByTitle('Run Suite');
+        const runSuiteBtn = screen.getByLabelText('Run Suite');
         fireEvent.click(runSuiteBtn);
         expect(defaultProps.onRunSuite).toHaveBeenCalledWith('suite-1');
 
@@ -162,7 +162,7 @@ describe('TestsUi', () => {
             />
         );
 
-        const runCaseBtn = screen.getByTitle('Run Test Case');
+        const runCaseBtn = screen.getByLabelText('Run Test Case');
         fireEvent.click(runCaseBtn);
         expect(defaultProps.onRunCase).toHaveBeenCalledWith('case-1');
     });

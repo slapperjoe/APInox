@@ -23,6 +23,7 @@ import {
   RowActions,
 } from "./shared/SidebarStyles";
 import { HeaderButton } from "../common/Button";
+import { Tooltip } from "../common/Tooltip";
 import { useNotes, noteDirtyKind } from "../../notes/NotesContext";
 
 // ─── Styled ───────────────────────────────────────────────────────────────────
@@ -170,12 +171,16 @@ export const NotesList: React.FC = () => {
       <SidebarHeader>
         <SidebarHeaderTitle>Notes</SidebarHeaderTitle>
         <SidebarHeaderActions>
-          <HeaderButton onClick={() => newNote()} title="New note">
+          <Tooltip content="New note">
+            <HeaderButton onClick={() => newNote()}>
             <FilePlus size={16} />
-          </HeaderButton>
-          <HeaderButton onClick={openFileDialog} title="Open file…">
+            </HeaderButton>
+          </Tooltip>
+          <Tooltip content="Open file…">
+            <HeaderButton onClick={openFileDialog}>
             <FolderOpen size={16} />
-          </HeaderButton>
+            </HeaderButton>
+          </Tooltip>
         </SidebarHeaderActions>
       </SidebarHeader>
 

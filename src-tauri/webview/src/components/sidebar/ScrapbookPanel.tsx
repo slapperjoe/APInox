@@ -5,6 +5,7 @@ import { SidebarContextMenu, CtxMenuSection } from './shared/SidebarContextMenu'
 import { ScrapbookRequest } from '@shared/models';
 import { SidebarHeaderActions, SidebarHeaderTitle, RequestItem as BaseRequestItem } from './shared/SidebarStyles';
 import { HeaderButton } from '../common/Button';
+import { Tooltip } from '../common/Tooltip';
 import { SPACING_SM } from '../../styles/spacing';
 import { EmptyState } from '../common/EmptyState';
 
@@ -129,9 +130,11 @@ export const ScrapbookPanel: React.FC<ScrapbookPanelProps> = ({
         <SectionHeader>
             <SidebarHeaderTitle>Quick Requests</SidebarHeaderTitle>
             <SidebarHeaderActions>
-                <HeaderButton onClick={onCreateRequest} title="Create New Request">
+                <Tooltip content="Create New Request">
+                  <HeaderButton onClick={onCreateRequest}>
                     <Plus size={16} />
-                </HeaderButton>
+                  </HeaderButton>
+                </Tooltip>
             </SidebarHeaderActions>
         </SectionHeader>
     );

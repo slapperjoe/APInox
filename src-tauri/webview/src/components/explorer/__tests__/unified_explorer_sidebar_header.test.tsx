@@ -57,14 +57,14 @@ describe('UnifiedExplorerSidebar header', () => {
         render(<UnifiedExplorerSidebar {...baseProps} projects={[makeProject()]} />);
 
         expect(screen.getByText('Unified Explorer')).toBeInTheDocument();
-        expect(screen.getByTitle('Add')).toBeInTheDocument();
+        expect(screen.getByLabelText('Add')).toBeInTheDocument();
     });
 
     it('shows the "+" button even with zero projects', () => {
         render(<UnifiedExplorerSidebar {...baseProps} projects={[]} />);
 
         expect(screen.getByText('Unified Explorer')).toBeInTheDocument();
-        expect(screen.getByTitle('Add')).toBeInTheDocument();
+        expect(screen.getByLabelText('Add')).toBeInTheDocument();
     });
 });
 
@@ -73,7 +73,7 @@ describe('UnifiedExplorerSidebar "+" menu', () => {
         const onLoadWsdl = vi.fn();
         render(<UnifiedExplorerSidebar {...baseProps} projects={[makeProject()]} onLoadWsdl={onLoadWsdl} />);
 
-        fireEvent.click(screen.getByTitle('Add'));
+        fireEvent.click(screen.getByLabelText('Add'));
 
         expect(screen.getByText('New Request')).toBeInTheDocument();
         expect(screen.getByText('Load Definition')).toBeInTheDocument();
@@ -82,7 +82,7 @@ describe('UnifiedExplorerSidebar "+" menu', () => {
     it('omits Load Definition when onLoadWsdl is undefined (non-Tauri dev)', () => {
         render(<UnifiedExplorerSidebar {...baseProps} projects={[makeProject()]} />);
 
-        fireEvent.click(screen.getByTitle('Add'));
+        fireEvent.click(screen.getByLabelText('Add'));
 
         expect(screen.getByText('New Request')).toBeInTheDocument();
         expect(screen.queryByText('Load Definition')).not.toBeInTheDocument();
@@ -92,7 +92,7 @@ describe('UnifiedExplorerSidebar "+" menu', () => {
         const onLoadWsdl = vi.fn();
         render(<UnifiedExplorerSidebar {...baseProps} projects={[makeProject()]} onLoadWsdl={onLoadWsdl} />);
 
-        fireEvent.click(screen.getByTitle('Add'));
+        fireEvent.click(screen.getByLabelText('Add'));
         expect(screen.getByText('New Request')).toBeInTheDocument();
 
         fireEvent.keyDown(document, { key: 'Escape' });
@@ -105,7 +105,7 @@ describe('UnifiedExplorerSidebar "+" → New Request flow', () => {
         const projects = [makeProject()];
         render(<UnifiedExplorerSidebar {...baseProps} projects={projects} />);
 
-        fireEvent.click(screen.getByTitle('Add'));
+        fireEvent.click(screen.getByLabelText('Add'));
         fireEvent.click(screen.getByText('New Request'));
 
         // Single project: straight to the operation picker (no project step).
@@ -115,10 +115,10 @@ describe('UnifiedExplorerSidebar "+" → New Request flow', () => {
 
         // The breadcrumb shows the action + the chosen project, and a cancel (X) is present.
         expect(screen.getByText('New Request — CountryInfo')).toBeInTheDocument();
-        expect(screen.getByTitle('Cancel add flow')).toBeInTheDocument();
+        expect(screen.getByLabelText('Cancel add flow')).toBeInTheDocument();
 
         // Creating the request calls onNewRequest(project, operation).
-        fireEvent.click(screen.getByTitle('Create request'));
+        fireEvent.click(screen.getByLabelText('Create request'));
         expect(baseProps.onNewRequest).toHaveBeenCalledTimes(1);
         expect(baseProps.onNewRequest).toHaveBeenCalledWith('CountryInfo', 'GetCurrencyRate');
 
@@ -131,7 +131,7 @@ describe('UnifiedExplorerSidebar "+" → New Request flow', () => {
         const projects = [makeProject('Alpha'), makeProject('Beta')];
         render(<UnifiedExplorerSidebar {...baseProps} projects={projects} />);
 
-        fireEvent.click(screen.getByTitle('Add'));
+        fireEvent.click(screen.getByLabelText('Add'));
         fireEvent.click(screen.getByText('New Request'));
 
         expect(screen.getByText('Which project?')).toBeInTheDocument();
@@ -142,7 +142,7 @@ describe('UnifiedExplorerSidebar "+" → New Request flow', () => {
         expect(screen.getByText('Add request to operation:')).toBeInTheDocument();
         expect(screen.getByText('New Request — Alpha')).toBeInTheDocument();
 
-        fireEvent.click(screen.getByTitle('Create request'));
+        fireEvent.click(screen.getByLabelText('Create request'));
         expect(baseProps.onNewRequest).toHaveBeenCalledWith('Alpha', 'GetCurrencyRate');
     });
 
@@ -150,11 +150,11 @@ describe('UnifiedExplorerSidebar "+" → New Request flow', () => {
         const projects = [makeProject()];
         render(<UnifiedExplorerSidebar {...baseProps} projects={projects} />);
 
-        fireEvent.click(screen.getByTitle('Add'));
+        fireEvent.click(screen.getByLabelText('Add'));
         fireEvent.click(screen.getByText('New Request'));
         expect(screen.getByText('Add request to operation:')).toBeInTheDocument();
 
-        fireEvent.click(screen.getByTitle('Cancel add flow'));
+        fireEvent.click(screen.getByLabelText('Cancel add flow'));
         expect(screen.queryByText('Add request to operation:')).not.toBeInTheDocument();
         expect(screen.getByText('Unified Explorer')).toBeInTheDocument();
         expect(baseProps.onNewRequest).not.toHaveBeenCalled();
@@ -166,7 +166,7 @@ describe('UnifiedExplorerSidebar "+" → Load Definition flow', () => {
         const onLoadWsdl = vi.fn();
         render(<UnifiedExplorerSidebar {...baseProps} projects={[]} onLoadWsdl={onLoadWsdl} />);
 
-        fireEvent.click(screen.getByTitle('Add'));
+        fireEvent.click(screen.getByLabelText('Add'));
         fireEvent.click(screen.getByText('Load Definition'));
 
         // Zero projects: straight to the source step.
@@ -174,7 +174,7 @@ describe('UnifiedExplorerSidebar "+" → Load Definition flow', () => {
         const input = screen.getByPlaceholderText('https://…/Service?WSDL') as HTMLInputElement;
         fireEvent.change(input, { target: { value: 'http://example.org/Service?WSDL' } });
 
-        fireEvent.click(screen.getByTitle('Load definition'));
+        fireEvent.click(screen.getByLabelText('Load definition'));
         expect(onLoadWsdl).toHaveBeenCalledTimes(1);
         expect(onLoadWsdl).toHaveBeenCalledWith('http://example.org/Service?WSDL');
 
@@ -188,7 +188,7 @@ describe('UnifiedExplorerSidebar "+" → Load Definition flow', () => {
         const projects = [makeProject('Alpha'), makeProject('Beta')];
         render(<UnifiedExplorerSidebar {...baseProps} projects={projects} onLoadWsdl={onLoadWsdl} />);
 
-        fireEvent.click(screen.getByTitle('Add'));
+        fireEvent.click(screen.getByLabelText('Add'));
         fireEvent.click(screen.getByText('Load Definition'));
 
         expect(screen.getByText('Which project to refresh?')).toBeInTheDocument();
@@ -198,7 +198,7 @@ describe('UnifiedExplorerSidebar "+" → Load Definition flow', () => {
         // Beta's sourceUrl is pre-filled as the input's value; submit it.
         const input = screen.getByDisplayValue('http://example.org/Beta?WSDL') as HTMLInputElement;
         expect(input).toBeInTheDocument();
-        fireEvent.click(screen.getByTitle('Load definition'));
+        fireEvent.click(screen.getByLabelText('Load definition'));
         expect(onLoadWsdl).toHaveBeenCalledWith('http://example.org/Beta?WSDL');
     });
 });

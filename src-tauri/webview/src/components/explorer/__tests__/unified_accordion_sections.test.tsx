@@ -204,7 +204,7 @@ describe('UnifiedExplorerSidebar — accordion sections', () => {
 
         // The "+" action lives on the accordion header, so it still works
         // while the section is collapsed.
-        const createBtn = header.querySelector('button[title="Create New Request"]')!;
+        const createBtn = header.querySelector('button[aria-label="Create New Request"]')!;
         fireEvent.click(createBtn);
         expect(scrapbook.onCreateRequest).toHaveBeenCalledTimes(1);
     });

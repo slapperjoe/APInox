@@ -15,6 +15,7 @@ import {
 import { UnifiedProject, ApiOperation, ApiRequest, ScrapbookRequest, RequestHistoryEntry } from '@shared/models';
 import { SidebarContextMenu, CtxMenuSection, CtxMenuItem } from '../sidebar/shared/SidebarContextMenu';
 import { HeaderButton } from '../common/Button';
+import { Tooltip } from '../common/Tooltip';
 import { InlineFormInput } from '../common/Form';
 import {
     Copy,
@@ -1092,13 +1093,17 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--apinox-icon-foreground, var(--apinox-foreground))', flexShrink: 0, position: 'relative' }}>
                 {addFlow && (
-                    <HeaderButton onClick={resetAddFlow} title="Cancel add flow">
+                    <Tooltip content="Cancel add flow">
+                      <HeaderButton onClick={resetAddFlow}>
                         <X size={16} />
-                    </HeaderButton>
+                      </HeaderButton>
+                    </Tooltip>
                 )}
-                <HeaderButton ref={addMenuBtnRef} onClick={openAddMenu} title="Add">
+                <Tooltip content="Add">
+                  <HeaderButton ref={addMenuBtnRef} onClick={openAddMenu}>
                     <PlusIcon size={16} />
-                </HeaderButton>
+                  </HeaderButton>
+                </Tooltip>
                 {addMenuOpen && (
                     <div
                         ref={addMenuRef}
@@ -1246,9 +1251,11 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                                 <option key={op.name} value={op.name}>{op.displayName || op.name}</option>
                             ))}
                         </select>
-                        <HeaderButton onClick={submitAddRequest} title="Create request">
+                        <Tooltip content="Create request">
+                          <HeaderButton onClick={submitAddRequest}>
                             <PlusIcon size={14} />
-                        </HeaderButton>
+                          </HeaderButton>
+                        </Tooltip>
                     </div>
                 )}
             </div>
@@ -1267,9 +1274,11 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                         onKeyDown={e => { if (e.key === 'Enter') submitAddLoad(); if (e.key === 'Escape') resetAddFlow(); }}
                         style={{ flex: 1, minWidth: 0 }}
                     />
-                    <HeaderButton onClick={submitAddLoad} title="Load definition">
+                    <Tooltip content="Load definition">
+                      <HeaderButton onClick={submitAddLoad}>
                         <ArrowRight size={14} />
-                    </HeaderButton>
+                      </HeaderButton>
+                    </Tooltip>
                 </div>
             </div>
         )}
@@ -1624,9 +1633,11 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                     'quickRequests',
                     `Quick Requests${scrapbook.requests.length > 0 ? ` (${scrapbook.requests.length})` : ''}`,
                     'unified-quick-requests-section-header',
-                    <HeaderButton onClick={scrapbook.onCreateRequest} title="Create New Request">
+                    <Tooltip content="Create New Request">
+                      <HeaderButton onClick={scrapbook.onCreateRequest}>
                         <PlusIcon size={16} />
-                    </HeaderButton>,
+                      </HeaderButton>
+                    </Tooltip>
                 )}
 
                 {!sectionCollapsed.quickRequests && (

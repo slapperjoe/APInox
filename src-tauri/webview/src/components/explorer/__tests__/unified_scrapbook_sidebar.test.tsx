@@ -143,7 +143,7 @@ describe('UnifiedExplorerSidebar + Quick Requests (doc §8.3 — Q1(a) bottom se
             />,
         );
 
-        fireEvent.click(screen.getByTitle('Create New Request'));
+        fireEvent.click(screen.getByLabelText('Create New Request'));
         expect(scrapbook.onCreateRequest).toHaveBeenCalledTimes(1);
 
         const executeButton = screen

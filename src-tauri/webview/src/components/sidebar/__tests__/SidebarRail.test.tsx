@@ -22,18 +22,18 @@ describe('SidebarRail (workspace tab removal)', () => {
 
         // The legacy entry was titled "Projects"; nothing on the rail carries
         // that title (or the body header's "Workspace" wording) anymore.
-        expect(screen.queryByTitle('Projects')).not.toBeInTheDocument();
-        expect(screen.queryByTitle('Workspace')).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('Projects')).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('Workspace')).not.toBeInTheDocument();
     });
 
     it('still renders the unified explorer rail item as the first entry', () => {
         render(<SidebarRail {...baseProps} />);
 
-        const explorer = screen.getByTitle('Unified Explorer');
+        const explorer = screen.getByLabelText('Unified Explorer');
         expect(explorer).toBeInTheDocument();
 
         // It is the first item in the top rail group (before Tests).
-        const tests = screen.getByTitle('Tests');
+        const tests = screen.getByLabelText('Tests');
         expect(explorer.compareDocumentPosition(tests) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 
@@ -42,7 +42,7 @@ describe('SidebarRail (workspace tab removal)', () => {
         const { container } = render(<SidebarRail {...baseProps} onChangeView={onChangeView} />);
 
         // First rail item is the unified explorer entry.
-        const firstItem = container.querySelector('div[title="Unified Explorer"]')!;
+        const firstItem = container.querySelector('[aria-label="Unified Explorer"]')!;
         fireEvent.click(firstItem);
 
         expect(onChangeView).toHaveBeenCalledWith(SidebarView.UNIFIED_EXPLORER);
@@ -59,7 +59,7 @@ describe('SidebarRail (workspace tab removal)', () => {
 
         // Views that are not exposed on the rail (TESTS, etc.) carry no
         // active rail item — they are only reachable programmatically.
-        expect(screen.queryByTitle('Projects')).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('Projects')).not.toBeInTheDocument();
     });
 
     it('renders an active Settings rail item for SETTINGS and routes clicks to onOpenSettings', () => {
@@ -72,7 +72,7 @@ describe('SidebarRail (workspace tab removal)', () => {
             />,
         );
 
-        const settings = container.querySelector('div[title="Settings"]')!;
+        const settings = container.querySelector('[aria-label="Settings"]')!;
         expect(settings).toBeTruthy();
         // The active state highlights the icon wrapper (list selection background).
         expect(settings.querySelector('div')!.style.backgroundColor).toBe(

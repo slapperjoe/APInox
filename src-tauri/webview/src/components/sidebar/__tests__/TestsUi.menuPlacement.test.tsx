@@ -69,11 +69,11 @@ const defaultProps: TestsUiProps = {
     deleteConfirm: null
 };
 
-// The trigger is a <button> (title="Add Test Suite"); the ref for the
-// placement math lives on it. The "Add suite to project:" text sits in
+// The trigger is a <button> (labeled via the shared <Tooltip>); the ref for
+// the placement math lives on it. The "Add suite to project:" text sits in
 // AddSuiteMenuTitle (a div); the AddSuiteMenu wrapper — the element that
 // carries position:fixed and the inline top/left — is its parent.
-const getTriggerButton = () => screen.getByTitle("Add Test Suite") as HTMLButtonElement;
+const getTriggerButton = () => screen.getByLabelText("Add Test Suite") as HTMLButtonElement;
 
 const getAddSuiteMenu = () =>
     (screen.getByText("Add suite to project:").closest("div") as HTMLElement).parentElement as HTMLElement;

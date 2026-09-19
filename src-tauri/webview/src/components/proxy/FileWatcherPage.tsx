@@ -9,6 +9,7 @@ import { MonacoRequestEditorWithToolbar, MonacoResponseViewer } from '@apinox/re
 import { invokeTauriCommand } from '../../utils/bridge';
 import { EmptyState } from '../common/EmptyState';
 import { HeaderButton } from '../common/Button';
+import { Tooltip } from '../common/Tooltip';
 import { ConditionPickerModal, suggestConditionsFromSoapXml } from './ConditionPickerModel';
 import { tokens } from './tokens';
 import { EditorPane, SplitDivider, naturalPanePx, useSplitPaneDrag } from './splitPane';
@@ -690,9 +691,11 @@ export const FileWatcherPage: React.FC = () => {
       <WatchSidebar>
         <SidebarHeader>
           <h3>Watches</h3>
-          <HeaderButton onClick={openAddModal} title="Add Watch">
+          <Tooltip content="Add Watch">
+            <HeaderButton onClick={openAddModal}>
             <Plus size={16} />
-          </HeaderButton>
+            </HeaderButton>
+          </Tooltip>
         </SidebarHeader>
         <WatchList>
           <WatchItem $active={selectedWatchId === null} onClick={() => setSelectedWatchId(null)}>

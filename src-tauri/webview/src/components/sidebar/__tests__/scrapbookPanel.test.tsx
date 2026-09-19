@@ -83,7 +83,7 @@ describe('ScrapbookPanel (doc §8.2)', () => {
                 selectedRequest={null}
             />,
         );
-        fireEvent.click(screen.getByTitle('Create New Request'));
+        fireEvent.click(screen.getByLabelText('Create New Request'));
         expect(baseProps.onCreateRequest).toHaveBeenCalledTimes(1);
     });
 
