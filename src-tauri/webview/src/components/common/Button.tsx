@@ -7,7 +7,7 @@
  * 
  * Usage:
  * ```tsx
- * import { IconButton, PrimaryButton, SecondaryButton, DangerButton } from './common/Button';
+ * import { IconButton, PrimaryButton, SecondaryButton } from './common/Button';
  * 
  * <IconButton onClick={handleClick} title="Delete">
  *   <Trash2 size={16} />
@@ -137,60 +137,6 @@ export const SecondaryButton = styled.button`
     
     &:active:not(:disabled) {
         opacity: 0.9;
-    }
-`;
-
-/**
- * DangerButton - Destructive action button
- * Used for delete, remove, or other destructive actions
- */
-export const DangerButton = styled.button<{ $shake?: boolean }>`
-    ${baseButtonStyles}
-    background-color: transparent;
-    color: var(--apinox-testing-iconFailed);
-    border: 1px solid var(--apinox-testing-iconFailed);
-    padding: 8px 14px;
-    border-radius: 2px;
-    font-weight: var(--fw-medium);
-    
-    &:hover:not(:disabled) {
-        background-color: color-mix(in srgb, var(--apinox-testing-iconFailed) 10%, transparent);
-    }
-    
-    &:active:not(:disabled) {
-        opacity: 0.9;
-    }
-    
-    ${props => props.$shake && css`
-        animation: ${shake} 0.5s ease-in-out;
-    `}
-`;
-
-/**
- * ToggleButton - Button that shows active/inactive state
- * Used for mode selectors, filters, etc.
- */
-export const ToggleButton = styled.button<{ $active: boolean; $activeColor?: string }>`
-    ${baseButtonStyles}
-    flex: 1;
-    padding: 8px 8px;
-    font-size: var(--apinox-fs-sm);
-    border: 1px solid ${props => props.$active
-        ? (props.$activeColor || 'var(--apinox-button-background)')
-        : 'var(--apinox-input-border)'};
-    border-radius: 4px;
-    background: ${props => props.$active
-        ? (props.$activeColor || 'var(--apinox-button-background)')
-        : 'transparent'};
-    color: ${props => props.$active
-        ? 'var(--apinox-button-foreground)'
-        : 'var(--apinox-input-foreground)'};
-    font-weight: ${props => props.$active ? 600 : 500};
-    
-    &:hover:not(:disabled) {
-        background: ${props => props.$active
-            ? (props.$activeColor || 'var(--apinox-button-background)')
-            : 'var(--apinox-list-hoverBackground)'};
     }
 `;
 
