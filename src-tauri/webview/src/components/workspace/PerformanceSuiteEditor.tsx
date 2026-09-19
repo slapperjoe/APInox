@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { Play, Plus, Trash2, Settings, Clock, Repeat, Flame, Zap, GripVertical, Square, Calendar, ToggleLeft, ToggleRight, Import, Download, ChevronDown, ChevronRight, CheckCircle, XCircle, AlertTriangle, Users, Server, FileJson } from 'lucide-react';
+import { Play, Plus, Trash2, Settings, Clock, Repeat, Flame, Zap, GripVertical, Square, Calendar, ToggleLeft, ToggleRight, Import, Download, ChevronDown, ChevronRight, CheckCircle, XCircle, AlertTriangle, Users, Server, FileJson, BarChart3 } from 'lucide-react';
 import { Spinner } from '../common/Spinner';
+import { EmptyState } from '../common/EmptyState';
 import { PerformanceSuite, PerformanceRun, PerformanceSchedule, PerformanceRequest, CoordinatorStatus } from '@shared/models';
 import { WorkerStatusPanel } from './WorkerStatusPanel';
 
@@ -1032,9 +1033,11 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                                 })}
                             </>
                         ) : (
-                            <div style={{ padding: 16, textAlign: 'center', opacity: 0.6, fontStyle: 'italic' }}>
-                                No runs yet. History will appear after the first completed run.
-                            </div>
+                            <EmptyState
+                                icon={BarChart3}
+                                title="No runs yet"
+                                description="History will appear after the first completed run."
+                            />
                         )}
                     </SectionContent>
                 </Section>

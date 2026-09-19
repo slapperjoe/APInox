@@ -4,6 +4,7 @@ import { WorkflowStep } from '@shared/models';
 import { SPACING_SM } from '../../styles/spacing';
 import { GitBranch, AlertCircle, Plus } from 'lucide-react';
 import { PrimaryButton, SecondaryButton } from '../common/Button';
+import { EmptyState } from '../common/EmptyState';
 import { MonacoEditorWrapper } from '@apinox/request-editor/monaco';
 import {
     StepEditorContainer,
@@ -137,18 +138,12 @@ export const RequestStepEditor: React.FC<RequestStepEditorProps> = ({ step, onUp
                     </StepFlexSection>
                 </>
             ) : (
-                <StepSection>
-                    <StepInfoBox $inline>
-                        <AlertCircle size={16} />
-                        <div>No request selected. {onPickRequest ? 'Pick a request from any project.' : 'Select a request in the workflow builder.'}</div>
-                    </StepInfoBox>
-                    {onPickRequest && (
-                        <PrimaryButton onClick={onPickRequest} style={{ width: '100%' }}>
-                            <Plus size={14} />
-                            Pick Request
-                        </PrimaryButton>
-                    )}
-                </StepSection>
+                <EmptyState
+                    icon={AlertCircle}
+                    title="No request selected"
+                    description={onPickRequest ? 'Pick a request from any project.' : 'Select a request in the workflow builder.'}
+                    action={onPickRequest ? { label: 'Pick Request', onClick: onPickRequest } : undefined}
+                />
             )}
 
             <StepActionRow>

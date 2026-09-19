@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Inbox } from 'lucide-react';
 import { SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XL } from "../../styles/spacing";
+import { EmptyState } from "../common/EmptyState";
 import { listen } from '@tauri-apps/api/event';
 import { invokeTauriCommand } from '../../utils/bridge';
 import { tokens } from './tokens';
@@ -364,9 +366,11 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
         </div>
 
         {queue.length === 0 ? (
-          <div style={{ padding: '20px', textAlign: 'center', color: tokens.text.muted, fontSize: tokens.fontSize.base }}>
-            No traffic paused. Enable breakpoint rules to start intercepting.
-          </div>
+          <EmptyState
+            icon={Inbox}
+            title="No traffic paused"
+            description="Enable breakpoint rules to start intercepting."
+          />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {queue.map((item) => (
@@ -504,18 +508,11 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
         </div>
 
         {rules.length === 0 ? (
-          <div style={{
-            padding: '40px',
-            textAlign: 'center',
-            background: tokens.surface.panel,
-            borderRadius: tokens.radius.lg,
-            color: tokens.text.muted
-          }}>
-            <p style={{ margin: 0, fontSize: '14px' }}>No breakpoints configured</p>
-            <p style={{ margin: '8px 0 0', fontSize: '12px' }}>
-              Create breakpoints to pause traffic and inspect/edit requests and responses
-            </p>
-          </div>
+          <EmptyState
+            icon={Inbox}
+            title="No breakpoints configured"
+            description="Create breakpoints to pause traffic and inspect/edit requests and responses"
+          />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {rules.map((rule) => (
