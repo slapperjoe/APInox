@@ -69,7 +69,7 @@ const ModalHeader = styled.div`
     align-items: center;
 `;
 
-const ModalTitle = styled.div`
+const ModalTitle = styled.div<{ $id?: string }>`
     font-weight: var(--fw-bold);
     flex: 1;
 `;
@@ -216,15 +216,18 @@ export const Modal: React.FC<ModalProps> = ({
   showCloseButton = true,
   footerAlign = 'right'
 }) => {
+  // Stable element id so the dialog can be labelled by its title (item 24).
+  const titleId = React.useId();
   if (!isOpen) return null;
 
   return (
     <ModalOverlay onClick={(e) => {
       if (e.target === e.currentTarget) onClose();
     }}>
-      <ModalContent $width={width} $size={size} onClick={e => e.stopPropagation()}>
+      <ModalContent $width={width} $size={size} role="dialog" aria-modal="true"
+          aria-labelledby={title ? titleId : undefined} onClick={e => e.stopPropagation()}>
         <ModalHeader>
-          <ModalTitle>{title}</ModalTitle>
+          <ModalTitle $id={titleId} id={title ? titleId : undefined}>{title}</ModalTitle>
           {headerExtra && (
             <ModalHeaderExtra>{headerExtra}</ModalHeaderExtra>
           )}

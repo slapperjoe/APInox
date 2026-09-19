@@ -301,10 +301,13 @@ select option {
     }
 }
 
-/* Responsive modal sizing */
+/* Responsive modal sizing — a narrow-viewport safety net only.
+   Non-!important so the shared Modal's own size presets (MODAL_SIZES /
+   max-width) always win; this just prevents a dialog from overflowing the
+   viewport on small windows now that the shared Modal sets role="dialog". */
 [role="dialog"],
 .modal-container {
-    width: min(95vw, 800px) !important;
+    max-width: 95vw;
     max-height: 90vh;
     overflow-y: auto;
 }
