@@ -1,5 +1,6 @@
 import React from 'react';
-import styled from 'styled-components';
+import { Inbox } from 'lucide-react';
+import { EmptyState } from '../common/EmptyState';
 
 /**
  * WelcomePanel.tsx
@@ -7,23 +8,13 @@ import styled from 'styled-components';
  * Generic empty-state placeholder shown when a view (WORKFLOWS, fallback) has
  * nothing selected. The former HOME/changelog welcome page (logo + embedded
  * changelog) was removed — the unified explorer is the app entry point.
+ *
+ * Built on the shared <EmptyState> (UI-consistency item 20).
  */
-
-const PlaceholderContainer = styled.div`
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    color: var(--apinox-editor-foreground);
-    opacity: 0.6;
-`;
-
-export const WelcomePanel: React.FC = () => {
-    return (
-        <PlaceholderContainer>
-            <p style={{ margin: 0, fontSize: 'var(--apinox-fs-md, 12px)' }}>Nothing selected</p>
-        </PlaceholderContainer>
-    );
-};
+export const WelcomePanel: React.FC = () => (
+    <EmptyState
+        icon={Inbox}
+        title="Nothing selected"
+        description="Select a request, test, or workflow to get started."
+    />
+);
