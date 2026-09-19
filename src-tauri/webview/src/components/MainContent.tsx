@@ -3,6 +3,7 @@ import React, { Suspense, useState, useEffect, useCallback, useMemo } from 'reac
 import styled from 'styled-components';
 import { Container } from '../styles/App.styles';
 import { bridge, isTauri } from '../utils/bridge';
+import { detectLoadFormat } from '../utils/loadRouting';
 import { saveImportedProjectsAsUnified } from '../utils/importUnifiedStore';
 import { captureLog } from '../utils/logger';
 import { generateInitialXmlForOperation, soapDefault, rewriteRequestsForContentTypeChange } from '../utils/soapUtils';
@@ -626,6 +627,30 @@ const MainContent: React.FC = () => {
         };
         setUnifiedProjects(prev => [...prev, enrichedProject]);
     }, []);
+    
+    // Sidebar "+" → "Load Definition": the sidebar's two-step flow collects a
+    // source URL, then this handler routes it by format (WSDL vs OpenAPI vs
+    // GraphQL) exactly like the main-area top bar (UnifiedExplorerView
+    // `handleLoadWsdl`), and publishes the parsed project through
+    // `handleUnifiedWsdlLoaded`. Tauri-only: the native parse commands don't
+    // exist in browser dev, so the sidebar omits the Load action there.
+    const handleUnifiedLoadWsdlFromSidebar = useCallback(async (url: string) => {
+        if (!bridge.isTauri()) return;
+        try {
+            const format = detectLoadFormat(url);
+            const project =
+                format === 'wsdl'
+                    ? await bridge.invokeTauriCommand<UnifiedProject>('parse_wsdl_as_project', {
+                        url,
+                        useProxy: false,
+                        loadId: undefined,
+                    })
+                    : await bridge.invokeTauriCommand<UnifiedProject>('parse_spec_as_project', { url });
+            handleUnifiedWsdlLoaded(project);
+        } catch (e) {
+            console.error('[UnifiedExplorer] Sidebar load definition failed:', e);
+        }
+    }, [handleUnifiedWsdlLoaded]);
     
     const handleUnifiedReorderOperation = useCallback(async (projectName: string, fromIndex: number, toIndex: number) => {
         const project = unifiedProjects.find(p => p.name === projectName);
@@ -1773,12 +1798,6 @@ const MainContent: React.FC = () => {
             setDeleteConfirm,
             onAddRequest: handleAddPerformanceRequestForUi,
         },
-        historyProps: {
-            history: requestHistory,
-            onReplay: handleReplayRequest,
-            onToggleStar: handleToggleHistoryStar,
-            onDelete: handleDeleteHistory,
-        },
         unifiedProps: {
             projects: unifiedProjects,
             selectedNode: unifiedSelectedNode,
@@ -1788,6 +1807,7 @@ const MainContent: React.FC = () => {
             onDeleteOperation: handleUnifiedDeleteOperation,
             onDeleteRequest: handleUnifiedDeleteRequest,
             onNewRequest: handleUnifiedNewRequest,
+            onLoadWsdl: handleUnifiedLoadWsdlFromSidebar,
             onRenameProject: handleUnifiedRenameProject,
             onRenameOperation: handleUnifiedRenameOperation,
             onRenameRequest: handleUnifiedRenameRequest,
@@ -1813,6 +1833,17 @@ const MainContent: React.FC = () => {
                 onDeleteRequest: handleUnifiedScrapbookDelete,
                 onExecuteRequest: handleUnifiedScrapbookExecute,
             },
+            // History sub-window (second bottom section, above Quick Requests).
+            // Request history was a top-level rail view (SidebarView.HISTORY);
+            // it is now a sub-section of the unified explorer, like Quick
+            // Requests. The entries + replay/star/delete handlers were the
+            // former top-level `historyProps`.
+            history: {
+                entries: requestHistory,
+                onReplay: handleReplayRequest,
+                onToggleStar: handleToggleHistoryStar,
+                onDelete: handleDeleteHistory,
+            },
         },
         activeView,
         onChangeView: handleSetActiveViewWrapper,
@@ -1832,8 +1863,8 @@ const MainContent: React.FC = () => {
     }), [
         // Phase B (t_86c34d38): the projectProps / selectionProps entries above
         // were removed with the deleted PROJECTS view; the remaining deps cover
-        // testsProps / workflowsProps / performanceProps / historyProps /
-        // unifiedProps and the view-state fields.
+        // testsProps / workflowsProps / performanceProps / unifiedProps
+        // (incl. its scrapbook + history sub-window entries) and the view-state fields.
         // t_b2eae8b0: import handlers (SoapUI + APInox workspace) write the
         // unified store directly and depend on refreshUnifiedProjects.
         saveProject, refreshUnifiedProjects,
@@ -1853,6 +1884,7 @@ const MainContent: React.FC = () => {
         unifiedProjects, unifiedSelectedNode,
         handleUnifiedSelectNode, handleUnifiedRefresh, handleUnifiedDeleteProject,
         handleUnifiedDeleteOperation, handleUnifiedDeleteRequest, handleUnifiedNewRequest,
+        handleUnifiedLoadWsdlFromSidebar,
         handleUnifiedRenameProject, handleUnifiedRenameOperation, handleUnifiedRenameRequest,
         handleUnifiedProjectContentTypeChange,
         handleUnifiedExport, handleUnifiedReorderOperation, handleUnifiedReorderRequest,

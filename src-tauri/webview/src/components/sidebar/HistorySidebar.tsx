@@ -1,26 +1,29 @@
-import { useState, useMemo } from 'react';
-import styled from 'styled-components';
+/**
+ * HistorySidebar — shared History content (search, advanced filters, grouped
+ * entry list with replay/star/delete rows).
+ *
+ * Content-only by design: it carries no sidebar chrome of its own (no
+ * SidebarContainer / SidebarHeader). It is rendered by:
+ *   - UnifiedHistoryPanel — the "History" sub-window inside the unified
+ *     explorer sidebar (the primary surface, alongside Quick Requests /
+ *     Scrapbook / Tests / Workflows).
+ *
+ * Request history used to be a top-level rail view (SidebarView.HISTORY); it
+ * was folded into the unified explorer as a sub-section.
+ */
+import { useState, useMemo } from "react";
+import styled from "styled-components";
 import {
     Star,
     Trash2,
     Clock,
     Filter,
     X
-} from 'lucide-react';
-import { RequestHistoryEntry } from '@shared/models';
-import { EmptyState } from '../common/EmptyState';
-import { SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderTitle } from './shared/SidebarStyles';
-import { IconButton } from '../common/Button';
-import { SPACING_XS, SPACING_SM, SPACING_MD, SPACING_LG } from '../../styles/spacing';
-
-const Container = styled(SidebarContainer)`
-    padding: 0;
-`;
-
-const Content = styled(SidebarContent)`
-    display: flex;
-    flex-direction: column;
-`;
+} from "lucide-react";
+import { RequestHistoryEntry } from "@shared/models";
+import { EmptyState } from "../common/EmptyState";
+import { IconButton } from "../common/Button";
+import { SPACING_XS, SPACING_SM, SPACING_MD, SPACING_LG } from "../../styles/spacing";
 
 const Section = styled.div`
     margin-bottom: ${SPACING_LG};
@@ -28,7 +31,7 @@ const Section = styled.div`
 
 const SectionTitle = styled.div`
     font-size: 11px;
-    font-weight: 600;
+    font-weight: var(--fw-semibold);
     text-transform: uppercase;
     opacity: 0.7;
     margin-bottom: ${SPACING_SM};
@@ -70,7 +73,7 @@ const FilterRow = styled.div`
 
 const FilterLabel = styled.label`
     font-size: 11px;
-    font-weight: 600;
+    font-weight: var(--fw-semibold);
     opacity: 0.7;
     text-transform: uppercase;
     margin-right: ${SPACING_XS};
@@ -196,7 +199,7 @@ const ItemContent = styled.div`
 `;
 
 const ItemTitle = styled.div`
-    font-weight: 500;
+    font-weight: var(--fw-medium);
     font-size: 13px;
     white-space: nowrap;
     overflow: hidden;
@@ -225,7 +228,6 @@ interface HistorySidebarProps {
     onToggleStar?: (id: string) => void;
     onDelete?: (id: string) => void;
 }
-
 interface HistoryFilters {
     dateFrom?: string;
     dateTo?: string;
@@ -417,33 +419,17 @@ export default function HistorySidebar({
 
     if (history.length === 0) {
         return (
-            <Container>
-                <SidebarHeader>
-                    <SidebarHeaderTitle>
-                        History
-                    </SidebarHeaderTitle>
-                </SidebarHeader>
-                <Content>
-                    <EmptyState
-                        icon={Clock}
-                        title="No request history yet"
-                        description="Execute a manual request to see it appear here"
-                    />
-                </Content>
-            </Container>
+            <EmptyState
+                icon={Clock}
+                title="No request history yet"
+                description="Execute a manual request to see it appear here"
+            />
         );
     }
 
     return (
-        <Container>
-            <SidebarHeader>
-                <SidebarHeaderTitle>
-                    History ({filteredHistory.length}/{history.length})
-                </SidebarHeaderTitle>
-            </SidebarHeader>
-
-            <Content>
-                <SearchBar
+        <>
+            <SearchBar
                     type="text"
                     placeholder="Search history..."
                     value={searchTerm}
@@ -605,16 +591,15 @@ export default function HistorySidebar({
                         </Section>
                     )}
 
-                    {filteredHistory.length === 0 && (
-                        <EmptyState
-                            icon={Clock}
-                            title="No matching history"
-                            description="Try adjusting your filters"
-                        />
-                    )}
-                </HistoryList>
-            </Content>
-        </Container>
+                {filteredHistory.length === 0 && (
+                    <EmptyState
+                        icon={Clock}
+                        title="No matching history"
+                        description="Try adjusting your filters"
+                    />
+                )}
+            </HistoryList>
+        </>
     );
 }
 

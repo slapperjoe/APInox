@@ -19,7 +19,6 @@ import { DelayStepEditor } from './workspace/DelayStepEditor';
 import { ConditionStepEditor } from './workspace/ConditionStepEditor';
 import { LoopStepEditor } from './workspace/LoopStepEditor';
 import { ScriptStepEditor } from './workspace/ScriptStepEditor';
-import { EmptyHistory } from './workspace/EmptyStates';
 import { EmptyState } from './common/EmptyState';
 import { TestSuiteSummary } from './workspace/TestSuiteSummary';
 import { PerformanceSuiteEditor } from './workspace/PerformanceSuiteEditor';
@@ -835,7 +834,7 @@ export const WorkspaceLayout: React.FC = () => {
     // summary/empty-state rendering (OperationSummary / InterfaceSummary /
     // ProjectSummary / EmptyProject + create-request-from-sample) is gone with
     // it — the shared request editor below (fall-through) is now the only
-    // render path for non-UNIFIED views (TESTS steps, PROXY, HISTORY, ...).
+    // render path for non-UNIFIED views (TESTS steps, PROXY, ...).
 
     // PROXY VIEW
     if (activeView === SidebarView.PROXY) {
@@ -868,13 +867,6 @@ export const WorkspaceLayout: React.FC = () => {
                 </Suspense>
             </div>
         );
-    }
-
-    // HISTORY VIEW
-    if (activeView === SidebarView.HISTORY) {
-        if (!activeRequest) {
-            return <EmptyHistory />;
-        }
     }
 
     // Fallback for other views that usually show Welcome if no request selected

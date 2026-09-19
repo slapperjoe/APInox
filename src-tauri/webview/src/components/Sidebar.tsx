@@ -6,8 +6,6 @@ import { SidebarView } from '@shared/models';
 import { TestsUi } from './sidebar/TestsUi';
 import { WorkflowsUi } from './sidebar/WorkflowsUi';
 import { PerformanceUi } from './sidebar/PerformanceUi';
-// @ts-ignore - TS export detection issue; runtime export exists.
-import HistorySidebar from './sidebar/HistorySidebar';
 import { ScrapbookPanel } from './sidebar/ScrapbookPanel';
 import { NotesList } from './sidebar/NotesList';
 import { SidebarRail } from './sidebar/SidebarRail';
@@ -21,8 +19,8 @@ const SidebarContainer = styled.div<{ $collapsed: boolean; $width?: number }>`
     min-width: ${props => props.$collapsed ? '50px' : '160px'};
     width: ${props => props.$collapsed ? '50px' : (props.$width ?? 240) + 'px'};
     flex-shrink: 0;
-    border-right: 1px solid var(--color-border);
-    background: var(--color-surface);
+    border-right: 1px solid var(--apinox-sideBarSectionHeader-border);
+    background: var(--apinox-sideBar-background);
 `;
 
 const ResizeHandle = styled.div`
@@ -74,7 +72,6 @@ export const Sidebar: React.FC = () => {
         testsProps,
         workflowsProps,
         performanceProps,
-        historyProps,
         unifiedProps,
         onOpenSettings,
         onOpenHelp,
@@ -91,12 +88,14 @@ export const Sidebar: React.FC = () => {
 
     // Phase B (t_86c34d38): the PROJECTS view (ProjectList) was deleted —
     // projectProps / the selectionProps destructures it consumed are gone with
-    // it. The remaining sidebar children (Tests/Workflows/Performance/
-    // History/Unified) use their own prop groups below.
+    // it. Request history followed the same path: its top-level rail view
+    // (SidebarView.HISTORY) was folded into the unified explorer as the
+    // History sub-window, so no HistorySidebar branch remains here. The
+    // remaining sidebar children (Tests/Workflows/Performance/Unified) use
+    // their own prop groups below.
 
     const fullPanelView = activeView === SidebarView.PROXY || activeView === SidebarView.MOCK || activeView === SidebarView.WATCHER || activeView === SidebarView.SETTINGS;
-    const historyEmpty = activeView === SidebarView.HISTORY && (!historyProps || historyProps.history.length === 0);
-    const hideContent = !sidebarExpanded || fullPanelView || historyEmpty;
+    const hideContent = !sidebarExpanded || fullPanelView;
 
     return (
         <SidebarContainer
@@ -153,12 +152,6 @@ export const Sidebar: React.FC = () => {
                     />
                 )}
 
-                {activeView === SidebarView.HISTORY && historyProps && (
-                    <HistorySidebar
-                        {...historyProps}
-                    />
-                )}
-
                 {activeView === SidebarView.NOTES && (
                     <NotesList />
                 )}
@@ -186,7 +179,9 @@ export const Sidebar: React.FC = () => {
                             onAddRequestToTestCase={unifiedProps.onAddRequestToTestCase}
                             onReorderOperation={unifiedProps.onReorderOperation}
                             onReorderRequest={unifiedProps.onReorderRequest}
+                            onLoadWsdl={unifiedProps.onLoadWsdl}
                             scrapbook={unifiedProps.scrapbook}
+                            history={unifiedProps.history}
                         />
                     </div>
                 )}

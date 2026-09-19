@@ -23,6 +23,12 @@ export interface ScrapbookPanelProps {
      * (non-filled) hosts keep the panel's natural height + outer scroll.
      */
     fill?: boolean;
+    /**
+     * Omit the panel's own section header. Used by the unified explorer
+     * sidebar, where the accordion section header (chevron + title + actions)
+     * lives on the wrapper, so the panel doesn't render a second title row.
+     */
+    chromeless?: boolean;
 }
 
 const SectionHeader = styled.div`
@@ -103,6 +109,7 @@ export const ScrapbookPanel: React.FC<ScrapbookPanelProps> = ({
     onDeleteRequest,
     onExecuteRequest,
     fill = false,
+    chromeless = false,
 }) => {
     const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; request: ScrapbookRequest } | null>(null);
 
@@ -198,7 +205,7 @@ export const ScrapbookPanel: React.FC<ScrapbookPanelProps> = ({
                     overflow: 'hidden',
                 }}
             >
-                {sectionHeader}
+                {!chromeless && sectionHeader}
                 {/* Loading/empty states are centered in their own bounded
                     scroll area so a shrunken subwindow clips nothing. */}
                 {loading || requests.length === 0 ? (

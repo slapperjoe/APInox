@@ -14,7 +14,6 @@ import type {
     SidebarTestsProps,
     SidebarWorkflowsProps,
     SidebarPerformanceProps,
-    SidebarHistoryProps,
     SidebarUnifiedProps,
 } from '../types/props';
 
@@ -26,7 +25,6 @@ export interface SidebarContextValue {
     testsProps: SidebarTestsProps;
     workflowsProps?: SidebarWorkflowsProps;
     performanceProps?: SidebarPerformanceProps;
-    historyProps?: SidebarHistoryProps;
     unifiedProps?: SidebarUnifiedProps;
 
     // ==================== VIEW STATE ====================

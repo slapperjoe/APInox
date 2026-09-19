@@ -1,16 +1,21 @@
 import React, { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import {
+    ArrowRight,
     ChevronRight,
     ChevronDown,
+    ChevronLeft,
     FolderOpen,
     FolderInput,
     FileCode,
     File,
     Server,
     FlaskConical as FlaskConicalIcon,
+    X,
 } from 'lucide-react';
-import { UnifiedProject, ApiOperation, ApiRequest, ScrapbookRequest } from '@shared/models';
+import { UnifiedProject, ApiOperation, ApiRequest, ScrapbookRequest, RequestHistoryEntry } from '@shared/models';
 import { SidebarContextMenu, CtxMenuSection, CtxMenuItem } from '../sidebar/shared/SidebarContextMenu';
+import { HeaderButton } from '../common/Button';
+import { InlineFormInput } from '../common/Form';
 import {
     Copy,
     Link,
@@ -21,6 +26,7 @@ import {
     Pencil as PencilIcon,
 } from '../sidebar/shared/SidebarContextMenu';
 import { ScrapbookPanel } from '../sidebar/ScrapbookPanel';
+import { UnifiedHistoryPanel } from './UnifiedHistoryPanel';
 import { RenameModal } from '../modals/RenameModal';
 import { useUnifiedProjectsSafe } from '../../contexts/UnifiedProjectContext';
 import { useReorderDrag, ReorderGapRow } from '../../hooks/useReorderDrag';
@@ -87,6 +93,96 @@ export const saveQuickRequestsHeight = (height: number): void => {
     }
 };
 
+// ── History subwindow resize constants ──────────────────────────────────────
+// The History section is the second bottom subwindow of the unified explorer
+// sidebar, stacked ABOVE Quick Requests (Quick Requests stays bottom-most so
+// its pinned drag math — distance from pointer to container bottom — is
+// unchanged). Dragging the handle between the project tree and the History
+// subwindow resizes History; the project tree and the Quick Requests window
+// keep their heights.
+// Default = header (~28px) + search bar (~30px) + three entry rows (~38px
+// each) ≈ 174px — a useful "at a glance" view of recent executions.
+export const HISTORY_DEFAULT_HEIGHT = 174;
+// Header (~28px) + at least one entry row (~38px) so the subwindow always
+// shows its header and a full row.
+export const HISTORY_MIN_HEIGHT = 64;
+export const clampHistoryHeight = (h: number): number => {
+    if (!Number.isFinite(h)) return HISTORY_DEFAULT_HEIGHT;
+    return Math.min(600, Math.max(HISTORY_MIN_HEIGHT, Math.round(h)));
+};
+// Minimum visible height reserved for the project tree while the History
+// subwindow is present (it keeps the tree usable as History + Quick Requests
+// share the bottom of the sidebar).
+const HISTORY_TREE_MIN = 64;
+
+// ── History subwindow height persistence ────────────────────────────────────
+// Same contract as the Quick Requests persistence above: the last dragged
+// height survives an app restart; corrupt/out-of-range saved values fall back
+// to the default or clamp to the UI min/max; storage writes are best-effort.
+export const HISTORY_HEIGHT_STORAGE_KEY = 'apinox_history_height';
+
+export const loadHistoryHeight = (): number => {
+    try {
+        const raw = window.localStorage.getItem(HISTORY_HEIGHT_STORAGE_KEY);
+        if (raw === null || raw.trim() === '') return HISTORY_DEFAULT_HEIGHT;
+        return clampHistoryHeight(Number(raw));
+    } catch {
+        return HISTORY_DEFAULT_HEIGHT;
+    }
+};
+
+export const saveHistoryHeight = (height: number): void => {
+    try {
+        window.localStorage.setItem(HISTORY_HEIGHT_STORAGE_KEY, String(clampHistoryHeight(height)));
+    } catch {
+        // Storage unavailable: skip persistence, the UI is unaffected.
+    }
+};
+
+// ── Section collapse (accordion) persistence ────────────────────────────────
+// Each of the three sections — the project tree ("Projects"), History and
+// Quick Requests — is an accordion section: its header carries a chevron that
+// collapses the body down to the header row. The per-section collapsed flags
+// survive an app restart, so a layout the user tuned sticks across sessions.
+// Malformed stored JSON falls back to everything expanded (the default the
+// app has always shown).
+export const SECTION_COLLAPSED_STORAGE_KEY = 'apinox_unified_section_collapsed';
+
+export interface SectionCollapsedState {
+    tree: boolean;
+    history: boolean;
+    quickRequests: boolean;
+}
+
+export const DEFAULT_SECTION_COLLAPSED: SectionCollapsedState = {
+    tree: false,
+    history: false,
+    quickRequests: false,
+};
+
+export const loadSectionCollapsed = (): SectionCollapsedState => {
+    try {
+        const raw = window.localStorage.getItem(SECTION_COLLAPSED_STORAGE_KEY);
+        if (!raw) return { ...DEFAULT_SECTION_COLLAPSED };
+        const parsed = JSON.parse(raw);
+        return {
+            tree: parsed?.tree === true,
+            history: parsed?.history === true,
+            quickRequests: parsed?.quickRequests === true,
+        };
+    } catch {
+        return { ...DEFAULT_SECTION_COLLAPSED };
+    }
+};
+
+export const saveSectionCollapsed = (state: SectionCollapsedState): void => {
+    try {
+        window.localStorage.setItem(SECTION_COLLAPSED_STORAGE_KEY, JSON.stringify(state));
+    } catch {
+        // Storage unavailable: skip persistence, the UI is unaffected.
+    }
+};
+
 export interface TreeItemProps {
     label: string;
     type: 'project' | 'operation' | 'request';
@@ -146,19 +242,19 @@ export const TreeItem: React.FC<TreeItemProps> = ({
     switch (type) {
         case 'project':
             icon = <Server size={18} style={iconStyle} />;
-            color = 'var(--apinox-icon-primary, #6e7681)';
+            color = 'var(--apinox-icon-foreground)';
             break;
         case 'operation':
             icon = <FolderOpen size={16} style={iconStyle} />;
-            color = 'var(--apinox-icon-secondary, #6e7681)';
+            color = 'var(--apinox-descriptionForeground)';
             break;
         case 'request':
             icon = <FileCode size={16} style={iconStyle} />;
-            color = 'var(--apinox-icon-secondary, #6e7681)';
+            color = 'var(--apinox-descriptionForeground)';
             break;
         default:
             icon = <File size={16} style={iconStyle} />;
-            color = 'var(--apinox-icon-secondary, #6e7681)';
+            color = 'var(--apinox-descriptionForeground)';
     }
 
     // Indentation: 0px for project, 24px for operation, 48px for request
@@ -223,6 +319,14 @@ interface CtxMenuState {
     operationName?: string;
 }
 
+// The "+" add flow: pick a project, then complete the second step — name the
+// new request (kind 'request') or enter the definition source URL (kind
+// 'load'). Completed steps collapse into the header breadcrumb; the active
+// step's input row renders directly below the header.
+type AddFlow =
+    | { kind: 'request'; step: 'project' | 'name'; project: UnifiedProject | null }
+    | { kind: 'load'; step: 'project' | 'source'; project: UnifiedProject | null };
+
 export interface UnifiedExplorerSidebarProps {
     projects: UnifiedProject[];
     selectedNode: { type: string; id: string } | null;
@@ -279,6 +383,28 @@ export interface UnifiedExplorerSidebarProps {
         onDeleteRequest: (id: string) => void;
         onExecuteRequest: (request: ScrapbookRequest) => void;
     };
+    /**
+     * History sub-window — the second bottom section of the unified sidebar,
+     * stacked above Quick Requests. Request history was a top-level rail view
+     * (SidebarView.HISTORY); it was folded into the unified explorer as a
+     * sub-section so the rail no longer carries a second request surface.
+     * The entry content (search/filters/replay/star/delete) is the shared
+     * HistorySidebar component, wrapped in UnifiedHistoryPanel.
+     */
+    history?: {
+        entries: RequestHistoryEntry[];
+        onReplay?: (entry: RequestHistoryEntry) => void;
+        onToggleStar?: (id: string) => void;
+        onDelete?: (id: string) => void;
+    };
+    /**
+     * Load a WSDL / OpenAPI / GraphQL definition from a source URL (the
+     * sidebar "+" → Load flow). Mirrors the main-area top bar's load path:
+     * the caller routes by format (`detectLoadFormat`) and publishes the
+     * resulting project. Undefined in non-Tauri dev, so the Load action is
+     * omitted from the "+" menu there.
+     */
+    onLoadWsdl?: (url: string) => void;
 }
 
 export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
@@ -304,6 +430,8 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
     onReorderOperation,
     onReorderRequest,
     scrapbook,
+    history: historyPanel,
+    onLoadWsdl,
 }) => {
     const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
     const [ctxMenu, setCtxMenu] = useState<CtxMenuState | null>(null);
@@ -317,6 +445,152 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
     const [sidebarCtxMenu, setSidebarCtxMenu] = useState<{ x: number; y: number } | null>(null);
     const closeCtxMenu = () => setCtxMenu(null);
     const closeSidebarCtxMenu = () => setSidebarCtxMenu(null);
+
+    // ── Section collapse (accordions) ───────────────────────────────────────
+    // The three sections — the project tree ("Projects"), History and Quick
+    // Requests — are accordions: each header's chevron collapses the body down
+    // to the header row. The per-section flags are seeded from localStorage
+    // (lazy initializer, so the saved layout is applied before first paint)
+    // and persisted on every toggle. Collapsing a section is independent of the
+    // others (all may be open at once) — the resize handles still work when a
+    // section is expanded.
+    const [sectionCollapsed, setSectionCollapsed] =
+        useState<SectionCollapsedState>(() => loadSectionCollapsed());
+    const toggleSection = useCallback((name: keyof SectionCollapsedState) => {
+        setSectionCollapsed(prev => {
+            const next = { ...prev, [name]: !prev[name] };
+            saveSectionCollapsed(next);
+            return next;
+        });
+    }, []);
+
+    // ── Sidebar "+" add flow ────────────────────────────────────────────────
+    // The header "+" opens a small menu (New Request / Load Definition). Each
+    // action drives a two-step flow rendered as a breadcrumb in the header
+    // plus an input row under it (mirrors the TestsUi "add suite" workflow,
+    // but with more depth: pick project → name request / source URL).
+    const [addFlow, setAddFlow] = useState<AddFlow | null>(null);
+    const [addMenuOpen, setAddMenuOpen] = useState(false);
+    const [addRequestName, setAddRequestName] = useState('');
+    const [addSourceUrl, setAddSourceUrl] = useState('');
+    // The menu renders into the header (position:relative), so a plain
+    // absolute position would be clipped by the panel's overflow — use the
+    // trigger button's rect in viewport (fixed) coordinates instead, same
+    // pattern as TestsUi's AddSuiteMenu.
+    const addMenuBtnRef = useRef<HTMLButtonElement>(null);
+    const addMenuRef = useRef<HTMLDivElement>(null);
+    const [addMenuPos, setAddMenuPos] = useState<{ top: number; left: number } | null>(null);
+
+    const resetAddFlow = () => {
+        setAddFlow(null);
+        setAddRequestName('');
+        setAddSourceUrl('');
+        setAddMenuOpen(false);
+        setAddMenuPos(null);
+    };
+
+    const startAddFlow = (kind: 'request' | 'load') => {
+        const single = projects.length === 1 ? projects[0] : null;
+        if (kind === 'request') {
+            setAddFlow(single ? { kind: 'request', step: 'name', project: single } : { kind: 'request', step: 'project', project: null });
+        } else {
+            // Load: the project step is only a source-URL pre-fill convenience.
+            // One project → use it directly; several → pick one to pre-fill;
+            // none → straight to the source input.
+            setAddFlow(
+                single
+                    ? { kind: 'load', step: 'source', project: single }
+                    : projects.length > 0
+                        ? { kind: 'load', step: 'project', project: null }
+                        : { kind: 'load', step: 'source', project: null },
+            );
+        }
+        // Pre-fill: one project means the choice step is done; one operation
+        // in it names the request, and the project source URL seeds a load.
+        if (kind === 'request' && projects.length === 1) {
+            const ops = projects[0].operations || [];
+            if (ops.length === 1) setAddRequestName(ops[0].displayName || ops[0].name);
+        }
+        if (kind === 'load' && projects.length === 1 && projects[0].sourceUrl) {
+            setAddSourceUrl(projects[0].sourceUrl);
+        }
+        setAddMenuOpen(false);
+        setAddMenuPos(null);
+    };
+
+    const openAddMenu = () => {
+        if (!addMenuOpen) {
+            const rect = addMenuBtnRef.current?.getBoundingClientRect();
+            if (rect) {
+                // Align the menu's right edge with the trigger button and
+                // clamp the left edge to the viewport (mirrors TestsUi).
+                const estimatedWidth = 190;
+                setAddMenuPos({
+                    top: rect.bottom + 4,
+                    left: Math.max(8, rect.right - estimatedWidth),
+                });
+            }
+        }
+        setAddMenuOpen(v => !v);
+    };
+
+    // Close the add menu on outside click / Escape (capture-phase mousedown
+    // beats child handlers, same as SidebarContextMenu).
+    useEffect(() => {
+        if (!addMenuOpen) return;
+        const handleMouseDown = (event: MouseEvent) => {
+            const target = event.target as Node;
+            if (addMenuRef.current?.contains(target)) return;
+            if (addMenuBtnRef.current?.contains(target)) return;
+            setAddMenuOpen(false);
+            setAddMenuPos(null);
+        };
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setAddMenuOpen(false);
+                setAddMenuPos(null);
+            }
+        };
+        document.addEventListener('mousedown', handleMouseDown);
+        document.addEventListener('keydown', handleKeyDown);
+        return () => {
+            document.removeEventListener('mousedown', handleMouseDown);
+            document.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [addMenuOpen]);
+
+    const pickAddProject = (project: UnifiedProject) => {
+        if (!addFlow) return;
+        if (addFlow.kind === 'request') {
+            setAddFlow({ kind: 'request', step: 'name', project });
+        } else {
+            // Load: pick a project to refresh → seed the source URL from it so
+            // the user can edit or submit directly.
+            setAddSourceUrl(project.sourceUrl || '');
+            setAddFlow({ kind: 'load', step: 'source', project });
+        }
+    };
+
+    const submitAddRequest = () => {
+        if (addFlow?.kind !== 'request' || !addFlow.project) return;
+        const project = addFlow.project;
+        const op = (project.operations || []).find(op => op.name === addRequestName.trim()) || (project.operations || [])[0];
+        if (op) {
+            onNewRequest(project.name, op.name);
+        }
+        resetAddFlow();
+    };
+
+    const submitAddLoad = () => {
+        if (addFlow?.kind !== 'load') return;
+        const url = addSourceUrl.trim();
+        if (!url || !onLoadWsdl) {
+            resetAddFlow();
+            return;
+        }
+        onLoadWsdl(url);
+        resetAddFlow();
+    };
 
     // Contract §4: loading-state indicator — reads the single source of truth
     // from the context (idle | loading(loaded,total,current) | ready(loaded,
@@ -374,6 +648,24 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
     // an ancestor window resize mid-drag cannot break the clamp.
     const quickRequestsContainerRef = useRef<HTMLDivElement | null>(null);
 
+    // History subwindow height (vertical resize via the handle between the
+    // project tree and the History window, which sits above Quick Requests).
+    // Same seeding/persistence contract as Quick Requests above.
+    const [historyHeight, setHistoryHeight] = useState<number>(() => loadHistoryHeight());
+    const historyHeightRef = useRef(historyHeight);
+    // The History handle's top edge (px from container top) at mousedown.
+    // History is NOT bottom-pinned (Quick Requests sits below it), so its
+    // height is the pointer's travel below the handle's start position — a
+    // stable measure independent of the variable tree height above.
+    const historyHandleRef = useRef<HTMLDivElement | null>(null);
+    const isResizingHistory = useRef(false);
+    // Kept in a ref so the (once-created) Quick Requests drag closure can read
+    // the current presence of the History subwindow without a stale capture.
+    const historyPanelPresentRef = useRef(!!historyPanel);
+    useEffect(() => {
+        historyPanelPresentRef.current = !!historyPanel;
+    }, [historyPanel]);
+
     const handleQuickRequestsResizeStart = useCallback((e: React.MouseEvent) => {
         e.preventDefault();
         const container = quickRequestsContainerRef.current;
@@ -389,8 +681,16 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
             // bottom: dragging the handle up grows it, dragging it down
             // shrinks it (the drag direction matches the pointer). Clamped to
             // [min, max]; the max also keeps the project tree visible (it
-            // needs at least the min height).
-            const max = Math.max(QUICK_REQUESTS_MIN_HEIGHT, Math.floor(containerHeight - QUICK_REQUESTS_MIN_HEIGHT));
+            // needs at least the min height) — and when the History subwindow
+            // is present, reserves room for it plus the tree minimum, so the
+            // History window can never be squeezed out of the sidebar.
+            const reservedBelowTree = (historyPanelPresentRef.current
+                ? historyHeightRef.current + HISTORY_TREE_MIN
+                : 0);
+            const max = Math.max(
+                QUICK_REQUESTS_MIN_HEIGHT,
+                Math.floor(containerHeight - QUICK_REQUESTS_MIN_HEIGHT - reservedBelowTree),
+            );
             const next = containerHeight - (ev.clientY - containerTop);
             const clamped = Math.min(max, Math.max(QUICK_REQUESTS_MIN_HEIGHT, Math.round(next)));
             quickRequestsHeightRef.current = clamped;
@@ -414,13 +714,19 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
 
     // Release the pointer-drag affordance if the mouseup happens off-window.
     // If the blur ends a drag that never got its mouseup, persist the
-    // reached height — otherwise that last resize would be lost.
+    // reached height — otherwise that last resize would be lost. (Covers
+    // both the Quick Requests and History handles, which share the same
+    // body-style affordance.)
     useEffect(() => {
         const reset = () => {
             if (isResizingQuickRequests.current) {
                 saveQuickRequestsHeight(quickRequestsHeightRef.current);
             }
+            if (isResizingHistory.current) {
+                saveHistoryHeight(historyHeightRef.current);
+            }
             isResizingQuickRequests.current = false;
+            isResizingHistory.current = false;
             document.body.style.userSelect = '';
             document.body.style.cursor = '';
         };
@@ -428,10 +734,47 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
         return () => window.removeEventListener('blur', reset);
     }, []);
 
-    // On startup the saved height is clamped against the live container once
-    // layout is known: a value saved while the window was large must not
-    // overflow a smaller one (which would push the subwindow out of the
-    // sidebar). useLayoutEffect so the correction lands before paint; in
+    // History resize: the handle sits between the project tree and the
+    // History window (which is above Quick Requests). Because History is not
+    // bottom-pinned, its height is measured from the handle's top edge at
+    // mousedown — the pointer's travel below that edge, clamped to
+    // [HISTORY_MIN_HEIGHT, container - tree minimum]. The Quick Requests
+    // window height is held constant while History is dragged.
+    const handleHistoryResizeStart = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        const container = quickRequestsContainerRef.current;
+        const handle = historyHandleRef.current;
+        if (!container || !handle) return;
+        isResizingHistory.current = true;
+        const handleTop = handle.getBoundingClientRect().top;
+
+        const handleMove = (ev: MouseEvent) => {
+            if (!isResizingHistory.current) return;
+            const containerHeight = container.getBoundingClientRect().height;
+            const next = ev.clientY - handleTop;
+            const max = Math.max(HISTORY_MIN_HEIGHT, Math.floor(containerHeight - HISTORY_TREE_MIN));
+            const clamped = Math.min(max, Math.max(HISTORY_MIN_HEIGHT, Math.round(next)));
+            historyHeightRef.current = clamped;
+            setHistoryHeight(clamped);
+        };
+        const handleEnd = () => {
+            isResizingHistory.current = false;
+            document.removeEventListener('mousemove', handleMove);
+            document.removeEventListener('mouseup', handleEnd);
+            document.body.style.userSelect = '';
+            document.body.style.cursor = '';
+            saveHistoryHeight(historyHeightRef.current);
+        };
+        document.body.style.userSelect = 'none';
+        document.body.style.cursor = 'row-resize';
+        document.addEventListener('mousemove', handleMove);
+        document.addEventListener('mouseup', handleEnd);
+    }, []);
+
+    // On startup the saved Quick Requests height is clamped against the live
+    // container once layout is known: a value saved while the window was large
+    // must not overflow a smaller one (which would push the subwindow out of
+    // the sidebar). useLayoutEffect so the correction lands before paint; in
     // non-layout environments (jsdom) the rect height is 0 and this is a
     // no-op. The stored value is deliberately NOT rewritten — only the
     // displayed height is clamped, so a later, larger window restores the
@@ -447,6 +790,24 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
             setQuickRequestsHeight(max);
         }
     }, []);
+
+    // On startup the saved History height is clamped against the live container
+    // once layout is known (same reasoning as the Quick Requests clamp above):
+    // a value saved while the window was large must not overflow a smaller one.
+    // In non-layout environments (jsdom) the rect height is 0 and this is a
+    // no-op. The stored value is deliberately NOT rewritten.
+    useLayoutEffect(() => {
+        if (!historyPanel) return;
+        const container = quickRequestsContainerRef.current;
+        if (!container) return;
+        const containerHeight = container.getBoundingClientRect().height;
+        if (containerHeight <= 0) return;
+        const max = Math.max(HISTORY_MIN_HEIGHT, Math.floor(containerHeight - HISTORY_TREE_MIN));
+        if (historyHeightRef.current > max) {
+            historyHeightRef.current = max;
+            setHistoryHeight(max);
+        }
+    }, [historyPanel]);
 
     const buildSidebarSections = (): CtxMenuSection[] => {
         const items: CtxMenuItem[] = [];
@@ -601,6 +962,75 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
     const isSelected = (type: string, id: string) =>
         (selectedNode && selectedNode.type === type && selectedNode.id === id) || false;
 
+    // Shared accordion section header: a full-width row with a leading chevron
+    // (clicking it toggles the section body) and, optionally, trailing actions
+    // on the right (e.g. Quick Requests' "+"). Collapsed sections show the
+    // chevron rotated to point right and drop the bottom border, so a stack of
+    // collapsed sections reads as a compact list of headers.
+    const renderSectionHeader = (
+        name: keyof SectionCollapsedState,
+        label: string,
+        testId: string,
+        actions?: React.ReactNode,
+    ) => {
+        const collapsed = sectionCollapsed[name];
+        return (
+            <div
+                data-testid={testId}
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    width: '100%',
+                    padding: '4px 10px',
+                    background: 'transparent',
+                    borderBottom: collapsed
+                        ? 'none'
+                        : '1px solid var(--apinox-sideBarSectionHeader-border)',
+                    userSelect: 'none',
+                    color: 'var(--apinox-foreground)',
+                    fontSize: 11,
+                    fontWeight: 'var(--fw-bold)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                    flexShrink: 0,
+                }}
+            >
+                <button
+                    type="button"
+                    aria-expanded={!collapsed}
+                    title={collapsed ? `Expand ${label}` : `Collapse ${label}`}
+                    onClick={() => toggleSection(name)}
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        flex: 1,
+                        minWidth: 0,
+                        background: 'transparent',
+                        border: 'none',
+                        padding: 0,
+                        margin: 0,
+                        cursor: 'pointer',
+                        color: 'inherit',
+                        fontSize: 'inherit',
+                        fontWeight: 'inherit',
+                        fontFamily: 'inherit',
+                        textTransform: 'inherit',
+                        letterSpacing: 'inherit',
+                        textAlign: 'left',
+                    }}
+                >
+                    {collapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                    <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {label}
+                    </span>
+                </button>
+                {actions}
+            </div>
+        );
+    };
+
     return (
         <div
             ref={quickRequestsContainerRef}
@@ -611,6 +1041,244 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                 minHeight: 0,
             }}
         >
+        {/* Sidebar header — matches the other sidebar panels (TestsUi etc.):
+            an uppercase title with a "+" action button on the right. The "+"
+            opens a small menu (New Request / Load Definition) that drives the
+            add flow below the header (pick project → name request / source).
+            It is intentionally deeper than the main-area top bar: loading a
+            definition from the sidebar doesn't require switching to the
+            work area. */}
+        <div
+            style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '4px 10px',
+                height: 44,
+                borderBottom: '1px solid var(--apinox-sideBarSectionHeader-border)',
+                flexShrink: 0,
+                userSelect: 'none',
+            }}
+        >
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
+                {addFlow ? (
+                    /* Add flow in progress: back-to-projects breadcrumb + the
+                        action label, replacing the plain title. */
+                    <>
+                        <span
+                            title="Back to the project list"
+                            onClick={resetAddFlow}
+                            style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: 'var(--apinox-icon-foreground, var(--apinox-foreground))', opacity: 0.8, flexShrink: 0 }}
+                        >
+                            <ChevronLeft size={14} />
+                        </span>
+                        {addFlow.kind === 'request' ? (
+                            <span style={{ fontSize: 11, fontWeight: 'var(--fw-bold)', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--apinox-sideBarTitle-foreground, var(--apinox-foreground))', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                New Request{addFlow.project ? ` — ${addFlow.project.displayName || addFlow.project.name}` : ''}
+                            </span>
+                        ) : (
+                            <span style={{ fontSize: 11, fontWeight: 'var(--fw-bold)', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--apinox-sideBarTitle-foreground, var(--apinox-foreground))', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                Load Definition{addFlow.project ? ` — ${addFlow.project.displayName || addFlow.project.name}` : ''}
+                            </span>
+                        )}
+                    </>
+                ) : (
+                    <span style={{ fontSize: 11, fontWeight: 'var(--fw-bold)', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--apinox-sideBarTitle-foreground, var(--apinox-foreground))' }}>
+                        Unified Explorer
+                    </span>
+                )}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--apinox-icon-foreground, var(--apinox-foreground))', flexShrink: 0, position: 'relative' }}>
+                {addFlow && (
+                    <HeaderButton onClick={resetAddFlow} title="Cancel add flow">
+                        <X size={16} />
+                    </HeaderButton>
+                )}
+                <HeaderButton ref={addMenuBtnRef} onClick={openAddMenu} title="Add">
+                    <PlusIcon size={16} />
+                </HeaderButton>
+                {addMenuOpen && (
+                    <div
+                        ref={addMenuRef}
+                        onMouseDown={e => e.stopPropagation()}
+                        style={{
+                            position: 'fixed',
+                            top: addMenuPos?.top,
+                            left: addMenuPos?.left,
+                            zIndex: 1001,
+                            background: 'var(--apinox-dropdown-background, #252526)',
+                            border: '1px solid var(--apinox-dropdown-border, #454545)',
+                            borderRadius: 4,
+                            minWidth: 180,
+                            boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
+                            padding: '4px 0',
+                        }}
+                    >
+                        <div style={{ padding: '4px 10px', fontSize: '0.8em', opacity: 0.7, borderBottom: '1px solid var(--apinox-panel-border, #3c3c3c)' }}>
+                            Add
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => startAddFlow('request')}
+                            style={{
+                                width: '100%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                padding: '6px 12px',
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'inherit',
+                                font: 'inherit',
+                                textAlign: 'left',
+                                cursor: 'pointer',
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.background = 'var(--apinox-list-hoverBackground)')}
+                            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                        >
+                            <FileCode size={14} />
+                            New Request
+                        </button>
+                        {onLoadWsdl && (
+                            <button
+                                type="button"
+                                onClick={() => startAddFlow('load')}
+                                style={{
+                                    width: '100%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                    padding: '6px 12px',
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: 'inherit',
+                                    font: 'inherit',
+                                    textAlign: 'left',
+                                    cursor: 'pointer',
+                                }}
+                                onMouseEnter={e => (e.currentTarget.style.background = 'var(--apinox-list-hoverBackground)')}
+                                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                            >
+                                <ArrowRight size={14} />
+                                Load Definition
+                            </button>
+                        )}
+                    </div>
+                )}
+            </div>
+        </div>
+
+        {/* Add-flow step rows — render directly below the header (sticky at
+            the top of the sidebar, above the scrollable tree). The step is
+            determined by addFlow.step: pick a project, then complete the
+            action-specific input. */}
+        {addFlow && addFlow.step === 'project' && (
+            <div style={{ padding: '6px 10px', borderBottom: '1px solid var(--apinox-sideBarSectionHeader-border)', flexShrink: 0, background: 'var(--apinox-sideBar-background)' }}>
+                <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 4, color: 'var(--apinox-foreground)' }}>
+                    {addFlow.kind === 'request' ? 'Which project?' : 'Which project to refresh?'}
+                </div>
+                {projects.length === 0 ? (
+                    <div style={{ fontSize: 12, opacity: 0.6, color: 'var(--apinox-foreground)' }}>No projects yet — load a definition first.</div>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        {projects.map(p => (
+                            <button
+                                key={p.name}
+                                type="button"
+                                onClick={() => pickAddProject(p)}
+                                disabled={p.readOnly && addFlow.kind === 'request'}
+                                title={p.readOnly && addFlow.kind === 'request' ? 'Project is read-only' : undefined}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                    padding: '4px 6px',
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: 'inherit',
+                                    font: 'inherit',
+                                    fontSize: 12,
+                                    textAlign: 'left',
+                                    cursor: p.readOnly && addFlow.kind === 'request' ? 'not-allowed' : 'pointer',
+                                    opacity: p.readOnly && addFlow.kind === 'request' ? 0.5 : 1,
+                                    borderRadius: 3,
+                                }}
+                                onMouseEnter={e => (e.currentTarget.style.background = 'var(--apinox-list-hoverBackground)')}
+                                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                            >
+                                <Server size={13} style={{ flexShrink: 0 }} />
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.displayName || p.name}</span>
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+        )}
+        {addFlow?.kind === 'request' && addFlow.step === 'name' && addFlow.project && (
+            <div style={{ padding: '6px 10px', borderBottom: '1px solid var(--apinox-sideBarSectionHeader-border)', flexShrink: 0, background: 'var(--apinox-sideBar-background)' }}>
+                <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 4, color: 'var(--apinox-foreground)' }}>
+                    Add request to operation:
+                </div>
+                {(addFlow.project.operations || []).length === 0 ? (
+                    <div style={{ fontSize: 12, opacity: 0.6, color: 'var(--apinox-foreground)' }}>This project has no operations.</div>
+                ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <select
+                            autoFocus
+                            value={addRequestName}
+                            onChange={e => setAddRequestName(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') submitAddRequest(); if (e.key === 'Escape') resetAddFlow(); }}
+                            style={{
+                                flex: 1,
+                                minWidth: 0,
+                                padding: '4px 6px',
+                                backgroundColor: 'var(--apinox-input-background, #3c3c3c)',
+                                color: 'var(--apinox-input-foreground, var(--apinox-foreground))',
+                                border: '1px solid var(--apinox-input-border)',
+                                borderRadius: 3,
+                                fontSize: 12,
+                                outline: 'none',
+                            }}
+                        >
+                            {(addFlow.project.operations || []).map(op => (
+                                <option key={op.name} value={op.name}>{op.displayName || op.name}</option>
+                            ))}
+                        </select>
+                        <HeaderButton onClick={submitAddRequest} title="Create request">
+                            <PlusIcon size={14} />
+                        </HeaderButton>
+                    </div>
+                )}
+            </div>
+        )}
+        {addFlow?.kind === 'load' && addFlow.step === 'source' && (
+            <div style={{ padding: '6px 10px', borderBottom: '1px solid var(--apinox-sideBarSectionHeader-border)', flexShrink: 0, background: 'var(--apinox-sideBar-background)' }}>
+                <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 4, color: 'var(--apinox-foreground)' }}>
+                    WSDL / OpenAPI / GraphQL URL
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <InlineFormInput
+                        autoFocus
+                        placeholder="https://…/Service?WSDL"
+                        value={addSourceUrl}
+                        onChange={e => setAddSourceUrl(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') submitAddLoad(); if (e.key === 'Escape') resetAddFlow(); }}
+                        style={{ flex: 1, minWidth: 0 }}
+                    />
+                    <HeaderButton onClick={submitAddLoad} title="Load definition">
+                        <ArrowRight size={14} />
+                    </HeaderButton>
+                </div>
+            </div>
+        )}
+        {/* ── "Projects" accordion section — the project tree body. Its
+            header carries a chevron that collapses the whole tree down to the
+            header row (accordion). Collapsed, the section occupies only the
+            header; the freed space goes to whatever else is open. */}
+        <div style={{ display: 'flex', flexDirection: 'column', flex: sectionCollapsed.tree ? '0 0 auto' : '1 1 0', minHeight: 0 }}>
+            {renderSectionHeader('tree', `Projects${projects.length > 0 ? ` (${projects.length})` : ''}`, 'unified-tree-section-header')}
+
+            {!sectionCollapsed.tree && (
         <div
             style={{
                 flex: 1,
@@ -683,8 +1351,8 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                             style={{
                                 width: 14,
                                 height: 14,
-                                border: '2px solid var(--apinox-border)',
-                                borderTopColor: 'var(--apinox-icon-primary, #6e7681)',
+                                border: '2px solid var(--apinox-panel-border)',
+                                borderTopColor: 'var(--apinox-icon-foreground)',
                                 borderRadius: '50%',
                                 animation: 'apinox-spin 0.8s linear infinite',
                             }}
@@ -705,7 +1373,7 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                         style={{
                             marginTop: 8,
                             padding: '4px 12px',
-                            background: 'var(--apinox-button, #4a9eff)',
+                            background: 'var(--apinox-focusBorder)',
                             color: '#fff',
                             border: 'none',
                             borderRadius: 4,
@@ -891,61 +1559,137 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                 onCancel={() => setRenameTarget(null)}
             />
         </div>
+            )}
+        </div>
+
+        {/* History sub-window — second bottom section, stacked above Quick
+            Requests (Quick Requests stays bottom-most). Accordion section:
+            the header's chevron collapses the body to the header row; while
+            expanded the handle above the window resizes it. Request history
+            was a top-level rail view (SidebarView.HISTORY); it is now a
+            sub-section of the unified explorer, like Quick Requests. */}
+        {historyPanel && (
+            <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+                {renderSectionHeader(
+                    'history',
+                    `History${historyPanel.entries.length > 0 ? ` (${historyPanel.entries.length})` : ''}`,
+                    'unified-history-section-header',
+                )}
+
+                {!sectionCollapsed.history && (
+                    <>
+                        <div
+                            ref={historyHandleRef}
+                            data-testid="unified-history-resize-handle"
+                            title="Drag to resize History"
+                            onMouseDown={handleHistoryResizeStart}
+                            onMouseEnter={() => setHandleHovered(true)}
+                            onMouseLeave={() => setHandleHovered(false)}
+                            style={{
+                                flexShrink: 0,
+                                height: 4,
+                                cursor: 'row-resize',
+                                background: handleHovered
+                                    ? 'var(--apinox-focusBorder)'
+                                    : 'var(--apinox-panel-border)',
+                                transition: 'background 0.2s',
+                            }}
+                        />
+
+                        <div
+                            data-testid="unified-history"
+                            style={{
+                                flexShrink: 0,
+                                height: historyHeight,
+                                minHeight: HISTORY_MIN_HEIGHT,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                overflow: 'hidden',
+                            }}
+                        >
+                            <UnifiedHistoryPanel
+                                fill
+                                chromeless
+                                history={historyPanel.entries}
+                                onReplay={historyPanel.onReplay}
+                                onToggleStar={historyPanel.onToggleStar}
+                                onDelete={historyPanel.onDelete}
+                            />
+                        </div>
+                    </>
+                )}
+            </div>
+        )}
 
         {/* F-01 / R-05 — Quick Requests (scrapbook) bottom section.
             Q1(a): rendered below the project tree, mirroring the legacy
-            placement in ApiExplorerSidebar. The subwindow is vertically
-            resizable via the handle above it; the project tree scrolls in the
-            flex area above, and the request list scrolls inside the
-            subwindow so a tall scrapbook never pushes the tree out of view. */}
+            placement in ApiExplorerSidebar. Accordion section: the header's
+            chevron collapses the body to the header row (the "+" create
+            action stays available while collapsed); while expanded the handle
+            above the window resizes it and the request list scrolls inside. */}
         {scrapbook && (
-            <>
-                {/* Vertical resize handle between the project tree and the
-                    Quick Requests subwindow. Always visible as a thin line
-                    (not only on hover) so the grip is easy to find; it
-                    brightens to the accent color while hovered. It doubles
-                    as the section separator, so the subwindow below has no
-                    border of its own. */}
-                <div
-                    data-testid="unified-quick-requests-resize-handle"
-                    title="Drag to resize Quick Requests"
-                    onMouseDown={handleQuickRequestsResizeStart}
-                    onMouseEnter={() => setHandleHovered(true)}
-                    onMouseLeave={() => setHandleHovered(false)}
-                    style={{
-                        flexShrink: 0,
-                        height: 4,
-                        cursor: 'row-resize',
-                        background: handleHovered
-                            ? 'var(--apinox-tab-active-border, var(--apinox-border, #3c3c3c))'
-                            : 'var(--apinox-border, #3c3c3c)',
-                        transition: 'background 0.2s',
-                    }}
-                />
+            <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+                {renderSectionHeader(
+                    'quickRequests',
+                    `Quick Requests${scrapbook.requests.length > 0 ? ` (${scrapbook.requests.length})` : ''}`,
+                    'unified-quick-requests-section-header',
+                    <HeaderButton onClick={scrapbook.onCreateRequest} title="Create New Request">
+                        <PlusIcon size={16} />
+                    </HeaderButton>,
+                )}
 
-                <div
-                    data-testid="unified-quick-requests"
-                    style={{
-                        flexShrink: 0,
-                        height: quickRequestsHeight,
-                        minHeight: QUICK_REQUESTS_MIN_HEIGHT,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        overflow: 'hidden',
-                    }}
-                >
-                    <ScrapbookPanel
-                        fill
-                        requests={scrapbook.requests}
-                        selectedRequest={scrapbook.selectedRequest}
-                        loading={scrapbook.loading}
-                        onCreateRequest={scrapbook.onCreateRequest}
-                        onSelectRequest={scrapbook.onSelectRequest}
-                        onDeleteRequest={scrapbook.onDeleteRequest}
-                        onExecuteRequest={scrapbook.onExecuteRequest}
-                    />
-                </div>
-            </>
+                {!sectionCollapsed.quickRequests && (
+                    <>
+                        {/* Vertical resize handle between the project tree
+                            and the Quick Requests subwindow. Always visible
+                            as a thin line (not only on hover) so the grip is
+                            easy to find; it brightens to the accent color
+                            while hovered. It doubles as the section
+                            separator, so the subwindow below has no border
+                            of its own. */}
+                        <div
+                            data-testid="unified-quick-requests-resize-handle"
+                            title="Drag to resize Quick Requests"
+                            onMouseDown={handleQuickRequestsResizeStart}
+                            onMouseEnter={() => setHandleHovered(true)}
+                            onMouseLeave={() => setHandleHovered(false)}
+                            style={{
+                                flexShrink: 0,
+                                height: 4,
+                                cursor: 'row-resize',
+                                background: handleHovered
+                                    ? 'var(--apinox-focusBorder)'
+                                    : 'var(--apinox-panel-border)',
+                                transition: 'background 0.2s',
+                            }}
+                        />
+
+                        <div
+                            data-testid="unified-quick-requests"
+                            style={{
+                                flexShrink: 0,
+                                height: quickRequestsHeight,
+                                minHeight: QUICK_REQUESTS_MIN_HEIGHT,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                overflow: 'hidden',
+                            }}
+                        >
+                            <ScrapbookPanel
+                                fill
+                                chromeless
+                                requests={scrapbook.requests}
+                                selectedRequest={scrapbook.selectedRequest}
+                                loading={scrapbook.loading}
+                                onCreateRequest={scrapbook.onCreateRequest}
+                                onSelectRequest={scrapbook.onSelectRequest}
+                                onDeleteRequest={scrapbook.onDeleteRequest}
+                                onExecuteRequest={scrapbook.onExecuteRequest}
+                            />
+                        </div>
+                    </>
+                )}
+            </div>
         )}
     </div>
     );

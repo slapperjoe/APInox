@@ -55,12 +55,15 @@ export const NavigationProvider = ({ children }: { children: ReactNode }) => {
                             'explorer': SidebarView.UNIFIED_EXPLORER,
                             'unified_explorer': SidebarView.UNIFIED_EXPLORER,
                             'projects': SidebarView.UNIFIED_EXPLORER,
+                            // 'history' was a top-level view; it is now the
+                            // History sub-window inside the unified explorer,
+                            // so its deep-link resolves to the unified explorer.
+                            'history': SidebarView.UNIFIED_EXPLORER,
                             'proxy': SidebarView.PROXY,
                             'mock': SidebarView.MOCK,
                             'watcher': SidebarView.WATCHER,
                             'tests': SidebarView.TESTS,
                             'performance': SidebarView.PERFORMANCE,
-                            'history': SidebarView.HISTORY,
                             'settings': SidebarView.SETTINGS
                         };
                         const view = viewMap[message.view] || message.view as SidebarView;

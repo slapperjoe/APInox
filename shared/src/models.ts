@@ -587,7 +587,9 @@ export enum SidebarView {
     TESTS = 'tests',
     WORKFLOWS = 'workflows', // NEW: Request chaining workflows
     PERFORMANCE = 'performance',
-    HISTORY = 'history',
+    // Request history was a top-level view; it was folded into the unified
+    // explorer as the History sub-window (a sibling of Quick Requests), so
+    // the HISTORY member is gone — same as the deleted PROJECTS member above.
     PROXY = 'proxy',     // Proxy/traffic interceptor (from APIprox)
     MOCK = 'mock',       // Mock server (from APIprox)
     WATCHER = 'watcher', // File watcher / SOAP pair viewer (from APIprox)

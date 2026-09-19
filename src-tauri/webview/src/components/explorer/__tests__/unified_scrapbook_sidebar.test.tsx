@@ -85,7 +85,12 @@ describe('UnifiedExplorerSidebar + Quick Requests (doc §8.3 — Q1(a) bottom se
         expect(screen.getByText('CountryInfo')).toBeInTheDocument();
         const quickSection = screen.getByTestId('unified-quick-requests');
         expect(quickSection).toBeInTheDocument();
-        expect(screen.getByText('Quick Requests')).toBeInTheDocument();
+        // Accordion section header (chevron + title); the panel itself is
+        // chromeless, so the title lives on the section header, with the
+        // entry count in parens.
+        const quickHeader = screen.getByTestId('unified-quick-requests-section-header');
+        expect(quickHeader).toBeInTheDocument();
+        expect(quickHeader).toHaveTextContent('Quick Requests');
         expect(screen.getByText('Quick Rate Check')).toBeInTheDocument();
 
         // Section is strictly BELOW the tree in document order: walk up from

@@ -4,7 +4,6 @@ import {
   HelpCircle,
   Compass,
   FlaskConical,
-  Clock,
   Workflow,
   Server,
   Eye,
@@ -136,12 +135,6 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
         active={activeView === SidebarView.PERFORMANCE}
         onClick={() => onChangeView(SidebarView.PERFORMANCE)}
         title="Performance"
-      />
-      <NavItem
-        icon={Clock}
-        active={activeView === SidebarView.HISTORY}
-        onClick={() => onChangeView(SidebarView.HISTORY)}
-        title="History"
       />
 
       <RailSeparator />

@@ -2,11 +2,13 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import styled from 'styled-components';
 import { listen } from '@tauri-apps/api/event';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
+import { Plus } from 'lucide-react';
 import { DEFAULT_EDITOR_SETTINGS } from '@apinox/request-editor/core';
 import type { EditorSettings } from '@apinox/request-editor/core';
 import { MonacoRequestEditorWithToolbar, MonacoResponseViewer } from '@apinox/request-editor/monaco';
 import { invokeTauriCommand } from '../../utils/bridge';
 import { EmptyState } from '../common/EmptyState';
+import { HeaderButton } from '../common/Button';
 import { ConditionPickerModal, suggestConditionsFromSoapXml } from './ConditionPickerModel';
 import { tokens } from './tokens';
 import { EditorPane, SplitDivider, naturalPanePx, useSplitPaneDrag } from './splitPane';
@@ -83,7 +85,7 @@ const SidebarHeader = styled.div`
   h3 {
     margin: 0;
     font-size: 11px;
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     text-transform: uppercase;
     letter-spacing: 0.3px;
     color: var(--apinox-sideBarTitle-foreground);
@@ -105,7 +107,7 @@ const WatchItem = styled.div<{ $active: boolean }>`
 
 const WatchName = styled.div`
   font-size: 12px;
-  font-weight: 500;
+  font-weight: var(--fw-medium);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -122,7 +124,7 @@ const WatchPath = styled.div`
 
 const StatusBadge = styled.span<{ $enabled: boolean }>`
   font-size: 9px;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   letter-spacing: 0.5px;
   text-transform: uppercase;
   padding: 2px 7px;
@@ -164,7 +166,7 @@ const PairListHeader = styled.div`
   h3 {
     margin: 0;
     font-size: 11px;
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     text-transform: uppercase;
     letter-spacing: 0.3px;
     color: var(--apinox-sideBarTitle-foreground);
@@ -193,7 +195,7 @@ const PairRowHeader = styled.div`
 
 const OperationName = styled.div`
   font-size: 12px;
-  font-weight: 500;
+  font-weight: var(--fw-medium);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -202,7 +204,7 @@ const OperationName = styled.div`
 
 const MatchBadge = styled.span<{ $matched: boolean }>`
   font-size: 9px;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   letter-spacing: 0.5px;
   text-transform: uppercase;
   padding: 2px 8px;
@@ -239,7 +241,7 @@ const DetailHeader = styled.div`
 
 const DetailTitle = styled.div`
   font-size: 13px;
-  font-weight: 500;
+  font-weight: var(--fw-medium);
   flex: 1;
 `;
 
@@ -253,7 +255,7 @@ const DetailBody = styled.div`
 const PaneLabel = styled.div`
   padding: 6px 14px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   color: ${tokens.text.secondary};
   background: ${tokens.surface.panel};
   border-bottom: 1px solid ${tokens.surface.elevated};
@@ -315,18 +317,11 @@ const SuccessBtn = styled(Btn)`
   &:hover:not(:disabled) { background: #1a8a2a; }
 `;
 
-const AddBtn = styled(Btn)`
-  background: ${tokens.status.accentDark};
-  color: white;
-  padding: 3px 10px;
-  &:hover { background: ${tokens.status.accentHover}; }
-`;
-
 const ModalHeader = styled.div`
   padding: 14px 18px;
   border-bottom: 1px solid ${tokens.border.default};
   font-size: 14px;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
 `;
 
 const ModalBody = styled.div`
@@ -351,7 +346,7 @@ const FormGroup = styled.div`
 
   label {
     font-size: 11px;
-    font-weight: 600;
+    font-weight: var(--fw-semibold);
     color: ${tokens.text.secondary};
     text-transform: uppercase;
     letter-spacing: 0.4px;
@@ -695,7 +690,9 @@ export const FileWatcherPage: React.FC = () => {
       <WatchSidebar>
         <SidebarHeader>
           <h3>Watches</h3>
-          <AddBtn onClick={openAddModal}>+ Add</AddBtn>
+          <HeaderButton onClick={openAddModal} title="Add Watch">
+            <Plus size={16} />
+          </HeaderButton>
         </SidebarHeader>
         <WatchList>
           <WatchItem $active={selectedWatchId === null} onClick={() => setSelectedWatchId(null)}>
@@ -876,7 +873,7 @@ export const FileWatcherPage: React.FC = () => {
                 <span className="hint">File where SOAP responses are written</span>
               </FormGroup>
               <FormGroup>
-                <label>Correlation ID Elements <span style={{ color: tokens.text.hint, fontWeight: 400, textTransform: 'none' }}>(comma-separated)</span></label>
+                <label>Correlation ID Elements <span style={{ color: tokens.text.hint, fontWeight: 'var(--fw-regular)', textTransform: 'none' }}>(comma-separated)</span></label>
                 <input
                   type="text"
                   value={formCorrElements}

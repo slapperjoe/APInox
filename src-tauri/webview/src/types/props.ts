@@ -11,7 +11,6 @@ import {
     // MockRule, // Removed - mock features moved to APIprox
     // MockEvent, // Removed - mock features moved to APIprox
     PerformanceSuite,
-    RequestHistoryEntry,
     Workflow,
     WorkflowStep,
     UnifiedProject,
@@ -78,13 +77,6 @@ export interface SidebarPerformanceProps {
     expandedSuiteIds?: string[];
 }
 
-export interface SidebarHistoryProps {
-    history: RequestHistoryEntry[];
-    onReplay: (entry: RequestHistoryEntry) => void;
-    onToggleStar: (id: string) => void;
-    onDelete: (id: string) => void;
-}
-
 export interface SidebarUnifiedProps {
     projects: UnifiedProject[];
     selectedNode: { type: string; id: string } | null;
@@ -116,6 +108,12 @@ export interface SidebarUnifiedProps {
     onAddRequestToTestCase?: (request: import('@shared/models').ApiRequest) => void;
     onReorderOperation: (projectName: string, fromIndex: number, toIndex: number) => void;
     onReorderRequest: (projectName: string, operationName: string, fromIndex: number, toIndex: number) => void;
+    /**
+     * Load a WSDL / OpenAPI / GraphQL definition from a source URL (the
+     * sidebar "+" → Load Definition flow). Undefined in non-Tauri dev, so
+     * the Load action is omitted from the "+" menu there.
+     */
+    onLoadWsdl?: (url: string) => void;
     /** F-01 / R-05 — Quick Requests (scrapbook) bottom section (Q1(a)). */
     scrapbook?: {
         requests: import('@shared/models').ScrapbookRequest[];
@@ -125,6 +123,18 @@ export interface SidebarUnifiedProps {
         onSelectRequest: (request: import('@shared/models').ScrapbookRequest) => void;
         onDeleteRequest: (id: string) => void;
         onExecuteRequest: (request: import('@shared/models').ScrapbookRequest) => void;
+    };
+    /**
+     * History sub-window — the second bottom section of the unified sidebar,
+     * stacked above Quick Requests. Request history used to be a top-level
+     * rail view (SidebarView.HISTORY); it is now a sub-section of the unified
+     * explorer, like Quick Requests.
+     */
+    history?: {
+        entries: import('@shared/models').RequestHistoryEntry[];
+        onReplay?: (entry: import('@shared/models').RequestHistoryEntry) => void;
+        onToggleStar?: (id: string) => void;
+        onDelete?: (id: string) => void;
     };
 }
 
