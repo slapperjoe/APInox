@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { MonacoEditorWrapper } from '@apinox/request-editor/monaco';
-import { Play, Loader2, HelpCircle } from 'lucide-react';
+import { Play, HelpCircle } from 'lucide-react';
+import { Spinner } from '../common/Spinner';
 import { bridge, isTauri } from '../../utils/bridge';
 import { PrimaryButton, SecondaryButton } from '../common/Button';
 import { useTheme } from '@apinox/request-editor/core'; // Use package ThemeContext
@@ -344,7 +345,7 @@ export const ScriptPlaygroundModal: React.FC<ScriptPlaygroundModalProps> = ({ on
                         </ApplyButton>
                     )}
                     <RunButton onClick={handleRun} disabled={isRunning}>
-                        {isRunning ? <Loader2 className="spin" size={16} /> : <Play size={16} />}
+                        {isRunning ? <Spinner size={16} /> : <Play size={16} />}
                         Run Script
                     </RunButton>
                 </Footer>

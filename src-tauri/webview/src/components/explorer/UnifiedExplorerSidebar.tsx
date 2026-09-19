@@ -28,6 +28,7 @@ import {
 import { ScrapbookPanel } from '../sidebar/ScrapbookPanel';
 import { UnifiedHistoryPanel } from './UnifiedHistoryPanel';
 import { RenameModal } from '../modals/RenameModal';
+import { Spinner } from '../common/Spinner';
 import { SectionLabel } from '../common/SectionLabel';
 import { useUnifiedProjectsSafe } from '../../contexts/UnifiedProjectContext';
 import { useReorderDrag, ReorderGapRow } from '../../hooks/useReorderDrag';
@@ -1334,7 +1335,6 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                   during the load. */}
             {load.phase === 'loading' && (
                 <>
-                    <style>{`@keyframes apinox-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
                     <div
                         style={{
                             height: 24,
@@ -1347,17 +1347,7 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                             flexShrink: 0,
                         }}
                     >
-                        {/* Spinner */}
-                        <div
-                            style={{
-                                width: 14,
-                                height: 14,
-                                border: '2px solid var(--apinox-panel-border)',
-                                borderTopColor: 'var(--apinox-icon-foreground)',
-                                borderRadius: '50%',
-                                animation: 'apinox-spin 0.8s linear infinite',
-                            }}
-                        />
+                        <Spinner size={14} />
                         <span style={{ fontSize: 'var(--apinox-fs-sm)' }}>
                             Loading interfaces…
                             {load.total > 0 ? ` (${load.loaded}/${load.total})` : ''}

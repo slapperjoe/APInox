@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { Play, Plus, FileCode, Loader2, ArrowUp, ArrowDown, Trash2, ListChecks, CheckCircle, XCircle } from 'lucide-react';
+import { Play, Plus, FileCode, ArrowUp, ArrowDown, Trash2, ListChecks, CheckCircle, XCircle } from 'lucide-react';
 import { TestCase, TestStep, TestStepType } from '@shared/models';
 import { ToolbarButton, IconButton, RunButton } from '../../styles/WorkspaceLayout.styles';
 import { ContextHelpButton } from '../ContextHelpButton';
 import { EmptyState } from '../common/EmptyState';
+import { Spinner } from '../common/Spinner';
 import { SPACING_XS, SPACING_SM, SPACING_MD, SPACING_LG, SPACING_XL } from '../../styles/spacing';
 
 // Empty state component
@@ -95,16 +96,6 @@ const StepStatusRunning = styled.div`
     color: var(--apinox-testing-iconQueued);
     display: inline-flex;
     align-items: center;
-    
-    /* Spin animation for loader icon */
-    .spin {
-        animation: spin 1s linear infinite;
-    }
-    
-    @keyframes spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
-    }
 `;
 
 const StepStatusPass = styled.div`
@@ -269,7 +260,7 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
                                     <StepIndexNumber>{index + 1}.</StepIndexNumber>
                                     {status?.status === 'running' && (
                                         <StepStatusRunning title="Running...">
-                                            <Loader2 size={16} className="spin" />
+                                            <Spinner size={16} />
                                         </StepStatusRunning>
                                     )}
                                     {status?.status === 'pass' && (

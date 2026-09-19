@@ -12,9 +12,9 @@ import {
   Upload,
   CheckCircle,
   XCircle,
-  Loader,
   AlertCircle,
 } from "lucide-react";
+import { Spinner } from "../common/Spinner";
 import { Modal, Button } from "./Modal";
 import {
   SPACING_XS,
@@ -468,11 +468,7 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
       <ProgressHeader>
         {viewState === "processing" ? (
           <>
-            <Loader
-              size={16}
-              className="status-icon"
-              style={{ animation: "spin 1s linear infinite" }}
-            />
+            <Spinner size={16} />
             Processing {currentIndex + 1} of {urls.length}...
           </>
         ) : (
@@ -523,7 +519,7 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
               <span className="status-icon">
                 {status === "success" && <CheckCircle size={14} />}
                 {status === "error" && <XCircle size={14} />}
-                {status === "processing" && <Loader size={14} />}
+                {status === "processing" && <Spinner size={14} />}
                 {status === "pending" && <AlertCircle size={14} />}
               </span>
               <span className="url" title={result.url}>

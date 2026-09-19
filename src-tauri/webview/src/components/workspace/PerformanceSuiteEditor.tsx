@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { Play, Plus, Trash2, Settings, Clock, Repeat, Flame, Zap, GripVertical, Loader, Square, Calendar, ToggleLeft, ToggleRight, Import, Download, ChevronDown, ChevronRight, CheckCircle, XCircle, AlertTriangle, Users, Server, FileJson } from 'lucide-react';
+import { Play, Plus, Trash2, Settings, Clock, Repeat, Flame, Zap, GripVertical, Square, Calendar, ToggleLeft, ToggleRight, Import, Download, ChevronDown, ChevronRight, CheckCircle, XCircle, AlertTriangle, Users, Server, FileJson } from 'lucide-react';
+import { Spinner } from '../common/Spinner';
 import { PerformanceSuite, PerformanceRun, PerformanceSchedule, PerformanceRequest, CoordinatorStatus } from '@shared/models';
 import { WorkerStatusPanel } from './WorkerStatusPanel';
 
@@ -436,7 +437,7 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
 
                 {isRunning ? (
                     <ToolbarButton onClick={onStop} style={{ backgroundColor: 'var(--apinox-errorForeground)', color: 'white' }}>
-                        <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                        <Spinner size={14} />
                         <Square size={12} /> Stop
                     </ToolbarButton>
                 ) : (
@@ -524,7 +525,7 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                 {isRunning && (
                     <Section>
                         <SectionHeader>
-                            <Loader size={16} className="animate-spin" /> Running...
+                            <Spinner size={16} /> Running...
                         </SectionHeader>
                         <SectionContent>
                             <ProgressContainer>

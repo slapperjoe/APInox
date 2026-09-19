@@ -9,6 +9,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { RefreshCw, CheckCircle, Download, ExternalLink, AlertTriangle, Square } from 'lucide-react';
+import { Spinner } from '../../common/Spinner';
 import { listen } from '@tauri-apps/api/event';
 import { invokeTauriCommand } from '../../../utils/bridge';
 import { ScrollableForm, SectionHeader } from './SettingsTypes';
@@ -245,7 +246,7 @@ export const UpdatesTab: React.FC = () => {
             {/* ── Status message ── */}
             <div style={{ marginBottom: 20 }}>
                 {checkState === 'checking' && (
-                    <StatusRow icon={<RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} />}>
+                    <StatusRow icon={<Spinner size={14} style={{ opacity: 0.9 }} />}>
                         Checking for updates…
                     </StatusRow>
                 )}
@@ -414,9 +415,6 @@ export const UpdatesTab: React.FC = () => {
                     </pre>
                 </div>
             )}
-
-            {/* Spin keyframe */}
-            <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
         </ScrollableForm>
     );
 };

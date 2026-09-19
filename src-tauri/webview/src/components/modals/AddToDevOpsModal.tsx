@@ -6,7 +6,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
-import { Send, Loader2, Check, AlertCircle } from 'lucide-react';
+import { Send, Check, AlertCircle } from 'lucide-react';
+import { Spinner } from '../common/Spinner';
 import { bridge } from '../../utils/bridge';
 import { Modal, Button } from './Modal';
 import { SPACING_XS, SPACING_SM, SPACING_MD, SPACING_LG } from '../../styles/spacing';
@@ -68,18 +69,7 @@ const StatusMessage = styled.div<{ $success?: boolean }>`
         : 'var(--apinox-inputValidation-errorForeground)'};
     border-radius: 4px;
     font-size: var(--apinox-fs-md);
-`;
-
-const Spinner = styled(Loader2)`
-    animation: spin 1s linear infinite;
-    
-    @keyframes spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
-    }
-`;
-
-const SecondaryButton = styled(Button)`
+`;const SecondaryButton = styled(Button)`
     background: var(--apinox-button-secondaryBackground);
     color: var(--apinox-button-secondaryForeground);
     

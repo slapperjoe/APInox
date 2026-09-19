@@ -5,8 +5,9 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { ExternalLink, Check, AlertCircle, Loader2 } from "lucide-react";
-import styled, { keyframes } from "styled-components";
+import { ExternalLink, Check, AlertCircle } from "lucide-react";
+import { Spinner } from "../../common/Spinner";
+import styled from "styled-components";
 import {
   ApinoxConfig,
   ScrollableForm,
@@ -19,15 +20,6 @@ import {
 } from "./SettingsTypes";
 import { bridge, isTauri } from "../../../utils/bridge";
 import { FrontendCommand } from "@shared/messages";
-
-const spin = keyframes`
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-`;
-
-const Spinner = styled(Loader2)`
-  animation: ${spin} 1s linear infinite;
-`;
 
 const StatusMessage = styled.div<{ success?: boolean }>`
   display: flex;
