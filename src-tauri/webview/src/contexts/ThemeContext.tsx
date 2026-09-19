@@ -117,12 +117,12 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
                     colors: {
                         'editor.background': toMonacoColor(getVar('--apinox-editor-background', isLight ? '#ffffff' : '#1e1e1e')),
                         'editor.foreground': toMonacoColor(getVar('--apinox-editor-foreground', isLight ? '#000000' : '#d4d4d4')),
-                        'editor.selectionBackground': toMonacoColor(getVar('--apinox-editor-selectionBackground', isLight ? '#add6ff' : '#264f78')),
-                        'editor.lineHighlightBackground': toMonacoColor(getVar('--apinox-editor-lineHighlightBackground', isLight ? '#f5f5f5' : '#2a2d2e')),
-                        'editorCursor.foreground': toMonacoColor(getVar('--apinox-editorCursor-foreground', isLight ? '#000000' : '#ffffff')),
+                        'editor.selectionBackground': toMonacoColor(getVar('--apinox-editor-selectionBackground', isLight ? '#ffffff' : '#264f78')),
+                        'editor.lineHighlightBackground': toMonacoColor(getVar('--apinox-editor-lineHighlightBackground', isLight ? '#eff3f6' : '#2a2d2e')),
+                        'editorCursor.foreground': toMonacoColor(getVar('--apinox-editorCursor-foreground', isLight ? '#000000' : '#aeafad')),
                         'editorLineNumber.foreground': toMonacoColor(getVar('--apinox-editorLineNumber-foreground', isLight ? '#999999' : '#858585')),
                         'editorLineNumber.activeForeground': toMonacoColor(getVar('--apinox-editorLineNumber-activeForeground', isLight ? '#000000' : '#c6c6c6')),
-                        'editorWhitespace.foreground': toMonacoColor(getVar('--apinox-editorWhitespace-foreground', isLight ? '#d3d3d3' : '#404040'))
+                        'editorWhitespace.foreground': toMonacoColor(getVar('--apinox-editorWhitespace-foreground', isLight ? '#c0c0c0' : '#404040'))
                     }
                 });
 

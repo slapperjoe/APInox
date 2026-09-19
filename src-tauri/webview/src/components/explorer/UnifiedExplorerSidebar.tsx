@@ -1106,15 +1106,15 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                             top: addMenuPos?.top,
                             left: addMenuPos?.left,
                             zIndex: 1001,
-                            background: 'var(--apinox-dropdown-background, #252526)',
-                            border: '1px solid var(--apinox-dropdown-border, #454545)',
+                            background: 'var(--apinox-dropdown-background, #3c3c3c)',
+                            border: '1px solid var(--apinox-dropdown-border, #3c3c3c)',
                             borderRadius: 4,
                             minWidth: 180,
                             boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
                             padding: '4px 0',
                         }}
                     >
-                        <div style={{ padding: '4px 10px', fontSize: '0.8em', opacity: 0.7, borderBottom: '1px solid var(--apinox-panel-border, #3c3c3c)' }}>
+                        <div style={{ padding: '4px 10px', fontSize: '0.8em', opacity: 0.7, borderBottom: '1px solid var(--apinox-panel-border, #80808059)' }}>
                             Add
                         </div>
                         <button
@@ -1374,7 +1374,7 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                             marginTop: 8,
                             padding: '4px 12px',
                             background: 'var(--apinox-focusBorder)',
-                            color: '#fff',
+                            color: 'var(--apinox-button-foreground)',
                             border: 'none',
                             borderRadius: 4,
                             cursor: 'pointer',

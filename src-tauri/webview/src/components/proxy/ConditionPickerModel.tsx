@@ -275,7 +275,7 @@ export const ConditionPickerModal: React.FC<ConditionPickerModalProps> = ({
                         padding: '7px 10px', marginBottom: '4px',
                         borderRadius: '4px', cursor: 'pointer',
                         background: isSelected ? 'rgba(14,99,156,0.15)' : tokens.surface.base,
-                        border: `1px solid ${isSelected ? tokens.status.accentDark : '#2d2d2d'}`,
+                        border: `1px solid ${isSelected ? tokens.status.accentDark : tokens.border.default}`,
                       }}
                       onClick={() => toggle(idx)}
                     >
@@ -297,8 +297,8 @@ export const ConditionPickerModal: React.FC<ConditionPickerModalProps> = ({
                           {sg.label}
                           {sg.recommended && (
                             <span style={{
-                              marginLeft: '6px', fontSize: '9px', background: '#1e3a5a',
-                              color: '#6db3e8', padding: '1px 5px', borderRadius: '8px',
+                              marginLeft: '6px', fontSize: '9px', background: 'var(--apinox-surface-tag)',
+                              color: 'var(--apinox-text-tag)', padding: '1px 5px', borderRadius: '8px',
                             }}>recommended</span>
                           )}
                         </div>

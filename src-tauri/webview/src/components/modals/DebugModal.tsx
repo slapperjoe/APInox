@@ -392,7 +392,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                             borderRadius: '3px',
                             fontSize: '0.9em',
                         }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontFamily: 'var(--apinox-editor-font-family, monospace)' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontFamily: 'var(--apinox-editor-font-family)' }}>
                                 {settingsDebug?.version && (
                                     <div>
                                         <span style={{ opacity: 0.7 }}>Version:</span>{' '}
@@ -504,7 +504,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                             background: 'var(--apinox-editor-background)',
                             border: '1px solid var(--apinox-panel-border)',
                             padding: '8px',
-                            fontFamily: 'var(--apinox-editor-font-family, monospace)',
+                            fontFamily: 'var(--apinox-editor-font-family)',
                             fontSize: '0.85em',
                             lineHeight: '1.4',
                             borderRadius: '3px',
@@ -594,7 +594,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                             background: 'var(--apinox-editor-background)',
                             border: '1px solid var(--apinox-panel-border)',
                             padding: '8px',
-                            fontFamily: 'var(--apinox-editor-font-family, monospace)',
+                            fontFamily: 'var(--apinox-editor-font-family)',
                             fontSize: '0.85em',
                             lineHeight: '1.4',
                             borderRadius: '3px',

@@ -23,7 +23,7 @@ const PlaceholderContainer = styled.div`
 export const WelcomePanel: React.FC = () => {
     return (
         <PlaceholderContainer>
-            <p style={{ margin: 0, fontSize: 'var(--apinox-fs-md, 14px)' }}>Nothing selected</p>
+            <p style={{ margin: 0, fontSize: 'var(--apinox-fs-md, 12px)' }}>Nothing selected</p>
         </PlaceholderContainer>
     );
 };

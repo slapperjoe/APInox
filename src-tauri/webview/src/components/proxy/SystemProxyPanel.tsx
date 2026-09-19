@@ -84,11 +84,11 @@ export function SystemProxyPanel({ status, loading, error, certTrusted, onEnable
             display: 'flex',
             gap: tokens.space['3'],
             padding: tokens.space['4'],
-            background: '#1a2d1a',
-            border: `1px solid #2d5a2d`,
+            background: 'var(--apinox-inputValidation-successBackground)',
+            border: `1px solid var(--apinox-inputValidation-successBorder)`,
             borderRadius: tokens.radius.md,
             fontSize: tokens.fontSize.sm,
-            color: '#6fbf6f',
+            color: 'var(--apinox-inputValidation-successForeground)',
           }}>
             <span style={{ fontSize: '16px', flexShrink: 0 }}>🔐</span>
             <div>
@@ -132,11 +132,11 @@ export function SystemProxyPanel({ status, loading, error, certTrusted, onEnable
             display: 'flex',
             gap: tokens.space['3'],
             padding: tokens.space['4'],
-            background: '#1a2d3d',
-            border: `1px solid #2d5a8a`,
+            background: 'var(--apinox-inputValidation-infoBackground)',
+            border: `1px solid var(--apinox-inputValidation-infoBorder)`,
             borderRadius: tokens.radius.md,
             fontSize: tokens.fontSize.sm,
-            color: '#6f9fbf',
+            color: 'var(--apinox-inputValidation-infoForeground)',
           }}>
             <span style={{ fontSize: '16px', flexShrink: 0 }}>✓</span>
             <div>
@@ -175,8 +175,8 @@ export function SystemProxyPanel({ status, loading, error, certTrusted, onEnable
           {certTrusted === true ? (
             <div style={{
               display: 'flex', gap: tokens.space['3'], padding: tokens.space['3'],
-              background: '#1a2d3d', border: `1px solid #2d5a8a`,
-              borderRadius: tokens.radius.md, fontSize: tokens.fontSize.sm, color: '#6f9fbf',
+              background: 'var(--apinox-inputValidation-infoBackground)', border: `1px solid var(--apinox-inputValidation-infoBorder)`,
+              borderRadius: tokens.radius.md, fontSize: tokens.fontSize.sm, color: 'var(--apinox-inputValidation-infoForeground)',
             }}>
               ✓ CA certificate trusted — HTTPS interception ready
             </div>
@@ -196,7 +196,7 @@ export function SystemProxyPanel({ status, loading, error, certTrusted, onEnable
         <div style={{
           padding: tokens.space['4'],
           background: tokens.surface.danger,
-          border: `1px solid #6a2d2d`,
+          border: `1px solid var(--apinox-inputValidation-errorBorder)`,
           borderRadius: tokens.radius.md,
           fontSize: tokens.fontSize.sm,
           color: tokens.text.danger,
@@ -227,7 +227,7 @@ function primaryButtonStyle(disabled: boolean): React.CSSProperties {
 function dangerButtonStyle(disabled: boolean): React.CSSProperties {
   return {
     padding: `8px ${tokens.space['5']}`,
-    background: disabled ? tokens.surface.input : '#c5000b',
+    background: disabled ? tokens.surface.input : 'var(--apinox-errorForeground)',
     border: 'none',
     borderRadius: tokens.radius.md,
     color: tokens.text.white,

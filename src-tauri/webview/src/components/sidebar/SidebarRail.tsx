@@ -63,8 +63,8 @@ const NavItem = ({ icon: Icon, active, onClick, title, showBadge }: any) => (
             width: 7,
             height: 7,
             borderRadius: "50%",
-            backgroundColor: "var(--apinox-badge-background, #e85b4a)",
-            border: "1px solid var(--apinox-activityBar-background, #333)",
+            backgroundColor: "var(--apinox-badge-background, #4d4d4d)",
+            border: "1px solid var(--apinox-activityBar-background, #333333)",
             pointerEvents: "none",
           }}
         />
@@ -78,7 +78,7 @@ const RailSeparator = () => (
     style={{
       margin: "6px 10px",
       borderTop: "1px solid currentColor",
-      color: "var(--apinox-activityBar-foreground, #cccccc)",
+      color: "var(--apinox-activityBar-foreground, #ffffff)",
       opacity: 0.25,
       flexShrink: 0,
     }}

@@ -177,17 +177,17 @@ body[data-platform="android"] * {
 }
 
 ::-webkit-scrollbar-thumb {
-    background: var(--apinox-scrollbarSlider-background, rgba(121,121,121,0.3));
+    background: var(--apinox-scrollbarSlider-background, #79797966);
     border-radius: 2px;
     transition: background 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: var(--apinox-scrollbarSlider-hoverBackground, rgba(100,100,100,0.7));
+    background: var(--apinox-scrollbarSlider-hoverBackground, #646464b3);
 }
 
 ::-webkit-scrollbar-thumb:active {
-    background: var(--apinox-scrollbarSlider-activeBackground, rgba(191,191,191,0.4));
+    background: var(--apinox-scrollbarSlider-activeBackground, #bfbfbf66);
 }
 
 ::-webkit-scrollbar-track {
@@ -436,7 +436,7 @@ code,
         z-index: 1001;
         background: var(--apinox-titleBar-activeBackground, #1e1e1e);
         border-bottom: 1px solid
-            var(--apinox-titleBar-border, rgba(255, 255, 255, 0.08));
+            var(--apinox-titleBar-border, transparent);
         gap: 8px;
     }
 }

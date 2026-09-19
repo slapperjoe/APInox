@@ -10,8 +10,8 @@ const Wrapper = styled.div`
   height: 100%;
   width: 100%;
   background: var(--apinox-editor-background, #1e1e1e);
-  color: var(--apinox-foreground, #ccc);
-  font-family: var(--apinox-editor-font-family, "JetBrains Mono", monospace);
+  color: var(--apinox-foreground, #cccccc);
+  font-family: var(--apinox-editor-font-family);
   font-size: 12px;
 `;
 
@@ -66,7 +66,7 @@ const HexCell = styled.td<{ $active: boolean }>`
   width: 26px;
   min-width: 26px;
   cursor: default;
-  color: ${(p) => (p.$active ? "#007acc" : "inherit")};
+  color: ${(p) => (p.$active ? "var(--apinox-focusBorder)" : "inherit")};
   font-weight: ${(p) => (p.$active ? 700 : 400)};
 `;
 
@@ -74,7 +74,7 @@ const AsciiCell = styled.td<{ $active: boolean }>`
   text-align: center;
   width: 11px;
   min-width: 11px;
-  color: ${(p) => (p.$active ? "#007acc" : "rgba(204,204,204,0.5)")};
+  color: ${(p) => (p.$active ? "var(--apinox-focusBorder)" : "rgba(204,204,204,0.5)")};
   font-weight: ${(p) => (p.$active ? 700 : 400)};
   cursor: default;
 `;
@@ -88,7 +88,7 @@ const StatusBar = styled.div`
   flex-shrink: 0;
   border-top: 1px solid rgba(128, 128, 128, 0.2);
   background: var(--apinox-statusBar-background, #007acc);
-  color: var(--apinox-statusBar-foreground, #fff);
+  color: var(--apinox-statusBar-foreground, #ffffff);
 `;
 
 const ReadOnlyBadge = styled.span`

@@ -27,8 +27,8 @@ const DropdownContainer = styled.div<{ $isMacOS?: boolean }>`
     width: 600px;
     max-width: calc(100vw - 120px);
     max-height: 500px;
-    background: var(--apinox-dropdown-background, var(--vscode-dropdown-background));
-    border: 1px solid var(--apinox-dropdown-border, var(--vscode-dropdown-border));
+    background: var(--apinox-dropdown-background, var(--apinox-dropdown-background));
+    border: 1px solid var(--apinox-dropdown-border, var(--apinox-dropdown-border));
     border-radius: 8px;
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(8px);
@@ -53,12 +53,12 @@ const ResultsList = styled.div`
     }
     
     &::-webkit-scrollbar-thumb {
-        background: var(--vscode-scrollbarSlider-background);
+        background: var(--apinox-scrollbarSlider-background);
         border-radius: 5px;
     }
     
     &::-webkit-scrollbar-thumb:hover {
-        background: var(--vscode-scrollbarSlider-hoverBackground);
+        background: var(--apinox-scrollbarSlider-hoverBackground);
     }
 `;
 
@@ -68,9 +68,9 @@ const GroupHeader = styled.div`
     font-weight: var(--fw-bold);
     text-transform: uppercase;
     letter-spacing: 0.8px;
-    color: var(--vscode-descriptionForeground);
-    background: var(--vscode-sideBar-background);
-    border-bottom: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.2));
+    color: var(--apinox-descriptionForeground);
+    background: var(--apinox-sideBar-background);
+    border-bottom: 1px solid var(--apinox-widget-border, #303031);
     user-select: none;
     font-family: var(--apinox-ui-font-family, var(--apinox-font-family));
     opacity: 0.9;
@@ -90,23 +90,23 @@ const ResultItem = styled.div<{ $selected: boolean }>`
     font-family: var(--apinox-ui-font-family, var(--apinox-font-family));
     
     ${props => props.$selected ? `
-        background: var(--vscode-list-activeSelectionBackground, rgba(51, 153, 255, 0.4)) !important;
-        color: var(--vscode-list-activeSelectionForeground, #ffffff);
-        border-left-color: var(--vscode-focusBorder, #007ACC);
+        background: var(--apinox-list-activeSelectionBackground, #37373d) !important;
+        color: var(--apinox-list-activeSelectionForeground, #ffffff);
+        border-left-color: var(--apinox-focusBorder, #007fd4);
     ` : `
         background: transparent;
-        color: var(--vscode-foreground);
+        color: var(--apinox-foreground);
     `}
 
     &:hover {
-        background: var(--vscode-list-hoverBackground, rgba(128, 128, 128, 0.2)) !important;
-        border-left-color: var(--vscode-focusBorder, #007ACC);
+        background: var(--apinox-list-hoverBackground, #2a2d2e) !important;
+        border-left-color: var(--apinox-focusBorder, #007fd4);
     }
     
     /* Ensure hover works even when selected */
     ${props => props.$selected && `
         &:hover {
-            background: var(--vscode-list-activeSelectionBackground, rgba(51, 153, 255, 0.5)) !important;
+            background: var(--apinox-list-activeSelectionBackground, #37373d) !important;
             filter: brightness(1.1);
         }
     `}
@@ -120,7 +120,7 @@ const ResultIcon = styled.div<{ $selected?: boolean }>`
     height: 20px;
     flex-shrink: 0;
     opacity: ${props => props.$selected ? 1 : 0.75};
-    color: ${props => props.$selected ? 'var(--vscode-list-activeSelectionIconForeground, currentColor)' : 'var(--vscode-symbolIcon-colorForeground, currentColor)'};
+    color: ${props => props.$selected ? 'var(--apinox-list-activeSelectionForeground)' : 'var(--apinox-icon-foreground)'};
     transition: opacity 0.1s ease;
 
     svg {
@@ -149,7 +149,7 @@ const ResultName = styled.div`
 
 const ResultBreadcrumb = styled.div`
     font-size: 11px;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
     opacity: 0.75;
     white-space: nowrap;
     overflow: hidden;
@@ -161,7 +161,7 @@ const ResultBreadcrumb = styled.div`
 const LoadingState = styled.div`
     padding: 16px;
     text-align: center;
-    color: var(--vscode-descriptionForeground);
+    color: var(--apinox-descriptionForeground);
     font-size: 13px;
     font-family: var(--apinox-ui-font-family, var(--apinox-font-family));
     opacity: 0.8;
@@ -170,9 +170,9 @@ const LoadingState = styled.div`
 const Footer = styled.div`
     padding: 6px 14px;
     font-size: 11px;
-    color: var(--vscode-descriptionForeground);
-    background: var(--vscode-sideBar-background);
-    border-top: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.2));
+    color: var(--apinox-descriptionForeground);
+    background: var(--apinox-sideBar-background);
+    border-top: 1px solid var(--apinox-widget-border, #303031);
     display: flex;
     justify-content: space-between;
     align-items: center;

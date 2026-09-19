@@ -111,7 +111,7 @@ export class ErrorBoundary extends Component<Props, State> {
                         // Fallback title bar if TitleBar component can't load
                         <div style={{
                             height: '30px',
-                            background: 'var(--apinox-titleBar-activeBackground, #3c3c3c)',
+                            background: 'var(--apinox-titleBar-activeBackground, #1e1e1e)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',

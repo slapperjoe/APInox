@@ -72,7 +72,7 @@ export const FormTextArea = styled.textarea<{ $error?: boolean; $fullWidth?: boo
     width: ${props => props.$fullWidth ? '100%' : 'auto'};
     min-height: 60px;
     resize: vertical;
-    font-family: var(--apinox-editor-font-family, monospace);
+    font-family: var(--apinox-editor-font-family);
     
     ${props => props.$error && css`
         border-color: var(--apinox-inputValidation-errorBorder);

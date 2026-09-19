@@ -59,7 +59,7 @@ const AppTitle = styled.span`
   font-weight: var(--fw-semibold);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
   letter-spacing: 0.3px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--apinox-brand-gradient);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -85,8 +85,8 @@ const SearchWrapper = styled.div`
   -webkit-app-region: no-drag;  /* Prevent dragging on search bar */
   
   &:focus-within {
-    border-color: var(--vscode-focusBorder, #007ACC);
-    box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007ACC);
+    border-color: var(--apinox-focusBorder, #007fd4);
+    box-shadow: 0 0 0 1px var(--apinox-focusBorder, #007fd4);
     background: rgba(30, 30, 30, 0.9);
   }
   
@@ -119,14 +119,14 @@ const SearchInput = styled.input`
   background: transparent;
   border: none;
   outline: none;
-  color: var(--vscode-input-foreground);
+  color: var(--apinox-input-foreground);
   font-size: 12px;
   padding: 0;
   font-family: var(--apinox-ui-font-family, var(--apinox-font-family));
   line-height: 1.4;
   
   &::placeholder {
-    color: var(--vscode-input-placeholderForeground);
+    color: var(--apinox-input-placeholderForeground);
     opacity: 0.65;
   }
 `;
@@ -146,11 +146,11 @@ const ClearButton = styled.button`
   
   &:hover {
     opacity: 1;
-    background: var(--vscode-toolbar-hoverBackground, rgba(128, 128, 128, 0.2));
+    background: var(--apinox-toolbar-hoverBackground, rgba(90, 93, 94, 0.31));
   }
   
   &:active {
-    background: var(--vscode-toolbar-activeBackground, rgba(128, 128, 128, 0.3));
+    background: var(--apinox-toolbar-activeBackground, rgba(99, 102, 103, 0.4));
   }
   
   svg {

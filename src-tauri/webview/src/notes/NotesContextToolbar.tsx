@@ -24,8 +24,8 @@ const Toolbar = styled.div`
   min-width: 44px;
   height: 100%;
   padding: 8px 0;
-  border-right: 1px solid var(--apinox-panel-border, rgba(128, 128, 128, 0.2));
-  background: var(--apinox-sideBar-background, #1e1e1e);
+  border-right: 1px solid var(--apinox-panel-border, #80808059);
+  background: var(--apinox-sideBar-background, #252526);
   gap: 4px;
   overflow-y: auto;
 `;
@@ -35,7 +35,7 @@ const SectionLabel = styled.div`
   font-weight: var(--fw-bold);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--apinox-descriptionForeground, rgba(204,204,204,0.5));
+  color: var(--apinox-descriptionForeground, #8b949e);
   writing-mode: vertical-rl;
   transform: rotate(180deg);
   margin: 6px 0;
@@ -52,13 +52,13 @@ const IconBtn = styled.button`
   border: none;
   border-radius: 4px;
   background: transparent;
-  color: var(--apinox-foreground, #ccc);
+  color: var(--apinox-foreground, #cccccc);
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 
   &:hover {
-    background: var(--apinox-list-hoverBackground, rgba(255,255,255,0.08));
-    color: var(--apinox-foreground, #fff);
+    background: var(--apinox-list-hoverBackground, #2a2d2e);
+    color: var(--apinox-foreground, #cccccc);
   }
 
   &:hover > span {

@@ -23,11 +23,11 @@ import { hybridPlugin, baseDirFacet } from "./hybridPlugin";
 // Minimal light theme — relies on APInox CSS vars for background/foreground
 const lightTheme = EditorView.theme(
   {
-    "&": { background: "var(--apinox-editor-background, #fff)", color: "var(--apinox-editor-foreground)" },
+    "&": { background: "var(--apinox-editor-background, #1e1e1e)", color: "var(--apinox-editor-foreground)" },
     ".cm-gutters": { background: "var(--apinox-panel-background)", color: "var(--apinox-editorLineNumber-foreground)", borderRight: "1px solid var(--apinox-panel-border)" },
     ".cm-activeLine": { background: "var(--apinox-editor-lineHighlightBackground)" },
     ".cm-cursor": { borderLeftColor: "var(--apinox-editor-foreground)" },
-    ".cm-selectionBackground, ::selection": { background: "var(--apinox-editor-selectionBackground, #b3d4fd) !important" },
+    ".cm-selectionBackground, ::selection": { background: "var(--apinox-editor-selectionBackground, #264f78) !important" },
   },
   { dark: false }
 );
@@ -69,7 +69,7 @@ export const NotesCodeMirrorEditor = forwardRef<
       filePath,
       wordWrap = true,
       fontSize = 14,
-      fontFamily = "var(--apinox-editor-font-family, 'JetBrains Mono', monospace)",
+      fontFamily = "var(--apinox-editor-font-family)",
     },
     ref
   ) => {

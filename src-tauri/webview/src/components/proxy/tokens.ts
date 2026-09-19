@@ -23,7 +23,7 @@ export const tokens = {
     /** Tab bar / header / toolbar background */
     elevated: 'var(--apinox-surface-elevated, #2d2d30)',
     /** Subtle row separator / alternating stripe */
-    stripe: 'var(--apinox-editor-lineHighlightBackground, #2a2a2a)',
+    stripe: 'var(--apinox-editor-lineHighlightBackground, #2a2d2e)',
     /** Input field background */
     input: 'var(--apinox-input-background, #3c3c3c)',
     /** Hover / subtle overlay on inputs/items */
@@ -55,9 +55,9 @@ export const tokens = {
     /** Secondary text / labels */
     secondary: 'var(--apinox-foreground, #cccccc)',
     /** Muted / placeholder / de-emphasised text */
-    muted: 'var(--apinox-descriptionForeground, #858585)',
+    muted: 'var(--apinox-descriptionForeground, #8b949e)',
     /** Hint / meta / helper text (lighter than muted) */
-    hint: 'var(--apinox-disabledForeground, #666666)',
+    hint: 'var(--apinox-disabledForeground, #656565)',
     /** Very subtle / decorative text (dividers, counters) */
     faint: 'var(--apinox-text-faint, #555555)',
     /** Danger / delete icon text */
@@ -71,15 +71,17 @@ export const tokens = {
   /** Semantic status / action colours */
   status: {
     /** Success / running / allow */
-    success: 'var(--apinox-testing-iconPassed, #22c55e)',
+    success: 'var(--apinox-testing-iconPassed, #73c991)',
     successGlow: '#22c55e99',
     /** Warning / caution */
-    warning: 'var(--apinox-testing-iconQueued, #f59e0b)',
+    warning: 'var(--apinox-testing-iconQueued, #cca700)',
+    /** Mock-mode accent (purple) */
+    accentPurple: 'var(--apinox-accent-purple, #b89ee8)',
     /** Error / danger / drop / stopped */
-    error: 'var(--apinox-testing-iconFailed, #ef4444)',
+    error: 'var(--apinox-testing-iconFailed, #f48771)',
     errorGlow: '#ef444499',
     /** Brand / link / active accent (VS Code blue) */
-    accent: 'var(--apinox-focusBorder, #007acc)',
+    accent: 'var(--apinox-focusBorder, #007fd4)',
     /** Primary button / action blue (darker variant) */
     accentDark: 'var(--apinox-button-background, #0e639c)',
     /** Hover state for accentDark buttons */
@@ -150,7 +152,7 @@ export const tokens = {
 
   /** Font family — resolved from the theme variables (single source of
    * truth is --apinox-font-family in index.css / shared themes). */
-  fontFamily: 'var(--apinox-font-family, "Segoe UI", system-ui, sans-serif)',
+  fontFamily: 'var(--apinox-font-family)',
 
   /** Panel / section title style — matches SidebarHeaderTitle from SidebarStyles */
   sectionTitle: {

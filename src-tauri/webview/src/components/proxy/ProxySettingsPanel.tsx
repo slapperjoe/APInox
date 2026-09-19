@@ -220,8 +220,8 @@ function IgnoreListGrid({ rules, onRemove, onAdd }: {
     padding: '1px 7px', borderRadius: 8,
     fontFamily: 'monospace',
     ...(mode === 'host'
-      ? { background: 'rgba(14,99,156,0.2)', color: '#6db3e8', border: '1px solid rgba(14,99,156,0.45)' }
-      : { background: 'rgba(122,90,30,0.2)', color: '#ddb165', border: '1px solid rgba(122,90,30,0.45)' }),
+      ? { background: 'rgba(14,99,156,0.2)', color: 'var(--apinox-focusBorder)', border: '1px solid rgba(14,99,156,0.45)' }
+      : { background: 'rgba(122,90,30,0.2)', color: 'var(--apinox-testing-iconQueued)', border: '1px solid rgba(122,90,30,0.45)' }),
   } as React.CSSProperties);
 
   return (
@@ -332,7 +332,7 @@ function IgnoreListGrid({ rules, onRemove, onAdd }: {
             background: newPattern.trim() ? tokens.status.accentDark : tokens.surface.elevated,
             border: `1px solid ${newPattern.trim() ? tokens.status.accentDark : tokens.border.subtle}`,
             borderRadius: tokens.radius.md,
-            color: newPattern.trim() ? '#fff' : tokens.text.hint,
+            color: newPattern.trim() ? 'var(--apinox-button-foreground)' : tokens.text.hint,
             fontSize: tokens.fontSize.sm,
             cursor: newPattern.trim() ? 'pointer' : 'default',
             transition: 'all 0.15s',

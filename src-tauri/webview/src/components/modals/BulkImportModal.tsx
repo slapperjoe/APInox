@@ -47,7 +47,7 @@ const TextArea = styled.textarea`
   color: var(--apinox-input-foreground);
   border: 1px solid var(--apinox-input-border);
   border-radius: 4px;
-  font-family: var(--apinox-editor-font-family, monospace);
+  font-family: var(--apinox-editor-font-family);
   font-size: 0.9em;
   resize: vertical;
 
@@ -144,7 +144,7 @@ const ProgressBar = styled.div`
 const ProgressFill = styled.div<{ $progress: number }>`
   height: 100%;
   width: ${(props) => props.$progress}%;
-  background: var(--apinox-progressBar-background, #0078d4);
+  background: var(--apinox-progressBar-background, #0e70c0);
   transition: width 0.3s ease;
 `;
 
@@ -172,7 +172,7 @@ const ResultItem = styled.div<{
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-family: var(--apinox-editor-font-family, monospace);
+    font-family: var(--apinox-editor-font-family);
   }
 
   .status-icon {
@@ -180,11 +180,11 @@ const ResultItem = styled.div<{
     color: ${(props) => {
       switch (props.$status) {
         case "success":
-          return "var(--apinox-testing-iconPassed, #4caf50)";
+          return "var(--apinox-testing-iconPassed, #73c991)";
         case "error":
-          return "var(--apinox-testing-iconFailed, #f44336)";
+          return "var(--apinox-testing-iconFailed, #f48771)";
         case "processing":
-          return "var(--apinox-progressBar-background, #0078d4)";
+          return "var(--apinox-progressBar-background, #0e70c0)";
         default:
           return "var(--apinox-descriptionForeground)";
       }
@@ -223,10 +223,10 @@ const SummaryBox = styled.div`
   }
 
   .success {
-    color: var(--apinox-testing-iconPassed, #4caf50);
+    color: var(--apinox-testing-iconPassed, #73c991);
   }
   .error {
-    color: var(--apinox-testing-iconFailed, #f44336);
+    color: var(--apinox-testing-iconFailed, #f48771);
   }
 `;
 

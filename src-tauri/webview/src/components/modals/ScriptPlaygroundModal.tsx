@@ -7,7 +7,7 @@ import { PrimaryButton, SecondaryButton } from '../common/Button';
 import { useTheme } from '@apinox/request-editor/core'; // Use package ThemeContext
 import { Modal } from './Modal';
 import { SPACING_XS, SPACING_SM, SPACING_MD, SPACING_LG } from '../../styles/spacing';
-import { STATUS_COLORS } from '../../styles/colors';
+import { tokens } from '../proxy/tokens';
 
 const Content = styled.div`
     flex: 1;
@@ -469,7 +469,7 @@ export const ScriptPlaygroundModal: React.FC<ScriptPlaygroundModalProps> = ({ on
                             <OutputConsole>
                                 {result && (
                                     <div style={{
-                                        color: result.status === 'PASS' ? STATUS_COLORS.SUCCESS : STATUS_COLORS.ERROR,
+                                        color: result.status === 'PASS' ? tokens.status.success : tokens.status.error,
                                         marginBottom: '10px',
                                         fontWeight: 'var(--fw-bold)'
                                     }}>

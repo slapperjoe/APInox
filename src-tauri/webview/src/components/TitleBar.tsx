@@ -78,7 +78,7 @@ const AppTitle = styled.span`
   font-weight: var(--fw-semibold);
   font-family: var(--apinox-ui-font-family, var(--apinox-font-family));
   letter-spacing: 0.3px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--apinox-brand-gradient);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -93,16 +93,16 @@ const SearchContainer = styled.div`
   gap: 8px;
   padding: 0 10px;
   height: 22px;
-  background: var(--vscode-input-background);
-  border: 1px solid var(--vscode-input-border, rgba(128, 128, 128, 0.3));
+  background: var(--apinox-input-background);
+  border: 1px solid var(--apinox-input-border, #3c3c3c);
   border-radius: 4px;
   -webkit-app-region: no-drag;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
   font-family: var(--apinox-ui-font-family, var(--apinox-font-family));
   
   &:focus-within {
-    border-color: var(--vscode-focusBorder, #007ACC);
-    box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007ACC);
+    border-color: var(--apinox-focusBorder, #007fd4);
+    box-shadow: 0 0 0 1px var(--apinox-focusBorder, #007fd4);
   }
 `;
 
@@ -130,14 +130,14 @@ const SearchInput = styled.input`
   background: transparent;
   border: none;
   outline: none;
-  color: var(--vscode-input-foreground);
+  color: var(--apinox-input-foreground);
   font-size: 12px;
   padding: 0;
   font-family: var(--apinox-ui-font-family, var(--apinox-font-family));
   line-height: 1.4;
   
   &::placeholder {
-    color: var(--vscode-input-placeholderForeground);
+    color: var(--apinox-input-placeholderForeground);
     opacity: 0.65;
   }
 `;
@@ -157,11 +157,11 @@ const ClearButton = styled.button`
   
   &:hover {
     opacity: 1;
-    background: var(--vscode-toolbar-hoverBackground, rgba(128, 128, 128, 0.2));
+    background: var(--apinox-toolbar-hoverBackground, rgba(90, 93, 94, 0.31));
   }
   
   &:active {
-    background: var(--vscode-toolbar-activeBackground, rgba(128, 128, 128, 0.3));
+    background: var(--apinox-toolbar-activeBackground, rgba(99, 102, 103, 0.4));
   }
   
   svg {
@@ -178,7 +178,7 @@ const LastSearchBreadcrumb = styled.button`
   border-radius: 4px;
   background: transparent;
   border: 1px solid transparent;
-  color: var(--vscode-foreground);
+  color: var(--apinox-foreground);
   font-size: 11px;
   font-weight: var(--fw-medium);
   font-family: var(--apinox-ui-font-family, var(--apinox-font-family));
@@ -193,12 +193,12 @@ const LastSearchBreadcrumb = styled.button`
   
   &:hover {
     opacity: 1;
-    background: var(--vscode-toolbar-hoverBackground, rgba(128, 128, 128, 0.2));
-    border-color: var(--vscode-widget-border, rgba(128, 128, 128, 0.3));
+    background: var(--apinox-toolbar-hoverBackground, rgba(90, 93, 94, 0.31));
+    border-color: var(--apinox-widget-border, #303031);
   }
   
   &:active {
-    background: var(--vscode-toolbar-activeBackground, rgba(128, 128, 128, 0.3));
+    background: var(--apinox-toolbar-activeBackground, rgba(99, 102, 103, 0.4));
   }
 `;
 
@@ -245,17 +245,17 @@ const WindowButton = styled.button<{ $isClose?: boolean }>`
   &:hover {
     background: ${props => 
       props.$isClose 
-        ? '#e81123' 
+        ? 'var(--apinox-titleBar-closeHoverBackground)' 
         : 'var(--apinox-toolbar-hoverBackground)'
     };
-    color: ${props => props.$isClose ? '#fff' : 'inherit'};
+    color: ${props => props.$isClose ? 'var(--apinox-button-foreground)' : 'inherit'};
   }
 
   &:active {
     background: ${props => 
       props.$isClose 
-        ? '#c50e1f' 
-        : 'var(--apinox-toolbar-activeBackground, rgba(128, 128, 128, 0.3))'
+        ? 'var(--apinox-titleBar-closeHoverBackground)' 
+        : 'var(--apinox-toolbar-activeBackground, rgba(99, 102, 103, 0.4))'
     };
   }
 

@@ -89,7 +89,7 @@ function Btn({ label: lbl, onClick, primary, disabled }: { label: string; onClic
                 padding: '6px 16px', fontSize: 13, fontWeight: 'var(--fw-semibold)',
                 borderRadius: tokens.radius.md, border: 'none', cursor: disabled ? 'not-allowed' : 'pointer',
                 background: primary ? tokens.status.accentDark : tokens.surface.elevated,
-                color: primary ? '#fff' : tokens.text.primary,
+                color: primary ? 'var(--apinox-button-foreground)' : tokens.text.primary,
                 opacity: disabled ? 0.5 : 1,
             }}
         >
@@ -195,7 +195,7 @@ export function AddToProjectDialog({ log, projects, onConfirm, onClose }: AddToP
                                     borderRadius: `${tokens.radius.md} 0 0 ${tokens.radius.md}`,
                                     borderRight: 'none',
                                     background: mode === 'folder' ? tokens.status.accentDark : tokens.surface.elevated,
-                                    color: mode === 'folder' ? '#fff' : tokens.text.secondary,
+                                    color: mode === 'folder' ? 'var(--apinox-button-foreground)' : tokens.text.secondary,
                                 }}
                                 onClick={() => setMode('folder')}
                             >
@@ -206,7 +206,7 @@ export function AddToProjectDialog({ log, projects, onConfirm, onClose }: AddToP
                                     ...tabBase,
                                     borderRadius: `0 ${tokens.radius.md} ${tokens.radius.md} 0`,
                                     background: mode === 'operation' ? tokens.status.accentDark : tokens.surface.elevated,
-                                    color: mode === 'operation' ? '#fff' : tokens.text.secondary,
+                                    color: mode === 'operation' ? 'var(--apinox-button-foreground)' : tokens.text.secondary,
                                 }}
                                 onClick={() => setMode('operation')}
                             >

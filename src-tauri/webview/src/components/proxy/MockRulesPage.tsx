@@ -766,7 +766,7 @@ export const MockRulesPage = forwardRef<MockRulesPageHandle, {
               <button
                 onClick={handleOverwriteDuplicate}
                 style={{
-                  padding: `7px ${tokens.space['5']}`, background: '#c0392b',
+                  padding: `7px ${tokens.space['5']}`, background: 'var(--apinox-surface-danger-dark)',
                   border: 'none', borderRadius: tokens.radius.md,
                   color: tokens.text.white, fontSize: tokens.fontSize.base, cursor: 'pointer',
                 }}

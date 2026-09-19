@@ -130,7 +130,7 @@ const StatusBadge = styled.span<{ $enabled: boolean }>`
   padding: 2px 7px;
   border-radius: 10px;
   background: ${p => p.$enabled ? 'rgba(14,99,156,0.25)' : 'rgba(100,100,100,0.2)'};
-  color: ${p => p.$enabled ? 'var(--apinox-focusBorder, #6db3e8)' : tokens.text.muted};
+  color: ${p => p.$enabled ? 'var(--apinox-focusBorder, #007fd4)' : tokens.text.muted};
   border: 1px solid ${p => p.$enabled ? 'rgba(14,99,156,0.5)' : 'rgba(100,100,100,0.4)'};
   user-select: none;
   pointer-events: none;
@@ -210,7 +210,7 @@ const MatchBadge = styled.span<{ $matched: boolean }>`
   padding: 2px 8px;
   border-radius: 10px;
   background: ${p => p.$matched ? 'rgba(58,110,58,0.25)' : 'rgba(122,90,30,0.2)'};
-  color: ${p => p.$matched ? 'var(--apinox-testing-iconPassed, #89d185)' : 'var(--apinox-testing-iconQueued, #ddb165)'};
+  color: ${p => p.$matched ? 'var(--apinox-testing-iconPassed, #73c991)' : 'var(--apinox-testing-iconQueued, #cca700)'};
   border: 1px solid ${p => p.$matched ? 'rgba(58,110,58,0.5)' : 'rgba(122,90,30,0.5)'};
   flex-shrink: 0;
   margin-left: 6px;
@@ -314,7 +314,7 @@ const SuccessBtn = styled(Btn)`
   background: ${tokens.surface.successDark};
   color: ${tokens.status.success};
   border: 1px solid ${tokens.surface.successDark};
-  &:hover:not(:disabled) { background: #1a8a2a; }
+  &:hover:not(:disabled) { background: var(--apinox-inputValidation-successBorder); }
 `;
 
 const ModalHeader = styled.div`
@@ -391,7 +391,7 @@ const BrowseBtn = styled.button`
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
-  &:hover { background: ${tokens.surface.hover}; border-color: #777; }
+  &:hover { background: ${tokens.surface.hover}; border-color: var(--apinox-border-subtle); }
 `;
 
 // ---------------------------------------------------------------------------

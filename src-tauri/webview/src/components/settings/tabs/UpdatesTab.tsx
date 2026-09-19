@@ -41,7 +41,7 @@ const btnStyle = (primary: boolean): React.CSSProperties => ({
     border: primary ? 'none' : '1px solid var(--apinox-button-border, var(--apinox-panel-border))',
     background: primary
         ? 'var(--apinox-button-background)'
-        : 'var(--apinox-button-secondaryBackground, transparent)',
+        : 'var(--apinox-button-secondaryBackground, #3a3d41)',
     color: primary
         ? 'var(--apinox-button-foreground)'
         : 'var(--apinox-button-secondaryForeground, var(--apinox-editor-foreground))',
@@ -260,8 +260,8 @@ export const UpdatesTab: React.FC = () => {
 
                 {checkState === 'done' && result?.check_error && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                        <StatusRow icon={<AlertTriangle size={14} color="var(--apinox-descriptionForeground, #888)" />}>
-                            <span style={{ color: 'var(--apinox-descriptionForeground, #888)', flex: 1, minWidth: 0 }}>
+                        <StatusRow icon={<AlertTriangle size={14} color="var(--apinox-descriptionForeground, #8b949e)" />}>
+                            <span style={{ color: 'var(--apinox-descriptionForeground, #8b949e)', flex: 1, minWidth: 0 }}>
                                 {result.check_error}
                             </span>
                         </StatusRow>
@@ -376,7 +376,7 @@ export const UpdatesTab: React.FC = () => {
                         style={{
                             height: 6,
                             borderRadius: 3,
-                            background: 'var(--apinox-progressBar-background, #333)',
+                            background: 'var(--apinox-progressBar-background, #0e70c0)',
                             overflow: 'hidden',
                         }}
                     >
@@ -425,7 +425,7 @@ export const UpdatesTab: React.FC = () => {
 
 const VersionBadge: React.FC<{ label: string; version: string }> = ({ label, version }) => (
     <div>
-        <div style={{ fontSize: 11, color: 'var(--apinox-descriptionForeground, #888)', marginBottom: 2 }}>
+        <div style={{ fontSize: 11, color: 'var(--apinox-descriptionForeground, #8b949e)', marginBottom: 2 }}>
             {label}
         </div>
         <div style={{ fontSize: 14, fontWeight: 'var(--fw-semibold)' }}>v{version}</div>

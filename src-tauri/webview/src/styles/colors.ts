@@ -9,30 +9,23 @@
  * Icon colors for different item types (folders, files, operations, etc.)
  */
 export const ICON_COLORS = {
-    FOLDER: 'var(--apinox-icon-foreground, #4299e1)',
-    FILE: 'var(--apinox-charts-green, #48bb78)',
-    INTERFACE: 'var(--apinox-charts-blue, #4299e1)',
-    OPERATION: 'var(--apinox-charts-purple, #9f7aea)',
-    SERVICE: 'var(--apinox-charts-blue, #4299e1)',
+    FOLDER: 'var(--apinox-icon-foreground, #c5c5c5)',
+    FILE: 'var(--apinox-charts-green, #89d185)',
+    INTERFACE: 'var(--apinox-charts-blue, #75beff)',
+    OPERATION: 'var(--apinox-charts-purple, #c586c0)',
+    SERVICE: 'var(--apinox-charts-blue, #75beff)',
 } as const;
 
 /**
- * Status/test result colors using VS Code testing theme
+ * Change/diff colors for WSDL sync and similar features.
+ * Re-pointed at the single status palette (proxy tokens.status) so there is
+ * one green/red/yellow family app-wide (UI-consistency item 4).
  */
-export const STATUS_COLORS = {
-    SUCCESS: 'var(--apinox-testing-iconPassed, #73c991)',
-    ERROR: 'var(--apinox-testing-iconFailed, #f48771)',
-    WARNING: 'var(--apinox-testing-iconQueued, #cca700)',
-    INFO: 'var(--apinox-charts-blue, #75beff)',
-} as const;
-
-/**
- * Change/diff colors for WSDL sync and similar features
- */
+import { tokens } from '../components/proxy/tokens';
 export const CHANGE_COLORS = {
-    ADD: STATUS_COLORS.SUCCESS,
-    REMOVE: STATUS_COLORS.ERROR,
-    MODIFY: STATUS_COLORS.WARNING,
+    ADD: tokens.status.success,
+    REMOVE: tokens.status.error,
+    MODIFY: tokens.status.warning,
 } as const;
 
 /**
@@ -40,14 +33,14 @@ export const CHANGE_COLORS = {
  * Uses VS Code's chart colors for consistency
  */
 export const TAG_COLORS = [
-    'var(--apinox-charts-blue, #58A6FF)',
-    'var(--apinox-charts-green, #7EE787)',
-    'var(--apinox-testing-iconFailed, #FF7B72)',
-    'var(--apinox-charts-orange, #FFA657)',
-    'var(--apinox-testing-iconQueued, #D29922)',
+    'var(--apinox-charts-blue, #75beff)',
+    'var(--apinox-charts-green, #89d185)',
+    'var(--apinox-testing-iconFailed, #f48771)',
+    'var(--apinox-charts-orange, #d18616)',
+    'var(--apinox-testing-iconQueued, #cca700)',
     '#F2CC60', // Yellow
-    'var(--apinox-testing-iconPassed, #3FB950)',
-    'var(--apinox-charts-purple, #A371F7)',
+    'var(--apinox-testing-iconPassed, #73c991)',
+    'var(--apinox-charts-purple, #c586c0)',
     '#79C0FF', // Light blue
     '#FFA198', // Light red
     '#FFCB6B', // Amber

@@ -191,10 +191,10 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
 
   const modeColors: Record<ProxyMode, string> = {
     proxy: tokens.status.accentDark,
-    mock: '#7c5fc5',
-    both: '#2a7a4b',
-    sniffer: '#b07a20',
-    'sniffer-mock': '#7c5fc5',
+    mock: tokens.status.accentPurple,
+    both: tokens.status.success,
+    sniffer: tokens.status.warning,
+    'sniffer-mock': tokens.status.accentPurple,
   };
 
   // ── Minimized bar ──────────────────────────────────────────────────────────
@@ -229,8 +229,8 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
           title={proxyEnabled ? 'Running' : 'Stopped'}
           style={{
             width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
-            background: proxyEnabled ? '#4caf50' : tokens.text.hint,
-            boxShadow: proxyEnabled ? '0 0 6px #4caf5088' : 'none',
+            background: proxyEnabled ? tokens.status.success : tokens.text.hint,
+            boxShadow: proxyEnabled ? `0 0 6px ${tokens.status.success}88` : 'none',
             transition: 'background 0.3s',
           }}
         />
@@ -265,7 +265,7 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
 
         {/* Running text */}
         {proxyEnabled && (
-          <span style={{ fontSize: tokens.fontSize.xs, color: '#4caf50', flex: 1, minWidth: 0 }}>
+          <span style={{ fontSize: tokens.fontSize.xs, color: tokens.status.success, flex: 1, minWidth: 0 }}>
             {isSniffer ? 'Intercepting system traffic' : `Forwarding → ${targetUrl}`}
           </span>
         )}
@@ -276,7 +276,7 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
             fontSize: tokens.fontSize.xs,
             padding: '2px 7px', borderRadius: '10px',
             background: sysProxyStatus.enabled ? 'rgba(76,175,80,0.12)' : 'rgba(180,30,30,0.12)',
-            color: sysProxyStatus.enabled ? '#4caf50' : tokens.text.danger,
+            color: sysProxyStatus.enabled ? tokens.status.success : tokens.text.danger,
             border: `1px solid ${sysProxyStatus.enabled ? 'rgba(76,175,80,0.35)' : 'rgba(180,30,30,0.35)'}`,
             flexShrink: 0,
           }}>
@@ -319,7 +319,7 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
               disabled={loading}
               style={{
                 padding: '4px 14px',
-                background: '#c5000b',
+                background: 'var(--apinox-errorForeground)',
                 border: 'none',
                 borderRadius: tokens.radius.md,
                 color: tokens.text.white,
@@ -454,7 +454,7 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
               style={{
                 flexShrink: 0,
                 padding: '6px 18px',
-                background: '#c5000b',
+                background: 'var(--apinox-errorForeground)',
                 border: 'none',
                 borderRadius: tokens.radius.md,
                 color: tokens.text.white,
@@ -478,11 +478,11 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
         {proxyEnabled && (
           <div style={{
             padding: '8px 12px',
-            background: '#1a3d1a',
-            border: '1px solid #2d6a2d',
+            background: 'var(--apinox-inputValidation-successBackground)',
+            border: '1px solid var(--apinox-inputValidation-successBorder)',
             borderRadius: tokens.radius.md,
             fontSize: tokens.fontSize.sm,
-            color: '#6fbf6f',
+            color: 'var(--apinox-inputValidation-successForeground)',
           }}>
             🟢 {modeLabelMap[mode]} running on port {proxyPort}
           </div>
@@ -491,11 +491,11 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
         {error && (
           <div style={{
             padding: '8px 12px',
-            background: '#3d1a1a',
-            border: '1px solid #6a2d2d',
+            background: 'var(--apinox-inputValidation-errorBackground)',
+            border: '1px solid var(--apinox-inputValidation-errorBorder)',
             borderRadius: tokens.radius.md,
             fontSize: tokens.fontSize.sm,
-            color: '#bf6f6f',
+            color: 'var(--apinox-inputValidation-errorForeground)',
           }}>
             ❌ {error}
           </div>

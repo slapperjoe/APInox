@@ -26,12 +26,12 @@ type StatusGroupKey = '1xx' | '2xx' | '3xx' | '4xx' | '5xx' | 'none';
 const STATUS_GROUPS: Array<{
   key: StatusGroupKey; label: string; desc: string; fg: string; bg: string; border: string;
 }> = [
-  { key: '1xx',  label: '1xx', desc: 'Informational', fg: 'var(--apinox-descriptionForeground, #a0aec0)', bg: 'rgba(160,174,192,0.15)', border: 'rgba(160,174,192,0.35)' },
-  { key: '2xx',  label: '2xx', desc: 'Success',       fg: 'var(--apinox-testing-iconPassed, #89d185)',    bg: 'rgba(58,110,58,0.2)',    border: 'rgba(58,110,58,0.45)'   },
-  { key: '3xx',  label: '3xx', desc: 'Redirect',      fg: 'var(--apinox-focusBorder, #6db3e8)',           bg: 'rgba(14,99,156,0.2)',    border: 'rgba(14,99,156,0.45)'   },
-  { key: '4xx',  label: '4xx', desc: 'Client Error',  fg: 'var(--apinox-testing-iconQueued, #ddb165)',    bg: 'rgba(122,90,30,0.2)',    border: 'rgba(122,90,30,0.45)'   },
-  { key: '5xx',  label: '5xx', desc: 'Server Error',  fg: 'var(--apinox-testing-iconFailed, #f28b82)',    bg: 'rgba(156,14,14,0.2)',    border: 'rgba(156,14,14,0.45)'   },
-  { key: 'none', label: '···', desc: 'No Response',   fg: 'var(--apinox-descriptionForeground, #6b7280)', bg: 'rgba(60,60,60,0.15)',    border: 'rgba(100,100,100,0.35)' },
+  { key: '1xx',  label: '1xx', desc: 'Informational', fg: 'var(--apinox-descriptionForeground, #8b949e)', bg: 'rgba(160,174,192,0.15)', border: 'rgba(160,174,192,0.35)' },
+  { key: '2xx',  label: '2xx', desc: 'Success',       fg: 'var(--apinox-testing-iconPassed, #73c991)',    bg: 'rgba(58,110,58,0.2)',    border: 'rgba(58,110,58,0.45)'   },
+  { key: '3xx',  label: '3xx', desc: 'Redirect',      fg: 'var(--apinox-focusBorder, #007fd4)',           bg: 'rgba(14,99,156,0.2)',    border: 'rgba(14,99,156,0.45)'   },
+  { key: '4xx',  label: '4xx', desc: 'Client Error',  fg: 'var(--apinox-testing-iconQueued, #cca700)',    bg: 'rgba(122,90,30,0.2)',    border: 'rgba(122,90,30,0.45)'   },
+  { key: '5xx',  label: '5xx', desc: 'Server Error',  fg: 'var(--apinox-testing-iconFailed, #f48771)',    bg: 'rgba(156,14,14,0.2)',    border: 'rgba(156,14,14,0.45)'   },
+  { key: 'none', label: '···', desc: 'No Response',   fg: 'var(--apinox-descriptionForeground, #8b949e)', bg: 'rgba(60,60,60,0.15)',    border: 'rgba(100,100,100,0.35)' },
 ];
 
 const ALL_STATUS_KEYS = new Set<StatusGroupKey>(STATUS_GROUPS.map(g => g.key) as StatusGroupKey[]);
@@ -603,12 +603,12 @@ function TrafficRow({ log, isSelected, onClick, onContextMenu }: {
           <span style={{
             fontSize: 10, fontWeight: 'var(--fw-semibold)', padding: '1px 6px',
             borderRadius: 3, flexShrink: 0,
-            background: 'rgba(120,80,200,0.18)', color: '#b89ee8',
+            background: 'rgba(120,80,200,0.18)', color: 'var(--apinox-accent-purple)',
             border: '1px solid rgba(120,80,200,0.35)',
             fontFamily: 'monospace',
           }}>SOAP</span>
           <span style={{
-            fontSize: 11, color: '#b89ee8', fontFamily: 'monospace',
+            fontSize: 11, color: 'var(--apinox-accent-purple)', fontFamily: 'monospace',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0,
           }}>{soapAction}</span>
         </div>

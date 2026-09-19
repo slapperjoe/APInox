@@ -47,14 +47,14 @@ const Item = styled.div<{ $active: boolean }>`
   padding: 5px 10px;
   cursor: pointer;
   font-size: 13px;
-  background: ${(p) => p.$active ? "var(--apinox-list-activeSelectionBackground, rgba(0,122,204,0.25))" : "transparent"};
-  color: ${(p) => p.$active ? "var(--apinox-list-activeSelectionForeground, #fff)" : "var(--apinox-foreground, #ccc)"};
+  background: ${(p) => p.$active ? "var(--apinox-list-activeSelectionBackground, #37373d)" : "transparent"};
+  color: ${(p) => p.$active ? "var(--apinox-list-activeSelectionForeground, #ffffff)" : "var(--apinox-foreground, #cccccc)"};
   user-select: none;
 
   &:hover {
     background: ${(p) => p.$active
-      ? "var(--apinox-list-activeSelectionBackground, rgba(0,122,204,0.25))"
-      : "var(--apinox-list-hoverBackground, rgba(255,255,255,0.06))"};
+      ? "var(--apinox-list-activeSelectionBackground, #37373d)"
+      : "var(--apinox-list-hoverBackground, #2a2d2e)"};
   }
 `;
 
@@ -72,13 +72,13 @@ const SmallBtn = styled.button<{ $confirming?: boolean }>`
   border: none;
   border-radius: 3px;
   background: transparent;
-  color: ${(p) => p.$confirming ? "var(--apinox-errorForeground, #f44)" : "var(--apinox-foreground, #aaa)"};
+  color: ${(p) => p.$confirming ? "var(--apinox-errorForeground, #f48771)" : "var(--apinox-foreground, #cccccc)"};
   cursor: pointer;
   opacity: 0.7;
   animation: ${(p) => p.$confirming ? css`${shake} 0.4s ease-in-out` : "none"};
 
   &:hover {
-    background: var(--apinox-list-hoverBackground, rgba(255,255,255,0.1));
+    background: var(--apinox-list-hoverBackground, #2a2d2e);
     opacity: 1;
   }
 `;
@@ -89,8 +89,8 @@ const DirtyDot = styled.span<{ $kind: "external" | "managed" }>`
   border-radius: 50%;
   background: ${({ $kind }) =>
     $kind === "external"
-      ? "var(--apinox-charts-orange, #e8965e)"
-      : "var(--apinox-disabledForeground, #888)"};
+      ? "var(--apinox-charts-orange, #d18616)"
+      : "var(--apinox-disabledForeground, #656565)"};
   flex-shrink: 0;
 `;
 
@@ -204,8 +204,8 @@ export const NotesList: React.FC = () => {
                   style={{
                     flex: 1,
                     background: "var(--apinox-input-background, #3c3c3c)",
-                    color: "var(--apinox-foreground, #ccc)",
-                    border: "1px solid var(--apinox-focusBorder, #007acc)",
+                    color: "var(--apinox-foreground, #cccccc)",
+                    border: "1px solid var(--apinox-focusBorder, #007fd4)",
                     borderRadius: 3,
                     fontSize: 12,
                     padding: "1px 4px",

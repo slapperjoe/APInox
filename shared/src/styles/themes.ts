@@ -14,7 +14,17 @@ export interface Theme {
 // VSCode Dark+ Theme
 export const darkTheme: Theme = {
     name: 'Dark',
-    variables: {
+    variables: {        '--apinox-inputValidation-successBackground': '#0d3d1c',
+        '--apinox-inputValidation-successBorder': '#1e7d3c',
+        '--apinox-inputValidation-successForeground': '#2ea043',
+
+        // Terminal / status surfaces (added in UI-consistency group 2)
+        '--apinox-terminal-background': '#1e1e1e',
+        '--apinox-terminal-foreground': '#cccccc',
+        '--apinox-surface-warning': '#352a05',
+        '--apinox-accent-purple': '#b89ee8',
+        '--apinox-titleBar-closeHoverBackground': '#c50e1f',
+
         // Font
         '--apinox-font-family': '"Fira Code", "Segoe UI", system-ui, sans-serif',
         '--apinox-font-size': '13px',
@@ -237,7 +247,17 @@ export const darkTheme: Theme = {
 // VSCode Light+ Theme
 export const lightTheme: Theme = {
     name: 'Light',
-    variables: {
+    variables: {        '--apinox-inputValidation-successBackground': '#e6f4ea',
+        '--apinox-inputValidation-successBorder': '#1e8e3e',
+        '--apinox-inputValidation-successForeground': '#188038',
+
+        // Terminal / status surfaces (added in UI-consistency group 2)
+        '--apinox-terminal-background': '#ffffff',
+        '--apinox-terminal-foreground': '#333333',
+        '--apinox-surface-warning': '#fbf3ce',
+        '--apinox-accent-purple': '#7c4dff',
+        '--apinox-titleBar-closeHoverBackground': '#e81123',
+
         // Font
         '--apinox-font-family': '"Fira Code", "Segoe UI", system-ui, sans-serif',
         '--apinox-font-size': '13px',
@@ -452,7 +472,17 @@ export const lightTheme: Theme = {
 // Solarized Dark Theme
 export const solarizedDarkTheme: Theme = {
     name: 'Solarized Dark',
-    variables: {
+    variables: {        '--apinox-inputValidation-successBackground': '#0f3a2a',
+        '--apinox-inputValidation-successBorder': '#1e7d3c',
+        '--apinox-inputValidation-successForeground': '#2ea043',
+
+        // Terminal / status surfaces (added in UI-consistency group 2)
+        '--apinox-terminal-background': '#002b36',
+        '--apinox-terminal-foreground': '#93a1a1',
+        '--apinox-surface-warning': '#3a2f0a',
+        '--apinox-accent-purple': '#b58900',
+        '--apinox-titleBar-closeHoverBackground': '#dc322f',
+
         // Font
         '--apinox-font-family': '"Fira Code", "Segoe UI", system-ui, sans-serif',
         '--apinox-font-size': '13px',
@@ -675,7 +705,17 @@ export const solarizedDarkTheme: Theme = {
 // Solarized Light Theme
 export const solarizedLightTheme: Theme = {
     name: 'Solarized Light',
-    variables: {
+    variables: {        '--apinox-inputValidation-successBackground': '#f4ecd5',
+        '--apinox-inputValidation-successBorder': '#0d6b3a',
+        '--apinox-inputValidation-successForeground': '#0d5c30',
+
+        // Terminal / status surfaces (added in UI-consistency group 2)
+        '--apinox-terminal-background': '#fdf6e3',
+        '--apinox-terminal-foreground': '#586e75',
+        '--apinox-surface-warning': '#f7f0d0',
+        '--apinox-accent-purple': '#859900',
+        '--apinox-titleBar-closeHoverBackground': '#dc322f',
+
         // Font
         '--apinox-font-family': '"Fira Code", "Segoe UI", system-ui, sans-serif',
         '--apinox-font-size': '13px',
@@ -892,7 +932,17 @@ export const solarizedLightTheme: Theme = {
 // Zed Dark Theme (One Dark Pro / Zed-inspired warm-blue palette)
 export const zedDarkTheme: Theme = {
     name: 'Zed Dark',
-    variables: {
+    variables: {        '--apinox-inputValidation-successBackground': '#1e2030',
+        '--apinox-inputValidation-successBorder': '#2ea043',
+        '--apinox-inputValidation-successForeground': '#3fb950',
+
+        // Terminal / status surfaces (added in UI-consistency group 2)
+        '--apinox-terminal-background': '#1e2030',
+        '--apinox-terminal-foreground': '#c8d3f5',
+        '--apinox-surface-warning': '#3d2e10',
+        '--apinox-accent-purple': '#c792ea',
+        '--apinox-titleBar-closeHoverBackground': '#ff5555',
+
         // Font — monospace-forward like Zed
         '--apinox-font-family': '"JetBrains Mono", "Fira Code", "Cascadia Code", system-ui, sans-serif',
         '--apinox-font-size': '13px',
@@ -1118,7 +1168,17 @@ export const zedDarkTheme: Theme = {
 // Colors sourced from ~/.config/zed/themes/dank-zed-theme.json "DankShell Light Transparent"
 export const dankShellLightTheme: Theme = {
     name: 'DankShell Light',
-    variables: {
+    variables: {        '--apinox-inputValidation-successBackground': '#e5f0ea',
+        '--apinox-inputValidation-successBorder': '#0d6b3a',
+        '--apinox-inputValidation-successForeground': '#0d5c30',
+
+        // Terminal / status surfaces (added in UI-consistency group 2)
+        '--apinox-terminal-background': '#f5fafc',
+        '--apinox-terminal-foreground': '#171d1e',
+        '--apinox-surface-warning': '#fdf6d0',
+        '--apinox-accent-purple': '#00838f',
+        '--apinox-titleBar-closeHoverBackground': '#b3261e',
+
         // Font
         '--apinox-font-family': '"JetBrains Mono", "Fira Code", system-ui, sans-serif',
         '--apinox-font-size': '13px',

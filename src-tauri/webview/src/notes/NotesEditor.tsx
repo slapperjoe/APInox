@@ -38,14 +38,14 @@ const Toolbar = styled.div`
   gap: 6px;
   padding: 4px 10px;
   background: var(--apinox-sideBar-background, #252526);
-  border-bottom: 1px solid var(--apinox-panel-border, rgba(128,128,128,0.2));
+  border-bottom: 1px solid var(--apinox-panel-border, #80808059);
   flex-shrink: 0;
   min-height: 34px;
 `;
 
 const NoteTitle = styled.span`
   font-size: 13px;
-  color: var(--apinox-foreground, #ccc);
+  color: var(--apinox-foreground, #cccccc);
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -60,8 +60,8 @@ const DirtyDot = styled.span<{ $kind: "external" | "managed" }>`
      Managed notes: muted amber — auto-save will handle it. */
   background: ${({ $kind }) =>
     $kind === "external"
-      ? "var(--apinox-charts-orange, #e8965e)"
-      : "var(--apinox-disabledForeground, #888)"};
+      ? "var(--apinox-charts-orange, #d18616)"
+      : "var(--apinox-disabledForeground, #656565)"};
   flex-shrink: 0;
 `;
 
@@ -70,17 +70,17 @@ const ToolbarBtn = styled.button<{ $active?: boolean }>`
   align-items: center;
   gap: 4px;
   padding: 3px 8px;
-  border: 1px solid ${(p) => p.$active ? "var(--apinox-activityBar-activeBorder, #007acc)" : "transparent"};
+  border: 1px solid ${(p) => p.$active ? "var(--apinox-activityBar-activeBorder, #007fd4)" : "transparent"};
   border-radius: 4px;
-  background: ${(p) => p.$active ? "var(--apinox-list-activeSelectionBackground, rgba(0,122,204,0.2))" : "transparent"};
-  color: var(--apinox-foreground, #ccc);
+  background: ${(p) => p.$active ? "var(--apinox-list-activeSelectionBackground, #37373d)" : "transparent"};
+  color: var(--apinox-foreground, #cccccc);
   font-size: 12px;
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
 
   &:hover {
-    background: var(--apinox-list-hoverBackground, rgba(255,255,255,0.08));
+    background: var(--apinox-list-hoverBackground, #2a2d2e);
   }
 `;
 
@@ -104,28 +104,28 @@ const LoadingOverlay = styled.div`
   align-items: center;
   justify-content: center;
   background: var(--apinox-editor-background, #1e1e1e);
-  color: var(--apinox-foreground, #ccc);
+  color: var(--apinox-foreground, #cccccc);
   font-size: 14px;
 `;
 
 const Separator = styled.div`
   width: 1px;
   height: 18px;
-  background: var(--apinox-panel-border, rgba(128,128,128,0.3));
+  background: var(--apinox-panel-border, #80808059);
   margin: 0 2px;
 `;
 
 const SavedFlash = styled.span`
   font-size: 11px;
-  color: var(--apinox-testing-iconPassed, #81b88b);
+  color: var(--apinox-testing-iconPassed, #73c991);
   flex-shrink: 0;
 `;
 
 const SettingsPopup = styled.div`
   position: fixed;
   z-index: 9999;
-  background: var(--apinox-dropdown-background, #252526);
-  border: 1px solid var(--apinox-panel-border, rgba(128,128,128,0.4));
+  background: var(--apinox-dropdown-background, #3c3c3c);
+  border: 1px solid var(--apinox-panel-border, #80808059);
   border-radius: 6px;
   padding: 12px;
   width: 260px;
@@ -140,17 +140,17 @@ const SettingsRow = styled.label`
   align-items: center;
   justify-content: space-between;
   font-size: 12px;
-  color: var(--apinox-foreground, #ccc);
+  color: var(--apinox-foreground, #cccccc);
   gap: 8px;
 `;
 
 const SettingsInput = styled.input`
   width: 60px;
   padding: 2px 6px;
-  border: 1px solid var(--apinox-panel-border, rgba(128,128,128,0.3));
+  border: 1px solid var(--apinox-panel-border, #80808059);
   border-radius: 3px;
   background: var(--apinox-input-background, #3c3c3c);
-  color: var(--apinox-foreground, #ccc);
+  color: var(--apinox-foreground, #cccccc);
   font-size: 12px;
 `;
 
@@ -158,16 +158,16 @@ const SettingsSelect = styled.select`
   flex: 1;
   min-width: 0;
   padding: 2px 4px;
-  border: 1px solid var(--apinox-panel-border, rgba(128,128,128,0.3));
+  border: 1px solid var(--apinox-panel-border, #80808059);
   border-radius: 3px;
   background: var(--apinox-input-background, #3c3c3c);
-  color: var(--apinox-foreground, #ccc);
+  color: var(--apinox-foreground, #cccccc);
   font-size: 12px;
 `;
 
 const SettingsDivider = styled.hr`
   border: none;
-  border-top: 1px solid var(--apinox-panel-border, rgba(128,128,128,0.2));
+  border-top: 1px solid var(--apinox-panel-border, #80808059);
   margin: 0;
 `;
 
