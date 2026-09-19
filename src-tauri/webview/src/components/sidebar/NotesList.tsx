@@ -43,10 +43,10 @@ const List = styled.div`
 const Item = styled.div<{ $active: boolean }>`
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 10px;
+  gap: 8px;
+  padding: 5px 12px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--apinox-fs-base);
   background: ${(p) => p.$active ? "var(--apinox-list-activeSelectionBackground, #37373d)" : "transparent"};
   color: ${(p) => p.$active ? "var(--apinox-list-activeSelectionForeground, #ffffff)" : "var(--apinox-foreground, #cccccc)"};
   user-select: none;
@@ -70,7 +70,7 @@ const SmallBtn = styled.button<{ $confirming?: boolean }>`
   align-items: center;
   padding: 2px;
   border: none;
-  border-radius: 3px;
+  border-radius: 4px;
   background: transparent;
   color: ${(p) => p.$confirming ? "var(--apinox-errorForeground, #f48771)" : "var(--apinox-foreground, #cccccc)"};
   cursor: pointer;
@@ -97,11 +97,11 @@ const DirtyDot = styled.span<{ $kind: "external" | "managed" }>`
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function langIcon(entry: NoteEntry): React.ReactNode {
-  if (entry.isBinary) return <Binary size={13} />;
+  if (entry.isBinary) return <Binary size={14} />;
   const h = entry.language;
-  if (h === "markdown") return <FileText size={13} />;
-  if (h === "xml" || h === "html") return <Code2 size={13} />;
-  return <FileText size={13} />;
+  if (h === "markdown") return <FileText size={14} />;
+  if (h === "xml" || h === "html") return <Code2 size={14} />;
+  return <FileText size={14} />;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -171,10 +171,10 @@ export const NotesList: React.FC = () => {
         <SidebarHeaderTitle>Notes</SidebarHeaderTitle>
         <SidebarHeaderActions>
           <HeaderButton onClick={() => newNote()} title="New note">
-            <FilePlus size={15} />
+            <FilePlus size={16} />
           </HeaderButton>
           <HeaderButton onClick={openFileDialog} title="Open file…">
-            <FolderOpen size={15} />
+            <FolderOpen size={16} />
           </HeaderButton>
         </SidebarHeaderActions>
       </SidebarHeader>
@@ -207,7 +207,7 @@ export const NotesList: React.FC = () => {
                     color: "var(--apinox-foreground, #cccccc)",
                     border: "1px solid var(--apinox-focusBorder, #007fd4)",
                     borderRadius: 3,
-                    fontSize: 12,
+                    fontSize: 'var(--apinox-fs-md)',
                     padding: "1px 4px",
                   }}
                   onChange={(e) => setRenameValue(e.target.value)}

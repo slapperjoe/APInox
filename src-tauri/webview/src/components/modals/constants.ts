@@ -13,16 +13,16 @@ export const MODAL_DEFAULTS = {
     Z_INDEX: 1000,
     
     /** Standard header padding */
-    HEADER_PADDING: '10px 15px',
+    HEADER_PADDING: '8px 12px',
     
     /** Standard body padding */
-    BODY_PADDING: '15px',
+    BODY_PADDING: '16px',
     
     /** Standard footer padding */
-    FOOTER_PADDING: '10px 15px',
+    FOOTER_PADDING: '8px 12px',
     
     /** Gap between footer buttons */
-    BUTTON_GAP: '10px',
+    BUTTON_GAP: '8px',
     
     /** Standard box shadow for modals */
     BOX_SHADOW: '0 4px 6px var(--apinox-widget-shadow)',

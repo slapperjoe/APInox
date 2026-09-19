@@ -34,7 +34,7 @@ const StatusMessage = styled.div<{ success?: boolean }>`
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  margin-top: 10px;
+  margin-top: 12px;
   background: ${(props) =>
     props.success
       ? "var(--apinox-inputValidation-infoBackground)"
@@ -44,11 +44,11 @@ const StatusMessage = styled.div<{ success?: boolean }>`
       ? "var(--apinox-inputValidation-infoForeground)"
       : "var(--apinox-inputValidation-errorForeground)"};
   border-radius: 4px;
-  font-size: 12px;
+  font-size: var(--apinox-fs-md);
 `;
 
 const HelpText = styled.div`
-  font-size: 11px;
+  font-size: var(--apinox-fs-sm);
   color: var(--apinox-descriptionForeground);
   margin-top: 4px;
 `;
@@ -213,7 +213,7 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
             style={{ color: "var(--apinox-textLink-foreground)" }}
           >
             Learn more{" "}
-            <ExternalLink size={10} style={{ verticalAlign: "middle" }} />
+            <ExternalLink size={12} style={{ verticalAlign: "middle" }} />
           </a>
         </HelpText>
       </FormGroup>
@@ -269,7 +269,7 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
           padding: 12,
           background: "var(--apinox-textBlockQuote-background)",
           borderLeft: "3px solid var(--apinox-textBlockQuote-border)",
-          fontSize: 12,
+          fontSize: 'var(--apinox-fs-md)',
         }}
       >
         <strong>How it works:</strong>

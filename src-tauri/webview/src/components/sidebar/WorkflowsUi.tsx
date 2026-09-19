@@ -33,7 +33,7 @@ const WorkflowIcon = styled.div`
 
 const WorkflowName = styled.div`
     flex: 1;
-    font-size: 13px;
+    font-size: var(--apinox-fs-base);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -49,7 +49,7 @@ const StepItem = styled.div`
     display: flex;
     align-items: center;
     padding: ${SPACING_SM} 12px ${SPACING_SM} 40px;
-    font-size: 12px;
+    font-size: var(--apinox-fs-md);
     opacity: 0.8;
     border-bottom: 1px solid var(--apinox-panel-border);
     gap: ${SPACING_XS};

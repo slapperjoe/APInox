@@ -23,7 +23,7 @@ import styled, { css } from 'styled-components';
 // Base form element styles
 const baseInputStyles = css`
     font-family: var(--apinox-font-family);
-    font-size: 13px;
+    font-size: var(--apinox-fs-base);
     background-color: var(--apinox-input-background);
     color: var(--apinox-input-foreground);
     border: 1px solid var(--apinox-input-border);
@@ -47,11 +47,11 @@ const baseInputStyles = css`
 
 /**
  * FormInput - Standard text input
- * Standard padding: 6px
+ * Standard padding: 8px
  */
 export const FormInput = styled.input<{ $error?: boolean; $fullWidth?: boolean }>`
     ${baseInputStyles}
-    padding: 6px;
+    padding: 8px;
     border-radius: 2px;
     width: ${props => props.$fullWidth ? '100%' : 'auto'};
     
@@ -63,11 +63,11 @@ export const FormInput = styled.input<{ $error?: boolean; $fullWidth?: boolean }
 
 /**
  * FormTextArea - Multi-line text input
- * Standard padding: 6px
+ * Standard padding: 8px
  */
 export const FormTextArea = styled.textarea<{ $error?: boolean; $fullWidth?: boolean }>`
     ${baseInputStyles}
-    padding: 6px;
+    padding: 8px;
     border-radius: 2px;
     width: ${props => props.$fullWidth ? '100%' : 'auto'};
     min-height: 60px;
@@ -82,11 +82,11 @@ export const FormTextArea = styled.textarea<{ $error?: boolean; $fullWidth?: boo
 
 /**
  * FormSelect - Dropdown select input
- * Standard padding: 6px
+ * Standard padding: 8px
  */
 export const FormSelect = styled.select<{ $error?: boolean; $fullWidth?: boolean }>`
     ${baseInputStyles}
-    padding: 6px;
+    padding: 8px;
     border-radius: 2px;
     width: ${props => props.$fullWidth ? '100%' : 'auto'};
     cursor: pointer;
@@ -117,7 +117,7 @@ export const FormCheckbox = styled.input.attrs({ type: 'checkbox' })`
  */
 export const FormLabel = styled.label<{ $required?: boolean }>`
     display: block;
-    font-size: 13px;
+    font-size: var(--apinox-fs-base);
     font-weight: var(--fw-medium);
     color: var(--apinox-foreground);
     margin-bottom: 4px;
@@ -181,14 +181,14 @@ export const FormSectionTitle = styled.h3`
     font-weight: var(--fw-semibold);
     color: var(--apinox-foreground);
     border-bottom: 1px solid var(--apinox-panel-border);
-    padding-bottom: 6px;
+    padding-bottom: 8px;
 `;
 
 /**
  * FormHelperText - Helper or error text below inputs
  */
 export const FormHelperText = styled.div<{ $error?: boolean }>`
-    font-size: 11px;
+    font-size: var(--apinox-fs-sm);
     margin-top: 4px;
     color: ${props => props.$error 
         ? 'var(--apinox-inputValidation-errorForeground)' 
@@ -219,6 +219,6 @@ export const InlineFormInput = styled.input`
     ${baseInputStyles}
     padding: 2px 4px;
     border-radius: 2px;
-    font-size: 12px;
+    font-size: var(--apinox-fs-md);
     min-width: 60px;
 `;

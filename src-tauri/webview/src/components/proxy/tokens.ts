@@ -122,31 +122,25 @@ export const tokens = {
    * their legacy values for now.
    */
   fontSize: {
-    xs:   'var(--apinox-fs-sm)',   // 11px section labels / dense rows
-    sm:   'var(--apinox-fs-md)',   // 12px meta / tabs / buttons
-    base: 'var(--apinox-fs-base)', // 13px body / inputs (aliases --apinox-font-size)
-    md:   '14px',
+    // Mapped to the canonical quick-request baseline scale in index.css
+    // (:root --apinox-fs-*; docs/FONT_SIZE_TOKENS.md). index.css is the single
+    // source of truth for these four steps.
+    xs:   'var(--apinox-fs-xs)',   // 10px badges / counters
+    sm:   'var(--apinox-fs-sm)',   // 11px section labels / dense rows
+    base: 'var(--apinox-fs-md)',   // 12px meta / tabs / buttons
+    md:   'var(--apinox-fs-base)', // 13px body / inputs (aliases --apinox-font-size)
     lg:   '16px',
     xl:   '18px',
     xxl:  '20px',
   },
 
-  /** Spacing scale (use for padding, margin, gap) */
-  space: {
-    '1': '4px',
-    '2': '6px',
-    '3': '8px',
-    '4': '12px',
-    '5': '16px',
-    '6': '20px',
-    '7': '24px',
-  },
-
   /** Border radius */
   radius: {
-    sm: '3px',
+    // Two-value radius system (UI-consistency item 13): 2px controls/buttons,
+    // 4px surfaces. sm (was 3px) -> 2px; lg (was 6px stray) -> 4px.
+    sm: '2px',
     md: '4px',
-    lg: '6px',
+    lg: '4px',
     full: '50%',
   },
 

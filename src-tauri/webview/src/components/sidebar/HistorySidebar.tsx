@@ -30,7 +30,7 @@ const Section = styled.div`
 `;
 
 const SectionTitle = styled.div`
-    font-size: 11px;
+    font-size: var(--apinox-fs-sm);
     font-weight: var(--fw-semibold);
     text-transform: uppercase;
     opacity: 0.7;
@@ -72,7 +72,7 @@ const FilterRow = styled.div`
 `;
 
 const FilterLabel = styled.label`
-    font-size: 11px;
+    font-size: var(--apinox-fs-sm);
     font-weight: var(--fw-semibold);
     opacity: 0.7;
     text-transform: uppercase;
@@ -86,7 +86,7 @@ const FilterInput = styled.input`
     border: 1px solid var(--apinox-input-border);
     padding: ${SPACING_XS} ${SPACING_SM};
     border-radius: 4px;
-    font-size: 12px;
+    font-size: var(--apinox-fs-md);
     flex: 1;
     min-width: 80px;
     &:focus {
@@ -100,7 +100,7 @@ const FilterSelect = styled.select`
     border: 1px solid var(--apinox-input-border);
     padding: ${SPACING_XS} ${SPACING_SM};
     border-radius: 4px;
-    font-size: 12px;
+    font-size: var(--apinox-fs-md);
     &:focus {
         outline: 1px solid var(--apinox-focusBorder);
     }
@@ -112,7 +112,7 @@ const FilterButton = styled.button<{ $active?: boolean }>`
     border: 1px solid ${props => props.$active ? 'var(--apinox-button-background)' : 'var(--apinox-input-border)'};
     padding: 2px ${SPACING_SM};
     border-radius: 4px;
-    font-size: 11px;
+    font-size: var(--apinox-fs-sm);
     line-height: 1;
     height: 22px;
     min-height: unset;
@@ -134,7 +134,7 @@ const ClearFiltersButton = styled.button`
     border: 1px solid var(--apinox-input-border);
     padding: 2px ${SPACING_SM};
     border-radius: 4px;
-    font-size: 11px;
+    font-size: var(--apinox-fs-sm);
     line-height: 1;
     height: 22px;
     min-height: unset;
@@ -160,7 +160,7 @@ const FilterToggle = styled.button<{ $expanded: boolean }>`
     display: flex;
     align-items: center;
     gap: ${SPACING_XS};
-    font-size: 12px;
+    font-size: var(--apinox-fs-md);
     margin-bottom: ${SPACING_SM};
     width: 100%;
     justify-content: space-between;
@@ -200,20 +200,20 @@ const ItemContent = styled.div`
 
 const ItemTitle = styled.div`
     font-weight: var(--fw-medium);
-    font-size: 13px;
+    font-size: var(--apinox-fs-base);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 `;
 
 const ItemDetails = styled.div`
-    font-size: 11px;
+    font-size: var(--apinox-fs-sm);
     opacity: 0.7;
     margin-top: 2px;
 `;
 
 const ItemMeta = styled.div`
-    font-size: 10px;
+    font-size: var(--apinox-fs-xs);
     opacity: 0.5;
     margin-top: 2px;
     display: flex;

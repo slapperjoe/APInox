@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { SPACING_MD, SPACING_SM, SPACING_XL } from "../../styles/spacing";
 import { SidebarContextMenu, CtxMenuSection, CtxMenuItem, VenetianMask, Pencil, Pause, Download, Copy, FileText, RefreshCw, Globe, Link, Code, File } from '../sidebar/shared/SidebarContextMenu';
 import { tokens } from './tokens';
 import { methodBg, statusStyle } from './trafficStyles';
@@ -103,10 +104,10 @@ function StatusGroupPicker({ selected, onChange }: StatusGroupPickerProps) {
       >
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
           {isAll
-            ? <span style={{ color: tokens.text.muted, fontSize: 11, lineHeight: '1.6' }}>All statuses</span>
+            ? <span style={{ color: tokens.text.muted, fontSize: 'var(--apinox-fs-sm)', lineHeight: '1.6' }}>All statuses</span>
             : STATUS_GROUPS.filter(g => selected.has(g.key)).map(g => (
                 <span key={g.key} style={{
-                  fontSize: 10, fontWeight: 'var(--fw-bold)', padding: '1px 5px', borderRadius: 8,
+                  fontSize: 'var(--apinox-fs-xs)', fontWeight: 'var(--fw-bold)', padding: '1px 5px', borderRadius: 8,
                   background: g.bg, color: g.fg, border: `1px solid ${g.border}`,
                   fontFamily: 'monospace',
                 }}>{g.label}</span>
@@ -131,7 +132,7 @@ function StatusGroupPicker({ selected, onChange }: StatusGroupPickerProps) {
         }}>
           {/* Quick actions */}
           <div style={{
-            display: 'flex', gap: 5, padding: '7px 10px',
+            display: 'flex', gap: 5, padding: '7px 12px',
             borderBottom: `1px solid ${tokens.border.default}`,
             background: tokens.surface.elevated,
           }}>
@@ -157,7 +158,7 @@ function QuickBtn({ label, onClick }: { label: string; onClick: () => void }) {
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
-        padding: '2px 8px', fontSize: 10, fontWeight: 'var(--fw-semibold)',
+        padding: '2px 8px', fontSize: 'var(--apinox-fs-xs)', fontWeight: 'var(--fw-semibold)',
         background: hov ? tokens.surface.active : 'transparent',
         border: `1px solid ${tokens.border.subtle}`,
         borderRadius: tokens.radius.md,
@@ -178,7 +179,7 @@ function GroupRow({ group, checked, onClick }: {
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
-        display: 'flex', alignItems: 'center', gap: 10,
+        display: 'flex', alignItems: 'center', gap: 12,
         padding: '7px 12px', cursor: 'pointer',
         background: hov ? tokens.surface.stripe : 'transparent',
         borderLeft: `3px solid ${checked ? group.fg : 'transparent'}`,
@@ -188,7 +189,7 @@ function GroupRow({ group, checked, onClick }: {
       {/* Custom checkbox */}
       <div style={{
         width: 14, height: 14, borderRadius: 3, flexShrink: 0,
-        border: `1.5px solid ${checked ? group.fg : tokens.border.subtle}`,
+        border: `1px solid ${checked ? group.fg : tokens.border.subtle}`,
         background: checked ? group.bg : 'transparent',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         transition: 'all 0.15s',
@@ -201,7 +202,7 @@ function GroupRow({ group, checked, onClick }: {
       </div>
       {/* Code pill */}
       <span style={{
-        fontSize: 11, fontWeight: 'var(--fw-bold)', padding: '1px 7px', borderRadius: 8,
+        fontSize: 'var(--apinox-fs-sm)', fontWeight: 'var(--fw-bold)', padding: '1px 7px', borderRadius: 8,
         background: checked ? group.bg : 'rgba(60,60,60,0.12)',
         color: checked ? group.fg : tokens.text.hint,
         border: `1px solid ${checked ? group.border : 'transparent'}`,
@@ -210,7 +211,7 @@ function GroupRow({ group, checked, onClick }: {
       }}>{group.label}</span>
       {/* Description */}
       <span style={{
-        fontSize: 11,
+        fontSize: 'var(--apinox-fs-sm)',
         color: checked ? tokens.text.secondary : tokens.text.hint,
         transition: 'color 0.15s',
       }}>{group.desc}</span>
@@ -278,8 +279,8 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = [], onAddIgnore
       {/* Filter bar */}
       <div style={{
         display: 'flex', alignItems: 'center', flexWrap: 'wrap',
-        gap: tokens.space['4'],
-        padding: `${tokens.space['3']} ${tokens.space['6']}`,
+        gap: SPACING_MD,
+        padding: `${SPACING_SM} ${SPACING_XL}`,
         background: tokens.surface.elevated,
         borderBottom: `1px solid ${tokens.border.default}`,
         flexShrink: 0,
@@ -314,7 +315,7 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = [], onAddIgnore
           onChange={(e) => setUrlFilter(e.target.value)}
           style={{
             flex: 1, minWidth: 80,
-            padding: `4px ${tokens.space['3']}`,
+            padding: `4px ${SPACING_SM}`,
             background: tokens.surface.input,
             border: `1px solid ${tokens.border.subtle}`,
             borderRadius: tokens.radius.md,
@@ -329,7 +330,7 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = [], onAddIgnore
           value={methodFilter}
           onChange={(e) => setMethodFilter(e.target.value)}
           style={{
-            padding: `4px ${tokens.space['3']}`,
+            padding: `4px ${SPACING_SM}`,
             background: tokens.surface.input,
             border: `1px solid ${tokens.border.subtle}`,
             borderRadius: tokens.radius.md,
@@ -348,7 +349,7 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = [], onAddIgnore
           <button
             onClick={() => { setUrlFilter(''); setMethodFilter('ALL'); setStatusGroups(new Set(DEFAULT_STATUS_GROUPS)); }}
             style={{
-              padding: `4px ${tokens.space['3']}`,
+              padding: `4px ${SPACING_SM}`,
               background: 'transparent',
               border: `1px solid ${tokens.border.subtle}`,
               borderRadius: tokens.radius.md,
@@ -371,7 +372,7 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = [], onAddIgnore
             alignItems: 'center',
             justifyContent: 'center',
             height: '100%',
-            gap: tokens.space['4'],
+            gap: SPACING_MD,
             color: tokens.text.muted,
             fontSize: tokens.fontSize.sm,
           }}>
@@ -579,7 +580,7 @@ function TrafficRow({ log, isSelected, onClick, onContextMenu }: {
       {/* Line 1: method badge + path (no hostname) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: soapAction ? 2 : 4 }}>
         <span style={{
-          fontSize: 10, fontWeight: 'var(--fw-bold)', padding: '1px 6px',
+          fontSize: 'var(--apinox-fs-xs)', fontWeight: 'var(--fw-bold)', padding: '1px 8px',
           borderRadius: 3, fontFamily: 'monospace', flexShrink: 0,
           color: methodBg(log.method).fg, background: methodBg(log.method).bg,
         }}>
@@ -601,26 +602,26 @@ function TrafficRow({ log, isSelected, onClick, onContextMenu }: {
       {soapAction && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 3 }}>
           <span style={{
-            fontSize: 10, fontWeight: 'var(--fw-semibold)', padding: '1px 6px',
+            fontSize: 'var(--apinox-fs-xs)', fontWeight: 'var(--fw-semibold)', padding: '1px 8px',
             borderRadius: 3, flexShrink: 0,
             background: 'rgba(120,80,200,0.18)', color: 'var(--apinox-accent-purple)',
             border: '1px solid rgba(120,80,200,0.35)',
             fontFamily: 'monospace',
           }}>SOAP</span>
           <span style={{
-            fontSize: 11, color: 'var(--apinox-accent-purple)', fontFamily: 'monospace',
+            fontSize: 'var(--apinox-fs-sm)', color: 'var(--apinox-accent-purple)', fontFamily: 'monospace',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0,
           }}>{soapAction}</span>
         </div>
       )}
       {/* Line 3: time + status chip + duration */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-        <span style={{ fontSize: 10, color: tokens.text.hint, flexShrink: 0 }}>
+        <span style={{ fontSize: 'var(--apinox-fs-xs)', color: tokens.text.hint, flexShrink: 0 }}>
           {new Date(log.timestamp).toLocaleTimeString()}
         </span>
         {log.status != null && (
           <span style={{
-            fontSize: 10, fontWeight: 'var(--fw-semibold)', padding: '1px 6px',
+            fontSize: 'var(--apinox-fs-xs)', fontWeight: 'var(--fw-semibold)', padding: '1px 8px',
             borderRadius: 8, flexShrink: 0,
             background: ss.bg, color: ss.fg, border: `1px solid ${ss.border}`,
           }}>
@@ -628,7 +629,7 @@ function TrafficRow({ log, isSelected, onClick, onContextMenu }: {
           </span>
         )}
         {log.duration != null && (
-          <span style={{ fontSize: 10, color: tokens.text.muted }}>{log.duration}ms</span>
+          <span style={{ fontSize: 'var(--apinox-fs-xs)', color: tokens.text.muted }}>{log.duration}ms</span>
         )}
       </div>
     </div>

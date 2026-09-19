@@ -33,9 +33,9 @@ type DownloadState = 'idle' | 'downloading' | 'error' | 'ready';
 const btnStyle = (primary: boolean): React.CSSProperties => ({
     display: 'inline-flex',
     alignItems: 'center',
-    gap: 6,
-    padding: '6px 14px',
-    fontSize: 12,
+    gap: 8,
+    padding: '8px 14px',
+    fontSize: 'var(--apinox-fs-md)',
     cursor: 'pointer',
     borderRadius: 4,
     border: primary ? 'none' : '1px solid var(--apinox-button-border, var(--apinox-panel-border))',
@@ -280,7 +280,7 @@ export const UpdatesTab: React.FC = () => {
                                 disabled={stoppingProxy}
                                 title="APInox's own proxy is running and is likely interfering with this request. Stop it, then use Check now."
                             >
-                                <Square size={13} />
+                                <Square size={14} />
                                 {stoppingProxy ? 'Stopping…' : 'Stop proxy'}
                             </button>
                         )}
@@ -322,7 +322,7 @@ export const UpdatesTab: React.FC = () => {
                     disabled={checkState === 'checking'}
                     title="Re-check GitHub for a newer release"
                 >
-                    <RefreshCw size={13} />
+                    <RefreshCw size={14} />
                     {checkState === 'checking' ? 'Checking…' : 'Check now'}
                 </button>
 
@@ -331,7 +331,7 @@ export const UpdatesTab: React.FC = () => {
                         {/* Windows / macOS: download installer/DMG then apply it */}
                         {result.download_url && (downloadState === 'idle' || downloadState === 'error') && (
                             <button style={btnStyle(true)} onClick={handleDownload}>
-                                <Download size={13} />
+                                <Download size={14} />
                                 {isMacOS ? 'Download & install' : 'Download update'}
                             </button>
                         )}
@@ -343,7 +343,7 @@ export const UpdatesTab: React.FC = () => {
                                 onClick={handleOpenReleasePage}
                                 title="Opens the GitHub release page in your browser — use this if the in-app download is blocked by a corporate proxy"
                             >
-                                <ExternalLink size={13} />
+                                <ExternalLink size={14} />
                                 Open in browser
                             </button>
                         )}
@@ -351,7 +351,7 @@ export const UpdatesTab: React.FC = () => {
                         {/* Linux or no asset: open release page */}
                         {!result.download_url && (
                             <button style={btnStyle(true)} onClick={handleOpenReleasePage}>
-                                <ExternalLink size={13} />
+                                <ExternalLink size={14} />
                                 Open release page
                             </button>
                         )}
@@ -369,7 +369,7 @@ export const UpdatesTab: React.FC = () => {
             {/* ── Download progress bar ── */}
             {(downloadState === 'downloading') && (
                 <div style={{ marginBottom: 20 }}>
-                    <div style={{ fontSize: 12, marginBottom: 6 }}>
+                    <div style={{ fontSize: 'var(--apinox-fs-md)', marginBottom: 8 }}>
                         Downloading… {downloadProgress}%
                     </div>
                     <div
@@ -398,14 +398,14 @@ export const UpdatesTab: React.FC = () => {
                     <SectionHeader>Release Notes</SectionHeader>
                     <pre
                         style={{
-                            fontSize: 12,
+                            fontSize: 'var(--apinox-fs-md)',
                             lineHeight: 1.6,
                             whiteSpace: 'pre-wrap',
                             wordBreak: 'break-word',
                             background: 'var(--apinox-editor-background)',
                             border: '1px solid var(--apinox-panel-border)',
                             borderRadius: 4,
-                            padding: '10px 12px',
+                            padding: '12px 12px',
                             margin: 0,
                             fontFamily: 'inherit',
                         }}
@@ -425,7 +425,7 @@ export const UpdatesTab: React.FC = () => {
 
 const VersionBadge: React.FC<{ label: string; version: string }> = ({ label, version }) => (
     <div>
-        <div style={{ fontSize: 11, color: 'var(--apinox-descriptionForeground, #8b949e)', marginBottom: 2 }}>
+        <div style={{ fontSize: 'var(--apinox-fs-sm)', color: 'var(--apinox-descriptionForeground, #8b949e)', marginBottom: 2 }}>
             {label}
         </div>
         <div style={{ fontSize: 14, fontWeight: 'var(--fw-semibold)' }}>v{version}</div>
@@ -433,7 +433,7 @@ const VersionBadge: React.FC<{ label: string; version: string }> = ({ label, ver
 );
 
 const StatusRow: React.FC<{ icon: React.ReactNode; children: React.ReactNode }> = ({ icon, children }) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--apinox-fs-base)' }}>
         {icon}
         {children}
     </div>

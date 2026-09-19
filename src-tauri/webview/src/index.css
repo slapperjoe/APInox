@@ -72,12 +72,15 @@
     --apinox-sideBar-foreground: #cccccc;
     --apinox-sideBarSectionHeader-border: rgba(204, 204, 204, 0.2);
 
-    /* Spacing System */
-    --space-xs: 4px;
-    --space-sm: 8px;
+    /* Spacing System — re-derived from the single TS source (styles/spacing.ts).
+       Values match the SPACING_* ladder: 4/8/12/16/20/24/32. */
+    --space-2xs: 4px;
+    --space-xs: 8px;
+    --space-sm: 12px;
     --space-md: 16px;
-    --space-lg: 24px;
-    --space-xl: 32px;
+    --space-lg: 20px;
+    --space-xl: 24px;
+    --space-2xl: 32px;
 
     --apinox-list-hoverBackground: #2a2d2e;
     --apinox-list-activeSelectionBackground: #37373d;
@@ -192,16 +195,6 @@ body[data-platform="android"] * {
 
 ::-webkit-scrollbar-track {
     background: transparent;
-}
-
-/* Sidebar section header typography — Zed-style ALL CAPS labels */
-.section-header-label {
-    font-size: 10px;
-    font-weight: var(--fw-semibold);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--apinox-sideBarSectionHeader-foreground);
-    opacity: 0.75;
 }
 
 /* Wildcard Highlighting */

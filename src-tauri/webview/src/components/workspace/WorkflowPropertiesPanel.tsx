@@ -39,7 +39,7 @@ const Section = styled.div`
 `;
 
 const Label = styled.label`
-    font-size: 12px;
+    font-size: var(--apinox-fs-md);
     font-weight: var(--fw-semibold);
     opacity: 0.8;
     display: block;
@@ -49,9 +49,9 @@ const Input = styled.input`
     background: var(--apinox-input-background);
     color: var(--apinox-input-foreground);
     border: 1px solid var(--apinox-input-border);
-    padding: 8px 10px;
+    padding: 8px 12px;
     border-radius: 4px;
-    font-size: 13px;
+    font-size: var(--apinox-fs-base);
     font-family: var(--apinox-font-family);
     width: 100%;
     
@@ -64,9 +64,9 @@ const TextArea = styled.textarea`
     background: var(--apinox-input-background);
     color: var(--apinox-input-foreground);
     border: 1px solid var(--apinox-input-border);
-    padding: 8px 10px;
+    padding: 8px 12px;
     border-radius: 4px;
-    font-size: 13px;
+    font-size: var(--apinox-fs-base);
     font-family: var(--apinox-font-family);
     width: 100%;
     min-height: 100px;
@@ -82,7 +82,7 @@ const InfoBox = styled.div`
     background: var(--apinox-textCodeBlock-background);
     border: 1px solid var(--apinox-panel-border);
     border-radius: 4px;
-    font-size: 12px;
+    font-size: var(--apinox-fs-md);
     opacity: 0.8;
 `;
 
@@ -101,7 +101,7 @@ const StatBox = styled.div`
 `;
 
 const StatLabel = styled.div`
-    font-size: 11px;
+    font-size: var(--apinox-fs-sm);
     opacity: 0.6;
     text-transform: uppercase;
 `;

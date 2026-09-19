@@ -24,7 +24,7 @@ const RequestDetails = styled.div`
     background: var(--apinox-textCodeBlock-background);
     border: 1px solid var(--apinox-panel-border);
     border-radius: 4px;
-    font-size: 12px;
+    font-size: var(--apinox-fs-md);
 
     div {
         margin-bottom: 4px;
@@ -125,7 +125,7 @@ export const RequestStepEditor: React.FC<RequestStepEditorProps> = ({ step, onUp
                                     lineNumbers: 'on',
                                     scrollBeyondLastLine: false,
                                     wordWrap: 'on',
-                                    fontSize: 12,
+                                    fontSize: 'var(--apinox-fs-md)',
                                     tabSize: 2,
                                     automaticLayout: true
                                 }}

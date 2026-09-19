@@ -248,7 +248,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                 <button
                     onClick={() => setActiveTab('logs')}
                     style={{
-                        padding: '10px 20px',
+                        padding: '12px 20px',
                         background: activeTab === 'logs' ? 'var(--apinox-tab-activeBackground)' : 'transparent',
                         color: activeTab === 'logs' ? 'var(--apinox-tab-activeForeground)' : 'var(--apinox-tab-inactiveForeground)',
                         border: 'none',
@@ -263,7 +263,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                 <button
                     onClick={() => setActiveTab('diagnostics')}
                     style={{
-                        padding: '10px 20px',
+                        padding: '12px 20px',
                         background: activeTab === 'diagnostics' ? 'var(--apinox-tab-activeBackground)' : 'transparent',
                         color: activeTab === 'diagnostics' ? 'var(--apinox-tab-activeForeground)' : 'var(--apinox-tab-inactiveForeground)',
                         border: 'none',
@@ -283,8 +283,8 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
             ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 {/* Action Buttons */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
-                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                         <button
                             onClick={toggleDebugIndicator}
                             style={{
@@ -300,7 +300,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                             {debugIndicatorVisible ? '👁️ Hide' : '👁️‍🗨️ Show'} Debug Indicator
                         </button>
                     </div>
-                    <div style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ display: 'flex', gap: '12px' }}>
                         <button
                             onClick={async () => {
                                 setIsLoadingLogs(true);
@@ -341,7 +341,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                                 fontSize: '0.9em',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '6px'
+                                gap: '8px'
                             }}
                             onMouseEnter={(e) => {
                                 if (!copyStatus) {
@@ -389,7 +389,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                             background: 'var(--apinox-editor-background)',
                             border: '1px solid var(--apinox-panel-border)',
                             padding: '12px',
-                            borderRadius: '3px',
+                            borderRadius: '4px',
                             fontSize: '0.9em',
                         }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontFamily: 'var(--apinox-editor-font-family)' }}>
@@ -441,7 +441,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                         background: 'var(--apinox-inputValidation-errorBackground)',
                         border: '1px solid var(--apinox-inputValidation-errorBorder)',
                         color: 'var(--apinox-inputValidation-errorForeground)',
-                        borderRadius: '3px',
+                        borderRadius: '4px',
                         fontSize: '0.9em',
                     }}>
                         ⚠️ {fetchError}
@@ -507,7 +507,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                             fontFamily: 'var(--apinox-editor-font-family)',
                             fontSize: '0.85em',
                             lineHeight: '1.4',
-                            borderRadius: '3px',
+                            borderRadius: '4px',
                         }}>
                             {tauriLogs.length === 0 ? (
                                 <div style={{
@@ -597,7 +597,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                             fontFamily: 'var(--apinox-editor-font-family)',
                             fontSize: '0.85em',
                             lineHeight: '1.4',
-                            borderRadius: '3px',
+                            borderRadius: '4px',
                         }}>
                             {frontendLogState.length === 0 ? (
                                 <div style={{

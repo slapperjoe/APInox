@@ -744,7 +744,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                     placeholder="Enter WSDL URL and press Load"
                     style={{
                         flex: 1,
-                        padding: '6px 10px',
+                        padding: '8px 12px',
                         backgroundColor: 'var(--apinox-input-background)',
                         color: 'var(--apinox-input-foreground)',
                         border: '1px solid var(--apinox-input-border)',
@@ -756,7 +756,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                     onClick={handleLoadWsdl}
                     disabled={urlInput.loading}
                     style={{
-                        padding: '6px 14px',
+                        padding: '8px 14px',
                         backgroundColor: 'var(--apinox-button-background)',
                         color: 'var(--apinox-button-foreground)',
                         border: 'none',
@@ -764,7 +764,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                         cursor: urlInput.loading ? 'wait' : 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 6,
+                        gap: 8,
                     }}
                 >
                     {urlInput.loading ? (
@@ -780,7 +780,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                     disabled={!urlInput.loading}
                     title="Cancel in-flight WSDL load"
                     style={{
-                        padding: '6px 12px',
+                        padding: '8px 12px',
                         backgroundColor: 'var(--apinox-button-secondaryBackground)',
                         color: 'var(--apinox-button-secondaryForeground)',
                         border: '1px solid var(--apinox-button-border, transparent)',
@@ -805,7 +805,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                         display: 'flex',
                         alignItems: 'center',
                         gap: 4,
-                        fontSize: 12,
+                        fontSize: 'var(--apinox-fs-md)',
                         color: 'var(--apinox-foreground)',
                         opacity: 0.85,
                         cursor: 'pointer',
@@ -824,7 +824,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                     onClick={handleLoadFile}
                     disabled={urlInput.loading}
                     style={{
-                        padding: '6px 14px',
+                        padding: '8px 14px',
                         backgroundColor: 'var(--apinox-button-secondaryBackground)',
                         color: 'var(--apinox-button-secondaryForeground)',
                         border: '1px solid var(--apinox-button-border, transparent)',
@@ -832,7 +832,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                         cursor: urlInput.loading ? 'wait' : 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 6,
+                        gap: 8,
                     }}
                 >
                     <FolderOpen size={14} />
@@ -845,7 +845,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                     padding: '8px 12px',
                     backgroundColor: 'var(--apinox-error-background)',
                     color: 'var(--apinox-errorForeground, #f48771)',
-                    fontSize: 13,
+                    fontSize: 'var(--apinox-fs-base)',
                 }}>
                     {urlInput.error}
                 </div>
@@ -867,22 +867,22 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                         <div style={{ marginTop: 18 }}>
                             <div
                                 style={{
-                                    fontSize: 11,
+                                    fontSize: 'var(--apinox-fs-sm)',
                                     fontWeight: 'var(--fw-semibold)',
                                     textTransform: 'uppercase',
                                     letterSpacing: 0.5,
                                     color: 'var(--apinox-descriptionForeground)',
-                                    marginBottom: 10,
+                                    marginBottom: 12,
                                 }}
                             >
                                 Sample APIs
                             </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, maxWidth: 560 }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, maxWidth: 560 }}>
                                 {(['OpenAPI', 'SOAP', 'GraphQL'] as const).map(group => (
-                                    <div key={group} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                    <div key={group} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                         <span
                                             style={{
-                                                fontSize: 10,
+                                                fontSize: 'var(--apinox-fs-xs)',
                                                 fontWeight: 'var(--fw-semibold)',
                                                 textTransform: 'uppercase',
                                                 letterSpacing: '0.06em',
@@ -900,7 +900,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                                 onClick={() => handleSelectSampleCard(card)}
                                                 style={{
                                                     textAlign: 'left',
-                                                    padding: '8px 10px',
+                                                    padding: '8px 12px',
                                                     backgroundColor: 'var(--apinox-panel-background)',
                                                     border: '1px solid var(--apinox-panel-border)',
                                                     borderRadius: 6,
@@ -911,8 +911,8 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                                     gap: 2,
                                                 }}
                                             >
-                                                <span style={{ fontWeight: 'var(--fw-medium)', fontSize: 13 }}>{card.label}</span>
-                                                <span style={{ fontSize: 11, color: 'var(--apinox-descriptionForeground)' }}>
+                                                <span style={{ fontWeight: 'var(--fw-medium)', fontSize: 'var(--apinox-fs-base)' }}>{card.label}</span>
+                                                <span style={{ fontSize: 'var(--apinox-fs-sm)', color: 'var(--apinox-descriptionForeground)' }}>
                                                     {card.format.toUpperCase()}
                                                 </span>
                                             </button>
@@ -926,10 +926,10 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                     /* WSDL Project Summary */
                     <div style={{ padding: 24 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-                            <Server size={32} color="var(--apinox-icon-foreground)" />
+                            <Server size={20} color="var(--apinox-icon-foreground)" />
                             <div>
                                 <h2 style={{ margin: 0, fontSize: 22 }}>{selected.project.name}</h2>
-                                <div style={{ fontSize: 12, opacity: 0.7 }}>
+                                <div style={{ fontSize: 'var(--apinox-fs-md)', opacity: 0.7 }}>
                                     Source: {selected.project.source || 'manual'}
                                     {selected.project.sourceUrl ? ` • ${selected.project.sourceUrl}` : ''}
                                 </div>
@@ -938,29 +938,29 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
 
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr)', gap: 12 }}>
                             <div style={{ padding: '12px', background: 'var(--apinox-panel-background)', borderRadius: 6, border: '1px solid var(--apinox-panel-border)' }}>
-                                <div style={{ fontSize: 12, opacity: 0.7 }}>Operations</div>
+                                <div style={{ fontSize: 'var(--apinox-fs-md)', opacity: 0.7 }}>Operations</div>
                                 <div style={{ fontSize: 24, fontWeight: 'var(--fw-semibold)' }}>{(selected.project.operations || []).length}</div>
                             </div>
                             <div style={{ padding: '12px', background: 'var(--apinox-panel-background)', borderRadius: 6, border: '1px solid var(--apinox-panel-border)' }}>
-                                <div style={{ fontSize: 12, opacity: 0.7 }}>Total Requests</div>
+                                <div style={{ fontSize: 'var(--apinox-fs-md)', opacity: 0.7 }}>Total Requests</div>
                                 <div style={{ fontSize: 24, fontWeight: 'var(--fw-semibold)' }}>
                                     {(selected.project.operations || []).reduce((sum, op) => sum + (op.requests || []).length, 0)}
                                 </div>
                             </div>
                             <div style={{ padding: '12px', background: 'var(--apinox-panel-background)', borderRadius: 6, border: '1px solid var(--apinox-panel-border)' }}>
-                                <div style={{ fontSize: 12, opacity: 0.7 }}>Source URL</div>
-                                <div style={{ fontSize: 13, wordBreak: 'break-all', marginTop: 4 }}>
+                                <div style={{ fontSize: 'var(--apinox-fs-md)', opacity: 0.7 }}>Source URL</div>
+                                <div style={{ fontSize: 'var(--apinox-fs-base)', wordBreak: 'break-all', marginTop: 4 }}>
                                     {selected.project.sourceUrl || 'N/A'}
                                 </div>
                             </div>
                             <div style={{ padding: '12px', background: 'var(--apinox-panel-background)', borderRadius: 6, border: '1px solid var(--apinox-panel-border)' }}>
-                                <div style={{ fontSize: 12, opacity: 0.7 }}>First Parsed</div>
-                                <div style={{ fontSize: 13, marginTop: 4 }}>
+                                <div style={{ fontSize: 'var(--apinox-fs-md)', opacity: 0.7 }}>First Parsed</div>
+                                <div style={{ fontSize: 'var(--apinox-fs-base)', marginTop: 4 }}>
                                     {selected.project.parsedAt ? new Date(selected.project.parsedAt).toLocaleDateString() : 'N/A'}
                                 </div>
                             </div>
                             <div style={{ padding: '12px', background: 'var(--apinox-panel-background)', borderRadius: 6, border: '1px solid var(--apinox-panel-border)' }}>
-                                <div style={{ fontSize: 12, opacity: 0.7 }}>Content-Type {selected.project.contentType ? '(override)' : `— SOAP ${selected.project.soapVersion || '1.1'} default: ${soapDefault(selected.project.soapVersion)}`}</div>
+                                <div style={{ fontSize: 'var(--apinox-fs-md)', opacity: 0.7 }}>Content-Type {selected.project.contentType ? '(override)' : `— SOAP ${selected.project.soapVersion || '1.1'} default: ${soapDefault(selected.project.soapVersion)}`}</div>
                                 <select
                                     value={selected.project.contentType || ''}
                                     onChange={(e) => onProjectContentTypeChange?.(selected.project.name, e.target.value)}
@@ -968,12 +968,12 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                     style={{
                                         marginTop: 4,
                                         width: '100%',
-                                        padding: '4px 6px',
+                                        padding: '4px 8px',
                                         backgroundColor: 'var(--apinox-input-background)',
                                         color: 'var(--apinox-input-foreground)',
                                         border: '1px solid var(--apinox-input-border)',
                                         borderRadius: 4,
-                                        fontSize: 13,
+                                        fontSize: 'var(--apinox-fs-base)',
                                         cursor: onProjectContentTypeChange ? 'pointer' : 'not-allowed',
                                     }}
                                 >
@@ -990,7 +990,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                 <button
                                     onClick={() => onRefreshProject(selected.project.name)}
                                     style={{
-                                        padding: '6px 14px',
+                                        padding: '8px 14px',
                                         backgroundColor: 'var(--apinox-button-secondaryBackground)',
                                         color: 'var(--apinox-button-secondaryForeground)',
                                         border: '1px solid var(--apinox-button-border, transparent)',
@@ -998,7 +998,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                         cursor: 'pointer',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: 6,
+                                        gap: 8,
                                     }}
                                 >
                                     <RefreshCw size={14} />
@@ -1013,7 +1013,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                 <div
                                     key={op.id || op.name}
                                     style={{
-                                        padding: '10px 12px',
+                                        padding: '12px 12px',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'space-between',
@@ -1029,7 +1029,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                         <FileCode size={16} />
                                         <span>{op.name}</span>
                                     </div>
-                                    <div style={{ fontSize: 12, opacity: 0.7 }}>
+                                    <div style={{ fontSize: 'var(--apinox-fs-md)', opacity: 0.7 }}>
                                         {(op.requests || []).filter(req => !req.name.startsWith('sample_')).length} request{(op.requests || []).filter(req => !req.name.startsWith('sample_')).length === 1 ? '' : 's'}
                                     </div>
                                 </div>
@@ -1040,10 +1040,10 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                     /* Operation Summary */
                     <div style={{ padding: 24 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-                            <Code2 size={32} color="var(--apinox-icon-foreground)" />
+                            <Code2 size={20} color="var(--apinox-icon-foreground)" />
                             <div>
                                 <h2 style={{ margin: 0, fontSize: 22 }}>{selected.operation.name}</h2>
-                                <div style={{ fontSize: 12, opacity: 0.7 }}>
+                                <div style={{ fontSize: 'var(--apinox-fs-md)', opacity: 0.7 }}>
                                     Endpoint: {selected.operation.originalEndpoint || 'N/A'}
                                     {selected.operation.targetNamespace ? ` • Namespace: ${selected.operation.targetNamespace}` : ''}
                                 </div>
@@ -1052,16 +1052,16 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
 
                         {/* Operation Details Grid */}
                         <div style={{
-                            padding: 15,
+                            padding: 16,
                             backgroundColor: 'var(--apinox-editor-background)',
                             border: '1px solid var(--apinox-widget-border)',
                             borderRadius: 6,
                             marginBottom: 20,
                         }}>
-                            <h3 style={{ marginTop: 0, marginBottom: 15, fontSize: 14, fontWeight: 'var(--fw-medium)' }}>
+                            <h3 style={{ marginTop: 0, marginBottom: 16, fontSize: 14, fontWeight: 'var(--fw-medium)' }}>
                                 Operation Details
                             </h3>
-                            <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 10, fontSize: 13 }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 12, fontSize: 'var(--apinox-fs-base)' }}>
                                 <div style={{ opacity: 0.7 }}>SOAP Action:</div>
                                 <div style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>{selected.operation.action || '(uses endpoint)'}</div>
 
@@ -1070,7 +1070,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                     <div style={{ fontFamily: 'monospace' }}>
                                         <div style={{ marginBottom: 5 }}>{selected.operation.fullSchema.name} ({selected.operation.fullSchema.type})</div>
                                         {selected.operation.fullSchema.children && selected.operation.fullSchema.children.length > 0 && (
-                                            <div style={{ marginLeft: 15, opacity: 0.8 }}>
+                                            <div style={{ marginLeft: 16, opacity: 0.8 }}>
                                                 {selected.operation.fullSchema.children.map((child: any, idx: number) => (
                                                     <div key={idx}>• {child.name}: {child.type}</div>
                                                 ))}
@@ -1114,7 +1114,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                             <div
                                 key={req.id || req.name}
                                 style={{
-                                    padding: '10px 12px',
+                                    padding: '12px 12px',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'space-between',
@@ -1130,7 +1130,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                     <FileCode size={16} />
                                     <span>{req.name}</span>
                                 </div>
-                                <div style={{ fontSize: 12, opacity: 0.7 }}>
+                                <div style={{ fontSize: 'var(--apinox-fs-md)', opacity: 0.7 }}>
                                     {req.method || 'POST'} {resolveEffectiveContentType(req, selected.operation, { contentType: selected.project.contentType, soapVersion: selected.project.soapVersion })}
                                 </div>
                             </div>
@@ -1149,19 +1149,19 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                             borderBottom: '1px solid var(--apinox-panel-border)',
                             backgroundColor: 'var(--apinox-panel-background)',
                         }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                                 <FileCode size={18} />
                                 <span style={{ fontSize: 15, fontWeight: 'var(--fw-semibold)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                     {selected.request?.name || 'Quick Request'}
                                 </span>
                                 {selected.request && (
-                                    <span style={{ fontSize: 12, opacity: 0.7, whiteSpace: 'nowrap' }}>
+                                    <span style={{ fontSize: 'var(--apinox-fs-md)', opacity: 0.7, whiteSpace: 'nowrap' }}>
                                         {selected.request.method || 'POST'} • {selected.request.contentType || 'application/soap+xml'}
                                     </span>
                                 )}
                             </div>
                             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                                <label htmlFor="quick-request-endpoint" style={{ fontSize: 12, opacity: 0.7, flexShrink: 0 }}>
+                                <label htmlFor="quick-request-endpoint" style={{ fontSize: 'var(--apinox-fs-md)', opacity: 0.7, flexShrink: 0 }}>
                                     Endpoint
                                 </label>
                                 <input
@@ -1173,13 +1173,13 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                     placeholder="https://example.com/soap/service"
                                     style={{
                                         flex: 1,
-                                        padding: '6px 10px',
+                                        padding: '8px 12px',
                                         backgroundColor: 'var(--apinox-input-background)',
                                         color: 'var(--apinox-input-foreground)',
                                         border: '1px solid var(--apinox-input-border)',
                                         borderRadius: 4,
                                         outline: 'none',
-                                        fontSize: 13,
+                                        fontSize: 'var(--apinox-fs-base)',
                                     }}
                                 />
                                 <button
@@ -1187,7 +1187,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                     onClick={handleExecuteQuickRequest}
                                     disabled={!editingRequest}
                                     style={{
-                                        padding: '6px 14px',
+                                        padding: '8px 14px',
                                         backgroundColor: 'var(--apinox-button-background)',
                                         color: 'var(--apinox-button-foreground)',
                                         border: 'none',
@@ -1195,7 +1195,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                         cursor: editingRequest ? 'pointer' : 'not-allowed',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: 6,
+                                        gap: 8,
                                         opacity: editingRequest ? 1 : 0.5,
                                     }}
                                 >
@@ -1208,7 +1208,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                         onClick={handleCancelRequest}
                                         title="Cancel in-flight request"
                                         style={{
-                                            padding: '6px 14px',
+                                            padding: '8px 14px',
                                             backgroundColor: 'var(--apinox-button-secondaryBackground)',
                                             color: 'var(--apinox-button-secondaryForeground)',
                                             border: '1px solid var(--apinox-button-border, transparent)',
@@ -1216,7 +1216,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                             cursor: 'pointer',
                                             display: 'flex',
                                             alignItems: 'center',
-                                            gap: 6,
+                                            gap: 8,
                                         }}
                                     >
                                         <X size={14} />
@@ -1228,7 +1228,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                     onClick={handleSaveRequest}
                                     disabled={!editingRequest}
                                     style={{
-                                        padding: '6px 14px',
+                                        padding: '8px 14px',
                                         backgroundColor: 'var(--apinox-button-secondaryBackground)',
                                         color: 'var(--apinox-button-secondaryForeground)',
                                         border: '1px solid var(--apinox-button-border, transparent)',
@@ -1236,7 +1236,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                         cursor: editingRequest ? 'pointer' : 'not-allowed',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: 6,
+                                        gap: 8,
                                         opacity: editingRequest ? 1 : 0.5,
                                     }}
                                 >
@@ -1254,11 +1254,11 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                     alignItems: 'center',
                                     justifyContent: 'space-between',
                                     gap: 8,
-                                    padding: '6px 12px',
+                                    padding: '8px 12px',
                                     backgroundColor: 'var(--apinox-error-background)',
                                     color: 'var(--apinox-errorForeground, #f48771)',
                                     borderBottom: '1px solid var(--apinox-error-border)',
-                                    fontSize: 12,
+                                    fontSize: 'var(--apinox-fs-md)',
                                 }}
                             >
                                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{executeError}</span>
@@ -1315,7 +1315,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
                         {/* Action bar */}
                         <div style={{
-                            padding: '6px 12px',
+                            padding: '8px 12px',
                             display: 'flex',
                             gap: 8,
                             borderBottom: '1px solid var(--apinox-panel-border)',
@@ -1333,10 +1333,10 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: 5,
-                                    fontSize: 12,
+                                    fontSize: 'var(--apinox-fs-md)',
                                 }}
                             >
-                                <Play size={13} />
+                                <Play size={14} />
                                 Run
                             </button>
                             {isExecuting && (
@@ -1354,10 +1354,10 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                         display: 'flex',
                                         alignItems: 'center',
                                         gap: 5,
-                                        fontSize: 12,
+                                        fontSize: 'var(--apinox-fs-md)',
                                     }}
                                 >
-                                    <X size={13} />
+                                    <X size={14} />
                                     Cancel
                                 </button>
                             )}
@@ -1373,10 +1373,10 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: 5,
-                                    fontSize: 12,
+                                    fontSize: 'var(--apinox-fs-md)',
                                 }}
                             >
-                                <Calendar size={13} />
+                                <Calendar size={14} />
                                 Save
                             </button>
                         </div>
@@ -1392,11 +1392,11 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                     alignItems: 'center',
                                     justifyContent: 'space-between',
                                     gap: 8,
-                                    padding: '6px 12px',
+                                    padding: '8px 12px',
                                     backgroundColor: 'var(--apinox-error-background)',
                                     color: 'var(--apinox-errorForeground, #f48771)',
                                     borderBottom: '1px solid var(--apinox-error-border)',
-                                    fontSize: 12,
+                                    fontSize: 'var(--apinox-fs-md)',
                                 }}
                             >
                                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

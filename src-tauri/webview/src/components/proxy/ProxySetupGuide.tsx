@@ -1,4 +1,5 @@
 import React from 'react';
+import { SPACING_LG, SPACING_MD, SPACING_SM } from "../../styles/spacing";
 import { tokens } from './tokens';
 
 type SetupTab = 'env' | 'httpclient' | 'iisexpress' | 'wcf';
@@ -31,7 +32,7 @@ export function ProxySetupGuide({ activeTab, onTabChange }: ProxySetupGuideProps
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
             style={{
-              padding: `${tokens.space['3']} ${tokens.space['5']}`,
+              padding: `${SPACING_SM} ${SPACING_LG}`,
               background: activeTab === tab.id ? tokens.surface.base : 'transparent',
               border: 'none',
               borderBottom: activeTab === tab.id ? `2px solid ${tokens.status.accent}` : 'none',
@@ -46,7 +47,7 @@ export function ProxySetupGuide({ activeTab, onTabChange }: ProxySetupGuideProps
       </div>
 
       {/* Content */}
-      <div style={{ padding: tokens.space['5'] }}>
+      <div style={{ padding: SPACING_LG }}>
         {activeTab === 'env' && <EnvVarGuide />}
         {activeTab === 'httpclient' && <HttpClientGuide />}
         {activeTab === 'iisexpress' && <IisExpressGuide />}
@@ -62,11 +63,11 @@ function CodeBlock({ children }: { children: string }) {
       background: tokens.surface.elevated,
       border: `1px solid ${tokens.border.default}`,
       borderRadius: tokens.radius.md,
-      padding: tokens.space['4'],
+      padding: SPACING_MD,
       fontSize: tokens.fontSize.sm,
       color: tokens.syntax.string,
       overflowX: 'auto',
-      margin: `${tokens.space['3']} 0 0 0`,
+      margin: `${SPACING_SM} 0 0 0`,
       whiteSpace: 'pre-wrap',
       wordBreak: 'break-all',
     }}>
@@ -77,7 +78,7 @@ function CodeBlock({ children }: { children: string }) {
 
 function GuideText({ children }: { children: React.ReactNode }) {
   return (
-    <p style={{ fontSize: tokens.fontSize.sm, color: tokens.text.secondary, margin: `0 0 ${tokens.space['3']} 0`, lineHeight: '1.6' }}>
+    <p style={{ fontSize: tokens.fontSize.sm, color: tokens.text.secondary, margin: `0 0 ${SPACING_SM} 0`, lineHeight: '1.6' }}>
       {children}
     </p>
   );

@@ -33,13 +33,13 @@ const PreviewContainer = styled.div`
     font-size: 0.88em;
     background: var(--apinox-textCodeBlock-background, #0a0a0a66);
     padding: 1px 5px;
-    border-radius: 3px;
+    border-radius: 4px;
   }
 
   pre {
     background: var(--apinox-textCodeBlock-background, #0a0a0a66);
     padding: 12px 16px;
-    border-radius: 6px;
+    border-radius: 4px;
     overflow-x: auto;
   }
 
@@ -62,7 +62,7 @@ const PreviewContainer = styled.div`
   }
   th, td {
     border: 1px solid var(--apinox-panel-border, #80808059);
-    padding: 6px 12px;
+    padding: 8px 12px;
   }
   th { background: var(--apinox-list-hoverBackground, #2a2d2e); }
 

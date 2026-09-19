@@ -51,10 +51,10 @@ const TabContainer = styled.div`
 const Tab = styled.div<{ $active: boolean }>`
     padding: ${SPACING_SM} ${SPACING_MD};
     cursor: pointer;
-    font-size: 12px;
+    font-size: var(--apinox-fs-md);
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     flex-shrink: 0;
     white-space: nowrap;
     border-top: 1px solid transparent;
@@ -528,7 +528,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ rawConfig, onSave, i
                     <>
                         {parseError && (
                             <div style={{ padding: '8px', background: 'var(--apinox-inputValidation-errorBackground)', color: 'var(--apinox-inputValidation-errorForeground)' }}>
-                                <AlertTriangle size={14} style={{ verticalAlign: 'middle', marginRight: '6px' }} />
+                                <AlertTriangle size={14} style={{ verticalAlign: 'middle', marginRight: '8px' }} />
                                 {parseError}
                             </div>
                         )}

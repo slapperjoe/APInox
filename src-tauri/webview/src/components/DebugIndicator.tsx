@@ -34,7 +34,7 @@ export const DebugIndicator: React.FC = () => {
                 backgroundColor: 'red',
                 color: 'white',
                 zIndex: 999999,
-                padding: '10px',
+                padding: '12px',
                 pointerEvents: 'none'
             }}
         >

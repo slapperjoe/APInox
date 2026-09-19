@@ -23,7 +23,7 @@ const PreviewBox = styled.div`
   border: 1px solid var(--apinox-panel-border);
   border-radius: 4px;
   font-family: "Consolas", "Courier New", monospace;
-  font-size: 12px;
+  font-size: var(--apinox-fs-md);
   color: var(--apinox-editor-foreground);
   white-space: pre-wrap;
   word-break: break-word;

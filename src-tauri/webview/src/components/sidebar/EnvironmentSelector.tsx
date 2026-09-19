@@ -105,7 +105,7 @@ export const EnvironmentSelector: React.FC<EnvironmentSelectorProps> = ({
                     }}>
                         <div style={{
                             padding: '4px 8px',
-                            fontSize: 10,
+                            fontSize: 'var(--apinox-fs-xs)',
                             fontWeight: 'var(--fw-bold)',
                             borderBottom: '1px solid var(--apinox-menu-separatorBackground)',
                             marginBottom: 4,
@@ -127,7 +127,7 @@ export const EnvironmentSelector: React.FC<EnvironmentSelectorProps> = ({
                                         }
                                     }}
                                     style={{
-                                        padding: '6px 12px',
+                                        padding: '8px 12px',
                                         cursor: 'pointer',
                                         display: 'flex',
                                         alignItems: 'center',
@@ -150,7 +150,7 @@ export const EnvironmentSelector: React.FC<EnvironmentSelectorProps> = ({
                                     }}
                                 >
                                     <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: color }}></div>
-                                    <span style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{env}</span>
+                                    <span style={{ fontSize: 'var(--apinox-fs-md)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{env}</span>
                                 </div>
                             );
                         })}

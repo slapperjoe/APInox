@@ -66,7 +66,7 @@ export const ContextMenu = styled.div<{ top: number, left: number }>`
  * Highlights on hover using VS Code selection colors.
  */
 export const ContextMenuItem = styled.div`
-    padding: 6px 12px;
+    padding: 8px 12px;
     cursor: pointer;
     &:hover {
         background-color: var(--apinox-menu-selectionBackground);

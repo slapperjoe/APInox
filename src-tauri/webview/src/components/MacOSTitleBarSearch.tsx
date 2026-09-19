@@ -55,7 +55,7 @@ const LogoIcon = styled.img`
 `;
 
 const AppTitle = styled.span`
-  font-size: 13px;
+  font-size: var(--apinox-fs-base);
   font-weight: var(--fw-semibold);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
   letter-spacing: 0.3px;
@@ -72,13 +72,13 @@ const SearchWrapper = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 10px;
+  padding: 0 12px;
   height: 22px;  /* Slightly smaller */
   background: rgba(30, 30, 30, 0.7);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(128, 128, 128, 0.3);
-  border-radius: 5px;
+  border-radius: 4px;
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
   font-family: var(--apinox-ui-font-family, var(--apinox-font-family));
   pointer-events: auto;
@@ -120,7 +120,7 @@ const SearchInput = styled.input`
   border: none;
   outline: none;
   color: var(--apinox-input-foreground);
-  font-size: 12px;
+  font-size: var(--apinox-fs-md);
   padding: 0;
   font-family: var(--apinox-ui-font-family, var(--apinox-font-family));
   line-height: 1.4;
@@ -141,7 +141,7 @@ const ClearButton = styled.button`
   cursor: pointer;
   opacity: 0.6;
   flex-shrink: 0;
-  border-radius: 3px;
+  border-radius: 4px;
   transition: opacity 0.15s ease, background-color 0.15s ease;
   
   &:hover {

@@ -35,11 +35,11 @@ const SectionHeader = styled.div`
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 4px 10px;
+    padding: 4px 12px;
     min-height: 28px;
     user-select: none;
-    margin-left: -10px;
-    margin-right: -10px;
+    margin-left: -12px;
+    margin-right: -12px;
 `;
 
 const RequestList = styled.div<{ $fill?: boolean }>`
@@ -47,7 +47,7 @@ const RequestList = styled.div<{ $fill?: boolean }>`
     flex-direction: column;
     min-height: 0;
     ${props => props.$fill
-        ? "flex: 1; overflow-y: auto; margin-left: -10px; margin-right: -10px;"
+        ? "flex: 1; overflow-y: auto; margin-left: -12px; margin-right: -12px;"
         : ""}
 `;
 
@@ -89,7 +89,7 @@ const IconButton = styled.button`
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 3px;
+    border-radius: 4px;
 
     &:hover {
         background: var(--apinox-list-hoverBackground);

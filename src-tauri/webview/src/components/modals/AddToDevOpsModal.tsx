@@ -24,7 +24,7 @@ const FormGroup = styled.div`
 `;
 
 const Label = styled.label`
-    font-size: 12px;
+    font-size: var(--apinox-fs-md);
     font-weight: var(--fw-medium);
 `;
 
@@ -34,7 +34,7 @@ const Input = styled.input`
     color: var(--apinox-input-foreground);
     border: 1px solid var(--apinox-input-border);
     border-radius: 4px;
-    font-size: 13px;
+    font-size: var(--apinox-fs-base);
     
     &:focus {
         border-color: var(--apinox-focusBorder);
@@ -48,7 +48,7 @@ const PreviewBox = styled.div`
     border-radius: 4px;
     padding: ${SPACING_MD};
     font-family: monospace;
-    font-size: 11px;
+    font-size: var(--apinox-fs-sm);
     max-height: 200px;
     overflow-y: auto;
     white-space: pre-wrap;
@@ -67,7 +67,7 @@ const StatusMessage = styled.div<{ $success?: boolean }>`
         ? 'var(--apinox-inputValidation-infoForeground)'
         : 'var(--apinox-inputValidation-errorForeground)'};
     border-radius: 4px;
-    font-size: 12px;
+    font-size: var(--apinox-fs-md);
 `;
 
 const Spinner = styled(Loader2)`

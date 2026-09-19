@@ -24,9 +24,9 @@ const SearchInput = styled.input`
     background: var(--apinox-input-background);
     color: var(--apinox-input-foreground);
     border: 1px solid var(--apinox-input-border);
-    padding: 6px 8px;
+    padding: 8px 8px;
     border-radius: 4px;
-    margin: 10px 10px 0 10px;
+    margin: 12px 12px 0 12px;
     &:focus {
         outline: 1px solid var(--apinox-focusBorder);
     }
@@ -35,14 +35,14 @@ const SearchInput = styled.input`
 const List = styled.div`
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding: 10px;
+    gap: 8px;
+    padding: 12px;
     overflow: auto;
     max-height: 50vh;
 `;
 
 const Item = styled.div<{ $warning?: boolean }>`
-    padding: 8px 10px;
+    padding: 8px 12px;
     border-radius: 4px;
     background: var(--apinox-list-inactiveSelectionBackground);
     cursor: pointer;
@@ -62,13 +62,13 @@ const ItemContent = styled.div`
 `;
 
 const ItemLabel = styled.div`
-    font-size: 12px;
+    font-size: var(--apinox-fs-md);
     font-weight: var(--fw-semibold);
     color: var(--apinox-foreground);
 `;
 
 const ItemMeta = styled.div`
-    font-size: 11px;
+    font-size: var(--apinox-fs-sm);
     opacity: 0.7;
 `;
 

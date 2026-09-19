@@ -39,7 +39,7 @@ const StepsPanelHeader = styled.div`
 
 const StepsPanelTitle = styled.h2`
     margin: 0;
-    font-size: 13px;
+    font-size: var(--apinox-fs-base);
     font-weight: var(--fw-semibold);
     text-transform: uppercase;
     opacity: 0.8;
@@ -94,7 +94,7 @@ const DragHandle = styled.div`
 `;
 
 const StepNumber = styled.span`
-    font-size: 11px;
+    font-size: var(--apinox-fs-sm);
     opacity: 0.6;
     min-width: 30px;
 `;
@@ -111,7 +111,7 @@ const StepInfo = styled.div`
 `;
 
 const StepName = styled.div`
-    font-size: 13px;
+    font-size: var(--apinox-fs-base);
     font-weight: var(--fw-medium);
     white-space: nowrap;
     overflow: hidden;
@@ -119,7 +119,7 @@ const StepName = styled.div`
 `;
 
 const StepType = styled.div`
-    font-size: 11px;
+    font-size: var(--apinox-fs-sm);
     opacity: 0.6;
 `;
 
@@ -166,7 +166,7 @@ const AddStepButton = styled.button`
     align-items: center;
     justify-content: center;
     gap: ${SPACING_XS};
-    font-size: 13px;
+    font-size: var(--apinox-fs-base);
     font-family: var(--apinox-font-family);
     
     &:hover {
@@ -193,7 +193,7 @@ const DropdownItem = styled.div`
     display: flex;
     align-items: center;
     gap: ${SPACING_SM};
-    font-size: 13px;
+    font-size: var(--apinox-fs-base);
     
     &:hover {
         background: var(--apinox-list-hoverBackground);

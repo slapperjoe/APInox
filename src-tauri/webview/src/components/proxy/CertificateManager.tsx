@@ -142,7 +142,7 @@ export function CertificateManager() {
 
           {certInfo?.exists ? (
             <>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {[
                   ['Subject', certInfo.subject],
                   ['Issuer', certInfo.issuer],
@@ -178,7 +178,7 @@ export function CertificateManager() {
 
               <div style={{
                 marginTop: '16px',
-                padding: '10px 12px',
+                padding: '12px 12px',
                 background: expired ? 'var(--apinox-inputValidation-errorBackground)' : certInfo.isTrusted ? 'var(--apinox-inputValidation-infoBackground)' : 'var(--apinox-inputValidation-successBackground)',
                 border: `1px solid ${expired ? 'var(--apinox-inputValidation-errorBorder)' : certInfo.isTrusted ? 'var(--apinox-inputValidation-infoBorder)' : 'var(--apinox-inputValidation-successBorder)'}`,
                 borderRadius: '4px',
@@ -213,7 +213,7 @@ export function CertificateManager() {
             Actions
           </h3>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <button onClick={handleGenerate} disabled={loading} style={btnStyle(tokens.status.accentDark, loading)}>
               {certInfo?.exists ? 'Regenerate Certificate' : 'Generate Certificate'}
             </button>
@@ -221,7 +221,7 @@ export function CertificateManager() {
             {certInfo?.exists && (
               <>
                 {certInfo.isTrusted ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <div style={{
                       padding: '9px 12px',
                       background: 'var(--apinox-inputValidation-infoBackground)',
@@ -232,11 +232,11 @@ export function CertificateManager() {
                     }}>
                       ✓ Trusted in OS store
                     </div>
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                      <button onClick={handleTrust} disabled={loading} style={{ ...btnStyle(tokens.status.accentDark, loading), flex: 1, padding: '6px', fontSize: '12px' }}>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={handleTrust} disabled={loading} style={{ ...btnStyle(tokens.status.accentDark, loading), flex: 1, padding: '8px', fontSize: '12px' }}>
                         Re-install
                       </button>
-                      <button onClick={handleUntrust} disabled={loading} style={{ ...btnStyle('var(--apinox-surface-danger-dark)', loading), flex: 1, padding: '6px', fontSize: '12px' }}>
+                      <button onClick={handleUntrust} disabled={loading} style={{ ...btnStyle('var(--apinox-surface-danger-dark)', loading), flex: 1, padding: '8px', fontSize: '12px' }}>
                         Remove
                       </button>
                     </div>
@@ -256,7 +256,7 @@ export function CertificateManager() {
           {genMessage && (
             <div style={{
               marginTop: '12px',
-              padding: '10px 12px',
+              padding: '12px 12px',
               background: genMessage.type === 'success' ? 'var(--apinox-inputValidation-successBackground)' : 'var(--apinox-inputValidation-errorBackground)',
               border: `1px solid ${genMessage.type === 'success' ? 'var(--apinox-inputValidation-successBorder)' : 'var(--apinox-inputValidation-errorBorder)'}`,
               borderRadius: '4px',
@@ -277,7 +277,7 @@ export function CertificateManager() {
           </h3>
 
           <div style={{
-            padding: '10px 12px',
+            padding: '12px 12px',
             background: trustResult.success ? 'var(--apinox-inputValidation-successBackground)' : 'var(--apinox-inputValidation-errorBackground)',
             border: `1px solid ${trustResult.success ? 'var(--apinox-inputValidation-successBorder)' : 'var(--apinox-inputValidation-errorBorder)'}`,
             borderRadius: '4px',
@@ -290,7 +290,7 @@ export function CertificateManager() {
 
           {trustResult.firefoxNote && (
             <div style={{
-              padding: '10px 12px',
+              padding: '12px 12px',
               background: 'var(--apinox-surface-warning)',
               border: '1px solid var(--apinox-inputValidation-warningBorder)',
               borderRadius: '4px',
@@ -341,14 +341,14 @@ export function CertificateManager() {
           <li>Configure your HTTP client to use the proxy</li>
           <li>The proxy will sign per-domain certificates on the fly using this CA</li>
         </ol>
-        <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: `1px solid ${tokens.border.default}` }}>
+        <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: `1px solid ${tokens.border.default}` }}>
           <strong style={{ color: 'var(--apinox-inputValidation-warningForeground)' }}>Firefox note:</strong>{' '}
           Firefox maintains its own certificate store. You must import the CA manually
           via Preferences → Privacy &amp; Security → Certificates → View Certificates → Authorities → Import.
         </div>
         <div style={{ marginTop: '8px' }}>
           Certificate files are stored in{' '}
-          <code style={{ background: tokens.surface.panel, padding: '2px 6px', borderRadius: tokens.radius.sm, color: tokens.text.primary }}>
+          <code style={{ background: tokens.surface.panel, padding: '2px 8px', borderRadius: tokens.radius.sm, color: tokens.text.primary }}>
             ~/.apinox/
           </code>
         </div>

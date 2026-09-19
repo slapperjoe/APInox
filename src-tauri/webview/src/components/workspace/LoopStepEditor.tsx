@@ -100,7 +100,7 @@ const StepDetails = styled.div`
 `;
 
 const StepName = styled.div`
-  font-size: 13px;
+  font-size: var(--apinox-fs-base);
   font-weight: var(--fw-medium);
   white-space: nowrap;
   overflow: hidden;
@@ -108,7 +108,7 @@ const StepName = styled.div`
 `;
 
 const StepType = styled.div`
-  font-size: 11px;
+  font-size: var(--apinox-fs-sm);
   opacity: 0.6;
   text-transform: uppercase;
 `;
@@ -117,7 +117,7 @@ const EmptySteps = styled.div`
   padding: ${SPACING_MD};
   text-align: center;
   opacity: 0.6;
-  font-size: 12px;
+  font-size: var(--apinox-fs-md);
 `;
 
 const AddStepDropdown = styled.div`
@@ -128,13 +128,13 @@ const AddStepDropdown = styled.div`
 const DropdownButton = styled.button`
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   padding: 8px 12px;
   background: var(--apinox-button-secondaryBackground);
   color: var(--apinox-button-secondaryForeground);
   border: 1px dashed var(--apinox-panel-border);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--apinox-fs-base);
   width: 100%;
   justify-content: center;
 
@@ -157,7 +157,7 @@ const DropdownMenu = styled.div`
 
 const DropdownItem = styled.div`
   padding: 8px 12px;
-  font-size: 13px;
+  font-size: var(--apinox-fs-base);
   cursor: pointer;
   display: flex;
   align-items: center;

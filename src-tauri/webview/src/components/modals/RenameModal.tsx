@@ -11,7 +11,7 @@ const Input = styled.input`
     border: 1px solid var(--apinox-input-border);
     outline: none;
     border-radius: 2px;
-    font-size: 13px;
+    font-size: var(--apinox-fs-base);
 
     &:focus {
         border-color: var(--apinox-focusBorder);

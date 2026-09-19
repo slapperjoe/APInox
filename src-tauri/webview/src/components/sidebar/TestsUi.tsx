@@ -43,14 +43,14 @@ const AddSuiteMenu = styled.div`
 `;
 
 const AddSuiteMenuTitle = styled.div`
-    padding: ${SPACING_SM} 10px;
+    padding: ${SPACING_SM} 12px;
     font-size: 0.8em;
     opacity: 0.7;
     border-bottom: 1px solid var(--apinox-panel-border);
 `;
 
 const AddSuiteMenuEmpty = styled.div`
-    padding: 10px;
+    padding: 12px;
     font-size: 0.85em;
     opacity: 0.6;
 `;

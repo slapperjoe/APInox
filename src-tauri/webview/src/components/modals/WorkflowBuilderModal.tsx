@@ -41,7 +41,7 @@ const Section = styled.div`
 
 const SectionTitle = styled.div`
     font-weight: var(--fw-bold);
-    font-size: 12px;
+    font-size: var(--apinox-fs-md);
     opacity: 0.8;
     text-transform: uppercase;
 `;
@@ -51,7 +51,7 @@ const Input = styled.input`
     color: var(--apinox-input-foreground);
     border: 1px solid var(--apinox-input-border);
     padding: ${SPACING_SM};
-    font-size: 13px;
+    font-size: var(--apinox-fs-base);
     width: 100%;
 
     &:focus {
@@ -95,7 +95,7 @@ const DragHandle = styled.div`
 
 const StepNumber = styled.div`
     font-weight: var(--fw-bold);
-    font-size: 12px;
+    font-size: var(--apinox-fs-md);
     opacity: 0.6;
     min-width: 24px;
 `;
@@ -108,12 +108,12 @@ const StepDetails = styled.div`
 `;
 
 const StepName = styled.div`
-    font-size: 13px;
+    font-size: var(--apinox-fs-base);
     font-weight: var(--fw-medium);
 `;
 
 const StepType = styled.div`
-    font-size: 11px;
+    font-size: var(--apinox-fs-sm);
     opacity: 0.6;
     text-transform: uppercase;
 `;
@@ -138,7 +138,7 @@ const AddStepButton = styled.button`
     color: var(--apinox-button-secondaryForeground);
     border: 1px dashed var(--apinox-panel-border);
     cursor: pointer;
-    font-size: 13px;
+    font-size: var(--apinox-fs-base);
 
     &:hover {
         background: var(--apinox-button-secondaryHoverBackground);
@@ -155,7 +155,7 @@ const AddNestedStepButton = styled.button`
     color: var(--apinox-textLink-foreground);
     border: 1px dashed var(--apinox-textLink-foreground);
     cursor: pointer;
-    font-size: 11px;
+    font-size: var(--apinox-fs-sm);
     opacity: 0.7;
     margin-top: -1px;
     margin-bottom: ${SPACING_XS};
@@ -182,7 +182,7 @@ const DropdownButton = styled.button`
     color: var(--apinox-textLink-foreground);
     border: 1px dashed var(--apinox-textLink-foreground);
     cursor: pointer;
-    font-size: 11px;
+    font-size: var(--apinox-fs-sm);
     opacity: 0.7;
     width: 100%;
     justify-content: center;
@@ -206,12 +206,12 @@ const DropdownMenu = styled.div`
 `;
 
 const DropdownItem = styled.div`
-    padding: 6px 8px;
-    font-size: 11px;
+    padding: 8px 8px;
+    font-size: var(--apinox-fs-sm);
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     color: var(--apinox-dropdown-foreground);
 
     &:hover {
@@ -236,7 +236,7 @@ const StepTypeSelector = styled.select`
     color: var(--apinox-dropdown-foreground);
     border: 1px solid var(--apinox-dropdown-border);
     padding: ${SPACING_SM};
-    font-size: 13px;
+    font-size: var(--apinox-fs-base);
     cursor: pointer;
 
     &:focus {
@@ -263,7 +263,7 @@ const InfoBox = styled.div`
     background: var(--apinox-textCodeBlock-background);
     border: 1px solid var(--apinox-panel-border);
     border-radius: 4px;
-    font-size: 12px;
+    font-size: var(--apinox-fs-md);
 `;
 
 interface WorkflowBuilderModalProps {
@@ -888,7 +888,7 @@ export const WorkflowBuilderModal: React.FC<WorkflowBuilderModalProps> = ({
                                                 })}
                                                 style={{
                                                     width: '100%',
-                                                    padding: '6px 8px',
+                                                    padding: '8px 8px',
                                                     background: 'var(--apinox-input-background)',
                                                     border: '1px solid var(--apinox-input-border)',
                                                     color: 'var(--apinox-input-foreground)',
@@ -937,7 +937,7 @@ export const WorkflowBuilderModal: React.FC<WorkflowBuilderModalProps> = ({
                                                 })}
                                                 style={{
                                                     width: '100%',
-                                                    padding: '6px 8px',
+                                                    padding: '8px 8px',
                                                     background: 'var(--apinox-input-background)',
                                                     border: '1px solid var(--apinox-input-border)',
                                                     color: 'var(--apinox-input-foreground)',
@@ -1032,7 +1032,7 @@ export const WorkflowBuilderModal: React.FC<WorkflowBuilderModalProps> = ({
                                                     lineNumbers: 'on',
                                                     scrollBeyondLastLine: false,
                                                     wordWrap: 'on',
-                                                    fontSize: 12
+                                                    fontSize: 'var(--apinox-fs-md)'
                                                 }}
                                             />
                                         </div>
@@ -1099,7 +1099,7 @@ export const WorkflowBuilderModal: React.FC<WorkflowBuilderModalProps> = ({
                                                             lineNumbers: 'on',
                                                             scrollBeyondLastLine: false,
                                                             wordWrap: 'on',
-                                                            fontSize: 12
+                                                            fontSize: 'var(--apinox-fs-md)'
                                                         }}
                                                     />
                                                 </div>

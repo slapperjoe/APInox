@@ -30,14 +30,14 @@ export const FormGroup = styled.div`
 
 export const Label = styled.label`
   display: block;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   font-weight: var(--fw-medium);
-  font-size: 12px;
+  font-size: var(--apinox-fs-md);
 `;
 
 export const Input = styled.input`
   width: 100%;
-  padding: 6px;
+  padding: 8px;
   background: var(--apinox-input-background);
   color: var(--apinox-input-foreground);
   border: 1px solid var(--apinox-input-border);
@@ -52,11 +52,11 @@ export const CheckboxLabel = styled.label`
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--apinox-fs-md);
 `;
 
 export const SectionHeader = styled.h3`
-  font-size: 12px;
+  font-size: var(--apinox-fs-md);
   color: var(--apinox-descriptionForeground);
   text-transform: uppercase;
   border-bottom: 1px solid var(--apinox-panel-border);
@@ -102,13 +102,13 @@ export const EnvDetail = styled.div`
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 16px;
 `;
 
 export const Badge = styled.span`
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 3px;
+  font-size: var(--apinox-fs-xs);
+  padding: 2px 8px;
+  border-radius: 4px;
   background: var(--apinox-badge-background);
   color: var(--apinox-badge-foreground);
   margin-left: 8px;

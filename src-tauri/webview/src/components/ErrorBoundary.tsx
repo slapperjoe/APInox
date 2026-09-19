@@ -31,14 +31,14 @@ const ErrorHeader = styled.div`
 const CopyButton = styled.button`
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
+    gap: 8px;
+    padding: 8px 12px;
     background: var(--apinox-button-background);
     color: var(--apinox-button-foreground);
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 13px;
+    font-size: var(--apinox-fs-base);
 
     &:hover {
         background: var(--apinox-button-hoverBackground);
@@ -115,7 +115,7 @@ export class ErrorBoundary extends Component<Props, State> {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
-                            padding: '0 10px',
+                            padding: '0 12px',
                             // @ts-ignore - WebkitAppRegion is a valid CSS property for Tauri
                             WebkitAppRegion: 'drag' as any,
                             userSelect: 'none'

@@ -35,8 +35,8 @@ const Root = styled.div`
 const Toolbar = styled.div`
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
+  gap: 8px;
+  padding: 4px 12px;
   background: var(--apinox-sideBar-background, #252526);
   border-bottom: 1px solid var(--apinox-panel-border, #80808059);
   flex-shrink: 0;
@@ -44,7 +44,7 @@ const Toolbar = styled.div`
 `;
 
 const NoteTitle = styled.span`
-  font-size: 13px;
+  font-size: var(--apinox-fs-base);
   color: var(--apinox-foreground, #cccccc);
   flex: 1;
   overflow: hidden;
@@ -74,7 +74,7 @@ const ToolbarBtn = styled.button<{ $active?: boolean }>`
   border-radius: 4px;
   background: ${(p) => p.$active ? "var(--apinox-list-activeSelectionBackground, #37373d)" : "transparent"};
   color: var(--apinox-foreground, #cccccc);
-  font-size: 12px;
+  font-size: var(--apinox-fs-md);
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
@@ -116,7 +116,7 @@ const Separator = styled.div`
 `;
 
 const SavedFlash = styled.span`
-  font-size: 11px;
+  font-size: var(--apinox-fs-sm);
   color: var(--apinox-testing-iconPassed, #73c991);
   flex-shrink: 0;
 `;
@@ -126,32 +126,32 @@ const SettingsPopup = styled.div`
   z-index: 9999;
   background: var(--apinox-dropdown-background, #3c3c3c);
   border: 1px solid var(--apinox-panel-border, #80808059);
-  border-radius: 6px;
+  border-radius: 4px;
   padding: 12px;
   width: 260px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.4);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 `;
 
 const SettingsRow = styled.label`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: var(--apinox-fs-md);
   color: var(--apinox-foreground, #cccccc);
   gap: 8px;
 `;
 
 const SettingsInput = styled.input`
   width: 60px;
-  padding: 2px 6px;
+  padding: 2px 8px;
   border: 1px solid var(--apinox-panel-border, #80808059);
-  border-radius: 3px;
+  border-radius: 4px;
   background: var(--apinox-input-background, #3c3c3c);
   color: var(--apinox-foreground, #cccccc);
-  font-size: 12px;
+  font-size: var(--apinox-fs-md);
 `;
 
 const SettingsSelect = styled.select`
@@ -159,10 +159,10 @@ const SettingsSelect = styled.select`
   min-width: 0;
   padding: 2px 4px;
   border: 1px solid var(--apinox-panel-border, #80808059);
-  border-radius: 3px;
+  border-radius: 4px;
   background: var(--apinox-input-background, #3c3c3c);
   color: var(--apinox-foreground, #cccccc);
-  font-size: 12px;
+  font-size: var(--apinox-fs-md);
 `;
 
 const SettingsDivider = styled.hr`
@@ -316,21 +316,21 @@ export const NotesEditor: React.FC = () => {
               onClick={() => setViewMode("interactive")}
               title="Interactive (hybrid)"
             >
-              <Edit3 size={13} /> Edit
+              <Edit3 size={14} /> Edit
             </ToolbarBtn>
             <ToolbarBtn
               $active={viewMode === "preview"}
               onClick={() => setViewMode("preview")}
               title="Preview"
             >
-              <Eye size={13} /> Preview
+              <Eye size={14} /> Preview
             </ToolbarBtn>
             <ToolbarBtn
               $active={viewMode === "raw"}
               onClick={() => setViewMode("raw")}
               title="Raw markdown"
             >
-              <Code size={13} /> Raw
+              <Code size={14} /> Raw
             </ToolbarBtn>
             <Separator />
           </>
@@ -352,10 +352,10 @@ export const NotesEditor: React.FC = () => {
         <Separator />
 
         <ToolbarBtn onClick={handleSave} title="Save (Cmd/Ctrl+S)">
-          <Save size={13} /> Save
+          <Save size={14} /> Save
         </ToolbarBtn>
         <ToolbarBtn onClick={saveAsDialog} title="Save As…">
-          <ChevronDown size={13} /> Save As
+          <ChevronDown size={14} /> Save As
         </ToolbarBtn>
 
         {/* Editor settings gear */}
@@ -365,11 +365,11 @@ export const NotesEditor: React.FC = () => {
           onClick={handleToggleSettings}
           title="Editor settings"
         >
-          <Settings size={13} />
+          <Settings size={14} />
         </ToolbarBtn>
 
         <ToolbarBtn onClick={closeActive} title="Close note">
-          <X size={13} />
+          <X size={14} />
         </ToolbarBtn>
       </Toolbar>
 
@@ -432,10 +432,10 @@ export const NotesEditor: React.FC = () => {
       {error?.startsWith("__external_change__") && (
         <div
           style={{
-            padding: "6px 12px",
+            padding: "8px 12px",
             background: "var(--apinox-inputValidation-warningBackground, #352a05)",
             borderTop: "1px solid var(--apinox-inputValidation-warningBorder, #b89500)",
-            fontSize: 12,
+            fontSize: 'var(--apinox-fs-md)',
             display: "flex",
             gap: 12,
             alignItems: "center",

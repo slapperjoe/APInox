@@ -100,7 +100,7 @@ export function ProxyPanel({ onNavigateTo, onAddToApinoxProject }: ProxyPanelPro
 
   const tabStyle = (active: boolean): React.CSSProperties => ({
     padding: '8px 14px',
-    fontSize: 12,
+    fontSize: 'var(--apinox-fs-md)',
     fontWeight: active ? 600 : 400,
     color: active ? tokens.text.primary : tokens.text.muted,
     cursor: 'pointer',

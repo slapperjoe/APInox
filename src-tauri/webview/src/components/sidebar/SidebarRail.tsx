@@ -32,7 +32,7 @@ const NavItem = ({ icon: Icon, active, onClick, title, showBadge }: any) => (
     onClick={onClick}
     title={title}
     style={{
-      padding: "4px 6px",
+      padding: "4px 8px",
       cursor: "pointer",
       display: "flex",
       justifyContent: "center",
@@ -43,7 +43,7 @@ const NavItem = ({ icon: Icon, active, onClick, title, showBadge }: any) => (
         position: "relative",
         display: "inline-flex",
         padding: "5px",
-        borderRadius: "6px",
+        borderRadius: "4px",
         color: active
           ? "var(--apinox-activityBar-foreground)"
           : "var(--apinox-activityBar-inactiveForeground)",
@@ -76,7 +76,7 @@ const NavItem = ({ icon: Icon, active, onClick, title, showBadge }: any) => (
 const RailSeparator = () => (
   <div
     style={{
-      margin: "6px 10px",
+      margin: "8px 12px",
       borderTop: "1px solid currentColor",
       color: "var(--apinox-activityBar-foreground, #ffffff)",
       opacity: 0.25,
@@ -104,7 +104,7 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
         borderRight: "1px solid var(--apinox-activityBar-border)",
         display: "flex",
         flexDirection: "column",
-        paddingTop: 10,
+        paddingTop: 12,
         flexShrink: 0,
       }}
     >
@@ -180,11 +180,11 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
 
       <div
         style={{
-          paddingBottom: 10,
+          paddingBottom: 12,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          gap: 10,
+          gap: 12,
         }}
       >
         <NavItem
@@ -201,7 +201,7 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
             className="touch-compact"
             style={{
               cursor: "pointer",
-              padding: "6px",
+              padding: "8px",
               display: "flex",
               justifyContent: "center",
               color: "var(--apinox-icon-foreground)",

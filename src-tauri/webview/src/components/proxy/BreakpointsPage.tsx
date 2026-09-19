@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XL } from "../../styles/spacing";
 import { listen } from '@tauri-apps/api/event';
 import { invokeTauriCommand } from '../../utils/bridge';
 import { tokens } from './tokens';
@@ -302,8 +303,8 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
           <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 'var(--fw-medium)' }}>
             Paused Traffic ({queue.length})
           </h2>
-          <div style={{ display: 'flex', alignItems: 'center', gap: tokens.space['4'], fontSize: tokens.fontSize.sm, color: tokens.text.muted }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: tokens.space['2'] }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: SPACING_MD, fontSize: tokens.fontSize.sm, color: tokens.text.muted }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: SPACING_SM }}>
               Auto-timeout:
               <input
                 type="number"
@@ -317,7 +318,7 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
                 }}
                 style={{
                   width: '56px',
-                  padding: `2px ${tokens.space['2']}`,
+                  padding: `2px ${SPACING_SM}`,
                   background: tokens.surface.input,
                   border: `1px solid ${tokens.border.subtle}`,
                   borderRadius: tokens.radius.sm,
@@ -332,7 +333,7 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
               <button
                 onClick={() => { setAutoTimeoutAction('allow'); localStorage.setItem('apiprox-bp-timeout-action', 'allow'); }}
                 style={{
-                  padding: `2px ${tokens.space['3']}`,
+                  padding: `2px ${SPACING_SM}`,
                   fontSize: tokens.fontSize.sm,
                   border: 'none',
                   cursor: 'pointer',
@@ -346,7 +347,7 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
               <button
                 onClick={() => { setAutoTimeoutAction('drop'); localStorage.setItem('apiprox-bp-timeout-action', 'drop'); }}
                 style={{
-                  padding: `2px ${tokens.space['3']}`,
+                  padding: `2px ${SPACING_SM}`,
                   fontSize: tokens.fontSize.sm,
                   border: 'none',
                   borderLeft: `1px solid ${tokens.border.subtle}`,
@@ -578,10 +579,10 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
                   <div style={{ color: tokens.text.muted, marginBottom: '4px' }}>Conditions:</div>
                   {rule.conditions.map((cond, idx) => (
                     <div key={idx} style={{ marginLeft: '12px', marginBottom: '4px' }}>
-                      • {cond.type}: <code style={{ background: tokens.surface.base, padding: '2px 6px', borderRadius: tokens.radius.sm }}>
+                      • {cond.type}: <code style={{ background: tokens.surface.base, padding: '2px 8px', borderRadius: tokens.radius.sm }}>
                         {cond.pattern}
                       </code>
-                      {cond.isRegex && <span style={{ color: tokens.text.muted, marginLeft: '6px' }}>(regex)</span>}
+                      {cond.isRegex && <span style={{ color: tokens.text.muted, marginLeft: '8px' }}>(regex)</span>}
                     </div>
                   ))}
                 </div>
@@ -594,13 +595,13 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
       {/* Edit Rule Modal */}
       {editingRule && (
         <ProxyModal maxWidth="700px" width="100%" maxHeight="90vh" scroll>
-            <h3 style={{ margin: `0 0 ${tokens.space['6']} 0`, fontSize: tokens.fontSize.lg }}>
+            <h3 style={{ margin: `0 0 ${SPACING_XL} 0`, fontSize: tokens.fontSize.lg }}>
               {rules.find(r => r.id === editingRule.id) ? 'Edit' : 'Add'} Breakpoint
             </h3>
 
             {/* Name */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: tokens.fontSize.base, marginBottom: '6px', color: tokens.text.secondary }}>
+              <label style={{ display: 'block', fontSize: tokens.fontSize.base, marginBottom: '8px', color: tokens.text.secondary }}>
                 Name
               </label>
               <input
@@ -609,7 +610,7 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
                 onChange={(e) => setEditingRule({ ...editingRule, name: e.target.value })}
                 style={{
                   width: '100%',
-                  padding: `${tokens.space['3']} ${tokens.space['4']}`,
+                  padding: `${SPACING_SM} ${SPACING_MD}`,
                   background: tokens.surface.input,
                   border: `1px solid ${tokens.border.subtle}`,
                   borderRadius: tokens.radius.md,
@@ -621,7 +622,7 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
 
             {/* Target */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: tokens.fontSize.base, marginBottom: '6px', color: tokens.text.secondary }}>
+              <label style={{ display: 'block', fontSize: tokens.fontSize.base, marginBottom: '8px', color: tokens.text.secondary }}>
                 Pause on
               </label>
               <select
@@ -629,7 +630,7 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
                 onChange={(e) => setEditingRule({ ...editingRule, target: e.target.value as BreakpointRule['target'] })}
                 style={{
                   width: '100%',
-                  padding: `${tokens.space['3']} ${tokens.space['4']}`,
+                  padding: `${SPACING_SM} ${SPACING_MD}`,
                   background: tokens.surface.input,
                   border: `1px solid ${tokens.border.subtle}`,
                   borderRadius: tokens.radius.md,
@@ -650,7 +651,7 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
                 <button
                   onClick={addCondition}
                   style={{
-                    padding: `4px ${tokens.space['2']}`,
+                    padding: `4px ${SPACING_SM}`,
                     background: tokens.status.accentDark,
                     border: 'none',
                     borderRadius: tokens.radius.sm,
@@ -688,7 +689,7 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
               <button
                 onClick={() => setEditingRule(null)}
                 style={{
-                  padding: `${tokens.space['3']} ${tokens.space['5']}`,
+                  padding: `${SPACING_SM} ${SPACING_LG}`,
                   background: 'transparent',
                   border: `1px solid ${tokens.border.subtle}`,
                   borderRadius: tokens.radius.md,
@@ -702,7 +703,7 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
               <button
                 onClick={handleSaveRule}
                 style={{
-                  padding: `${tokens.space['3']} ${tokens.space['5']}`,
+                  padding: `${SPACING_SM} ${SPACING_LG}`,
                   background: tokens.status.accentDark,
                   border: 'none',
                   borderRadius: tokens.radius.md,
@@ -720,17 +721,17 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
       {/* Edit Traffic Modal */}
       {editingTraffic && (
         <ProxyModal maxWidth="900px" width="100%" maxHeight="90vh" scroll>
-            <h3 style={{ margin: `0 0 ${tokens.space['4']} 0`, fontSize: tokens.fontSize.lg }}>
+            <h3 style={{ margin: `0 0 ${SPACING_MD} 0`, fontSize: tokens.fontSize.lg }}>
               Edit {editingTraffic.pauseType === 'request' ? 'Request' : 'Response'}
             </h3>
 
-            <div style={{ fontSize: tokens.fontSize.base, color: tokens.text.muted, marginBottom: tokens.space['6'] }}>
+            <div style={{ fontSize: tokens.fontSize.base, color: tokens.text.muted, marginBottom: SPACING_XL }}>
               {editingTraffic.method} {editingTraffic.url}
             </div>
 
             {/* Headers */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: tokens.fontSize.base, marginBottom: '6px', color: tokens.text.secondary, fontWeight: 'var(--fw-semibold)' }}>
+              <label style={{ display: 'block', fontSize: tokens.fontSize.base, marginBottom: '8px', color: tokens.text.secondary, fontWeight: 'var(--fw-semibold)' }}>
                 {editingTraffic.pauseType === 'request' ? 'Request Headers' : 'Response Headers'}
               </label>
               <div style={{ height: '160px', border: `1px solid ${tokens.border.subtle}`, borderRadius: tokens.radius.md, overflow: 'hidden' }}>
@@ -743,7 +744,7 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
 
             {/* Body Editor */}
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: tokens.fontSize.base, marginBottom: '6px', color: tokens.text.secondary, fontWeight: 'var(--fw-semibold)' }}>
+              <label style={{ display: 'block', fontSize: tokens.fontSize.base, marginBottom: '8px', color: tokens.text.secondary, fontWeight: 'var(--fw-semibold)' }}>
                 {editingTraffic.pauseType === 'request' ? 'Request Body' : 'Response Body'}
               </label>
               <div style={{ height: '320px', border: `1px solid ${tokens.border.subtle}`, borderRadius: tokens.radius.md, overflow: 'hidden' }}>
@@ -761,7 +762,7 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
               <button
                 onClick={() => handleDrop(editingTraffic.id)}
                 style={{
-                  padding: `${tokens.space['3']} ${tokens.space['5']}`,
+                  padding: `${SPACING_SM} ${SPACING_LG}`,
                   background: tokens.surface.dangerDark,
                   border: 'none',
                   borderRadius: tokens.radius.md,
@@ -775,7 +776,7 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
               <button
                 onClick={() => setEditingTraffic(null)}
                 style={{
-                  padding: `${tokens.space['3']} ${tokens.space['5']}`,
+                  padding: `${SPACING_SM} ${SPACING_LG}`,
                   background: 'transparent',
                   border: `1px solid ${tokens.border.subtle}`,
                   borderRadius: tokens.radius.md,
@@ -798,7 +799,7 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
                   });
                 }}
                 style={{
-                  padding: `${tokens.space['3']} ${tokens.space['5']}`,
+                  padding: `${SPACING_SM} ${SPACING_LG}`,
                   background: tokens.surface.successDark,
                   border: 'none',
                   borderRadius: tokens.radius.md,

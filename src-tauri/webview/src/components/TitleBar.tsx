@@ -74,7 +74,7 @@ const LogoIcon = styled.img`
 `;
 
 const AppTitle = styled.span`
-  font-size: 12px;
+  font-size: var(--apinox-fs-md);
   font-weight: var(--fw-semibold);
   font-family: var(--apinox-ui-font-family, var(--apinox-font-family));
   letter-spacing: 0.3px;
@@ -91,7 +91,7 @@ const SearchContainer = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 10px;
+  padding: 0 12px;
   height: 22px;
   background: var(--apinox-input-background);
   border: 1px solid var(--apinox-input-border, #3c3c3c);
@@ -131,7 +131,7 @@ const SearchInput = styled.input`
   border: none;
   outline: none;
   color: var(--apinox-input-foreground);
-  font-size: 12px;
+  font-size: var(--apinox-fs-md);
   padding: 0;
   font-family: var(--apinox-ui-font-family, var(--apinox-font-family));
   line-height: 1.4;
@@ -152,7 +152,7 @@ const ClearButton = styled.button`
   cursor: pointer;
   opacity: 0.6;
   flex-shrink: 0;
-  border-radius: 3px;
+  border-radius: 4px;
   transition: opacity 0.15s ease, background-color 0.15s ease;
   
   &:hover {
@@ -173,13 +173,13 @@ const ClearButton = styled.button`
 const LastSearchBreadcrumb = styled.button`
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
+  gap: 8px;
+  padding: 4px 12px;
   border-radius: 4px;
   background: transparent;
   border: 1px solid transparent;
   color: var(--apinox-foreground);
-  font-size: 11px;
+  font-size: var(--apinox-fs-sm);
   font-weight: var(--fw-medium);
   font-family: var(--apinox-ui-font-family, var(--apinox-font-family));
   cursor: pointer;
@@ -445,7 +445,7 @@ const TitleBar: React.FC = () => {
                 {getResultIcon(lastSelectedResult.type)}
               </BreadcrumbIcon>
               <BreadcrumbText>{lastSelectedResult.name}</BreadcrumbText>
-              <ChevronRight size={10} opacity={0.5} />
+              <ChevronRight size={12} opacity={0.5} />
             </LastSearchBreadcrumb>
           )}
         </DragRegion>

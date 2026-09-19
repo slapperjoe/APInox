@@ -71,7 +71,7 @@ export const ScriptStepEditor: React.FC<ScriptStepEditorProps> = ({ step, onUpda
                             lineNumbers: 'on',
                             scrollBeyondLastLine: false,
                             wordWrap: 'on',
-                            fontSize: 12,
+                            fontSize: 'var(--apinox-fs-md)',
                             tabSize: 2,
                             automaticLayout: true
                         }}

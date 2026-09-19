@@ -29,7 +29,7 @@ const DropdownContainer = styled.div<{ $isMacOS?: boolean }>`
     max-height: 500px;
     background: var(--apinox-dropdown-background, var(--apinox-dropdown-background));
     border: 1px solid var(--apinox-dropdown-border, var(--apinox-dropdown-border));
-    border-radius: 8px;
+    border-radius: 4px;
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(8px);
     z-index: 1000;
@@ -54,7 +54,7 @@ const ResultsList = styled.div`
     
     &::-webkit-scrollbar-thumb {
         background: var(--apinox-scrollbarSlider-background);
-        border-radius: 5px;
+        border-radius: 4px;
     }
     
     &::-webkit-scrollbar-thumb:hover {
@@ -64,7 +64,7 @@ const ResultsList = styled.div`
 
 const GroupHeader = styled.div`
     padding: 8px 14px 4px 14px;
-    font-size: 10px;
+    font-size: var(--apinox-fs-xs);
     font-weight: var(--fw-bold);
     text-transform: uppercase;
     letter-spacing: 0.8px;
@@ -80,7 +80,7 @@ const GroupHeader = styled.div`
 `;
 
 const ResultItem = styled.div<{ $selected: boolean }>`
-    padding: 6px 14px;
+    padding: 8px 14px;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -138,7 +138,7 @@ const ResultContent = styled.div`
 `;
 
 const ResultName = styled.div`
-    font-size: 13px;
+    font-size: var(--apinox-fs-base);
     font-weight: var(--fw-medium);
     white-space: nowrap;
     overflow: hidden;
@@ -148,7 +148,7 @@ const ResultName = styled.div`
 `;
 
 const ResultBreadcrumb = styled.div`
-    font-size: 11px;
+    font-size: var(--apinox-fs-sm);
     color: var(--apinox-descriptionForeground);
     opacity: 0.75;
     white-space: nowrap;
@@ -162,14 +162,14 @@ const LoadingState = styled.div`
     padding: 16px;
     text-align: center;
     color: var(--apinox-descriptionForeground);
-    font-size: 13px;
+    font-size: var(--apinox-fs-base);
     font-family: var(--apinox-ui-font-family, var(--apinox-font-family));
     opacity: 0.8;
 `;
 
 const Footer = styled.div`
-    padding: 6px 14px;
-    font-size: 11px;
+    padding: 8px 14px;
+    font-size: var(--apinox-fs-sm);
     color: var(--apinox-descriptionForeground);
     background: var(--apinox-sideBar-background);
     border-top: 1px solid var(--apinox-widget-border, #303031);
@@ -181,7 +181,7 @@ const Footer = styled.div`
 
 const KeyboardHint = styled.span`
     opacity: 0.65;
-    font-size: 10px;
+    font-size: var(--apinox-fs-xs);
 `;
 
 // =============================================================================

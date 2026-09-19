@@ -4,6 +4,7 @@
  * MockRulesPage and BreakpointsPage.
  */
 import React from "react";
+import { SPACING_SM } from "../../styles/spacing";
 import { tokens } from "./tokens";
 
 export interface ConditionRowValue {
@@ -39,7 +40,7 @@ export function updateCondition<T extends ConditionRowValue>(
 // ── Shared row chrome ──────────────────────────────────────────────────────
 
 const selectStyle: React.CSSProperties = {
-  padding: "6px",
+  padding: "8px",
   background: tokens.surface.input,
   border: `1px solid ${tokens.border.subtle}`,
   borderRadius: tokens.radius.md,
@@ -48,7 +49,7 @@ const selectStyle: React.CSSProperties = {
 };
 
 const fieldStyle: React.CSSProperties = {
-  padding: `6px ${tokens.space["2"]}`,
+  padding: `8px ${SPACING_SM}`,
   background: tokens.surface.input,
   border: `1px solid ${tokens.border.subtle}`,
   borderRadius: tokens.radius.md,
@@ -57,7 +58,7 @@ const fieldStyle: React.CSSProperties = {
 };
 
 const removeBtnStyle: React.CSSProperties = {
-  padding: "6px",
+  padding: "8px",
   background: tokens.surface.danger,
   border: "none",
   borderRadius: tokens.radius.md,
@@ -144,7 +145,7 @@ export const ConditionRow: React.FC<ConditionRowProps> = ({
         style={{
           display: "flex",
           alignItems: "center",
-          gap: "6px",
+          gap: "8px",
           fontSize: "11px",
           cursor: "pointer",
         }}

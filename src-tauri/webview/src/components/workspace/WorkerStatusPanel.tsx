@@ -67,7 +67,7 @@ const WorkerMeta = styled.div`
 
 const StatusBadge = styled.span<{ status: string }>`
     padding: ${SPACING_XS} ${SPACING_SM};
-    border-radius: 10px;
+    border-radius: 50%;
     font-size: 0.75em;
     font-weight: var(--fw-medium);
     text-transform: uppercase;

@@ -138,7 +138,7 @@ export const RulesPage = forwardRef<RulesPageHandle, {
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
-    padding: '6px 8px',
+    padding: '8px 8px',
     background: tokens.surface.input,
     border: `1px solid ${tokens.border.subtle}`,
     borderRadius: tokens.radius.md,
@@ -231,13 +231,13 @@ export const RulesPage = forwardRef<RulesPageHandle, {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '12px' }}>
                 <div>
                   <div style={{ color: tokens.text.muted, marginBottom: '4px' }}>Match:</div>
-                  <code style={{ background: tokens.surface.base, padding: '6px', borderRadius: tokens.radius.sm, display: 'block' }}>
+                  <code style={{ background: tokens.surface.base, padding: '8px', borderRadius: tokens.radius.sm, display: 'block' }}>
                     {rule.matchText || '(empty)'}
                   </code>
                 </div>
                 <div>
                   <div style={{ color: tokens.text.muted, marginBottom: '4px' }}>Replace with:</div>
-                  <code style={{ background: tokens.surface.base, padding: '6px', borderRadius: tokens.radius.sm, display: 'block' }}>
+                  <code style={{ background: tokens.surface.base, padding: '8px', borderRadius: tokens.radius.sm, display: 'block' }}>
                     {rule.replaceWith || '(empty)'}
                   </code>
                 </div>

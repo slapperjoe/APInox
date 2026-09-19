@@ -15,7 +15,7 @@ const PlaceholderContainer = styled.div`
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: 8px;
     color: var(--apinox-editor-foreground);
     opacity: 0.6;
 `;

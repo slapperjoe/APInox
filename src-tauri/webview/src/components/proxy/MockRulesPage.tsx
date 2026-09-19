@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useImperativeHandle, forwardRef } from 'react';
+import { SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XL } from "../../styles/spacing";
 import { open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog';
 import { MonacoRequestEditor } from '@apinox/request-editor/monaco';
 import { invokeTauriCommand } from '../../utils/bridge';
@@ -53,8 +54,8 @@ function TagInput({ tags, onChange }: { tags: string[]; onChange: (t: string[]) 
 
   return (
     <div style={{
-      display: 'flex', flexWrap: 'wrap', gap: tokens.space['2'], alignItems: 'center',
-      padding: `${tokens.space['2']} ${tokens.space['3']}`,
+      display: 'flex', flexWrap: 'wrap', gap: SPACING_SM, alignItems: 'center',
+      padding: `${SPACING_SM} ${SPACING_SM}`,
       background: tokens.surface.input, border: `1px solid ${tokens.border.subtle}`,
       borderRadius: tokens.radius.md, minHeight: '36px',
     }}>
@@ -62,8 +63,8 @@ function TagInput({ tags, onChange }: { tags: string[]; onChange: (t: string[]) 
         <span key={i} style={{
           display: 'inline-flex', alignItems: 'center', gap: '4px',
           background: tokens.surface.tag, color: tokens.text.tag,
-          padding: `2px ${tokens.space['3']}`,
-          borderRadius: '12px', fontSize: tokens.fontSize.xs,
+          padding: `2px ${SPACING_SM}`,
+          borderRadius: '50%', fontSize: tokens.fontSize.xs,
         }}>
           {tag}
           <button
@@ -109,7 +110,7 @@ function RuleRow({
 
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: '10px',
+      display: 'flex', alignItems: 'center', gap: '12px',
       padding: '7px 12px',
       borderBottom: isLast ? 'none' : `1px solid ${tokens.surface.stripe}`,
     }}>
@@ -135,7 +136,7 @@ function RuleRow({
       >
         {rule.name}
         {condSummary && (
-          <span style={{ color: tokens.text.faint, marginLeft: '10px' }}>
+          <span style={{ color: tokens.text.faint, marginLeft: '12px' }}>
             {condSummary}{rule.conditions.length > 1 ? ` +${rule.conditions.length - 1}` : ''}
           </span>
         )}
@@ -144,7 +145,7 @@ function RuleRow({
       {/* Status code */}
       <span style={{
         fontSize: tokens.fontSize.xs, fontWeight: 'var(--fw-semibold)', color: statusColor(rule.statusCode),
-        background: tokens.surface.deep, padding: `2px ${tokens.space['3']}`, borderRadius: '10px',
+        background: tokens.surface.deep, padding: `2px ${SPACING_SM}`, borderRadius: '50%',
         minWidth: '36px', textAlign: 'center', flexShrink: 0,
       }}>{rule.statusCode}</span>
 
@@ -154,7 +155,7 @@ function RuleRow({
           {(rule.tags ?? []).map((t, i) => (
             <span key={i} style={{
               fontSize: tokens.fontSize.xs, background: tokens.surface.tag, color: tokens.text.tag,
-              padding: `2px ${tokens.space['3']}`, borderRadius: '10px',
+              padding: `2px ${SPACING_SM}`, borderRadius: '50%',
             }}>{t}</span>
           ))}
         </div>
@@ -169,7 +170,7 @@ function RuleRow({
       <button
         onClick={onEdit}
         style={{
-          padding: `3px ${tokens.space['2']}`, background: 'transparent',
+          padding: `3px ${SPACING_SM}`, background: 'transparent',
           border: `1px solid ${tokens.status.accentDark}`,
           borderRadius: tokens.radius.sm, color: tokens.status.accentDark,
           fontSize: tokens.fontSize.xs, cursor: 'pointer', flexShrink: 0,
@@ -178,7 +179,7 @@ function RuleRow({
       <button
         onClick={onDelete}
         style={{
-          padding: `3px ${tokens.space['2']}`, background: 'transparent',
+          padding: `3px ${SPACING_SM}`, background: 'transparent',
           border: `1px solid ${tokens.border.subtle}`,
           borderRadius: tokens.radius.sm, color: tokens.text.muted,
           fontSize: tokens.fontSize.xs, cursor: 'pointer', flexShrink: 0,
@@ -234,14 +235,14 @@ function ExportModal({ rules, onClose }: { rules: MockRule[]; onClose: () => voi
   }
 
   const iStyle: React.CSSProperties = {
-    width: '100%', padding: `${tokens.space['3']} ${tokens.space['4']}`,
+    width: '100%', padding: `${SPACING_SM} ${SPACING_MD}`,
     background: tokens.surface.input, border: `1px solid ${tokens.border.subtle}`,
     borderRadius: tokens.radius.md, color: tokens.text.secondary,
     fontSize: tokens.fontSize.base, boxSizing: 'border-box',
   };
 
   return (
-    <ProxyModal zIndex={2000} width="520px" maxHeight="85vh" columnGap={tokens.space['5']}>
+    <ProxyModal zIndex={2000} width="520px" maxHeight="85vh" columnGap={SPACING_LG}>
         <h3 style={{ margin: 0, fontSize: tokens.fontSize.lg, fontWeight: 'var(--fw-medium)' }}>Export Mock Collection</h3>
 
         <div>
@@ -273,8 +274,8 @@ function ExportModal({ rules, onClose }: { rules: MockRule[]; onClose: () => voi
           <div style={{ overflowY: 'auto', flex: 1, border: `1px solid ${tokens.surface.input}`, borderRadius: tokens.radius.md }}>
             {rules.map((rule) => (
               <label key={rule.id} style={{
-                display: 'flex', alignItems: 'center', gap: '10px',
-                padding: `${tokens.space['3']} ${tokens.space['4']}`, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: '12px',
+                padding: `${SPACING_SM} ${SPACING_MD}`, cursor: 'pointer',
                 borderBottom: `1px solid ${tokens.surface.stripe}`,
               }}>
                 <input type="checkbox" checked={selectedIds.has(rule.id)} onChange={() => toggle(rule.id)} />
@@ -290,15 +291,15 @@ function ExportModal({ rules, onClose }: { rules: MockRule[]; onClose: () => voi
 
         {error && <div style={{ color: tokens.httpStatus.clientError, fontSize: tokens.fontSize.sm }}>{error}</div>}
 
-        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
           <button onClick={onClose} style={{
-            padding: `${tokens.space['3']} ${tokens.space['5']}`, background: 'transparent',
+            padding: `${SPACING_SM} ${SPACING_LG}`, background: 'transparent',
             border: `1px solid ${tokens.border.subtle}`,
             borderRadius: tokens.radius.md, color: tokens.text.secondary,
             fontSize: tokens.fontSize.base, cursor: 'pointer',
           }}>Cancel</button>
           <button onClick={doExport} disabled={busy} style={{
-            padding: `${tokens.space['3']} ${tokens.space['5']}`,
+            padding: `${SPACING_SM} ${SPACING_LG}`,
             background: busy ? tokens.border.subtle : tokens.status.accentDark,
             border: 'none', borderRadius: tokens.radius.md, color: tokens.text.white,
             fontSize: tokens.fontSize.base, cursor: busy ? 'default' : 'pointer',
@@ -344,7 +345,7 @@ function HeadersEditor({
   }
 
   const inputStyle: React.CSSProperties = {
-    padding: `${tokens.space['2']} ${tokens.space['3']}`,
+    padding: `${SPACING_SM} ${SPACING_SM}`,
     background: tokens.surface.input,
     border: `1px solid ${tokens.border.subtle}`,
     borderRadius: tokens.radius.md,
@@ -356,7 +357,7 @@ function HeadersEditor({
   return (
     <div>
       {pairs.map(({ key, value }, i) => (
-        <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 32px', gap: '6px', marginBottom: '6px' }}>
+        <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 32px', gap: '8px', marginBottom: '8px' }}>
           <input
             style={inputStyle}
             placeholder="Header name"
@@ -377,7 +378,7 @@ function HeadersEditor({
       ))}
       <button
         onClick={add}
-        style={{ padding: `4px ${tokens.space['2']}`, background: tokens.status.accentDark, border: 'none', borderRadius: tokens.radius.sm, color: tokens.text.white, fontSize: tokens.fontSize.xs, cursor: 'pointer' }}
+        style={{ padding: `4px ${SPACING_SM}`, background: tokens.status.accentDark, border: 'none', borderRadius: tokens.radius.sm, color: tokens.text.white, fontSize: tokens.fontSize.xs, cursor: 'pointer' }}
       >
         + Add Header
       </button>
@@ -653,7 +654,7 @@ export const MockRulesPage = forwardRef<MockRulesPageHandle, {
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
-    padding: `${tokens.space['3']} ${tokens.space['4']}`,
+    padding: `${SPACING_SM} ${SPACING_MD}`,
     background: tokens.surface.input,
     border: `1px solid ${tokens.border.subtle}`,
     borderRadius: tokens.radius.md,
@@ -674,11 +675,11 @@ export const MockRulesPage = forwardRef<MockRulesPageHandle, {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
 
       {/* ── Template helpers hint ── */}
-      <div style={{ padding: `5px ${tokens.space['5']}`, background: tokens.surface.deep, borderBottom: `1px solid ${tokens.surface.stripe}`, flexShrink: 0 }}>
+      <div style={{ padding: `5px ${SPACING_LG}`, background: tokens.surface.deep, borderBottom: `1px solid ${tokens.surface.stripe}`, flexShrink: 0 }}>
         <p style={{ margin: 0, fontSize: tokens.fontSize.xs, color: tokens.text.faint }}>
           Body helpers:{' '}
           {['{{uuid}}', '{{now}}', '{{randomInt 1 100}}', '{{randomElement a b c}}', "{{requestHeader 'name'}}"].map((h) => (
-            <code key={h} style={{ background: tokens.surface.base, padding: '1px 5px', borderRadius: tokens.radius.sm, marginRight: '6px', fontSize: '10px' }}>{h}</code>
+            <code key={h} style={{ background: tokens.surface.base, padding: '1px 5px', borderRadius: tokens.radius.sm, marginRight: '8px', fontSize: '12px' }}>{h}</code>
           ))}
         </p>
       </div>
@@ -699,7 +700,7 @@ export const MockRulesPage = forwardRef<MockRulesPageHandle, {
                 onClick={() => toggleGroup(tag)}
                 style={{
                   width: '100%', background: 'none', border: 'none', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: '6px',
+                  display: 'flex', alignItems: 'center', gap: '8px',
                   padding: '4px 0', marginBottom: '4px', textAlign: 'left',
                 }}
               >
@@ -710,7 +711,7 @@ export const MockRulesPage = forwardRef<MockRulesPageHandle, {
                   {tag}
                 </span>
                 <span style={{ fontSize: '10px', color: tokens.text.faint }}>({groupRules.length})</span>
-                <div style={{ flex: 1, height: '1px', background: tokens.surface.stripe, marginLeft: '6px' }} />
+                <div style={{ flex: 1, height: '1px', background: tokens.surface.stripe, marginLeft: '8px' }} />
               </button>
 
               {/* Group rows */}
@@ -744,20 +745,20 @@ export const MockRulesPage = forwardRef<MockRulesPageHandle, {
       {/* ── Duplicate conflict modal ── */}
       {duplicateConflict && (
         <ProxyModal dim={0.85} zIndex={2100} width="460px" bordered shadow>
-            <div style={{ fontSize: '15px', fontWeight: 'var(--fw-semibold)', color: tokens.text.secondary, marginBottom: '10px' }}>
+            <div style={{ fontSize: '15px', fontWeight: 'var(--fw-semibold)', color: tokens.text.secondary, marginBottom: '12px' }}>
               Duplicate Conditions Detected
             </div>
-            <div style={{ fontSize: tokens.fontSize.sm, color: tokens.text.muted, marginBottom: tokens.space['5'], lineHeight: 1.6 }}>
+            <div style={{ fontSize: tokens.fontSize.sm, color: tokens.text.muted, marginBottom: SPACING_LG, lineHeight: 1.6 }}>
               An existing rule named{' '}
               <strong style={{ color: tokens.text.secondary }}>"{duplicateConflict.existing.name}"</strong>{' '}
               has the same match conditions. Overwriting it will replace its name, response,
               headers, and settings with the values you just configured.
             </div>
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
               <button
                 onClick={() => setDuplicateConflict(null)}
                 style={{
-                  padding: `7px ${tokens.space['5']}`, background: 'transparent',
+                  padding: `7px ${SPACING_LG}`, background: 'transparent',
                   border: `1px solid ${tokens.border.subtle}`,
                   borderRadius: tokens.radius.md, color: tokens.text.secondary,
                   fontSize: tokens.fontSize.base, cursor: 'pointer',
@@ -766,7 +767,7 @@ export const MockRulesPage = forwardRef<MockRulesPageHandle, {
               <button
                 onClick={handleOverwriteDuplicate}
                 style={{
-                  padding: `7px ${tokens.space['5']}`, background: 'var(--apinox-surface-danger-dark)',
+                  padding: `7px ${SPACING_LG}`, background: 'var(--apinox-surface-danger-dark)',
                   border: 'none', borderRadius: tokens.radius.md,
                   color: tokens.text.white, fontSize: tokens.fontSize.base, cursor: 'pointer',
                 }}
@@ -778,13 +779,13 @@ export const MockRulesPage = forwardRef<MockRulesPageHandle, {
       {/* ── Edit / Add modal ── */}
       {editingRule && (
         <ProxyModal maxWidth="760px" width="100%" maxHeight="90vh" scroll>
-            <h3 style={{ margin: `0 0 ${tokens.space['6']} 0`, fontSize: tokens.fontSize.lg, fontWeight: 'var(--fw-medium)' }}>
+            <h3 style={{ margin: `0 0 ${SPACING_XL} 0`, fontSize: tokens.fontSize.lg, fontWeight: 'var(--fw-medium)' }}>
               {rules.find(r => r.id === editingRule.id) ? 'Edit' : 'Add'} Mock Rule
             </h3>
 
             {/* Name */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: tokens.fontSize.base, marginBottom: '6px', color: tokens.text.secondary }}>
+              <label style={{ display: 'block', fontSize: tokens.fontSize.base, marginBottom: '8px', color: tokens.text.secondary }}>
                 Rule Name
               </label>
               <input
@@ -797,7 +798,7 @@ export const MockRulesPage = forwardRef<MockRulesPageHandle, {
 
             {/* Tags */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: tokens.fontSize.base, marginBottom: '6px', color: tokens.text.secondary }}>
+              <label style={{ display: 'block', fontSize: tokens.fontSize.base, marginBottom: '8px', color: tokens.text.secondary }}>
                 Tags
                 <span style={{ fontSize: tokens.fontSize.xs, color: tokens.text.hint, marginLeft: '8px' }}>
                   Groups related rules. Press Enter or comma to add each tag.
@@ -819,7 +820,7 @@ export const MockRulesPage = forwardRef<MockRulesPageHandle, {
                 <button
                   onClick={addCondition}
                   style={{
-                    padding: `4px ${tokens.space['2']}`, background: tokens.status.accentDark, border: 'none',
+                    padding: `4px ${SPACING_SM}`, background: tokens.status.accentDark, border: 'none',
                     borderRadius: tokens.radius.sm, color: tokens.text.white,
                     fontSize: tokens.fontSize.xs, cursor: 'pointer',
                   }}
@@ -861,7 +862,7 @@ export const MockRulesPage = forwardRef<MockRulesPageHandle, {
             {/* Response Config row */}
             <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr 120px', gap: '12px', marginBottom: '16px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: tokens.fontSize.base, marginBottom: '6px', color: tokens.text.secondary }}>Status Code</label>
+                <label style={{ display: 'block', fontSize: tokens.fontSize.base, marginBottom: '8px', color: tokens.text.secondary }}>Status Code</label>
                 <input
                   type="number"
                   value={editingRule.statusCode}
@@ -871,7 +872,7 @@ export const MockRulesPage = forwardRef<MockRulesPageHandle, {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: tokens.fontSize.base, marginBottom: '6px', color: tokens.text.secondary }}>Content-Type</label>
+                <label style={{ display: 'block', fontSize: tokens.fontSize.base, marginBottom: '8px', color: tokens.text.secondary }}>Content-Type</label>
                 <select
                   value={getContentTypeSelectValue(editingRule.contentType)}
                   onChange={(e) => handleContentTypeSelect(e.target.value)}
@@ -890,13 +891,13 @@ export const MockRulesPage = forwardRef<MockRulesPageHandle, {
                       setEditingRule({ ...editingRule, contentType: e.target.value });
                     }}
                     placeholder="e.g. application/soap+xml"
-                    style={{ ...inputStyle, marginTop: '6px' }}
+                    style={{ ...inputStyle, marginTop: '8px' }}
                   />
                 )}
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: tokens.fontSize.base, marginBottom: '6px', color: tokens.text.secondary }}>Delay (ms)</label>
+                <label style={{ display: 'block', fontSize: tokens.fontSize.base, marginBottom: '8px', color: tokens.text.secondary }}>Delay (ms)</label>
                 <input
                   type="number"
                   value={editingRule.delayMs || 0}
@@ -919,7 +920,7 @@ export const MockRulesPage = forwardRef<MockRulesPageHandle, {
 
             {/* Response Body */}
             <div style={{ marginBottom: '20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <label style={{ fontSize: tokens.fontSize.base, color: tokens.text.secondary }}>
                   Response Body
                 </label>
@@ -964,7 +965,7 @@ export const MockRulesPage = forwardRef<MockRulesPageHandle, {
                     }
                   }}
                   style={{
-                    padding: '3px 10px', fontSize: '11px', cursor: 'pointer',
+                    padding: '3px 12px', fontSize: '11px', cursor: 'pointer',
                     background: tokens.surface.elevated, border: `1px solid ${tokens.border.subtle}`,
                     borderRadius: tokens.radius.sm, color: tokens.text.muted,
                   }}
@@ -989,7 +990,7 @@ export const MockRulesPage = forwardRef<MockRulesPageHandle, {
               <button
                 onClick={() => setEditingRule(null)}
                 style={{
-                  padding: `${tokens.space['3']} ${tokens.space['5']}`, background: 'transparent',
+                  padding: `${SPACING_SM} ${SPACING_LG}`, background: 'transparent',
                   border: `1px solid ${tokens.border.subtle}`,
                   borderRadius: tokens.radius.md, color: tokens.text.secondary,
                   fontSize: tokens.fontSize.base, cursor: 'pointer',
@@ -998,7 +999,7 @@ export const MockRulesPage = forwardRef<MockRulesPageHandle, {
               <button
                 onClick={handleSaveRule}
                 style={{
-                  padding: `${tokens.space['3']} ${tokens.space['5']}`,
+                  padding: `${SPACING_SM} ${SPACING_LG}`,
                   background: tokens.status.accentDark, border: 'none',
                   borderRadius: tokens.radius.md, color: tokens.text.white,
                   fontSize: tokens.fontSize.base, cursor: 'pointer',

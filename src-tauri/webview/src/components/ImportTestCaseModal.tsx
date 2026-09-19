@@ -20,7 +20,7 @@ const Overlay = styled.div`
 const ModalContainer = styled.div`
     background: var(--apinox-editor-background);
     border: 1px solid var(--apinox-widget-border);
-    border-radius: 6px;
+    border-radius: 4px;
     padding: 20px;
     min-width: 400px;
     max-width: 600px;
@@ -29,11 +29,11 @@ const ModalContainer = styled.div`
 `;
 
 const Title = styled.h3`
-    margin: 0 0 15px 0;
+    margin: 0 0 16px 0;
 `;
 
 const Description = styled.p`
-    margin-bottom: 15px;
+    margin-bottom: 16px;
     opacity: 0.8;
     font-size: 0.9em;
 `;
@@ -41,11 +41,11 @@ const Description = styled.p`
 const List = styled.div`
     max-height: 300px;
     overflow: auto;
-    margin-bottom: 15px;
+    margin-bottom: 16px;
 `;
 
 const Item = styled.div`
-    padding: 10px;
+    padding: 12px;
     margin-bottom: 5px;
     border-radius: 4px;
     background: var(--apinox-list-hoverBackground);

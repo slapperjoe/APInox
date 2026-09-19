@@ -1,4 +1,5 @@
 import React from 'react';
+import { SPACING_LG, SPACING_MD, SPACING_SM } from "../../styles/spacing";
 import { tokens } from './tokens';
 
 export interface SystemProxyStatus {
@@ -33,10 +34,10 @@ export function SystemProxyPanel({ status, loading, error, certTrusted, onEnable
   const services = status?.networkServices ?? [];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.space['4'] }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: tokens.space['5'], flexWrap: 'wrap' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: SPACING_MD }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: SPACING_LG, flexWrap: 'wrap' }}>
         {/* Status badge */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: tokens.space['3'] }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: SPACING_SM }}>
           <div style={{
             width: '10px',
             height: '10px',
@@ -82,8 +83,8 @@ export function SystemProxyPanel({ status, loading, error, certTrusted, onEnable
         isEnabled ? (
           <div style={{
             display: 'flex',
-            gap: tokens.space['3'],
-            padding: tokens.space['4'],
+            gap: SPACING_SM,
+            padding: SPACING_MD,
             background: 'var(--apinox-inputValidation-successBackground)',
             border: `1px solid var(--apinox-inputValidation-successBorder)`,
             borderRadius: tokens.radius.md,
@@ -103,8 +104,8 @@ export function SystemProxyPanel({ status, loading, error, certTrusted, onEnable
         ) : (
           <div style={{
             display: 'flex',
-            gap: tokens.space['3'],
-            padding: tokens.space['4'],
+            gap: SPACING_SM,
+            padding: SPACING_MD,
             background: tokens.surface.elevated,
             border: `1px solid ${tokens.border.subtle}`,
             borderRadius: tokens.radius.md,
@@ -130,8 +131,8 @@ export function SystemProxyPanel({ status, loading, error, certTrusted, onEnable
         certTrusted === true ? (
           <div style={{
             display: 'flex',
-            gap: tokens.space['3'],
-            padding: tokens.space['4'],
+            gap: SPACING_SM,
+            padding: SPACING_MD,
             background: 'var(--apinox-inputValidation-infoBackground)',
             border: `1px solid var(--apinox-inputValidation-infoBorder)`,
             borderRadius: tokens.radius.md,
@@ -147,8 +148,8 @@ export function SystemProxyPanel({ status, loading, error, certTrusted, onEnable
         ) : certTrusted === false ? (
           <div style={{
             display: 'flex',
-            gap: tokens.space['3'],
-            padding: tokens.space['4'],
+            gap: SPACING_SM,
+            padding: SPACING_MD,
             background: tokens.surface.elevated,
             border: `1px solid ${tokens.border.subtle}`,
             borderRadius: tokens.radius.md,
@@ -174,7 +175,7 @@ export function SystemProxyPanel({ status, loading, error, certTrusted, onEnable
           </div>
           {certTrusted === true ? (
             <div style={{
-              display: 'flex', gap: tokens.space['3'], padding: tokens.space['3'],
+              display: 'flex', gap: SPACING_SM, padding: SPACING_SM,
               background: 'var(--apinox-inputValidation-infoBackground)', border: `1px solid var(--apinox-inputValidation-infoBorder)`,
               borderRadius: tokens.radius.md, fontSize: tokens.fontSize.sm, color: 'var(--apinox-inputValidation-infoForeground)',
             }}>
@@ -182,7 +183,7 @@ export function SystemProxyPanel({ status, loading, error, certTrusted, onEnable
             </div>
           ) : certTrusted === false ? (
             <div style={{
-              display: 'flex', gap: tokens.space['3'], padding: tokens.space['3'],
+              display: 'flex', gap: SPACING_SM, padding: SPACING_SM,
               background: tokens.surface.elevated, border: `1px solid ${tokens.border.subtle}`,
               borderRadius: tokens.radius.md, fontSize: tokens.fontSize.sm, color: tokens.text.muted,
             }}>
@@ -194,7 +195,7 @@ export function SystemProxyPanel({ status, loading, error, certTrusted, onEnable
 
       {error && (
         <div style={{
-          padding: tokens.space['4'],
+          padding: SPACING_MD,
           background: tokens.surface.danger,
           border: `1px solid var(--apinox-inputValidation-errorBorder)`,
           borderRadius: tokens.radius.md,
@@ -212,7 +213,7 @@ export function SystemProxyPanel({ status, loading, error, certTrusted, onEnable
 
 function primaryButtonStyle(disabled: boolean): React.CSSProperties {
   return {
-    padding: `8px ${tokens.space['5']}`,
+    padding: `8px ${SPACING_LG}`,
     background: disabled ? tokens.surface.input : tokens.status.accentDark,
     border: 'none',
     borderRadius: tokens.radius.md,
@@ -226,7 +227,7 @@ function primaryButtonStyle(disabled: boolean): React.CSSProperties {
 
 function dangerButtonStyle(disabled: boolean): React.CSSProperties {
   return {
-    padding: `8px ${tokens.space['5']}`,
+    padding: `8px ${SPACING_LG}`,
     background: disabled ? tokens.surface.input : 'var(--apinox-errorForeground)',
     border: 'none',
     borderRadius: tokens.radius.md,

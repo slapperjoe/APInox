@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { SPACING_MD, SPACING_SM } from "../../styles/spacing";
 import { MockRulesPage, MockRulesPageHandle, MockRulesMeta } from './MockRulesPage';
 import { RulesPage, RulesPageHandle } from './RulesPage';
 import { tokens } from './tokens';
@@ -20,7 +21,7 @@ export function RulesAndMockPage() {
     height: '44px',
     display: 'flex',
     alignItems: 'center',
-    gap: tokens.space['3'],
+    gap: SPACING_SM,
     fontSize: '11px',
     fontWeight: 'var(--fw-bold)',
     textTransform: 'uppercase',
@@ -34,7 +35,7 @@ export function RulesAndMockPage() {
   };
 
   const btnStyle: React.CSSProperties = {
-    padding: `3px ${tokens.space['4']}`,
+    padding: `3px ${SPACING_MD}`,
     background: 'transparent',
     border: `1px solid ${tokens.border.subtle}`,
     borderRadius: tokens.radius.md,

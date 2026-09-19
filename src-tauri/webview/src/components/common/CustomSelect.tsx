@@ -54,7 +54,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     width: '100%',
-                    padding: '6px 28px 6px 8px',
+                    padding: '8px 28px 8px 8px',
                     background: 'var(--apinox-dropdown-background)',
                     color: disabled
                         ? 'var(--apinox-disabledForeground, var(--apinox-dropdown-foreground))'
@@ -137,7 +137,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                                         }
                                     }}
                                     style={{
-                                        padding: '6px 10px',
+                                        padding: '8px 12px',
                                         cursor: option.disabled ? 'not-allowed' : 'pointer',
                                         opacity: option.disabled ? 0.5 : 1,
                                         background: isSelected

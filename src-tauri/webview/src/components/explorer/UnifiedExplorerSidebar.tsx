@@ -28,6 +28,7 @@ import {
 import { ScrapbookPanel } from '../sidebar/ScrapbookPanel';
 import { UnifiedHistoryPanel } from './UnifiedHistoryPanel';
 import { RenameModal } from '../modals/RenameModal';
+import { SectionLabel } from '../common/SectionLabel';
 import { useUnifiedProjectsSafe } from '../../contexts/UnifiedProjectContext';
 import { useReorderDrag, ReorderGapRow } from '../../hooks/useReorderDrag';
 
@@ -276,7 +277,7 @@ export const TreeItem: React.FC<TreeItemProps> = ({
                 style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 6,
+                    gap: 8,
                     padding: `4px 8px 4px ${paddingLeft + 8}px`,
                     cursor: 'pointer',
                     backgroundColor: selected ? 'var(--apinox-list-activeSelectionBackground)' : 'transparent',
@@ -980,16 +981,16 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                 style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 6,
+                    gap: 8,
                     width: '100%',
-                    padding: '4px 10px',
+                    padding: '4px 12px',
                     background: 'transparent',
                     borderBottom: collapsed
                         ? 'none'
                         : '1px solid var(--apinox-sideBarSectionHeader-border)',
                     userSelect: 'none',
                     color: 'var(--apinox-foreground)',
-                    fontSize: 11,
+                    fontSize: 'var(--apinox-fs-sm)',
                     fontWeight: 'var(--fw-bold)',
                     textTransform: 'uppercase',
                     letterSpacing: '0.08em',
@@ -1004,7 +1005,7 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                     style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 6,
+                        gap: 8,
                         flex: 1,
                         minWidth: 0,
                         background: 'transparent',
@@ -1053,14 +1054,14 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                padding: '4px 10px',
+                padding: '4px 12px',
                 height: 44,
                 borderBottom: '1px solid var(--apinox-sideBarSectionHeader-border)',
                 flexShrink: 0,
                 userSelect: 'none',
             }}
         >
-            <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
                 {addFlow ? (
                     /* Add flow in progress: back-to-projects breadcrumb + the
                         action label, replacing the plain title. */
@@ -1073,19 +1074,19 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                             <ChevronLeft size={14} />
                         </span>
                         {addFlow.kind === 'request' ? (
-                            <span style={{ fontSize: 11, fontWeight: 'var(--fw-bold)', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--apinox-sideBarTitle-foreground, var(--apinox-foreground))', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <SectionLabel as="div" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 New Request{addFlow.project ? ` — ${addFlow.project.displayName || addFlow.project.name}` : ''}
-                            </span>
+                            </SectionLabel>
                         ) : (
-                            <span style={{ fontSize: 11, fontWeight: 'var(--fw-bold)', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--apinox-sideBarTitle-foreground, var(--apinox-foreground))', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <SectionLabel as="div" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 Load Definition{addFlow.project ? ` — ${addFlow.project.displayName || addFlow.project.name}` : ''}
-                            </span>
+                            </SectionLabel>
                         )}
                     </>
                 ) : (
-                    <span style={{ fontSize: 11, fontWeight: 'var(--fw-bold)', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--apinox-sideBarTitle-foreground, var(--apinox-foreground))' }}>
+                    <SectionLabel as="div">
                         Unified Explorer
-                    </span>
+                    </SectionLabel>
                 )}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--apinox-icon-foreground, var(--apinox-foreground))', flexShrink: 0, position: 'relative' }}>
@@ -1114,7 +1115,7 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                             padding: '4px 0',
                         }}
                     >
-                        <div style={{ padding: '4px 10px', fontSize: '0.8em', opacity: 0.7, borderBottom: '1px solid var(--apinox-panel-border, #80808059)' }}>
+                        <div style={{ padding: '4px 12px', fontSize: '0.8em', opacity: 0.7, borderBottom: '1px solid var(--apinox-panel-border, #80808059)' }}>
                             Add
                         </div>
                         <button
@@ -1124,8 +1125,8 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                                 width: '100%',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: 6,
-                                padding: '6px 12px',
+                                gap: 8,
+                                padding: '8px 12px',
                                 background: 'transparent',
                                 border: 'none',
                                 color: 'inherit',
@@ -1147,8 +1148,8 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                                     width: '100%',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: 6,
-                                    padding: '6px 12px',
+                                    gap: 8,
+                                    padding: '8px 12px',
                                     background: 'transparent',
                                     border: 'none',
                                     color: 'inherit',
@@ -1173,12 +1174,12 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
             determined by addFlow.step: pick a project, then complete the
             action-specific input. */}
         {addFlow && addFlow.step === 'project' && (
-            <div style={{ padding: '6px 10px', borderBottom: '1px solid var(--apinox-sideBarSectionHeader-border)', flexShrink: 0, background: 'var(--apinox-sideBar-background)' }}>
-                <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 4, color: 'var(--apinox-foreground)' }}>
+            <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--apinox-sideBarSectionHeader-border)', flexShrink: 0, background: 'var(--apinox-sideBar-background)' }}>
+                <div style={{ fontSize: 'var(--apinox-fs-sm)', opacity: 0.7, marginBottom: 4, color: 'var(--apinox-foreground)' }}>
                     {addFlow.kind === 'request' ? 'Which project?' : 'Which project to refresh?'}
                 </div>
                 {projects.length === 0 ? (
-                    <div style={{ fontSize: 12, opacity: 0.6, color: 'var(--apinox-foreground)' }}>No projects yet — load a definition first.</div>
+                    <div style={{ fontSize: 'var(--apinox-fs-md)', opacity: 0.6, color: 'var(--apinox-foreground)' }}>No projects yet — load a definition first.</div>
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                         {projects.map(p => (
@@ -1191,13 +1192,13 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                                 style={{
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: 6,
-                                    padding: '4px 6px',
+                                    gap: 8,
+                                    padding: '4px 8px',
                                     background: 'transparent',
                                     border: 'none',
                                     color: 'inherit',
                                     font: 'inherit',
-                                    fontSize: 12,
+                                    fontSize: 'var(--apinox-fs-md)',
                                     textAlign: 'left',
                                     cursor: p.readOnly && addFlow.kind === 'request' ? 'not-allowed' : 'pointer',
                                     opacity: p.readOnly && addFlow.kind === 'request' ? 0.5 : 1,
@@ -1206,7 +1207,7 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                                 onMouseEnter={e => (e.currentTarget.style.background = 'var(--apinox-list-hoverBackground)')}
                                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                             >
-                                <Server size={13} style={{ flexShrink: 0 }} />
+                                <Server size={14} style={{ flexShrink: 0 }} />
                                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.displayName || p.name}</span>
                             </button>
                         ))}
@@ -1215,14 +1216,14 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
             </div>
         )}
         {addFlow?.kind === 'request' && addFlow.step === 'name' && addFlow.project && (
-            <div style={{ padding: '6px 10px', borderBottom: '1px solid var(--apinox-sideBarSectionHeader-border)', flexShrink: 0, background: 'var(--apinox-sideBar-background)' }}>
-                <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 4, color: 'var(--apinox-foreground)' }}>
+            <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--apinox-sideBarSectionHeader-border)', flexShrink: 0, background: 'var(--apinox-sideBar-background)' }}>
+                <div style={{ fontSize: 'var(--apinox-fs-sm)', opacity: 0.7, marginBottom: 4, color: 'var(--apinox-foreground)' }}>
                     Add request to operation:
                 </div>
                 {(addFlow.project.operations || []).length === 0 ? (
-                    <div style={{ fontSize: 12, opacity: 0.6, color: 'var(--apinox-foreground)' }}>This project has no operations.</div>
+                    <div style={{ fontSize: 'var(--apinox-fs-md)', opacity: 0.6, color: 'var(--apinox-foreground)' }}>This project has no operations.</div>
                 ) : (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <select
                             autoFocus
                             value={addRequestName}
@@ -1231,12 +1232,12 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                             style={{
                                 flex: 1,
                                 minWidth: 0,
-                                padding: '4px 6px',
+                                padding: '4px 8px',
                                 backgroundColor: 'var(--apinox-input-background, #3c3c3c)',
                                 color: 'var(--apinox-input-foreground, var(--apinox-foreground))',
                                 border: '1px solid var(--apinox-input-border)',
                                 borderRadius: 3,
-                                fontSize: 12,
+                                fontSize: 'var(--apinox-fs-md)',
                                 outline: 'none',
                             }}
                         >
@@ -1252,11 +1253,11 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
             </div>
         )}
         {addFlow?.kind === 'load' && addFlow.step === 'source' && (
-            <div style={{ padding: '6px 10px', borderBottom: '1px solid var(--apinox-sideBarSectionHeader-border)', flexShrink: 0, background: 'var(--apinox-sideBar-background)' }}>
-                <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 4, color: 'var(--apinox-foreground)' }}>
+            <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--apinox-sideBarSectionHeader-border)', flexShrink: 0, background: 'var(--apinox-sideBar-background)' }}>
+                <div style={{ fontSize: 'var(--apinox-fs-sm)', opacity: 0.7, marginBottom: 4, color: 'var(--apinox-foreground)' }}>
                     WSDL / OpenAPI / GraphQL URL
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <InlineFormInput
                         autoFocus
                         placeholder="https://…/Service?WSDL"
@@ -1402,7 +1403,7 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
             {projects.length === 0 && load.phase !== 'error' && (
                 <div style={{ padding: 16, textAlign: 'center', color: 'var(--apinox-foreground)', opacity: 0.7 }}>
                     <p style={{ margin: 0 }}>No projects yet</p>
-                    <p style={{ fontSize: 12, marginTop: 4 }}>Right-click here to import a workspace</p>
+                    <p style={{ fontSize: 'var(--apinox-fs-md)', marginTop: 4 }}>Right-click here to import a workspace</p>
                 </div>
             )}
 

@@ -54,7 +54,7 @@ const SuiteLabel = styled.div`
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-size: 13px;
+    font-size: var(--apinox-fs-base);
 `;
 
 const Actions = styled(RowActions)`
@@ -65,7 +65,7 @@ const Actions = styled(RowActions)`
 `;
 
 const RequestLabel = styled(SuiteLabel)`
-    font-size: 12px;
+    font-size: var(--apinox-fs-md);
 `;
 
 const RequestItem = styled.div<{ active: boolean }>`

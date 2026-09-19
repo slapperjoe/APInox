@@ -78,36 +78,6 @@ export const spacing = (multiplier: number): string => {
 };
 
 /**
- * Common spacing patterns as objects
- * Use these for common padding/margin combinations
- */
-export const SPACING_PATTERNS = {
-    /** Standard button padding: 6px 14px */
-    button: `6px 14px`,
-    
-    /** Icon button padding: 4px */
-    iconButton: SPACING_XS,
-    
-    /** Input padding: 6px */
-    input: `6px`,
-    
-    /** Sidebar header padding: 4px 10px */
-    sidebarHeader: `${SPACING_XS} 10px`,
-    
-    /** Sidebar content padding: 10px */
-    sidebarContent: `10px`,
-    
-    /** Modal padding: 20px */
-    modal: SPACING_XL,
-    
-    /** Panel padding: 20px */
-    panel: SPACING_XL,
-    
-    /** Section margin: 20px */
-    sectionMargin: SPACING_XL,
-};
-
-/**
  * Deprecated spacing values
  * These are common hardcoded values found in the codebase.
  * Migrate to standardized values above.
@@ -118,9 +88,6 @@ export const DEPRECATED_SPACING = {
     
     /** Use SPACING_SM (8px) or SPACING_MD (12px) instead */
     legacy_10px: '10px',
-    
-    /** Use SPACING_LG (16px) instead */
-    legacy_15px: '15px',
     
     /** Use SPACING_XL (20px) instead */
     legacy_20px: '20px',

@@ -63,7 +63,7 @@ const Container = styled.div`
   height: 100%;
   background: ${tokens.surface.base};
   color: ${tokens.text.primary};
-  font-size: 13px;
+  font-size: var(--apinox-fs-base);
 `;
 
 const WatchSidebar = styled.div`
@@ -84,7 +84,7 @@ const SidebarHeader = styled.div`
   align-items: center;
   h3 {
     margin: 0;
-    font-size: 11px;
+    font-size: var(--apinox-fs-sm);
     font-weight: var(--fw-bold);
     text-transform: uppercase;
     letter-spacing: 0.3px;
@@ -98,7 +98,7 @@ const WatchList = styled.div`
 `;
 
 const WatchItem = styled.div<{ $active: boolean }>`
-  padding: 10px 14px;
+  padding: 12px 14px;
   border-bottom: 1px solid ${tokens.surface.elevated};
   cursor: pointer;
   background: ${p => p.$active ? tokens.surface.active : 'transparent'};
@@ -106,16 +106,16 @@ const WatchItem = styled.div<{ $active: boolean }>`
 `;
 
 const WatchName = styled.div`
-  font-size: 12px;
+  font-size: var(--apinox-fs-md);
   font-weight: var(--fw-medium);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   margin-bottom: 2px;
 `;
 
 const WatchPath = styled.div`
-  font-size: 10px;
+  font-size: var(--apinox-fs-xs);
   color: ${tokens.text.muted};
   white-space: nowrap;
   overflow: hidden;
@@ -128,7 +128,7 @@ const StatusBadge = styled.span<{ $enabled: boolean }>`
   letter-spacing: 0.5px;
   text-transform: uppercase;
   padding: 2px 7px;
-  border-radius: 10px;
+  border-radius: 50%;
   background: ${p => p.$enabled ? 'rgba(14,99,156,0.25)' : 'rgba(100,100,100,0.2)'};
   color: ${p => p.$enabled ? 'var(--apinox-focusBorder, #007fd4)' : tokens.text.muted};
   border: 1px solid ${p => p.$enabled ? 'rgba(14,99,156,0.5)' : 'rgba(100,100,100,0.4)'};
@@ -137,9 +137,9 @@ const StatusBadge = styled.span<{ $enabled: boolean }>`
 `;
 
 const WatchActions = styled.div`
-  margin-top: 6px;
+  margin-top: 8px;
   display: flex;
-  gap: 6px;
+  gap: 8px;
 `;
 
 const MainArea = styled.div`
@@ -165,7 +165,7 @@ const PairListHeader = styled.div`
   align-items: center;
   h3 {
     margin: 0;
-    font-size: 11px;
+    font-size: var(--apinox-fs-sm);
     font-weight: var(--fw-bold);
     text-transform: uppercase;
     letter-spacing: 0.3px;
@@ -179,7 +179,7 @@ const PairScroll = styled.div`
 `;
 
 const PairRow = styled.div<{ $active: boolean }>`
-  padding: 10px 14px;
+  padding: 12px 14px;
   border-bottom: 1px solid ${tokens.surface.elevated};
   cursor: pointer;
   background: ${p => p.$active ? tokens.surface.active : 'transparent'};
@@ -194,7 +194,7 @@ const PairRowHeader = styled.div`
 `;
 
 const OperationName = styled.div`
-  font-size: 12px;
+  font-size: var(--apinox-fs-md);
   font-weight: var(--fw-medium);
   white-space: nowrap;
   overflow: hidden;
@@ -208,18 +208,18 @@ const MatchBadge = styled.span<{ $matched: boolean }>`
   letter-spacing: 0.5px;
   text-transform: uppercase;
   padding: 2px 8px;
-  border-radius: 10px;
+  border-radius: 50%;
   background: ${p => p.$matched ? 'rgba(58,110,58,0.25)' : 'rgba(122,90,30,0.2)'};
   color: ${p => p.$matched ? 'var(--apinox-testing-iconPassed, #73c991)' : 'var(--apinox-testing-iconQueued, #cca700)'};
   border: 1px solid ${p => p.$matched ? 'rgba(58,110,58,0.5)' : 'rgba(122,90,30,0.5)'};
   flex-shrink: 0;
-  margin-left: 6px;
+  margin-left: 8px;
   user-select: none;
   pointer-events: none;
 `;
 
 const PairTime = styled.div`
-  font-size: 10px;
+  font-size: var(--apinox-fs-xs);
   color: ${tokens.text.muted};
 `;
 
@@ -231,7 +231,7 @@ const DetailPanel = styled.div`
 `;
 
 const DetailHeader = styled.div`
-  padding: 10px 16px;
+  padding: 12px 16px;
   border-bottom: 1px solid ${tokens.border.default};
   display: flex;
   align-items: center;
@@ -240,7 +240,7 @@ const DetailHeader = styled.div`
 `;
 
 const DetailTitle = styled.div`
-  font-size: 13px;
+  font-size: var(--apinox-fs-base);
   font-weight: var(--fw-medium);
   flex: 1;
 `;
@@ -253,8 +253,8 @@ const DetailBody = styled.div`
 `;
 
 const PaneLabel = styled.div`
-  padding: 6px 14px;
-  font-size: 13px;
+  padding: 8px 14px;
+  font-size: var(--apinox-fs-base);
   font-weight: var(--fw-semibold);
   color: ${tokens.text.secondary};
   background: ${tokens.surface.panel};
@@ -266,7 +266,7 @@ const PaneLabel = styled.div`
 
 const PaneMeta = styled.div`
   padding: 3px 14px;
-  font-size: 10px;
+  font-size: var(--apinox-fs-xs);
   color: ${tokens.text.hint};
   background: ${tokens.surface.panel};
   border-bottom: 1px solid ${tokens.surface.elevated};
@@ -278,15 +278,15 @@ const Placeholder = styled.div`
   align-items: center;
   justify-content: center;
   color: ${tokens.text.faint};
-  font-size: 12px;
+  font-size: var(--apinox-fs-md);
 `;
 
 const Btn = styled.button`
   border: none;
-  border-radius: 3px;
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 11px;
-  padding: 3px 10px;
+  font-size: var(--apinox-fs-sm);
+  padding: 3px 12px;
   &:disabled { opacity: 0.4; cursor: not-allowed; }
 `;
 
@@ -345,7 +345,7 @@ const FormGroup = styled.div`
   gap: 4px;
 
   label {
-    font-size: 11px;
+    font-size: var(--apinox-fs-sm);
     font-weight: var(--fw-semibold);
     color: ${tokens.text.secondary};
     text-transform: uppercase;
@@ -357,14 +357,14 @@ const FormGroup = styled.div`
     border: 1px solid ${tokens.border.subtle};
     border-radius: ${tokens.radius.sm};
     color: ${tokens.text.primary};
-    font-size: 12px;
+    font-size: var(--apinox-fs-md);
     padding: 5px 8px;
     font-family: 'Consolas', monospace;
     &:focus { outline: none; border-color: ${tokens.status.accentDark}; }
   }
 
   .hint {
-    font-size: 10px;
+    font-size: var(--apinox-fs-xs);
     color: ${tokens.text.hint};
     margin-top: 2px;
   }
@@ -372,7 +372,7 @@ const FormGroup = styled.div`
 
 const FileInput = styled.div`
   display: flex;
-  gap: 6px;
+  gap: 8px;
   align-items: stretch;
 
   input {
@@ -386,8 +386,8 @@ const BrowseBtn = styled.button`
   border: 1px solid ${tokens.border.subtle};
   border-radius: ${tokens.radius.sm};
   color: ${tokens.text.primary};
-  font-size: 12px;
-  padding: 4px 10px;
+  font-size: var(--apinox-fs-md);
+  padding: 4px 12px;
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;

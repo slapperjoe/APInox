@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { SPACING_SM } from "../../styles/spacing";
 import { invokeTauriCommand } from '../../utils/bridge';
 import { tokens } from './tokens';
 import { SystemProxyPanel, SystemProxyStatus } from './SystemProxyPanel';
@@ -203,8 +204,8 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '10px',
-        padding: '6px 12px',
+        gap: '12px',
+        padding: '8px 12px',
         background: tokens.surface.panel,
         borderBottom: `1px solid ${tokens.border.default}`,
         minHeight: '38px',
@@ -238,7 +239,7 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
         {/* Mode badge */}
         <span style={{
           fontSize: tokens.fontSize.xs, fontWeight: 'var(--fw-semibold)',
-          padding: '2px 8px', borderRadius: '10px',
+          padding: '2px 8px', borderRadius: '50%',
           background: proxyEnabled ? modeColors[mode] + '22' : tokens.surface.elevated,
           color: proxyEnabled ? modeColors[mode] : tokens.text.hint,
           border: `1px solid ${proxyEnabled ? modeColors[mode] + '55' : tokens.border.subtle}`,
@@ -274,7 +275,7 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
         {isSniffer && proxyEnabled && sysProxyStatus && (
           <span style={{
             fontSize: tokens.fontSize.xs,
-            padding: '2px 7px', borderRadius: '10px',
+            padding: '2px 7px', borderRadius: '50%',
             background: sysProxyStatus.enabled ? 'rgba(76,175,80,0.12)' : 'rgba(180,30,30,0.12)',
             color: sysProxyStatus.enabled ? tokens.status.success : tokens.text.danger,
             border: `1px solid ${sysProxyStatus.enabled ? 'rgba(76,175,80,0.35)' : 'rgba(180,30,30,0.35)'}`,
@@ -350,7 +351,7 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
           title="Collapse server controls"
           style={{
             background: 'transparent', border: 'none', cursor: 'pointer',
-            color: tokens.text.muted, padding: '2px 6px 2px 0', lineHeight: 1,
+            color: tokens.text.muted, padding: '2px 8px 2px 0', lineHeight: 1,
             fontSize: '11px', flexShrink: 0,
             display: 'flex', alignItems: 'center',
           }}
@@ -362,7 +363,7 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
         </h2>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {/* Main controls row */}
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <select
@@ -373,7 +374,7 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
             style={{
               flexShrink: 0,
               width: '190px',
-              padding: '6px 10px',
+              padding: '8px 12px',
               background: tokens.surface.input,
               border: `1px solid ${tokens.border.subtle}`,
               borderRadius: tokens.radius.md,
@@ -400,7 +401,7 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
               title="Upstream server to forward requests to"
               style={{
                 flex: 1,
-                padding: '6px 10px',
+                padding: '8px 12px',
                 background: tokens.surface.input,
                 border: `1px solid ${tokens.border.subtle}`,
                 borderRadius: tokens.radius.md,
@@ -419,7 +420,7 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
             style={{
               flexShrink: 0,
               width: '90px',
-              padding: '6px 10px',
+              padding: '8px 12px',
               background: tokens.surface.input,
               border: `1px solid ${tokens.border.subtle}`,
               borderRadius: tokens.radius.md,
@@ -434,7 +435,7 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
               disabled={loading}
               style={{
                 flexShrink: 0,
-                padding: '6px 18px',
+                padding: '8px 18px',
                 background: tokens.status.accentDark,
                 border: 'none',
                 borderRadius: tokens.radius.md,
@@ -453,7 +454,7 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
               disabled={loading}
               style={{
                 flexShrink: 0,
-                padding: '6px 18px',
+                padding: '8px 18px',
                 background: 'var(--apinox-errorForeground)',
                 border: 'none',
                 borderRadius: tokens.radius.md,
@@ -508,7 +509,7 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
             border: `1px solid ${tokens.border.default}`,
             borderRadius: tokens.radius.md,
           }}>
-            <div style={{ fontSize: tokens.fontSize.xs, fontWeight: 'var(--fw-semibold)', color: tokens.text.secondary, marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div style={{ fontSize: tokens.fontSize.xs, fontWeight: 'var(--fw-semibold)', color: tokens.text.secondary, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               System Proxy
             </div>
             <SystemProxyPanel
@@ -524,15 +525,15 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
       </div>
 
       {/* Advanced setup guide */}
-      <div style={{ marginTop: '10px', borderTop: `1px solid ${tokens.border.default}`, paddingTop: '6px' }}>
+      <div style={{ marginTop: '12px', borderTop: `1px solid ${tokens.border.default}`, paddingTop: '8px' }}>
         <button
           onClick={() => setShowAdvanced(v => !v)}
           style={{
             width: '100%',
             display: 'flex',
             alignItems: 'center',
-            gap: tokens.space['3'],
-            padding: `${tokens.space['2']} 0`,
+            gap: SPACING_SM,
+            padding: `${SPACING_SM} 0`,
             background: 'transparent',
             border: 'none',
             cursor: 'pointer',

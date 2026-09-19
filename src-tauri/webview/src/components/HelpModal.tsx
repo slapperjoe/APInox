@@ -30,7 +30,7 @@ const Tab = styled.button<{ $active: boolean }>`
     display: flex;
     align-items: center;
     gap: ${SPACING_SM};
-    font-size: 13px;
+    font-size: var(--apinox-fs-base);
 
     &:hover {
         background: ${props => props.$active ? 'var(--apinox-list-activeSelectionBackground)' : 'var(--apinox-list-hoverBackground)'};
@@ -39,12 +39,12 @@ const Tab = styled.button<{ $active: boolean }>`
 
 const ChildTab = styled(Tab)`
     padding-left: 30px;
-    font-size: 12px;
+    font-size: var(--apinox-fs-md);
 `;
 
 const GroupLabel = styled.div`
     padding: ${SPACING_SM} ${SPACING_MD} ${SPACING_XS};
-    font-size: 11px;
+    font-size: var(--apinox-fs-sm);
     text-transform: uppercase;
     color: var(--apinox-descriptionForeground);
     letter-spacing: 0.5px;
@@ -62,7 +62,7 @@ const ContentArea = styled.div`
     p { margin-bottom: ${SPACING_MD}; line-height: 1.5; }
     ul { margin-left: ${SPACING_LG}; margin-bottom: ${SPACING_MD}; }
     li { margin-bottom: ${SPACING_XS}; }
-    code { background: var(--apinox-textCodeBlock-background); padding: 2px 4px; border-radius: 3px; font-family: monospace; }
+    code { background: var(--apinox-textCodeBlock-background); padding: 2px 4px; border-radius: 4px; font-family: monospace; }
     pre { background: var(--apinox-textCodeBlock-background); padding: ${SPACING_MD}; border-radius: 4px; overflow-x: auto; margin-bottom: ${SPACING_MD}; }
     img { max-width: 100%; height: auto; border: 1px solid var(--apinox-panel-border); margin: ${SPACING_SM} 0; border-radius: 4px; }
 `;

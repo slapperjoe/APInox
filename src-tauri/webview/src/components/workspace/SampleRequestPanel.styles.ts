@@ -51,7 +51,7 @@ export const MetadataSection = styled.div`
     gap: ${SPACING_SM} ${SPACING_MD};
     padding: ${SPACING_MD};
     background: var(--apinox-editor-inactiveSelectionBackground);
-    border-radius: 3px;
+    border-radius: 4px;
     margin-bottom: ${SPACING_MD};
     font-size: 0.85em;
 `;
@@ -133,8 +133,8 @@ export const TextValue = styled.span`
 export const OptionalBadge = styled.span`
     display: inline-flex;
     align-items: center;
-    padding: 1px 6px;
-    border-radius: 3px;
+    padding: 1px 8px;
+    border-radius: 4px;
     font-size: 0.75em;
     font-weight: var(--fw-semibold);
     background: var(--apinox-badge-background);
@@ -163,7 +163,7 @@ export const ActionButton = styled.button`
     background: var(--apinox-button-secondaryBackground);
     color: var(--apinox-button-secondaryForeground);
     border: 1px solid var(--apinox-button-border);
-    border-radius: 3px;
+    border-radius: 4px;
     font-size: 0.85em;
     cursor: pointer;
     transition: all 0.2s;

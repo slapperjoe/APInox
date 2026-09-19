@@ -22,7 +22,7 @@ const PreviewBox = styled.div`
     background: var(--apinox-textCodeBlock-background);
     border: 1px solid var(--apinox-panel-border);
     border-radius: 4px;
-    font-size: 12px;
+    font-size: var(--apinox-fs-md);
     color: var(--apinox-descriptionForeground);
     margin-top: ${SPACING_SM};
 `;

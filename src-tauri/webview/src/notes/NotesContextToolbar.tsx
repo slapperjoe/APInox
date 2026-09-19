@@ -38,7 +38,7 @@ const SectionLabel = styled.div`
   color: var(--apinox-descriptionForeground, #8b949e);
   writing-mode: vertical-rl;
   transform: rotate(180deg);
-  margin: 6px 0;
+  margin: 8px 0;
   user-select: none;
 `;
 
@@ -74,7 +74,7 @@ const Tooltip = styled.span`
   padding: 3px 8px;
   background: var(--apinox-tooltip-background);
   color: var(--apinox-tooltip-foreground);
-  font-size: 11px;
+  font-size: var(--apinox-fs-sm);
   border-radius: 4px;
   white-space: nowrap;
   opacity: 0;

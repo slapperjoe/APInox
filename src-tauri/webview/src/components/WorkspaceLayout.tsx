@@ -115,7 +115,6 @@ import {
     MiniButtonIcon,
     EditorSettingsMenu,
     MenuSection,
-    MenuSectionTitle,
     MenuRow,
     MenuLabel,
     MenuControls,
@@ -659,7 +658,7 @@ export const WorkspaceLayout: React.FC = () => {
                                     background: 'var(--apinox-input-background)',
                                     color: 'var(--apinox-input-foreground)',
                                     border: '1px solid var(--apinox-input-border)',
-                                    padding: '6px',
+                                    padding: '8px',
                                     borderRadius: '2px',
                                     fontSize: '13px'
                                 }}

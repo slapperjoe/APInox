@@ -216,7 +216,7 @@ function IgnoreListGrid({ rules, onRemove, onAdd }: {
   }
 
   const modeBadge = (mode: 'host' | 'host+path') => ({
-    fontSize: 10, fontWeight: 'var(--fw-bold)',
+    fontSize: 'var(--apinox-fs-xs)', fontWeight: 'var(--fw-bold)',
     padding: '1px 7px', borderRadius: 8,
     fontFamily: 'monospace',
     ...(mode === 'host'
@@ -249,7 +249,7 @@ function IgnoreListGrid({ rules, onRemove, onAdd }: {
             display: 'grid', gridTemplateColumns: '90px 1fr 36px',
             background: tokens.surface.elevated,
             borderBottom: `1px solid ${tokens.border.default}`,
-            padding: '6px 12px',
+            padding: '8px 12px',
             fontSize: tokens.fontSize.xs, fontWeight: 'var(--fw-semibold)',
             color: tokens.text.muted, letterSpacing: '0.05em', textTransform: 'uppercase',
           }}>
@@ -316,7 +316,7 @@ function IgnoreListGrid({ rules, onRemove, onAdd }: {
           onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }}
           style={{
             flex: 1,
-            padding: '5px 10px',
+            padding: '5px 12px',
             background: tokens.surface.input,
             border: `1px solid ${tokens.border.subtle}`,
             borderRadius: tokens.radius.md,

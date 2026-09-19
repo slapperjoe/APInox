@@ -32,7 +32,7 @@ const DeleteButton = styled(IconButton)<{ confirming?: boolean }>`
 const CustomFieldsSection = styled.div`
     margin-top: 20px;
     border-top: 1px solid var(--apinox-panel-border);
-    padding-top: 15px;
+    padding-top: 16px;
 `;
 
 const CustomFieldRow = styled.div`
@@ -48,12 +48,12 @@ const SecretToggle = styled.button<{ $active: boolean }>`
     border: 1px solid var(--apinox-input-border);
     color: ${props => props.$active ? 'var(--apinox-button-foreground)' : 'var(--apinox-foreground)'};
     padding: 4px 8px;
-    border-radius: 3px;
+    border-radius: 4px;
     cursor: pointer;
     display: flex;
     align-items: center;
     gap: 4px;
-    font-size: 11px;
+    font-size: var(--apinox-fs-sm);
 
     &:hover {
         background: ${props => props.$active ? 'var(--apinox-button-hoverBackground)' : 'var(--apinox-toolbar-hoverBackground)'};
@@ -364,7 +364,7 @@ export const EnvironmentsTab: React.FC<EnvironmentsTabProps> = ({
     return (
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
             <EnvList>
-                <div style={{ padding: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--apinox-panel-border)' }}>
+                <div style={{ padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--apinox-panel-border)' }}>
                     <span style={{ fontSize: '12px', fontWeight: 'var(--fw-semibold)' }}>Profiles</span>
                     <div style={{ display: 'flex', gap: 4 }}>
                         <IconButton onClick={handleExport} title="Export Environments">
@@ -402,7 +402,7 @@ export const EnvironmentsTab: React.FC<EnvironmentsTabProps> = ({
             <EnvDetail>
                 {selectedEnvKey && environments[selectedEnvKey] ? (
                     <>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                             {renameKey === selectedEnvKey ? (
                                 <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                                     <Input
@@ -433,8 +433,8 @@ export const EnvironmentsTab: React.FC<EnvironmentsTabProps> = ({
                                     />
                                 </div>
                             ) : (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <h3 style={{ margin: 0, textTransform: 'uppercase', fontSize: 12 }}>{selectedEnvKey}</h3>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <h3 style={{ margin: 0, textTransform: 'uppercase', fontSize: 'var(--apinox-fs-md)' }}>{selectedEnvKey}</h3>
                                     {onRenameEnv && (
                                         <IconButton
                                             onClick={() => { setRenameKey(selectedEnvKey); setRenameValue(selectedEnvKey); }}
@@ -480,7 +480,7 @@ export const EnvironmentsTab: React.FC<EnvironmentsTabProps> = ({
                         </FormGroup>
                         <FormGroup>
                             <Label>Color</Label>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                 <Input
                                     type="color"
                                     value={environments[selectedEnvKey].color ?? '#58A6FF'}
@@ -495,7 +495,7 @@ export const EnvironmentsTab: React.FC<EnvironmentsTabProps> = ({
                         
                         {/* Custom Fields Section */}
                         <CustomFieldsSection>
-                            <Label style={{ marginBottom: 10 }}>Custom Variables</Label>
+                            <Label style={{ marginBottom: 12 }}>Custom Variables</Label>
                             
                             {Object.entries(customFields[selectedEnvKey] || {}).map(([fieldName, fieldValue]) => {
                                 const env = environments[selectedEnvKey];
@@ -575,12 +575,12 @@ export const EnvironmentsTab: React.FC<EnvironmentsTabProps> = ({
                             </CustomFieldRow>
                         </CustomFieldsSection>
                         
-                        <div style={{ fontSize: 12, color: 'var(--apinox-descriptionForeground)', padding: '10px', background: 'var(--apinox-textBlockQuote-background)', borderLeft: '3px solid var(--apinox-textBlockQuote-border)', marginTop: 15 }}>
+                        <div style={{ fontSize: 'var(--apinox-fs-md)', color: 'var(--apinox-descriptionForeground)', padding: '12px', background: 'var(--apinox-textBlockQuote-background)', borderLeft: '3px solid var(--apinox-textBlockQuote-border)', marginTop: 16 }}>
                             <p style={{ margin: 0 }}>
                                 Use <code>{'{{url}}'}</code> in your requests to reference the Endpoint URL.<br />
                                 Use <code>{'{{env}}'}</code> to reference the Short Code.<br />
                                 Use <code>{'{{fieldName}}'}</code> to reference custom variables.<br />
-                                <Lock size={10} style={{ display: 'inline', marginTop: 4 }} /> <strong>Secrets</strong> are encrypted at rest and never exported.
+                                <Lock size={12} style={{ display: 'inline', marginTop: 4 }} /> <strong>Secrets</strong> are encrypted at rest and never exported.
                             </p>
                         </div>
                     </>

@@ -41,13 +41,13 @@ export const DirtyMarker = styled.span`
 /**
  * SidebarHeader - Top section of sidebar panels
  * Contains title and action buttons
- * Standard padding: 4px 10px (matches SPACING_PATTERNS.sidebarHeader)
+ * Standard padding: 4px 12px (matches SPACING_PATTERNS.sidebarHeader)
  */
 export const SidebarHeader = styled.div`
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 4px 10px;
+    padding: 4px 12px;
     height: 44px;
     border-bottom: 1px solid var(--apinox-sideBarSectionHeader-border);
     user-select: none;
@@ -58,7 +58,7 @@ export const SidebarHeader = styled.div`
  * Uppercase, bold styling matching VS Code sidebar sections
  */
 export const SidebarHeaderTitle = styled.div`
-    font-size: 11px;
+    font-size: var(--apinox-fs-sm);
     font-weight: var(--fw-bold);
     text-transform: uppercase;
     color: var(--apinox-sideBarTitle-foreground);
@@ -66,7 +66,7 @@ export const SidebarHeaderTitle = styled.div`
     flex: 1;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
 `;
 
 /**
@@ -92,13 +92,13 @@ export const SidebarContainer = styled.div`
 
 /**
  * SidebarContent - Scrollable content area of sidebar
- * Standard padding: 10px (matches SPACING_PATTERNS.sidebarContent)
+ * Standard padding: 12px (matches SPACING_PATTERNS.sidebarContent)
  */
 export const SidebarContent = styled.div`
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    padding: 10px;
+    padding: 12px;
 `;
 
 /**

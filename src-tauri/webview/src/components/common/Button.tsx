@@ -37,7 +37,7 @@ const baseButtonStyles = css`
     border: none;
     outline: none;
     font-family: var(--apinox-font-family);
-    font-size: 13px;
+    font-size: var(--apinox-fs-base);
     transition: background-color 0.1s ease, opacity 0.1s ease;
     
     &:disabled {
@@ -56,7 +56,7 @@ export const IconButton = styled.button<{ $shake?: boolean; $danger?: boolean }>
     background: transparent;
     color: ${props => props.$danger ? 'var(--apinox-testing-iconFailed)' : 'var(--apinox-icon-foreground)'};
     padding: 4px;
-    border-radius: 3px;
+    border-radius: 2px;
     
     &:hover:not(:disabled) {
         background-color: ${props => props.$danger 
@@ -85,7 +85,7 @@ export const HeaderButton = styled.button<{ $shake?: boolean }>`
     color: currentColor;
     padding: 2px;
     margin-left: 5px;
-    border-radius: 3px;
+    border-radius: 2px;
     
     &:hover:not(:disabled) {
         background-color: var(--apinox-toolbar-hoverBackground);
@@ -105,7 +105,7 @@ export const PrimaryButton = styled.button`
     background-color: var(--apinox-button-background);
     color: var(--apinox-button-foreground);
     border: 1px solid transparent;
-    padding: 6px 14px;
+    padding: 8px 14px;
     border-radius: 2px;
     font-weight: var(--fw-medium);
     
@@ -127,7 +127,7 @@ export const SecondaryButton = styled.button`
     background-color: var(--apinox-button-secondaryBackground);
     color: var(--apinox-button-secondaryForeground);
     border: 1px solid var(--apinox-button-border, transparent);
-    padding: 6px 14px;
+    padding: 8px 14px;
     border-radius: 2px;
     font-weight: var(--fw-regular);
     
@@ -149,7 +149,7 @@ export const DangerButton = styled.button<{ $shake?: boolean }>`
     background-color: transparent;
     color: var(--apinox-testing-iconFailed);
     border: 1px solid var(--apinox-testing-iconFailed);
-    padding: 6px 14px;
+    padding: 8px 14px;
     border-radius: 2px;
     font-weight: var(--fw-medium);
     
@@ -173,8 +173,8 @@ export const DangerButton = styled.button<{ $shake?: boolean }>`
 export const ToggleButton = styled.button<{ $active: boolean; $activeColor?: string }>`
     ${baseButtonStyles}
     flex: 1;
-    padding: 6px 8px;
-    font-size: 11px;
+    padding: 8px 8px;
+    font-size: var(--apinox-fs-sm);
     border: 1px solid ${props => props.$active
         ? (props.$activeColor || 'var(--apinox-button-background)')
         : 'var(--apinox-input-border)'};
@@ -204,7 +204,7 @@ export const RunButton = styled.button`
     color: var(--apinox-testing-iconPassed);
     border: none;
     padding: 4px;
-    border-radius: 3px;
+    border-radius: 2px;
     
     &:hover:not(:disabled) {
         background-color: var(--apinox-toolbar-hoverBackground);

@@ -56,18 +56,18 @@ const title: React.CSSProperties = {
 
 const label: React.CSSProperties = {
     display: 'block',
-    fontSize: 11, fontWeight: 'var(--fw-semibold)', color: tokens.text.muted,
+    fontSize: 'var(--apinox-fs-sm)', fontWeight: 'var(--fw-semibold)', color: tokens.text.muted,
     textTransform: 'uppercase', letterSpacing: '0.06em',
     marginBottom: 4,
 };
 
 const select: React.CSSProperties = {
-    width: '100%', padding: '6px 8px',
+    width: '100%', padding: '8px 8px',
     background: tokens.surface.input,
     color: tokens.text.primary,
     border: `1px solid ${tokens.border.default}`,
     borderRadius: tokens.radius.md,
-    fontSize: 13, outline: 'none',
+    fontSize: 'var(--apinox-fs-base)', outline: 'none',
 };
 
 const input: React.CSSProperties = {
@@ -86,7 +86,7 @@ function Btn({ label: lbl, onClick, primary, disabled }: { label: string; onClic
             onClick={onClick}
             disabled={disabled}
             style={{
-                padding: '6px 16px', fontSize: 13, fontWeight: 'var(--fw-semibold)',
+                padding: '8px 16px', fontSize: 'var(--apinox-fs-base)', fontWeight: 'var(--fw-semibold)',
                 borderRadius: tokens.radius.md, border: 'none', cursor: disabled ? 'not-allowed' : 'pointer',
                 background: primary ? tokens.status.accentDark : tokens.surface.elevated,
                 color: primary ? 'var(--apinox-button-foreground)' : tokens.text.primary,
@@ -161,7 +161,7 @@ export function AddToProjectDialog({ log, projects, onConfirm, onClose }: AddToP
     }
 
     const tabBase: React.CSSProperties = {
-        flex: 1, padding: '5px 0', fontSize: 12, fontWeight: 'var(--fw-semibold)',
+        flex: 1, padding: '5px 0', fontSize: 'var(--apinox-fs-md)', fontWeight: 'var(--fw-semibold)',
         border: `1px solid ${tokens.border.default}`,
         cursor: 'pointer', transition: 'background 0.15s',
     };
@@ -173,7 +173,7 @@ export function AddToProjectDialog({ log, projects, onConfirm, onClose }: AddToP
 
                 {/* URL summary */}
                 <div style={{
-                    fontSize: 11, color: tokens.text.muted,
+                    fontSize: 'var(--apinox-fs-sm)', color: tokens.text.muted,
                     background: tokens.surface.elevated,
                     padding: '5px 8px', borderRadius: tokens.radius.sm,
                     fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -182,7 +182,7 @@ export function AddToProjectDialog({ log, projects, onConfirm, onClose }: AddToP
                 </div>
 
                 {writableProjects.length === 0 ? (
-                    <div style={{ color: tokens.text.muted, fontSize: 13 }}>
+                    <div style={{ color: tokens.text.muted, fontSize: 'var(--apinox-fs-base)' }}>
                         No writable projects found. Open or create a project first.
                     </div>
                 ) : (
@@ -266,7 +266,7 @@ export function AddToProjectDialog({ log, projects, onConfirm, onClose }: AddToP
                                 <div style={rowStyle}>
                                     <label style={label}>Interface</label>
                                     {interfaces.length === 0 ? (
-                                        <div style={{ fontSize: 12, color: tokens.text.muted }}>
+                                        <div style={{ fontSize: 'var(--apinox-fs-md)', color: tokens.text.muted }}>
                                             No interfaces in this project.
                                         </div>
                                     ) : (
@@ -285,7 +285,7 @@ export function AddToProjectDialog({ log, projects, onConfirm, onClose }: AddToP
                                 <div style={rowStyle}>
                                     <label style={label}>Operation</label>
                                     {interfaces.length > 0 && operations.length === 0 ? (
-                                        <div style={{ fontSize: 12, color: tokens.text.muted }}>
+                                        <div style={{ fontSize: 'var(--apinox-fs-md)', color: tokens.text.muted }}>
                                             No operations in this interface.
                                         </div>
                                     ) : interfaces.length === 0 ? null : (
@@ -326,7 +326,7 @@ export function AddToProjectDialog({ log, projects, onConfirm, onClose }: AddToP
                             />
                             <label
                                 htmlFor="include-all-headers"
-                                style={{ fontSize: 12, color: tokens.text.secondary, cursor: 'pointer', userSelect: 'none' }}
+                                style={{ fontSize: 'var(--apinox-fs-md)', color: tokens.text.secondary, cursor: 'pointer', userSelect: 'none' }}
                             >
                                 Include all request headers
                                 <span style={{ color: tokens.text.muted, marginLeft: 4 }}>(default: Content-Type only)</span>

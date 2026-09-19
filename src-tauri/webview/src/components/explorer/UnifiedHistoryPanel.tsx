@@ -43,11 +43,11 @@ const SectionHeader = styled.div`
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 4px 10px;
+    padding: 4px 12px;
     min-height: 28px;
     user-select: none;
-    margin-left: -10px;
-    margin-right: -10px;
+    margin-left: -12px;
+    margin-right: -12px;
 `;
 
 export const UnifiedHistoryPanel: React.FC<UnifiedHistoryPanelProps> = ({
@@ -92,7 +92,7 @@ export const UnifiedHistoryPanel: React.FC<UnifiedHistoryPanelProps> = ({
                     the project tree out of view (same as ScrapbookPanel). The
                     EmptyState renders fill-centered in this same bounded area
                     when history is empty. */}
-                <div style={{ flex: 1, minHeight: 0, overflow: "auto", display: "flex", padding: "0 10px" }}>
+                <div style={{ flex: 1, minHeight: 0, overflow: "auto", display: "flex", padding: "0 12px" }}>
                     {body}
                 </div>
             </div>

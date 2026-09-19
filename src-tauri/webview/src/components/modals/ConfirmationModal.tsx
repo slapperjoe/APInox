@@ -22,7 +22,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, ti
                 </>
             }
         >
-            <div style={{ padding: '10px 0' }}>
+            <div style={{ padding: '12px 0' }}>
                 {message}
             </div>
         </Modal>

@@ -219,7 +219,7 @@ export const ConditionPickerModal: React.FC<ConditionPickerModalProps> = ({
     >
       <div
         style={{
-          background: tokens.surface.panel, borderRadius: '8px', border: `1px solid ${tokens.border.default}`,
+          background: tokens.surface.panel, borderRadius: '4px', border: `1px solid ${tokens.border.default}`,
           width: '640px', maxWidth: '100%', maxHeight: '85vh',
           display: 'flex', flexDirection: 'column',
           boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
@@ -258,7 +258,7 @@ export const ConditionPickerModal: React.FC<ConditionPickerModalProps> = ({
                 <div style={{
                   fontSize: '10px', fontWeight: 'var(--fw-bold)', color: tokens.text.muted,
                   textTransform: 'uppercase', letterSpacing: '0.08em',
-                  marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px',
+                  marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px',
                 }}>
                   {group}
                   <div style={{ flex: 1, height: '1px', background: tokens.surface.stripe }} />
@@ -272,7 +272,7 @@ export const ConditionPickerModal: React.FC<ConditionPickerModalProps> = ({
                       key={idx}
                       style={{
                         display: 'flex', flexDirection: 'column',
-                        padding: '7px 10px', marginBottom: '4px',
+                        padding: '7px 12px', marginBottom: '4px',
                         borderRadius: '4px', cursor: 'pointer',
                         background: isSelected ? 'rgba(14,99,156,0.15)' : tokens.surface.base,
                         border: `1px solid ${isSelected ? tokens.status.accentDark : tokens.border.default}`,
@@ -280,7 +280,7 @@ export const ConditionPickerModal: React.FC<ConditionPickerModalProps> = ({
                       onClick={() => toggle(idx)}
                     >
                       {/* Top row: checkbox + label + recommended badge */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <input
                           type="checkbox"
                           checked={isSelected}
@@ -297,8 +297,8 @@ export const ConditionPickerModal: React.FC<ConditionPickerModalProps> = ({
                           {sg.label}
                           {sg.recommended && (
                             <span style={{
-                              marginLeft: '6px', fontSize: '9px', background: 'var(--apinox-surface-tag)',
-                              color: 'var(--apinox-text-tag)', padding: '1px 5px', borderRadius: '8px',
+                              marginLeft: '8px', fontSize: '9px', background: 'var(--apinox-surface-tag)',
+                              color: 'var(--apinox-text-tag)', padding: '1px 5px', borderRadius: '4px',
                             }}>recommended</span>
                           )}
                         </div>

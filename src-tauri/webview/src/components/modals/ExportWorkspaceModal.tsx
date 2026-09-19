@@ -15,7 +15,7 @@ const ProjectList = styled.div`
 const ProjectItem = styled.label`
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   padding: 8px;
   border: 1px solid var(--apinox-panel-border);
   border-radius: 4px;
@@ -51,8 +51,8 @@ const ProjectPath = styled.div`
 
 const SelectionControls = styled.div`
   display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 12px;
+  margin-bottom: 12px;
 `;
 
 const LinkButton = styled.button`

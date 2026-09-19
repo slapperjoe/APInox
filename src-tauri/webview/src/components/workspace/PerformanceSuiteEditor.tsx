@@ -26,7 +26,7 @@ const EditorContainer = styled.div`
 const Section = styled.div<{ $collapsed?: boolean }>`
     margin-bottom: ${SPACING_2XL};
     background: var(--apinox-editor-inactiveSelectionBackground);
-    border-radius: 6px;
+    border-radius: 4px;
     padding: 0;
     border: 1px solid var(--apinox-widget-border);
     overflow: hidden;
@@ -107,7 +107,7 @@ const MethodBadge = styled.span`
     font-size: 0.8em;
     font-weight: var(--fw-bold);
     padding: 2px ${SPACING_SM};
-    border-radius: 3px;
+    border-radius: 4px;
     background: var(--apinox-badge-background);
     color: var(--apinox-badge-foreground);
     min-width: 45px;
@@ -124,7 +124,7 @@ const StatsGrid = styled.div`
 
 const StatCard = styled.div<{ $variant?: 'success' | 'warning' | 'error' }>`
     background: var(--apinox-input-background);
-    border-radius: 6px;
+    border-radius: 4px;
     padding: ${SPACING_MD};
     text-align: center;
     border: 1px solid ${props =>
@@ -175,7 +175,7 @@ const ChartContainer = styled.div`
     margin: ${SPACING_LG} 0;
     padding: ${SPACING_MD};
     background: var(--apinox-input-background);
-    border-radius: 6px;
+    border-radius: 4px;
 `;
 
 const ChartBar = styled.div<{ $height: number; $success: boolean }>`
@@ -191,7 +191,7 @@ const ChartBar = styled.div<{ $height: number; $success: boolean }>`
 // Run History Item
 const RunItem = styled.div`
     background: var(--apinox-input-background);
-    border-radius: 6px;
+    border-radius: 4px;
     margin-bottom: ${SPACING_SM};
     border: 1px solid var(--apinox-widget-border);
     overflow: hidden;
@@ -224,7 +224,7 @@ const InfoBanner = styled.div`
     padding: ${SPACING_MD} 14px;
     background: var(--apinox-editor-inactiveSelectionBackground);
     border: 1px solid var(--apinox-widget-border);
-    border-radius: 6px;
+    border-radius: 4px;
     color: var(--apinox-descriptionForeground);
     margin-bottom: ${SPACING_LG};
     font-size: 0.9em;
@@ -242,7 +242,7 @@ const ResultRow = styled.div<{ $success: boolean }>`
     padding: 4px 8px;
     margin: 2px 0;
     background: ${props => props.$success ? 'var(--apinox-diffEditor-insertedTextBackground)' : 'var(--apinox-diffEditor-removedTextBackground)'};
-    border-radius: 3px;
+    border-radius: 4px;
     font-size: 0.85em;
 `;
 
@@ -428,7 +428,7 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
     return (
         <Content>
             <Toolbar>
-                <div style={{ fontWeight: 'var(--fw-bold)', fontSize: '1.1em', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ fontWeight: 'var(--fw-bold)', fontSize: '1.1em', display: 'flex', alignItems: 'center', gap: 12 }}>
                     <Zap size={16} />
                     {suite.name}
                 </div>
@@ -437,7 +437,7 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                 {isRunning ? (
                     <ToolbarButton onClick={onStop} style={{ backgroundColor: 'var(--apinox-errorForeground)', color: 'white' }}>
                         <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} />
-                        <Square size={10} /> Stop
+                        <Square size={12} /> Stop
                     </ToolbarButton>
                 ) : (
                     <>
@@ -471,7 +471,7 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                                 </div>
                                 <div>
                                     <div style={{ fontSize: '0.85em', opacity: 0.7, marginBottom: 4 }}>Last Run</div>
-                                    <div style={{ fontSize: '1.5em', fontWeight: 'var(--fw-bold)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <div style={{ fontSize: '1.5em', fontWeight: 'var(--fw-bold)', display: 'flex', alignItems: 'center', gap: 8 }}>
                                         {sortedHistory[0].status === 'completed' ? (
                                             <CheckCircle size={18} style={{ color: 'var(--apinox-testing-iconPassed)' }} />
                                         ) : (
@@ -623,7 +623,7 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                                     </DragHandle>
                                     <div style={{ fontWeight: 'var(--fw-bold)', width: 25, opacity: 0.6 }}>{index + 1}.</div>
                                     <div style={{ flex: 1 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                             <MethodBadge>{req.method}</MethodBadge>
                                             {renameId === req.id ? (
                                                 <Input
@@ -717,7 +717,7 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                     <SectionContent $collapsed={isCollapsed('scheduling')}>
                         {/* Add New Schedule */}
                         {showScheduleInput && (
-                            <div style={{ display: 'flex', gap: 10, marginBottom: 15 }}>
+                            <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
                                 <Input
                                     type="text"
                                     value={newCron}
@@ -746,7 +746,7 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                         {/* Schedule List */}
                         {schedules.filter(s => s.suiteId === suite.id).map(schedule => (
                             <RequestItem key={schedule.id}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
                                     <button
                                         onClick={() => onToggleSchedule?.(schedule.id, !schedule.enabled)}
                                         style={{
@@ -792,7 +792,7 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                         ))}
 
                         {schedules.filter(s => s.suiteId === suite.id).length === 0 && !showScheduleInput && (
-                            <div style={{ padding: 15, textAlign: 'center', opacity: 0.6, fontStyle: 'italic' }}>
+                            <div style={{ padding: 16, textAlign: 'center', opacity: 0.6, fontStyle: 'italic' }}>
                                 No schedules. Click "Add Schedule" to run this suite automatically.
                             </div>
                         )}
@@ -808,7 +808,7 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
 
                             {/* Coordinator Controls - Only visible when expanded */}
                             {!isCollapsed('workers') && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }} onClick={e => e.stopPropagation()}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }} onClick={e => e.stopPropagation()}>
                                     {!coordinatorStatus.running ? (
                                         <>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -1031,7 +1031,7 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                                 })}
                             </>
                         ) : (
-                            <div style={{ padding: 15, textAlign: 'center', opacity: 0.6, fontStyle: 'italic' }}>
+                            <div style={{ padding: 16, textAlign: 'center', opacity: 0.6, fontStyle: 'italic' }}>
                                 No runs yet. History will appear after the first completed run.
                             </div>
                         )}

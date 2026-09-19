@@ -33,7 +33,7 @@ const RightPanel = styled.div`
 
 const SectionTitle = styled.div`
     padding: 8px 12px;
-    font-size: 11px;
+    font-size: var(--apinox-fs-sm);
     font-weight: var(--fw-semibold);
     text-transform: uppercase;
     color: var(--apinox-descriptionForeground);
@@ -54,9 +54,9 @@ const Section = styled.div<{ $flex?: number }>`
 const InputRow = styled.div`
     display: flex;
     align-items: center;
-    padding: 5px 10px;
-    gap: 10px;
-    font-size: 12px;
+    padding: 5px 12px;
+    gap: 12px;
+    font-size: var(--apinox-fs-md);
     
     label { min-width: 80px; }
     input {
@@ -82,9 +82,9 @@ const OutputConsole = styled.div`
     flex: 1;
     background: var(--apinox-terminal-background, #1e1e1e);
     color: var(--apinox-terminal-foreground, #cccccc);
-    padding: 10px;
+    padding: 12px;
     font-family: monospace;
-    font-size: 12px;
+    font-size: var(--apinox-fs-md);
     overflow-y: auto;
     white-space: pre-wrap;
 `;
@@ -102,8 +102,8 @@ const MiniButton = styled.button`
     background: transparent;
     border: 1px solid var(--apinox-panel-border);
     color: var(--apinox-descriptionForeground);
-    font-size: 10px;
-    padding: 2px 6px;
+    font-size: var(--apinox-fs-xs);
+    padding: 2px 8px;
     border-radius: 2px;
     cursor: pointer;
     &:hover {
@@ -129,7 +129,7 @@ const HelpOverlay = styled.div`
     h3 { margin-top: 0; border-bottom: 1px solid var(--apinox-panel-border); padding-bottom: ${SPACING_SM}; }
     ul { padding-left: ${SPACING_LG}; }
     li { margin-bottom: ${SPACING_XS}; }
-    code { background: var(--apinox-textCodeBlock-background); padding: 2px 4px; border-radius: 3px; font-family: monospace; }
+    code { background: var(--apinox-textCodeBlock-background); padding: 2px 4px; border-radius: 4px; font-family: monospace; }
 `;
 
 interface ScriptPlaygroundModalProps {
@@ -353,7 +353,7 @@ export const ScriptPlaygroundModal: React.FC<ScriptPlaygroundModalProps> = ({ on
             <Content>
                     {showHelp && (
                         <HelpOverlay>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                                 <h3 style={{ margin: 0, border: 'none' }}>Script Reference</h3>
                                 <button
                                     onClick={() => setShowHelp(false)}
@@ -470,7 +470,7 @@ export const ScriptPlaygroundModal: React.FC<ScriptPlaygroundModalProps> = ({ on
                                 {result && (
                                     <div style={{
                                         color: result.status === 'PASS' ? tokens.status.success : tokens.status.error,
-                                        marginBottom: '10px',
+                                        marginBottom: '12px',
                                         fontWeight: 'var(--fw-bold)'
                                     }}>
                                         [{result.status}] {result.message}

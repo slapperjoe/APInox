@@ -51,17 +51,17 @@ const DetailHeader = styled.div`
 `;
 
 const MethodBadge = styled.span`
-  font-size: 11px;
+  font-size: var(--apinox-fs-sm);
   font-weight: var(--fw-bold);
   padding: 2px 7px;
-  border-radius: 3px;
+  border-radius: 4px;
   font-family: monospace;
   flex-shrink: 0;
 `;
 
 const UrlText = styled.div`
   flex: 1;
-  font-size: 12px;
+  font-size: var(--apinox-fs-md);
   color: ${tokens.text.primary};
   white-space: nowrap;
   overflow: hidden;
@@ -71,15 +71,15 @@ const UrlText = styled.div`
 `;
 
 const StatusChip = styled.span`
-  font-size: 11px;
+  font-size: var(--apinox-fs-sm);
   font-weight: var(--fw-semibold);
   padding: 2px 8px;
-  border-radius: 10px;
+  border-radius: 50%;
   flex-shrink: 0;
 `;
 
 const DurationText = styled.span`
-  font-size: 11px;
+  font-size: var(--apinox-fs-sm);
   color: ${tokens.text.muted};
   flex-shrink: 0;
   white-space: nowrap;
@@ -88,10 +88,10 @@ const DurationText = styled.span`
 const ViewTab = styled.button<{ $active: boolean }>`
   padding: 2px 9px;
   border: 1px solid ${p => p.$active ? tokens.status.accentDark : tokens.border.subtle};
-  border-radius: 3px;
+  border-radius: 4px;
   background: ${p => p.$active ? tokens.status.accentDark : 'transparent'};
   color: ${p => p.$active ? 'white' : tokens.text.secondary};
-  font-size: 11px;
+  font-size: var(--apinox-fs-sm);
   cursor: pointer;
   flex-shrink: 0;
   line-height: 1.6;
@@ -107,7 +107,7 @@ const DetailBody = styled.div`
 
 const PaneLabel = styled.div`
   padding: 5px 14px;
-  font-size: 12px;
+  font-size: var(--apinox-fs-md);
   font-weight: var(--fw-semibold);
   color: ${tokens.text.secondary};
   background: ${tokens.surface.panel};
@@ -117,7 +117,7 @@ const PaneLabel = styled.div`
 
 const PaneMeta = styled.div`
   padding: 2px 14px;
-  font-size: 10px;
+  font-size: var(--apinox-fs-xs);
   color: ${tokens.text.hint};
   background: ${tokens.surface.panel};
   border-bottom: 1px solid ${tokens.border.default};

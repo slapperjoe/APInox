@@ -5,6 +5,7 @@
  * overlays + panel divs.
  */
 import React, { ReactNode } from "react";
+import { SPACING_XL } from "../../styles/spacing";
 import styled from "styled-components";
 import { tokens } from "./tokens";
 
@@ -75,7 +76,7 @@ export const ProxyModal: React.FC<ProxyModalProps> = ({
   children,
   dim = 0.8,
   zIndex = 1000,
-  padding = tokens.space["6"],
+  padding = SPACING_XL,
   width,
   maxWidth,
   maxHeight,

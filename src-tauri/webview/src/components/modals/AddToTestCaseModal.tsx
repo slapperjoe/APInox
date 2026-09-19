@@ -110,7 +110,7 @@ export const AddToTestCaseModal: React.FC<AddToTestCaseModalProps> = ({ projects
                                         $active={selectedId === tc.id}
                                         onClick={() => handleSelect(tc.id, 'case')}
                                     >
-                                        <Play size={10} />
+                                        <Play size={12} />
                                         {tc.name}
                                     </Item>
                                 ))}

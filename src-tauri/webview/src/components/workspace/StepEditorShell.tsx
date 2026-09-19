@@ -51,7 +51,7 @@ export const StepFlexSection = styled(StepSection)`
 `;
 
 export const StepLabel = styled.label`
-  font-size: 12px;
+  font-size: var(--apinox-fs-md);
   font-weight: var(--fw-semibold);
   opacity: 0.8;
   display: block;
@@ -61,9 +61,9 @@ export const StepInput = styled.input`
   background: var(--apinox-input-background);
   color: var(--apinox-input-foreground);
   border: 1px solid var(--apinox-input-border);
-  padding: 6px 8px;
+  padding: 8px 8px;
   border-radius: 4px;
-  font-size: 13px;
+  font-size: var(--apinox-fs-base);
   font-family: var(--apinox-font-family);
   width: 100%;
 
@@ -77,7 +77,7 @@ export const StepInfoBox = styled.div<{ $inline?: boolean }>`
   background: var(--apinox-textCodeBlock-background);
   border: 1px solid var(--apinox-panel-border);
   border-radius: 4px;
-  font-size: 11px;
+  font-size: var(--apinox-fs-sm);
   opacity: 0.8;
   line-height: 1.4;
   ${(p) =>
@@ -98,7 +98,7 @@ export const StepInfoBox = styled.div<{ $inline?: boolean }>`
 /** Plain (borderless) hint text under an input. */
 export const StepHint = styled.div`
   margin-top: 4px;
-  font-size: 11px;
+  font-size: var(--apinox-fs-sm);
   color: var(--apinox-descriptionForeground);
 `;
 

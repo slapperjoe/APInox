@@ -84,7 +84,7 @@ const SectionHeader = styled.div`
   padding: 8px 14px;
   background: ${tokens.surface.elevated};
   border-bottom: 1px solid ${tokens.border.default};
-  font-size: 10px;
+  font-size: var(--apinox-fs-xs);
   font-weight: var(--fw-semibold);
   color: ${tokens.text.muted};
   text-transform: uppercase;
@@ -94,7 +94,7 @@ const SectionHeader = styled.div`
 const MenuItem = styled.div<{ $danger?: boolean; $hover: boolean }>`
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   padding: 8px 14px;
   cursor: pointer;
   background: ${p => p.$hover ? (p.$danger ? 'rgba(156,14,14,0.18)' : tokens.surface.stripe) : 'transparent'};
@@ -113,13 +113,13 @@ const LabelWrapper = styled.div`
 `;
 
 const Label = styled.div<{ $danger?: boolean }>`
-  font-size: 12px;
+  font-size: var(--apinox-fs-md);
   font-weight: var(--fw-semibold);
   color: ${p => p.$danger ? tokens.text.danger : tokens.text.primary};
 `;
 
 const SubLabel = styled.div`
-  font-size: 10px;
+  font-size: var(--apinox-fs-xs);
   color: ${tokens.text.hint};
   font-family: monospace;
   white-space: nowrap;
@@ -138,7 +138,7 @@ const Toast = styled.div`
   padding: 8px 20px;
   border-radius: ${tokens.radius.lg};
   box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-  font-size: 13px;
+  font-size: var(--apinox-fs-base);
   font-weight: var(--fw-semibold);
   z-index: 100000;
   animation: ctxFadeIn 0.2s ease;
@@ -379,7 +379,7 @@ export function SidebarContextMenu({ x, y, sections, onClose, onCopy }: SidebarC
 
       {copied && (
         <Toast>
-          <Check size={13} style={{ marginRight: 6 }} />
+          <Check size={14} style={{ marginRight: 8 }} />
           Copied!
         </Toast>
       )}

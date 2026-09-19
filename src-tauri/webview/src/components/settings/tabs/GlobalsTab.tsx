@@ -70,7 +70,7 @@ export const GlobalsTab: React.FC<GlobalsTabProps> = ({
     return (
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
             <EnvList>
-                <div style={{ padding: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--apinox-panel-border)' }}>
+                <div style={{ padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--apinox-panel-border)' }}>
                     <span style={{ fontSize: '12px', fontWeight: 'var(--fw-semibold)' }}>Globals</span>
                     <IconButton onClick={onAddGlobal} title="Add Variable">
                         <Plus size={14} />
@@ -92,8 +92,8 @@ export const GlobalsTab: React.FC<GlobalsTabProps> = ({
             <EnvDetail>
                 {selectedGlobalKey !== null && globals[selectedGlobalKey] !== undefined ? (
                     <>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                            <h3 style={{ margin: 0, textTransform: 'uppercase', fontSize: 12 }}>Variable</h3>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                            <h3 style={{ margin: 0, textTransform: 'uppercase', fontSize: 'var(--apinox-fs-md)' }}>Variable</h3>
                             <DeleteButton
                                 onClick={handleDeleteClick}
                                 confirming={confirmDelete}
@@ -118,7 +118,7 @@ export const GlobalsTab: React.FC<GlobalsTabProps> = ({
                                 onChange={e => onGlobalValueChange(selectedGlobalKey, e.target.value)}
                             />
                         </FormGroup>
-                        <div style={{ fontSize: 12, color: 'var(--apinox-descriptionForeground)', padding: '10px', background: 'var(--apinox-textBlockQuote-background)', borderLeft: '3px solid var(--apinox-textBlockQuote-border)' }}>
+                        <div style={{ fontSize: 'var(--apinox-fs-md)', color: 'var(--apinox-descriptionForeground)', padding: '12px', background: 'var(--apinox-textBlockQuote-background)', borderLeft: '3px solid var(--apinox-textBlockQuote-border)' }}>
                             <p style={{ margin: 0 }}>
                                 Use <code>{'{{' + selectedGlobalKey + '}}'}</code> in your requests to insert this value.
                             </p>
@@ -131,12 +131,12 @@ export const GlobalsTab: React.FC<GlobalsTabProps> = ({
                 )}
 
                 {/* Predefined Variables Reference Panel */}
-                <div style={{ marginTop: 20, borderTop: '1px solid var(--apinox-panel-border)', paddingTop: 15 }}>
-                    <h4 style={{ margin: '0 0 10px 0', fontSize: 11, textTransform: 'uppercase', color: 'var(--apinox-sideBarTitle-foreground)' }}>
+                <div style={{ marginTop: 20, borderTop: '1px solid var(--apinox-panel-border)', paddingTop: 16 }}>
+                    <h4 style={{ margin: '0 0 12px 0', fontSize: 'var(--apinox-fs-sm)', textTransform: 'uppercase', color: 'var(--apinox-sideBarTitle-foreground)' }}>
                         Predefined Variables
                     </h4>
-                    <div style={{ fontSize: 11, color: 'var(--apinox-descriptionForeground)', lineHeight: 1.6 }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 15px' }}>
+                    <div style={{ fontSize: 'var(--apinox-fs-sm)', color: 'var(--apinox-descriptionForeground)', lineHeight: 1.6 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px' }}>
                             <code>{'{{uuid}}'}</code><span>Random UUID</span>
                             <code>{'{{now}}'}</code><span>ISO timestamp</span>
                             <code>{'{{epoch}}'}</code><span>Unix timestamp (seconds)</span>
@@ -146,7 +146,7 @@ export const GlobalsTab: React.FC<GlobalsTabProps> = ({
                             <code>{'{{country}}'}</code><span>Random country</span>
                             <code>{'{{now+1d}}'}</code><span>Date math (+/- d/m/y)</span>
                         </div>
-                        <div style={{ marginTop: 10, opacity: 0.8, fontStyle: 'italic' }}>
+                        <div style={{ marginTop: 12, opacity: 0.8, fontStyle: 'italic' }}>
                             Use these in request bodies or endpoints.
                         </div>
                     </div>

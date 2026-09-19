@@ -12,7 +12,7 @@ const Wrapper = styled.div`
   background: var(--apinox-editor-background, #1e1e1e);
   color: var(--apinox-foreground, #cccccc);
   font-family: var(--apinox-editor-font-family);
-  font-size: 12px;
+  font-size: var(--apinox-fs-md);
 `;
 
 const ScrollArea = styled.div`
@@ -84,7 +84,7 @@ const StatusBar = styled.div`
   align-items: center;
   gap: 16px;
   padding: 3px 12px;
-  font-size: 11px;
+  font-size: var(--apinox-fs-sm);
   flex-shrink: 0;
   border-top: 1px solid rgba(128, 128, 128, 0.2);
   background: var(--apinox-statusBar-background, #007acc);
@@ -92,10 +92,10 @@ const StatusBar = styled.div`
 `;
 
 const ReadOnlyBadge = styled.span`
-  padding: 1px 6px;
+  padding: 1px 8px;
   background: rgba(255, 255, 255, 0.18);
-  border-radius: 3px;
-  font-size: 10px;
+  border-radius: 4px;
+  font-size: var(--apinox-fs-xs);
   font-weight: var(--fw-semibold);
 `;
 

@@ -343,7 +343,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
                         <button
                             onClick={regenerateCertificate}
                             style={{
-                                padding: '6px 16px',
+                                padding: '8px 16px',
                                 background: 'var(--apinox-button-background)',
                                 color: 'var(--apinox-button-foreground)',
                                 border: '1px solid var(--apinox-button-border)',
@@ -356,7 +356,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
                         <button
                             onClick={() => setShowRegenerateConfirm(false)}
                             style={{
-                                padding: '6px 16px',
+                                padding: '8px 16px',
                                 background: 'var(--apinox-button-secondaryBackground)',
                                 color: 'var(--apinox-button-secondaryForeground)',
                                 border: '1px solid var(--apinox-button-border)',
@@ -394,7 +394,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
                         <button
                             onClick={resetCertificates}
                             style={{
-                                padding: '6px 16px',
+                                padding: '8px 16px',
                                 background: 'var(--apinox-inputValidation-errorBackground)',
                                 color: 'var(--apinox-button-foreground)',
                                 border: '1px solid var(--apinox-inputValidation-errorBorder)',
@@ -407,7 +407,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
                         <button
                             onClick={() => setShowResetConfirm(false)}
                             style={{
-                                padding: '6px 16px',
+                                padding: '8px 16px',
                                 background: 'var(--apinox-button-secondaryBackground)',
                                 color: 'var(--apinox-button-secondaryForeground)',
                                 border: '1px solid var(--apinox-button-border)',
@@ -445,7 +445,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
                         onClick={runCertificateDiagnostics}
                         disabled={isRunning && activeTest === 'certificate'}
                         style={{
-                            padding: '6px 12px',
+                            padding: '8px 12px',
                             fontSize: '0.85em',
                             background: 'var(--apinox-button-background)',
                             color: 'var(--apinox-button-foreground)',
@@ -454,7 +454,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
                             borderRadius: '2px',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '6px',
+                            gap: '8px',
                             opacity: isRunning ? 0.5 : 1
                         }}
                     >
@@ -476,8 +476,8 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
                                 style={{
                                     display: 'flex',
                                     alignItems: 'flex-start',
-                                    gap: '10px',
-                                    padding: '10px',
+                                    gap: '12px',
+                                    padding: '12px',
                                     background: 'var(--apinox-editor-inactiveSelectionBackground)',
                                     borderRadius: '4px',
                                     fontSize: '0.9em'
@@ -587,7 +587,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
                         onClick={runProxyDiagnostics}
                         disabled={isRunning && activeTest === 'proxy'}
                         style={{
-                            padding: '6px 12px',
+                            padding: '8px 12px',
                             fontSize: '0.85em',
                             background: 'var(--apinox-button-background)',
                             color: 'var(--apinox-button-foreground)',
@@ -596,7 +596,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
                             borderRadius: '2px',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '6px',
+                            gap: '8px',
                             opacity: isRunning ? 0.5 : 1
                         }}
                     >
@@ -613,8 +613,8 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
                                 style={{
                                     display: 'flex',
                                     alignItems: 'flex-start',
-                                    gap: '10px',
-                                    padding: '10px',
+                                    gap: '12px',
+                                    padding: '12px',
                                     background: 'var(--apinox-editor-inactiveSelectionBackground)',
                                     borderRadius: '4px',
                                     fontSize: '0.9em'
