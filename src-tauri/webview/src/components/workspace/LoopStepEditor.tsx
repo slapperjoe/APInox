@@ -101,7 +101,7 @@ const StepDetails = styled.div`
 
 const StepName = styled.div`
   font-size: 13px;
-  font-weight: 500;
+  font-weight: var(--fw-medium);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

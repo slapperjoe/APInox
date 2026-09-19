@@ -24,7 +24,7 @@ const ProjectSection = styled.div`
 
 const ProjectName = styled.div`
     padding: ${SPACING_XS};
-    font-weight: bold;
+    font-weight: var(--fw-bold);
 `;
 
 const Item = styled.div<{ $active?: boolean; $depth: number }>`

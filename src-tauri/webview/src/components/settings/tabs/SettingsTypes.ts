@@ -31,7 +31,7 @@ export const FormGroup = styled.div`
 export const Label = styled.label`
   display: block;
   margin-bottom: 6px;
-  font-weight: 500;
+  font-weight: var(--fw-medium);
   font-size: 12px;
 `;
 

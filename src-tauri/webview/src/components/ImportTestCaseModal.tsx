@@ -54,7 +54,7 @@ const Item = styled.div`
 `;
 
 const ItemTitle = styled.div`
-    font-weight: bold;
+    font-weight: var(--fw-bold);
 `;
 
 const ItemMeta = styled.div`

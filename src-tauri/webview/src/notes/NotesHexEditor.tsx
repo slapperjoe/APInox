@@ -32,7 +32,7 @@ const Table = styled.table`
     top: 0;
     background: var(--apinox-editor-background, #1e1e1e);
     color: rgba(204, 204, 204, 0.4);
-    font-weight: 400;
+    font-weight: var(--fw-regular);
     padding: 2px 4px;
     text-align: center;
     border-bottom: 1px solid rgba(128, 128, 128, 0.2);
@@ -96,7 +96,7 @@ const ReadOnlyBadge = styled.span`
   background: rgba(255, 255, 255, 0.18);
   border-radius: 3px;
   font-size: 10px;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
 `;
 
 // ─────────────────────────────────────────────────────────────────────────────

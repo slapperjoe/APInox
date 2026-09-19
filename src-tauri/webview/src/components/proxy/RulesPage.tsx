@@ -189,7 +189,7 @@ export const RulesPage = forwardRef<RulesPageHandle, {
                     style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                   />
                   <div>
-                    <div style={{ fontWeight: 500, fontSize: '14px' }}>{rule.name}</div>
+                    <div style={{ fontWeight: 'var(--fw-medium)', fontSize: '14px' }}>{rule.name}</div>
                     <div style={{ fontSize: '12px', color: tokens.text.muted, marginTop: '4px' }}>
                       Target: {rule.target}
                       {rule.isRegex && ' • Regex'}

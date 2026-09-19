@@ -18,7 +18,7 @@ export const Content = styled.div`
 `;
 
 export const DelayTitle = styled.span`
-    font-weight: bold;
+    font-weight: var(--fw-bold);
     margin-left: 10px;
 `;
 
@@ -93,7 +93,7 @@ export const VariablesDropdown = styled.div`
 export const VariablesDropdownHeader = styled.div`
     padding: 8px;
     border-bottom: 1px solid var(--apinox-dropdown-border);
-    font-weight: bold;
+    font-weight: var(--fw-bold);
     font-size: 0.9em;
 `;
 
@@ -117,7 +117,7 @@ export const VariablesDropdownItem = styled.div`
 `;
 
 export const VariablesDropdownName = styled.div`
-    font-weight: bold;
+    font-weight: var(--fw-bold);
     color: var(--apinox-textLink-foreground);
 `;
 
@@ -154,7 +154,7 @@ export const BreadcrumbBar = styled.div`
 `;
 
 export const BreadcrumbActive = styled.span`
-    font-weight: bold;
+    font-weight: var(--fw-bold);
     color: var(--apinox-foreground);
 `;
 
@@ -243,7 +243,7 @@ export const HeadersRow = styled.div`
 `;
 
 export const HeadersKey = styled.div`
-    font-weight: bold;
+    font-weight: var(--fw-bold);
     min-width: 150px;
     color: var(--apinox-textLink-foreground);
 `;
@@ -290,7 +290,7 @@ export const ResponseHeader = styled.div`
     padding: 5px 10px;
     background-color: var(--apinox-editor-background);
     border-bottom: 1px solid var(--apinox-panel-border);
-    font-weight: bold;
+    font-weight: var(--fw-bold);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -342,7 +342,7 @@ export const Toolbar = styled.div`
 `;
 
 export const InfoBarMethod = styled.span`
-    font-weight: 600;
+    font-weight: var(--fw-semibold);
     color: var(--apinox-badge-foreground);
     background: var(--apinox-badge-background);
     padding: 2px 6px;
@@ -383,7 +383,7 @@ export const ToolbarButton = styled.button`
     /* Enforce uppercase labels */
     text-transform: uppercase;
     font-size: 11px;
-    font-weight: 600;
+    font-weight: var(--fw-semibold);
 `;
 
 export const CancelButton = styled(ToolbarButton)`
@@ -511,7 +511,7 @@ export const StatLabel = styled.div`
 
 export const StatValue = styled.span`
     font-size: 2em;
-    font-weight: bold;
+    font-weight: var(--fw-bold);
 `;
 
 export const InterfacesHeading = styled.h2`
@@ -550,7 +550,7 @@ export const InterfaceInfo = styled.div`
 `;
 
 export const InterfaceName = styled.span`
-    font-weight: bold;
+    font-weight: var(--fw-bold);
     font-size: 1.1em;
 `;
 
@@ -581,7 +581,7 @@ export const MenuSection = styled.div`
 
 export const MenuSectionTitle = styled.div`
     font-size: 11px;
-    font-weight: 600;
+    font-weight: var(--fw-semibold);
     color: var(--apinox-descriptionForeground);
     text-transform: uppercase;
     margin-bottom: 8px;

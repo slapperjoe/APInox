@@ -60,7 +60,7 @@ export const EnvironmentSelector: React.FC<EnvironmentSelectorProps> = ({
             >
                 <div style={{
                     fontSize: 9,
-                    fontWeight: 600,
+                    fontWeight: 'var(--fw-semibold)',
                     color: getEnvColor(activeEnvironment, environments),
                     textAlign: 'center',
                     textTransform: 'uppercase',
@@ -106,7 +106,7 @@ export const EnvironmentSelector: React.FC<EnvironmentSelectorProps> = ({
                         <div style={{
                             padding: '4px 8px',
                             fontSize: 10,
-                            fontWeight: 'bold',
+                            fontWeight: 'var(--fw-bold)',
                             borderBottom: '1px solid var(--apinox-menu-separatorBackground)',
                             marginBottom: 4,
                             color: 'var(--apinox-menu-foreground)',

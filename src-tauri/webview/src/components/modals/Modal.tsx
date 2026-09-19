@@ -70,7 +70,7 @@ const ModalHeader = styled.div`
 `;
 
 const ModalTitle = styled.div`
-    font-weight: bold;
+    font-weight: var(--fw-bold);
     flex: 1;
 `;
 

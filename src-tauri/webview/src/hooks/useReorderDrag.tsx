@@ -129,6 +129,6 @@ export const ReorderGapRow: React.FC<{
     onDragOver={onDragOver}
     onDrop={onDrop}
   >
-    <div style={{ flex: 1, height: 2, background: "var(--apinox-tab-active-border, #4a9eff)", borderRadius: 1 }} />
+    <div style={{ flex: 1, height: 2, background: "var(--apinox-focusBorder)", borderRadius: 1 }} />
   </div>
 );

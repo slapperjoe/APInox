@@ -36,7 +36,7 @@ export const StepIcon = styled.div<{ $color: string }>`
 export const StepTitle = styled.h2`
   margin: 0;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
 `;
 
 export const StepSection = styled.div`
@@ -52,7 +52,7 @@ export const StepFlexSection = styled(StepSection)`
 
 export const StepLabel = styled.label`
   font-size: 12px;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   opacity: 0.8;
   display: block;
 `;
@@ -88,7 +88,7 @@ export const StepInfoBox = styled.div<{ $inline?: boolean }>`
       : ""}
 
   code {
-    background: var(--apinox-textPreformat-background);
+    background: var(--apinox-textCodeBlock-background);
     padding: 2px 4px;
     border-radius: 2px;
     font-family: "Consolas", "Courier New", monospace;

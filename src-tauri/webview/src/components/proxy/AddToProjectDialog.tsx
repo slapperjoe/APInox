@@ -50,13 +50,13 @@ const card: React.CSSProperties = {
 };
 
 const title: React.CSSProperties = {
-    margin: 0, fontSize: 15, fontWeight: 700,
+    margin: 0, fontSize: 15, fontWeight: 'var(--fw-bold)',
     color: tokens.text.primary,
 };
 
 const label: React.CSSProperties = {
     display: 'block',
-    fontSize: 11, fontWeight: 600, color: tokens.text.muted,
+    fontSize: 11, fontWeight: 'var(--fw-semibold)', color: tokens.text.muted,
     textTransform: 'uppercase', letterSpacing: '0.06em',
     marginBottom: 4,
 };
@@ -86,7 +86,7 @@ function Btn({ label: lbl, onClick, primary, disabled }: { label: string; onClic
             onClick={onClick}
             disabled={disabled}
             style={{
-                padding: '6px 16px', fontSize: 13, fontWeight: 600,
+                padding: '6px 16px', fontSize: 13, fontWeight: 'var(--fw-semibold)',
                 borderRadius: tokens.radius.md, border: 'none', cursor: disabled ? 'not-allowed' : 'pointer',
                 background: primary ? tokens.status.accentDark : tokens.surface.elevated,
                 color: primary ? '#fff' : tokens.text.primary,
@@ -161,7 +161,7 @@ export function AddToProjectDialog({ log, projects, onConfirm, onClose }: AddToP
     }
 
     const tabBase: React.CSSProperties = {
-        flex: 1, padding: '5px 0', fontSize: 12, fontWeight: 600,
+        flex: 1, padding: '5px 0', fontSize: 12, fontWeight: 'var(--fw-semibold)',
         border: `1px solid ${tokens.border.default}`,
         cursor: 'pointer', transition: 'background 0.15s',
     };

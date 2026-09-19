@@ -53,7 +53,7 @@ const WorkerInfo = styled.div`
 `;
 
 const WorkerName = styled.div`
-    font-weight: 500;
+    font-weight: var(--fw-medium);
     font-size: 0.95em;
 `;
 
@@ -69,7 +69,7 @@ const StatusBadge = styled.span<{ status: string }>`
     padding: ${SPACING_XS} ${SPACING_SM};
     border-radius: 10px;
     font-size: 0.75em;
-    font-weight: 500;
+    font-weight: var(--fw-medium);
     text-transform: uppercase;
     background: ${props => getStatusColor(props.status)};
     color: white;

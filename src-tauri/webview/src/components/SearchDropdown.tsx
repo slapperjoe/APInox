@@ -65,7 +65,7 @@ const ResultsList = styled.div`
 const GroupHeader = styled.div`
     padding: 8px 14px 4px 14px;
     font-size: 10px;
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     text-transform: uppercase;
     letter-spacing: 0.8px;
     color: var(--vscode-descriptionForeground);
@@ -139,7 +139,7 @@ const ResultContent = styled.div`
 
 const ResultName = styled.div`
     font-size: 13px;
-    font-weight: 500;
+    font-weight: var(--fw-medium);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

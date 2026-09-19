@@ -23,10 +23,10 @@ import { hybridPlugin, baseDirFacet } from "./hybridPlugin";
 // Minimal light theme — relies on APInox CSS vars for background/foreground
 const lightTheme = EditorView.theme(
   {
-    "&": { background: "var(--apinox-editor-background, #fff)", color: "var(--apinox-editor-foreground, #333)" },
-    ".cm-gutters": { background: "var(--apinox-editorGutter-background, #f5f5f5)", color: "var(--apinox-editorLineNumber-foreground, #999)", borderRight: "1px solid var(--apinox-editorGutter-border, #e0e0e0)" },
-    ".cm-activeLine": { background: "var(--apinox-editor-lineHighlightBackground, rgba(0,0,0,0.04))" },
-    ".cm-cursor": { borderLeftColor: "var(--apinox-editor-foreground, #333)" },
+    "&": { background: "var(--apinox-editor-background, #fff)", color: "var(--apinox-editor-foreground)" },
+    ".cm-gutters": { background: "var(--apinox-panel-background)", color: "var(--apinox-editorLineNumber-foreground)", borderRight: "1px solid var(--apinox-panel-border)" },
+    ".cm-activeLine": { background: "var(--apinox-editor-lineHighlightBackground)" },
+    ".cm-cursor": { borderLeftColor: "var(--apinox-editor-foreground)" },
     ".cm-selectionBackground, ::selection": { background: "var(--apinox-editor-selectionBackground, #b3d4fd) !important" },
   },
   { dark: false }

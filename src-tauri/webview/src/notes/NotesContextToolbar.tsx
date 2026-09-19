@@ -32,7 +32,7 @@ const Toolbar = styled.div`
 
 const SectionLabel = styled.div`
   font-size: 9px;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--apinox-descriptionForeground, rgba(204,204,204,0.5));
@@ -72,8 +72,8 @@ const Tooltip = styled.span`
   top: 50%;
   transform: translateY(-50%);
   padding: 3px 8px;
-  background: var(--apinox-tooltip-background, #333);
-  color: var(--apinox-tooltip-foreground, #fff);
+  background: var(--apinox-tooltip-background);
+  color: var(--apinox-tooltip-foreground);
   font-size: 11px;
   border-radius: 4px;
   white-space: nowrap;

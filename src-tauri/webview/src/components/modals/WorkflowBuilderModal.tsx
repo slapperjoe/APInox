@@ -40,7 +40,7 @@ const Section = styled.div`
 `;
 
 const SectionTitle = styled.div`
-    font-weight: bold;
+    font-weight: var(--fw-bold);
     font-size: 12px;
     opacity: 0.8;
     text-transform: uppercase;
@@ -94,7 +94,7 @@ const DragHandle = styled.div`
 `;
 
 const StepNumber = styled.div`
-    font-weight: bold;
+    font-weight: var(--fw-bold);
     font-size: 12px;
     opacity: 0.6;
     min-width: 24px;
@@ -109,7 +109,7 @@ const StepDetails = styled.div`
 
 const StepName = styled.div`
     font-size: 13px;
-    font-weight: 500;
+    font-weight: var(--fw-medium);
 `;
 
 const StepType = styled.div`

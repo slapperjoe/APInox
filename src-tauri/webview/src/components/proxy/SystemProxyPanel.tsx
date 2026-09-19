@@ -218,7 +218,7 @@ function primaryButtonStyle(disabled: boolean): React.CSSProperties {
     borderRadius: tokens.radius.md,
     color: tokens.text.white,
     fontSize: tokens.fontSize.base,
-    fontWeight: 500,
+    fontWeight: 'var(--fw-medium)',
     cursor: disabled ? 'not-allowed' : 'pointer',
     opacity: disabled ? 0.6 : 1,
   };
@@ -232,7 +232,7 @@ function dangerButtonStyle(disabled: boolean): React.CSSProperties {
     borderRadius: tokens.radius.md,
     color: tokens.text.white,
     fontSize: tokens.fontSize.base,
-    fontWeight: 500,
+    fontWeight: 'var(--fw-medium)',
     cursor: disabled ? 'not-allowed' : 'pointer',
     opacity: disabled ? 0.6 : 1,
   };

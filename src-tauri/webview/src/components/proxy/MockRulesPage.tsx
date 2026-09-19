@@ -143,7 +143,7 @@ function RuleRow({
 
       {/* Status code */}
       <span style={{
-        fontSize: tokens.fontSize.xs, fontWeight: 600, color: statusColor(rule.statusCode),
+        fontSize: tokens.fontSize.xs, fontWeight: 'var(--fw-semibold)', color: statusColor(rule.statusCode),
         background: tokens.surface.deep, padding: `2px ${tokens.space['3']}`, borderRadius: '10px',
         minWidth: '36px', textAlign: 'center', flexShrink: 0,
       }}>{rule.statusCode}</span>
@@ -242,7 +242,7 @@ function ExportModal({ rules, onClose }: { rules: MockRule[]; onClose: () => voi
 
   return (
     <ProxyModal zIndex={2000} width="520px" maxHeight="85vh" columnGap={tokens.space['5']}>
-        <h3 style={{ margin: 0, fontSize: tokens.fontSize.lg, fontWeight: 500 }}>Export Mock Collection</h3>
+        <h3 style={{ margin: 0, fontSize: tokens.fontSize.lg, fontWeight: 'var(--fw-medium)' }}>Export Mock Collection</h3>
 
         <div>
           <label style={{ display: 'block', fontSize: tokens.fontSize.sm, color: tokens.text.muted, marginBottom: '5px' }}>
@@ -744,7 +744,7 @@ export const MockRulesPage = forwardRef<MockRulesPageHandle, {
       {/* ── Duplicate conflict modal ── */}
       {duplicateConflict && (
         <ProxyModal dim={0.85} zIndex={2100} width="460px" bordered shadow>
-            <div style={{ fontSize: '15px', fontWeight: 600, color: tokens.text.secondary, marginBottom: '10px' }}>
+            <div style={{ fontSize: '15px', fontWeight: 'var(--fw-semibold)', color: tokens.text.secondary, marginBottom: '10px' }}>
               Duplicate Conditions Detected
             </div>
             <div style={{ fontSize: tokens.fontSize.sm, color: tokens.text.muted, marginBottom: tokens.space['5'], lineHeight: 1.6 }}>
@@ -778,7 +778,7 @@ export const MockRulesPage = forwardRef<MockRulesPageHandle, {
       {/* ── Edit / Add modal ── */}
       {editingRule && (
         <ProxyModal maxWidth="760px" width="100%" maxHeight="90vh" scroll>
-            <h3 style={{ margin: `0 0 ${tokens.space['6']} 0`, fontSize: tokens.fontSize.lg, fontWeight: 500 }}>
+            <h3 style={{ margin: `0 0 ${tokens.space['6']} 0`, fontSize: tokens.fontSize.lg, fontWeight: 'var(--fw-medium)' }}>
               {rules.find(r => r.id === editingRule.id) ? 'Edit' : 'Add'} Mock Rule
             </h3>
 

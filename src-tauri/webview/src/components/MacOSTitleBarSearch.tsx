@@ -56,7 +56,7 @@ const LogoIcon = styled.img`
 
 const AppTitle = styled.span`
   font-size: 13px;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
   letter-spacing: 0.3px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);

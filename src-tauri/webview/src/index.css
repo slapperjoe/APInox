@@ -9,21 +9,21 @@
 @font-face {
     font-family: 'Fira Code';
     src: url('/fonts/FiraCode-Regular.woff2') format('woff2');
-    font-weight: 400;
+    font-weight: var(--fw-regular);
     font-style: normal;
     font-display: swap;
 }
 @font-face {
     font-family: 'Fira Code';
     src: url('/fonts/FiraCode-Medium.woff2') format('woff2');
-    font-weight: 500;
+    font-weight: var(--fw-medium);
     font-style: normal;
     font-display: swap;
 }
 @font-face {
     font-family: 'Fira Code';
     src: url('/fonts/FiraCode-SemiBold.woff2') format('woff2');
-    font-weight: 600;
+    font-weight: var(--fw-semibold);
     font-style: normal;
     font-display: swap;
 }
@@ -33,6 +33,24 @@
     --apinox-font-family: 'Fira Code', "Segoe UI", system-ui, sans-serif;
     --apinox-font-size: 13px;
     --apinox-font-weight: 400;
+
+    /* Font-weight tokens (UI consistency audit): use var(--fw-*) instead of
+     * raw numbers or the `bold` keyword. 400 body, 500 interactive text,
+     * 600 secondary labels, 700 section titles / headings. */
+    --fw-regular: 400;
+    --fw-medium: 500;
+    --fw-semibold: 600;
+    --fw-bold: 700;
+
+    /* Terminal / code-console palette — intentionally theme-independent:
+     * a script console keeps its dark look in every theme (VS Code does the
+     * same for its integrated terminal defaults). */
+    --apinox-terminal-background: #1e1e1e;
+    --apinox-terminal-foreground: #cccccc;
+    --apinox-terminal-ansiGreen: #89d185;
+    --apinox-terminal-ansiYellow: #cca700;
+    --apinox-terminal-ansiMagenta: #c586c0;
+    --apinox-terminal-ansiCyan: #4ec9b0;
 
     /* Font-size scale — shared UI tokens (quick-request baseline).
      * Fixed px values (not em) so every surface renders at the same size
@@ -179,7 +197,7 @@ body[data-platform="android"] * {
 /* Sidebar section header typography — Zed-style ALL CAPS labels */
 .section-header-label {
     font-size: 10px;
-    font-weight: 600;
+    font-weight: var(--fw-semibold);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--apinox-sideBarSectionHeader-foreground);
@@ -196,7 +214,7 @@ body[data-platform="android"] * {
 }
 
 .wildcard-tag-text {
-    font-weight: bold;
+    font-weight: var(--fw-bold);
     color: var(--apinox-editorBracketHighlight-foreground4, #4ec9b0) !important;
     font-style: italic;
 }
@@ -209,7 +227,7 @@ body[data-platform="android"] * {
 }
 
 .environment-tag-text {
-    font-weight: bold;
+    font-weight: var(--fw-bold);
     color: var(--apinox-textLink-activeForeground, #3794ff) !important;
     font-style: italic;
 }
@@ -223,7 +241,7 @@ body[data-platform="android"] * {
 }
 
 .chain-variable-text {
-    font-weight: bold;
+    font-weight: var(--fw-bold);
     color: var(--apinox-charts-purple, #c586c0) !important;
     font-style: italic;
 }
@@ -491,7 +509,7 @@ code,
 
 .mobile-header-title {
     font-size: 15px;
-    font-weight: 600;
+    font-weight: var(--fw-semibold);
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;

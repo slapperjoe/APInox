@@ -106,7 +106,7 @@ function StatusGroupPicker({ selected, onChange }: StatusGroupPickerProps) {
             ? <span style={{ color: tokens.text.muted, fontSize: 11, lineHeight: '1.6' }}>All statuses</span>
             : STATUS_GROUPS.filter(g => selected.has(g.key)).map(g => (
                 <span key={g.key} style={{
-                  fontSize: 10, fontWeight: 700, padding: '1px 5px', borderRadius: 8,
+                  fontSize: 10, fontWeight: 'var(--fw-bold)', padding: '1px 5px', borderRadius: 8,
                   background: g.bg, color: g.fg, border: `1px solid ${g.border}`,
                   fontFamily: 'monospace',
                 }}>{g.label}</span>
@@ -157,7 +157,7 @@ function QuickBtn({ label, onClick }: { label: string; onClick: () => void }) {
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
-        padding: '2px 8px', fontSize: 10, fontWeight: 600,
+        padding: '2px 8px', fontSize: 10, fontWeight: 'var(--fw-semibold)',
         background: hov ? tokens.surface.active : 'transparent',
         border: `1px solid ${tokens.border.subtle}`,
         borderRadius: tokens.radius.md,
@@ -201,7 +201,7 @@ function GroupRow({ group, checked, onClick }: {
       </div>
       {/* Code pill */}
       <span style={{
-        fontSize: 11, fontWeight: 700, padding: '1px 7px', borderRadius: 8,
+        fontSize: 11, fontWeight: 'var(--fw-bold)', padding: '1px 7px', borderRadius: 8,
         background: checked ? group.bg : 'rgba(60,60,60,0.12)',
         color: checked ? group.fg : tokens.text.hint,
         border: `1px solid ${checked ? group.border : 'transparent'}`,
@@ -284,7 +284,7 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = [], onAddIgnore
         borderBottom: `1px solid ${tokens.border.default}`,
         flexShrink: 0,
       }}>
-        <span style={{ fontSize: tokens.fontSize.base, color: tokens.text.secondary, fontWeight: 500, whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: tokens.fontSize.base, color: tokens.text.secondary, fontWeight: 'var(--fw-medium)', whiteSpace: 'nowrap' }}>
           Traffic ({filteredLogs.length}{logs.length !== filteredLogs.length ? `/${logs.length}` : ''})
         </span>
 
@@ -579,7 +579,7 @@ function TrafficRow({ log, isSelected, onClick, onContextMenu }: {
       {/* Line 1: method badge + path (no hostname) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: soapAction ? 2 : 4 }}>
         <span style={{
-          fontSize: 10, fontWeight: 700, padding: '1px 6px',
+          fontSize: 10, fontWeight: 'var(--fw-bold)', padding: '1px 6px',
           borderRadius: 3, fontFamily: 'monospace', flexShrink: 0,
           color: methodBg(log.method).fg, background: methodBg(log.method).bg,
         }}>
@@ -601,7 +601,7 @@ function TrafficRow({ log, isSelected, onClick, onContextMenu }: {
       {soapAction && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 3 }}>
           <span style={{
-            fontSize: 10, fontWeight: 600, padding: '1px 6px',
+            fontSize: 10, fontWeight: 'var(--fw-semibold)', padding: '1px 6px',
             borderRadius: 3, flexShrink: 0,
             background: 'rgba(120,80,200,0.18)', color: '#b89ee8',
             border: '1px solid rgba(120,80,200,0.35)',
@@ -620,7 +620,7 @@ function TrafficRow({ log, isSelected, onClick, onContextMenu }: {
         </span>
         {log.status != null && (
           <span style={{
-            fontSize: 10, fontWeight: 600, padding: '1px 6px',
+            fontSize: 10, fontWeight: 'var(--fw-semibold)', padding: '1px 6px',
             borderRadius: 8, flexShrink: 0,
             background: ss.bg, color: ss.fg, border: `1px solid ${ss.border}`,
           }}>

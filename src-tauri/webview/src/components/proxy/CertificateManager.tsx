@@ -304,7 +304,7 @@ export function CertificateManager() {
 
           {trustResult.manualSteps.length > 0 && (
             <div style={{ marginTop: '8px' }}>
-              <div style={{ fontSize: '12px', color: tokens.text.muted, marginBottom: '8px', fontWeight: 600 }}>
+              <div style={{ fontSize: '12px', color: tokens.text.muted, marginBottom: '8px', fontWeight: 'var(--fw-semibold)' }}>
                 Manual installation steps:
               </div>
               <div style={{
@@ -366,7 +366,7 @@ function btnStyle(bg: string, disabled: boolean): React.CSSProperties {
     borderRadius: '4px',
     color: 'white',
     fontSize: '13px',
-    fontWeight: 500,
+    fontWeight: 'var(--fw-medium)',
     cursor: disabled ? 'not-allowed' : 'pointer',
     opacity: disabled ? 0.6 : 1,
     textAlign: 'left',

@@ -107,7 +107,7 @@ export const PrimaryButton = styled.button`
     border: 1px solid transparent;
     padding: 6px 14px;
     border-radius: 2px;
-    font-weight: 500;
+    font-weight: var(--fw-medium);
     
     &:hover:not(:disabled) {
         background-color: var(--apinox-button-hoverBackground);
@@ -129,7 +129,7 @@ export const SecondaryButton = styled.button`
     border: 1px solid var(--apinox-button-border, transparent);
     padding: 6px 14px;
     border-radius: 2px;
-    font-weight: 400;
+    font-weight: var(--fw-regular);
     
     &:hover:not(:disabled) {
         background-color: var(--apinox-button-secondaryHoverBackground);
@@ -151,7 +151,7 @@ export const DangerButton = styled.button<{ $shake?: boolean }>`
     border: 1px solid var(--apinox-testing-iconFailed);
     padding: 6px 14px;
     border-radius: 2px;
-    font-weight: 500;
+    font-weight: var(--fw-medium);
     
     &:hover:not(:disabled) {
         background-color: color-mix(in srgb, var(--apinox-testing-iconFailed) 10%, transparent);

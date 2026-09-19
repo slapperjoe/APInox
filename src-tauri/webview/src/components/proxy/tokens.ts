@@ -148,13 +148,14 @@ export const tokens = {
     full: '50%',
   },
 
-  /** Font family */
-  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  /** Font family — resolved from the theme variables (single source of
+   * truth is --apinox-font-family in index.css / shared themes). */
+  fontFamily: 'var(--apinox-font-family, "Segoe UI", system-ui, sans-serif)',
 
   /** Panel / section title style — matches SidebarHeaderTitle from SidebarStyles */
   sectionTitle: {
     fontSize: '11px',
-    fontWeight: 700,
+    fontWeight: 'var(--fw-bold)',
     textTransform: 'uppercase' as const,
     letterSpacing: '0.3px',
     color: 'var(--apinox-sideBarTitle-foreground)',

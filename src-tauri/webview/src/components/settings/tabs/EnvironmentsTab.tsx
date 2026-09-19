@@ -365,7 +365,7 @@ export const EnvironmentsTab: React.FC<EnvironmentsTabProps> = ({
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
             <EnvList>
                 <div style={{ padding: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--apinox-panel-border)' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 600 }}>Profiles</span>
+                    <span style={{ fontSize: '12px', fontWeight: 'var(--fw-semibold)' }}>Profiles</span>
                     <div style={{ display: 'flex', gap: 4 }}>
                         <IconButton onClick={handleExport} title="Export Environments">
                             <Download size={14} />
@@ -429,7 +429,7 @@ export const EnvironmentsTab: React.FC<EnvironmentsTabProps> = ({
                                             setRenameKey(null);
                                         }}
                                         autoFocus
-                                        style={{ fontSize: 14, fontWeight: 600, width: 200 }}
+                                        style={{ fontSize: 14, fontWeight: 'var(--fw-semibold)', width: 200 }}
                                     />
                                 </div>
                             ) : (

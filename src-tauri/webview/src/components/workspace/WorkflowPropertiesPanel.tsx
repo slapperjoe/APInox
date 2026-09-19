@@ -28,7 +28,7 @@ const IconContainer = styled.div`
 const Title = styled.h2`
     margin: 0;
     font-size: 16px;
-    font-weight: 600;
+    font-weight: var(--fw-semibold);
 `;
 
 const Section = styled.div`
@@ -40,7 +40,7 @@ const Section = styled.div`
 
 const Label = styled.label`
     font-size: 12px;
-    font-weight: 600;
+    font-weight: var(--fw-semibold);
     opacity: 0.8;
     display: block;
 `;
@@ -108,7 +108,7 @@ const StatLabel = styled.div`
 
 const StatValue = styled.div`
     font-size: 20px;
-    font-weight: 600;
+    font-weight: var(--fw-semibold);
     margin-top: ${SPACING_XS};
 `;
 

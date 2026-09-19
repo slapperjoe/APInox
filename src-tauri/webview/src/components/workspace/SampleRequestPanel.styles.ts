@@ -28,7 +28,7 @@ export const SamplePanelTitle = styled.div`
     display: flex;
     align-items: center;
     gap: ${SPACING_SM};
-    font-weight: 600;
+    font-weight: var(--fw-semibold);
     font-size: 0.95em;
 `;
 
@@ -57,7 +57,7 @@ export const MetadataSection = styled.div`
 `;
 
 export const MetadataLabel = styled.div`
-    font-weight: 600;
+    font-weight: var(--fw-semibold);
     opacity: 0.7;
 `;
 
@@ -112,7 +112,7 @@ export const TagBracket = styled.span`
 
 export const TagName = styled.span`
     color: var(--apinox-symbolIcon-fieldForeground);
-    font-weight: 500;
+    font-weight: var(--fw-medium);
 `;
 
 export const AttributeName = styled.span`
@@ -136,7 +136,7 @@ export const OptionalBadge = styled.span`
     padding: 1px 6px;
     border-radius: 3px;
     font-size: 0.75em;
-    font-weight: 600;
+    font-weight: var(--fw-semibold);
     background: var(--apinox-badge-background);
     color: var(--apinox-badge-foreground);
     opacity: 0.7;

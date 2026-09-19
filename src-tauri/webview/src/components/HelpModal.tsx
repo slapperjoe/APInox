@@ -58,7 +58,7 @@ const ContentArea = styled.div`
 
     h1 { border-bottom: 1px solid var(--apinox-panel-border); padding-bottom: ${SPACING_SM}; margin-bottom: ${SPACING_LG}; font-size: 24px; }
     h2 { margin-top: 25px; margin-bottom: ${SPACING_MD}; font-size: 18px; color: var(--apinox-textLink-foreground); }
-    h3 { margin-top: ${SPACING_LG}; margin-bottom: ${SPACING_SM}; font-size: 16px; font-weight: bold; }
+    h3 { margin-top: ${SPACING_LG}; margin-bottom: ${SPACING_SM}; font-size: 16px; font-weight: var(--fw-bold); }
     p { margin-bottom: ${SPACING_MD}; line-height: 1.5; }
     ul { margin-left: ${SPACING_LG}; margin-bottom: ${SPACING_MD}; }
     li { margin-bottom: ${SPACING_XS}; }

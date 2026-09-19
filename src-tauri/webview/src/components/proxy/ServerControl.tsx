@@ -237,7 +237,7 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
 
         {/* Mode badge */}
         <span style={{
-          fontSize: tokens.fontSize.xs, fontWeight: 600,
+          fontSize: tokens.fontSize.xs, fontWeight: 'var(--fw-semibold)',
           padding: '2px 8px', borderRadius: '10px',
           background: proxyEnabled ? modeColors[mode] + '22' : tokens.surface.elevated,
           color: proxyEnabled ? modeColors[mode] : tokens.text.hint,
@@ -306,7 +306,7 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
                 borderRadius: tokens.radius.md,
                 color: tokens.text.white,
                 fontSize: tokens.fontSize.xs,
-                fontWeight: 500,
+                fontWeight: 'var(--fw-medium)',
                 cursor: loading ? 'not-allowed' : 'pointer',
                 opacity: loading ? 0.6 : 1,
               }}
@@ -324,7 +324,7 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
                 borderRadius: tokens.radius.md,
                 color: tokens.text.white,
                 fontSize: tokens.fontSize.xs,
-                fontWeight: 500,
+                fontWeight: 'var(--fw-medium)',
                 cursor: loading ? 'not-allowed' : 'pointer',
                 opacity: loading ? 0.6 : 1,
               }}
@@ -357,7 +357,7 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
         >
           ▲
         </button>
-        <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 500 }}>
+        <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 'var(--fw-medium)' }}>
           Server Control
         </h2>
       </div>
@@ -440,7 +440,7 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
                 borderRadius: tokens.radius.md,
                 color: tokens.text.white,
                 fontSize: tokens.fontSize.sm,
-                fontWeight: 500,
+                fontWeight: 'var(--fw-medium)',
                 cursor: loading ? 'not-allowed' : 'pointer',
                 opacity: loading ? 0.6 : 1,
               }}
@@ -459,7 +459,7 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
                 borderRadius: tokens.radius.md,
                 color: tokens.text.white,
                 fontSize: tokens.fontSize.sm,
-                fontWeight: 500,
+                fontWeight: 'var(--fw-medium)',
                 cursor: loading ? 'not-allowed' : 'pointer',
                 opacity: loading ? 0.6 : 1,
               }}
@@ -508,7 +508,7 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
             border: `1px solid ${tokens.border.default}`,
             borderRadius: tokens.radius.md,
           }}>
-            <div style={{ fontSize: tokens.fontSize.xs, fontWeight: 600, color: tokens.text.secondary, marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div style={{ fontSize: tokens.fontSize.xs, fontWeight: 'var(--fw-semibold)', color: tokens.text.secondary, marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               System Proxy
             </div>
             <SystemProxyPanel

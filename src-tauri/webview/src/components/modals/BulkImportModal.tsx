@@ -68,7 +68,7 @@ const ProjectSection = styled.div`
 `;
 
 const Label = styled.label`
-  font-weight: 500;
+  font-weight: var(--fw-medium);
   font-size: 0.9em;
 `;
 
@@ -130,7 +130,7 @@ const ProgressHeader = styled.div`
   display: flex;
   align-items: center;
   gap: ${SPACING_SM};
-  font-weight: 500;
+  font-weight: var(--fw-medium);
 `;
 
 const ProgressBar = styled.div`
@@ -213,7 +213,7 @@ const SummaryBox = styled.div`
 
     .value {
       font-size: 1.5em;
-      font-weight: bold;
+      font-weight: var(--fw-bold);
     }
 
     .label {

@@ -56,7 +56,7 @@ const StepItem = styled.div`
 `;
 
 const StepNumber = styled.div`
-    font-weight: bold;
+    font-weight: var(--fw-bold);
     opacity: 0.6;
     min-width: 20px;
 `;

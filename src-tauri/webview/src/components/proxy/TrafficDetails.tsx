@@ -52,7 +52,7 @@ const DetailHeader = styled.div`
 
 const MethodBadge = styled.span`
   font-size: 11px;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   padding: 2px 7px;
   border-radius: 3px;
   font-family: monospace;
@@ -72,7 +72,7 @@ const UrlText = styled.div`
 
 const StatusChip = styled.span`
   font-size: 11px;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   padding: 2px 8px;
   border-radius: 10px;
   flex-shrink: 0;
@@ -108,7 +108,7 @@ const DetailBody = styled.div`
 const PaneLabel = styled.div`
   padding: 5px 14px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   color: ${tokens.text.secondary};
   background: ${tokens.surface.panel};
   border-bottom: 1px solid ${tokens.border.default};

@@ -59,7 +59,7 @@ export const SidebarHeader = styled.div`
  */
 export const SidebarHeaderTitle = styled.div`
     font-size: 11px;
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     text-transform: uppercase;
     color: var(--apinox-sideBarTitle-foreground);
     letter-spacing: 0.08em;
@@ -107,7 +107,7 @@ export const SidebarContent = styled.div`
  */
 export const SectionHeader = styled.div`
     padding: 3px 8px;
-    font-weight: bold;
+    font-weight: var(--fw-bold);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -138,7 +138,7 @@ export const ServiceItem = styled.div`
     display: flex;
     align-items: center;
     font-size: 0.95em;
-    font-weight: 500;
+    font-weight: var(--fw-medium);
     &:hover {
         background-color: var(--apinox-list-hoverBackground);
     }

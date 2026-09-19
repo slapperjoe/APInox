@@ -37,7 +37,7 @@ const ProjectInfo = styled.div`
 `;
 
 const ProjectName = styled.div`
-  font-weight: 500;
+  font-weight: var(--fw-medium);
   color: var(--apinox-foreground);
 `;
 

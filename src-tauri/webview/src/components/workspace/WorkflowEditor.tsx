@@ -40,7 +40,7 @@ const StepsPanelHeader = styled.div`
 const StepsPanelTitle = styled.h2`
     margin: 0;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: var(--fw-semibold);
     text-transform: uppercase;
     opacity: 0.8;
 `;
@@ -112,7 +112,7 @@ const StepInfo = styled.div`
 
 const StepName = styled.div`
     font-size: 13px;
-    font-weight: 500;
+    font-weight: var(--fw-medium);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

@@ -63,7 +63,7 @@ const ItemContent = styled.div`
 
 const ItemLabel = styled.div`
     font-size: 12px;
-    font-weight: 600;
+    font-weight: var(--fw-semibold);
     color: var(--apinox-foreground);
 `;
 

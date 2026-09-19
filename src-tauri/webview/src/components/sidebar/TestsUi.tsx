@@ -95,7 +95,7 @@ const SuiteIcon = styled.span`
 const SuiteName = styled.span`
     flex: 1;
     margin-left: ${SPACING_XS};
-    font-weight: bold;
+    font-weight: var(--fw-bold);
 `;
 
 const SuiteCount = styled.span`

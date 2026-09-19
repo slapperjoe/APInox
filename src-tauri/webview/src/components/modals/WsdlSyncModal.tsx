@@ -75,7 +75,7 @@ const IconWrapper = styled.span<{ $color: string }>`
 `;
 
 const OperationName = styled.span<{ $strikethrough?: boolean }>`
-    font-weight: 500;
+    font-weight: var(--fw-medium);
     ${props => props.$strikethrough && 'text-decoration: line-through; opacity: 0.8;'}
 `;
 

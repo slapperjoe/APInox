@@ -71,7 +71,7 @@ export const GlobalsTab: React.FC<GlobalsTabProps> = ({
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
             <EnvList>
                 <div style={{ padding: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--apinox-panel-border)' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 600 }}>Globals</span>
+                    <span style={{ fontSize: '12px', fontWeight: 'var(--fw-semibold)' }}>Globals</span>
                     <IconButton onClick={onAddGlobal} title="Add Variable">
                         <Plus size={14} />
                     </IconButton>

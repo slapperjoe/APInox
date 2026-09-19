@@ -729,10 +729,10 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                     alignItems: 'center',
                     gap: 8,
                     borderBottom: isDropZoneActive
-                        ? '2px dashed var(--apinox-accent, #4f8cff)'
-                        : '1px solid var(--apinox-border)',
+                        ? '2px dashed var(--apinox-accent)'
+                        : '1px solid var(--apinox-panel-border)',
                     backgroundColor: isDropZoneActive
-                        ? 'var(--apinox-accent-foreground-dim, rgba(79, 140, 255, 0.08))'
+                        ? 'var(--apinox-accent-foreground-dim)'
                         : 'var(--apinox-panel-background)',
                     transition: 'border-color 120ms ease, background-color 120ms ease',
                 }}
@@ -757,8 +757,8 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                     disabled={urlInput.loading}
                     style={{
                         padding: '6px 14px',
-                        backgroundColor: 'var(--apinox-button-primary-background)',
-                        color: 'var(--apinox-button-primary-foreground)',
+                        backgroundColor: 'var(--apinox-button-background)',
+                        color: 'var(--apinox-button-foreground)',
                         border: 'none',
                         borderRadius: 4,
                         cursor: urlInput.loading ? 'wait' : 'pointer',
@@ -781,9 +781,9 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                     title="Cancel in-flight WSDL load"
                     style={{
                         padding: '6px 12px',
-                        backgroundColor: 'var(--apinox-button-secondary-background)',
-                        color: 'var(--apinox-button-secondary-foreground)',
-                        border: '1px solid var(--apinox-button-secondary-border)',
+                        backgroundColor: 'var(--apinox-button-secondaryBackground)',
+                        color: 'var(--apinox-button-secondaryForeground)',
+                        border: '1px solid var(--apinox-button-border, transparent)',
                         borderRadius: 4,
                         cursor: urlInput.loading ? 'pointer' : 'not-allowed',
                         display: 'flex',
@@ -816,7 +816,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                         type="checkbox"
                         checked={useProxy}
                         onChange={(e) => setUseProxy(e.target.checked)}
-                        style={{ margin: 0, accentColor: 'var(--apinox-primary)' }}
+                        style={{ margin: 0, accentColor: 'var(--apinox-focusBorder)' }}
                     />
                     Proxy
                 </label>
@@ -825,9 +825,9 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                     disabled={urlInput.loading}
                     style={{
                         padding: '6px 14px',
-                        backgroundColor: 'var(--apinox-button-secondary-background)',
-                        color: 'var(--apinox-button-secondary-foreground)',
-                        border: '1px solid var(--apinox-button-secondary-border)',
+                        backgroundColor: 'var(--apinox-button-secondaryBackground)',
+                        color: 'var(--apinox-button-secondaryForeground)',
+                        border: '1px solid var(--apinox-button-border, transparent)',
                         borderRadius: 4,
                         cursor: urlInput.loading ? 'wait' : 'pointer',
                         display: 'flex',
@@ -844,7 +844,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                 <div style={{
                     padding: '8px 12px',
                     backgroundColor: 'var(--apinox-error-background)',
-                    color: 'var(--apinox-error-foreground)',
+                    color: 'var(--apinox-errorForeground, #f48771)',
                     fontSize: 13,
                 }}>
                     {urlInput.error}
@@ -868,10 +868,10 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                             <div
                                 style={{
                                     fontSize: 11,
-                                    fontWeight: 600,
+                                    fontWeight: 'var(--fw-semibold)',
                                     textTransform: 'uppercase',
                                     letterSpacing: 0.5,
-                                    color: 'var(--apinox-description-foreground)',
+                                    color: 'var(--apinox-descriptionForeground)',
                                     marginBottom: 10,
                                 }}
                             >
@@ -883,10 +883,10 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                         <span
                                             style={{
                                                 fontSize: 10,
-                                                fontWeight: 600,
+                                                fontWeight: 'var(--fw-semibold)',
                                                 textTransform: 'uppercase',
                                                 letterSpacing: '0.06em',
-                                                color: 'var(--apinox-description-foreground)',
+                                                color: 'var(--apinox-descriptionForeground)',
                                             }}
                                         >
                                             {group}
@@ -901,8 +901,8 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                                 style={{
                                                     textAlign: 'left',
                                                     padding: '8px 10px',
-                                                    backgroundColor: 'var(--apinox-card-background)',
-                                                    border: '1px solid var(--apinox-card-border)',
+                                                    backgroundColor: 'var(--apinox-panel-background)',
+                                                    border: '1px solid var(--apinox-panel-border)',
                                                     borderRadius: 6,
                                                     cursor: 'pointer',
                                                     color: 'var(--apinox-foreground)',
@@ -911,8 +911,8 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                                     gap: 2,
                                                 }}
                                             >
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{card.label}</span>
-                                                <span style={{ fontSize: 11, color: 'var(--apinox-description-foreground)' }}>
+                                                <span style={{ fontWeight: 'var(--fw-medium)', fontSize: 13 }}>{card.label}</span>
+                                                <span style={{ fontSize: 11, color: 'var(--apinox-descriptionForeground)' }}>
                                                     {card.format.toUpperCase()}
                                                 </span>
                                             </button>
@@ -926,7 +926,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                     /* WSDL Project Summary */
                     <div style={{ padding: 24 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-                            <Server size={32} color="var(--apinox-icon-primary)" />
+                            <Server size={32} color="var(--apinox-icon-foreground)" />
                             <div>
                                 <h2 style={{ margin: 0, fontSize: 22 }}>{selected.project.name}</h2>
                                 <div style={{ fontSize: 12, opacity: 0.7 }}>
@@ -937,29 +937,29 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr)', gap: 12 }}>
-                            <div style={{ padding: '12px', background: 'var(--apinox-card-background)', borderRadius: 6, border: '1px solid var(--apinox-card-border)' }}>
+                            <div style={{ padding: '12px', background: 'var(--apinox-panel-background)', borderRadius: 6, border: '1px solid var(--apinox-panel-border)' }}>
                                 <div style={{ fontSize: 12, opacity: 0.7 }}>Operations</div>
-                                <div style={{ fontSize: 24, fontWeight: 600 }}>{(selected.project.operations || []).length}</div>
+                                <div style={{ fontSize: 24, fontWeight: 'var(--fw-semibold)' }}>{(selected.project.operations || []).length}</div>
                             </div>
-                            <div style={{ padding: '12px', background: 'var(--apinox-card-background)', borderRadius: 6, border: '1px solid var(--apinox-card-border)' }}>
+                            <div style={{ padding: '12px', background: 'var(--apinox-panel-background)', borderRadius: 6, border: '1px solid var(--apinox-panel-border)' }}>
                                 <div style={{ fontSize: 12, opacity: 0.7 }}>Total Requests</div>
-                                <div style={{ fontSize: 24, fontWeight: 600 }}>
+                                <div style={{ fontSize: 24, fontWeight: 'var(--fw-semibold)' }}>
                                     {(selected.project.operations || []).reduce((sum, op) => sum + (op.requests || []).length, 0)}
                                 </div>
                             </div>
-                            <div style={{ padding: '12px', background: 'var(--apinox-card-background)', borderRadius: 6, border: '1px solid var(--apinox-card-border)' }}>
+                            <div style={{ padding: '12px', background: 'var(--apinox-panel-background)', borderRadius: 6, border: '1px solid var(--apinox-panel-border)' }}>
                                 <div style={{ fontSize: 12, opacity: 0.7 }}>Source URL</div>
                                 <div style={{ fontSize: 13, wordBreak: 'break-all', marginTop: 4 }}>
                                     {selected.project.sourceUrl || 'N/A'}
                                 </div>
                             </div>
-                            <div style={{ padding: '12px', background: 'var(--apinox-card-background)', borderRadius: 6, border: '1px solid var(--apinox-card-border)' }}>
+                            <div style={{ padding: '12px', background: 'var(--apinox-panel-background)', borderRadius: 6, border: '1px solid var(--apinox-panel-border)' }}>
                                 <div style={{ fontSize: 12, opacity: 0.7 }}>First Parsed</div>
                                 <div style={{ fontSize: 13, marginTop: 4 }}>
                                     {selected.project.parsedAt ? new Date(selected.project.parsedAt).toLocaleDateString() : 'N/A'}
                                 </div>
                             </div>
-                            <div style={{ padding: '12px', background: 'var(--apinox-card-background)', borderRadius: 6, border: '1px solid var(--apinox-card-border)' }}>
+                            <div style={{ padding: '12px', background: 'var(--apinox-panel-background)', borderRadius: 6, border: '1px solid var(--apinox-panel-border)' }}>
                                 <div style={{ fontSize: 12, opacity: 0.7 }}>Content-Type {selected.project.contentType ? '(override)' : `— SOAP ${selected.project.soapVersion || '1.1'} default: ${soapDefault(selected.project.soapVersion)}`}</div>
                                 <select
                                     value={selected.project.contentType || ''}
@@ -991,9 +991,9 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                     onClick={() => onRefreshProject(selected.project.name)}
                                     style={{
                                         padding: '6px 14px',
-                                        backgroundColor: 'var(--apinox-button-secondary-background)',
-                                        color: 'var(--apinox-button-secondary-foreground)',
-                                        border: '1px solid var(--apinox-button-secondary-border)',
+                                        backgroundColor: 'var(--apinox-button-secondaryBackground)',
+                                        color: 'var(--apinox-button-secondaryForeground)',
+                                        border: '1px solid var(--apinox-button-border, transparent)',
                                         borderRadius: 4,
                                         cursor: 'pointer',
                                         display: 'flex',
@@ -1017,9 +1017,9 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'space-between',
-                                        background: 'var(--apinox-card-background)',
+                                        background: 'var(--apinox-panel-background)',
                                         borderRadius: 6,
-                                        border: '1px solid var(--apinox-card-border)',
+                                        border: '1px solid var(--apinox-panel-border)',
                                         marginBottom: 8,
                                         cursor: 'pointer',
                                     }}
@@ -1040,7 +1040,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                     /* Operation Summary */
                     <div style={{ padding: 24 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-                            <Code2 size={32} color="var(--apinox-icon-primary)" />
+                            <Code2 size={32} color="var(--apinox-icon-foreground)" />
                             <div>
                                 <h2 style={{ margin: 0, fontSize: 22 }}>{selected.operation.name}</h2>
                                 <div style={{ fontSize: 12, opacity: 0.7 }}>
@@ -1058,7 +1058,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                             borderRadius: 6,
                             marginBottom: 20,
                         }}>
-                            <h3 style={{ marginTop: 0, marginBottom: 15, fontSize: 14, fontWeight: 500 }}>
+                            <h3 style={{ marginTop: 0, marginBottom: 15, fontSize: 14, fontWeight: 'var(--fw-medium)' }}>
                                 Operation Details
                             </h3>
                             <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 10, fontSize: 13 }}>
@@ -1118,9 +1118,9 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'space-between',
-                                    background: 'var(--apinox-card-background)',
+                                    background: 'var(--apinox-panel-background)',
                                     borderRadius: 6,
-                                    border: '1px solid var(--apinox-card-border)',
+                                    border: '1px solid var(--apinox-panel-border)',
                                     marginBottom: 8,
                                     cursor: 'pointer',
                                 }}
@@ -1146,12 +1146,12 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                         {/* Quick request header + editable endpoint */}
                         <div style={{
                             padding: '12px 16px',
-                            borderBottom: '1px solid var(--apinox-border)',
+                            borderBottom: '1px solid var(--apinox-panel-border)',
                             backgroundColor: 'var(--apinox-panel-background)',
                         }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                                 <FileCode size={18} />
-                                <span style={{ fontSize: 15, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                <span style={{ fontSize: 15, fontWeight: 'var(--fw-semibold)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                     {selected.request?.name || 'Quick Request'}
                                 </span>
                                 {selected.request && (
@@ -1188,8 +1188,8 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                     disabled={!editingRequest}
                                     style={{
                                         padding: '6px 14px',
-                                        backgroundColor: 'var(--apinox-button-primary-background)',
-                                        color: 'var(--apinox-button-primary-foreground)',
+                                        backgroundColor: 'var(--apinox-button-background)',
+                                        color: 'var(--apinox-button-foreground)',
                                         border: 'none',
                                         borderRadius: 4,
                                         cursor: editingRequest ? 'pointer' : 'not-allowed',
@@ -1209,9 +1209,9 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                         title="Cancel in-flight request"
                                         style={{
                                             padding: '6px 14px',
-                                            backgroundColor: 'var(--apinox-button-secondary-background)',
-                                            color: 'var(--apinox-button-secondary-foreground)',
-                                            border: '1px solid var(--apinox-button-secondary-border)',
+                                            backgroundColor: 'var(--apinox-button-secondaryBackground)',
+                                            color: 'var(--apinox-button-secondaryForeground)',
+                                            border: '1px solid var(--apinox-button-border, transparent)',
                                             borderRadius: 4,
                                             cursor: 'pointer',
                                             display: 'flex',
@@ -1229,9 +1229,9 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                     disabled={!editingRequest}
                                     style={{
                                         padding: '6px 14px',
-                                        backgroundColor: 'var(--apinox-button-secondary-background)',
-                                        color: 'var(--apinox-button-secondary-foreground)',
-                                        border: '1px solid var(--apinox-button-secondary-border)',
+                                        backgroundColor: 'var(--apinox-button-secondaryBackground)',
+                                        color: 'var(--apinox-button-secondaryForeground)',
+                                        border: '1px solid var(--apinox-button-border, transparent)',
                                         borderRadius: 4,
                                         cursor: editingRequest ? 'pointer' : 'not-allowed',
                                         display: 'flex',
@@ -1255,9 +1255,9 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                     justifyContent: 'space-between',
                                     gap: 8,
                                     padding: '6px 12px',
-                                    backgroundColor: 'var(--apinox-error-background, rgba(192, 57, 43, 0.15))',
+                                    backgroundColor: 'var(--apinox-error-background)',
                                     color: 'var(--apinox-errorForeground, #f48771)',
-                                    borderBottom: '1px solid var(--apinox-error-border, var(--apinox-errorForeground))',
+                                    borderBottom: '1px solid var(--apinox-error-border)',
                                     fontSize: 12,
                                 }}
                             >
@@ -1302,7 +1302,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                             />
                         </div>
                         {currentResponse && (
-                            <div style={{ flex: '0 0 50%', minHeight: 0, overflow: 'hidden', borderTop: '1px solid var(--apinox-border)' }}>
+                            <div style={{ flex: '0 0 50%', minHeight: 0, overflow: 'hidden', borderTop: '1px solid var(--apinox-panel-border)' }}>
                                 <MonacoResponseViewer
                                     value={currentResponse.rawResponse || ''}
                                     language={currentResponse.contentType?.includes('json') ? 'json' : 'xml'}
@@ -1318,15 +1318,15 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                             padding: '6px 12px',
                             display: 'flex',
                             gap: 8,
-                            borderBottom: '1px solid var(--apinox-border)',
+                            borderBottom: '1px solid var(--apinox-panel-border)',
                             backgroundColor: 'var(--apinox-panel-background)',
                         }}>
                             <button
                                 onClick={() => handleExecuteRequest(editingRequest!, editingXml)}
                                 style={{
                                     padding: '4px 12px',
-                                    backgroundColor: 'var(--apinox-button-primary-background)',
-                                    color: 'var(--apinox-button-primary-foreground)',
+                                    backgroundColor: 'var(--apinox-button-background)',
+                                    color: 'var(--apinox-button-foreground)',
                                     border: 'none',
                                     borderRadius: 4,
                                     cursor: 'pointer',
@@ -1346,9 +1346,9 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                     title="Cancel in-flight request"
                                     style={{
                                         padding: '4px 12px',
-                                        backgroundColor: 'var(--apinox-button-secondary-background)',
-                                        color: 'var(--apinox-button-secondary-foreground)',
-                                        border: '1px solid var(--apinox-button-secondary-border)',
+                                        backgroundColor: 'var(--apinox-button-secondaryBackground)',
+                                        color: 'var(--apinox-button-secondaryForeground)',
+                                        border: '1px solid var(--apinox-button-border, transparent)',
                                         borderRadius: 4,
                                         cursor: 'pointer',
                                         display: 'flex',
@@ -1365,9 +1365,9 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                 onClick={handleSaveRequest}
                                 style={{
                                     padding: '4px 12px',
-                                    backgroundColor: 'var(--apinox-button-secondary-background)',
-                                    color: 'var(--apinox-button-secondary-foreground)',
-                                    border: '1px solid var(--apinox-button-secondary-border)',
+                                    backgroundColor: 'var(--apinox-button-secondaryBackground)',
+                                    color: 'var(--apinox-button-secondaryForeground)',
+                                    border: '1px solid var(--apinox-button-border, transparent)',
                                     borderRadius: 4,
                                     cursor: 'pointer',
                                     display: 'flex',
@@ -1393,9 +1393,9 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                     justifyContent: 'space-between',
                                     gap: 8,
                                     padding: '6px 12px',
-                                    backgroundColor: 'var(--apinox-error-background, rgba(192, 57, 43, 0.15))',
+                                    backgroundColor: 'var(--apinox-error-background)',
                                     color: 'var(--apinox-errorForeground, #f48771)',
-                                    borderBottom: '1px solid var(--apinox-error-border, var(--apinox-errorForeground))',
+                                    borderBottom: '1px solid var(--apinox-error-border)',
                                     fontSize: 12,
                                 }}
                             >
@@ -1466,7 +1466,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                             />
                         </div>
                         {currentResponse && (
-                            <div style={{ flex: '0 0 50%', minHeight: 0, overflow: 'hidden', borderTop: '1px solid var(--apinox-border)' }}>
+                            <div style={{ flex: '0 0 50%', minHeight: 0, overflow: 'hidden', borderTop: '1px solid var(--apinox-panel-border)' }}>
                                 <MonacoResponseViewer
                                     value={currentResponse.rawResponse || ''}
                                     language={currentResponse.contentType?.includes('json') ? 'json' : 'xml'}

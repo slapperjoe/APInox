@@ -94,7 +94,7 @@ export const ExtractorModal: React.FC<ExtractorModalProps> = ({ isOpen, data, on
             }
         >
             <div style={{ marginBottom: 15 }}>
-                <label style={{ display: 'block', marginBottom: 5, fontWeight: 'bold' }}>Target Variable Name</label>
+                <label style={{ display: 'block', marginBottom: 5, fontWeight: 'var(--fw-bold)' }}>Target Variable Name</label>
                 <input
                     style={{ width: '100%', padding: 8, background: 'var(--apinox-input-background)', color: 'var(--apinox-input-foreground)', border: '1px solid var(--apinox-input-border)', borderRadius: 2 }}
                     value={localData.variableName}
@@ -108,7 +108,7 @@ export const ExtractorModal: React.FC<ExtractorModalProps> = ({ isOpen, data, on
             </div>
 
             <div style={{ marginBottom: 15 }}>
-                <label style={{ display: 'block', marginBottom: 5, fontWeight: 'bold' }}>Extractor Type</label>
+                <label style={{ display: 'block', marginBottom: 5, fontWeight: 'var(--fw-bold)' }}>Extractor Type</label>
                 <select
                     style={{ width: '100%', padding: 8, background: 'var(--apinox-input-background)', color: 'var(--apinox-input-foreground)', border: '1px solid var(--apinox-input-border)', borderRadius: 2 }}
                     value={currentType}
@@ -125,7 +125,7 @@ export const ExtractorModal: React.FC<ExtractorModalProps> = ({ isOpen, data, on
             </div>
 
             <div style={{ marginBottom: 15 }}>
-                <label style={{ display: 'block', marginBottom: 5, fontWeight: 'bold' }}>{getPatternLabel(currentType)}</label>
+                <label style={{ display: 'block', marginBottom: 5, fontWeight: 'var(--fw-bold)' }}>{getPatternLabel(currentType)}</label>
                 <textarea
                     style={{ width: '100%', height: 60, padding: 8, background: 'var(--apinox-input-background)', color: 'var(--apinox-input-foreground)', border: '1px solid var(--apinox-input-border)', borderRadius: 2, fontFamily: 'monospace', fontSize: '0.9em' }}
                     value={localData.xpath}
@@ -135,7 +135,7 @@ export const ExtractorModal: React.FC<ExtractorModalProps> = ({ isOpen, data, on
             </div>
 
             <div style={{ marginBottom: 15 }}>
-                <label style={{ display: 'block', marginBottom: 5, fontWeight: 'bold' }}>Default Value</label>
+                <label style={{ display: 'block', marginBottom: 5, fontWeight: 'var(--fw-bold)' }}>Default Value</label>
                 <input
                     style={{ width: '100%', padding: 8, background: 'var(--apinox-input-background)', color: 'var(--apinox-input-foreground)', border: '1px solid var(--apinox-input-border)', borderRadius: 2 }}
                     value={localData.defaultValue || ''}

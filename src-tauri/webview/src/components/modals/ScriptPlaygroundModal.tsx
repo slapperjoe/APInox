@@ -34,7 +34,7 @@ const RightPanel = styled.div`
 const SectionTitle = styled.div`
     padding: 8px 12px;
     font-size: 11px;
-    font-weight: 600;
+    font-weight: var(--fw-semibold);
     text-transform: uppercase;
     color: var(--apinox-descriptionForeground);
     background: var(--apinox-panel-border);
@@ -471,7 +471,7 @@ export const ScriptPlaygroundModal: React.FC<ScriptPlaygroundModalProps> = ({ on
                                     <div style={{
                                         color: result.status === 'PASS' ? STATUS_COLORS.SUCCESS : STATUS_COLORS.ERROR,
                                         marginBottom: '10px',
-                                        fontWeight: 'bold'
+                                        fontWeight: 'var(--fw-bold)'
                                     }}>
                                         [{result.status}] {result.message}
                                     </div>

@@ -22,7 +22,7 @@ export function RulesAndMockPage() {
     alignItems: 'center',
     gap: tokens.space['3'],
     fontSize: '11px',
-    fontWeight: 700,
+    fontWeight: 'var(--fw-bold)',
     textTransform: 'uppercase',
     letterSpacing: '0.3px',
     color: 'var(--apinox-sideBarTitle-foreground)',
@@ -41,7 +41,7 @@ export function RulesAndMockPage() {
     color: tokens.text.secondary,
     fontSize: tokens.fontSize.sm,
     cursor: 'pointer',
-    fontWeight: 400,
+    fontWeight: 'var(--fw-regular)',
     textTransform: 'none',
     letterSpacing: 0,
     userSelect: 'none',
@@ -62,7 +62,7 @@ export function RulesAndMockPage() {
     color: tokens.text.secondary,
     fontSize: tokens.fontSize.sm,
     width: '160px',
-    fontWeight: 400,
+    fontWeight: 'var(--fw-regular)',
     letterSpacing: 0,
   };
 
@@ -90,7 +90,7 @@ export function RulesAndMockPage() {
           )}
           <span style={{ flex: 1 }} />
           {(mockMeta.total > 0) && (
-            <span style={{ fontSize: tokens.fontSize.xs, color: tokens.text.faint, fontWeight: 400, letterSpacing: 0 }}>
+            <span style={{ fontSize: tokens.fontSize.xs, color: tokens.text.faint, fontWeight: 'var(--fw-regular)', letterSpacing: 0 }}>
               {mockMeta.filtered}/{mockMeta.total}
             </span>
           )}

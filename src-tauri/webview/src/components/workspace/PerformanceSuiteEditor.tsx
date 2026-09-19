@@ -36,7 +36,7 @@ const SectionHeader = styled.div<{ $clickable?: boolean }>`
     margin: 0;
     padding: ${SPACING_LG};
     font-size: 1.1em;
-    font-weight: 600;
+    font-weight: var(--fw-semibold);
     display: flex;
     align-items: center;
     gap: ${SPACING_SM};
@@ -105,7 +105,7 @@ const DragHandle = styled.div`
 
 const MethodBadge = styled.span`
     font-size: 0.8em;
-    font-weight: bold;
+    font-weight: var(--fw-bold);
     padding: 2px ${SPACING_SM};
     border-radius: 3px;
     background: var(--apinox-badge-background);
@@ -136,7 +136,7 @@ const StatCard = styled.div<{ $variant?: 'success' | 'warning' | 'error' }>`
 
 const StatValue = styled.div`
     font-size: 1.3em;
-    font-weight: bold;
+    font-weight: var(--fw-bold);
     margin-bottom: 2px;
 `;
 
@@ -231,7 +231,7 @@ const InfoBanner = styled.div`
 `;
 
 const InfoBannerTitle = styled.div`
-    font-weight: 600;
+    font-weight: var(--fw-semibold);
     color: var(--apinox-foreground);
 `;
 
@@ -428,7 +428,7 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
     return (
         <Content>
             <Toolbar>
-                <div style={{ fontWeight: 'bold', fontSize: '1.1em', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ fontWeight: 'var(--fw-bold)', fontSize: '1.1em', display: 'flex', alignItems: 'center', gap: 10 }}>
                     <Zap size={16} />
                     {suite.name}
                 </div>
@@ -467,11 +467,11 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                             <Grid style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
                                 <div>
                                     <div style={{ fontSize: '0.85em', opacity: 0.7, marginBottom: 4 }}>Total Requests</div>
-                                    <div style={{ fontSize: '1.5em', fontWeight: 'bold' }}>{suite.requests?.length || 0}</div>
+                                    <div style={{ fontSize: '1.5em', fontWeight: 'var(--fw-bold)' }}>{suite.requests?.length || 0}</div>
                                 </div>
                                 <div>
                                     <div style={{ fontSize: '0.85em', opacity: 0.7, marginBottom: 4 }}>Last Run</div>
-                                    <div style={{ fontSize: '1.5em', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <div style={{ fontSize: '1.5em', fontWeight: 'var(--fw-bold)', display: 'flex', alignItems: 'center', gap: 6 }}>
                                         {sortedHistory[0].status === 'completed' ? (
                                             <CheckCircle size={18} style={{ color: 'var(--apinox-testing-iconPassed)' }} />
                                         ) : (
@@ -482,7 +482,7 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                                 </div>
                                 <div>
                                     <div style={{ fontSize: '0.85em', opacity: 0.7, marginBottom: 4 }}>Avg Response Time</div>
-                                    <div style={{ fontSize: '1.5em', fontWeight: 'bold' }}>
+                                    <div style={{ fontSize: '1.5em', fontWeight: 'var(--fw-bold)' }}>
                                         {sortedHistory[0].summary?.avgResponseTime ?
                                             sortedHistory[0].summary.avgResponseTime.toFixed(0)
                                             : '0'}ms
@@ -490,7 +490,7 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                                 </div>
                                 <div>
                                     <div style={{ fontSize: '0.85em', opacity: 0.7, marginBottom: 4 }}>Success Rate</div>
-                                    <div style={{ fontSize: '1.5em', fontWeight: 'bold' }}>
+                                    <div style={{ fontSize: '1.5em', fontWeight: 'var(--fw-bold)' }}>
                                         {sortedHistory[0].summary?.successRate !== undefined ?
                                             (sortedHistory[0].summary.successRate * 100).toFixed(0)
                                             : '0'}%
@@ -498,7 +498,7 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                                 </div>
                                 <div>
                                     <div style={{ fontSize: '0.85em', opacity: 0.7, marginBottom: 4 }}>Iterations</div>
-                                    <div style={{ fontSize: '1.5em', fontWeight: 'bold' }}>{
+                                    <div style={{ fontSize: '1.5em', fontWeight: 'var(--fw-bold)' }}>{
                                         sortedHistory[0].summary?.totalRequests ?
                                             Math.floor(sortedHistory[0].summary.totalRequests / (suite.requests?.length || 1))
                                             : '0'
@@ -621,7 +621,7 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                                     <DragHandle onClick={(e) => e.stopPropagation()}>
                                         <GripVertical size={16} />
                                     </DragHandle>
-                                    <div style={{ fontWeight: 'bold', width: 25, opacity: 0.6 }}>{index + 1}.</div>
+                                    <div style={{ fontWeight: 'var(--fw-bold)', width: 25, opacity: 0.6 }}>{index + 1}.</div>
                                     <div style={{ flex: 1 }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                             <MethodBadge>{req.method}</MethodBadge>
@@ -640,7 +640,7 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                                                     style={{ padding: '2px 4px', width: 200 }}
                                                 />
                                             ) : (
-                                                <span style={{ fontWeight: 500 }}>{req.name}</span>
+                                                <span style={{ fontWeight: 'var(--fw-medium)' }}>{req.name}</span>
                                             )}
                                         </div>
                                         <div style={{ fontSize: '0.85em', opacity: 0.7, marginTop: 4 }}>
@@ -763,7 +763,7 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                                         {schedule.enabled ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
                                     </button>
                                     <div>
-                                        <div style={{ fontWeight: 500 }}>
+                                        <div style={{ fontWeight: 'var(--fw-medium)' }}>
                                             <code>{schedule.cronExpression}</code>
                                         </div>
                                         <div style={{ fontSize: '0.85em', opacity: 0.7 }}>
@@ -888,7 +888,7 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                                                     <XCircle size={16} style={{ color: 'var(--apinox-testing-iconFailed)' }} />
                                                 )}
                                                 <div style={{ flex: 1 }}>
-                                                    <div style={{ fontWeight: 500 }}>
+                                                    <div style={{ fontWeight: 'var(--fw-medium)' }}>
                                                         {new Date(run.startTime).toLocaleString()}
                                                     </div>
                                                     <div style={{ fontSize: '0.85em', opacity: 0.7 }}>
@@ -1011,7 +1011,7 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                                                             )}
                                                             <span style={{ flex: 1 }}>{result.requestName}</span>
                                                             <span style={{ opacity: 0.7 }}>#{result.iteration + 1}</span>
-                                                            <span style={{ fontWeight: 500 }}>{result.duration.toFixed(0)}ms</span>
+                                                            <span style={{ fontWeight: 'var(--fw-medium)' }}>{result.duration.toFixed(0)}ms</span>
                                                             {result.slaBreached && (
                                                                 <span title="SLA Breached">
                                                                     <AlertTriangle size={12} style={{ color: 'var(--apinox-editorWarning-foreground)' }} />

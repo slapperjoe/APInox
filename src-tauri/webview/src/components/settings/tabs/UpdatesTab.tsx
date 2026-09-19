@@ -251,8 +251,8 @@ export const UpdatesTab: React.FC = () => {
                 )}
 
                 {checkState === 'done' && result && !result.has_update && !result.check_error && (
-                    <StatusRow icon={<CheckCircle size={14} color="var(--apinox-testing-pass, #4caf50)" />}>
-                        <span style={{ color: 'var(--apinox-testing-pass, #4caf50)' }}>
+                    <StatusRow icon={<CheckCircle size={14} color="var(--apinox-testing-iconPassed)" />}>
+                        <span style={{ color: 'var(--apinox-testing-iconPassed)' }}>
                             You are running the latest version.
                         </span>
                     </StatusRow>
@@ -384,7 +384,7 @@ export const UpdatesTab: React.FC = () => {
                             style={{
                                 height: '100%',
                                 width: `${downloadProgress}%`,
-                                background: 'var(--apinox-progressBar-foreground, var(--apinox-button-background, #0e639c))',
+                                background: 'var(--apinox-button-background)',
                                 transition: 'width 0.2s ease',
                             }}
                         />
@@ -428,7 +428,7 @@ const VersionBadge: React.FC<{ label: string; version: string }> = ({ label, ver
         <div style={{ fontSize: 11, color: 'var(--apinox-descriptionForeground, #888)', marginBottom: 2 }}>
             {label}
         </div>
-        <div style={{ fontSize: 14, fontWeight: 600 }}>v{version}</div>
+        <div style={{ fontSize: 14, fontWeight: 'var(--fw-semibold)' }}>v{version}</div>
     </div>
 );
 

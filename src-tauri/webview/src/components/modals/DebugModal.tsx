@@ -375,7 +375,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                             userSelect: 'none',
                             padding: '4px 0',
                             marginBottom: '8px',
-                            fontWeight: 'bold',
+                            fontWeight: 'var(--fw-bold)',
                         }}
                     >
                         <span style={{ fontSize: '0.85em', opacity: 0.7 }}>
@@ -462,12 +462,12 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                             padding: '4px 0',
                         }}
                     >
-                        <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ fontWeight: 'var(--fw-bold)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span style={{ fontSize: '0.85em', opacity: 0.7 }}>
                                 {showTauriLogs ? '▼' : '▶'}
                             </span>
                             All Logs (Tauri)
-                            <span style={{ fontSize: '0.85em', color: 'var(--apinox-descriptionForeground)', fontWeight: 'normal' }}>
+                            <span style={{ fontSize: '0.85em', color: 'var(--apinox-descriptionForeground)', fontWeight: 'var(--fw-regular)' }}>
                                 ({tauriLogs.length} {tauriLogs.length === 1 ? 'entry' : 'entries'})
                                 {isLoadingLogs && ' - Loading...'}
                             </span>
@@ -553,12 +553,12 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                             padding: '4px 0',
                         }}
                     >
-                        <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ fontWeight: 'var(--fw-bold)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span style={{ fontSize: '0.85em', opacity: 0.7 }}>
                                 {showFrontendLogs ? '▼' : '▶'}
                             </span>
                             Frontend Logs (React/Browser)
-                            <span style={{ fontSize: '0.85em', color: 'var(--apinox-descriptionForeground)', fontWeight: 'normal' }}>
+                            <span style={{ fontSize: '0.85em', color: 'var(--apinox-descriptionForeground)', fontWeight: 'var(--fw-regular)' }}>
                                 ({frontendLogState.length} {frontendLogState.length === 1 ? 'entry' : 'entries'})
                             </span>
                         </div>

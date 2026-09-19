@@ -85,7 +85,7 @@ const SectionHeader = styled.div`
   background: ${tokens.surface.elevated};
   border-bottom: 1px solid ${tokens.border.default};
   font-size: 10px;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   color: ${tokens.text.muted};
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -114,7 +114,7 @@ const LabelWrapper = styled.div`
 
 const Label = styled.div<{ $danger?: boolean }>`
   font-size: 12px;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   color: ${p => p.$danger ? tokens.text.danger : tokens.text.primary};
 `;
 
@@ -139,7 +139,7 @@ const Toast = styled.div`
   border-radius: ${tokens.radius.lg};
   box-shadow: 0 4px 20px rgba(0,0,0,0.4);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   z-index: 100000;
   animation: ctxFadeIn 0.2s ease;
 `;

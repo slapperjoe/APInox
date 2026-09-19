@@ -232,7 +232,7 @@ export const ConditionPickerModal: React.FC<ConditionPickerModalProps> = ({
           display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
         }}>
           <div>
-            <div style={{ fontSize: '15px', fontWeight: 600, color: tokens.text.secondary }}>
+            <div style={{ fontSize: '15px', fontWeight: 'var(--fw-semibold)', color: tokens.text.secondary }}>
               Choose Match Conditions
             </div>
             <div style={{ fontSize: '11px', color: tokens.text.hint, marginTop: '3px' }}>
@@ -256,7 +256,7 @@ export const ConditionPickerModal: React.FC<ConditionPickerModalProps> = ({
               <div key={group} style={{ marginBottom: '16px' }}>
                 {/* Group heading */}
                 <div style={{
-                  fontSize: '10px', fontWeight: 700, color: tokens.text.muted,
+                  fontSize: '10px', fontWeight: 'var(--fw-bold)', color: tokens.text.muted,
                   textTransform: 'uppercase', letterSpacing: '0.08em',
                   marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px',
                 }}>

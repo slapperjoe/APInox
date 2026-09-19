@@ -333,7 +333,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
                     border: '1px solid var(--apinox-notifications-border)',
                     borderRadius: '4px'
                 }}>
-                    <div style={{ marginBottom: '12px', fontWeight: 600 }}>
+                    <div style={{ marginBottom: '12px', fontWeight: 'var(--fw-semibold)' }}>
                         ⚠️ Regenerate Certificate?
                     </div>
                     <div style={{ marginBottom: '16px', fontSize: '0.9em', opacity: 0.9 }}>
@@ -378,7 +378,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
                     border: '1px solid var(--apinox-notifications-border)',
                     borderRadius: '4px'
                 }}>
-                    <div style={{ marginBottom: '12px', fontWeight: 600, color: 'var(--apinox-charts-red)' }}>
+                    <div style={{ marginBottom: '12px', fontWeight: 'var(--fw-semibold)', color: 'var(--apinox-charts-red)' }}>
                         ⚠️ Reset All Certificates?
                     </div>
                     <div style={{ marginBottom: '16px', fontSize: '0.9em', opacity: 0.9 }}>
@@ -485,7 +485,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
                             >
                                 {getStatusIcon(result.status)}
                                 <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: 500 }}>{result.message}</div>
+                                    <div style={{ fontWeight: 'var(--fw-medium)' }}>{result.message}</div>
                                     {result.details && (
                                         <div style={{ 
                                             fontSize: '0.85em', 
@@ -622,7 +622,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
                             >
                                 {getStatusIcon(result.status)}
                                 <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: 500 }}>{result.message}</div>
+                                    <div style={{ fontWeight: 'var(--fw-medium)' }}>{result.message}</div>
                                     {result.details && (
                                         <div style={{ 
                                             fontSize: '0.85em', 

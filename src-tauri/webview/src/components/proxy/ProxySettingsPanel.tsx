@@ -68,7 +68,7 @@ export function ProxySettingsPanel({ ignoreRules, onRemoveIgnoreRule, onAddIgnor
 
   return (
     <div style={{ padding: '20px' }}>
-      <h2 style={{ margin: '0 0 20px 0', fontSize: 'var(--apinox-fs-title)', fontWeight: 500 }}>Proxy Settings</h2>
+      <h2 style={{ margin: '0 0 20px 0', fontSize: 'var(--apinox-fs-title)', fontWeight: 'var(--fw-medium)' }}>Proxy Settings</h2>
 
       {/* Row 1: About + Default Port side by side */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
@@ -216,7 +216,7 @@ function IgnoreListGrid({ rules, onRemove, onAdd }: {
   }
 
   const modeBadge = (mode: 'host' | 'host+path') => ({
-    fontSize: 10, fontWeight: 700,
+    fontSize: 10, fontWeight: 'var(--fw-bold)',
     padding: '1px 7px', borderRadius: 8,
     fontFamily: 'monospace',
     ...(mode === 'host'
@@ -250,7 +250,7 @@ function IgnoreListGrid({ rules, onRemove, onAdd }: {
             background: tokens.surface.elevated,
             borderBottom: `1px solid ${tokens.border.default}`,
             padding: '6px 12px',
-            fontSize: tokens.fontSize.xs, fontWeight: 600,
+            fontSize: tokens.fontSize.xs, fontWeight: 'var(--fw-semibold)',
             color: tokens.text.muted, letterSpacing: '0.05em', textTransform: 'uppercase',
           }}>
             <span>Mode</span>

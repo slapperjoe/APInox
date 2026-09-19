@@ -118,7 +118,7 @@ export const FormCheckbox = styled.input.attrs({ type: 'checkbox' })`
 export const FormLabel = styled.label<{ $required?: boolean }>`
     display: block;
     font-size: 13px;
-    font-weight: 500;
+    font-weight: var(--fw-medium);
     color: var(--apinox-foreground);
     margin-bottom: 4px;
     
@@ -178,7 +178,7 @@ export const FormSection = styled.div`
 export const FormSectionTitle = styled.h3`
     margin: 0 0 12px 0;
     font-size: 14px;
-    font-weight: 600;
+    font-weight: var(--fw-semibold);
     color: var(--apinox-foreground);
     border-bottom: 1px solid var(--apinox-panel-border);
     padding-bottom: 6px;

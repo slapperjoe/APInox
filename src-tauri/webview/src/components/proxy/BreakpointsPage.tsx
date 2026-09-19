@@ -299,7 +299,7 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
       {/* Paused Traffic Queue */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 500 }}>
+          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 'var(--fw-medium)' }}>
             Paused Traffic ({queue.length})
           </h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: tokens.space['4'], fontSize: tokens.fontSize.sm, color: tokens.text.muted }}>
@@ -402,7 +402,7 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
                 })()}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
                   <div>
-                    <div style={{ fontSize: '14px', fontWeight: 500 }}>
+                    <div style={{ fontSize: '14px', fontWeight: 'var(--fw-medium)' }}>
                       <span style={{ color: item.pauseType === 'request' ? tokens.syntax.request : tokens.syntax.response }}>
                         {item.pauseType.toUpperCase()}
                       </span>
@@ -483,7 +483,7 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
           alignItems: 'center',
           marginBottom: '16px'
         }}>
-          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 500 }}>
+          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 'var(--fw-medium)' }}>
             Breakpoint Rules
           </h2>
           <button
@@ -536,7 +536,7 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
                       style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                     />
                     <div>
-                      <div style={{ fontWeight: 500, fontSize: '14px' }}>{rule.name}</div>
+                      <div style={{ fontWeight: 'var(--fw-medium)', fontSize: '14px' }}>{rule.name}</div>
                       <div style={{ fontSize: tokens.fontSize.sm, color: tokens.text.muted, marginTop: '4px' }}>
                         Target: {rule.target} • {rule.conditions.length} condition{rule.conditions.length !== 1 ? 's' : ''}
                       </div>
@@ -730,7 +730,7 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
 
             {/* Headers */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: tokens.fontSize.base, marginBottom: '6px', color: tokens.text.secondary, fontWeight: 600 }}>
+              <label style={{ display: 'block', fontSize: tokens.fontSize.base, marginBottom: '6px', color: tokens.text.secondary, fontWeight: 'var(--fw-semibold)' }}>
                 {editingTraffic.pauseType === 'request' ? 'Request Headers' : 'Response Headers'}
               </label>
               <div style={{ height: '160px', border: `1px solid ${tokens.border.subtle}`, borderRadius: tokens.radius.md, overflow: 'hidden' }}>
@@ -743,7 +743,7 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
 
             {/* Body Editor */}
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: tokens.fontSize.base, marginBottom: '6px', color: tokens.text.secondary, fontWeight: 600 }}>
+              <label style={{ display: 'block', fontSize: tokens.fontSize.base, marginBottom: '6px', color: tokens.text.secondary, fontWeight: 'var(--fw-semibold)' }}>
                 {editingTraffic.pauseType === 'request' ? 'Request Body' : 'Response Body'}
               </label>
               <div style={{ height: '320px', border: `1px solid ${tokens.border.subtle}`, borderRadius: tokens.radius.md, overflow: 'hidden' }}>
