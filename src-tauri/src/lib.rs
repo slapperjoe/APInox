@@ -198,13 +198,7 @@ fn get_platform_os() -> String {
     #[cfg(target_os = "linux")]
     return "linux".to_string();
 
-    #[cfg(target_os = "android")]
-    return "android".to_string();
-
-    #[cfg(target_os = "ios")]
-    return "ios".to_string();
-
-    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux", target_os = "android", target_os = "ios")))]
+    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
     return "unknown".to_string();
 }
 
@@ -317,7 +311,7 @@ fn init_logging(app: &mut tauri::App) -> tauri::Result<()> {
             .build(),
     )?;
 
-    // Initialize decorum plugin on desktop only (mobile doesn't support it)
+    // Initialize the decorum plugin (custom window decorations)
     #[cfg(desktop)]
     app.handle().plugin(tauri_plugin_decorum::init())?;
 
@@ -326,16 +320,6 @@ fn init_logging(app: &mut tauri::App) -> tauri::Result<()> {
     if let Ok(guard) = LOG_FILE_PATH.lock() {
         if let Some(ref path) = *guard {
             log::info!("Logs will be written to: {}", path);
-        }
-    }
-
-    // On Android, set APINOX_CONFIG_DIR to the sandboxed app data dir.
-    #[cfg(target_os = "android")]
-    {
-        if let Ok(data_dir) = app.path().app_data_dir() {
-            let config_dir = data_dir.join("apinox");
-            std::env::set_var("APINOX_CONFIG_DIR", config_dir.to_string_lossy().as_ref());
-            log::info!("Android: APINOX_CONFIG_DIR set to {:?}", config_dir);
         }
     }
 
@@ -503,7 +487,6 @@ async fn build_proxy_state(app: &tauri::AppHandle) -> Result<ProxyAppState, Stri
     Ok(state)
 }
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     STARTUP_TIMER.get_or_init(Instant::now);
     STARTUP_REPORTED.store(false, Ordering::Relaxed);

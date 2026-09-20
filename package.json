@@ -31,9 +31,6 @@
     "tauri:dev": "node scripts/version.js increment && node scripts/version.js sync && npm run build:packages && cd src-tauri/webview && node ../../scripts/run-npm-install.js && cd ../.. && npx tauri dev",
     "appimage": "APP=$(ls -t target/release/bundle/appimage/APInox*.AppImage 2>/dev/null | head -1) && [ -n \"$APP\" ] && chmod +x \"$APP\" && LD_LIBRARY_PATH=$APP/usr/lib \"$APP\" || { echo 'No AppImage found.'; exit 1; }",
     "tauri:build": "node scripts/version.js build",
-    "tauri:ios": "node scripts/version.js increment && node scripts/version.js sync && npm run compile-webview && npx tauri ios dev",
-    "tauri:android": "node scripts/version.js increment && node scripts/version.js sync && npx tauri android dev",
-    "tauri:android:build": "node scripts/version.js increment && node scripts/version.js sync && npx tauri android build --debug",
     "tauri": "tauri",
     "package:arch": "mkdir -p target/release/bundle/arch && PKGDEST=$(pwd)/target/release/bundle/arch makepkg -f --nodeps --nocheck --noconfirm && node scripts/gen-arch-install.js"
   },
