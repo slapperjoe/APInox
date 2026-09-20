@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ToggleTab } from './common/Button';
 import styled from 'styled-components';
 import remarkGfm from 'remark-gfm';
 import ReactMarkdown from 'react-markdown';
@@ -20,7 +21,7 @@ const Sidebar = styled.div`
     overflow-y: auto;
 `;
 
-const Tab = styled.button<{ $active: boolean }>`
+const Tab = styled(ToggleTab)<{ $active: boolean }>`
     background: ${props => props.$active ? 'var(--apinox-list-activeSelectionBackground)' : 'transparent'};
     color: ${props => props.$active ? 'var(--apinox-list-activeSelectionForeground)' : 'var(--apinox-foreground)'};
     border: none;

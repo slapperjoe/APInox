@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { ToggleTab } from '../common/Button';
 import styled from 'styled-components';
 import {
   formatXml,
@@ -85,7 +86,7 @@ const DurationText = styled.span`
   white-space: nowrap;
 `;
 
-const ViewTab = styled.button<{ $active: boolean }>`
+const ViewTab = styled(ToggleTab)<{ $active: boolean }>`
   padding: 2px 9px;
   border: 1px solid ${p => p.$active ? tokens.status.accentDark : tokens.border.subtle};
   border-radius: 4px;

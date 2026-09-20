@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import styled, { css } from "styled-components";
 import { EmptyState } from "../common/EmptyState";
-import { shake } from "../common/Button";
+import { shake, GhostButton } from "../common/Button";
 import {
   FilePlus,
   FolderOpen,
@@ -66,7 +66,7 @@ const ItemName = styled.span`
   white-space: nowrap;
 `;
 
-const SmallBtn = styled.button<{ $confirming?: boolean }>`
+const SmallBtn = styled(GhostButton)<{ $confirming?: boolean }>`
   display: flex;
   align-items: center;
   padding: 2px;

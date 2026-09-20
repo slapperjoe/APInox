@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { Plus, Trash2, GripVertical, Play, Save, X, AlertCircle, ChevronRight, ChevronDown } from 'lucide-react';
 import { Modal } from './Modal';
 import { Workflow, WorkflowStep, ApinoxProject, HttpMethod } from '@shared/models';
-import { PrimaryButton, SecondaryButton, IconButton } from '../common/Button';
+import { PrimaryButton, SecondaryButton, IconButton, GhostButton } from '../common/Button';
 import { SPACING_SM, SPACING_MD, SPACING_XS } from '../../styles/spacing';
 import { v4 as uuidv4 } from 'uuid';
 import { PickRequestModal, PickRequestItem } from './PickRequestModal';
@@ -128,44 +128,6 @@ const StepActions = styled.div`
     }
 `;
 
-const AddStepButton = styled.button`
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: ${SPACING_SM};
-    padding: ${SPACING_SM};
-    background: var(--apinox-button-secondaryBackground);
-    color: var(--apinox-button-secondaryForeground);
-    border: 1px dashed var(--apinox-panel-border);
-    cursor: pointer;
-    font-size: var(--apinox-fs-base);
-
-    &:hover {
-        background: var(--apinox-button-secondaryHoverBackground);
-    }
-`;
-
-const AddNestedStepButton = styled.button`
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 8px;
-    margin-left: 48px;
-    background: transparent;
-    color: var(--apinox-textLink-foreground);
-    border: 1px dashed var(--apinox-textLink-foreground);
-    cursor: pointer;
-    font-size: var(--apinox-fs-sm);
-    opacity: 0.7;
-    margin-top: -1px;
-    margin-bottom: ${SPACING_XS};
-
-    &:hover {
-        opacity: 1;
-        background: var(--apinox-list-hoverBackground);
-    }
-`;
-
 const AddNestedStepDropdown = styled.div`
     position: relative;
     margin-left: 48px;
@@ -173,7 +135,7 @@ const AddNestedStepDropdown = styled.div`
     margin-bottom: ${SPACING_XS};
 `;
 
-const DropdownButton = styled.button`
+const DropdownButton = styled(GhostButton)`
     display: flex;
     align-items: center;
     gap: 4px;

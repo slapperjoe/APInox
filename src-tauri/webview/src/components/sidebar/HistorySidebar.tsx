@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { RequestHistoryEntry } from "@shared/models";
 import { EmptyState } from "../common/EmptyState";
-import { IconButton } from "../common/Button";
+import { IconButton, GhostButton } from "../common/Button";
 import { SPACING_XS, SPACING_SM, SPACING_MD, SPACING_LG } from "../../styles/spacing";
 
 const Section = styled.div`
@@ -106,7 +106,7 @@ const FilterSelect = styled.select`
     }
 `;
 
-const FilterButton = styled.button<{ $active?: boolean }>`
+const FilterButton = styled(GhostButton)<{ $active?: boolean }>`
     background: ${props => props.$active ? 'var(--apinox-button-background)' : 'var(--apinox-button-secondaryBackground)'};
     color: ${props => props.$active ? 'var(--apinox-button-foreground)' : 'var(--apinox-button-secondaryForeground)'};
     border: 1px solid ${props => props.$active ? 'var(--apinox-button-background)' : 'var(--apinox-input-border)'};
@@ -127,7 +127,7 @@ const FilterButton = styled.button<{ $active?: boolean }>`
     }
 `;
 
-const ClearFiltersButton = styled.button`
+const ClearFiltersButton = styled(GhostButton)`
     margin-left: auto;
     background: transparent;
     color: var(--apinox-input-foreground);
@@ -150,7 +150,7 @@ const ClearFiltersButton = styled.button`
     }
 `;
 
-const FilterToggle = styled.button<{ $expanded: boolean }>`
+const FilterToggle = styled(GhostButton)<{ $expanded: boolean }>`
     background: transparent;
     border: none;
     color: var(--apinox-sideBar-foreground);

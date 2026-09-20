@@ -29,7 +29,7 @@ export const shake = keyframes`
 `;
 
 // Base button styles
-const baseButtonStyles = css`
+export const baseButtonStyles = css`
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -44,6 +44,20 @@ const baseButtonStyles = css`
         cursor: not-allowed;
         opacity: 0.5;
     }
+`;
+
+/**
+ * GhostButton - Neutral button base.
+ *
+ * The canonical starting point for any button that doesn't map onto an
+ * existing variant: it carries only the shared `baseButtonStyles` (flex
+ * layout, cursor, border/outline reset, font, transition, disabled state)
+ * and no color/padding/radius opinion. Ad-hoc `styled.button` definitions
+ * migrate here (UI-consistency item 16+17) so they inherit the shared base
+ * instead of redeclaring it; each site then adds only its delta CSS.
+ */
+export const GhostButton = styled.button`
+    ${baseButtonStyles}
 `;
 
 /**
@@ -156,3 +170,29 @@ export const RunButton = styled.button`
         background-color: var(--apinox-toolbar-hoverBackground);
     }
 `;
+
+/**
+ * ToggleTab - Active-state toggle for tab bars and mode selectors.
+ * The single source of the active/inactive selection styling (list selection
+ * tokens); sites extend it and add only their geometry (padding, size,
+ * border). Replaces the per-file `$active` tab buttons (HelpModal,
+ * TrafficDetails, EnvironmentsTab, HistorySidebar).
+ */
+export const ToggleTab = styled.button<{ $active?: boolean }>`
+    ${baseButtonStyles}
+    border: none;
+    text-align: left;
+    background: ${props => props.$active
+        ? 'var(--apinox-list-activeSelectionBackground)'
+        : 'transparent'};
+    color: ${props => props.$active
+        ? 'var(--apinox-list-activeSelectionForeground)'
+        : 'var(--apinox-foreground)'};
+
+    &:hover {
+        background: ${props => props.$active
+            ? 'var(--apinox-list-activeSelectionBackground)'
+            : 'var(--apinox-list-hoverBackground)'};
+    }
+`;
+

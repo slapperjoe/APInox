@@ -1,4 +1,5 @@
 import styled from 'styled-components';
+import { GhostButton } from '../common/Button';
 import { SPACING_XS, SPACING_SM, SPACING_MD } from '../../styles/spacing';
 
 export const SamplePanelContainer = styled.div`
@@ -155,7 +156,7 @@ export const CommentText = styled.span`
     font-style: italic;
 `;
 
-export const ActionButton = styled.button`
+export const ActionButton = styled(GhostButton)`
     display: inline-flex;
     align-items: center;
     gap: ${SPACING_XS};

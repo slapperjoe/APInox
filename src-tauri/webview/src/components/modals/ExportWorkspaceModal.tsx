@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { GhostButton } from '../common/Button';
 import styled from 'styled-components';
 import { Modal, Button } from './Modal';
 import { EmptyState } from '../common/EmptyState';
@@ -55,7 +56,7 @@ const SelectionControls = styled.div`
   margin-bottom: 12px;
 `;
 
-const LinkButton = styled.button`
+const LinkButton = styled(GhostButton)`
   background: transparent;
   border: none;
   color: var(--apinox-textLink-foreground);

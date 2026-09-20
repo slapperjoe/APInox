@@ -11,7 +11,7 @@ import {
   GitBranch,
   Plus,
 } from "lucide-react";
-import { PrimaryButton, SecondaryButton } from "../common/Button";
+import { PrimaryButton, SecondaryButton, GhostButton } from "../common/Button";
 import { DelayStepEditor } from "./DelayStepEditor";
 import { ConditionStepEditor } from "./ConditionStepEditor";
 import { ScriptStepEditor } from "./ScriptStepEditor";
@@ -125,7 +125,7 @@ const AddStepDropdown = styled.div`
   width: 100%;
 `;
 
-const DropdownButton = styled.button`
+const DropdownButton = styled(GhostButton)`
   display: flex;
   align-items: center;
   gap: 8px;

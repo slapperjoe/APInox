@@ -5,7 +5,7 @@ import { UnifiedProject, TestSuite } from '@shared/models';
 import { SidebarContextMenu, CtxMenuSection, CtxMenuItem, Pencil } from './shared/SidebarContextMenu';
 import { SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle, OperationItem, RequestItem } from './shared/SidebarStyles';
 import { EmptyState } from '../common/EmptyState';
-import { HeaderButton } from '../common/Button';
+import { HeaderButton, GhostButton } from '../common/Button';
 import { Tooltip } from '../common/Tooltip';
 import { InlineFormInput } from '../common/Form';
 import { SPACING_SM, SPACING_XS } from '../../styles/spacing';
@@ -57,7 +57,7 @@ const AddSuiteMenuEmpty = styled.div`
 `;
 
 // A real <button> so menu items are keyboard-operable (Tab/Enter/Space).
-const AddSuiteMenuItem = styled.button<{ $disabled?: boolean }>`
+const AddSuiteMenuItem = styled(GhostButton)<{ $disabled?: boolean }>`
     width: 100%;
     display: flex;
     align-items: center;

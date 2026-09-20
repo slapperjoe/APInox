@@ -4,7 +4,7 @@ import { Plus, Trash2, Play } from 'lucide-react';
 import { SidebarContextMenu, CtxMenuSection } from './shared/SidebarContextMenu';
 import { ScrapbookRequest } from '@shared/models';
 import { SidebarHeaderActions, SidebarHeaderTitle, RequestItem as BaseRequestItem } from './shared/SidebarStyles';
-import { HeaderButton } from '../common/Button';
+import { HeaderButton, GhostButton } from '../common/Button';
 import { Tooltip } from '../common/Tooltip';
 import { SPACING_SM } from '../../styles/spacing';
 import { EmptyState } from '../common/EmptyState';
@@ -81,7 +81,7 @@ const RequestActions = styled.div`
     }
 `;
 
-const IconButton = styled.button`
+const IconButton = styled(GhostButton)`
     background: transparent;
     border: none;
     color: var(--apinox-foreground);

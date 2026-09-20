@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { GhostButton } from './common/Button';
 import styled from 'styled-components';
 import { Search, X } from 'lucide-react';
 import { useSearch } from '../contexts/SearchContext';
@@ -131,7 +132,7 @@ const SearchInput = styled.input`
   }
 `;
 
-const ClearButton = styled.button`
+const ClearButton = styled(GhostButton)`
   display: flex;
   align-items: center;
   justify-content: center;

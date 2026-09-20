@@ -8,7 +8,7 @@ import type { EditorSettings } from '@apinox/request-editor/core';
 import { MonacoRequestEditorWithToolbar, MonacoResponseViewer } from '@apinox/request-editor/monaco';
 import { invokeTauriCommand } from '../../utils/bridge';
 import { EmptyState } from '../common/EmptyState';
-import { HeaderButton } from '../common/Button';
+import { HeaderButton, GhostButton } from '../common/Button';
 import { Tooltip } from '../common/Tooltip';
 import { ConditionPickerModal, suggestConditionsFromSoapXml } from './ConditionPickerModel';
 import { tokens } from './tokens';
@@ -282,7 +282,7 @@ const Placeholder = styled.div`
   font-size: var(--apinox-fs-md);
 `;
 
-const Btn = styled.button`
+const Btn = styled(GhostButton)`
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -382,7 +382,7 @@ const FileInput = styled.div`
   }
 `;
 
-const BrowseBtn = styled.button`
+const BrowseBtn = styled(GhostButton)`
   background: ${tokens.surface.input};
   border: 1px solid ${tokens.border.subtle};
   border-radius: ${tokens.radius.sm};

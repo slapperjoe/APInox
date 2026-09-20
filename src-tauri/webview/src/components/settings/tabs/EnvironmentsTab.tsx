@@ -8,7 +8,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Trash2, Check, Download, Upload, Eye, EyeOff, Lock, X, Pencil } from 'lucide-react';
 import styled, { css } from 'styled-components';
 import { bridge } from '../../../utils/bridge';
-import { shake } from '../../common/Button';
+import { shake, GhostButton } from '../../common/Button';
 import {
     ApinoxConfig,
     EnvList,
@@ -43,7 +43,7 @@ const CustomFieldRow = styled.div`
     margin-bottom: 8px;
 `;
 
-const SecretToggle = styled.button<{ $active: boolean }>`
+const SecretToggle = styled(GhostButton)<{ $active: boolean }>`
     background: ${props => props.$active ? 'var(--apinox-button-background)' : 'transparent'};
     border: 1px solid var(--apinox-input-border);
     color: ${props => props.$active ? 'var(--apinox-button-foreground)' : 'var(--apinox-foreground)'};

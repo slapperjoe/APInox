@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useState, useEffect } from "react";
 import styled from "styled-components";
+import { GhostButton } from "../components/common/Button";
 import { MonacoEditorWrapper, MonacoEditorWrapperProps, useSettingsDropdown } from "@apinox/request-editor/monaco";
 import {
   Save,
@@ -65,7 +66,7 @@ const DirtyDot = styled.span<{ $kind: "external" | "managed" }>`
   flex-shrink: 0;
 `;
 
-const ToolbarBtn = styled.button<{ $active?: boolean }>`
+const ToolbarBtn = styled(GhostButton)<{ $active?: boolean }>`
   display: flex;
   align-items: center;
   gap: 4px;

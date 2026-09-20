@@ -1,4 +1,5 @@
 import React from "react";
+import { GhostButton } from "../components/common/Button";
 import styled from "styled-components";
 import {
   Bold,
@@ -42,7 +43,7 @@ const SectionLabel = styled.div`
   user-select: none;
 `;
 
-const IconBtn = styled.button`
+const IconBtn = styled(GhostButton)`
   position: relative;
   display: flex;
   align-items: center;

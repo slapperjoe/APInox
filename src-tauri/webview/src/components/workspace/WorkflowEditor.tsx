@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { Workflow, WorkflowStep, ApinoxProject } from '@shared/models';
 import { SPACING_SM, SPACING_MD, SPACING_XS } from '../../styles/spacing';
 import { GripVertical, Trash2, Plus, ChevronRight, ChevronDown, Clock, AlertCircle, Repeat, Code, FileText } from 'lucide-react';
-import { PrimaryButton, SecondaryButton, IconButton } from '../common/Button';
+import { PrimaryButton, SecondaryButton, IconButton, GhostButton } from '../common/Button';
 import { v4 as uuidv4 } from 'uuid';
 import { DelayStepEditor } from './DelayStepEditor';
 import { ConditionStepEditor } from './ConditionStepEditor';
@@ -154,7 +154,7 @@ const AddStepContainer = styled.div`
     position: relative;
 `;
 
-const AddStepButton = styled.button`
+const AddStepButton = styled(GhostButton)`
     width: 100%;
     padding: ${SPACING_SM};
     background: var(--apinox-button-secondaryBackground);

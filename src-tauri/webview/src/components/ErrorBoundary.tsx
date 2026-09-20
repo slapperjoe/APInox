@@ -1,4 +1,5 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
+import { GhostButton } from './common/Button';
 import styled from 'styled-components';
 import { Copy, Check } from 'lucide-react';
 import { SPACING_LG, SPACING_MD } from '../styles/spacing';
@@ -28,7 +29,7 @@ const ErrorHeader = styled.div`
     }
 `;
 
-const CopyButton = styled.button`
+const CopyButton = styled(GhostButton)`
     display: flex;
     align-items: center;
     gap: 8px;

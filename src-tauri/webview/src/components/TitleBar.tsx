@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { GhostButton } from './common/Button';
 import styled from 'styled-components';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { invoke } from '@tauri-apps/api/core';
@@ -142,7 +143,7 @@ const SearchInput = styled.input`
   }
 `;
 
-const ClearButton = styled.button`
+const ClearButton = styled(GhostButton)`
   display: flex;
   align-items: center;
   justify-content: center;
@@ -170,7 +171,7 @@ const ClearButton = styled.button`
   }
 `;
 
-const LastSearchBreadcrumb = styled.button`
+const LastSearchBreadcrumb = styled(GhostButton)`
   display: flex;
   align-items: center;
   gap: 8px;
@@ -228,7 +229,7 @@ const WindowControls = styled.div`
   -webkit-app-region: no-drag;
 `;
 
-const WindowButton = styled.button<{ $isClose?: boolean }>`
+const WindowButton = styled(GhostButton)<{ $isClose?: boolean }>`
   width: 46px;
   height: 32px;
   max-height: 32px;
