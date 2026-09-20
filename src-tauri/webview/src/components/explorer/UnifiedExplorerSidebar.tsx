@@ -311,18 +311,32 @@ export const TreeItem: React.FC<TreeItemProps> = ({
                     textOverflow: 'ellipsis',
                 }}
             >
-                {/* Expand/collapse chevron — only shown when the node has
-                    visible children (an empty project/operation has nothing
-                    to expand, so its chevron is omitted). */}
-                {hasChildren && (
-                    <div data-testid="tree-chevron" onClick={onToggle} style={{ cursor: 'pointer', flexShrink: 0 }}>
-                        {expanded ? (
+                {/* Expand/collapse chevron slot — ALWAYS rendered at a fixed
+                    14px width so the icon + text line up across every row,
+                    regardless of whether a chevron is shown. The chevron itself
+                    is only present when the node has visible children (an empty
+                    project/operation has nothing to expand); otherwise the slot
+                    is an empty spacer of the same width so alignment is kept. */}
+                <div
+                    data-testid="tree-chevron-slot"
+                    data-has-chevron={hasChildren || undefined}
+                    onClick={hasChildren ? onToggle : undefined}
+                    style={{
+                        width: 14,
+                        flexShrink: 0,
+                        cursor: hasChildren ? 'pointer' : 'default',
+                        display: 'flex',
+                        alignItems: 'center',
+                    }}
+                >
+                    {hasChildren && (
+                        expanded ? (
                             <ChevronDown size={14} />
                         ) : (
                             <ChevronRight size={14} />
-                        )}
-                    </div>
-                )}
+                        )
+                    )}
+                </div>
                 <span style={{ color, flexShrink: 0 }}>{icon}</span>
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
             </div>
