@@ -39,7 +39,15 @@ export const baseButtonStyles = css`
     font-family: var(--apinox-font-family);
     font-size: var(--apinox-fs-base);
     transition: background-color 0.1s ease, opacity 0.1s ease;
-    
+
+    /* Keyboard focus ring (UI-consistency item 22). The outline:none above
+       suppresses the default browser ring on mouse focus; :focus-visible
+       re-adds a ring only for keyboard navigation, so mouse users see no change. */
+    &:focus-visible {
+        outline: 2px solid var(--apinox-focusBorder);
+        outline-offset: 2px;
+    }
+
     &:disabled {
         cursor: not-allowed;
         opacity: 0.5;

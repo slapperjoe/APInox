@@ -266,6 +266,15 @@ select:focus {
     border-color: var(--apinox-focusBorder, #007fd4);
 }
 
+/* Global keyboard-focus ring (UI-consistency item 22).
+   :focus-visible only fires for keyboard navigation, so mouse/touch users
+   see no change. Components that draw their own focus affordance keep an
+   explicit `outline: none` (higher specificity wins over this element selector). */
+:focus-visible {
+    outline: 2px solid var(--apinox-focusBorder, #007fd4);
+    outline-offset: 2px;
+}
+
 select option {
     background-color: var(
         --apinox-dropdown-listBackground,
