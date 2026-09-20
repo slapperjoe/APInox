@@ -209,6 +209,15 @@ export interface TreeItemProps {
     dataDropType?: string;
     dataDropIndex?: number;
     dataDropParent?: string;
+    // When set, this overrides the `hasChildren` heuristic for the
+    // expand/collapse chevron. `TreeItem` normally derives "has children"
+    // from `React.Children.count(children)`, but that counts child SLOTS —
+    // a project/operation row always carries a trailing drag-drop gap row
+    // (a `false`/array sibling) alongside its real children, so the count is
+    // never 0 and the chevron would render even for an EMPTY project (nothing
+    // to expand). Callers that know the true visible-child count pass it here
+    // so an empty node omits its chevron.
+    hasChildren?: boolean;
 }
 
 export const TreeItem: React.FC<TreeItemProps> = ({
@@ -229,8 +238,17 @@ export const TreeItem: React.FC<TreeItemProps> = ({
     dataDropType,
     dataDropIndex,
     dataDropParent,
+    hasChildren: hasChildrenOverride,
 }) => {
-    const hasChildren = React.Children.count(children) > 0;
+    // Explicit override wins (a project/operation node passes its true
+    // visible-child count, because the trailing drag-drop gap row makes the
+    // raw `React.Children.count` non-zero even when nothing is expandable).
+    // Otherwise fall back to the children heuristic — a leaf request row has
+    // no children at all, and an empty node's gap row is the only sibling.
+    const hasChildren =
+        hasChildrenOverride !== undefined
+            ? hasChildrenOverride
+            : React.Children.count(children) > 0;
 
     const handleContextMenuInternal = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -293,9 +311,11 @@ export const TreeItem: React.FC<TreeItemProps> = ({
                     textOverflow: 'ellipsis',
                 }}
             >
-                {/* Expand/collapse chevron */}
+                {/* Expand/collapse chevron — only shown when the node has
+                    visible children (an empty project/operation has nothing
+                    to expand, so its chevron is omitted). */}
                 {hasChildren && (
-                    <div onClick={onToggle} style={{ cursor: 'pointer', flexShrink: 0 }}>
+                    <div data-testid="tree-chevron" onClick={onToggle} style={{ cursor: 'pointer', flexShrink: 0 }}>
                         {expanded ? (
                             <ChevronDown size={14} />
                         ) : (
@@ -1409,6 +1429,7 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
             {projects.map((project) => {
                 const projectId = project.id || project.name;
                 const isExpanded = expandedNodes.has(projectId);
+                const projectOps = project.operations || [];
 
                 return (
                     <TreeItem
@@ -1417,14 +1438,22 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                         type="project"
                         expanded={isExpanded}
                         selected={isSelected('project', projectId)}
+                        // Explicit child count: an empty project (no operations)
+                        // must show no chevron — there is nothing to expand. The
+                        // trailing drag-drop gap row would otherwise inflate the
+                        // default `hasChildren` heuristic to non-zero.
+                        hasChildren={projectOps.length > 0}
                         onClick={() => onSelectNode('project', projectId)}
-                        onToggle={() => toggleNode(projectId)}
+                        onToggle={projectOps.length > 0 ? () => toggleNode(projectId) : undefined}
                         onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, type: 'project', data: project }); }}
                     >
                         {(project.operations || []).map((op: ApiOperation, opIndex: number) => {
                             const opId = op.id || op.name;
                             const isOpExpanded = expandedNodes.has(opId);
                             const showOpGapBefore = dropGap?.type === 'operation' && dropGap?.projectName === project.name && dropGap?.index === opIndex;
+                            // Visible requests exclude the hidden `sample_` placeholders —
+                            // an op with only sample requests has nothing to expand.
+                            const visibleOpRequests = (op.requests || []).filter(req => !req.name.startsWith('sample_'));
 
                             return (
                                 <React.Fragment key={opId}>
@@ -1450,8 +1479,12 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                                     dataDropType="operation"
                                     dataDropIndex={opIndex}
                                     dataDropParent={project.name}
+                                    // Explicit count: the trailing drag-drop gap row would
+                                    // otherwise make an operation with no visible requests
+                                    // look expandable.
+                                    hasChildren={visibleOpRequests.length > 0}
                                     onClick={() => onSelectNode('operation', opId)}
-                                    onToggle={() => toggleNode(opId)}
+                                    onToggle={visibleOpRequests.length > 0 ? () => toggleNode(opId) : undefined}
                                     onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, type: 'operation', data: op, projectName: project.name }); }}
                                     {...rowHandlers(
                                         { type: 'operation', projectName: project.name },
