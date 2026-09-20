@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { getVersion } from '@tauri-apps/api/app';
+import React, { useState } from 'react';
 import { CertificateManager } from './CertificateManager';
 import { tokens } from './tokens';
 import type { IgnoreRule } from '../../utils/useIgnoreList';
@@ -14,12 +13,7 @@ export function ProxySettingsPanel({ ignoreRules, onRemoveIgnoreRule, onAddIgnor
   const [httpsEnabled, setHttpsEnabled] = useState(true);
   const [trustCertificate, setTrustCertificate] = useState(false);
   const [defaultPort, setDefaultPort] = useState(8888);
-  const [appVersion, setAppVersion] = useState<string>('...');
   const [testStatus, setTestStatus] = useState<string | null>(null);
-
-  useEffect(() => {
-    getVersion().then(setAppVersion).catch(() => setAppVersion('unknown'));
-  }, []);
 
   async function sendTestRequests() {
     setTestStatus('Sending\u2026');
@@ -70,19 +64,8 @@ export function ProxySettingsPanel({ ignoreRules, onRemoveIgnoreRule, onAddIgnor
     <div style={{ padding: '20px' }}>
       <h2 style={{ margin: '0 0 20px 0', fontSize: 'var(--apinox-fs-title)', fontWeight: 'var(--fw-medium)' }}>Proxy Settings</h2>
 
-      {/* Row 1: About + Default Port side by side */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-
-        <div style={sectionStyle}>
-          <h3 style={sectionHeadStyle}>About</h3>
-          <div style={{ fontSize: tokens.fontSize.base, color: tokens.text.secondary, lineHeight: '1.7' }}>
-            <div><span style={{ color: tokens.text.muted }}>Version</span> &nbsp; {appVersion}</div>
-            <div><span style={{ color: tokens.text.muted }}>Stack</span> &nbsp; Tauri 2 · Rust · React</div>
-            <div style={{ marginTop: '8px', fontSize: tokens.fontSize.sm, color: tokens.text.muted }}>
-              Built-in HTTP/HTTPS proxy and mock server for API testing and debugging.
-            </div>
-          </div>
-        </div>
+      {/* Row 1: Default Port */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px', marginBottom: '16px' }}>
 
         <div style={sectionStyle}>
           <h3 style={sectionHeadStyle}>Default Port</h3>
