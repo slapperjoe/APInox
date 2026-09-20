@@ -22,9 +22,10 @@ import { UI_FONTS, applyUIFont, UIFontValue } from "../../../utils/fontLoader";
 interface GeneralTabProps {
   config: ApinoxConfig;
   onChange: (section: keyof ApinoxConfig, key: string, value: any) => void;
+  onReset?: () => void;
 }
 
-export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange }) => {
+export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onReset }) => {
   const { theme, setTheme, isStandalone } = useTheme() as any;
   const { configDir } = useUI();
   const [uiFont, setUIFontState] = useState<UIFontValue>(
@@ -205,6 +206,33 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange }) => {
               {configDir || tauriConfigDir || "Unknown"}
             </span>
           </FormGroup>
+
+          {onReset && (
+            <div style={{ marginTop: 24, paddingTop: 16, borderTop: "1px solid var(--apinox-panel-border)" }}>
+              <SectionHeader>Danger Zone</SectionHeader>
+              <FormGroup>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <button
+                    onClick={onReset}
+                    style={{
+                      padding: "6px 12px",
+                      background: "transparent",
+                      border: "1px solid var(--apinox-errorBorder)",
+                      borderRadius: 4,
+                      color: "var(--apinox-errorForeground)",
+                      cursor: "pointer",
+                      fontSize: "var(--apinox-fs-md)",
+                    }}
+                  >
+                    Reset Settings
+                  </button>
+                  <span style={{ fontSize: "var(--apinox-fs-sm)", color: "var(--apinox-descriptionForeground)" }}>
+                    Restores default network and UI values. Environments and globals are kept.
+                  </span>
+                </div>
+              </FormGroup>
+            </div>
+          )}
         </div>
 
         {/* Right Column: Network */}

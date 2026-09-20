@@ -94,4 +94,19 @@ describe('SettingsView (full-area settings)', () => {
         expect(configArgs.length).toBeGreaterThan(0);
         expect(configArgs[configArgs.length - 1].network.defaultTimeout).toBe(45000);
     });
+
+    it('resets network + ui via the General tab Danger Zone', async () => {
+        const { onSave, unmount } = renderView();
+        await screen.findByText('User Interface');
+        // Seed a non-default timeout so the reset visibly changes it.
+        const input = document.querySelector('input[type="number"]') as HTMLInputElement;
+        fireEvent.change(input, { target: { value: '99999' } });
+        // Click the Reset button.
+        fireEvent.click(await screen.findByText('Reset Settings'));
+        unmount();
+        await waitFor(() => expect(onSave).toHaveBeenCalled());
+        const configs = onSave.mock.calls.map((c: any[]) => c[1]).filter(Boolean);
+        expect(configs.length).toBeGreaterThan(0);
+        expect(configs[configs.length - 1].network.defaultTimeout).toBe(30);
+    });
 });

@@ -384,6 +384,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ rawConfig, onSave, i
         lastSavedConfigRef.current = JSON.stringify(config);
     };
 
+    const DEFAULT_CONFIG: ApinoxConfig = {
+        version: 1,
+        network: { defaultTimeout: 30, proxy: '', strictSSL: true },
+        ui: { showDebugIndicator: false, splashscreenEnabled: false, autoFoldElements: [] }
+    };
+
+    const handleResetSettings = () => {
+        if (!configLoaded) return;
+        // Preserve user data (environments/globals); reset only network + ui.
+        const reset = {
+            ...guiConfig,
+            network: { ...DEFAULT_CONFIG.network },
+            ui: { ...DEFAULT_CONFIG.ui }
+        };
+        setGuiConfig(reset);
+        persistGuiConfig(reset);
+    };
+
     const tryPersistJson = () => {
         try {
             const parsed = JSON.parse(jsonContent);
@@ -471,7 +489,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ rawConfig, onSave, i
 
             <ContentContainer>
                 {activeTab === SettingsTab.GUI && (
-                    <GeneralTab config={guiConfig} onChange={handleGuiChange} />
+                    <GeneralTab config={guiConfig} onChange={handleGuiChange} onReset={handleResetSettings} />
                 )}
 
                 {activeTab === SettingsTab.ENVIRONMENTS && (
