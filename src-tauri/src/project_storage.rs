@@ -2428,6 +2428,40 @@ mod tests {
         std::env::remove_var("APINOX_CONFIG_DIR");
     }
 
+    /// Regression guard for the export-from-workspace flow: "Export Workspace"
+    /// exports the LEGACY nested model (what `load_project` returns from the
+    /// nested `interfaces/` tree — the unified store is the canonical writer,
+    /// the nested tree is its mirror for the legacy readers). An import must
+    /// round-trip through that mirror: operations present on disk after
+    /// `save_imported_project_as_unified` must be present in the nested value
+    /// the exporter reads, otherwise the .apinox file silently loses them
+    /// (every project lands with `interfaces: []`).
+    #[tokio::test]
+    async fn import_round_trips_through_the_nested_model_the_exporter_reads() {
+        use crate::utils::config::CONFIG_DIR_TEST_LOCK;
+        let _guard = CONFIG_DIR_TEST_LOCK.lock().unwrap_or_else(|p| p.into_inner());
+        let tmp = tempfile::tempdir().expect("tempdir");
+        std::env::set_var("APINOX_CONFIG_DIR", tmp.path());
+
+        save_imported_project_as_unified(sample_imported_project("RoundTripSvc"))
+            .await
+            .expect("import");
+
+        // This is exactly the value `export_workspace` serializes into the
+        // .apinox file: the legacy nested load of the persisted project dir.
+        let dir = tmp.path().join("projects").join("RoundTripSvc");
+        let exported_value = load_project(dir.to_string_lossy().into())
+            .await
+            .expect("nested load (exporter's source of truth)");
+
+        let interfaces = exported_value["interfaces"].as_array()
+            .expect("nested value must carry interfaces (not [])");
+        assert!(interfaces.iter().any(|i| i["operations"].as_array().map(|o| o.len()) == Some(1)),
+            "the imported operation must survive the nested round-trip, got {:?}", interfaces);
+
+        std::env::remove_var("APINOX_CONFIG_DIR");
+    }
+
     /// Re-importing the same source is idempotent: no duplicate operations,
     /// and the existing project's test suites are preserved.
     #[tokio::test]
