@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { MonacoEditorWrapper, Monaco } from '@apinox/request-editor/monaco';
-import { AlertTriangle, Settings, FileJson, Globe, Cloud, Server, ArrowUpCircle } from 'lucide-react';
-import { GeneralTab, EnvironmentsTab, GlobalsTab, IntegrationsTab, UpdatesTab, ApinoxConfig } from './tabs';
+import { AlertTriangle, Settings, FileJson, Globe, Cloud, Server, ArrowUpCircle, Info } from 'lucide-react';
+import { GeneralTab, EnvironmentsTab, GlobalsTab, IntegrationsTab, UpdatesTab, AboutTab, ApinoxConfig } from './tabs';
 
 import { useTheme } from '@apinox/request-editor/core'; // Use package ThemeContext
 import { TAG_COLORS } from '../../styles/colors';
@@ -89,6 +89,7 @@ enum SettingsTab {
     INTEGRATIONS = 'integrations',
     PROXY = 'proxy',
     UPDATES = 'updates',
+    ABOUT = 'about',
     JSON = 'json'
 }
 
@@ -460,6 +461,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ rawConfig, onSave, i
                 <Tab $active={activeTab === SettingsTab.UPDATES} onClick={() => handleTabSwitch(SettingsTab.UPDATES)}>
                     <ArrowUpCircle size={14} /> Updates
                 </Tab>
+                <Tab $active={activeTab === SettingsTab.ABOUT} onClick={() => handleTabSwitch(SettingsTab.ABOUT)}>
+                    <Info size={14} /> About
+                </Tab>
                 <Tab $active={activeTab === SettingsTab.JSON} onClick={() => handleTabSwitch(SettingsTab.JSON)} style={{ marginLeft: 'auto', borderRight: 'none', borderLeft: '1px solid var(--apinox-panel-border)' }}>
                     <FileJson size={14} /> JSON (Advanced)
                 </Tab>
@@ -522,6 +526,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ rawConfig, onSave, i
 
                 {activeTab === SettingsTab.UPDATES && (
                     <UpdatesTab />
+                )}
+
+                {activeTab === SettingsTab.ABOUT && (
+                    <AboutTab />
                 )}
 
                 {activeTab === SettingsTab.JSON && (

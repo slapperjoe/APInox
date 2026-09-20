@@ -48,7 +48,7 @@ const renderView = (props: Partial<React.ComponentProps<typeof SettingsView>> = 
 describe('SettingsView (full-area settings)', () => {
     beforeEach(() => { vi.clearAllMocks(); });
 
-    it('renders the tab bar with all seven tabs and no modal chrome', async () => {
+    it('renders the tab bar with all eight tabs and no modal chrome', async () => {
         renderView();
         await screen.findByText('General');
         expect(screen.getByText('Environments')).toBeInTheDocument();
@@ -56,6 +56,7 @@ describe('SettingsView (full-area settings)', () => {
         expect(screen.getByText('Integrations')).toBeInTheDocument();
         expect(screen.getByText('Proxy')).toBeInTheDocument();
         expect(screen.getByText('Updates')).toBeInTheDocument();
+        expect(screen.getByText('About')).toBeInTheDocument();
         expect(screen.getByText('JSON (Advanced)')).toBeInTheDocument();
         // No modal header: the old Modal rendered <ModalTitle>Settings
         // </ModalTitle> (Modal.tsx). "Settings" appears nowhere in the view
