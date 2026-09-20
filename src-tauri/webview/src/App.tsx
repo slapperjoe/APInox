@@ -45,7 +45,7 @@ function saveEditorSettings(settings: EditorSettings): void {
 
 export default function App() {
     // TEMPORARY: Hardcode macOS detection since Tauri API isn't loading properly
-    const [platformOS, setPlatformOS] = useState<'macos' | 'windows' | 'linux' | 'android' | 'ios' | 'unknown'>('macos');
+    const [platformOS, setPlatformOS] = useState<'macos' | 'windows' | 'linux' | 'unknown'>('macos');
 
     // Keep body[data-platform] in sync so CSS can target platform-specific rules immediately.
     useEffect(() => {
@@ -66,34 +66,6 @@ export default function App() {
                 // Apply platform attribute to body for platform-specific CSS targeting
                 document.body.dataset.platform = os;
 
-                // iOS WKWebView: prevent the native UIScrollView from scrolling the
-                // whole page. We prevent touchmove on the document unless the touch
-                // is inside an element that actually has scrollable overflow.
-                // Also reset any UIScrollView drift that happens without touch input.
-                if (os === 'ios') {
-                    const canScroll = (el: Element): boolean => {
-                        const style = window.getComputedStyle(el);
-                        const overflowY = style.overflowY;
-                        const overflowX = style.overflowX;
-                        // Accept elements that have scroll/auto overflow in either axis
-                        const scrollsY = /(auto|scroll)/.test(overflowY) && el.scrollHeight > el.clientHeight;
-                        const scrollsX = /(auto|scroll)/.test(overflowX) && el.scrollWidth > el.clientWidth;
-                        return scrollsY || scrollsX;
-                    };
-                    document.addEventListener('touchmove', (e) => {
-                        let target = e.target as Element | null;
-                        while (target && target !== document.documentElement) {
-                            if (canScroll(target)) return; // let the element handle it
-                            target = target.parentElement;
-                        }
-                        e.preventDefault();
-                    }, { passive: false });
-                    // Reset any UIScrollView scroll drift (happens on initial load)
-                    window.addEventListener('scroll', () => window.scrollTo(0, 0), { passive: true });
-                    // Snap back immediately in case iOS already scrolled
-                    window.scrollTo(0, 0);
-                }
-
                 // Close splashscreen and show main window once app is ready
                 invoke('close_splashscreen').catch(() => {
                     // No splashscreen in dev/browser context, ignore
@@ -106,9 +78,7 @@ export default function App() {
         detectPlatform();
     }, []);
     
-    // Mobile platforms don't need the custom desktop titlebar (no window controls, no drag region)
-    const isMobilePlatform = platformOS === 'android' || platformOS === 'ios';
-    const showCustomTitleBar = platformOS !== 'macos' && !isMobilePlatform;
+    const showCustomTitleBar = platformOS !== 'macos';
     const showMacOSSearchBar = platformOS === 'macos';
     
     return (

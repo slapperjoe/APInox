@@ -200,7 +200,6 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
         {onMobileClose && (
           <div
             onClick={onMobileClose}
-            className="touch-compact"
             style={{
               cursor: "pointer",
               padding: "8px",

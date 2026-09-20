@@ -147,14 +147,6 @@ body {
     color: var(--apinox-editor-foreground);
 }
 
-/* iOS WKWebView: scrolling is handled via JS touchmove prevention
-   so the native UIScrollView doesn't consume gestures from HTML elements.
-   Safe area insets are applied directly on the fixed mobile-header and
-   Container's padding-top via env(safe-area-inset-*) (requires viewport-fit=cover). */
-body[data-platform="ios"] {
-    overflow: hidden;
-}
-
 #root {
     height: 100%;
     width: 100%;
@@ -165,12 +157,6 @@ body[data-platform="ios"] {
     box-sizing: border-box;
     /* If a UI font override is set, use it; otherwise fall through to theme font */
     font-family: var(--apinox-ui-font-family, var(--apinox-font-family, "Segoe UI", system-ui, sans-serif));
-}
-
-/* iOS/Android: enable momentum scrolling on all overflow containers */
-body[data-platform="ios"] *,
-body[data-platform="android"] * {
-    -webkit-overflow-scrolling: touch;
 }
 
 /* Scrollbar styling — thin overlay style (Zed-inspired) */
@@ -291,25 +277,6 @@ select option {
    Tablet landscape / desktop: ≥ 1200px
    ========================================================================== */
 
-/* Minimum touch target size (Apple HIG / Material Design: 44px)
-   Only applied on mobile/tablet — desktop layouts use natural button sizing. */
-@media (max-width: 899px) {
-    button,
-    [role="button"],
-    [role="menuitem"],
-    [role="tab"],
-    [role="treeitem"],
-    a {
-        min-height: 44px;
-    }
-
-    /* Narrow override — elements that are intentionally compact (icon rail, etc.)
-       use this class to opt out of the 44px floor */
-    .touch-compact {
-        min-height: unset;
-    }
-}
-
 /* Responsive modal sizing — a narrow-viewport safety net only.
    Non-!important so the shared Modal's own size presets (MODAL_SIZES /
    max-width) always win; this just prevents a dialog from overflowing the
@@ -358,28 +325,13 @@ code,
 
     .sidebar-drawer {
         position: fixed !important;
-        top: calc(44px + env(safe-area-inset-top, 0px));
+        top: 32px; /* clears the 32px desktop TitleBar */
         left: 0;
-        bottom: 0; /* fill to bottom - no safe area needed */
+        bottom: 0;
         z-index: 1000;
         transform: translateX(-100%);
         transition: transform 0.25s ease;
         box-shadow: 4px 0 16px rgba(0, 0, 0, 0.5);
-    }
-
-    /* Android-specific sidebar positioning */
-    body[data-platform="android"] .sidebar-drawer {
-        top: 68px; /* 44px header + 24px status bar */
-    }
-
-    /* Narrow desktop (Windows/Linux/macOS): TitleBar is 32px, not the mobile 44px header */
-    body:not([data-platform="android"]):not([data-platform="ios"])
-        .sidebar-drawer {
-        top: 32px;
-    }
-    body:not([data-platform="android"]):not([data-platform="ios"])
-        .sidebar-backdrop {
-        top: 32px;
     }
 
     .sidebar-drawer.sidebar-open {
@@ -389,7 +341,7 @@ code,
     .sidebar-backdrop {
         display: block;
         position: fixed;
-        top: calc(44px + env(safe-area-inset-top, 0px));
+        top: 32px;
         left: 0;
         right: 0;
         bottom: 0;
@@ -397,10 +349,6 @@ code,
         z-index: 999;
     }
 
-    /* Android-specific backdrop positioning */
-    body[data-platform="android"] .sidebar-backdrop {
-        top: 68px; /* 44px header + 24px status bar */
-    }
 }
 
 /* Hide backdrop on desktop; content-row is normal row layout */
@@ -420,55 +368,6 @@ code,
     }
 }
 
-/* Mobile header bar — shown on Android/iOS instead of desktop TitleBar */
-.mobile-header {
-    display: none;
-}
-
-@media (max-width: 899px) {
-    .mobile-header {
-        display: flex;
-        align-items: center; /* center content vertically */
-        flex-shrink: 0;
-        width: 100%;
-        padding-top: env(
-            safe-area-inset-top,
-            0px
-        ); /* iOS notch/Dynamic Island only */
-        padding-left: env(safe-area-inset-left, 0px);
-        padding-right: env(safe-area-inset-right, 0px);
-        min-height: calc(44px + env(safe-area-inset-top, 0px));
-        z-index: 1001;
-        background: var(--apinox-titleBar-activeBackground, #1e1e1e);
-        border-bottom: 1px solid
-            var(--apinox-titleBar-border, transparent);
-        gap: 8px;
-    }
-}
-
-/* Android-specific: add extra padding for status bar on mobile header */
-@media (max-width: 899px) {
-    body[data-platform="android"] .mobile-header {
-        padding-top: 24px; /* Android status bar clearance */
-        min-height: 68px; /* 44px base + 24px status bar */
-    }
-}
-
-/* Hamburger button inside mobile header */
-.mobile-hamburger {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 44px;
-    min-width: 44px;
-    padding: 0;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    color: var(--apinox-icon-foreground, #c5c5c5);
-    flex-shrink: 0;
-}
-
 /* Hamburger for narrow desktop windows — fixed overlay sitting in the TitleBar */
 .narrow-desktop-hamburger {
     display: none;
@@ -477,7 +376,7 @@ code,
     left: 0;
     width: 32px;
     height: 32px;
-    min-height: 32px; /* Opt out of the global 44px touch-target min-height so the button stays within the 32px titlebar */
+    min-height: 32px; /* Keep the button within the 32px titlebar */
     margin: 0;
     padding: 0;
     box-sizing: border-box;
@@ -512,13 +411,4 @@ code,
     }
 }
 
-.mobile-header-title {
-    font-size: 15px;
-    font-weight: var(--fw-semibold);
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
 
-/* iOS safe area insets - handled via Container component props */

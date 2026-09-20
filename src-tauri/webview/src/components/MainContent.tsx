@@ -107,7 +107,7 @@ const MainContent: React.FC = () => {
     // ==========================================================================
     // PLATFORM DETECTION
     // ==========================================================================
-    const [platformOS, setPlatformOS] = useState<'macos' | 'windows' | 'linux' | 'android' | 'ios' | 'unknown'>('unknown');
+    const [platformOS, setPlatformOS] = useState<'macos' | 'windows' | 'linux' | 'unknown'>('unknown');
     const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
     const { isMobile } = useMobileLayout();
 
@@ -126,8 +126,7 @@ const MainContent: React.FC = () => {
         detectPlatform();
     }, []);
     
-    const isMobilePlatform = platformOS === 'android' || platformOS === 'ios';
-    const showCustomTitleBar = platformOS !== 'macos' && !isMobilePlatform;
+    const showCustomTitleBar = platformOS !== 'macos';
     
     // ==========================================================================
     // CONTEXT - Project state from ProjectContext
@@ -1858,7 +1857,7 @@ const MainContent: React.FC = () => {
         environments: config?.environments,
         onChangeEnvironment: (env: string) => bridge.sendMessage({ command: 'setActiveEnvironment', env }),
         isMobileOpen: isMobileDrawerOpen,
-        onMobileClose: isMobilePlatform ? () => setIsMobileDrawerOpen(false) : undefined,
+        onMobileClose: isMobile ? () => setIsMobileDrawerOpen(false) : undefined,
         hasUpdate,
     }), [
         // Phase B (t_86c34d38): the projectProps / selectionProps entries above
@@ -1895,30 +1894,13 @@ const MainContent: React.FC = () => {
         registerUnifiedExecute,
         activeView, handleSetActiveViewWrapper, sidebarExpanded, backendConnected,
         workspaceDirty, handleSaveUiState, setShowHelp,
-        isMobileDrawerOpen, isMobilePlatform, setIsMobileDrawerOpen, hasUpdate,
+        isMobileDrawerOpen, isMobile, setIsMobileDrawerOpen, hasUpdate,
     ]);
 
     return (
-        <Container $showCustomTitleBar={showCustomTitleBar} $isMacOS={platformOS === 'macos'} $isMobile={isMobilePlatform} $isAndroid={platformOS === 'android'}>
-            {/* Mobile header bar — replaces desktop TitleBar on Android/iOS */}
-            {isMobilePlatform && (
-                <div className="mobile-header">
-                    <button
-                        className="mobile-hamburger"
-                        onClick={(e) => { e.stopPropagation(); setIsMobileDrawerOpen(prev => !prev); }}
-                        title={isMobileDrawerOpen ? "Close sidebar" : "Open sidebar"}
-                        aria-label={isMobileDrawerOpen ? "Close sidebar" : "Open sidebar"}
-                    >
-                        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M2 4h16v2H2zM2 9h16v2H2zM2 14h16v2H2z"/>
-                        </svg>
-                    </button>
-                    <span className="mobile-header-title">APInox</span>
-                </div>
-            )}
-
-            {/* Narrow-desktop hamburger — fixed overlay in TitleBar area, only on non-mobile platforms */}
-            {isMobile && !isMobilePlatform && (
+        <Container $showCustomTitleBar={showCustomTitleBar} $isMacOS={platformOS === 'macos'}>
+            {/* Narrow-desktop hamburger — fixed overlay in TitleBar area, narrow viewports only */}
+            {isMobile && (
                 <button
                     className="narrow-desktop-hamburger"
                     onClick={(e) => { e.stopPropagation(); setIsMobileDrawerOpen(prev => !prev); }}
