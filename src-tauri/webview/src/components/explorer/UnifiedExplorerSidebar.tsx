@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import {
     ArrowRight,
     ChevronRight,
@@ -667,6 +667,20 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
     // Drop gap indicator + drag handlers (visual gap row only; the actual
     // drop index is computed from the native event inside the handlers).
     const { dropGap, clearDropGap, rowHandlers, gapRowHandlers } = useReorderDrag();
+
+    // Projects render in alphabetical order (by display name, falling back to
+    // the stored name, case-insensitive). The backend returns them in
+    // filesystem order; sorting at render time keeps the tree A→Z without any
+    // persistence change. Stable sort, so equal names keep their backend order.
+    const sortedProjects = useMemo(
+        () =>
+            [...projects].sort((a, b) =>
+                (a.displayName || a.name).localeCompare(b.displayName || b.name, undefined, {
+                    sensitivity: 'base',
+                }),
+            ),
+        [projects],
+    );
 
     // Quick Requests subwindow height (vertical resize via the handle above
     // the section). Seeded synchronously from localStorage during the first
@@ -1440,7 +1454,7 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                 </div>
             )}
 
-            {projects.map((project) => {
+            {sortedProjects.map((project) => {
                 const projectId = project.id || project.name;
                 const isExpanded = expandedNodes.has(projectId);
                 const projectOps = project.operations || [];
