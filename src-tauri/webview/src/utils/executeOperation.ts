@@ -45,11 +45,24 @@ export function buildExecuteOperation(
 ): ExecuteOperation {
     const reqName = request.name;
 
+    // Rust `ServiceOperation.name` is a REQUIRED String (not Option/default),
+    // so the `operation` payload MUST always carry a non-empty `name` —
+    // otherwise the command fails at deserialization with
+    // `invalid args request ... missing field name`. The fallback label
+    // guarantees that even when both the operation and request names are
+    // empty/undefined (e.g. a remotely-imported project with a nameless
+    // operation).
+    const operationName =
+        ownerOperation?.name ||
+        ownerOperation?.displayName ||
+        reqName ||
+        'Request';
+
     if (!ownerOperation) {
         // Genuine fallback: no owning operation resolved. Keep the previous
         // stub shape so a request with no owner behaves exactly as before.
         return {
-            name: reqName,
+            name: operationName,
             action: null,
             input: null,
             output: {},
@@ -62,7 +75,7 @@ export function buildExecuteOperation(
     }
 
     return {
-        name: ownerOperation.name || reqName,
+        name: operationName,
         // ApiOperation.action is a required string (possibly ""); treat an
         // empty string as "not resolved" so the SOAP 1.1 header stays `""`.
         action: ownerOperation.action ? ownerOperation.action : null,
