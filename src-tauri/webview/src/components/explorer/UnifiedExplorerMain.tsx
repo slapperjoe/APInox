@@ -425,7 +425,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
         }
     }, []);
 
-    const handleExecuteRequest = useCallback(async (req: ApiRequest, currentXml: string) => {
+    const handleExecuteRequest = useCallback(async (req: ApiRequest, currentXml: string, endpointOverride?: string) => {
         setEditingRequest(req);
         const reqId = req.id || req.name || 'unknown';
         // Phase 4 (R-09): quick requests are executed through this same
@@ -450,6 +450,12 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
             soapVersion: ownerProject?.soapVersion,
         });
 
+        // F-14: top-bar endpoint edit overrides the stored endpoint for this
+        // send (transient — persisted only via the explicit Save button).
+        const effectiveEndpoint = endpointOverride !== undefined
+            ? (endpointOverride.trim() || req.endpoint || ownerOperation?.originalEndpoint || null)
+            : (req.endpoint || null);
+
         // R-01: clear any previous failure; a new execution starts clean.
         setExecuteError(null);
 
@@ -470,7 +476,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                 // rule in one testable place).
                 const invokeArgs = buildRestGraphQlInvokeArgs({
                     method: req.method || (requestType === 'graphql' ? 'POST' : 'GET'),
-                    url: req.endpoint || '',
+                    url: effectiveEndpoint || '',
                     headers: req.headers || {},
                     body: currentXml || req.request || null,
                     variables: req.graphqlConfig?.variables,
@@ -553,7 +559,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                 request: {
                     operation,
                     soapVersion: ownerProject?.soapVersion || '1.1',
-                    endpoint: req.endpoint || null,
+                    endpoint: effectiveEndpoint,
                     rawXml: currentXml || req.request || '',
                     contentType: effectiveContentType,
                     headers: req.headers || {},
@@ -677,7 +683,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
             endpoint: scrapbookEndpoint || selectedScrapbook.endpoint,
         };
         const bodyXml = editingXml || req.request || '';
-        await handleExecuteRequest({ ...req, request: bodyXml }, bodyXml);
+        await handleExecuteRequest({ ...req, request: bodyXml }, bodyXml, scrapbookEndpoint);
     }, [selectedScrapbook, scrapbookEndpoint, editingXml, handleExecuteRequest]);
 
     const handleSaveRequest = useCallback(async () => {
@@ -748,43 +754,69 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                     transition: 'border-color 120ms ease, background-color 120ms ease',
                 }}
             >
-                <input
-                    type="text"
-                    value={urlInput.url}
-                    onChange={(e) => setUrlInput(prev => ({ ...prev, url: e.target.value, error: null }))}
-                    placeholder="Enter WSDL URL and press Load"
-                    style={{
-                        flex: 1,
-                        padding: '8px 12px',
-                        backgroundColor: 'var(--apinox-input-background)',
-                        color: 'var(--apinox-input-foreground)',
-                        border: '1px solid var(--apinox-input-border)',
-                        borderRadius: 4,
-                        outline: 'none',
-                    }}
-                />
-                <button
-                    onClick={handleLoadWsdl}
-                    disabled={urlInput.loading}
-                    style={{
-                        padding: '8px 14px',
-                        backgroundColor: 'var(--apinox-button-background)',
-                        color: 'var(--apinox-button-foreground)',
-                        border: 'none',
-                        borderRadius: 4,
-                        cursor: urlInput.loading ? 'wait' : 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                    }}
-                >
-                    {urlInput.loading ? (
-                        <RefreshCw size={14} />
-                    ) : (
-                        <ArrowRight size={14} />
-                    )}
-                    {urlInput.loading ? 'Loading...' : 'Load'}
-                </button>
+                {resolvedTopBarEndpoint === null ? (
+                    <>
+                        <input
+                            type="text"
+                            value={urlInput.url}
+                            onChange={(e) => setUrlInput(prev => ({ ...prev, url: e.target.value, error: null }))}
+                            placeholder="Enter WSDL URL and press Load"
+                            style={{
+                                flex: 1,
+                                padding: '8px 12px',
+                                backgroundColor: 'var(--apinox-input-background)',
+                                color: 'var(--apinox-input-foreground)',
+                                border: '1px solid var(--apinox-input-border)',
+                                borderRadius: 4,
+                                outline: 'none',
+                            }}
+                        />
+                        <button
+                            onClick={handleLoadWsdl}
+                            disabled={urlInput.loading}
+                            style={{
+                                padding: '8px 14px',
+                                backgroundColor: 'var(--apinox-button-background)',
+                                color: 'var(--apinox-button-foreground)',
+                                border: 'none',
+                                borderRadius: 4,
+                                cursor: urlInput.loading ? 'wait' : 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                            }}
+                        >
+                            {urlInput.loading ? (
+                                <RefreshCw size={14} />
+                            ) : (
+                                <ArrowRight size={14} />
+                            )}
+                            {urlInput.loading ? 'Loading...' : 'Load'}
+                        </button>
+                    </>
+                ) : (
+                    <>
+                        <Server size={14} style={{ color: 'var(--apinox-icon-foreground)', flexShrink: 0 }} />
+                        <input
+                            data-testid="unified-endpoint-input"
+                            type="text"
+                            value={endpointInput}
+                            onChange={(e) => setEndpointInput(e.target.value)}
+                            placeholder="Request endpoint"
+                            title="Endpoint used when sending the request — edit to override, then Run"
+                            style={{
+                                flex: 1,
+                                padding: '8px 12px',
+                                backgroundColor: 'var(--apinox-input-background)',
+                                color: 'var(--apinox-input-foreground)',
+                                border: '1px solid var(--apinox-input-border)',
+                                borderRadius: 4,
+                                outline: 'none',
+                                fontSize: 'var(--apinox-fs-sm)',
+                            }}
+                        />
+                    </>
+                )}
                 <button
                     data-testid="unified-load-cancel"
                     onClick={handleCancelLoad}
@@ -1333,7 +1365,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                             backgroundColor: 'var(--apinox-panel-background)',
                         }}>
                             <button
-                                onClick={() => handleExecuteRequest(editingRequest!, editingXml)}
+                                onClick={() => handleExecuteRequest(editingRequest!, editingXml, endpointInput)}
                                 style={{
                                     padding: '4px 12px',
                                     backgroundColor: 'var(--apinox-button-background)',
