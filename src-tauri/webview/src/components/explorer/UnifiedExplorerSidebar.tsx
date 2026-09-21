@@ -1041,7 +1041,9 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                     userSelect: 'none',
                     color: 'var(--apinox-foreground)',
                     fontSize: 'var(--apinox-fs-sm)',
-                    fontWeight: 'var(--fw-bold)',
+                    // Section label — semibold, not bold (a bold uppercase
+                    // label reads as too heavy over the regular tree rows).
+                    fontWeight: 'var(--fw-semibold)',
                     textTransform: 'uppercase',
                     letterSpacing: '0.08em',
                     flexShrink: 0,
