@@ -22,6 +22,7 @@ import {
     SearchOptions,
     searchProjects,
     searchTests,
+    searchUnifiedProjects,
 } from '../utils/workspaceSearch';
 import { DEBOUNCE_MS, TREE_NAV_DELAY_MS } from '../constants';
 
@@ -136,19 +137,36 @@ export const SearchProvider: React.FC<SearchProviderProps> = ({
         setIsSearching(true);
 
         try {
-            // Phase B (t_86c34d38): two sources —
-            //  • "projects" (operations/folders): the legacy nested model the
-            //    searchProjects util walks (migrated projects keep their
-            //    interfaces/ tree, so this still covers them).
-            //  • "tests" (suites/cases): the UNIFIED store — test suites were
-            //    relocated to UnifiedProject.testSuites in Phase B, so the
-            //    legacy copy (loaded once at startup) goes stale after the
-            //    first TESTS edit and must not be the search source.
+            // Phase B (t_86c34d38): three sources —
+            //  • "unified" (projects/operations/requests): the FLAT unified
+            //    model the unified explorer renders — searchUnifiedProjects.
+            //    This is the primary source: every project lives in the
+            //    unified store in Phase B.
+            //  • "projects" (operations/folders): the legacy nested model
+            //    searchProjects walks. Kept as a fallback for any legacy
+            //    project not yet migrated to the unified store.
+            //  • "tests" (suites/cases): the UNIFIED store — test suites
+            //    were relocated to UnifiedProject.testSuites in Phase B, so
+            //    the legacy copy (loaded once at startup) goes stale after
+            //    the first TESTS edit and must not be the search source.
+            // Dedupe by result id: a migrated project appears in BOTH the
+            //    legacy and unified stores, so the same operation/request
+            //    would otherwise appear twice.
             const maxResults = 50;
             const minScore = 0;
+            const unifiedResults = searchUnifiedProjects(query.trim(), unifiedProjects, { maxResults, minScore, ...options });
             const projectResults = searchProjects(query.trim(), projects, { maxResults, minScore, ...options });
             const testResults = searchTests(query.trim(), unifiedProjects, { maxResults, minScore, ...options });
-            const results = [...projectResults, ...testResults]
+
+            const seen = new Set<string>();
+            const deduped: typeof unifiedResults = [];
+            for (const r of [...unifiedResults, ...projectResults, ...testResults]) {
+                if (seen.has(r.id)) continue;
+                seen.add(r.id);
+                deduped.push(r);
+            }
+
+            const results = deduped
                 .sort((a, b) => b.score - a.score)
                 .slice(0, maxResults);
 

@@ -11,13 +11,13 @@
  * - Support for multiple view types (Projects, Explorer, Tests, etc.)
  */
 
-import { ApinoxProject, ApiInterface, ApiOperation, ApiRequest, ApinoxFolder, TestSuite, TestCase } from '@shared/models';
+import { ApinoxProject, ApiInterface, ApiOperation, ApiRequest, ApinoxFolder, TestSuite, TestCase, UnifiedProject } from '@shared/models';
 
 // =============================================================================
 // TYPE DEFINITIONS
 // =============================================================================
 
-export type SearchResultType = 'request' | 'operation' | 'interface' | 'folder' | 'test-suite' | 'test-case' | 'workflow';
+export type SearchResultType = 'project' | 'request' | 'operation' | 'interface' | 'folder' | 'test-suite' | 'test-case' | 'workflow';
 export type SearchResultView = 'projects' | 'tests' | 'workflows' | 'history';
 
 export interface SearchResult {
@@ -80,6 +80,7 @@ export interface SearchOptions {
 
 /** Priority multipliers for different item types (higher = more important) */
 const TYPE_PRIORITY: Record<SearchResultType, number> = {
+    'project': 2.0,
     'request': 4.0,
     'operation': 3.0,
     'interface': 2.0,
@@ -378,6 +379,133 @@ export function searchProjects(
     }
 
     // Sort by score (descending) and limit results
+    results.sort((a, b) => b.score - a.score);
+
+    const maxResults = options.maxResults || 50;
+    const minScore = options.minScore || 0;
+
+    return results
+        .filter(r => r.score >= minScore)
+        .slice(0, maxResults);
+}
+
+// =============================================================================
+// UNIFIED PROJECT SEARCH
+// =============================================================================
+
+/**
+ * Search within the FLAT unified model (UnifiedProject.operations[].requests[],
+ * no legacy interfaces[] layer). This is the model the unified explorer renders,
+ * and the only one Phase B projects use — `searchProjects` above walks the
+ * legacy nested model, so without this the title-bar search never matched
+ * unified projects/operations/requests.
+ *
+ * Emits `view: 'projects'` results that SearchContext's unified-explorer
+ * navigation resolves: a project-type result lands on the project node; an
+ * operation/request result carries `data.operation` (parent) +
+ * `data.request`, which the navigation matches by id or name against the
+ * unified store.
+ */
+export function searchUnifiedProjects(
+    query: string,
+    projects: UnifiedProject[],
+    options: SearchOptions = {}
+): SearchResult[] {
+    const results: SearchResult[] = [];
+
+    if (!query || query.trim().length === 0) {
+        return results;
+    }
+
+    for (const project of projects) {
+        const projectBreadcrumb = project.name;
+        const displayName = project.displayName || project.name;
+
+        // Project name / display name
+        const projectScore = calculateMatchScore(query, displayName)
+            || (project.displayName && project.displayName !== project.name
+                ? calculateMatchScore(query, project.name)
+                : 0);
+        if (projectScore > 0) {
+            results.push({
+                id: `project-${project.id || project.name}`,
+                type: 'project',
+                name: displayName,
+                breadcrumb: project.source ? `Project · ${project.source}` : 'Project',
+                view: 'projects',
+                score: calculateScore(projectScore, 'project'),
+                data: {
+                    projectName: project.name,
+                    project: project as unknown as ApinoxProject,
+                },
+            });
+        }
+
+        // Operations
+        for (const operation of project.operations || []) {
+            const opName = operation.displayName || operation.name;
+            const opBreadcrumb = `${projectBreadcrumb} > ${opName}`;
+
+            const opScore = calculateMatchScore(query, opName);
+            let opMetadata = 0;
+            if (operation.action && calculateMatchScore(query, operation.action) > 0) {
+                opMetadata++;
+            }
+            if (operation.originalEndpoint && calculateMatchScore(query, operation.originalEndpoint) > 0) {
+                opMetadata++;
+            }
+
+            if (opScore > 0 || opMetadata > 0) {
+                results.push({
+                    id: `operation-${operation.id || operation.name}`,
+                    type: 'operation',
+                    name: opName,
+                    breadcrumb: projectBreadcrumb,
+                    view: 'projects',
+                    score: calculateScore(opScore, 'operation', opMetadata),
+                    data: {
+                        projectName: project.name,
+                        operationId: operation.id,
+                        operation,
+                    },
+                });
+            }
+
+            // Requests
+            for (const request of operation.requests || []) {
+                const reqName = request.displayName || request.name;
+                const reqScore = calculateMatchScore(query, reqName);
+                let reqMetadata = 0;
+                if (request.endpoint && calculateMatchScore(query, request.endpoint) > 0) {
+                    reqMetadata++;
+                }
+
+                if (reqScore > 0 || reqMetadata > 0) {
+                    results.push({
+                        id: `request-${request.id || request.name}`,
+                        type: 'request',
+                        name: reqName,
+                        breadcrumb: opBreadcrumb,
+                        view: 'projects',
+                        score: calculateScore(reqScore, 'request', reqMetadata),
+                        data: {
+                            projectName: project.name,
+                            operationId: operation.id,
+                            requestId: request.id,
+                            operation,
+                            request,
+                        },
+                    });
+                }
+            }
+        }
+
+        // Folders (user-created, carried over in Phase B)
+        for (const folder of project.folders || []) {
+            searchFolder(query, folder, project.name, projectBreadcrumb, results);
+        }
+    }
+
     results.sort((a, b) => b.score - a.score);
 
     const maxResults = options.maxResults || 50;
