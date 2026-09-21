@@ -28,6 +28,7 @@ import {
     findOwnerRequest,
     ExecuteRestResponse,
 } from '../../utils/unifiedExecute';
+import { resolveTopBarEndpoint } from '../../utils/unifiedTopBarEndpoint';
 import { MonacoRequestEditorWithToolbar as MonacoRequestEditor, MonacoResponseViewer, HeadersPanel, AssertionsPanel, ExtractorsPanel } from '@apinox/request-editor/monaco';
 import { ExecutionResponse } from '@apinox/request-editor/monaco';
 import { EmptyState } from '../common/EmptyState';
@@ -112,6 +113,8 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
     const [selectedScrapbook, setSelectedScrapbook] = useState<ScrapbookRequest | null>(null);
     /** F-01: endpoint text for the selected quick request (editable; committed on Run/Save). */
     const [scrapbookEndpoint, setScrapbookEndpoint] = useState<string>('');
+    /** F-14: endpoint text for the top bar when a request/operation/quick request is selected. */
+    const [endpointInput, setEndpointInput] = useState<string>('');
 
     // Load resolved environment variables on mount
     useEffect(() => {
@@ -202,6 +205,14 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
             }
         }
     }, [selectedNode, projects]);
+
+    // F-14: seed the top-bar endpoint input whenever the selection (or the
+    // selected entry's data) changes. `resolveTopBarEndpoint` returning null
+    // means "no endpoint-bearing selection" → the bar shows the WSDL loader.
+    const resolvedTopBarEndpoint = resolveTopBarEndpoint(selectedNode, projects, selectedScrapbook);
+    useEffect(() => {
+        setEndpointInput(resolvedTopBarEndpoint || '');
+    }, [resolvedTopBarEndpoint]);
 
     // F-01: keep the selected quick request in sync with the app-level
     // ScrapbookContext (selection is owned by the provider; this only mirrors
