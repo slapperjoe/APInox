@@ -113,8 +113,6 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
     const [selectedScrapbook, setSelectedScrapbook] = useState<ScrapbookRequest | null>(null);
     /** F-01: endpoint text for the selected quick request (editable; committed on Run/Save). */
     const [scrapbookEndpoint, setScrapbookEndpoint] = useState<string>('');
-    /** F-14: endpoint text for the top bar when a request/operation/quick request is selected. */
-    const [endpointInput, setEndpointInput] = useState<string>('');
 
     // Load resolved environment variables on mount
     useEffect(() => {
@@ -209,9 +207,12 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
     // F-14: seed the top-bar endpoint input whenever the selection (or the
     // selected entry's data) changes. `resolveTopBarEndpoint` returning null
     // means "no endpoint-bearing selection" → the bar shows the WSDL loader.
+    // One shared state (`scrapbookEndpoint`) backs both the top bar and the
+    // quick-request editor so there is a single source of truth for the
+    // endpoint being sent/saved.
     const resolvedTopBarEndpoint = resolveTopBarEndpoint(selectedNode, projects, selectedScrapbook);
     useEffect(() => {
-        setEndpointInput(resolvedTopBarEndpoint || '');
+        setScrapbookEndpoint(resolvedTopBarEndpoint || '');
     }, [resolvedTopBarEndpoint]);
 
     // F-01: keep the selected quick request in sync with the app-level
@@ -673,19 +674,6 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
         }
     }, [editingRequest]);
 
-    // F-01: Run button for the quick-request editor. Executes the selected
-    // scrapbook entry (with the current endpoint text) through the unified
-    // SOAP path; the response renders in the same response viewer.
-    const handleExecuteQuickRequest = useCallback(async () => {
-        if (!selectedScrapbook) return;
-        const req: ApiRequest = {
-            ...selectedScrapbook,
-            endpoint: scrapbookEndpoint || selectedScrapbook.endpoint,
-        };
-        const bodyXml = editingXml || req.request || '';
-        await handleExecuteRequest({ ...req, request: bodyXml }, bodyXml, scrapbookEndpoint);
-    }, [selectedScrapbook, scrapbookEndpoint, editingXml, handleExecuteRequest]);
-
     const handleSaveRequest = useCallback(async () => {
         if (!editingRequest) return;
         // F-01: quick requests save back through the app-level ScrapbookContext
@@ -769,6 +757,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                 border: '1px solid var(--apinox-input-border)',
                                 borderRadius: 4,
                                 outline: 'none',
+                                fontSize: 'var(--apinox-fs-md)',
                             }}
                         />
                         <button
@@ -784,6 +773,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: 8,
+                                fontSize: 'var(--apinox-fs-md)',
                             }}
                         >
                             {urlInput.loading ? (
@@ -793,6 +783,72 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                             )}
                             {urlInput.loading ? 'Loading...' : 'Load'}
                         </button>
+                        {urlInput.loading && (
+                            <button
+                                data-testid="unified-load-cancel"
+                                onClick={handleCancelLoad}
+                                title="Cancel in-flight WSDL load"
+                                style={{
+                                    padding: '8px 14px',
+                                    backgroundColor: 'var(--apinox-button-secondaryBackground)',
+                                    color: 'var(--apinox-button-secondaryForeground)',
+                                    border: '1px solid var(--apinox-button-border, transparent)',
+                                    borderRadius: 4,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 5,
+                                    fontSize: 'var(--apinox-fs-md)',
+                                }}
+                            >
+                                <X size={14} />
+                                Cancel
+                            </button>
+                        )}
+                        {/* R-12 (F-23): route the WSDL load through the app proxy.
+                            Force-off for local files is enforced in Rust (file://
+                            URLs), matching the legacy `useProxy` behaviour. */}
+                        <label
+                            data-testid="unified-load-proxy-toggle"
+                            title="Route the WSDL load through the app proxy (ignored for local files)"
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                fontSize: 'var(--apinox-fs-md)',
+                                color: 'var(--apinox-foreground)',
+                                opacity: 0.85,
+                                cursor: 'pointer',
+                                userSelect: 'none',
+                            }}
+                        >
+                            <input
+                                type="checkbox"
+                                checked={useProxy}
+                                onChange={(e) => setUseProxy(e.target.checked)}
+                                style={{ margin: 0, accentColor: 'var(--apinox-focusBorder)' }}
+                            />
+                            Proxy
+                        </label>
+                        <button
+                            onClick={handleLoadFile}
+                            disabled={urlInput.loading}
+                            style={{
+                                padding: '8px 14px',
+                                backgroundColor: 'var(--apinox-button-secondaryBackground)',
+                                color: 'var(--apinox-button-secondaryForeground)',
+                                border: '1px solid var(--apinox-button-border, transparent)',
+                                borderRadius: 4,
+                                cursor: urlInput.loading ? 'wait' : 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                fontSize: 'var(--apinox-fs-md)',
+                            }}
+                        >
+                            <FolderOpen size={14} />
+                            File
+                        </button>
                     </>
                 ) : (
                     <>
@@ -800,8 +856,8 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                         <input
                             data-testid="unified-endpoint-input"
                             type="text"
-                            value={endpointInput}
-                            onChange={(e) => setEndpointInput(e.target.value)}
+                            value={scrapbookEndpoint}
+                            onChange={(e) => setScrapbookEndpoint(e.target.value)}
                             placeholder="Request endpoint"
                             title="Endpoint used when sending the request — edit to override, then Run"
                             style={{
@@ -812,75 +868,75 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                 border: '1px solid var(--apinox-input-border)',
                                 borderRadius: 4,
                                 outline: 'none',
-                                fontSize: 'var(--apinox-fs-sm)',
+                                fontSize: 'var(--apinox-fs-md)',
                             }}
                         />
+                        <button
+                            data-testid="unified-topbar-run"
+                            onClick={() => handleExecuteRequest(editingRequest!, editingXml, scrapbookEndpoint)}
+                            disabled={!editingRequest || isExecuting}
+                            style={{
+                                padding: '8px 14px',
+                                backgroundColor: 'var(--apinox-button-background)',
+                                color: 'var(--apinox-button-foreground)',
+                                border: 'none',
+                                borderRadius: 4,
+                                cursor: editingRequest && !isExecuting ? 'pointer' : 'not-allowed',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                fontSize: 'var(--apinox-fs-md)',
+                                opacity: editingRequest && !isExecuting ? 1 : 0.5,
+                            }}
+                        >
+                            <Play size={14} />
+                            Run
+                        </button>
+                        {isExecuting && (
+                            <button
+                                data-testid="unified-request-cancel"
+                                onClick={handleCancelRequest}
+                                title="Cancel in-flight request"
+                                style={{
+                                    padding: '8px 14px',
+                                    backgroundColor: 'var(--apinox-button-secondaryBackground)',
+                                    color: 'var(--apinox-button-secondaryForeground)',
+                                    border: '1px solid var(--apinox-button-border, transparent)',
+                                    borderRadius: 4,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 8,
+                                    fontSize: 'var(--apinox-fs-md)',
+                                }}
+                            >
+                                <X size={14} />
+                                Cancel
+                            </button>
+                        )}
+                        <button
+                            data-testid="unified-topbar-save"
+                            onClick={handleSaveRequest}
+                            disabled={!editingRequest}
+                            style={{
+                                padding: '8px 14px',
+                                backgroundColor: 'var(--apinox-button-secondaryBackground)',
+                                color: 'var(--apinox-button-secondaryForeground)',
+                                border: '1px solid var(--apinox-button-border, transparent)',
+                                borderRadius: 4,
+                                cursor: editingRequest ? 'pointer' : 'not-allowed',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                fontSize: 'var(--apinox-fs-md)',
+                                opacity: editingRequest ? 1 : 0.5,
+                            }}
+                        >
+                            <Calendar size={14} />
+                            Save
+                        </button>
                     </>
                 )}
-                <button
-                    data-testid="unified-load-cancel"
-                    onClick={handleCancelLoad}
-                    disabled={!urlInput.loading}
-                    title="Cancel in-flight WSDL load"
-                    style={{
-                        padding: '8px 12px',
-                        backgroundColor: 'var(--apinox-button-secondaryBackground)',
-                        color: 'var(--apinox-button-secondaryForeground)',
-                        border: '1px solid var(--apinox-button-border, transparent)',
-                        borderRadius: 4,
-                        cursor: urlInput.loading ? 'pointer' : 'not-allowed',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 5,
-                        opacity: urlInput.loading ? 1 : 0.5,
-                    }}
-                >
-                    <X size={14} />
-                    Cancel
-                </button>
-                {/* R-12 (F-23): route the WSDL load through the app proxy.
-                    Force-off for local files is enforced in Rust (file://
-                    URLs), matching the legacy `useProxy` behaviour. */}
-                <label
-                    data-testid="unified-load-proxy-toggle"
-                    title="Route the WSDL load through the app proxy (ignored for local files)"
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        fontSize: 'var(--apinox-fs-md)',
-                        color: 'var(--apinox-foreground)',
-                        opacity: 0.85,
-                        cursor: 'pointer',
-                        userSelect: 'none',
-                    }}
-                >
-                    <input
-                        type="checkbox"
-                        checked={useProxy}
-                        onChange={(e) => setUseProxy(e.target.checked)}
-                        style={{ margin: 0, accentColor: 'var(--apinox-focusBorder)' }}
-                    />
-                    Proxy
-                </label>
-                <button
-                    onClick={handleLoadFile}
-                    disabled={urlInput.loading}
-                    style={{
-                        padding: '8px 14px',
-                        backgroundColor: 'var(--apinox-button-secondaryBackground)',
-                        color: 'var(--apinox-button-secondaryForeground)',
-                        border: '1px solid var(--apinox-button-border, transparent)',
-                        borderRadius: 4,
-                        cursor: urlInput.loading ? 'wait' : 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                    }}
-                >
-                    <FolderOpen size={14} />
-                    File
-                </button>
             </div>
 
             {urlInput.error && (
@@ -1186,13 +1242,15 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                        unified SOAP path (phase 2); response renders in the
                        same response viewer as project requests. */
                     <div data-testid="quick-request-editor" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-                        {/* Quick request header + editable endpoint */}
+                        {/* Quick request header. Endpoint input + Run/Cancel/
+                            Save live in the shared top bar (F-14), so the
+                            header only carries the title + method/content-type. */}
                         <div style={{
                             padding: '12px 16px',
                             borderBottom: '1px solid var(--apinox-panel-border)',
                             backgroundColor: 'var(--apinox-panel-background)',
                         }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <FileCode size={18} />
                                 <span style={{ fontSize: 15, fontWeight: 'var(--fw-semibold)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                     {selected.request?.name || 'Quick Request'}
@@ -1202,90 +1260,6 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                         {selected.request.method || 'POST'} • {selected.request.contentType || 'application/soap+xml'}
                                     </span>
                                 )}
-                            </div>
-                            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                                <label htmlFor="quick-request-endpoint" style={{ fontSize: 'var(--apinox-fs-md)', opacity: 0.7, flexShrink: 0 }}>
-                                    Endpoint
-                                </label>
-                                <input
-                                    id="quick-request-endpoint"
-                                    data-testid="quick-request-endpoint"
-                                    type="text"
-                                    value={scrapbookEndpoint}
-                                    onChange={(e) => setScrapbookEndpoint(e.target.value)}
-                                    placeholder="https://example.com/soap/service"
-                                    style={{
-                                        flex: 1,
-                                        padding: '8px 12px',
-                                        backgroundColor: 'var(--apinox-input-background)',
-                                        color: 'var(--apinox-input-foreground)',
-                                        border: '1px solid var(--apinox-input-border)',
-                                        borderRadius: 4,
-                                        outline: 'none',
-                                        fontSize: 'var(--apinox-fs-base)',
-                                    }}
-                                />
-                                <button
-                                    data-testid="quick-request-run"
-                                    onClick={handleExecuteQuickRequest}
-                                    disabled={!editingRequest}
-                                    style={{
-                                        padding: '8px 14px',
-                                        backgroundColor: 'var(--apinox-button-background)',
-                                        color: 'var(--apinox-button-foreground)',
-                                        border: 'none',
-                                        borderRadius: 4,
-                                        cursor: editingRequest ? 'pointer' : 'not-allowed',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 8,
-                                        opacity: editingRequest ? 1 : 0.5,
-                                    }}
-                                >
-                                    <Play size={14} />
-                                    Run
-                                </button>
-                                {isExecuting && (
-                                    <button
-                                        data-testid="unified-request-cancel"
-                                        onClick={handleCancelRequest}
-                                        title="Cancel in-flight request"
-                                        style={{
-                                            padding: '8px 14px',
-                                            backgroundColor: 'var(--apinox-button-secondaryBackground)',
-                                            color: 'var(--apinox-button-secondaryForeground)',
-                                            border: '1px solid var(--apinox-button-border, transparent)',
-                                            borderRadius: 4,
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 8,
-                                        }}
-                                    >
-                                        <X size={14} />
-                                        Cancel
-                                    </button>
-                                )}
-                                <button
-                                    data-testid="quick-request-save"
-                                    onClick={handleSaveRequest}
-                                    disabled={!editingRequest}
-                                    style={{
-                                        padding: '8px 14px',
-                                        backgroundColor: 'var(--apinox-button-secondaryBackground)',
-                                        color: 'var(--apinox-button-secondaryForeground)',
-                                        border: '1px solid var(--apinox-button-border, transparent)',
-                                        borderRadius: 4,
-                                        cursor: editingRequest ? 'pointer' : 'not-allowed',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 8,
-                                        opacity: editingRequest ? 1 : 0.5,
-                                    }}
-                                >
-                                    <Calendar size={14} />
-                                    Save
-                                </button>
                             </div>
                         </div>
                         {executeError && (
@@ -1356,73 +1330,6 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                 ) : selected.type === 'request' ? (
                     /* Request Editor - uses MonacoRequestEditorWithToolbar which has built-in Body + Headers tabs */
                     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-                        {/* Action bar */}
-                        <div style={{
-                            padding: '8px 12px',
-                            display: 'flex',
-                            gap: 8,
-                            borderBottom: '1px solid var(--apinox-panel-border)',
-                            backgroundColor: 'var(--apinox-panel-background)',
-                        }}>
-                            <button
-                                onClick={() => handleExecuteRequest(editingRequest!, editingXml, endpointInput)}
-                                style={{
-                                    padding: '4px 12px',
-                                    backgroundColor: 'var(--apinox-button-background)',
-                                    color: 'var(--apinox-button-foreground)',
-                                    border: 'none',
-                                    borderRadius: 4,
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 5,
-                                    fontSize: 'var(--apinox-fs-md)',
-                                }}
-                            >
-                                <Play size={14} />
-                                Run
-                            </button>
-                            {isExecuting && (
-                                <button
-                                    data-testid="unified-request-cancel"
-                                    onClick={handleCancelRequest}
-                                    title="Cancel in-flight request"
-                                    style={{
-                                        padding: '4px 12px',
-                                        backgroundColor: 'var(--apinox-button-secondaryBackground)',
-                                        color: 'var(--apinox-button-secondaryForeground)',
-                                        border: '1px solid var(--apinox-button-border, transparent)',
-                                        borderRadius: 4,
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 5,
-                                        fontSize: 'var(--apinox-fs-md)',
-                                    }}
-                                >
-                                    <X size={14} />
-                                    Cancel
-                                </button>
-                            )}
-                            <button
-                                onClick={handleSaveRequest}
-                                style={{
-                                    padding: '4px 12px',
-                                    backgroundColor: 'var(--apinox-button-secondaryBackground)',
-                                    color: 'var(--apinox-button-secondaryForeground)',
-                                    border: '1px solid var(--apinox-button-border, transparent)',
-                                    borderRadius: 4,
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 5,
-                                    fontSize: 'var(--apinox-fs-md)',
-                                }}
-                            >
-                                <Calendar size={14} />
-                                Save
-                            </button>
-                        </div>
                         {/* R-01: execution error surface — inline banner above the
                             editor/response pane so a failed request is visible
                             (previously a failure produced no user feedback). */}

@@ -106,4 +106,29 @@ describe('UnifiedExplorerMain top-bar endpoint (F-14)', () => {
         const call = invokeMock.mock.calls.find((c: any[]) => c[0] === 'execute_soap_request')!;
         expect(call[1].request.endpoint).toBe('http://override.example.com/svc');
     });
+
+    it('Run + Save live in the top bar (next to the endpoint input); no Cancel while idle; the old per-editor action bar is gone', () => {
+        render(
+            <UnifiedExplorerMain {...baseProps} projects={[makeProject()]}
+                selectedNode={{ type: 'request', id: 'req-1' }} />,
+        );
+        // Top-bar Run/Save (F-14: same place as Load/Cancel in WSDL mode).
+        expect(screen.getByTestId('unified-topbar-run')).toBeInTheDocument();
+        expect(screen.getByTestId('unified-topbar-save')).toBeInTheDocument();
+        // Idle: no in-flight request → no request Cancel button anywhere.
+        expect(screen.queryByTestId('unified-request-cancel')).not.toBeInTheDocument();
+        // The per-editor action bar used to render a third Run button;
+        // now there is exactly one Run and one Save in the document.
+        expect(screen.getAllByRole('button', { name: /run/i })).toHaveLength(1);
+        expect(screen.getAllByRole('button', { name: /save/i })).toHaveLength(1);
+    });
+
+    it('Run is disabled for an operation selection (no request is loaded yet)', () => {
+        render(
+            <UnifiedExplorerMain {...baseProps} projects={[makeProject()]}
+                selectedNode={{ type: 'operation', id: 'op-1' }} />,
+        );
+        const run = screen.getByTestId('unified-topbar-run') as HTMLButtonElement;
+        expect(run.disabled).toBe(true);
+    });
 });

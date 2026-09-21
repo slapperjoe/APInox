@@ -160,18 +160,19 @@ describe('R-11: cancel in-flight WSDL load (F-10)', () => {
             <UnifiedExplorerMain {...baseProps} projects={[]} selectedNode={null} onLoadWsdl={onLoadWsdl} />,
         );
 
-        const cancelBtn = () => screen.getByTestId('unified-load-cancel') as HTMLButtonElement;
-        // Idle: nothing in flight → disabled.
-        expect(cancelBtn().disabled).toBe(true);
+        const cancelBtn = () => screen.queryByTestId('unified-load-cancel') as HTMLButtonElement | null;
+        // Idle: nothing in flight → the button is not rendered (F-14: Cancel
+        // only shows while something is executing).
+        expect(cancelBtn()).not.toBeInTheDocument();
 
         typeUrl('http://example.com/service.wsdl');
         fireEvent.click(screen.getByRole('button', { name: /^load$/i }));
         await waitFor(() => expect(onLoadWsdl).toHaveBeenCalledTimes(1));
         const loadId = onLoadWsdl.mock.calls[0][1].loadId as string;
 
-        // In flight: enabled, and clicking it cancels by loadId.
-        expect(cancelBtn().disabled).toBe(false);
-        fireEvent.click(cancelBtn());
+        // In flight: the button appears; clicking it cancels by loadId.
+        const inFlightBtn = await screen.findByTestId('unified-load-cancel');
+        fireEvent.click(inFlightBtn);
 
         await waitFor(() => {
             const cancelCall = invokeMock.mock.calls.find(c => c[0] === 'cancel_unified_load');
@@ -179,9 +180,9 @@ describe('R-11: cancel in-flight WSDL load (F-10)', () => {
             expect(cancelCall![1]).toEqual({ loadId });
         });
 
-        // Load settles → the button re-disables (ref released).
+        // Load settles → the button is removed again (ref released).
         act(() => { resolveLoad!(); });
-        await waitFor(() => expect(cancelBtn().disabled).toBe(true));
+        await waitFor(() => expect(screen.queryByTestId('unified-load-cancel')).not.toBeInTheDocument());
     });
 });
 
