@@ -456,8 +456,14 @@ export interface UnifiedProject {
 export interface UnifiedProjectSkeletonOperation {
     name: string;
     displayName?: string;
-    /** Request names only (no bodies, no metadata). */
-    requestNames: { name: string }[];
+    /**
+     * Request names only (no bodies, no metadata). Each entry also carries the
+     * stable request `id` when one exists, so a skeleton row and the upgraded
+     * full-detail row resolve to the same selection id (`req.id || req.name`)
+     * — otherwise a request clicked while the project is still a skeleton
+     * drops its selection when the full detail loads.
+     */
+    requestNames: { name: string; id?: string }[];
 }
 
 export interface UnifiedProjectSkeleton {
@@ -616,6 +622,13 @@ export interface ApinoxConfig {
         editorFontSize?: number;
         editorFontFamily?: string;
         uiFontFamily?: string;
+        /**
+         * Whether the request editor's Content-Type header is locked to the
+         * value resolved from the WSDL/interface (default, `true`). When
+         * `false`, the Content-Type row becomes an editable header that
+         * overrides the resolved value (stored on the request's headers).
+         */
+        contentTypeLocked?: boolean;
     };
     activeEnvironment?: string;
     lastConfigPath?: string;
@@ -818,6 +831,9 @@ export interface RequestHistoryEntry {
     operationName: string;
     requestName: string;
     endpoint: string;
+    /** HTTP method the request used (POST/GET/…). Persisted by both the
+        legacy and unified history writers; not on the model previously. */
+    method?: string;
 
     /** Request details */
     requestBody: string;
@@ -825,6 +841,9 @@ export interface RequestHistoryEntry {
 
     /** Response details */
     statusCode?: number;
+    /** The persisted HTTP status code. Rust stores it under `status` (with a
+        `statusCode` alias); the canonical key in history.json is `status`. */
+    status?: number;
     duration?: number;
     responseSize?: number;
     responseBody?: string;

@@ -206,37 +206,10 @@ export const SampleRequestPanel: React.FC<SampleRequestPanelProps> = ({
             </S.SamplePanelHeader>
             
             <S.SamplePanelBody collapsed={isPanelCollapsed}>
-                {/* Metadata section */}
-                {(sampleData.endpoint || sampleData.soapAction || sampleData.targetNamespace) && (
-                    <S.MetadataSection>
-                        {sampleData.endpoint && (
-                            <>
-                                <S.MetadataLabel>Endpoint:</S.MetadataLabel>
-                                <S.MetadataValue>{sampleData.endpoint}</S.MetadataValue>
-                            </>
-                        )}
-                        {sampleData.soapAction && (
-                            <>
-                                <S.MetadataLabel>SOAPAction:</S.MetadataLabel>
-                                <S.MetadataValue>{sampleData.soapAction}</S.MetadataValue>
-                            </>
-                        )}
-                        {sampleData.contentType && (
-                            <>
-                                <S.MetadataLabel>Content-Type:</S.MetadataLabel>
-                                <S.MetadataValue>{sampleData.contentType}</S.MetadataValue>
-                            </>
-                        )}
-                        {sampleData.targetNamespace && (
-                            <>
-                                <S.MetadataLabel>Namespace:</S.MetadataLabel>
-                                <S.MetadataValue>{sampleData.targetNamespace}</S.MetadataValue>
-                            </>
-                        )}
-                    </S.MetadataSection>
-                )}
-                
-                {/* XML Tree */}
+                {/* XML Tree — the request metadata (endpoint / SOAPAction /
+                    Content-Type / namespace) is shown in the Operation Details
+                    grid and the top-bar endpoint input, so it is not repeated
+                    here. */}
                 <S.XmlTreeContainer>
                     {renderTreeNode(xmlTree, xmlTree.name || 'root')}
                 </S.XmlTreeContainer>

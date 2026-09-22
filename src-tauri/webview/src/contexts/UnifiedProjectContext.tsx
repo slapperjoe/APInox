@@ -85,12 +85,13 @@ interface UnifiedProjectContextValue {
 
     /**
      * Upgrade one project from its skeleton to full detail ON DEMAND
-     * (t_aafaf92b — contract §3.3 `openProject`). Resolves when the project in
-     * state carries fullSchema + request bodies (immediately if already full
-     * or a load is in flight). Call before reading operations/requests.
-     * Idempotent + deduped by project name — never double-loads.
+     * (t_aafaf92b — contract §3.3 `openProject`). Resolves with the FULL
+     * project (upgraded, or the existing full copy — `null` when the project
+     * is absent) so the caller can read operations/requests synchronously
+     * without a stale-closure race. Idempotent + deduped by project name —
+     * never double-loads.
      */
-    ensureProjectFull: (name: string) => Promise<void>;
+    ensureProjectFull: (name: string) => Promise<UnifiedProject | null>;
 
     /**
      * Persist a (possibly mutated) unified project in place via
@@ -183,10 +184,11 @@ export function UnifiedProjectProvider({ children }: { children: ReactNode }) {
     const loadCycleRef = useRef(0);
     /** Projects with full detail (fullSchema + request bodies) in state. */
     const fullRef = useRef<Set<string>>(new Set());
-    /** In-flight detail loads, keyed by project name — the dedupe set
-     *  (contract §3.3): an event-driven arrival and a direct fetch never
-     *  double-load the same project. */
-    const pendingRef = useRef<Set<string>>(new Set());
+    /** In-flight detail loads, keyed by project name — shared promises so a
+     *  concurrent `ensureProjectFull` caller awaits the SAME load (contract
+     *  §3.3: an event-driven arrival and a direct fetch never double-load the
+     *  same project) and receives its result. */
+    const pendingRef = useRef<Map<string, Promise<UnifiedProject | null>>>(new Map());
 
     /** Replace one project in state by name (incremental — never a bulk swap). */
     const replaceProject = useCallback((name: string, project: UnifiedProject) => {
@@ -206,24 +208,35 @@ export function UnifiedProjectProvider({ children }: { children: ReactNode }) {
      * acceptance criterion "no interface is loaded twice"). Never throws for
      * a missing project (it resolves no-op) so selection flows stay robust.
      */
-    const ensureProjectFull = useCallback(async (name: string) => {
-        if (!isTauri()) return;
-        if (fullRef.current.has(name)) return;
-        if (pendingRef.current.has(name)) return;
-        pendingRef.current.add(name);
-        try {
-            const detail = await bridge.invokeTauriCommand('load_unified_project_detail', {
-                dirPath: name,
-            });
-            if (detail && detail.name) {
-                fullRef.current.add(detail.name);
-                replaceProject(detail.name, detail);
-            }
-        } catch (e) {
-            console.error(`[UnifiedProjectContext] load_unified_project_detail failed for '${name}':`, e);
-        } finally {
-            pendingRef.current.delete(name);
+    const ensureProjectFull = useCallback(async (name: string): Promise<UnifiedProject | null> => {
+        if (!isTauri()) return null;
+        if (fullRef.current.has(name)) {
+            return projectsRef.current.find(p => p.name === name) ?? null;
         }
+        // A detail load is already in flight — share its promise (dedupe) so
+        // every caller resolves with the upgraded project.
+        const inFlight = pendingRef.current.get(name);
+        if (inFlight) return inFlight;
+        const load = (async (): Promise<UnifiedProject | null> => {
+            try {
+                const detail = await bridge.invokeTauriCommand('load_unified_project_detail', {
+                    dirPath: name,
+                });
+                if (detail && detail.name) {
+                    fullRef.current.add(detail.name);
+                    replaceProject(detail.name, detail);
+                    return detail as UnifiedProject;
+                }
+                return null;
+            } catch (e) {
+                console.error(`[UnifiedProjectContext] load_unified_project_detail failed for '${name}':`, e);
+                return null;
+            } finally {
+                pendingRef.current.delete(name);
+            }
+        })();
+        pendingRef.current.set(name, load);
+        return load;
     }, [replaceProject]);
 
     // ── Startup load (contract §3.1.4 / §3.3) ───────────────────────────────
@@ -279,6 +292,14 @@ export function UnifiedProjectProvider({ children }: { children: ReactNode }) {
                     displayName: op.displayName,
                     requests: (op.requestNames || []).map(rn => ({
                         name: rn.name,
+                        // Carry the stable id so the skeleton row and the
+                        // upgraded full-detail row keep the SAME selection id
+                        // (req.id || req.name). Without this, a request
+                        // clicked while the project is still a skeleton
+                        // (id = name) no longer matches after the full detail
+                        // loads (id = UUID) and the selection reverts to the
+                        // empty state on first click.
+                        id: rn.id,
                         request: '',
                     })),
                 })),
