@@ -13,6 +13,7 @@ import { TestRunnerProvider } from './contexts/TestRunnerContext';
 import { PerformanceProvider } from './contexts/PerformanceContext';
 import { SearchProvider } from './contexts/SearchContext';
 import { ScrapbookProvider } from './contexts/ScrapbookContext';
+import { TestSuiteProvider } from './contexts/TestSuiteContext';
 import MainContent from './components/MainContent';
 import { DebugIndicator } from './components/DebugIndicator';
 import TitleBar from './components/TitleBar';
@@ -93,6 +94,7 @@ export default function App() {
                         <NavigationProvider>
                             <ScrapbookProvider>
                                 <UnifiedProjectProvider>
+                                <TestSuiteProvider>
                                     <TestRunnerProvider>
                                     <PerformanceProvider>
                                         <SearchProvider>
@@ -110,6 +112,7 @@ export default function App() {
                                         </SearchProvider>
                                     </PerformanceProvider>
                                     </TestRunnerProvider>
+                                </TestSuiteProvider>
                                 </UnifiedProjectProvider>
                             </ScrapbookProvider>
                         </NavigationProvider>

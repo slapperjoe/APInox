@@ -1,31 +1,22 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+/**
+ * TestsUi add-suite flow (C: global suites).
+ *
+ * The old project-picker menu (t_5a771ccd, position:fixed placement, viewport
+ * clamping, outside-click/Escape close) was REMOVED: creating a suite no
+ * longer picks an owning project, so the + button opens the inline suite-name
+ * input directly. These tests pin the new contract:
+ *
+ *   • + opens the inline name input, pre-filled with a count-based name
+ *   • blur/Enter submits (onAddSuite(undefined, name))
+ *   • Escape and empty submits cancel (no onAddSuite call)
+ *   • no project-picker menu ever renders
+ */
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { TestsUi, TestsUiProps } from "../TestsUi";
 import { ApinoxProject } from "@shared/models";
 
-// t_5a771ccd regression tests: the "Add Test Suite" dropdown must render in
-// viewport coordinates (position: fixed) ABOVE the sidebar rail, never
-// clipped/hidden behind the sidebar strip.
-//
-// Root cause + strategy: docs/MENU_SIDEBAR_STACKING_DIAGNOSIS.md (t_8de3fefc).
-// The bug was an in-panel absolute (right:0) menu growing leftward past the
-// panel edge into the rail zone, clipped by overflow:hidden on SidebarContent.
-// The fix (t_894bcad3) moved AddSuiteMenu to position: fixed at viewport
-// coordinates computed from the trigger button's rect (SidebarContextMenu
-// pattern), z-index 1001.
-//
-// Note on sidebar expand/collapse: TestsUi has no expand/collapse state of
-// its own — the rail/panel geometry belongs to Sidebar.tsx, which the fix
-// deliberately does not touch. The regression guard here is that the menu's
-// placement is viewport-anchored (independent of the panel's clipping box),
-// so any rail/panel width change cannot re-clip it.
-//
-// No visual-regression tooling exists in the webview package (no
-// playwright/cypress/puppeteer), so these are DOM geometry assertions
-// instead of screenshots.
-
-// Mock Lucide icons (same set as TestsUi.test.tsx; SidebarContextMenu
-// re-exports Pencil from lucide-react and renders it as an item icon).
+// Mock Lucide icons (same set as TestsUi.test.tsx).
 vi.mock("lucide-react", () => ({
     Play: () => <span data-testid="icon-play" />,
     Plus: () => <span data-testid="icon-plus" />,
@@ -48,7 +39,13 @@ const mockProject: ApinoxProject = {
     fileName: "project1.json",
     readOnly: false,
     interfaces: [],
-    testSuites: []
+    testSuites: [
+        {
+            id: "suite-1",
+            name: "Suite 1",
+            testCases: []
+        }
+    ]
 };
 
 const defaultProps: TestsUiProps = {
@@ -69,135 +66,91 @@ const defaultProps: TestsUiProps = {
     deleteConfirm: null
 };
 
-// The trigger is a <button> (labeled via the shared <Tooltip>); the ref for
-// the placement math lives on it. The "Add suite to project:" text sits in
-// AddSuiteMenuTitle (a div); the AddSuiteMenu wrapper — the element that
-// carries position:fixed and the inline top/left — is its parent.
-const getTriggerButton = () => screen.getByLabelText("Add Test Suite") as HTMLButtonElement;
+const openAddSuite = () => fireEvent.click(screen.getByLabelText("Add Test Suite"));
 
-const getAddSuiteMenu = () =>
-    (screen.getByText("Add suite to project:").closest("div") as HTMLElement).parentElement as HTMLElement;
-
-// jsdom reports zero rects and getComputedStyle() does not resolve
-// stylesheet classes (styled-components injects <style> tags), so the
-// placement math must be driven by a stubbed rect and the CSS must be
-// asserted by finding the injected rule for the element's class.
-const stubButtonRect = (right: number, bottom: number) => {
-    const btn = getTriggerButton();
-    vi.spyOn(btn, "getBoundingClientRect").mockReturnValue({
-        top: 0,
-        left: right - 30,
-        right,
-        bottom,
-        width: 30,
-        height: 30,
-        x: right - 30,
-        y: 0
-    } as DOMRect);
-};
-
-const openMenu = () => {
-    stubButtonRect(230, 80);
-    fireEvent.click(getTriggerButton());
-    return getAddSuiteMenu();
-};
-
-const cssForElement = (el: HTMLElement): string => {
-    const classes = el.className.split(/\s+/);
-    const text: string[] = [];
-    for (const sheet of Array.from(document.styleSheets)) {
-        let rules: CSSRuleList;
-        try {
-            rules = sheet.cssRules;
-        } catch {
-            continue;
-        }
-        for (const rule of Array.from(rules)) {
-            const t = (rule as CSSStyleRule).selectorText || "";
-            const body = (rule as CSSStyleRule).cssText || "";
-            if (classes.some(c => t.split(",").some(sel => sel.trim().includes(`.${c}`)))) {
-                text.push(body);
-            }
-        }
-    }
-    return text.join(" ");
-};
-
-afterEach(() => {
-    vi.restoreAllMocks();
+beforeEach(() => {
+    vi.clearAllMocks();
 });
 
-describe("TestsUi Add Suite menu placement (t_5a771ccd regression)", () => {
-    it("renders the menu as position:fixed (regression guard against the panel's overflow clipping)", () => {
+describe("TestsUi add suite (C: global suites, no project picker)", () => {
+    it("opens the inline name input directly — no project-picker menu", () => {
         render(<TestsUi {...defaultProps} />);
-        const menu = openMenu();
 
-        // absolute-in-panel + SidebarContent overflow:hidden is the bug;
-        // fixed (viewport) placement escapes the clipping box.
-        expect(cssForElement(menu)).toMatch(/position:\s*fixed/);
-        // And it must NOT have reverted to in-panel absolute anchoring.
-        expect(cssForElement(menu)).not.toMatch(/position:\s*absolute/);
-    });
+        openAddSuite();
 
-    it("sits at z-index >= 1001 (above the mobile drawer's 1000)", () => {
-        render(<TestsUi {...defaultProps} />);
-        const menu = openMenu();
-
-        const match = cssForElement(menu).match(/z-index:\s*(\d+)/i);
-        expect(match).not.toBeNull();
-        expect(parseInt(match![1], 10)).toBeGreaterThanOrEqual(1001);
-    });
-
-    it("places the menu below the trigger, right-aligned to it, in viewport coordinates", () => {
-        render(<TestsUi {...defaultProps} />);
-        stubButtonRect(230, 80); // button right edge at x=230, bottom at y=80
-
-        fireEvent.click(getTriggerButton());
-        const menu = getAddSuiteMenu();
-
-        // top = rect.bottom + 4 = 84
-        expect(menu.style.top).toBe("84px");
-        // left = max(8, rect.right - 200) = max(8, 230 - 200) = 30
-        expect(menu.style.left).toBe("30px");
-    });
-
-    it("clamps the menu's left edge to the viewport edge when the button is near the left", () => {
-        render(<TestsUi {...defaultProps} />);
-        stubButtonRect(100, 80); // rect.right - 200 = -100 -> clamp to 8
-
-        fireEvent.click(getTriggerButton());
-        const menu = getAddSuiteMenu();
-
-        expect(menu.style.top).toBe("84px");
-        expect(menu.style.left).toBe("8px");
-    });
-
-    it("closes on outside click", () => {
-        render(<TestsUi {...defaultProps} />);
-        openMenu();
-        expect(screen.getByText("Add suite to project:")).toBeInTheDocument();
-
-        fireEvent.mouseDown(document.body);
-
+        // The pre-picker menu is gone; the name input appears immediately.
         expect(screen.queryByText("Add suite to project:")).not.toBeInTheDocument();
+        expect(screen.getByPlaceholderText("Suite Name")).toBeInTheDocument();
     });
 
-    it("closes on Escape", () => {
+    it("pre-fills the suggested name based on the current suite count", () => {
         render(<TestsUi {...defaultProps} />);
-        openMenu();
-        expect(screen.getByText("Add suite to project:")).toBeInTheDocument();
 
-        fireEvent.keyDown(document, { key: "Escape" });
+        // One existing suite ("Suite 1") -> suggestion "TestSuite 2".
+        openAddSuite();
 
-        expect(screen.queryByText("Add suite to project:")).not.toBeInTheDocument();
+        expect((screen.getByPlaceholderText("Suite Name") as HTMLInputElement).value).toBe("TestSuite 2");
     });
 
-    it("keeps menu items keyboard-operable (real <button> elements)", () => {
+    it("submits on blur with an undefined project and the typed name", () => {
         render(<TestsUi {...defaultProps} />);
-        openMenu();
 
-        const item = screen.getByText("Project 1").closest("button");
-        expect(item).toBeInstanceOf(HTMLButtonElement);
-        expect(item!.type).toBe("button");
+        openAddSuite();
+        const input = screen.getByPlaceholderText("Suite Name") as HTMLInputElement;
+        fireEvent.change(input, { target: { value: "Global Suite" } });
+        fireEvent.blur(input);
+
+        expect(defaultProps.onAddSuite).toHaveBeenCalledTimes(1);
+        expect(defaultProps.onAddSuite).toHaveBeenCalledWith(undefined, "Global Suite");
+        expect(screen.queryByPlaceholderText("Suite Name")).not.toBeInTheDocument();
+    });
+
+    it("submits on Enter", () => {
+        render(<TestsUi {...defaultProps} />);
+
+        openAddSuite();
+        const input = screen.getByPlaceholderText("Suite Name") as HTMLInputElement;
+        fireEvent.keyDown(input, { key: "Enter" });
+
+        expect(defaultProps.onAddSuite).toHaveBeenCalledTimes(1);
+        // Pre-filled suggestion submitted as-is.
+        expect(defaultProps.onAddSuite).toHaveBeenCalledWith(undefined, "TestSuite 2");
+    });
+
+    it("cancels on Escape without adding", () => {
+        render(<TestsUi {...defaultProps} />);
+
+        openAddSuite();
+        const input = screen.getByPlaceholderText("Suite Name") as HTMLInputElement;
+        fireEvent.keyDown(input, { key: "Escape" });
+
+        expect(defaultProps.onAddSuite).not.toHaveBeenCalled();
+        expect(screen.queryByPlaceholderText("Suite Name")).not.toBeInTheDocument();
+    });
+
+    it("an empty submit is a no-op (input closes, no suite added)", () => {
+        render(<TestsUi {...defaultProps} />);
+
+        openAddSuite();
+        const input = screen.getByPlaceholderText("Suite Name") as HTMLInputElement;
+        fireEvent.change(input, { target: { value: "   " } });
+        fireEvent.blur(input);
+
+        expect(defaultProps.onAddSuite).not.toHaveBeenCalled();
+        expect(screen.queryByPlaceholderText("Suite Name")).not.toBeInTheDocument();
+    });
+
+    it("uses the GLOBAL suites (testSuites prop) over per-project suites when provided", () => {
+        const globalSuite = { id: "gs-1", name: "Global Suite", testCases: [] };
+        render(<TestsUi {...defaultProps} testSuites={[globalSuite]} />);
+
+        // Only the global suite renders (the per-project "Suite 1" is hidden
+        // by the global source of truth), and the next suggestion counts the
+        // GLOBAL list.
+        expect(screen.getByText("Global Suite")).toBeInTheDocument();
+        expect(screen.queryByText("Suite 1")).not.toBeInTheDocument();
+
+        openAddSuite();
+        expect((screen.getByPlaceholderText("Suite Name") as HTMLInputElement).value).toBe("TestSuite 2");
     });
 });

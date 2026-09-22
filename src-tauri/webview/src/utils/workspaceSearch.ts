@@ -523,13 +523,13 @@ export function searchUnifiedProjects(
 /**
  * Search within test suites and test cases.
  *
- * Phase B (t_86c34d38): structural param type — suites were relocated to the
- * UNIFIED store (UnifiedProject.testSuites), so this walks `testSuites` on
- * either the legacy or unified project model (both carry `name` + `testSuites`).
+ * C (global suites): suites are stored globally (not per-project), so this
+ * takes the flat global suite list. `projectName` in the result data is
+ * omitted (there is no owning project to scope the deep-link to).
  */
 export function searchTests(
     query: string,
-    projects: Array<{ name: string; testSuites?: TestSuite[] }>,
+    testSuites: TestSuite[],
     options: SearchOptions = {}
 ): SearchResult[] {
     const results: SearchResult[] = [];
@@ -538,45 +538,41 @@ export function searchTests(
         return results;
     }
 
-    for (const project of projects) {
-        for (const suite of project.testSuites || []) {
-            const suiteBreadcrumb = `${project.name} > Tests`;
+    for (const suite of testSuites) {
+        const suiteBreadcrumb = 'Tests';
 
-            // Search suite name
-            const suiteScore = calculateMatchScore(query, suite.name);
-            if (suiteScore > 0) {
+        // Search suite name
+        const suiteScore = calculateMatchScore(query, suite.name);
+        if (suiteScore > 0) {
+            results.push({
+                id: `test-suite-${suite.id}`,
+                type: 'test-suite',
+                name: suite.name,
+                breadcrumb: suiteBreadcrumb,
+                view: 'tests',
+                score: calculateScore(suiteScore, 'test-suite'),
+                data: {
+                    testSuiteId: suite.id,
+                },
+            });
+        }
+
+        // Search test cases
+        for (const testCase of suite.testCases || []) {
+            const caseScore = calculateMatchScore(query, testCase.name);
+            if (caseScore > 0) {
                 results.push({
-                    id: `test-suite-${suite.id}`,
-                    type: 'test-suite',
-                    name: suite.name,
-                    breadcrumb: suiteBreadcrumb,
+                    id: `test-case-${testCase.id}`,
+                    type: 'test-case',
+                    name: testCase.name,
+                    breadcrumb: `${suiteBreadcrumb} > ${suite.name}`,
                     view: 'tests',
-                    score: calculateScore(suiteScore, 'test-suite'),
+                    score: calculateScore(caseScore, 'test-case'),
                     data: {
-                        projectName: project.name,
                         testSuiteId: suite.id,
+                        testCaseId: testCase.id,
                     },
                 });
-            }
-
-            // Search test cases
-            for (const testCase of suite.testCases || []) {
-                const caseScore = calculateMatchScore(query, testCase.name);
-                if (caseScore > 0) {
-                    results.push({
-                        id: `test-case-${testCase.id}`,
-                        type: 'test-case',
-                        name: testCase.name,
-                        breadcrumb: `${suiteBreadcrumb} > ${suite.name}`,
-                        view: 'tests',
-                        score: calculateScore(caseScore, 'test-case'),
-                        data: {
-                            projectName: project.name,
-                            testSuiteId: suite.id,
-                            testCaseId: testCase.id,
-                        },
-                    });
-                }
             }
         }
     }

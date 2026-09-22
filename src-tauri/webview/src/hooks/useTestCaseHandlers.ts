@@ -21,6 +21,7 @@ import {
 import { bridge, isTauri } from '../utils/bridge';
 import { BackendCommand, FrontendCommand } from '@shared/messages';
 import { getInitialXml } from '@shared/utils/xmlUtils';
+import { useTestSuites } from '../contexts/TestSuiteContext';
 
 interface UseTestCaseHandlersParams {
     projects: UnifiedProject[];
@@ -54,8 +55,8 @@ interface UseTestCaseHandlersReturn {
 
 export function useTestCaseHandlers({
     projects,
-    setProjects,
-    saveProject,
+    setProjects: _setProjects,
+    saveProject: _saveProject,
     selectedTestCase,
     selectedStep,
     setSelectedTestCase,
@@ -70,8 +71,31 @@ export function useTestCaseHandlers({
     setSelectedTestSuite
 }: UseTestCaseHandlersParams): UseTestCaseHandlersReturn {
 
+    const { testSuites, addSuite, updateTestCase, findSuiteById, findCaseById } = useTestSuites();
+    /** Compute the next step object for an in-place step mutation (no-op if
+        the step isn't a request step), then persist it through the global
+        suite store and refresh the selection state. Replaces the old
+        `projects.map(p => p.testSuites.map(...))` + `saveProject` pattern. */
+    const applyStepUpdate = useCallback(
+        (fn: (step: TestStep) => TestStep) => {
+            if (!selectedTestCase || !selectedStep) return;
+            const updatedStep = fn(selectedStep);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const isReq = (updatedStep as any).type === 'request';
+            void updateTestCase(selectedTestCase.id, tc => ({
+                ...tc,
+                steps: tc.steps.map(s => (s.id === updatedStep.id ? updatedStep : s))
+            }));
+            setSelectedStep(updatedStep);
+            if (isReq && (updatedStep as any).config?.request) {
+                setSelectedRequest((updatedStep as any).config.request);
+            }
+        },
+        [selectedTestCase, selectedStep, updateTestCase, setSelectedStep, setSelectedRequest]
+    );
+
     const handleSelectTestSuite = useCallback((suiteId: string) => {
-        const suite = projects.find(p => p.testSuites?.some(s => s.id === suiteId))?.testSuites?.find(s => s.id === suiteId);
+        const suite = findSuiteById(suiteId);
         if (suite) {
             // Set the selected suite
             setSelectedTestSuite(suite);
@@ -88,22 +112,11 @@ export function useTestCaseHandlers({
             // Don't change activeView - let user stay on current sidebar tab
             // (Assumes SidebarView.TESTS is active if clicking suite)
         }
-    }, [projects, setSelectedTestSuite, setSelectedTestCase, setSelectedStep, setSelectedRequest, setSelectedOperation, setSelectedInterface, setSelectedPerformanceSuiteId, setResponse]);
+    }, [findSuiteById, setSelectedTestSuite, setSelectedTestCase, setSelectedStep, setSelectedRequest, setSelectedOperation, setSelectedInterface, setSelectedPerformanceSuiteId, setResponse]);
 
     const handleSelectTestCase = useCallback((caseId: string) => {
-        let foundCase: TestCase | null = null;
-        for (const p of projects) {
-            if (p.testSuites) {
-                for (const s of p.testSuites) {
-                    const c = s.testCases?.find(tc => tc.id === caseId);
-                    if (c) {
-                        foundCase = c;
-                        break;
-                    }
-                }
-            }
-            if (foundCase) break;
-        }
+        const found = findCaseById(caseId);
+        const foundCase = found?.testCase ?? null;
 
         if (foundCase) {
             setSelectedTestCase(foundCase);
@@ -117,148 +130,69 @@ export function useTestCaseHandlers({
         } else {
             bridge.emit({ command: BackendCommand.Error, error: `Could not find Test Case: ${caseId}`, message: `Could not find Test Case: ${caseId}` });
         }
-    }, [projects, setSelectedTestCase, setSelectedStep, setSelectedRequest, setSelectedOperation, setSelectedInterface, setSelectedPerformanceSuiteId, setResponse]);
+    }, [findCaseById, setSelectedTestCase, setSelectedStep, setSelectedRequest, setSelectedOperation, setSelectedInterface, setSelectedPerformanceSuiteId, setResponse]);
 
     const handleAddAssertion = useCallback((data: { xpath: string, expectedContent: string }) => {
         console.log("handleAddAssertion Called.", data, "TC:", selectedTestCase?.id, "Step:", selectedStep?.id);
 
-        if (!selectedTestCase || !selectedStep) {
-            console.error("Missing selection state", { tc: !!selectedTestCase, step: !!selectedStep });
-            return;
-        }
-
-        let updatedStep: TestStep | null = null;
-        let updatedProjectOrNull: UnifiedProject | null = null;
-
-        const nextProjects = projects.map(p => {
-            const suite = p.testSuites?.find(s => s.testCases?.some(tc => tc.id === selectedTestCase.id));
-            if (!suite) return p;
-
-            const updatedSuite = {
-                ...suite,
-                testCases: suite.testCases?.map(tc => {
-                    if (tc.id !== selectedTestCase.id) return tc;
-                    return {
-                        ...tc,
-                        steps: tc.steps.map(s => {
-                            if (s.id !== selectedStep.id) return s;
-                            if (s.type !== 'request' || !s.config.request) return s;
-
-                            const newAssertion: Assertion = {
-                                id: crypto.randomUUID(),
-                                type: 'XPath Match',
-                                name: 'XPath Match - ' + data.xpath.split('/').pop(),
-                                configuration: {
-                                    xpath: data.xpath,
-                                    expectedContent: data.expectedContent
-                                }
-                            };
-
-                            const newStep = {
-                                ...s,
-                                config: {
-                                    ...s.config,
-                                    request: {
-                                        ...s.config.request,
-                                        assertions: [...(s.config.request.assertions || []), newAssertion],
-                                        dirty: true
-                                    }
-                                }
-                            };
-                            updatedStep = newStep;
-                            return newStep;
-                        })
-                    };
-                })
-            };
-
-            const updatedProject = { ...p, testSuites: p.testSuites!.map(s => s.id === suite.id ? updatedSuite : s), dirty: true };
-            updatedProjectOrNull = updatedProject;
-            return updatedProject;
-        });
-
-        if (updatedProjectOrNull) {
-            setProjects(nextProjects);
-            setTimeout(() => saveProject(updatedProjectOrNull!), 0);
-            if (updatedStep) {
-                setSelectedStep(updatedStep);
-                if ((updatedStep as any).type === 'request' && (updatedStep as any).config.request) {
-                    setSelectedRequest((updatedStep as any).config.request);
+        applyStepUpdate(s => {
+            if (s.type !== 'request' || !s.config.request) return s;
+            const newAssertion: Assertion = {
+                id: crypto.randomUUID(),
+                type: 'XPath Match',
+                name: 'XPath Match - ' + data.xpath.split('/').pop(),
+                configuration: {
+                    xpath: data.xpath,
+                    expectedContent: data.expectedContent
                 }
-            }
-        }
-    }, [projects, selectedTestCase, selectedStep, setProjects, saveProject, setSelectedStep, setSelectedRequest]);
+            };
+            return {
+                ...s,
+                config: {
+                    ...s.config,
+                    request: {
+                        ...s.config.request,
+                        assertions: [...(s.config.request.assertions || []), newAssertion],
+                        dirty: true
+                    }
+                }
+            };
+        });
+    }, [selectedTestCase, selectedStep, applyStepUpdate]);
 
     const handleAddExistenceAssertion = useCallback((data: { xpath: string }) => {
         if (!selectedTestCase || !selectedStep) return;
 
-        let updatedStep: TestStep | null = null;
-        let updatedProjectOrNull: UnifiedProject | null = null;
-
-        const nextProjects = projects.map(p => {
-            const suite = p.testSuites?.find(s => s.testCases?.some(tc => tc.id === selectedTestCase.id));
-            if (!suite) return p;
-
-            const updatedSuite = {
-                ...suite,
-                testCases: suite.testCases?.map(tc => {
-                    if (tc.id !== selectedTestCase.id) return tc;
-                    return {
-                        ...tc,
-                        steps: tc.steps.map(s => {
-                            if (s.id !== selectedStep.id) return s;
-                            if (s.type !== 'request' || !s.config.request) return s;
-
-                            const newAssertion: Assertion = {
-                                id: crypto.randomUUID(),
-                                type: 'XPath Match',
-                                name: 'Node Exists - ' + data.xpath.split('/').pop(),
-                                configuration: {
-                                    xpath: `count(${data.xpath}) > 0`,
-                                    expectedContent: 'true'
-                                }
-                            };
-
-                            const newStep = {
-                                ...s,
-                                config: {
-                                    ...s.config,
-                                    request: {
-                                        ...s.config.request,
-                                        assertions: [...(s.config.request.assertions || []), newAssertion],
-                                        dirty: true
-                                    }
-                                }
-                            };
-                            updatedStep = newStep;
-                            return newStep;
-                        })
-                    };
-                })
-            };
-
-            const updatedProject = { ...p, testSuites: p.testSuites!.map(s => s.id === suite.id ? updatedSuite : s), dirty: true };
-            updatedProjectOrNull = updatedProject;
-            return updatedProject;
-        });
-
-        if (updatedProjectOrNull) {
-            setProjects(nextProjects);
-            setTimeout(() => saveProject(updatedProjectOrNull!), 0);
-            if (updatedStep) {
-                setSelectedStep(updatedStep);
-                if ((updatedStep as any).type === 'request' && (updatedStep as any).config.request) {
-                    setSelectedRequest((updatedStep as any).config.request);
+        applyStepUpdate(s => {
+            if (s.type !== 'request' || !s.config.request) return s;
+            const newAssertion: Assertion = {
+                id: crypto.randomUUID(),
+                type: 'XPath Match',
+                name: 'Node Exists - ' + data.xpath.split('/').pop(),
+                configuration: {
+                    xpath: `count(${data.xpath}) > 0`,
+                    expectedContent: 'true'
                 }
-            }
-        }
-    }, [projects, selectedTestCase, selectedStep, setProjects, saveProject, setSelectedStep, setSelectedRequest]);
+            };
+            return {
+                ...s,
+                config: {
+                    ...s.config,
+                    request: {
+                        ...s.config.request,
+                        assertions: [...(s.config.request.assertions || []), newAssertion],
+                        dirty: true
+                    }
+                }
+            };
+        });
+    }, [selectedTestCase, selectedStep, applyStepUpdate]);
 
     const handleGenerateTestSuite = useCallback((target: ApiOperation) => {
-        // Phase B (t_86c34d38): find the UNIFIED project containing this target.
-        // The target is an ApiOperation (the unified context-menu "Generate Test
-        // Suite" item — relocated from the deleted PROJECTS view); match it
-        // against the project's flat operations[] by reference or by name.
+        // C (global suites): the generated suite is stored in the GLOBAL test
+        // suite store — no owning project to append it to. The target project
+        // is still located to match operations by reference/name, but the
+        // suite itself is project-agnostic.
         let targetProject: UnifiedProject | null = null;
         for (const p of projects) {
             const op = (p.operations || []).find(o => o === target || o.name === target.name);
@@ -331,35 +265,19 @@ export function useTestCaseHandlers({
             newSuite.testCases.push(newCase);
         });
 
-        // Save Logic
-        setProjects(prev => prev.map(p => {
-            // Unified projects are keyed by their stable `name` (the on-disk dir).
-            if (p.name === targetProject!.name) {
-                const updated = { ...p, testSuites: [...(p.testSuites || []), newSuite], dirty: true };
-                setTimeout(() => saveProject(updated), 0);
-                return updated;
-            }
-            return p;
-        }));
+        // Save Logic: append to the GLOBAL suite store (no project involved).
+        void addSuite(newSuite);
 
         setActiveView(SidebarView.TESTS);
         closeContextMenu();
-    }, [projects, setProjects, saveProject, setActiveView, closeContextMenu]);
+    }, [projects, addSuite, setActiveView, closeContextMenu]);
 
     const handleRunTestCaseWrapper = useCallback((caseId: string) => {
         console.log('[handleRunTestCaseWrapper] CALLED with caseId:', caseId);
 
-        // Find case
-        let testCase: TestCase | null = null;
-        for (const p of projects) {
-            if (p.testSuites) {
-                for (const s of p.testSuites) {
-                    testCase = s.testCases?.find(tc => tc.id === caseId) || null;
-                    if (testCase) break;
-                }
-            }
-            if (testCase) break;
-        }
+        // Find case in the global suite store
+        const found = findCaseById(caseId);
+        const testCase = found?.testCase ?? null;
 
         if (!testCase) {
             console.error('[App] Could not find Test Case for ID', caseId);
@@ -423,7 +341,7 @@ export function useTestCaseHandlers({
             testCase,
             fallbackEndpoint: testCase.steps[0]?.config?.request?.endpoint || ''
         });
-    }, [projects]);
+    }, [findCaseById]);
 
     const handleRunTestSuiteWrapper = useCallback((suiteId: string) => {
         console.log('[handleRunTestSuiteWrapper] CALLED with suiteId:', suiteId);
@@ -445,14 +363,14 @@ export function useTestCaseHandlers({
             return;
         }
 
-        // Build the updated step for immediate UI update
-        let updatedStep: TestStep | null = null;
-        if (selectedStep.type === 'request' && selectedStep.config.request) {
+        applyStepUpdate(s => {
+            if (s.type !== 'request' || !s.config.request) return s;
+
             let newExtractors: RequestExtractor[];
 
             if (data.editingId) {
                 // Edit mode - update existing extractor
-                newExtractors = (selectedStep.config.request.extractors || []).map(ext =>
+                newExtractors = (s.config.request.extractors || []).map(ext =>
                     ext.id === data.editingId
                         ? { ...ext, path: data.xpath, variable: data.variableName, source: data.source, defaultValue: data.defaultValue, type: data.type || ext.type || 'XPath' }
                         : ext
@@ -468,58 +386,23 @@ export function useTestCaseHandlers({
                     source: data.source,
                     defaultValue: data.defaultValue
                 };
-                newExtractors = [...(selectedStep.config.request.extractors || []), newExtractor];
-                console.log('[handleSaveExtractor] Creating new extractor with type:', data.type || 'XPath');
+                newExtractors = [...(s.config.request.extractors || []), newExtractor];
+                console.log('[handleSaveExtractor] Creating new extractor with type:', data.type);
             }
 
-            updatedStep = {
-                ...selectedStep,
+            return {
+                ...s,
                 config: {
-                    ...selectedStep.config,
+                    ...s.config,
                     request: {
-                        ...selectedStep.config.request,
+                        ...s.config.request,
                         extractors: newExtractors,
                         dirty: true
                     }
                 }
             };
-        }
-
-        const nextProjects = projects.map(p => {
-            const suite = p.testSuites?.find(s => s.testCases?.some(tc => tc.id === selectedTestCase.id));
-            if (!suite) return p;
-
-            const updatedSuite = {
-                ...suite,
-                testCases: suite.testCases?.map(tc => {
-                    if (tc.id !== selectedTestCase.id) return tc;
-                    return {
-                        ...tc,
-                        steps: tc.steps.map(s => {
-                            if (s.id !== selectedStep.id) return s;
-                            return updatedStep || s;
-                        })
-                    };
-                })
-            };
-
-            const updatedProject = { ...p, testSuites: p.testSuites!.map(s => s.id === suite.id ? updatedSuite : s), dirty: true };
-            setTimeout(() => saveProject(updatedProject), 0);
-            return updatedProject;
         });
-
-        setProjects(nextProjects);
-
-        // Update selectedStep so UI reflects the new extractor immediately
-        if (updatedStep) {
-            setSelectedStep(updatedStep);
-
-            // CRITICAL: Also update selectedRequest, as ExtractorsPanel renders from selectedRequest.extractors
-            if (updatedStep.config.request) {
-                setSelectedRequest(updatedStep.config.request);
-            }
-        }
-    }, [projects, selectedTestCase, selectedStep, setProjects, setSelectedStep, setSelectedRequest, saveProject]);
+    }, [selectedTestCase, selectedStep, applyStepUpdate]);
 
     return {
         handleSelectTestSuite,

@@ -1,11 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import styled from 'styled-components';
-import { Play, Plus, Trash2, ChevronDown, ChevronRight, FlaskConical, FolderOpen, ListChecks, Clock, FileCode, ArrowRight, FileText } from 'lucide-react';
+import { Play, Plus, Trash2, ChevronDown, ChevronRight, FlaskConical, ListChecks, Clock, FileCode, ArrowRight, FileText } from 'lucide-react';
 import { UnifiedProject, TestSuite } from '@shared/models';
 import { SidebarContextMenu, CtxMenuSection, CtxMenuItem, Pencil } from './shared/SidebarContextMenu';
 import { SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle, OperationItem, RequestItem } from './shared/SidebarStyles';
 import { EmptyState } from '../common/EmptyState';
-import { HeaderButton, GhostButton } from '../common/Button';
+import { HeaderButton } from '../common/Button';
 import { Tooltip } from '../common/Tooltip';
 import { InlineFormInput } from '../common/Form';
 import { SPACING_SM, SPACING_XS } from '../../styles/spacing';
@@ -28,63 +28,19 @@ const HeaderActions = styled.div`
     position: relative;
 `;
 
-// t_894bcad3 (diagnosis t_8de3fefc): the menu must escape the sidebar panel's
-// overflow:hidden clipping box, so it is positioned in viewport coordinates
-// (position: fixed) computed from the trigger button's rect — same pattern as
-// SidebarContextMenu. z-index 1001 sits above the mobile drawer (1000); the
-// desktop drawer has no z-index of its own.
-const AddSuiteMenu = styled.div`
-    position: fixed;
-    z-index: 1001;
-    background: var(--apinox-dropdown-background);
-    border: 1px solid var(--apinox-dropdown-border);
-    border-radius: 4px;
-    min-width: 180px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-`;
-
-const AddSuiteMenuTitle = styled.div`
-    padding: ${SPACING_SM} 12px;
-    font-size: 0.8em;
-    opacity: 0.7;
-    border-bottom: 1px solid var(--apinox-panel-border);
-`;
-
-const AddSuiteMenuEmpty = styled.div`
-    padding: 12px;
-    font-size: 0.85em;
-    opacity: 0.6;
-`;
-
-// A real <button> so menu items are keyboard-operable (Tab/Enter/Space).
-const AddSuiteMenuItem = styled(GhostButton)<{ $disabled?: boolean }>`
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: ${SPACING_XS};
-    padding: ${SPACING_SM} 12px;
-    background: transparent;
-    border: none;
-    color: inherit;
-    font: inherit;
-    text-align: left;
-    cursor: ${props => props.$disabled ? 'not-allowed' : 'pointer'};
-    opacity: ${props => props.$disabled ? 0.5 : 1};
-
-    &:hover {
-        background: ${props => props.$disabled ? 'transparent' : 'var(--apinox-list-hoverBackground)'};
-    }
-`;
-
-
 const SuiteOperationItem = styled(OperationItem)`
     padding-left: 8px;
 `;
 
-const SuiteToggle = styled.span`
-    cursor: pointer;
+const SuiteToggle = styled.span<{ $hasChildren?: boolean }>`
+    cursor: ${props => (props.$hasChildren ? 'pointer' : 'default')};
     display: flex;
     align-items: center;
+    /* Fixed-width chevron slot: rendered empty (no chevron) when the suite
+       has no test cases, so rows line up with expandable rows and there is
+       no dead toggle to click (matches the unified explorer TreeItem). */
+    width: 14px;
+    flex-shrink: 0;
 `;
 
 const SuiteIcon = styled.span`
@@ -109,12 +65,15 @@ const CaseRequestItem = styled(RequestItem)`
     padding-left: 35px;
 `;
 
-const CaseToggle = styled.span`
-    cursor: pointer;
+const CaseToggle = styled.span<{ $hasChildren?: boolean }>`
+    cursor: ${props => (props.$hasChildren ? 'pointer' : 'default')};
     display: flex;
     align-items: center;
     margin-right: ${SPACING_XS};
     width: 14px;
+    /* Fixed-width chevron slot (empty when the case has no steps) so rows
+       line up and there is no dead toggle — same pattern as SuiteToggle. */
+    flex-shrink: 0;
 `;
 
 const CaseName = styled.span`
@@ -146,16 +105,21 @@ const AddSuiteRow = styled.div`
 `;
 
 export interface TestsUiProps {
-    // Phase B (t_86c34d38): suites render from the UNIFIED store.
+    // Phase B (t_86c34d38) → C (global suites): `testSuites` is the single
+    // source of truth for the TESTS rail (the global store). When omitted,
+    // the rail falls back to `projects[].testSuites` (kept for component
+    // tests that render without a provider).
+    testSuites?: TestSuite[];
     projects: UnifiedProject[];
     selectedTestSuite?: TestSuite | null;
     selectedTestCase?: any | null;
-    onAddSuite: (projectName: string, suiteName?: string) => void;
+    onAddSuite: (projectName?: string, suiteName?: string) => void;
     onDeleteSuite: (suiteId: string) => void;
     onRunSuite: (suiteId: string) => void;
     onAddTestCase: (suiteId: string) => void;
     onDeleteTestCase: (caseId: string) => void;
     onRenameTestCase?: (caseId: string, newName: string) => void;
+    onRenameSuite?: (suiteId: string, newName: string) => void;
     onRunCase: (caseId: string) => void;
     onSelectSuite: (suiteId: string) => void;
     onSelectTestCase: (caseId: string) => void;
@@ -172,6 +136,7 @@ interface FlatSuite {
 }
 
 export const TestsUi: React.FC<TestsUiProps> = ({
+    testSuites,
     projects,
     selectedTestSuite,
     selectedTestCase,
@@ -181,6 +146,7 @@ export const TestsUi: React.FC<TestsUiProps> = ({
     onAddTestCase,
     onDeleteTestCase,
     onRenameTestCase,
+    onRenameSuite,
     onRunCase,
     onSelectSuite,
     onSelectTestCase,
@@ -190,80 +156,24 @@ export const TestsUi: React.FC<TestsUiProps> = ({
     onRenameTestStep,
     deleteConfirm
 }) => {
-    const [showAddSuiteMenu, setShowAddSuiteMenu] = useState(false);
-    // t_894bcad3: viewport coordinates for the fixed-positioned AddSuiteMenu,
-    // computed from the trigger button's rect when the menu opens.
     const addSuiteBtnRef = useRef<HTMLButtonElement>(null);
-    const addSuiteMenuRef = useRef<HTMLDivElement>(null);
-    const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
     const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
     const [renameId, setRenameId] = useState<string | null>(null);
     const [renameType, setRenameType] = useState<'case' | 'step' | 'suite' | null>(null);
     const [renameParentId, setRenameParentId] = useState<string | null>(null);
-    const [renameName, setRenameName] = useState<string>('');
-    
+    const [renameName, setRenameName] = useState('');
+
     // New suite creation state
     const [isAddingSuite, setIsAddingSuite] = useState(false);
     const [newSuiteName, setNewSuiteName] = useState('');
-    const [newSuiteProjectName, setNewSuiteProjectName] = useState('');
 
-    // Context menu state
-    const [contextMenu, setContextMenu] = useState<{ x: number; y: number; caseId: string; stepId?: string; name: string; type: 'case' | 'step' } | null>(null);
+    // Context menu state (cases/steps: rename; suites: run/rename/add-case/delete)
+    const [contextMenu, setContextMenu] = useState<{ x: number; y: number; caseId?: string; suiteId?: string; stepId?: string; name: string; type: 'case' | 'step' | 'suite' } | null>(null);
 
-    // t_894bcad3: place the Add Suite menu below the trigger button, right-aligned
-    // to it, using viewport (fixed) coordinates so it escapes the sidebar panel's
-    // overflow:hidden clipping box (see docs/MENU_SIDEBAR_STACKING_DIAGNOSIS.md).
-    const openAddSuiteMenu = () => {
-        if (!showAddSuiteMenu) {
-            const rect = addSuiteBtnRef.current?.getBoundingClientRect();
-            if (rect) {
-                // Estimated menu width: min-width 180px + long project names may
-                // grow it; the inline-style left keeps the right edge aligned to
-                // the button and clamps the left edge to at least 8px from the
-                // viewport edge.
-                const estimatedWidth = 200;
-                const left = Math.max(8, rect.right - estimatedWidth);
-                const top = rect.bottom + 4;
-                setMenuPos({ top, left });
-            }
-        }
-        setShowAddSuiteMenu(v => !v);
-    };
-
-    const closeAddSuiteMenu = () => {
-        setShowAddSuiteMenu(false);
-        setMenuPos(null);
-    };
-
-    // Close the Add Suite menu on outside click and Escape (the menu previously
-    // had no close affordance at all — DropdownMenu.tsx outside-click pattern).
-    useEffect(() => {
-        if (!showAddSuiteMenu) return;
-
-        const handleMouseDown = (event: MouseEvent) => {
-            const target = event.target as Node;
-            if (addSuiteMenuRef.current?.contains(target)) return;
-            if (addSuiteBtnRef.current?.contains(target)) return;
-            closeAddSuiteMenu();
-        };
-        const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') {
-                closeAddSuiteMenu();
-            }
-        };
-
-        document.addEventListener('mousedown', handleMouseDown);
-        document.addEventListener('keydown', handleKeyDown);
-        return () => {
-            document.removeEventListener('mousedown', handleMouseDown);
-            document.removeEventListener('keydown', handleKeyDown);
-        };
-    }, [showAddSuiteMenu]);
-
-    const handleContextMenu = (e: React.MouseEvent, caseId: string, name: string, type: 'case' | 'step', stepId?: string) => {
+    const handleContextMenu = (e: React.MouseEvent, name: string, type: 'case' | 'step' | 'suite', caseId?: string, stepId?: string, suiteId?: string) => {
         e.preventDefault();
         e.stopPropagation();
-        setContextMenu({ x: e.clientX, y: e.clientY, caseId, name, type, stepId });
+        setContextMenu({ x: e.clientX, y: e.clientY, name, type, caseId, stepId, suiteId });
     };
 
     const closeContextMenu = () => {
@@ -272,9 +182,10 @@ export const TestsUi: React.FC<TestsUiProps> = ({
 
     const handleRenameFromMenu = () => {
         if (contextMenu) {
-            setRenameId(contextMenu.stepId || contextMenu.caseId);
+            const targetId = contextMenu.stepId || contextMenu.caseId || contextMenu.suiteId || null;
+            setRenameId(targetId);
             setRenameType(contextMenu.type);
-            setRenameParentId(contextMenu.caseId); // For steps, caseId is parent. For cases, it's just caseId (unused as parent)
+            setRenameParentId(contextMenu.caseId ?? null); // For steps, caseId is the parent; unused for cases/suites.
             setRenameName(contextMenu.name);
             closeContextMenu();
         }
@@ -289,6 +200,8 @@ export const TestsUi: React.FC<TestsUiProps> = ({
             } else if (renameType === 'case' && onRenameTestCase) {
                 console.log('[TestsUi] Calling onRenameTestCase');
                 onRenameTestCase(renameId, renameName.trim());
+            } else if (renameType === 'suite' && onRenameSuite) {
+                onRenameSuite(renameId, renameName.trim());
             }
         }
         setRenameId(null);
@@ -304,42 +217,53 @@ export const TestsUi: React.FC<TestsUiProps> = ({
         setRenameName('');
     };
 
-    // New suite creation handlers
-    const handleProjectSelect = (projectName: string) => {
-        const project = projects.find(p => p.name === projectName);
-        if (!project) return;
-        
-        const suggestedName = `TestSuite ${((project.testSuites || []).length + 1)}`;
-        setNewSuiteProjectName(projectName);
-        setNewSuiteName(suggestedName);
+    // C (global suites): the `+` button opens the suite-name input directly —
+    // there is no owning project to pick (suites are global). The old
+    // project-picker menu is gone.
+    const openAddSuite = () => {
+        const count = (testSuites ?? projects.flatMap(p => p.testSuites || [])).length;
+        setNewSuiteName(`TestSuite ${count + 1}`);
         setIsAddingSuite(true);
-        setShowAddSuiteMenu(false);
     };
 
     const submitNewSuite = () => {
-        if (newSuiteName.trim() && newSuiteProjectName) {
-            onAddSuite(newSuiteProjectName, newSuiteName.trim());
+        if (newSuiteName.trim()) {
+            onAddSuite(undefined, newSuiteName.trim());
             setIsAddingSuite(false);
             setNewSuiteName('');
-            setNewSuiteProjectName('');
         } else {
             setIsAddingSuite(false);
             setNewSuiteName('');
-            setNewSuiteProjectName('');
         }
     };
 
     const cancelNewSuite = () => {
         setIsAddingSuite(false);
         setNewSuiteName('');
-        setNewSuiteProjectName('');
     };
 
-    // Aggregate all test suites from all projects
-    const allSuites: FlatSuite[] = projects.flatMap(p =>
-        (p.testSuites || []).map(suite => ({ suite, projectName: p.name }))
-    );
+    // Global suites when provided (the single source of truth); otherwise fall
+    // back to the per-project suites (component tests without a provider).
+    const effectiveSuites: TestSuite[] = testSuites
+        ?? Array.from(new Map(projects.flatMap(p => (p.testSuites || []).map(s => [s.id, s]))).values());
+    const allSuites: FlatSuite[] = effectiveSuites.map(suite => ({ suite, projectName: '' }));
 
+    // Two-click confirm for the RIGHT-CLICK menu (the only delete entry point):
+    // the first click arms `deleteConfirm` and the menu stays open
+    // (label → "Click again to delete"); the second click deletes and closes.
+    const menuDelete = (targetId: string, handler: (id: string) => void) => {
+        const wasArmed = deleteConfirm === targetId;
+        // The handler does the two-click work: arms on click 1, deletes on click 2.
+        handler(targetId);
+        // Only close after the delete actually happened (the armed click).
+        if (wasArmed) closeContextMenu();
+    };
+
+    // The suite the (open) context menu targets — gates the menu's Run action
+    // on it having cases, matching the inline-button gating.
+    const menuSuite = contextMenu?.type === 'suite'
+        ? effectiveSuites.find(s => s.id === contextMenu.suiteId)
+        : undefined;
 
 
     return (
@@ -353,46 +277,10 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                     <SidebarHeaderActions>
                         <HeaderActions>
                             <Tooltip content="Add Test Suite">
-                              <HeaderButton ref={addSuiteBtnRef} onClick={openAddSuiteMenu}>
+                              <HeaderButton ref={addSuiteBtnRef} onClick={openAddSuite}>
                                 <Plus size={16} />
                               </HeaderButton>
                             </Tooltip>
-
-                            {/* Project Selection Dropdown (t_894bcad3: viewport-fixed
-                                placement so the menu renders above the sidebar rail
-                                instead of being clipped by the panel's overflow) */}
-                            {showAddSuiteMenu && (
-                                <AddSuiteMenu
-                                    ref={addSuiteMenuRef}
-                                    style={menuPos ? { top: menuPos.top, left: menuPos.left } : undefined}
-                                    onMouseDown={e => e.stopPropagation()}
-                                >
-                                    <AddSuiteMenuTitle>
-                                        Add suite to project:
-                                    </AddSuiteMenuTitle>
-                                    {projects.length === 0 ? (
-                                        <AddSuiteMenuEmpty>
-                                            No projects loaded
-                                        </AddSuiteMenuEmpty>
-                                    ) : (
-                                        projects.map(p => (
-                                            <AddSuiteMenuItem
-                                                key={p.name}
-                                                type="button"
-                                                disabled={p.readOnly}
-                                                $disabled={p.readOnly}
-                                                title={p.readOnly ? 'Workspace is read-only; cannot add suites.' : undefined}
-                                                onClick={() => {
-                                                    handleProjectSelect(p.name);
-                                                }}
-                                            >
-                                                <FolderOpen size={14} />
-                                                {p.name}
-                                            </AddSuiteMenuItem>
-                                        ))
-                                    )}
-                                </AddSuiteMenu>
-                            )}
                         </HeaderActions>
                     </SidebarHeaderActions>
                 </SidebarHeader>
@@ -426,9 +314,11 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                         />
                     )}
 
-                    {/* Unique Test Suites List (Deduplicated) */}
-                    {Array.from(new Map(projects.flatMap(p => (p.testSuites || []).map(s => [s.id, s]))).values()).map(suite => {
+                    {/* Unique Test Suites List — C (global suites): render the
+                        effective (global-first) list, not raw per-project. */}
+                    {allSuites.map(({ suite }) => {
                         const isSuiteSelected = selectedTestSuite?.id === suite.id && !selectedTestCase;
+                        const hasCases = (suite.testCases || []).length > 0;
                         return (
                             <div key={suite.id}>
                                 {/* Suite Header */}
@@ -438,45 +328,51 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                                         // Notify parent - let context handle state
                                         onSelectSuite(suite.id);
                                     }}
+                                    onContextMenu={(e) => handleContextMenu(e, suite.name, 'suite', undefined, undefined, suite.id)}
                                 >
                                     <SuiteToggle
-                                        onClick={(e) => { e.stopPropagation(); onToggleSuiteExpand(suite.id); }}
+                                        $hasChildren={hasCases}
+                                        onClick={hasCases ? (e) => { e.stopPropagation(); onToggleSuiteExpand(suite.id); } : undefined}
                                     >
-                                        {suite.expanded !== false ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                        {hasCases && (suite.expanded !== false ? <ChevronDown size={14} /> : <ChevronRight size={14} />)}
                                     </SuiteToggle>
                                     <SuiteIcon>
                                         <ListChecks size={14} />
                                     </SuiteIcon>
-                                    <SuiteName>{suite.name}</SuiteName>
+                                    {renameId === suite.id ? (
+                                        <InlineFormInput
+                                            type="text"
+                                            title="Rename test suite"
+                                            placeholder="Rename"
+                                            value={renameName}
+                                            onChange={(e) => setRenameName(e.target.value)}
+                                            onBlur={submitRename}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') submitRename();
+                                                if (e.key === 'Escape') cancelRename();
+                                            }}
+                                            onClick={(e) => e.stopPropagation()}
+                                            autoFocus
+                                        />
+                                    ) : (
+                                        <SuiteName title="Right-click for suite actions">{suite.name}</SuiteName>
+                                    )}
                                     <SuiteCount>
                                         ({suite.testCases?.length || 0})
                                     </SuiteCount>
-                                    {isSuiteSelected && (
-                                        <>
-                                            <Tooltip content="Run Suite">
-                                              <HeaderButton onClick={(e) => { e.stopPropagation(); onRunSuite(suite.id); }}>
-                                                <Play size={12} />
-                                              </HeaderButton>
-                                            </Tooltip>
-                                            <Tooltip content="Add Test Case">
-                                              <HeaderButton onClick={(e) => { e.stopPropagation(); onAddTestCase(suite.id); }}>
-                                                <Plus size={12} />
-                                              </HeaderButton>
-                                            </Tooltip>
-                                            <HeaderButton
-                                                onClick={(e) => { e.stopPropagation(); onDeleteSuite(suite.id); }}
-                                                title={deleteConfirm === suite.id ? 'Click again to confirm' : 'Delete Suite'}
-                                                $shake={deleteConfirm === suite.id}
-                                            >
-                                                <Trash2 size={12} />
-                                            </HeaderButton>
-                                        </>
+                                    {isSuiteSelected && hasCases && (
+                                        <Tooltip content="Run Suite">
+                                          <HeaderButton onClick={(e) => { e.stopPropagation(); onRunSuite(suite.id); }}>
+                                            <Play size={12} />
+                                          </HeaderButton>
+                                        </Tooltip>
                                     )}
                                 </SuiteOperationItem>
 
                                 {/* Test Cases */}
                                 {suite.expanded !== false && (suite.testCases || []).map(tc => {
                                     const isSelected = selectedTestCase?.id === tc.id;
+                                    const hasSteps = (tc.steps || []).length > 0;
                                     return (
                                         <React.Fragment key={tc.id}>
                                             <CaseRequestItem
@@ -485,12 +381,13 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                                                     // Notify parent - let context handle state
                                                     onSelectTestCase(tc.id);
                                                 }}
-                                                onContextMenu={(e) => handleContextMenu(e, tc.id, tc.name, 'case')}
+                                                onContextMenu={(e) => handleContextMenu(e, tc.name, 'case', tc.id)}
                                             >
                                                 <CaseToggle
-                                                    onClick={(e) => { e.stopPropagation(); onToggleCaseExpand(tc.id); }}
+                                                    $hasChildren={hasSteps}
+                                                    onClick={hasSteps ? (e) => { e.stopPropagation(); onToggleCaseExpand(tc.id); } : undefined}
                                                 >
-                                                    {tc.expanded !== false ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                                    {hasSteps && (tc.expanded !== false ? <ChevronDown size={14} /> : <ChevronRight size={14} />)}
                                                 </CaseToggle>
                                                 {renameId === tc.id ? (
                                                     <InlineFormInput
@@ -513,22 +410,6 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                                                 <CaseCount>
                                                     {tc.steps?.length || 0}
                                                 </CaseCount>
-                                                {isSelected && (
-                                                    <>
-                                                        <Tooltip content="Run Test Case">
-                                                          <HeaderButton onClick={(e) => { e.stopPropagation(); onRunCase(tc.id); }}>
-                                                            <Play size={12} />
-                                                          </HeaderButton>
-                                                        </Tooltip>
-                                                        <HeaderButton
-                                                            onClick={(e) => { e.stopPropagation(); onDeleteTestCase(tc.id); }}
-                                                            title={deleteConfirm === tc.id ? 'Click again to confirm' : 'Delete Case'}
-                                                            $shake={deleteConfirm === tc.id}
-                                                        >
-                                                            <Trash2 size={12} />
-                                                        </HeaderButton>
-                                                    </>
-                                                )}
                                             </CaseRequestItem>
 
                                             {/* Test Steps */}
@@ -543,7 +424,7 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                                                         // if (selectedCaseId !== tc.id) setSelectedCaseId(tc.id);
                                                         if (onSelectTestStep) onSelectTestStep(tc.id, step.id);
                                                     }}
-                                                    onContextMenu={(e) => handleContextMenu(e, tc.id, step.name, 'step', step.id)}
+                                                    onContextMenu={(e) => handleContextMenu(e, step.name, 'step', tc.id, step.id)}
                                                 >
                                                     {renameId === step.id ? (
                                                         <InlineFormInput
@@ -590,12 +471,39 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                 </TestsContent>
             </TestsContainer>
 
-            {/* Context Menu */}
+            {/* Context Menu — suites: run/rename/add-case/delete; cases:
+                run/rename/delete; steps: rename. Menu deletes are deliberate
+                (force) — the 2-click confirm is reserved for the inline buttons. */}
             {contextMenu && (
                 <SidebarContextMenu
                     x={contextMenu.x}
                     y={contextMenu.y}
-                    sections={[{ title: 'Actions', items: [{ icon: Pencil, label: 'Rename', onClick: handleRenameFromMenu }] }] as CtxMenuSection[]}
+                    sections={
+                        contextMenu.type === 'suite' && contextMenu.suiteId ? [
+                            {
+                                title: 'Suite',
+                                items: [
+                                    ...(menuSuite && (menuSuite.testCases?.length || 0) > 0
+                                        ? [{ icon: Play, label: 'Run Suite', onClick: () => { onRunSuite(contextMenu.suiteId!); closeContextMenu(); } }]
+                                        : []),
+                                    { icon: Pencil, label: 'Rename', onClick: handleRenameFromMenu },
+                                    { icon: Plus, label: 'Add Test Case', onClick: () => { onAddTestCase(contextMenu.suiteId!); closeContextMenu(); } },
+                                    { icon: Trash2, label: deleteConfirm === contextMenu.suiteId ? 'Click again to delete' : 'Delete', danger: deleteConfirm === contextMenu.suiteId, onClick: () => menuDelete(contextMenu.suiteId!, onDeleteSuite) }
+                                ]
+                            }
+                        ]
+                        : contextMenu.type === 'case' && contextMenu.caseId ? [
+                            {
+                                title: 'Test Case',
+                                items: [
+                                    { icon: Play, label: 'Run Test Case', onClick: () => { onRunCase(contextMenu.caseId!); closeContextMenu(); } },
+                                    { icon: Pencil, label: 'Rename', onClick: handleRenameFromMenu },
+                                    { icon: Trash2, label: deleteConfirm === contextMenu.caseId ? 'Click again to delete' : 'Delete', danger: deleteConfirm === contextMenu.caseId, onClick: () => menuDelete(contextMenu.caseId!, onDeleteTestCase) }
+                                ]
+                            }
+                        ]
+                        : [{ title: 'Actions', items: [{ icon: Pencil, label: 'Rename', onClick: handleRenameFromMenu }] }
+                    ] as CtxMenuSection[]}
                     onClose={closeContextMenu}
                 />
             )}

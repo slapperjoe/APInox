@@ -121,6 +121,7 @@ export const Sidebar: React.FC = () => {
                 {activeView === SidebarView.TESTS && (
                     <TestsUi
                         projects={testsProps.projects}
+                        testSuites={testsProps.testSuites}
                         selectedTestSuite={testsProps.selectedTestSuite}
                         selectedTestCase={testsProps.selectedTestCase}
                         onAddSuite={testsProps.onAddSuite}
@@ -129,6 +130,7 @@ export const Sidebar: React.FC = () => {
                         onAddTestCase={testsProps.onAddTestCase}
                         onDeleteTestCase={testsProps.onDeleteTestCase}
                         onRenameTestCase={testsProps.onRenameTestCase}
+                        onRenameSuite={testsProps.onRenameSuite}
                         onRunCase={testsProps.onRunCase}
                         onSelectSuite={testsProps.onSelectSuite}
                         onSelectTestCase={testsProps.onSelectTestCase}
@@ -179,7 +181,6 @@ export const Sidebar: React.FC = () => {
                             onAddRequestToTestCase={unifiedProps.onAddRequestToTestCase}
                             onReorderOperation={unifiedProps.onReorderOperation}
                             onReorderRequest={unifiedProps.onReorderRequest}
-                            onLoadWsdl={unifiedProps.onLoadWsdl}
                             scrapbook={unifiedProps.scrapbook}
                             history={unifiedProps.history}
                         />

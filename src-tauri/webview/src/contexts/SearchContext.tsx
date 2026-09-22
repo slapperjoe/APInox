@@ -16,6 +16,7 @@ import { useProject } from './ProjectContext';
 import { useSelection } from './SelectionContext';
 import { useNavigation } from './NavigationContext';
 import { useUnifiedProjects } from './UnifiedProjectContext';
+import { useTestSuites } from './TestSuiteContext';
 import { SidebarView } from '@shared/models';
 import {
     SearchResult,
@@ -103,6 +104,11 @@ export const SearchProvider: React.FC<SearchProviderProps> = ({
     } = useUnifiedProjects();
     const unifiedProjectsRef = useRef(unifiedProjects);
     useEffect(() => { unifiedProjectsRef.current = unifiedProjects; }, [unifiedProjects]);
+
+    // C (global suites): the TESTS search source is the global suite store.
+    const { testSuites: globalTestSuites } = useTestSuites();
+    const globalTestSuitesRef = useRef(globalTestSuites);
+    useEffect(() => { globalTestSuitesRef.current = globalTestSuites; }, [globalTestSuites]);
     
     const {
         setSelectedInterface,
@@ -156,7 +162,8 @@ export const SearchProvider: React.FC<SearchProviderProps> = ({
             const minScore = 0;
             const unifiedResults = searchUnifiedProjects(query.trim(), unifiedProjects, { maxResults, minScore, ...options });
             const projectResults = searchProjects(query.trim(), projects, { maxResults, minScore, ...options });
-            const testResults = searchTests(query.trim(), unifiedProjects, { maxResults, minScore, ...options });
+            // C (global suites): suites search over the GLOBAL suite store.
+            const testResults = searchTests(query.trim(), globalTestSuites, { maxResults, minScore, ...options });
 
             const seen = new Set<string>();
             const deduped: typeof unifiedResults = [];
@@ -178,7 +185,7 @@ export const SearchProvider: React.FC<SearchProviderProps> = ({
         } finally {
             setIsSearching(false);
         }
-    }, [projects, unifiedProjects]);
+    }, [projects, unifiedProjects, globalTestSuites]);
 
     /**
      * Set search query with debouncing
@@ -262,27 +269,24 @@ export const SearchProvider: React.FC<SearchProviderProps> = ({
             }, TREE_NAV_DELAY_MS);
         } else if (view === 'tests') {
             setActiveView(SidebarView.TESTS);
-            const { projectName, testSuiteId, testCaseId } = data;
+            const { testSuiteId, testCaseId } = data;
 
             setTimeout(() => {
-                if (projectName && testSuiteId) {
-                    // Phase B (t_86c34d38): suites live on the unified store.
-                    const project = unifiedProjectsRef.current.find(p => p.name === projectName);
-                    if (project) {
-                        const testSuite = project.testSuites?.find(s => s.id === testSuiteId);
-                        if (testSuite) {
-                            setSelectedTestSuite(testSuite);
-                            if (testCaseId && type === 'test-case') {
-                                const testCase = testSuite.testCases?.find(c => c.id === testCaseId);
-                                if (testCase) {
-                                    setSelectedTestCase(testCase);
-                                }
-                            } else {
-                                setSelectedTestCase(null);
+                if (testSuiteId) {
+                    // C (global suites): suites live in the GLOBAL suite store.
+                    const testSuite = globalTestSuitesRef.current.find(s => s.id === testSuiteId);
+                    if (testSuite) {
+                        setSelectedTestSuite(testSuite);
+                        if (testCaseId && type === 'test-case') {
+                            const testCase = testSuite.testCases?.find(c => c.id === testCaseId);
+                            if (testCase) {
+                                setSelectedTestCase(testCase);
                             }
                         } else {
-                            console.warn(`[SearchContext] Test suite not found: ${testSuiteId}`);
+                            setSelectedTestCase(null);
                         }
+                    } else {
+                        console.warn(`[SearchContext] Test suite not found: ${testSuiteId}`);
                     }
                 }
             }, TREE_NAV_DELAY_MS);

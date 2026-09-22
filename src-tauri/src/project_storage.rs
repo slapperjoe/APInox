@@ -943,9 +943,10 @@ pub(crate) async fn migrate_legacy_project_dir(dir: &Path) -> Result<bool, Strin
     // protects `interfaces/` from its orphan cleanup), so a migrated project is
     // simultaneously a valid unified AND a valid legacy project.
     //
-    // `save_unified_project` rewrites tests/ + folders/ from `unified` (which
-    // carried the exact legacy values), so those stay byte-for-byte coherent
-    // with the legacy model — no data loss on either side.
+    // `save_unified_project` removes the `tests/` subdir (C: global suites —
+    // the project's `testSuites` array is merged into the global store there,
+    // idempotently by id) and rewrites `folders/` from `unified` (which
+    // carried the exact legacy values) — no data loss on either side.
 
     log::info!("Migrated legacy project '{}' to unified format (legacy interfaces/ preserved)", name);
     Ok(true)
@@ -1132,9 +1133,34 @@ pub async fn save_imported_project_as_unified(project: serde_json::Value) -> Res
 /// unified migration provides (it keeps `interfaces/` so those features keep
 /// working on migrated projects). Guarding on absence means a re-import (merge)
 /// into an existing project never overwrites interfaces PROXY has since added.
+/// True if `dir` contains at least one subdirectory (a real interface folder).
+/// An empty directory — or one holding only files — counts as "no interfaces",
+/// so the caller can (re)write the nested tree. Used to distinguish a
+/// populated legacy `interfaces/` tree from the empty dir that the unified
+/// save path leaves behind.
+fn interface_subdirs_exist(dir: &Path) -> bool {
+    fs::read_dir(dir)
+        .map(|mut it| {
+            it.any(|entry| {
+                entry
+                    .ok()
+                    .map(|e| e.path().is_dir())
+                    .unwrap_or(false)
+            })
+        })
+        .unwrap_or(false)
+}
+
 fn save_nested_interfaces_if_absent(dir: &Path, project: &serde_json::Value) -> Result<(), String> {
     let interfaces_dir = dir.join("interfaces");
-    if interfaces_dir.exists() {
+    // The unified save path (save_unified_project) protects `interfaces/`
+    // from orphan cleanup, and `fs::create_dir_all` may have already created
+    // the dir — so an EMPTY `interfaces/` dir is not "already present" (it
+    // holds no interface data). Only a dir that actually contains an
+    // interface subdirectory means the nested tree exists; skip rewriting in
+    // that case to keep the non-destructive guarantee (never clobber
+    // interfaces PROXY has added).
+    if interfaces_dir.is_dir() && interface_subdirs_exist(&interfaces_dir) {
         return Ok(());
     }
     let interfaces = project["interfaces"]
@@ -1255,11 +1281,17 @@ pub fn save_unified_project(dir_path: String, project: serde_json::Value) -> Res
         save_unified_operation(op, &dir)?;
     }
 
-    // Persist test suites and folders alongside the operations (same `tests/` /
-    // `folders/` layout as the legacy store, so a migrated project round-trips).
-    if let Some(test_suites) = project.get("testSuites").and_then(|v| v.as_array()) {
-        save_test_suites(&dir, &project)?;
-        let _ = test_suites;
+    // C (global suites): test suites no longer live in the project's `tests/`
+    // subdir — the global `~/.apinox/test-suites.json` owns them. First route
+    // any suites the project value still carries in memory (legacy→unified
+    // migration + import flows carry `project["testSuites"]`) into the global
+    // store, idempotently by id — otherwise a migrated/imported project would
+    // lose its suites on this save. Then remove any lingering `tests/` dir so
+    // per-project suites can never be persisted (or resurrected) again.
+    crate::test_suite_storage::merge_project_suites_into_global(&project)?;
+    let tests_dir = dir.join("tests");
+    if tests_dir.exists() {
+        let _ = fs::remove_dir_all(&tests_dir);
     }
     if let Some(folders) = project.get("folders").and_then(|v| v.as_array()) {
         save_folders(&dir, &project)?;
@@ -1634,9 +1666,16 @@ fn load_unified_project_skeleton(dir: &Path) -> Option<serde_json::Value> {
                         None => continue,
                     };
                     let req_name = meta["name"].as_str().unwrap_or(&base).to_string();
+                    // Carry the stable request `id` (if present) so the skeleton row and the
+                    // full-detail row resolve to the SAME selection id (`req.id || req.name`).
+                    // Without this, a request clicked while the project is still a skeleton
+                    // (id = name) no longer matches after `load_unified_project_detail`
+                    // upgrades it (id = UUID), and the selection drops to the empty state on
+                    // first click.
                     request_names.push(serde_json::json!({
                         "name": req_name,
                         "displayName": meta.get("displayName").cloned().filter(|v| !v.is_null()),
+                        "id": meta.get("id").cloned().filter(|v| !v.is_null()),
                     }));
                 }
             }
@@ -2146,10 +2185,18 @@ mod tests {
         assert_eq!(ping_op["requests"][0]["name"], "ping_1");
         assert_eq!(ping_op["requests"][0]["request"], "<a/>");
 
-        // Test suites preserved with their step.
-        assert_eq!(loaded["testSuites"].as_array().unwrap().len(), 1);
-        assert_eq!(loaded["testSuites"][0]["name"], "MySuite");
-        assert_eq!(loaded["testSuites"][0]["testCases"][0]["steps"][0]["config"]["requestId"], "req-ping");
+        // C (global suites): the suite migrated OUT of the project into the
+        // GLOBAL store (the project's own `tests/` no longer exists).
+        assert!(
+            !dir.join("tests").exists(),
+            "per-project tests/ must be gone after migration (global store owns suites)"
+        );
+        let global = crate::test_suite_storage::get_test_suites().await.expect("global suites");
+        let my_suite = global
+            .iter()
+            .find(|s| s["name"] == "MySuite")
+            .expect("MySuite migrated into the global store");
+        assert_eq!(my_suite["testCases"][0]["steps"][0]["config"]["requestId"], "req-ping");
 
         // Folders preserved with their request.
         assert_eq!(loaded["folders"].as_array().unwrap().len(), 1);
@@ -2165,7 +2212,10 @@ mod tests {
 
     #[tokio::test]
     async fn migrate_is_idempotent() {
+        use crate::utils::config::CONFIG_DIR_TEST_LOCK;
+        let _guard = CONFIG_DIR_TEST_LOCK.lock().unwrap_or_else(|p| p.into_inner());
         let tmp = tempfile::tempdir().expect("tempdir");
+        std::env::set_var("APINOX_CONFIG_DIR", tmp.path());
         let legacy = sample_legacy_project();
         let dir = write_legacy_project(tmp.path(), "IdemSvc", &legacy);
 
@@ -2173,11 +2223,18 @@ mod tests {
         // Second run is a no-op (already unified).
         assert!(!migrate_legacy_project_dir(&dir).await.expect("second migration"));
 
-        // Data still intact after the no-op.
+        // Data still intact after the no-op: operations/folders on disk, and
+        // the suite is in the GLOBAL store exactly once (not duplicated by the
+        // second, no-op migration).
         let loaded = load_unified_project(dir.to_string_lossy().into()).expect("load");
         assert_eq!(loaded["operations"].as_array().unwrap().len(), 2);
-        assert_eq!(loaded["testSuites"].as_array().unwrap().len(), 1);
         assert_eq!(loaded["folders"].as_array().unwrap().len(), 1);
+        assert!(!dir.join("tests").exists(), "per-project tests/ is gone (global store owns suites)");
+        let global = crate::test_suite_storage::get_test_suites().await.expect("global suites");
+        let mine: Vec<_> = global.iter().filter(|s| s["name"] == "MySuite").collect();
+        assert_eq!(mine.len(), 1, "the migrated suite must land in the global store exactly once");
+
+        std::env::remove_var("APINOX_CONFIG_DIR");
     }
 
     #[tokio::test]
@@ -2224,14 +2281,16 @@ mod tests {
             "legacy save must not demote a unified dir back to APInox-v1"
         );
 
-        // The unified store's test suite must be intact (not clobbered by the
-        // stale legacy object, which had no suites).
-        let loaded = load_unified_project(base.join("SaveGuard").to_string_lossy().into())
-            .expect("load unified");
-        assert_eq!(
-            loaded["testSuites"].as_array().unwrap().len(), 1,
-            "tests/ must not be clobbered by a legacy save"
+        // C (global suites): the suite lives in the GLOBAL store (not in the
+        // project's tests/, which no longer exists). It must be intact — the
+        // stale legacy save (no suites) can't clobber the global store.
+        assert!(
+            !base.join("SaveGuard").join("tests").exists(),
+            "per-project tests/ must be gone (global store owns suites)"
         );
+        let global = crate::test_suite_storage::get_test_suites().await.expect("global suites");
+        let mine: Vec<_> = global.iter().filter(|s| s["id"] == "sg").collect();
+        assert_eq!(mine.len(), 1, "the global suite must be intact (not clobbered by a legacy save)");
 
         // The legacy nested model (PROXY "Add to APInox Project") must STILL be
         // writable into a unified dir: save_project writes interfaces/ + folders/
@@ -2490,16 +2549,28 @@ mod tests {
         };
         save_unified_project(dir.to_string_lossy().into(), with_suite).expect("save suite");
 
-        // Re-import the SAME source: must merge (not duplicate ops) and
-        // keep the suite.
+        // C (global suites): `save_unified_project` routed the user's suite
+        // into the GLOBAL store. The per-project `tests/` is gone.
+        assert!(!dir.join("tests").exists(), "per-project tests/ is gone (global store owns suites)");
+        let g1 = crate::test_suite_storage::get_test_suites().await.expect("global after save");
+        let mine1: Vec<_> = g1.iter().filter(|s| s["id"] == "s-1").collect();
+        assert_eq!(mine1.len(), 1, "the user's suite must be in the global store");
+
+        // Re-import the SAME source: must merge (not duplicate ops). Because
+        // suites are GLOBAL now, the re-import can't drop them (it no longer
+        // rewrites the project's tests/).
         let reimported = save_imported_project_as_unified(sample_imported_project("ReimportSvc"))
             .await
             .expect("re-import");
         assert_eq!(reimported["operations"].as_array().unwrap().len(), 1, "re-import must not duplicate ops");
         assert_eq!(reimported["operations"][0]["name"], "DoWork");
-        let suites = reimported["testSuites"].as_array().unwrap();
-        assert_eq!(suites.len(), 1, "re-import must preserve the user's suite");
-        assert_eq!(suites[0]["name"], "UserSuite");
+
+        // The suite SURVIVES the re-import — still exactly once in the global
+        // store (not duplicated, not dropped).
+        let g2 = crate::test_suite_storage::get_test_suites().await.expect("global after reimport");
+        let mine2: Vec<_> = g2.iter().filter(|s| s["id"] == "s-1").collect();
+        assert_eq!(mine2.len(), 1, "re-import must preserve the user's suite (global)");
+        assert_eq!(mine2[0]["name"], "UserSuite");
 
         std::env::remove_var("APINOX_CONFIG_DIR");
     }
@@ -2642,6 +2713,7 @@ mod tests {
                     "requests": [
                         {
                             "name": "BigReq",
+                            "id": "req-stable-id",
                             "endpoint": "http://example.com/svc",
                             "method": "POST",
                             "contentType": "application/soap+xml; charset=utf-8",
@@ -2694,6 +2766,10 @@ mod tests {
         assert_eq!(
             sop["requestNames"][0]["name"], "BigReq",
             "request NAMES are the only per-request data the skeleton keeps"
+        );
+        assert_eq!(
+            sop["requestNames"][0]["id"], "req-stable-id",
+            "the stable request id MUST survive in the skeleton: the sidebar selects rows by `req.id || req.name`, and the full detail load keeps the same id — a skeleton without it would resolve to the NAME, so a request clicked pre-upgrade (id=name) would stop matching after the upgrade (id=uuid) and the selection would drop to the empty state"
         );
 
         // Deferrable payloads must be stripped.

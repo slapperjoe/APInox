@@ -29,6 +29,7 @@ import { ProjectProvider } from '../ProjectContext';
 import { SelectionProvider } from '../SelectionContext';
 import { SearchProvider, useSearch } from '../SearchContext';
 import { UnifiedProjectProvider } from '../UnifiedProjectContext';
+import { TestSuiteProvider } from '../TestSuiteContext';
 import type { SearchResult } from '../../utils/workspaceSearch';
 
 // ── spies (vi.hoisted so they exist before the hoisted vi.mock factory) ─────
@@ -109,9 +110,11 @@ const renderProbe = () =>
         <ProjectProvider>
             <SelectionProvider>
                 <UnifiedProjectProvider>
-                    <SearchProvider>
-                        <LegacyLinkProbe />
-                    </SearchProvider>
+                    <TestSuiteProvider>
+                        <SearchProvider>
+                            <LegacyLinkProbe />
+                        </SearchProvider>
+                    </TestSuiteProvider>
                 </UnifiedProjectProvider>
             </SelectionProvider>
         </ProjectProvider>,

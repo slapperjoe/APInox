@@ -8,28 +8,23 @@
 import { useCallback, useMemo } from 'react';
 import { UnifiedProject, TestStep, TestCase, TestStepType, RequestExtractor } from '@shared/models';
 import { bridge } from '../utils/bridge';
-import {
-    deleteTestStep,
-    reorderTestStep,
-    updateTestStep,
-    addTestStep,
-} from '../utils/projectUpdateHelpers';
+import { useTestSuites } from '../contexts/TestSuiteContext';
 
 interface UseWorkspaceCallbacksParams {
     // Test case state
     selectedTestCase: TestCase | null;
     selectedStep: TestStep | null;
     testExecution: Record<string, Record<string, any>>;
-    // Phase B (t_86c34d38): test-step CRUD now operates on the UNIFIED store
-    // (test suites were relocated to UnifiedProject.testSuites). The pure
-    // projectUpdateHelpers are model-agnostic (ProjectLike), so the same
-    // functions work on UnifiedProject[].
+    // C (global suites): test-step CRUD now operates on the GLOBAL test-suite
+    // store (suites are no longer per-project). `projects` is retained for the
+    // callers that pass it, but step mutations flow through `useTestSuites`
+    // (auto-saved to `~/.apinox/test-suites.json`).
     projects: UnifiedProject[];
     setSelectedStep: React.Dispatch<React.SetStateAction<TestStep | null>>;
     setSelectedRequest: React.Dispatch<React.SetStateAction<any>>;
     setResponse: React.Dispatch<React.SetStateAction<any>>;
 
-    // Project state
+    // Project state (retained for signature compatibility; no longer written).
     setProjects: React.Dispatch<React.SetStateAction<UnifiedProject[]>>;
     saveProject: (project: UnifiedProject) => void;
 
@@ -67,13 +62,11 @@ interface UseWorkspaceCallbacksReturn {
 export function useWorkspaceCallbacks({
     selectedTestCase,
     selectedStep,
-    projects,
+    projects: _projects,
     testExecution,
     setSelectedStep,
     setSelectedRequest,
     setResponse,
-    setProjects,
-    saveProject,
     layoutMode,
     setLayoutMode,
     showLineNumbers,
@@ -87,21 +80,31 @@ export function useWorkspaceCallbacks({
     onPickRequestForTestCase
 }: UseWorkspaceCallbacksParams): UseWorkspaceCallbacksReturn {
 
-    // Flat step index — rebuilt only when `projects` changes.
+    const { testSuites, updateTestCase } = useTestSuites();
+
+    /** Replace a step in the current case (global store) and sync the selection. */
+    const replaceStep = useCallback((updatedStep: TestStep) => {
+        if (!selectedTestCase) return;
+        void updateTestCase(selectedTestCase.id, tc => ({
+            ...tc,
+            steps: tc.steps.map(s => (s.id === updatedStep.id ? updatedStep : s))
+        }));
+        setSelectedStep(updatedStep);
+    }, [selectedTestCase, updateTestCase, setSelectedStep]);
+
+    // Flat step index — rebuilt only when the global suites change.
     // Replaces the O(projects × suites × cases × steps) nested loop in handleSelectStep.
     const stepIndex = useMemo(() => {
         const index = new Map<string, TestStep>();
-        for (const proj of projects) {
-            for (const suite of proj.testSuites ?? []) {
-                for (const tc of suite.testCases ?? []) {
-                    for (const s of tc.steps ?? []) {
-                        index.set(s.id, s);
-                    }
+        for (const suite of testSuites) {
+            for (const tc of suite.testCases ?? []) {
+                for (const s of tc.steps ?? []) {
+                    index.set(s.id, s);
                 }
             }
         }
         return index;
-    }, [projects]);
+    }, [testSuites]);
 
     const handleSelectStep = useCallback((step: TestStep | null) => {
         if (step) {
@@ -149,29 +152,42 @@ export function useWorkspaceCallbacks({
 
     const handleDeleteStep = useCallback((stepId: string) => {
         if (!selectedTestCase) return;
-        setProjects(prev => deleteTestStep(prev, selectedTestCase.id, stepId));
+        void updateTestCase(selectedTestCase.id, tc => ({
+            ...tc,
+            steps: tc.steps.filter(s => s.id !== stepId)
+        }));
         if (selectedStep?.id === stepId) {
             setSelectedStep(null);
             setSelectedRequest(null);
             setResponse(null);
         }
-    }, [selectedTestCase, selectedStep, setProjects, setSelectedStep, setSelectedRequest, setResponse]);
+    }, [selectedTestCase, selectedStep, updateTestCase, setSelectedStep, setSelectedRequest, setResponse]);
 
     const handleMoveStep = useCallback((stepId: string, direction: 'up' | 'down') => {
         if (!selectedTestCase) return;
-        setProjects(prev => reorderTestStep(prev, selectedTestCase.id, stepId, direction));
-    }, [selectedTestCase, setProjects]);
+        void updateTestCase(selectedTestCase.id, tc => {
+            const steps = [...tc.steps];
+            const index = steps.findIndex(s => s.id === stepId);
+            if (index === -1) return tc;
+            if (direction === 'up' && index > 0) {
+                [steps[index], steps[index - 1]] = [steps[index - 1], steps[index]];
+            } else if (direction === 'down' && index < steps.length - 1) {
+                [steps[index], steps[index + 1]] = [steps[index + 1], steps[index]];
+            } else {
+                return tc;
+            }
+            return { ...tc, steps };
+        });
+    }, [selectedTestCase, updateTestCase]);
 
     const handleUpdateStep = useCallback((updatedStep: TestStep) => {
         if (!selectedTestCase) return;
-        setProjects(prev => {
-            const updated = updateTestStep(prev, selectedTestCase.id, updatedStep.id, () => updatedStep);
-            const project = updated.find(p => p.testSuites?.some(s => s.testCases?.some(tc => tc.id === selectedTestCase.id)));
-            if (project) setTimeout(() => saveProject(project), 0);
-            return updated;
-        });
+        void updateTestCase(selectedTestCase.id, tc => ({
+            ...tc,
+            steps: tc.steps.map(s => (s.id === updatedStep.id ? updatedStep : s))
+        }));
         setSelectedStep(updatedStep);
-    }, [selectedTestCase, setProjects, saveProject, setSelectedStep]);
+    }, [selectedTestCase, updateTestCase, setSelectedStep]);
 
     const handleBackToCase = useCallback(() => {
         setSelectedRequest(null);
@@ -204,13 +220,11 @@ export function useWorkspaceCallbacks({
         const newStep = newStepsByType[type];
         if (!newStep) return;
 
-        setProjects(prev => {
-            const updated = addTestStep(prev, caseId, newStep);
-            const project = updated.find(p => p.testSuites?.some(s => s.testCases?.some(tc => tc.id === caseId)));
-            if (project) setTimeout(() => saveProject(project), 0);
-            return updated;
-        });
-    }, [setProjects, saveProject, onPickRequestForTestCase]);
+        void updateTestCase(caseId, tc => ({
+            ...tc,
+            steps: [...tc.steps, newStep]
+        }));
+    }, [updateTestCase, onPickRequestForTestCase]);
 
     const handleToggleLayout = useCallback(() => {
         const newMode = layoutMode === 'vertical' ? 'horizontal' : 'vertical';

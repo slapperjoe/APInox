@@ -10,6 +10,7 @@ import { bridge, isTauri } from '../utils/bridge';
 import { debugLog } from '../utils/logger';
 import { generateInitialXmlForOperation } from '../utils/soapUtils';
 import { BackendCommand, FrontendCommand } from '@shared/messages';
+import { useTestSuitesOptional } from '../contexts/TestSuiteContext';
 import {
     ApinoxProject,
     ApiRequest,
@@ -64,6 +65,8 @@ export interface MessageHandlerState {
 }
 
 export function useMessageHandler(state: MessageHandlerState) {
+    // Optional: this hook is unit-tested without a TestSuiteProvider.
+    const { updateTestCase: updateGlobalTestCase } = useTestSuitesOptional();
     const {
         setProjects,
         setLoading,
@@ -260,79 +263,69 @@ export function useMessageHandler(state: MessageHandlerState) {
                 case BackendCommand.AddStepToCase:
                     debugLog('[useMessageHandler] addStepToCase', { caseId: message.caseId });
 
-                    setProjects(prev => prev.map(p => {
-                        if (!p.testSuites) return p;
-                        const suite = p.testSuites.find(s => s.testCases?.some(tc => tc.id === message.caseId));
-                        if (!suite) return p;
+                    // C (global suites): new steps persist to the GLOBAL suite
+                    // store (no owning project). Compute the new step from the
+                    // message payload, then append it to the target case.
+                    let newStep: TestStep;
 
-                        const updatedSuite = {
-                            ...suite,
-                            testCases: suite.testCases?.map(tc => {
-                                if (tc.id !== message.caseId) return tc;
+                    if (message.request) {
+                        // Created from existing Folder Request - Clone it
+                        const sourceReq = message.request;
+                        newStep = {
+                            id: `step-${Date.now()}`,
+                            name: sourceReq.name,
+                            type: 'request',
+                            config: {
+                                request: {
+                                    ...sourceReq,
+                                    id: `req-${Date.now()}`, // New ID for the step's copy
+                                    // Ensure assertions init if missing
+                                    assertions: sourceReq.assertions || [],
+                                    readOnly: false
+                                }
+                            }
+                        };
+                    } else {
+                        // Created from WSDL/OpenAPI Operation - Use first request if available
+                        const op = message.operation;
 
-                                let newStep: TestStep;
-
-                                if (message.request) {
-                                    // Created from existing Folder Request - Clone it
-                                    const sourceReq = message.request;
-                                    newStep = {
-                                        id: `step-${Date.now()}`,
-                                        name: sourceReq.name,
-                                        type: 'request',
-                                        config: {
-                                            request: {
-                                                ...sourceReq,
-                                                id: `req-${Date.now()}`, // New ID for the step's copy
-                                                // Ensure assertions init if missing
-                                                assertions: sourceReq.assertions || [],
-                                                readOnly: false
-                                            }
-                                        }
-                                    };
-                                } else {
-                                    // Created from WSDL/OpenAPI Operation - Use first request if available
-                                    const op = message.operation;
-                                    
-                                    // Check if operation has existing requests (e.g., from OpenAPI)
-                                    if (op.requests && op.requests.length > 0) {
-                                        const firstRequest = op.requests[0];
-                                        newStep = {
-                                            id: `step-${Date.now()}`,
-                                            name: op.name,
-                                            type: 'request',
-                                            config: {
-                                                request: {
-                                                    ...firstRequest,
-                                                    id: `req-${Date.now()}`,
-                                                    assertions: firstRequest.assertions || []
-                                                }
-                                            }
-                                        };
-                                    } else {
-                                        // No requests - generate default SOAP XML
-                                        newStep = {
-                                            id: `step-${Date.now()}`,
-                                            name: op.name,
-                                            type: 'request',
-                                            config: {
-                                                request: {
-                                                    id: `req-${Date.now()}`,
-                                                    name: op.name,
-                                                    endpoint: (op as any).originalEndpoint,
-                                                    request: generateInitialXmlForOperation(op),
-                                                    assertions: []
-                                                }
-                                            }
-                                        };
+                        // Check if operation has existing requests (e.g., from OpenAPI)
+                        if (op.requests && op.requests.length > 0) {
+                            const firstRequest = op.requests[0];
+                            newStep = {
+                                id: `step-${Date.now()}`,
+                                name: op.name,
+                                type: 'request',
+                                config: {
+                                    request: {
+                                        ...firstRequest,
+                                        id: `req-${Date.now()}`,
+                                        assertions: firstRequest.assertions || []
                                     }
                                 }
-                                return { ...tc, steps: [...tc.steps, newStep] };
-                            })
-                        };
+                            };
+                        } else {
+                            // No requests - generate default SOAP XML
+                            newStep = {
+                                id: `step-${Date.now()}`,
+                                name: op.name,
+                                type: 'request',
+                                config: {
+                                    request: {
+                                        id: `req-${Date.now()}`,
+                                        name: op.name,
+                                        endpoint: (op as any).originalEndpoint,
+                                        request: generateInitialXmlForOperation(op),
+                                        assertions: []
+                                    }
+                                }
+                            };
+                        }
+                    }
 
-                        const updatedProject = { ...p, testSuites: p.testSuites.map(s => s.id === suite.id ? updatedSuite : s), dirty: true };
-                        setTimeout(() => saveProject(updatedProject), 0);
-                        return updatedProject;
+                    void updateGlobalTestCase(message.caseId, tc => ({
+                        ...tc,
+                        steps: [...tc.steps, newStep]
                     }));
                     // Don't change activeView - let user stay on current sidebar tab (Tests)
                     break;

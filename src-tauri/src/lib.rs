@@ -12,6 +12,7 @@ use tokio::sync::Mutex;
 mod project_storage;
 mod history_storage;
 mod scrapbook_storage;
+mod test_suite_storage;
 mod notes_storage;
 mod secret_storage;
 pub mod settings_manager;
@@ -534,10 +535,14 @@ pub fn run() {
             history_storage::add_history_entry,
             history_storage::delete_history_entry,
             history_storage::toggle_star_history,
+            history_storage::rename_history_entry,
             scrapbook_storage::get_scrapbook,
             scrapbook_storage::add_scrapbook_request,
             scrapbook_storage::update_scrapbook_request,
             scrapbook_storage::delete_scrapbook_request,
+            test_suite_storage::get_test_suites,
+            test_suite_storage::save_test_suites,
+            test_suite_storage::migrate_all_project_suites_to_global,
             notes_storage::load_notes_index,
             notes_storage::load_note_content,
             notes_storage::load_note_bytes,

@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { bridge } from '../utils/bridge';
 import type { UnifiedProject, TestStep } from '@shared/models';
 import { SecondaryButton } from './common/Button';
+import { useTestSuitesOptional } from '../contexts/TestSuiteContext';
 
 const Overlay = styled.div`
     position: fixed;
@@ -76,27 +77,29 @@ const Empty = styled.div`
 interface ImportTestCaseModalProps {
     open: boolean;
     suiteId: string | null;
-    projects: UnifiedProject[];
+    /** Legacy prop — kept for the caller's convenience; suite data now comes
+     *  from the global store (C). */
+    projects?: UnifiedProject[];
     onClose: () => void;
 }
 
 export const ImportTestCaseModal: React.FC<ImportTestCaseModalProps> = ({
     open,
     suiteId,
-    projects,
     onClose,
 }) => {
+    // C (global suites): read the flat global suite store (the single source
+    // of truth). Optional so the component degrades outside a provider.
+    const { testSuites } = useTestSuitesOptional();
+
     if (!open || !suiteId) return null;
 
-    const testCaseItems = projects.flatMap(p =>
-        (p.testSuites || []).flatMap(suite =>
-            (suite.testCases || []).map(tc => ({
-                projectName: p.name,
-                suiteName: suite.name,
-                testCase: tc,
-                stepCount: (tc.steps || []).filter((s: TestStep) => s.type === 'request').length
-            }))
-        )
+    const testCaseItems = testSuites.flatMap(suite =>
+        (suite.testCases || []).map(tc => ({
+            suiteName: suite.name,
+            testCase: tc,
+            stepCount: (tc.steps || []).filter((s: TestStep) => s.type === 'request').length
+        }))
     );
 
     const handleSelect = (item: typeof testCaseItems[0]) => {
@@ -134,7 +137,7 @@ export const ImportTestCaseModal: React.FC<ImportTestCaseModalProps> = ({
                     {testCaseItems.map((item, idx) => (
                         <Item key={idx} onClick={() => handleSelect(item)}>
                             <ItemTitle>{item.testCase.name}</ItemTitle>
-                            <ItemMeta>{item.projectName} → {item.suiteName}</ItemMeta>
+                            <ItemMeta>{item.suiteName}</ItemMeta>
                             <ItemCount>
                                 {item.stepCount} request step{item.stepCount !== 1 ? 's' : ''}
                             </ItemCount>

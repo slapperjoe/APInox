@@ -24,17 +24,20 @@ import {
 // PROJECTS view's ProjectList + selection state) were deleted with the view.
 
 export interface SidebarTestsProps {
-    // Phase B (t_86c34d38): the TESTS suite tree renders from the UNIFIED
-    // store (test suites relocated to UnifiedProject.testSuites).
+    // C (global suites): `testSuites` is the single source of truth for the
+    // TESTS rail (the global store). When omitted, the rail falls back to
+    // `projects[].testSuites`.
+    testSuites?: import('@shared/models').TestSuite[];
     projects: UnifiedProject[];
     selectedTestSuite?: import('@shared/models').TestSuite | null;
     selectedTestCase?: TestCase | null;
-    onAddSuite: (projectName: string) => void;
+    onAddSuite: (projectName?: string, suiteName?: string) => void;
     onDeleteSuite: (suiteId: string) => void;
     onRunSuite: (suiteId: string) => void;
     onAddTestCase: (suiteId: string) => void;
     onDeleteTestCase: (caseId: string) => void;
     onRenameTestCase?: (caseId: string, newName: string) => void;
+    onRenameSuite?: (suiteId: string, newName: string) => void;
     onRunCase: (caseId: string) => void;
     onSelectSuite: (suiteId: string) => void;
     onSelectTestCase: (caseId: string) => void;
@@ -108,12 +111,6 @@ export interface SidebarUnifiedProps {
     onAddRequestToTestCase?: (request: import('@shared/models').ApiRequest) => void;
     onReorderOperation: (projectName: string, fromIndex: number, toIndex: number) => void;
     onReorderRequest: (projectName: string, operationName: string, fromIndex: number, toIndex: number) => void;
-    /**
-     * Load a WSDL / OpenAPI / GraphQL definition from a source URL (the
-     * sidebar "+" → Load Definition flow). Undefined in non-Tauri dev, so
-     * the Load action is omitted from the "+" menu there.
-     */
-    onLoadWsdl?: (url: string) => void;
     /** F-01 / R-05 — Quick Requests (scrapbook) bottom section (Q1(a)). */
     scrapbook?: {
         requests: import('@shared/models').ScrapbookRequest[];

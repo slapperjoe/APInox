@@ -12,6 +12,7 @@ import { CustomXPathEvaluator } from '../utils/xpathEvaluator';
 import { FrontendCommand } from '@shared/messages';
 import { getInitialXml } from '@shared/utils/xmlUtils';
 import { PERF_REQUEST_ID_PREFIX, DEBOUNCE_MS } from '../constants';
+import { useTestSuites } from '../contexts/TestSuiteContext';
 import {
     ApinoxProject,
     UnifiedProject,
@@ -163,7 +164,7 @@ export function useRequestExecution({
     setSelectedRequest,
     setProjects,
     setWorkspaceDirty,
-    setUnifiedProjects,
+    setUnifiedProjects: _setUnifiedProjects,
     testExecution,
     selectedPerformanceSuiteId,
     config,
@@ -171,6 +172,8 @@ export function useRequestExecution({
     onScrapbookAutoSave
 }: UseRequestExecutionParams): UseRequestExecutionReturn {
 
+    // C (global suites): test-case step edits persist to the GLOBAL suite store.
+    const { updateTestCase } = useTestSuites();
     const startTimeRef = useRef<number>(0);
     // H1: id of the in-flight request, echoed back by the backend in the
     // Response/Error event (set by useMessageHandler); used by cancelRequest.
@@ -410,57 +413,28 @@ export function useRequestExecution({
 
         projectUpdateTimer.current = setTimeout(() => {
 
-            // Phase B (t_86c34d38): test-case step edits persist to the UNIFIED
-            // store (test suites were relocated to UnifiedProject.testSuites).
-            // The unified store is the source of truth for test steps, so the
-            // legacy `setProjects` path below must NOT also rewrite them (it
-            // would race the unified save with a stale in-memory copy).
+            // C (global suites): test-case step edits persist to the GLOBAL
+            // suite store (suites no longer live on the unified projects).
             let testStepHandled = false;
-            if (selectedTestCase && setUnifiedProjects) {
-                setUnifiedProjects(prev => {
-                    const updatedProjects = prev.map(p => {
-                        let caseUpdated = false;
-                        const updatedSuites = p.testSuites?.map(s => {
-                            const tcIndex = s.testCases?.findIndex(tc => tc.id === selectedTestCase.id) ?? -1;
-                            if (tcIndex === -1) return s;
-
-                            const updatedCases = [...(s.testCases || [])];
-                            const stepIndex = updatedCases[tcIndex].steps.findIndex(step =>
-                                (updated.id && step.config.request?.id === updated.id) ||
-                                step.config.request?.name === updated.name ||
-                                (selectedRequest && step.config.request?.name === selectedRequest.name)
-                            );
-
-                            if (stepIndex !== -1) {
-                                caseUpdated = true;
-                                updatedCases[tcIndex] = {
-                                    ...updatedCases[tcIndex],
-                                    steps: updatedCases[tcIndex].steps.map((st, i) => {
-                                        if (i === stepIndex) {
-                                            const finalRequest = {
-                                                ...dirtyUpdated,
-                                                id: dirtyUpdated.id || `req-${Date.now()}-healed`
-                                            };
-                                            return { ...st, config: { ...st.config, request: finalRequest } };
-                                        }
-                                        return st;
-                                    })
-                                };
-                            }
-                            return { ...s, testCases: updatedCases };
-                        });
-
-                        if (caseUpdated) {
-                            testStepHandled = true;
-                            // `dirty: true` triggers the UnifiedProjectContext
-                            // auto-save (debounced) — no explicit save here,
-                            // matching the legacy handleRequestUpdate pattern.
-                            return { ...p, testSuites: updatedSuites, dirty: true };
+            if (selectedTestCase) {
+                testStepHandled = true;
+                void updateTestCase(selectedTestCase.id, tc => ({
+                    ...tc,
+                    steps: tc.steps.map(step => {
+                        if (
+                            (updated.id && step.config.request?.id === updated.id) ||
+                            step.config.request?.name === updated.name ||
+                            (selectedRequest && step.config.request?.name === selectedRequest.name)
+                        ) {
+                            const finalRequest = {
+                                ...dirtyUpdated,
+                                id: dirtyUpdated.id || `req-${Date.now()}-healed`
+                            };
+                            return { ...step, config: { ...step.config, request: finalRequest } };
                         }
-                        return p;
-                    });
-                    return updatedProjects;
-                });
+                        return step;
+                    })
+                }));
             }
 
             // Legacy path: standard project request modification. Skipped for
@@ -504,7 +478,7 @@ export function useRequestExecution({
             }
         }, DEBOUNCE_MS);
 
-    }, [selectedProjectName, selectedTestCase, selectedInterface, selectedOperation, selectedRequest, setProjects, setUnifiedProjects, setSelectedRequest, setWorkspaceDirty, selectedPerformanceSuiteId, config, setConfig]);
+    }, [selectedProjectName, selectedTestCase, selectedInterface, selectedOperation, selectedRequest, setProjects, setSelectedRequest, setWorkspaceDirty, updateTestCase, selectedPerformanceSuiteId, config, setConfig]);
 
     const handleResetRequest = useCallback(() => {
         if (selectedRequest && selectedOperation) {
