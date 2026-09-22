@@ -85,10 +85,15 @@ const AppTitle = styled.span`
   background-clip: text;
 `;
 
+// Centered against the title bar (not in the logo's flex flow): the results
+// dropdown is also centered (left: 50%), so the box sits directly above it.
 const SearchContainer = styled.div`
-  flex: 1;
-  max-width: 450px;
-  min-width: 250px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 450px;
+  max-width: calc(100vw - 240px);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -172,6 +177,10 @@ const ClearButton = styled(GhostButton)`
 `;
 
 const LastSearchBreadcrumb = styled(GhostButton)`
+  /* The search box is absolutely centered, so this is the only remaining
+     in-flow sibling after the logo — pin it to the right edge (it used to be
+     pushed there by the search box's flex:1). */
+  margin-left: auto;
   display: flex;
   align-items: center;
   gap: 8px;
