@@ -13,7 +13,8 @@ import {
 import { debugLog } from '../../utils/logger';
 import { useScrapbookOptional } from '../../contexts/ScrapbookContext';
 import { UnifiedProject, ApiOperation, ApiRequest, ScrapbookRequest } from '@shared/models';
-import { soapDefault, resolveEffectiveContentType } from '../../utils/soapUtils';
+import { soapDefault, resolveEffectiveContentType, generateSampleWithMetadata } from '../../utils/soapUtils';
+import { parseXmlToTree } from '../../utils/xmlTreeParser';
 import { invokeTauriCommand } from '../../utils/bridge';
 import { buildExecuteOperation } from '../../utils/executeOperation';
 import { detectLoadFormat } from '../../utils/loadRouting';
@@ -65,6 +66,14 @@ export interface UnifiedExplorerMainProps {
      * here and calls back into this component's real execute path.
      */
     onRegisterExecute?: (execute: (req: ApiRequest) => Promise<void>) => void;
+    /**
+     * Settings → General: whether the request editor's Content-Type header is
+     * locked to the WSDL/interface-resolved value. Default locked (`true`);
+     * opting out makes the row an editable override header. Passed as a prop
+     * (instead of reading `useUI()` here) so the component stays unit-testable
+     * without a `UIProvider`.
+     */
+    contentTypeLocked?: boolean;
 }
 
 interface UrlInputState {
@@ -92,7 +101,12 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
     onProjectContentTypeChange,
     onAfterExecute,
     onRegisterExecute,
+    contentTypeLocked = true,
 }) => {
+    // Settings → General: whether the request editor's Content-Type header is
+    // locked to the WSDL/interface-resolved value. Default locked (`true`);
+    // opting out makes the row an editable override header.
+
     const [urlInput, setUrlInput] = useState<UrlInputState>({ url: 'http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso?WSDL', loading: false, error: null });
     /** R-12 (F-23): route the WSDL load through the app proxy (force-off for local files). */
     const [useProxy, setUseProxy] = useState<boolean>(false);
@@ -100,6 +114,16 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
     const activeLoadIdRef = useRef<string | null>(null);
     /** Response cache keyed by request ID — persists across request switches */
     const [responses, setResponses] = useState<Record<string, ExecutionResponse>>({});
+    /**
+     * R-01 (response visibility): the id of the request most recently
+     * executed through this component (cleared when a different node is
+     * selected). The response cache is keyed by the request id at execution
+     * time, but `editingRequest` can go null/stale (scrapbook re-sync after
+     * auto-capture, projects reload) while the user is still looking at that
+     * request — then the keyed lookup misses and the pane stays blank even
+     * though the request succeeded. This id is the fallback lookup key.
+     */
+    const [lastExecutedId, setLastExecutedId] = useState<string | null>(null);
     const [editingRequest, setEditingRequest] = useState<ApiRequest | null>(null);
     const [editingXml, setEditingXml] = useState<string>('');
     const [envVariables, setEnvVariables] = useState<Record<string, string>>({});
@@ -187,6 +211,15 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
     // Sync editor state when a request node is selected from the sidebar
     useEffect(() => {
         if (!selectedNode || selectedNode.type !== 'request') {
+            // F-01: quick (scrapbook) selections are owned by the scrapbook-sync
+            // effect below. A `projects` identity change (skeleton → detail
+            // load, migration refresh, any project save) must NOT null the
+            // editor for a scrapbook node: it runs on every `projects` change,
+            // so it would wipe the in-flight selection mid-execution and the
+            // response pane would stay blank even though the request
+            // succeeded (the response is cached under the request id, but the
+            // lookup key `editingRequest` would have been cleared).
+            if (isScrapbookNode(selectedNode)) return;
             setEditingRequest(null);
             setEditingXml('');
             return;
@@ -496,6 +529,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                     time: result.time_taken_ms,
                 };
                 setResponses(prev => ({ ...prev, [reqId]: normalizedResponse }));
+                setLastExecutedId(reqId);
 
                 // F-13 / R-08 (phase 4 extension): every REST/GraphQL
                 // execution writes an entry to the SAME single global
@@ -548,6 +582,34 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                 return;
             }
 
+            // Guard: an empty SOAP body cannot be sent verbatim. Resolve the
+            // body from the freshest source: the explicit editor content
+            // (top-bar Run), then the stored body, then LIVE state — the
+            // `req` reference may be a stale capture (a skeleton-era object
+            // without a body, or a quick request edited in the editor but
+            // not yet saved back), so re-resolve against the current
+            // projects/editor state before deciding it is empty.
+            let soapBodyXml = currentXml || req.request || '';
+            if (soapBodyXml.trim() === '') {
+                if (editingRequest && (editingRequest.id || editingRequest.name) === reqId) {
+                    soapBodyXml = editingXml || editingRequest.request || '';
+                } else {
+                    const live = owner?.operation?.requests?.find(r => (r.id || r.name) === reqId);
+                    if (live?.request) soapBodyXml = live.request;
+                }
+            }
+            // A real owning operation with a target namespace lets Rust's
+            // EnvelopeBuilder construct the envelope from the operation
+            // schema — so an empty body is NOT an error there; let it fall
+            // through so a freshly created request is immediately runnable.
+            // Only fail fast when there is no body AND nothing to build from
+            // (the stub quick-request case behind the old, misleading
+            // "Operation has no target namespace" failure).
+            if (soapBodyXml.trim() === '' && !(ownerOperation && ownerOperation.targetNamespace)) {
+                setExecuteError('Request body is empty. Add the SOAP envelope before running this request.');
+                return;
+            }
+
             // ── SOAP (R-02 faithful baseline — byte-identical; do not change
             //     the payload) ───────────────────────────────────────────────
             // R-02: send the real resolved operation (action/input/
@@ -561,7 +623,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                     operation,
                     soapVersion: ownerProject?.soapVersion || '1.1',
                     endpoint: effectiveEndpoint,
-                    rawXml: currentXml || req.request || '',
+                    rawXml: soapBodyXml,
                     contentType: effectiveContentType,
                     headers: req.headers || {},
                     envVariables,
@@ -580,8 +642,14 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
 
             const headers = Object.fromEntries(result.headers || []);
             const contentType = headers['content-type'] || headers['Content-Type'] || effectiveContentType;
+            // R-01 (response visibility): when there is no response body but
+            // Rust reported a failure (e.g. "No endpoint specified" — a 500
+            // fault DOES come back in rawXml, but an early-fail Ok() result
+            // has none), surface the error in the pane instead of rendering
+            // an empty response view with no explanation.
+            const soapBody = result.rawXml || result.body || '';
             const normalizedResponse: ExecutionResponse = {
-                rawResponse: result.rawXml || result.body || '',
+                rawResponse: soapBody || (result.success ? '' : (result.error || 'Request failed')),
                 status: result.statusCode,
                 statusText: result.success ? 'OK' : (result.error || 'Error'),
                 headers,
@@ -590,6 +658,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
 
             // Store in response cache so switching requests preserves it
             setResponses(prev => ({ ...prev, [reqId]: normalizedResponse }));
+            setLastExecutedId(reqId);
 
             // F-13 / R-08 (phase 2, SOAP path): every unified SOAP execution
             // writes an entry to the single global history store (parity with
@@ -602,7 +671,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                 projectName: ownerProject?.name || '',
                 interfaceName: ownerProject?.name || '',
                 operationName: ownerOperation?.name || (isQuickRequest ? '' : req.name),
-                requestBody: currentXml || req.request || '',
+                requestBody: soapBodyXml,
                 headers: req.headers || {},
                 statusCode: result.statusCode || (result.success ? 200 : 500),
                 duration,
@@ -622,7 +691,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                     headers: normalizedResponse.headers,
                     contentType: normalizedResponse.contentType,
                 };
-                await persistRequestUpdate(req, currentXml);
+                await persistRequestUpdate(req, soapBodyXml);
             }
 
             // F-02 / R-05 (Q4(c)): auto-capture every successful execution into
@@ -705,6 +774,36 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
         debugLog('[UnifiedExplorerMain] Request body saved', editingRequest.name);
     }, [editingRequest, editingXml, persistRequestUpdate, selectedNode, selectedScrapbook, scrapbookEndpoint, updateScrapbookRequest]);
 
+    /**
+     * Update the quick-request's headers (custom header rows AND the unlocked
+     * Content-Type override both funnel through here — the editor passes the
+     * full new headers record). Mirrors the project-request editor: state
+     * update first, then save-back through the app-level ScrapbookContext so
+     * the value persists on change.
+     */
+    const updateScrapbookRequestHeaders = useCallback((headers: Record<string, string>) => {
+        if (!editingRequest) return;
+        const updated = { ...editingRequest, headers };
+        setEditingRequest(updated);
+        if (isScrapbookNode(selectedNode) && updated.id && updateScrapbookRequest) {
+            updateScrapbookRequest(updated.id, { headers }).catch((e: any) => {
+                console.error('[UnifiedExplorerMain] Failed to save quick request headers:', e);
+            });
+        }
+    }, [editingRequest, selectedNode, updateScrapbookRequest]);
+
+    /**
+     * Update a project request's headers (custom header rows AND the unlocked
+     * Content-Type override both funnel through here). State update + persist
+     * through `persistRequestUpdate` (the project-request save path).
+     */
+    const updateProjectRequestHeaders = useCallback((headers: Record<string, string>) => {
+        if (!editingRequest) return;
+        const updated = { ...editingRequest, headers };
+        setEditingRequest(updated);
+        persistRequestUpdate(updated);
+    }, [editingRequest, persistRequestUpdate]);
+
     // F-01: expose the current unified execute path to the Quick Requests
     // panel (lives in UnifiedExplorerView, a sibling of this component).
     // Re-registered whenever the handler changes (env vars / selection /
@@ -718,8 +817,78 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
     }, [onRegisterExecute, handleExecuteRequest]);
 
     const selected = findSelected();
+    // The sample envelope declares its body namespace as xmlns:web="…" (the
+    // generated template uses `web`; a stored sample may use another prefix
+    // but never `soapenv`, which is the fixed envelope namespace). When that
+    // declared namespace equals the operation's WSDL Target Namespace, the
+    // grid's "Target Namespace" row is redundant — the value is already
+    // visible in the sample XML itself. Only surface the row when the two
+    // differ (or the sample declares no body namespace), so a divergent WSDL
+    // namespace (the interesting case) is never hidden.
+    let sampleDeclaredNamespace: string | null = null;
+    if (selected && selected.type === 'operation') {
+        try {
+            const { sampleXml } = generateSampleWithMetadata(selected.operation, {
+                contentType: selected.project.contentType,
+                soapVersion: selected.project.soapVersion,
+            });
+            if (sampleXml) {
+                const root = parseXmlToTree(sampleXml);
+                for (const node of [root, ...(root.children || [])]) {
+                    const attrs = node.attributes;
+                    if (!attrs) continue;
+                    for (const key of Object.keys(attrs)) {
+                        // Match xmlns:web (the canonical body prefix) or any
+                        // prefixed xmlns except the constant soapenv envelope.
+                        const m = /^xmlns:(.+)$/.exec(key);
+                        if (m && m[1] !== 'soapenv') {
+                            sampleDeclaredNamespace = attrs[key];
+                            break;
+                        }
+                    }
+                    if (sampleDeclaredNamespace) break;
+                }
+            }
+        } catch {
+            sampleDeclaredNamespace = null;
+        }
+    }
+    const showTargetNamespaceRow =
+        selected?.type === 'operation' &&
+        sampleDeclaredNamespace !== selected.operation.targetNamespace;
+
     const currentReqId = editingRequest?.id || editingRequest?.name;
-    const currentResponse = currentReqId ? responses[currentReqId] : null;
+    // R-01 (response visibility): when the user selects a DIFFERENT node (by
+    // logical type+id, not object identity — the parent rebuilds the
+    // selectedNode object on unrelated re-renders), drop the "last executed"
+    // fallback so request B doesn't render request A's response. The primary
+    // keyed lookup still shows B's own cached response if one exists.
+    const logicalNodeKey = selectedNode ? `${selectedNode.type}:${selectedNode.id}` : null;
+    const prevLogicalNodeKeyRef = useRef<string | null | undefined>(undefined);
+    useEffect(() => {
+        const prev = prevLogicalNodeKeyRef.current;
+        prevLogicalNodeKeyRef.current = logicalNodeKey;
+        if (prev !== undefined && prev !== logicalNodeKey) {
+            setLastExecutedId(null);
+            // A previous execution's failure banner (e.g. "Request body is
+            // empty" from a quick request) must not linger over a DIFFERENT
+            // request the user just selected — the banner is only ever
+            // cleared at the start of a new execution or by the × button.
+            // Without this, running a request with a real body still shows
+            // the stale error pinned above the editor.
+            setExecuteError(null);
+        }
+    }, [logicalNodeKey]);
+    // R-01 (response visibility): primary lookup is the current request's id
+    // (preserves per-request response cache when switching between requests).
+    // Fallback: the most recent execution's id. `editingRequest` can be null
+    // or briefly stale while the response cache still holds the just-finished
+    // execution (scrapbook re-sync after auto-capture, `projects` identity
+    // change during a skeleton→detail load) — without the fallback the pane
+    // would stay blank even though the request completed.
+    const currentResponse = (currentReqId ? responses[currentReqId] : undefined)
+        ?? (lastExecutedId ? responses[lastExecutedId] : undefined)
+        ?? null;
 
     return (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -1140,13 +1309,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                     <div style={{ padding: 24 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
                             <Code2 size={20} color="var(--apinox-icon-foreground)" />
-                            <div>
-                                <h2 style={{ margin: 0, fontSize: 22 }}>{selected.operation.name}</h2>
-                                <div style={{ fontSize: 'var(--apinox-fs-md)', opacity: 0.7 }}>
-                                    Endpoint: {selected.operation.originalEndpoint || 'N/A'}
-                                    {selected.operation.targetNamespace ? ` • Namespace: ${selected.operation.targetNamespace}` : ''}
-                                </div>
-                            </div>
+                            <h2 style={{ margin: 0, fontSize: 22 }}>{selected.operation.name}</h2>
                         </div>
 
                         {/* Operation Details Grid */}
@@ -1195,8 +1358,12 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                 <div style={{ opacity: 0.7 }}>Binding:</div>
                                 <div style={{ fontFamily: 'monospace' }}>{selected.project.bindingName || '(not available)'}</div>
 
-                                <div style={{ opacity: 0.7 }}>Target Namespace:</div>
-                                <div style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>{selected.operation.targetNamespace || '(not available)'}</div>
+                                {showTargetNamespaceRow && (
+                                    <>
+                                        <div style={{ opacity: 0.7 }}>Target Namespace:</div>
+                                        <div style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>{selected.operation.targetNamespace || '(not available)'}</div>
+                                    </>
+                                )}
                             </div>
                         </div>
 
@@ -1304,18 +1471,9 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                 onChange={(value: string) => setEditingXml(value)}
                                 headers={editingRequest?.headers || {}}
                                 contentType={editingRequest?.contentType || 'application/soap+xml'}
-                                onHeadersChange={(headers) => {
-                                    const updated = { ...editingRequest!, headers };
-                                    setEditingRequest(updated);
-                                    // Save-back through the scrapbook store (headers
-                                    // persist on change, matching the project-request
-                                    // editor behaviour).
-                                    if (updated.id && updateScrapbookRequest) {
-                                        updateScrapbookRequest(updated.id, { headers }).catch((e: any) => {
-                                            console.error('[UnifiedExplorerMain] Failed to save quick request headers:', e);
-                                        });
-                                    }
-                                }}
+                                contentTypeLocked={contentTypeLocked}
+                                onContentTypeChange={updateScrapbookRequestHeaders}
+                                onHeadersChange={updateScrapbookRequestHeaders}
                             />
                         </div>
                         {currentResponse && (
@@ -1377,11 +1535,9 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                 onChange={(value: string) => setEditingXml(value)}
                                 headers={editingRequest?.headers || {}}
                                 contentType={resolveEffectiveContentType(selected.request, selected.operation, { contentType: selected.project.contentType, soapVersion: selected.project.soapVersion })}
-                                onHeadersChange={(headers) => {
-                                    const updated = { ...editingRequest!, headers };
-                                    setEditingRequest(updated);
-                                    persistRequestUpdate(updated);
-                                }}
+                                contentTypeLocked={contentTypeLocked}
+                                onContentTypeChange={updateProjectRequestHeaders}
+                                onHeadersChange={updateProjectRequestHeaders}
                                 extraTabs={[
                                     {
                                         id: 'assertions',
