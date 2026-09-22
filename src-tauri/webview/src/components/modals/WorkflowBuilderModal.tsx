@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
 import { Plus, Trash2, GripVertical, Play, Save, X, AlertCircle, ChevronRight, ChevronDown } from 'lucide-react';
 import { Modal } from './Modal';
-import { Workflow, WorkflowStep, ApinoxProject, HttpMethod } from '@shared/models';
+import { Workflow, WorkflowStep, UnifiedProject, HttpMethod } from '@shared/models';
 import { PrimaryButton, SecondaryButton, IconButton, GhostButton } from '../common/Button';
 import { SPACING_SM, SPACING_MD, SPACING_XS } from '../../styles/spacing';
 import { v4 as uuidv4 } from 'uuid';
@@ -233,7 +233,7 @@ interface WorkflowBuilderModalProps {
     onClose: () => void;
     workflow?: Workflow;
     onSave: (workflow: Workflow) => void;
-    projects: ApinoxProject[]; // All projects for request picking
+    projects: UnifiedProject[]; // All projects for request picking (unified store)
 }
 
 export const WorkflowBuilderModal: React.FC<WorkflowBuilderModalProps> = ({
@@ -255,53 +255,57 @@ export const WorkflowBuilderModal: React.FC<WorkflowBuilderModalProps> = ({
     const [openDropdownIndex, setOpenDropdownIndex] = useState<number | null>(null);
     const [mainAddStepDropdownOpen, setMainAddStepDropdownOpen] = useState(false);
 
-    // Build request picker items from all projects
+    // Build request picker items from all projects.
+    // UNIFIED STORE (single source of truth): operations nest directly under
+    // `project.operations[]` (flat layout). There is no `interfaces[]` — the
+    // unified model has no interface layer, and the legacy ProjectContext copy
+    // is stale (not pruned on unified delete, never written by URL-bar WSDL
+    // loads), so it must not feed pickers. `interfaceName` is display-only
+    // metadata (workflow steps store a self-contained request copy; Rust
+    // workflow execution never resolves against it).
     const pickRequestItems = useMemo<PickRequestItem[]>(() => {
         const items: PickRequestItem[] = [];
-        
+
         projects.forEach(project => {
-            if (!project.interfaces) return;
-            
-            project.interfaces.forEach(iface => {
-                iface.operations?.forEach(op => {
-                    if (op.requests && op.requests.length > 0) {
-                        op.requests.forEach((req, idx) => {
-                            items.push({
-                                id: `${project.name}-${iface.name}-${op.name}-${idx}`,
-                                label: op.requests.length > 1 ? `${(op as any).displayName || op.name} [${idx + 1}/${op.requests.length}]` : ((op as any).displayName || op.name),
-                                description: `${project.name} > ${(iface as any).displayName || iface.name} > ${req.name}`,
-                                detail: req.endpoint || op.originalEndpoint || 'WSDL Operation',
-                                type: 'request',
-                                data: {
-                                    projectName: project.name,
-                                    interfaceName: iface.name,
-                                    operationName: op.name,
-                                    requestIndex: idx,
-                                    request: req
-                                }
-                            });
-                        });
-                    } else {
-                        // Operation with no saved requests - use default
+            const interfaceName: string = project.name;
+            (project.operations || []).forEach(op => {
+                if (op.requests && op.requests.length > 0) {
+                    op.requests.forEach((req, idx) => {
                         items.push({
-                            id: `${project.name}-${iface.name}-${op.name}-default`,
-                            label: (op as any).displayName || op.name,
-                            description: `${project.name} > ${(iface as any).displayName || iface.name}`,
-                            detail: op.originalEndpoint || 'WSDL Operation',
+                            id: `${project.name}-${interfaceName}-${op.name}-${idx}`,
+                            label: op.requests.length > 1 ? `${(op as any).displayName || op.name} [${idx + 1}/${op.requests.length}]` : ((op as any).displayName || op.name),
+                            description: `${project.name} > ${interfaceName} > ${req.name}`,
+                            detail: req.endpoint || op.originalEndpoint || 'WSDL Operation',
                             type: 'request',
                             data: {
                                 projectName: project.name,
-                                interfaceName: iface.name,
+                                interfaceName,
                                 operationName: op.name,
-                                requestIndex: 0
-                            },
-                            warning: true
+                                requestIndex: idx,
+                                request: req
+                            }
                         });
-                    }
-                });
+                    });
+                } else {
+                    // Operation with no saved requests - use default
+                    items.push({
+                        id: `${project.name}-${interfaceName}-${op.name}-default`,
+                        label: (op as any).displayName || op.name,
+                        description: `${project.name} > ${interfaceName}`,
+                        detail: op.originalEndpoint || 'WSDL Operation',
+                        type: 'request',
+                        data: {
+                            projectName: project.name,
+                            interfaceName,
+                            operationName: op.name,
+                            requestIndex: 0
+                        },
+                        warning: true
+                    });
+                }
             });
         });
-        
+
         return items;
     }, [projects]);
 

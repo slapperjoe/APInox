@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
-import { Workflow, WorkflowStep, ApinoxProject } from '@shared/models';
+import { Workflow, WorkflowStep, UnifiedProject } from '@shared/models';
+import { useUnifiedProjects } from '../../contexts/UnifiedProjectContext';
 import { SPACING_SM, SPACING_MD, SPACING_XS } from '../../styles/spacing';
 import { GripVertical, Trash2, Plus, ChevronRight, ChevronDown, Clock, AlertCircle, Repeat, Code, FileText } from 'lucide-react';
 import { PrimaryButton, SecondaryButton, IconButton, GhostButton } from '../common/Button';
@@ -218,14 +219,12 @@ const EditorPanel = styled.div`
 
 interface WorkflowEditorProps {
     workflow: Workflow;
-    projects: ApinoxProject[];
     onUpdate: (workflow: Workflow) => void;
     onSelectStep?: (step: WorkflowStep) => void;
 }
 
 export const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
     workflow,
-    projects,
     onUpdate
 }) => {
     const [selectedStepIndex, setSelectedStepIndex] = useState<number | null>(null);
@@ -234,34 +233,37 @@ export const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
     const [collapsedLoops, setCollapsedLoops] = useState<Set<string>>(new Set());
     const [showRequestPicker, setShowRequestPicker] = useState(false);
 
-    // Build request picker items from all projects
+    // UNIFIED STORE (single source of truth): read the unified project list
+    // directly from context. The legacy `projects` prop (from the workspace
+    // context's ProjectContext) is stale post-migration — unified delete only
+    // prunes the unified store, and URL-bar WSDL loads never populate the
+    // legacy store. Feeding pickers from the unified store makes removed
+    // projects disappear and re-added ones reappear everywhere.
+    const { projects: unifiedProjectsList } = useUnifiedProjects();
+
+    // Build request picker items from all unified projects. Operations nest
+    // directly under `project.operations[]` (flat layout, no interfaces[]).
     const pickRequestItems = useMemo<PickRequestItem[]>(() => {
         const items: PickRequestItem[] = [];
-        
-        projects.forEach(project => {
-            if (!project.interfaces) return;
-            
-            project.interfaces.forEach(iface => {
-                if (!iface.operations) return;
-                
-                iface.operations.forEach(operation => {
-                    if (!operation.requests) return;
-                    
-                    operation.requests.forEach(request => {
-                        items.push({
-                            id: `${project.name}/${iface.name}/${operation.name}/${request.name}`,
-                            label: request.name,
-                            description: `${project.name} > ${iface.name} > ${operation.name}`,
-                            type: 'request' as const,
-                            data: request
-                        });
+
+        unifiedProjectsList.forEach(project => {
+            (project.operations || []).forEach(operation => {
+                if (!operation.requests) return;
+
+                operation.requests.forEach(request => {
+                    items.push({
+                        id: `${project.name}/${operation.name}/${request.name}`,
+                        label: request.name,
+                        description: `${project.name} > ${operation.name}`,
+                        type: 'request' as const,
+                        data: request
                     });
                 });
             });
         });
-        
+
         return items;
-    }, [projects]);
+    }, [unifiedProjectsList]);
 
     const handleUpdateWorkflow = (updates: Partial<Workflow>) => {
         onUpdate({ ...workflow, ...updates });

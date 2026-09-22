@@ -24,9 +24,14 @@ const SearchInput = styled.input`
     background: var(--apinox-input-background);
     color: var(--apinox-input-foreground);
     border: 1px solid var(--apinox-input-border);
-    padding: 8px 8px;
+    padding: 8px 10px;
     border-radius: 4px;
-    margin: 12px 12px 0 12px;
+    /* Full-width search box: the ModalBody already pads 16px, so no extra
+       horizontal margin (it used to shave 24px off each side). */
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0;
     &:focus {
         outline: 1px solid var(--apinox-focusBorder);
     }
