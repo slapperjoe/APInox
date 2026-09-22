@@ -26,6 +26,12 @@ interface UnifiedExplorerViewProps {
      * is rendered in `Sidebar.tsx` — a sibling of this view).
      */
     onRegisterExecute?: (execute: (req: ApiRequest) => Promise<void>) => void;
+    /**
+     * Settings → General: whether the request editor's Content-Type header is
+     * locked (default `true`). Read from `config.ui.contentTypeLocked` by the
+     * orchestrator and passed down so the component tree stays provider-free.
+     */
+    contentTypeLocked?: boolean;
 }
 
 const UnifiedExplorerView: React.FC<UnifiedExplorerViewProps> = ({
@@ -37,6 +43,7 @@ const UnifiedExplorerView: React.FC<UnifiedExplorerViewProps> = ({
     onProjectContentTypeChange,
     onWsdlLoaded,
     onRegisterExecute,
+    contentTypeLocked = true,
 }) => {
 
     const handleLoadWsdl = useCallback(async (url: string, opts?: { useProxy?: boolean; loadId?: string }) => {
@@ -92,6 +99,7 @@ const UnifiedExplorerView: React.FC<UnifiedExplorerViewProps> = ({
                 onProjectContentTypeChange={onProjectContentTypeChange}
                 onAfterExecute={handleAfterExecute}
                 onRegisterExecute={onRegisterExecute}
+                contentTypeLocked={contentTypeLocked}
             />
         </div>
     );

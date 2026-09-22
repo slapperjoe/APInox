@@ -72,6 +72,8 @@ export interface RequestWorkspaceProps {
   readOnly?: boolean;
   defaultEndpoint?: string;
   availableVariables?: Variable[];
+  /** Whether the Content-Type header row is locked (default `true`). */
+  contentTypeLocked?: boolean;
 
   // Display options
   showBreadcrumb?: boolean;
@@ -131,6 +133,7 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
   readOnly = false,
   defaultEndpoint,
   availableVariables = [],
+  contentTypeLocked = true,
   showBreadcrumb = false,
   breadcrumbPath = [],
   onCreateExtractor,
@@ -567,6 +570,7 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
                 request={request}
                 onUpdateRequest={onUpdateRequest}
                 readOnly={readOnly}
+                contentTypeLocked={contentTypeLocked}
                 availableVariables={availableVariables}
                 requestEditorRef={requestEditorRef}
                 editorForceUpdateKey={editorForceUpdateKey}

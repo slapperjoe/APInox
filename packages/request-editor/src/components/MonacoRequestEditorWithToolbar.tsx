@@ -85,6 +85,10 @@ export interface MonacoRequestEditorWithToolbarProps {
   onHeadersChange?: (headers: Record<string, string>) => void;
   /** Effective Content-Type shown in the locked read-only row of the Headers tab (callers must pass the *resolved* effective value — see SOAP_INTERFACE_CONTENT_TYPE_SPEC.md §5.3). Falls back to 'application/soap+xml' when omitted. */
   contentType?: string;
+  /** Whether the Content-Type row is locked (default `true`). `false` makes it an editable override header (Settings → General → "Allow overriding Content-Type"). */
+  contentTypeLocked?: boolean;
+  /** Invoked with the new headers record when the (unlocked) Content-Type row is edited. */
+  onContentTypeChange?: (headers: Record<string, string>) => void;
   /** Additional tabs injected by the parent */
   extraTabs?: ExtraTab[];
 }
@@ -102,6 +106,8 @@ const EditorWithToolbarInternal = forwardRef<MonacoRequestEditorHandle, Omit<Mon
     headers,
     onHeadersChange,
     contentType,
+    contentTypeLocked = true,
+    onContentTypeChange,
     extraTabs = [],
     forceUpdateKey: externalForceUpdateKey,
     ...otherProps
@@ -193,6 +199,8 @@ const EditorWithToolbarInternal = forwardRef<MonacoRequestEditorHandle, Omit<Mon
             headers={headers ?? {}}
             onChange={onHeadersChange ?? (() => {})}
             contentType={contentType}
+            contentTypeLocked={contentTypeLocked}
+            onContentTypeChange={onContentTypeChange}
           />
         );
       }

@@ -117,6 +117,30 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({ config, onChange, onRese
             </CheckboxLabel>
           </FormGroup>
           <FormGroup>
+            <CheckboxLabel>
+              <input
+                type="checkbox"
+                checked={config.ui?.contentTypeLocked ?? true}
+                onChange={(e) =>
+                  onChange("ui", "contentTypeLocked", e.target.checked)
+                }
+              />
+              Lock Content-Type to WSDL / interface value
+            </CheckboxLabel>
+            <div
+              style={{
+                fontSize: "0.85em",
+                color: "var(--apinox-descriptionForeground)",
+                marginTop: 4,
+                marginLeft: 24,
+              }}
+            >
+              When checked (default), the request editor&apos;s Content-Type
+              header is read-only and follows the WSDL / interface
+              resolution. Uncheck to make it an editable override header.
+            </div>
+          </FormGroup>
+          <FormGroup>
             <Label>Auto-Fold XML Elements</Label>
             <div
               style={{

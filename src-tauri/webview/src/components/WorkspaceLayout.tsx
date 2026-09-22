@@ -783,7 +783,6 @@ export const WorkspaceLayout: React.FC = () => {
             return (
                 <WorkflowEditor
                     workflow={workflow}
-                    projects={projects || []}
                     onUpdate={(updatedWorkflow) => {
                         workspace.updateWorkflow(updatedWorkflow);
                     }}
@@ -1004,6 +1003,7 @@ export const WorkspaceLayout: React.FC = () => {
                 onCancel={onCancel}
                 onReset={onReset}
                 readOnly={preventEditing}
+                contentTypeLocked={config?.ui?.contentTypeLocked ?? true}
                 defaultEndpoint={defaultEndpoint}
                 availableVariables={availableVariables.map(v => ({
                     name: v.name,

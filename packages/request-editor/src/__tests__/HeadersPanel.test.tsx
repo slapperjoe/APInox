@@ -134,3 +134,86 @@ describe('HeadersPanel', () => {
         expect(screen.queryByDisplayValue('text/xml')).not.toBeInTheDocument();
     });
 });
+
+describe('HeadersPanel - unlocked Content-Type', () => {
+    it('renders an editable Content-Type row when contentTypeLocked is false', () => {
+        const onChange = vi.fn();
+        const onContentTypeChange = vi.fn();
+        render(
+            <HeadersPanel
+                headers={{}}
+                onChange={onChange}
+                contentType="application/soap+xml"
+                contentTypeLocked={false}
+                onContentTypeChange={onContentTypeChange}
+            />
+        );
+
+        // Editable: the value input exists (placeholder shows the resolved
+        // value until the user types an override)
+        expect(
+            document.querySelector(`input[data-testid="input-application/soap+xml"]`)
+        ).toBeInTheDocument();
+    });
+
+    it('writes the new Content-Type into the headers record on edit', () => {
+        const onContentTypeChange = vi.fn();
+        const { rerender } = render(
+            <HeadersPanel
+                headers={{}}
+                onChange={() => {}}
+                contentType="application/soap+xml"
+                contentTypeLocked={false}
+                onContentTypeChange={onContentTypeChange}
+            />
+        );
+
+        fireEvent.change(screen.getByPlaceholderText('application/soap+xml'), {
+            target: { value: 'text/xml' }
+        });
+        expect(onContentTypeChange).toHaveBeenCalledWith(
+            expect.objectContaining({ 'Content-Type': 'text/xml' })
+        );
+
+        // When the override exists in headers, the row shows the override value
+        rerender(
+            <HeadersPanel
+                headers={{ 'Content-Type': 'text/xml' }}
+                onChange={() => {}}
+                contentType="application/soap+xml"
+                contentTypeLocked={false}
+                onContentTypeChange={onContentTypeChange}
+            />
+        );
+        expect(document.querySelector(`input[data-testid="input-Content-Type"]`)).toBeInTheDocument();
+        expect((document.querySelector(`input[data-testid="input-Content-Type"]`) as HTMLInputElement).value).toBe('text/xml');
+    });
+
+    it('clearing the override emits a headers record without the header', () => {
+        const onContentTypeChange = vi.fn();
+        render(
+            <HeadersPanel
+                headers={{ 'Content-Type': 'text/xml', 'Authorization': 'Bearer x' }}
+                onChange={() => {}}
+                contentType="application/soap+xml"
+                contentTypeLocked={false}
+                onContentTypeChange={onContentTypeChange}
+            />
+        );
+
+        fireEvent.click(screen.getByTitle('Clear override (use the resolved value)'));
+        expect(onContentTypeChange).toHaveBeenCalledWith({ 'Authorization': 'Bearer x' });
+    });
+
+    it('still renders the locked read-only row when contentTypeLocked is omitted', () => {
+        render(
+            <HeadersPanel
+                headers={{}}
+                onChange={() => {}}
+                contentType="application/soap+xml"
+            />
+        );
+        expect(screen.queryByDisplayValue('Content-Type')).not.toBeInTheDocument();
+        expect(screen.getByText('Content-Type')).toBeInTheDocument();
+    });
+});

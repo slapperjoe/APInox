@@ -41,20 +41,62 @@ const LockIndicator = styled.div`
     opacity: 0.5;
 `;
 
+const HintText = styled.div`
+    font-size: 10px;
+    opacity: 0.5;
+    margin-top: 4px;
+    color: var(--apinox-descriptionForeground);
+`;
+
 
 interface HeadersPanelProps {
     headers: Record<string, string>;
     onChange: (headers: Record<string, string>) => void;
-    contentType?: string; // Managed by toolbar dropdown, shown read-only here
+    /**
+     * Effective Content-Type resolved by the caller (request override >
+     * interface override > WSDL default — see SOAP_INTERFACE_CONTENT_TYPE_SPEC.md
+     * §5.3). Shown in the Content-Type row; when the row is unlocked it is
+     * the placeholder shown while no explicit override is set. Falls back to
+     * 'application/soap+xml' when omitted.
+     */
+    contentType?: string;
+    /**
+     * Whether the Content-Type row is locked (read-only, managed by the
+     * WSDL/interface resolution) or an editable header. Defaults to `true`
+     * (locked) — the historical behaviour. `false` is the opt-in from
+     * Settings → General → "Allow overriding Content-Type".
+     */
+    contentTypeLocked?: boolean;
+    /**
+     * Invoked when the user edits the Content-Type in the unlocked row.
+     * Receives the NEW full headers record (the `Content-Type` entry added or
+     * removed); callers typically forward it straight to their headers
+     * onChange / onUpdateRequest. Omitting this handler keeps the row
+     * read-only even when unlocked (matches the `readOnly` editor mode).
+     */
+    onContentTypeChange?: (headers: Record<string, string>) => void;
 }
 
-export const HeadersPanel: React.FC<HeadersPanelProps> = ({ headers, onChange, contentType }) => {
+export const HeadersPanel: React.FC<HeadersPanelProps> = ({
+    headers,
+    onChange,
+    contentType,
+    contentTypeLocked = true,
+    onContentTypeChange,
+}) => {
+    const effectiveContentType = contentType || 'application/soap+xml';
+    const hasContentTypeOverride =
+        !contentTypeLocked &&
+        Object.entries(headers || {}).some(([key]) => key.toLowerCase() === 'content-type');
+
     // Filter out Content-Type as it's managed by the toolbar dropdown
     const filteredHeaders = Object.fromEntries(
         Object.entries(headers || {}).filter(([key]) => key.toLowerCase() !== 'content-type')
     );
     const entries = Object.entries(filteredHeaders);
-    const displayContentType = contentType || 'application/soap+xml';
+    const displayContentType = hasContentTypeOverride
+        ? Object.entries(headers!).find(([key]) => key.toLowerCase() === 'content-type')![1]
+        : effectiveContentType;
 
     const updateHeader = (oldKey: string, newKey: string, newValue: string) => {
         // Prevent adding Content-Type via this panel
@@ -67,13 +109,13 @@ export const HeadersPanel: React.FC<HeadersPanelProps> = ({ headers, onChange, c
         }
         newHeaders[newKey] = newValue;
         onChange(newHeaders);
-    };
+    }
 
     const removeHeader = (key: string) => {
         const newHeaders = { ...headers };
         delete newHeaders[key];
         onChange(newHeaders);
-    };
+    }
 
     const addHeader = () => {
         const newHeaders = { ...headers };
@@ -82,7 +124,34 @@ export const HeadersPanel: React.FC<HeadersPanelProps> = ({ headers, onChange, c
         while (newHeaders[`Header${count}`]) count++;
         newHeaders[`Header${count}`] = '';
         onChange(newHeaders);
+    }
+
+    const setContentTypeOverride = (value: string) => {
+        if (!onContentTypeChange) return;
+        const newHeaders = { ...headers };
+        // Drop any existing case-variant of the header before writing the
+        // canonical `Content-Type` key.
+        for (const key of Object.keys(newHeaders)) {
+            if (key.toLowerCase() === 'content-type') delete newHeaders[key];
+        }
+        const trimmed = value.trim();
+        if (trimmed !== '') {
+            newHeaders['Content-Type'] = trimmed;
+        }
+        onContentTypeChange(newHeaders);
     };
+
+    const clearContentTypeOverride = () => {
+        const newHeaders = { ...headers };
+        for (const key of Object.keys(newHeaders)) {
+            if (key.toLowerCase() === 'content-type') delete newHeaders[key];
+        }
+        if (Object.keys(newHeaders).length !== Object.keys(headers).length) {
+            onContentTypeChange?.(newHeaders);
+        }
+    };
+
+    const contentEditable = !contentTypeLocked && !!onContentTypeChange;
 
     return (
         <PanelContainer>
@@ -96,22 +165,54 @@ export const HeadersPanel: React.FC<HeadersPanelProps> = ({ headers, onChange, c
                 </PanelIconButton>
             </HeaderTitle>
 
-            {/* Read-only Content-Type row */}
-            <HeaderRow $dimmed>
+            {/* Content-Type row — read-only when locked (managed by the
+                WSDL/interface resolution), an editable override header when
+                unlocked. */}
+            <HeaderRow $dimmed={!contentEditable}>
                 <PanelFlexColumn>
+                    {/* The header NAME is always the fixed `Content-Type`
+                        label — only the value (next column) is editable when
+                        unlocked. */}
                     <ReadOnlyField>
                         Content-Type
                     </ReadOnlyField>
                 </PanelFlexColumn>
                 <PanelFlexColumn>
-                    <ReadOnlyField>
-                        {displayContentType}
-                    </ReadOnlyField>
+                    {contentEditable ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: SPACING_SM, flex: 1, minWidth: 0 }}>
+                            <MonacoSingleLineInput
+                                value={displayContentType}
+                                onChange={(v: string) => setContentTypeOverride(v)}
+                                placeholder={hasContentTypeOverride ? 'Content-Type' : effectiveContentType}
+                            />
+                            {hasContentTypeOverride && (
+                                <PanelIconButton
+                                    onClick={clearContentTypeOverride}
+                                    title="Clear override (use the resolved value)"
+                                >
+                                    <Trash2 size={14} />
+                                </PanelIconButton>
+                            )}
+                        </div>
+                    ) : (
+                        <ReadOnlyField>
+                            {displayContentType}
+                        </ReadOnlyField>
+                    )}
                 </PanelFlexColumn>
-                <LockIndicator title="Managed by toolbar dropdown">
-                    🔒
+                <LockIndicator
+                    title={contentTypeLocked ? 'Managed by WSDL / interface resolution' : 'Editable — overrides the resolved value'}
+                >
+                    {contentTypeLocked ? '🔒' : hasContentTypeOverride ? '✏️' : '🔓'}
                 </LockIndicator>
             </HeaderRow>
+            {!contentTypeLocked && contentEditable && (
+                <HintText>
+                    {hasContentTypeOverride
+                        ? 'Overriding the resolved value (shown as placeholder).'
+                        : `Unlocked — type a value to override ${effectiveContentType}.`}
+                </HintText>
+            )}
 
             {entries.length === 0 && (
                 <EmptyState title="No custom headers defined." />

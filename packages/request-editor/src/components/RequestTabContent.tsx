@@ -49,6 +49,8 @@ export interface RequestTabContentProps {
   request: ApiRequest;
   onUpdateRequest: (updated: ApiRequest) => void;
   readOnly: boolean;
+  /** Whether the Content-Type header row is locked (default `true`). */
+  contentTypeLocked?: boolean;
   availableVariables: Variable[];
   requestEditorRef: React.RefObject<MonacoRequestEditorHandle>;
   editorForceUpdateKey: number;
@@ -62,6 +64,7 @@ export const RequestTabContent: React.FC<RequestTabContentProps> = ({
   request,
   onUpdateRequest,
   readOnly,
+  contentTypeLocked = true,
   availableVariables,
   requestEditorRef,
   editorForceUpdateKey,
@@ -186,6 +189,8 @@ export const RequestTabContent: React.FC<RequestTabContentProps> = ({
           headers={request.headers || {}}
           onChange={(headers) => onUpdateRequest({ ...request, headers })}
           contentType={request.contentType}
+          contentTypeLocked={contentTypeLocked}
+          onContentTypeChange={(headers) => onUpdateRequest({ ...request, headers })}
         />
       );
 
