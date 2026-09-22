@@ -184,3 +184,27 @@ pub async fn toggle_star_history(
     
     Ok(())
 }
+
+/// Rename a history entry (sets its `requestName`; an empty name clears the
+/// override and the entry falls back to its operation/method in the UI).
+#[tauri::command]
+pub async fn rename_history_entry(
+    app_handle: tauri::AppHandle,
+    id: String,
+    name: String,
+) -> Result<(), String> {
+    let history_path = get_history_path(&app_handle)?;
+    let mut data = load_history(&history_path);
+
+    let trimmed = name.trim().to_string();
+    if let Some(entry) = data.entries.iter_mut().find(|e| e.id == id) {
+        entry.request_name = if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed)
+        };
+        save_history(&history_path, &data)?;
+    }
+
+    Ok(())
+}

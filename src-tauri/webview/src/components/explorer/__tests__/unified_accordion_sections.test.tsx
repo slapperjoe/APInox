@@ -18,8 +18,10 @@ import {
     loadSectionCollapsed,
     saveSectionCollapsed,
     clampHistoryHeight,
+    clampFavoritesHeight,
     clampQuickRequestsHeight,
     HISTORY_DEFAULT_HEIGHT,
+    FAVORITES_DEFAULT_HEIGHT,
     QUICK_REQUESTS_DEFAULT_HEIGHT,
 } from '../UnifiedExplorerSidebar';
 import { UnifiedProject, ScrapbookRequest, RequestHistoryEntry } from '@shared/models';
@@ -90,6 +92,22 @@ const makeHistoryProps = () => ({
             success: true,
             starred: false,
         },
+        // A starred entry — drives the Favorites accordion (the section
+        // renders only while at least one entry is starred).
+        {
+            id: 'hist-2',
+            timestamp: Date.now() - 60_000,
+            projectName: 'CountryInfo',
+            interfaceName: 'CountryInfoService',
+            operationName: 'CountryFlag',
+            requestName: 'HistoryRequest 2',
+            endpoint: 'http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso',
+            requestBody: '<CountryFlag/>',
+            headers: { 'Content-Type': 'text/xml' },
+            statusCode: 200,
+            success: true,
+            starred: true,
+        },
     ],
     onReplay: vi.fn(),
     onToggleStar: vi.fn(),
@@ -132,8 +150,8 @@ describe('section-collapsed persistence', () => {
     });
 
     it('round-trips a saved collapsed state', () => {
-        saveSectionCollapsed({ tree: true, history: false, quickRequests: true });
-        expect(loadSectionCollapsed()).toEqual({ tree: true, history: false, quickRequests: true });
+        saveSectionCollapsed({ tree: true, history: false, quickRequests: true, favorites: true });
+        expect(loadSectionCollapsed()).toEqual({ tree: true, history: false, quickRequests: true, favorites: true });
     });
 
     it('falls back to the default for malformed storage', () => {
@@ -144,22 +162,52 @@ describe('section-collapsed persistence', () => {
 
 // ── accordion behaviour ──────────────────────────────────────────────────────
 describe('UnifiedExplorerSidebar — accordion sections', () => {
-    it('renders all three section headers with chevrons', () => {
+    it('renders all section headers with chevrons', () => {
         renderSidebar();
         expect(screen.getByTestId('unified-tree-section-header')).toBeInTheDocument();
         expect(screen.getByTestId('unified-history-section-header')).toBeInTheDocument();
         expect(screen.getByTestId('unified-quick-requests-section-header')).toBeInTheDocument();
+        // Favorites renders because the fixture has a starred entry.
+        expect(screen.getByTestId('unified-favorites-section-header')).toBeInTheDocument();
 
         // Expanded sections: bodies + resize handles are present.
         expect(screen.getByText('CountryInfo')).toBeInTheDocument();
         expect(screen.getByTestId('unified-history')).toBeInTheDocument();
         expect(screen.getByTestId('unified-history-resize-handle')).toBeInTheDocument();
+        expect(screen.getByTestId('unified-favorites')).toBeInTheDocument();
+        expect(screen.getByTestId('unified-favorites-resize-handle')).toBeInTheDocument();
         expect(screen.getByTestId('unified-quick-requests')).toBeInTheDocument();
         expect(screen.getByTestId('unified-quick-requests-resize-handle')).toBeInTheDocument();
 
         // aria-expanded reflects the expanded state.
         const treeHeaderBtn = screen.getByTestId('unified-tree-section-header').querySelector('button')!;
         expect(treeHeaderBtn.getAttribute('aria-expanded')).toBe('true');
+    });
+
+    it('omits the Favorites section when no entry is starred', () => {
+        const history = makeHistoryProps();
+        history.entries = history.entries.filter(e => !e.starred);
+        render(
+            <UnifiedExplorerSidebar
+                {...baseProps}
+                projects={[makeProject()]}
+                scrapbook={makeScrapbookProps()}
+                history={history}
+            />,
+        );
+        expect(screen.queryByTestId('unified-favorites-section-header')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('unified-favorites')).not.toBeInTheDocument();
+    });
+
+    it('collapses Favorites to its header row (body + resize handle hidden)', () => {
+        renderSidebar();
+        const header = screen.getByTestId('unified-favorites-section-header');
+        fireEvent.click(header.querySelector('button')!);
+        expect(screen.queryByTestId('unified-favorites')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('unified-favorites-resize-handle')).not.toBeInTheDocument();
+        // The header itself remains (title + chevron + count).
+        expect(header).toBeInTheDocument();
+        expect(header).toHaveTextContent('Favorites (1)');
     });
 
     it('collapses the project tree to its header row and back', () => {
@@ -214,7 +262,7 @@ describe('UnifiedExplorerSidebar — accordion sections', () => {
         const header = screen.getByTestId('unified-history-section-header');
         fireEvent.click(header.querySelector('button')!);
         const saved = JSON.parse(window.localStorage.getItem(SECTION_COLLAPSED_STORAGE_KEY)!);
-        expect(saved).toEqual({ tree: false, history: true, quickRequests: false });
+        expect(saved).toEqual({ tree: false, history: true, quickRequests: false, favorites: false });
     });
 
     it('restores a persisted collapsed layout on mount', () => {
@@ -245,6 +293,11 @@ describe('height clamps (regression guard)', () => {
         expect(clampHistoryHeight(0)).toBe(64);
         expect(clampHistoryHeight(5000)).toBe(600);
         expect(clampHistoryHeight(Number.NaN)).toBe(HISTORY_DEFAULT_HEIGHT);
+    });
+    it('favorites clamp', () => {
+        expect(clampFavoritesHeight(0)).toBe(64);
+        expect(clampFavoritesHeight(5000)).toBe(600);
+        expect(clampFavoritesHeight(Number.NaN)).toBe(FAVORITES_DEFAULT_HEIGHT);
     });
     it('quick requests clamp', () => {
         expect(clampQuickRequestsHeight(0)).toBe(64);

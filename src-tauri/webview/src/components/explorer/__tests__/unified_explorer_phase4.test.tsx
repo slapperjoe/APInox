@@ -355,8 +355,11 @@ describe('Phase 4 — REST execution (R-09 / F-06)', () => {
         expect(entry.interfaceName).toBe('Petstore');
         expect(entry.operationName).toBe('tag/petId');
         expect(entry.requestBody).toBe('');
-        expect(entry.statusCode).toBe(200);
+        // `status` only (no `statusCode` twin): serde rejects a payload
+        // carrying both ("duplicate field `status`"), which made every
+        // unified history write fail silently (pinning the regression).
         expect(entry.status).toBe(200);
+        expect(entry.statusCode).toBeUndefined();
         expect(entry.responseBody).toBe('{"id":1,"name":"dog"}');
         expect(entry.responseHeaders).toEqual({ 'content-type': 'application/json' });
         expect(entry.success).toBe(true);

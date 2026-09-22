@@ -57,12 +57,12 @@ export function saveUnifiedHistoryEntry(params: UnifiedHistoryParams): void {
         operationName: params.operationName,
         requestBody: params.requestBody,
         headers: params.headers,
-        // Legacy field parity: the Rust `RequestHistoryEntry` deserializes
-        // `status` (alias `statusCode`) and the History view reads
-        // `entry.statusCode` — carry both so unified entries render exactly
-        // like legacy entries.
+        // The Rust `RequestHistoryEntry` field is `status` with a `statusCode`
+        // alias; serde rejects a payload carrying BOTH ("duplicate field
+        // `status`"), which made every unified history write fail silently.
+        // Send only `status`; the History view's `entry.statusCode` reads are
+        // dead code (the model has no such field), so nothing loses data.
         status: params.statusCode,
-        statusCode: params.statusCode,
         duration: params.duration,
         responseBody: params.responseBody,
         responseHeaders: params.responseHeaders,

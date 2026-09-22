@@ -3,7 +3,6 @@ import React, { Suspense, useState, useEffect, useCallback, useMemo } from 'reac
 import styled from 'styled-components';
 import { Container } from '../styles/App.styles';
 import { bridge, isTauri } from '../utils/bridge';
-import { detectLoadFormat } from '../utils/loadRouting';
 import { saveImportedProjectsAsUnified } from '../utils/importUnifiedStore';
 import { captureLog } from '../utils/logger';
 import { generateInitialXmlForOperation, soapDefault, rewriteRequestsForContentTypeChange } from '../utils/soapUtils';
@@ -26,6 +25,7 @@ import { useUnifiedProjects } from '../contexts/UnifiedProjectContext';
 import { usePerformance } from '../contexts/PerformanceContext';
 import { useTestRunner } from '../contexts/TestRunnerContext';
 import { useScrapbook } from '../contexts/ScrapbookContext';
+import { useTestSuites } from '../contexts/TestSuiteContext';
 import { useSidebarCallbacks } from '../hooks/useSidebarCallbacks';
 import { useWorkspaceCallbacks } from '../hooks/useWorkspaceCallbacks';
 import { useAppLifecycle } from '../hooks/useAppLifecycle';
@@ -245,9 +245,30 @@ const MainContent: React.FC = () => {
         // Phase B (t_86c34d38): unified-explorer node selection is lifted into
         // the context so the search deep-link can drive it.
         selectedNode: unifiedSelectedNode,
-        setSelectedNode: setUnifiedSelectedNode
+        setSelectedNode: setUnifiedSelectedNode,
+        // t_aafaf92b: on-demand detail upgrade (skeleton → full: fullSchema +
+        // request bodies + targetNamespace) and the fullness-guarded
+        // project updater. Both create-request paths use these so a freshly
+        // created request is seeded from REAL detail — never from the
+        // body-less first-paint skeleton.
+        ensureProjectFull: ensureProjectFullUnified,
+        updateProject: updateUnifiedProject
     } = useUnifiedProjects();
-    
+
+    // C (global suites): the authoritative suite store (loaded from
+    // `~/.apinox/test-suites.json` via TestSuiteProvider). MainContent reads and
+    // writes suites through this instead of `unifiedProjects[].testSuites`,
+    // which is no longer persisted (the migration moved them to the global
+    // store and the per-project save path drops them).
+    const {
+        testSuites: globalTestSuites,
+        updateTestCase: updateGlobalTestCase,
+        updateSuite: updateGlobalSuite,
+        addSuite: addGlobalSuite,
+        findSuiteById: findGlobalSuite,
+        findCaseById: findGlobalCase,
+    } = useTestSuites();
+
     // Unified Explorer Handlers
     const handleUnifiedSelectNode = useCallback((type: string, id: string) => {
         setUnifiedSelectedNode({ type, id });
@@ -272,24 +293,72 @@ const MainContent: React.FC = () => {
         createRequest: createScrapbookRequest,
         selectRequest: selectScrapbookRequest,
         deleteRequest: deleteScrapbookRequest,
+        updateRequest: updateScrapbookRequest
     } = useScrapbook();
     /** F-01: the unified execute function, registered by UnifiedExplorerMain. */
     const [unifiedExecuteFn, setUnifiedExecuteFn] = useState<((req: ApiRequest) => Promise<void>) | null>(null);
     const registerUnifiedExecute = useCallback((execute: (req: ApiRequest) => Promise<void>) => {
-        setUnifiedExecuteFn(execute);
+        // Pass a thunk so React treats this as "set state to `execute`", NOT as
+        // an updater function. `setUnifiedExecuteFn(execute)` would make React
+        // INVOKE `execute(prevState)` — executing a phantom request (the state
+        // value, not a real request) on every re-registration, which fires on
+        // every selection change and set a spurious "Request body is empty"
+        // banner. Do not "simplify" this back to a bare function argument.
+        setUnifiedExecuteFn(() => execute);
     }, []);
 
     const handleUnifiedScrapbookCreate = useCallback(async () => {
         try {
             const created = await createScrapbookRequest();
-            if (created) {
-                selectScrapbookRequest(created);
-                setUnifiedSelectedNode({ type: 'scrapbook', id: created.id });
+            if (!created) return;
+            // Seed the fresh quick request from the currently-selected WSDL
+            // operation (when one is selected), so it is immediately runnable
+            // instead of an empty blank slate: body = the operation's
+            // generated envelope (real target namespace + schema), endpoint =
+            // the operation's WSDL endpoint, name = the operation name (the
+            // scrapbook's capture/display identifier).
+            //
+            // `ensureProjectFull` resolves with the FULL project (upgrading
+            // the body-less first-paint skeleton first), so the envelope is
+            // real — without this the quick request would be seeded with the
+            // empty tempuri template and its first Run would fail with
+            // "Request body is empty".
+            let seeded = created;
+            const sn = unifiedSelectedNode;
+            if (sn && (sn.type === 'operation' || sn.type === 'project' || sn.type === 'request')) {
+                const project = unifiedProjects.find(p => (p.id || p.name) === sn.id || p.name === sn.id);
+                if (project) {
+                    const full = await ensureProjectFullUnified(project.name);
+                    const selOp = full?.operations?.find(op =>
+                        op.id === sn.id || op.name === sn.id || op.displayName === sn.id,
+                    )
+                    // The user is on a REQUEST node — seed from its owning
+                    // operation (find the op containing the selected request).
+                    ?? (sn.type === 'request'
+                        ? full?.operations?.find(op => (op.requests || []).some(r => (r.id || r.name) === sn.id))
+                        : undefined);
+                    if (selOp) {
+                        const sample = (selOp.requests || []).find(r => r.name.startsWith('sample_'));
+                        const body = sample?.request || generateInitialXmlForOperation(selOp);
+                        const endpoint = sample?.endpoint || selOp.originalEndpoint || '';
+                        if (body.trim() !== '') {
+                            await updateScrapbookRequest(created.id, {
+                                name: selOp.displayName || selOp.name,
+                                request: body,
+                                endpoint,
+                            }).catch((e) => {
+                                console.error('[UnifiedExplorer] Failed to seed quick request from operation:', e);
+                            });
+                        }
+                    }
+                }
             }
+            selectScrapbookRequest(seeded);
+            setUnifiedSelectedNode({ type: 'scrapbook', id: seeded.id });
         } catch (e) {
             console.error('[UnifiedExplorer] Failed to create quick request:', e);
         }
-    }, [createScrapbookRequest, selectScrapbookRequest]);
+    }, [createScrapbookRequest, selectScrapbookRequest, updateScrapbookRequest, unifiedSelectedNode, unifiedProjects, ensureProjectFullUnified]);
 
     const handleUnifiedScrapbookSelect = useCallback((request: ScrapbookRequest) => {
         selectScrapbookRequest(request);
@@ -306,6 +375,7 @@ const MainContent: React.FC = () => {
     }, [deleteScrapbookRequest]);
 
     const handleUnifiedScrapbookExecute = useCallback((request: ScrapbookRequest) => {
+        if (!request) return;
         selectScrapbookRequest(request);
         setUnifiedSelectedNode({ type: 'scrapbook', id: request.id });
         if (unifiedExecuteFn) {
@@ -405,60 +475,71 @@ const MainContent: React.FC = () => {
     }, []);
     
     const handleUnifiedNewRequest = useCallback(async (projectName: string, operationName: string) => {
-        const project = unifiedProjects.find(p => p.name === projectName);
-        const operation = project?.operations.find(op => op.name === operationName);
-        if (!project || !operation) return;
-
-        const existingRequests = operation.requests || [];
-        const existingNames = new Set(existingRequests.map(req => req.name));
-        const sampleRequest = existingRequests.find(req => req.name.startsWith("sample_"));
-
-        let requestNumber = existingRequests.filter(req => !req.name.startsWith("sample_")).length + 1;
-        let requestName = `Request${requestNumber}.xml`;
-        while (existingNames.has(requestName)) {
-            requestNumber += 1;
-            requestName = `Request${requestNumber}.xml`;
-        }
-
-        // Precedence (SOAP_INTERFACE_CONTENT_TYPE_SPEC.md §5.2): project
-        // contentType override ?? op.input.contentType ?? SOAP-version
-        // default. No bare "application/soap+xml" fallback.
-        const newContentType: string = project.contentType || operation.input?.contentType || soapDefault(project.soapVersion);
-
-        const newReq: ApiRequest = {
-            ...(sampleRequest || {}),
-            id: crypto.randomUUID(),
-            name: requestName,
-            request: sampleRequest?.request || generateInitialXmlForOperation(operation),
-            endpoint: sampleRequest?.endpoint || operation.originalEndpoint || "",
-            method: sampleRequest?.method || "POST",
-            contentType: newContentType,
-            dirty: true,
-            readOnly: false,
-        };
-        // Invariant (spec §6): keep the header in sync with the field so the
-        // locked Content-Type row shows exactly what will be sent.
-        newReq.headers = { ...(sampleRequest?.headers || {}), "Content-Type": newContentType };
-
-        const updatedProject: UnifiedProject = {
-            ...project,
-            operations: project.operations.map(op => {
-                if (op.name !== operationName) return op;
-                return { ...op, requests: [...(op.requests || []), newReq] };
-            }),
-        };
-
         try {
-            await bridge.invokeTauriCommand("save_unified_project", {
-                dirPath: project.name,
-                project: JSON.parse(JSON.stringify(updatedProject)),
+            // Route through the context's fullness-guarded updater: it upgrades
+            // a body-less first-paint skeleton to FULL detail (fullSchema +
+            // request bodies + targetNamespace) before the updater runs and
+            // persists through `saveProject` (which also guards fullness).
+            // Doing the create against the raw skeleton instead would (a)
+            // seed the new request with an empty/tempuri body and (b) save
+            // the skeleton shape over the on-disk full data, dropping
+            // fullSchema + bodies from disk.
+            //
+            // Selection uses the request's stable UUID `id` (never its name):
+            // the sidebar matches `(req.id || req.name)`, so once the full
+            // detail carries the UUID, a name-keyed selection would drop.
+            let createdId: string | null = null;
+            await updateUnifiedProject(projectName, (project) => {
+                const operation = project.operations?.find(op => op.name === operationName);
+                if (!operation) return project;
+
+                const existingRequests = operation.requests || [];
+                const existingNames = new Set(existingRequests.map(req => req.name));
+                const sampleRequest = existingRequests.find(req => req.name.startsWith("sample_"));
+
+                let requestNumber = existingRequests.filter(req => !req.name.startsWith("sample_")).length + 1;
+                let requestName = `Request${requestNumber}.xml`;
+                while (existingNames.has(requestName)) {
+                    requestNumber += 1;
+                    requestName = `Request${requestNumber}.xml`;
+                }
+
+                // Precedence (SOAP_INTERFACE_CONTENT_TYPE_SPEC.md §5.2): project
+                // contentType override ?? op.input.contentType ?? SOAP-version
+                // default. No bare "application/soap+xml" fallback.
+                const newContentType: string = project.contentType || operation.input?.contentType || soapDefault(project.soapVersion);
+
+                const newReq: ApiRequest = {
+                    ...(sampleRequest || {}),
+                    id: crypto.randomUUID(),
+                    name: requestName,
+                    request: sampleRequest?.request || generateInitialXmlForOperation(operation),
+                    endpoint: sampleRequest?.endpoint || operation.originalEndpoint || "",
+                    method: sampleRequest?.method || "POST",
+                    contentType: newContentType,
+                    dirty: true,
+                    readOnly: false,
+                };
+                // Invariant (spec §6): keep the header in sync with the field so the
+                // locked Content-Type row shows exactly what will be sent.
+                newReq.headers = { ...(sampleRequest?.headers || {}), "Content-Type": newContentType };
+                createdId = newReq.id || requestName;
+
+                return {
+                    ...project,
+                    operations: project.operations.map(op => {
+                        if (op.name !== operationName) return op;
+                        return { ...op, requests: [...(op.requests || []), newReq] };
+                    }),
+                };
             });
-            setUnifiedProjects(prev => prev.map(p => p.name === projectName ? updatedProject : p));
-            setUnifiedSelectedNode({ type: "request", id: newReq.id || newReq.name });
+            if (createdId) {
+                setUnifiedSelectedNode({ type: "request", id: createdId });
+            }
         } catch (e) {
             console.error("[UnifiedExplorer] New request failed:", e);
         }
-    }, [unifiedProjects]);
+    }, [updateUnifiedProject]);
     
     const handleUnifiedProjectContentTypeChange = useCallback(async (projectName: string, contentType: string) => {
         const project = unifiedProjects.find(p => p.name === projectName);
@@ -626,30 +707,6 @@ const MainContent: React.FC = () => {
         };
         setUnifiedProjects(prev => [...prev, enrichedProject]);
     }, []);
-    
-    // Sidebar "+" → "Load Definition": the sidebar's two-step flow collects a
-    // source URL, then this handler routes it by format (WSDL vs OpenAPI vs
-    // GraphQL) exactly like the main-area top bar (UnifiedExplorerView
-    // `handleLoadWsdl`), and publishes the parsed project through
-    // `handleUnifiedWsdlLoaded`. Tauri-only: the native parse commands don't
-    // exist in browser dev, so the sidebar omits the Load action there.
-    const handleUnifiedLoadWsdlFromSidebar = useCallback(async (url: string) => {
-        if (!bridge.isTauri()) return;
-        try {
-            const format = detectLoadFormat(url);
-            const project =
-                format === 'wsdl'
-                    ? await bridge.invokeTauriCommand<UnifiedProject>('parse_wsdl_as_project', {
-                        url,
-                        useProxy: false,
-                        loadId: undefined,
-                    })
-                    : await bridge.invokeTauriCommand<UnifiedProject>('parse_spec_as_project', { url });
-            handleUnifiedWsdlLoaded(project);
-        } catch (e) {
-            console.error('[UnifiedExplorer] Sidebar load definition failed:', e);
-        }
-    }, [handleUnifiedWsdlLoaded]);
     
     const handleUnifiedReorderOperation = useCallback(async (projectName: string, fromIndex: number, toIndex: number) => {
         const project = unifiedProjects.find(p => p.name === projectName);
@@ -973,6 +1030,7 @@ const MainContent: React.FC = () => {
         handleAddTestCase,
         handleDeleteTestCase: _handleDeleteTestCase,
         handleRenameTestCase,
+        handleRenameSuite,
         handleRenameTestStep,
         handleSaveUiState
     } = useSidebarCallbacks({
@@ -989,16 +1047,15 @@ const MainContent: React.FC = () => {
     // Wrapped Handlers for State Cleanup
 
     const handleDeleteSuite = (suiteId: string) => {
-        // Call original handler
+        // Call original handler (2-click confirm: first click arms, second deletes)
         _handleDeleteSuite(suiteId);
 
         // Cleanup selection if needed
         // If selected test case belongs to this suite, clear it.
         if (selectedTestCase) {
-            // Find parent suite of selectedTestCase (unified store — Phase B)
-            const project = unifiedProjects.find(p => p.testSuites?.some(s => s.testCases?.some(tc => tc.id === selectedTestCase.id)));
-            const suite = project?.testSuites?.find(s => s.testCases?.some(tc => tc.id === selectedTestCase.id));
-            if (suite?.id === suiteId) {
+            // Find parent suite of selectedTestCase (global store — C)
+            const foundCase = findGlobalCase(selectedTestCase.id);
+            if (foundCase?.suite.id === suiteId) {
                 setSelectedTestCase(null);
                 setSelectedStep(null);
             }
@@ -1020,57 +1077,61 @@ const MainContent: React.FC = () => {
     // ONLY in Tests view to avoid re-selecting after user clears selection for navigation
     useEffect(() => {
         if (activeView !== SidebarView.TESTS) return;
-        // Flatten all test cases from all projects/suites (unified store — Phase B)
-        const allCases = unifiedProjects.flatMap(p =>
-            (p.testSuites || []).flatMap(s => s.testCases || [])
-        );
+        // Flatten all test cases from the global suite store (C)
+        const allCases = globalTestSuites.flatMap(s => s.testCases || []);
         if (allCases.length > 0 && !selectedTestCase) {
             setSelectedTestCase(allCases[0]);
         }
-    }, [unifiedProjects, selectedTestCase, setSelectedTestCase, activeView]);
+    }, [globalTestSuites, selectedTestCase, setSelectedTestCase, activeView]);
 
-    // Sync selectedTestCase with authoritative projects state when projects changes
-    // This fixes stale data (e.g. scriptContent) after projectLoaded updates projects
+    // Sync selectedTestCase with authoritative global suite store.
+    // This fixes stale data (e.g. scriptContent) after a suite update lands.
     useEffect(() => {
         if (!selectedTestCase) return;
 
-        // Find the matching test case in the current projects state
-        for (const proj of unifiedProjects) {
-            for (const suite of (proj.testSuites || [])) {
-                const freshTestCase = suite.testCases?.find(tc => tc.id === selectedTestCase.id);
-                if (freshTestCase && freshTestCase !== selectedTestCase) {
-                    // Update selectedTestCase with fresh data from projects
-                    setSelectedTestCase(freshTestCase);
-                    return;
-                }
-            }
+        // Find the matching test case in the current global suite store
+        const freshTestCase = globalTestSuites.flatMap(s => s.testCases || [])
+            .find(tc => tc.id === selectedTestCase.id);
+        if (freshTestCase && freshTestCase !== selectedTestCase) {
+            setSelectedTestCase(freshTestCase);
         }
-    }, [unifiedProjects, selectedTestCase, setSelectedTestCase]);
+    }, [globalTestSuites, selectedTestCase, setSelectedTestCase]);
 
-    const handleReplayRequest = (entry: RequestHistoryEntry) => {
-        const req: ApiRequest = {
-            id: entry.id,
-            name: entry.requestName || 'Replayed Request',
-            endpoint: entry.endpoint,
-            request: entry.requestBody,
-            headers: entry.headers,
-            contentType: 'application/soap+xml', // Default content type
-            readOnly: true // Mark as read-only since it's from history
-        };
-        setSelectedRequest(req);
-
-        // Also restore the response if available
-        if (entry.responseBody) {
-            setResponse({
-                rawResponse: entry.responseBody,
-                status: entry.statusCode,
-                headers: entry.responseHeaders || {},
-                success: entry.success,
-                error: entry.error,
-                timeTaken: entry.duration
+    // Open a history / favorite entry in the UNIFIED explorer: surface it as
+    // a Quick Request (endpoint + body + headers from the entry) and select
+    // it, so the main area's request editor loads it. The old implementation
+    // wrote to the legacy `setSelectedRequest`/`setResponse` (WorkspaceLayout)
+    // — but History/Favorites now live inside the unified explorer, whose
+    // editor is driven by `unifiedSelectedNode` + the scrapbook context, so a
+    // legacy write was invisible.
+    const handleReplayRequest = async (entry: RequestHistoryEntry) => {
+        try {
+            setActiveView(SidebarView.UNIFIED_EXPLORER);
+            const created = await createScrapbookRequest();
+            if (!created) return;
+            const name =
+                entry.requestName && entry.requestName !== 'Request'
+                    ? entry.requestName
+                    : (entry.operationName || entry.requestName || 'Replayed Request');
+            await updateScrapbookRequest(created.id, {
+                name,
+                request: entry.requestBody || '',
+                endpoint: entry.endpoint || '',
+                method: entry.method || 'POST',
+                headers: entry.headers || { 'Content-Type': 'application/soap+xml' },
             });
-        } else {
-            setResponse(null);
+            const seeded: ScrapbookRequest = {
+                ...created,
+                name,
+                request: entry.requestBody || '',
+                endpoint: entry.endpoint || '',
+                method: entry.method || 'POST',
+                headers: entry.headers || { 'Content-Type': 'application/soap+xml' },
+            };
+            selectScrapbookRequest(seeded);
+            setUnifiedSelectedNode({ type: 'scrapbook', id: created.id });
+        } catch (error) {
+            console.error('[MainContent] Failed to open history entry:', error);
         }
     };
 
@@ -1093,6 +1154,47 @@ const MainContent: React.FC = () => {
             setRequestHistory(updatedHistory);
         } catch (error) {
             console.error('[MainContent] Failed to delete history entry:', error);
+        }
+    };
+
+    const handleRenameHistory = async (id: string, name: string) => {
+        try {
+            await bridge.invokeTauriCommand('rename_history_entry', { id, name });
+            // Refresh history
+            const updatedHistory = await bridge.invokeTauriCommand('get_history', {});
+            setRequestHistory(updatedHistory);
+        } catch (error) {
+            console.error('[MainContent] Failed to rename history entry:', error);
+        }
+    };
+
+    /**
+     * Add a project request (from the explorer tree's right-click menu) to
+     * the global history store as a STARRED entry — the Favorites section
+     * renders every starred entry, so this is the "favorite" path for
+     * requests that were never executed. The entry carries the request's
+     * name/endpoint/body so replaying it from Favorites re-sends it.
+     */
+    const handleFavoriteRequest = async (projectName: string, operationName: string, req: ApiRequest) => {
+        try {
+            const entry: RequestHistoryEntry & { method: string; status?: number } = {
+                id: crypto.randomUUID(),
+                timestamp: Date.now(),
+                requestName: req.displayName || req.name,
+                method: req.method || 'POST',
+                endpoint: req.endpoint || '',
+                projectName,
+                interfaceName: projectName,
+                operationName,
+                requestBody: req.request || '',
+                headers: req.headers || {},
+                starred: true,
+            };
+            await bridge.invokeTauriCommand('add_history_entry', { entry });
+            const updatedHistory = await bridge.invokeTauriCommand('get_history', {});
+            setRequestHistory(updatedHistory);
+        } catch (error) {
+            console.error('[MainContent] Failed to add request to favorites:', error);
         }
     };
 
@@ -1312,36 +1414,43 @@ const MainContent: React.FC = () => {
 
     const pickRequestItems = useMemo<PickRequestItem[]>(() => {
         const items: PickRequestItem[] = [];
+        const seen = new Set<string>();
 
-        const addOperationItems = (project: any) => {
-            if (!project.interfaces) return;
-            project.interfaces.forEach((iface: any) => {
-                iface.operations?.forEach((op: any) => {
-                    // If operation has multiple requests, add each one separately
-                    if (op.requests && op.requests.length > 0) {
-                        op.requests.forEach((req: any, idx: number) => {
-                            items.push({
-                                id: `${project.id || project.name}-op-${op.name}-req-${idx}`,
-                                label: op.requests.length > 1 ? `${(op as any).displayName || op.name} [${idx + 1}/${op.requests.length}]` : ((op as any).displayName || op.name),
-                                description: `${project.name} > ${(iface as any).displayName || iface.name} > ${req.name}`,
-                                detail: req.endpoint || op.originalEndpoint || 'WSDL Operation',
-                                type: 'request',
-                                data: req
-                            });
-                        });
-                    } else {
-                        // No requests - add operation for SOAP XML generation
+        // Build picker items from a project's operations. `ops` are unified
+        // `ApiOperation`s (requests nested directly) — the single source of
+        // truth. The legacy nested model (interfaces[].operations) had the
+        // same shape per operation, so the item contract is identical; only
+        // the traversal root changed.
+        const addOperationItems = (project: any, ops: any[], interfaceName?: string) => {
+            if (!ops) return;
+            ops.forEach((op: any) => {
+                const itemKey = `${project.id || project.name}-op-${op.name}`;
+                if (seen.has(itemKey)) return;
+                seen.add(itemKey);
+                const ifaceLabel = interfaceName || (op as any).displayName || project.name;
+                if (op.requests && op.requests.length > 0) {
+                    op.requests.forEach((req: any, idx: number) => {
                         items.push({
-                            id: `${project.id || project.name}-op-${op.name}`,
-                            label: (op as any).displayName || op.name,
-                            description: `${project.name} > ${(iface as any).displayName || iface.name}`,
-                            detail: op.originalEndpoint || 'WSDL Operation',
-                            type: 'operation',
-                            data: op,
-                            warning: true
+                            id: `${project.id || project.name}-op-${op.name}-req-${idx}`,
+                            label: op.requests.length > 1 ? `${(op as any).displayName || op.name} [${idx + 1}/${op.requests.length}]` : ((op as any).displayName || op.name),
+                            description: `${project.name} > ${ifaceLabel} > ${req.name}`,
+                            detail: req.endpoint || op.originalEndpoint || 'WSDL Operation',
+                            type: 'request',
+                            data: req
                         });
-                    }
-                });
+                    });
+                } else {
+                    // No requests - add operation for SOAP XML generation
+                    items.push({
+                        id: `${project.id || project.name}-op-${op.name}`,
+                        label: (op as any).displayName || op.name,
+                        description: `${project.name} > ${ifaceLabel}`,
+                        detail: op.originalEndpoint || 'WSDL Operation',
+                        type: 'operation',
+                        data: op,
+                        warning: true
+                    });
+                }
             });
         };
 
@@ -1351,8 +1460,11 @@ const MainContent: React.FC = () => {
                 if (folder.requests) {
                     folder.requests.forEach((req: any) => {
                         if (!req) return;
+                        const folderKey = `${project.id || project.name}-req-${req.id || req.name}`;
+                        if (seen.has(folderKey)) return;
+                        seen.add(folderKey);
                         items.push({
-                            id: `${project.id || project.name}-req-${req.id || req.name}`,
+                            id: folderKey,
                             label: req.name,
                             description: `${project.name} > ${currentPath}`,
                             detail: req.endpoint || 'Request',
@@ -1367,15 +1479,26 @@ const MainContent: React.FC = () => {
             });
         };
 
-        projects.forEach((project: any) => {
-            addOperationItems(project);
+        // The unified store is the SINGLE source of truth for pickable
+        // requests. Every operation's requests live directly under
+        // `project.operations[]` (flat layout), which is what the unified
+        // explorer persists and loads.
+        //
+        // There is deliberately NO legacy `interfaces[]` fallback here: the
+        // legacy ProjectContext keeps an in-memory copy of projects that is
+        // NOT pruned when a project is deleted from the unified explorer
+        // (delete_unified_project only removes the dir + unified state).
+        // Falling back to it resurrected operations of already-deleted
+        // projects, and URL-bar WSDLs never write interfaces/ at all.
+        unifiedProjects.forEach((project: any) => {
+            addOperationItems(project, project.operations);
             if (project.folders) {
                 traverseFolders(project, project.folders, '');
             }
         });
 
         return items;
-    }, [projects]);
+    }, [unifiedProjects]);
 
     // Workspace State
     const [requestHistory, setRequestHistory] = useState<RequestHistoryEntry[]>([]);
@@ -1496,75 +1619,36 @@ const MainContent: React.FC = () => {
         setRequestHistory
     });
 
-    // Sync selectedTestCase with latest projects state
-
-    // Sync selectedTestCase with latest projects state
-    useEffect(() => {
-        if (selectedTestCase) {
-            // Re-hydrate stale selectedTestCase (unified store — Phase B)
-            for (const p of unifiedProjects) {
-                if (p.testSuites) {
-                    for (const s of p.testSuites) {
-                        const updatedCase = s.testCases?.find(tc => tc.id === selectedTestCase.id);
-                        if (updatedCase) {
-                            if (updatedCase !== selectedTestCase) {
-                                // console.log('[sync] Re-hydrating selectedTestCase', updatedCase.name);
-                                setSelectedTestCase(updatedCase);
-                            }
-                            return;
-                        }
-                    }
-                }
-            }
-        }
-    }, [projects, selectedTestCase]);
-
-    // Sync selectedStep with latest projects state
+    // Sync selectedStep with latest global suite store
     useEffect(() => {
         if (selectedStep && selectedTestCase) {
             // Re-hydrate stale selectedStep from the current testCase
-            for (const p of unifiedProjects) {
-                if (p.testSuites) {
-                    for (const s of p.testSuites) {
-                        const updatedCase = s.testCases?.find(tc => tc.id === selectedTestCase.id);
-                        if (updatedCase) {
-                            const updatedStep = updatedCase.steps.find(step => step.id === selectedStep.id);
-                            if (updatedStep && updatedStep !== selectedStep) {
-                                // console.log('[sync] Re-hydrating selectedStep', updatedStep.name);
-                                setSelectedStep(updatedStep);
-                            }
-                            return;
-                        }
-                    }
+            const updatedCase = globalTestSuites.flatMap(s => s.testCases || [])
+                .find(tc => tc.id === selectedTestCase.id);
+            if (updatedCase) {
+                const updatedStep = updatedCase.steps.find(step => step.id === selectedStep.id);
+                if (updatedStep && updatedStep !== selectedStep) {
+                    setSelectedStep(updatedStep);
                 }
             }
         }
-    }, [unifiedProjects, selectedStep, selectedTestCase]);
+    }, [globalTestSuites, selectedStep, selectedTestCase]);
 
     // Sync selectedTestSuite - clear if deleted
     useEffect(() => {
         if (selectedTestSuite) {
-            // Check if the selected test suite still exists in projects
-            let suiteExists = false;
-            for (const p of unifiedProjects) {
-                if (p.testSuites) {
-                    const foundSuite = p.testSuites.find(s => s.id === selectedTestSuite.id);
-                    if (foundSuite) {
-                        suiteExists = true;
-                        // Re-hydrate if suite has updated
-                        if (foundSuite !== selectedTestSuite) {
-                            setSelectedTestSuite(foundSuite);
-                        }
-                        break;
-                    }
+            // Check if the selected test suite still exists in the global store
+            const foundSuite = findGlobalSuite(selectedTestSuite.id);
+            if (foundSuite) {
+                // Re-hydrate if suite has updated
+                if (foundSuite !== selectedTestSuite) {
+                    setSelectedTestSuite(foundSuite);
                 }
-            }
-            // If suite no longer exists, clear selection
-            if (!suiteExists) {
+            } else {
                 setSelectedTestSuite(null);
             }
         }
-    }, [unifiedProjects, selectedTestSuite]);
+    }, [globalTestSuites, selectedTestSuite]);
 
     // Auto-save projects when workspace becomes dirty
     useEffect(() => {
@@ -1747,8 +1831,9 @@ const MainContent: React.FC = () => {
         // Phase B (t_86c34d38): projectProps / selectionProps (which fed the
         // deleted ProjectList view + the legacy shared context menu) are gone.
         testsProps: {
-            // Phase B (t_86c34d38): the TESTS suite tree renders from the
-            // UNIFIED store (suites relocated to UnifiedProject.testSuites).
+            // C (global suites): the TESTS suite tree renders from the GLOBAL
+            // suite store (the single source of truth).
+            testSuites: globalTestSuites,
             projects: unifiedProjects,
             selectedTestSuite,
             selectedTestCase,
@@ -1758,13 +1843,13 @@ const MainContent: React.FC = () => {
             onAddTestCase: handleAddTestCase,
             onDeleteTestCase: handleDeleteTestCase,
             onRenameTestCase: handleRenameTestCase,
+            onRenameSuite: handleRenameSuite,
             onRunCase: handleRunTestCaseWrapper,
             onSelectSuite: handleSelectTestSuite,
             onSelectTestCase: handleSelectTestCase,
             onSelectTestStep: (caseId: string, stepId: string) => {
-                const project = unifiedProjects.find(p => p.testSuites?.some(s => s.testCases?.some(tc => tc.id === caseId)));
-                const suite = project?.testSuites?.find(s => s.testCases?.some(tc => tc.id === caseId));
-                const testCase = suite?.testCases?.find(tc => tc.id === caseId);
+                const found = findGlobalCase(caseId);
+                const testCase = found?.testCase;
                 const step = testCase?.steps?.find(s => s.id === stepId);
                 if (step) handleSelectStep(step);
             },
@@ -1806,7 +1891,6 @@ const MainContent: React.FC = () => {
             onDeleteOperation: handleUnifiedDeleteOperation,
             onDeleteRequest: handleUnifiedDeleteRequest,
             onNewRequest: handleUnifiedNewRequest,
-            onLoadWsdl: handleUnifiedLoadWsdlFromSidebar,
             onRenameProject: handleUnifiedRenameProject,
             onRenameOperation: handleUnifiedRenameOperation,
             onRenameRequest: handleUnifiedRenameRequest,
@@ -1842,6 +1926,8 @@ const MainContent: React.FC = () => {
                 onReplay: handleReplayRequest,
                 onToggleStar: handleToggleHistoryStar,
                 onDelete: handleDeleteHistory,
+                onRename: handleRenameHistory,
+                onFavoriteRequest: handleFavoriteRequest,
             },
         },
         activeView,
@@ -1870,7 +1956,7 @@ const MainContent: React.FC = () => {
         handleUnifiedImportSoapUI, handleUnifiedImportWorkspace,
         deleteConfirm, setDeleteConfirm, setExportWorkspaceModal, setShowBulkImportModal,
         handleAddSuite, handleDeleteSuite, handleRunTestSuiteWrapper,
-        handleAddTestCase, handleDeleteTestCase, handleRenameTestCase,
+        handleAddTestCase, handleDeleteTestCase, handleRenameTestCase, handleRenameSuite,
         handleRunTestCaseWrapper, handleSelectTestSuite, handleSelectTestCase,
         handleToggleSuiteExpand, handleToggleCaseExpand, handleSelectStep, handleRenameTestStep,
         selectedTestSuite, selectedTestCase,
@@ -1879,11 +1965,10 @@ const MainContent: React.FC = () => {
         handleDeleteWorkflow, handleDuplicateWorkflow, handleSelectWorkflow, handleSelectWorkflowStep,
         handleAddPerformanceSuite, handleDeletePerformanceSuite, handleRunPerformanceSuite,
         handleSelectPerformanceSuite, handleStopPerformanceRun, handleAddPerformanceRequestForUi,
-        requestHistory, handleReplayRequest, handleToggleHistoryStar, handleDeleteHistory,
+        requestHistory, handleReplayRequest, handleToggleHistoryStar, handleDeleteHistory, handleRenameHistory, handleFavoriteRequest,
         unifiedProjects, unifiedSelectedNode,
         handleUnifiedSelectNode, handleUnifiedRefresh, handleUnifiedDeleteProject,
         handleUnifiedDeleteOperation, handleUnifiedDeleteRequest, handleUnifiedNewRequest,
-        handleUnifiedLoadWsdlFromSidebar,
         handleUnifiedRenameProject, handleUnifiedRenameOperation, handleUnifiedRenameRequest,
         handleUnifiedProjectContentTypeChange,
         handleUnifiedExport, handleUnifiedReorderOperation, handleUnifiedReorderRequest,
@@ -1975,6 +2060,7 @@ const MainContent: React.FC = () => {
                         onProjectContentTypeChange={handleUnifiedProjectContentTypeChange}
                         onWsdlLoaded={handleUnifiedWsdlLoaded}
                         onRegisterExecute={registerUnifiedExecute}
+                        contentTypeLocked={config?.ui?.contentTypeLocked ?? true}
                     />
                 </div>
             )}
@@ -2065,7 +2151,7 @@ const MainContent: React.FC = () => {
                             }}
                             workflow={workflowBuilderModal.workflow || undefined}
                             onSave={handleSaveWorkflow}
-                            projects={projects}
+                            projects={unifiedProjects}
                         />
                     )
                 }
@@ -2081,6 +2167,7 @@ const MainContent: React.FC = () => {
                     <Suspense fallback={null}>
                         <AddToTestCaseModal
                             projects={unifiedProjects}
+                            testSuites={globalTestSuites}
                             onClose={() => setAddToTestCaseModal({ open: false, request: null })}
                             onAdd={(target) => {
                                 const req = addToTestCaseModal.request!;
@@ -2100,43 +2187,27 @@ const MainContent: React.FC = () => {
                                     }
                                 };
 
-                                // Phase B (t_86c34d38): new test steps persist to
-                                // the UNIFIED store (suites relocated).
-                                setUnifiedProjects(prev => prev.map(p => {
-                                    const suite = target.suiteId ? p.testSuites?.find(s => s.id === target.suiteId) :
-                                        p.testSuites?.find(s => s.testCases.some(tc => tc.id === target.caseId));
+                                // C (global suites): new test steps persist to the
+                                // GLOBAL suite store (no owning project).
+                                const suiteId = target.suiteId ?? findGlobalCase(target.caseId ?? '')?.suite.id;
+                                if (!suiteId) return;
+                                const suite = findGlobalSuite(suiteId);
+                                if (!suite) return;
 
-                                    if (!suite) return p;
-
-                                    const updatedTestSuites = (p.testSuites || []).map(s => {
-                                        if (s.id === suite.id) {
-                                            // If creating new case
-                                            if (target.type === 'new') {
-                                                const newCase: TestCase = {
-                                                    id: `tc-${Date.now()}`,
-                                                    name: `TestCase ${(s.testCases?.length || 0) + 1}`,
-                                                    expanded: true,
-                                                    steps: [newStep]
-                                                };
-                                                return { ...s, testCases: [...(s.testCases || []), newCase] };
-                                            }
-                                            // If adding to existing
-                                            if (target.type === 'existing' && target.caseId) {
-                                                return {
-                                                    ...s,
-                                                    testCases: s.testCases.map(tc =>
-                                                        tc.id === target.caseId ? { ...tc, steps: [...tc.steps, newStep] } : tc
-                                                    )
-                                                };
-                                            }
-                                        }
-                                        return s;
-                                    });
-
-                                    const newProj = { ...p, testSuites: updatedTestSuites, dirty: true };
-                                    setTimeout(() => saveUnifiedProject(newProj), 0);
-                                    return newProj;
-                                }));
+                                if (target.type === 'new') {
+                                    const newCase: TestCase = {
+                                        id: `tc-${Date.now()}`,
+                                        name: `TestCase ${(suite.testCases?.length || 0) + 1}`,
+                                        expanded: true,
+                                        steps: [newStep]
+                                    };
+                                    updateGlobalSuite({ ...suite, testCases: [...(suite.testCases || []), newCase] });
+                                } else if (target.type === 'existing' && target.caseId) {
+                                    updateGlobalTestCase(target.caseId, tc => ({
+                                        ...tc,
+                                        steps: [...tc.steps, newStep]
+                                    }));
+                                }
                                 setAddToTestCaseModal({ open: false, request: null });
                             }}
                         />

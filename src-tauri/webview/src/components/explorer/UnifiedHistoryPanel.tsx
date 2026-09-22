@@ -91,8 +91,11 @@ export const UnifiedHistoryPanel: React.FC<UnifiedHistoryPanelProps> = ({
                     inside the subwindow so a shrunken subwindow never pushes
                     the project tree out of view (same as ScrapbookPanel). The
                     EmptyState renders fill-centered in this same bounded area
-                    when history is empty. */}
-                <div style={{ flex: 1, minHeight: 0, overflow: "auto", display: "flex", padding: "0 12px" }}>
+                    when history is empty. Column direction: the search bar,
+                    filter bar and entry list stack vertically — as row items
+                    they overflow the sidebar width (the filter bar declares
+                    width:100%, which in a row pushes the list out of view). */}
+                <div style={{ flex: 1, minHeight: 0, overflow: "auto", display: "flex", flexDirection: "column", padding: "0 4px" }}>
                     {body}
                 </div>
             </div>

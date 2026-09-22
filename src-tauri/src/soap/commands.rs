@@ -225,7 +225,16 @@ async fn execute_soap_request_inner(
             content_type_override.as_deref(),
             cancel_token,
         ).await
-    } else {
+    } else if request
+        .operation
+        .target_namespace
+        .as_deref()
+        .filter(|s| !s.trim().is_empty())
+        .is_some()
+    {
+        // No client body but a resolvable target namespace: the legacy
+        // values/schema-driven EnvelopeBuilder path (builds the envelope
+        // from `values` / `fullSchema`).
         client.execute_with_cancel(
             &request.operation,
             version,
@@ -235,6 +244,24 @@ async fn execute_soap_request_inner(
             content_type_override.as_deref(),
             cancel_token,
         ).await
+    } else {
+        // No client-supplied body AND no target namespace to generate one
+        // from (e.g. a quick/scrapbook request, whose resolved operation is
+        // a stub). EnvelopeBuilder would fail with the cryptic "Operation has
+        // no target namespace" — surface an actionable error instead.
+        return Ok(ExecuteSoapResponse {
+            success: false,
+            status_code: 0,
+            headers: vec![],
+            body: None,
+            fault: None,
+            raw_xml: String::new(),
+            error: Some(
+                "Cannot build the SOAP request: the request body is empty and the operation has no target namespace to generate a body from. Add the SOAP XML to the request body.".to_string(),
+            ),
+            truncated: false,
+            request_id: None,
+        });
     };
 
     match result {

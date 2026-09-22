@@ -200,7 +200,6 @@ describe('UnifiedExplorerMain history write (F-13 / R-08, phase 2 SOAP path)', (
             expect(entry.requestBody).toBe('<foo/>');
             expect(entry.headers).toEqual({});
             expect(entry.status).toBe(200);
-            expect(entry.statusCode).toBe(200);
             expect(typeof entry.duration).toBe('number');
             expect(entry.responseBody).toBe('<ok/>');
             expect(entry.responseHeaders).toEqual({});
