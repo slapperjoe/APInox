@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use once_cell::sync::Lazy;
 
-use crate::soap::{EnvelopeBuilder, SoapVersion, SoapClient, WsSecurityConfig, UsernameToken, PasswordType};
+use crate::soap::{SoapVersion, SoapClient, WsSecurityConfig, UsernameToken, PasswordType};
 use crate::parsers::wsdl::types::ServiceOperation;
 use crate::utils::WildcardProcessor;
 use crate::http::client::CancelToken;

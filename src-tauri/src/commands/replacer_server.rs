@@ -3,7 +3,6 @@ use uuid::Uuid;
 
 use crate::proxy_models::ReplaceRule;
 use crate::{ensure_proxy_state, LazyProxyAppState, ProxyAppState};
-use std::collections::HashMap;
 
 #[tauri::command]
 pub async fn get_replace_rules(state: State<'_, LazyProxyAppState>, app: AppHandle) -> Result<Vec<ReplaceRule>, String> {

@@ -1,5 +1,4 @@
 use chrono::Utc;
-use serde::Serialize;
 use tauri::{AppHandle, State};
 use uuid::Uuid;
 

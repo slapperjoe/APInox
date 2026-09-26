@@ -175,7 +175,7 @@ pub async fn migrate_all_project_suites_to_global() -> Result<
     String,
 > {
     let base = crate::project_storage::projects_dir()?;
-    let mut path = get_test_suites_path()?;
+    let path = get_test_suites_path()?;
     let mut data = load_store(&path);
     let mut already: std::collections::HashSet<String> = data
         .suites
