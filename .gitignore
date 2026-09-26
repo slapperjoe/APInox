@@ -17,6 +17,9 @@ src-tauri/webview/dist/
 src-tauri/webview/build/
 src-tauri/webview/.vite/
 
+# Standalone binary outputs
+bin/
+
 # Sidecar Bundle
 sidecar-bundle/
 sidecar/bundle.js
@@ -24,6 +27,9 @@ sidecar/*.exe
 sidecar/apinox-sidecar
 sidecar/apinox-sidecar.exe
 sidecar/dist/
+
+# Tauri external binaries (sidecar .exe for windows target)
+src-tauri/binaries/
 
 # Tauri Build Artifacts
 src-tauri/target/
@@ -61,6 +67,7 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 pnpm-debug.log*
+dirty-soap-diagnostics-*.jsonl
 
 # Testing
 coverage/
