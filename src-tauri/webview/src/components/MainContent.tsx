@@ -880,7 +880,7 @@ const MainContent: React.FC = () => {
         setAddTrafficLog(log);
     }, []);
 
-    const handleConfirmAddTrafficToProject = useCallback((
+    const handleConfirmAddTrafficToProject = useCallback(async (
         projectName: string,
         destination: AddToProjectDestination,
         requestName: string,
@@ -890,78 +890,89 @@ const MainContent: React.FC = () => {
         const log = addTrafficLog;
         setAddTrafficLog(null);
 
-        setProjects(prev => prev.map(p => {
-            if (p.name !== projectName) return p;
+        // Extract the bare Content-Type (e.g. "application/soap+xml") from the raw
+        // header value. SOAP Content-Type headers often carry extra directives
+        // like `application/soap+xml; charset=utf-8; action="..."` — preserve
+        // charset, drop action= and other non-standard params so they don't
+        // bleed into the request's Content-Type field.
+        const rawContentType = log.requestHeaders?.['Content-Type'] || log.requestHeaders?.['content-type'] || '';
+        const parsedContentType = (() => {
+            if (!rawContentType) return 'text/xml; charset=utf-8';
+            const parts = rawContentType.split(';').map((s: string) => s.trim());
+            const mimeType = parts[0] || 'text/xml';
+            const charset = parts.slice(1).find((p: string) => p.toLowerCase().startsWith('charset='));
+            return charset ? `${mimeType}; ${charset}` : mimeType;
+        })();
 
-            // Extract the bare Content-Type (e.g. "application/soap+xml") from the raw header value.
-            // SOAP Content-Type headers often carry extra directives like
-            //   application/soap+xml; charset=utf-8; action="..."
-            // We want to preserve charset but drop action= and other non-standard params so
-            // they don't bleed into the request's Content-Type field.
-            const rawContentType = log.requestHeaders?.['Content-Type'] || log.requestHeaders?.['content-type'] || '';
-            const parsedContentType = (() => {
-                if (!rawContentType) return 'text/xml; charset=utf-8';
-                const parts = rawContentType.split(';').map((s: string) => s.trim());
-                const mimeType = parts[0] || 'text/xml';
-                const charset = parts.slice(1).find((p: string) => p.toLowerCase().startsWith('charset='));
-                return charset ? `${mimeType}; ${charset}` : mimeType;
-            })();
+        // Headers: everything from the traffic, or just the authoritative
+        // Content-Type. Keep the header in sync with the field so the locked
+        // Content-Type row shows exactly what will be sent.
+        const headers: Record<string, string> = includeAllHeaders
+            ? { ...log.requestHeaders }
+            : { 'Content-Type': parsedContentType };
 
-            // Build headers: either everything from the traffic log, or just Content-Type.
-            const derivedHeaders: Record<string, string> = includeAllHeaders
-                ? { ...log.requestHeaders }
-                : {};
+        const newReq: import('@shared/models').ApiRequest = {
+            id: crypto.randomUUID(),
+            name: requestName,
+            request: log.requestBody || '',
+            endpoint: log.url,
+            method: (log.method as any) || 'POST',
+            contentType: parsedContentType,
+            headers,
+            requestType: 'soap',
+            bodyType: 'xml',
+            dirty: true,
+        };
 
-            const newReq: import('@shared/models').ApiRequest = {
-                id: crypto.randomUUID(),
-                name: requestName,
-                request: log.requestBody || '',
-                endpoint: log.url,
-                method: (log.method as any) || 'POST',
-                contentType: parsedContentType,
-                headers: derivedHeaders,
-                dirty: true,
-            };
+        // Route through the UNIFIED store's fullness-guarded updater: it upgrades
+        // a body-less first-paint skeleton to FULL detail before the updater runs
+        // and persists through save_unified_project (which also guards
+        // fullness). Writing the legacy nested model here (the old behavior)
+        // landed in p.interfaces/p.folders — invisible to the unified explorer
+        // sidebar, which is why the request never appeared and "Add Request"
+        // appeared disabled.
+        let createdId: string | null = null;
+        try {
+            await updateUnifiedProject(projectName, (project) => {
+                const operations = project.operations || [];
 
-            if (destination.type === 'operation') {
-                const { interfaceName, operationName } = destination;
-                const newInterfaces = p.interfaces.map(iface => {
-                    if (iface.name !== interfaceName) return iface;
-                    const soapContentType = parsedContentType
-                        || (iface.soapVersion === '1.2' ? 'application/soap+xml' : 'text/xml; charset=utf-8');
-                    const newOps = iface.operations.map(op => {
-                        if (op.name !== operationName) return op;
-                        const req = { ...newReq, contentType: soapContentType, requestType: 'soap' as const, bodyType: 'xml' as const };
-                        return { ...op, requests: [...op.requests, req], expanded: true };
-                    });
-                    return { ...iface, operations: newOps };
-                });
-                const updated = { ...p, interfaces: newInterfaces, dirty: true };
-                setTimeout(() => saveProject(updated), 0);
-                return updated;
-            } else {
-                // folder destination — create folder if it doesn't exist
-                const { folderName } = destination;
-                const existingFolders = p.folders ?? [];
-                const folderExists = existingFolders.some(f => f.name === folderName);
-                const newFolders = folderExists
-                    ? existingFolders.map(f =>
-                        f.name === folderName
-                            ? { ...f, requests: [...f.requests, newReq], expanded: true }
-                            : f
-                    )
-                    : [...existingFolders, {
+                if (destination.isNew) {
+                    // Create a new operation holding the captured request, so
+                    // arbitrary traffic that doesn't match a WSDL operation is
+                    // still usable in the tree.
+                    const newOp: import('@shared/models').ApiOperation = {
                         id: crypto.randomUUID(),
-                        name: folderName,
+                        name: destination.operationName,
+                        action: '',
+                        originalEndpoint: log.url,
+                        targetNamespace: '',
+                        fullSchema: null,
                         requests: [newReq],
                         expanded: true,
-                    }];
-                const updated = { ...p, folders: newFolders, dirty: true };
-                setTimeout(() => saveProject(updated), 0);
-                return updated;
+                    };
+                    createdId = newReq.id ?? null;
+                    return { ...project, operations: [...operations, newOp], dirty: true };
+                }
+
+                // Append to the existing operation of that (stable) name.
+                createdId = newReq.id ?? null;
+                return {
+                    ...project,
+                    operations: operations.map(op =>
+                        op.name === destination.operationName
+                            ? { ...op, requests: [...(op.requests || []), newReq], expanded: true }
+                            : op
+                    ),
+                    dirty: true,
+                };
+            });
+            if (createdId) {
+                setUnifiedSelectedNode({ type: 'request', id: createdId });
             }
-        }));
-    }, [addTrafficLog, setProjects, saveProject]);
+        } catch (e) {
+            console.error('[Traffic] Add to unified project failed:', e);
+        }
+    }, [addTrafficLog, updateUnifiedProject, setUnifiedSelectedNode]);
 
 
 
@@ -2113,7 +2124,7 @@ const MainContent: React.FC = () => {
                     addTrafficLog && (
                         <AddToProjectDialog
                             log={addTrafficLog}
-                            projects={projects}
+                            projects={unifiedProjects}
                             onConfirm={handleConfirmAddTrafficToProject}
                             onClose={() => setAddTrafficLog(null)}
                         />

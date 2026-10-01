@@ -1,27 +1,45 @@
 /**
  * AddToProjectDialog
  *
- * Modal that lets the user save a traffic log entry as a request inside
- * a project — either under an Interface → Operation, or directly in a Folder.
+ * Modal that lets the user save a traffic log entry as a request inside a
+ * unified-explorer project, under an Operation — either an existing operation
+ * (so the request groups with the WSDL operation) or a NEW operation (so
+ * arbitrary captured traffic that doesn't match a WSDL operation is usable).
+ *
+ * NOTE: the destination is an OPERATION, not a folder/interface. The unified
+ * explorer sidebar (UnifiedExplorerSidebar) renders project → operation →
+ * request only; it never renders folders, so a folder destination would be
+ * invisible, and the legacy `interfaces[]` (nested model) is empty on unified
+ * projects — which is exactly why the old dialog's "Add Request" button stayed
+ * disabled. The write path is the unified store (updateUnifiedProject), so the
+ * new request appears in the tree immediately.
  */
 import React, { useState, useEffect } from 'react';
-import { ApinoxProject, ApiInterface, ApiOperation } from '@shared/models';
+import { UnifiedProject } from '@shared/models';
 import { tokens } from './tokens';
 import type { TrafficLog } from './TrafficViewer';
 
-export type AddToProjectDestination =
-    | { type: 'operation'; interfaceName: string; operationName: string }
-    | { type: 'folder'; folderName: string };
+/** Where in the unified project the captured request lands. */
+export type AddToProjectDestination = {
+    /** Target operation name (stable name, not display name). */
+    operationName: string;
+    /**
+     * True → create a NEW operation with this name holding the request.
+     * False → append the request to the existing operation of that name.
+     */
+    isNew: boolean;
+};
 
 interface AddToProjectDialogProps {
     log: TrafficLog;
-    projects: ApinoxProject[];
+    projects: UnifiedProject[];
     onConfirm: (projectName: string, destination: AddToProjectDestination, requestName: string, includeAllHeaders: boolean) => void;
     onClose: () => void;
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────
 
+/** Derive a sensible request name from the URL's last path segment. */
 function deriveDefaultName(log: TrafficLog): string {
     try {
         const url = new URL(log.url);
@@ -29,6 +47,25 @@ function deriveDefaultName(log: TrafficLog): string {
         if (last) return last;
     } catch {/* ignore */}
     return 'Traffic Request';
+}
+
+/** Best-effort operation name for a NEW operation derived from the traffic. */
+function deriveOperationName(log: TrafficLog): string {
+    // Prefer a SOAP action if one is present (it names the operation in the
+    // WSDL model); fall back to the request name.
+    const headers = log.requestHeaders ?? {};
+    for (const key of Object.keys(headers)) {
+        if (key.toLowerCase() === 'soapaction') {
+            const val = (headers[key] as string).replace(/"/g, '').trim();
+            if (val) {
+                const hash = val.lastIndexOf('#');
+                const slash = val.lastIndexOf('/');
+                const idx = Math.max(hash, slash);
+                return idx >= 0 && idx < val.length - 1 ? val.slice(idx + 1) : val;
+            }
+        }
+    }
+    return deriveDefaultName(log);
 }
 
 // ── styles (inline to keep this file self-contained) ─────────────────────
@@ -98,73 +135,52 @@ function Btn({ label: lbl, onClick, primary, disabled }: { label: string; onClic
     );
 }
 
-const NEW_FOLDER_SENTINEL = '__new__';
-const DEFAULT_FOLDER_NAME = 'Captured Traffic';
+const NEW_OPERATION_SENTINEL = '__new__';
 
 // ── component ─────────────────────────────────────────────────────────────
 
 export function AddToProjectDialog({ log, projects, onConfirm, onClose }: AddToProjectDialogProps) {
     const writableProjects = projects.filter(p => !p.readOnly);
 
-    type Mode = 'operation' | 'folder';
-    const [mode, setMode] = useState<Mode>('folder');
-
     const [selectedProjectName, setSelectedProjectName] = useState<string>(writableProjects[0]?.name ?? '');
-    // operation mode
-    const [selectedInterfaceName, setSelectedInterfaceName] = useState<string>('');
-    const [selectedOperationName, setSelectedOperationName] = useState<string>('');
-    // folder mode
-    const [selectedFolderValue, setSelectedFolderValue] = useState<string>(NEW_FOLDER_SENTINEL);
-    const [newFolderName, setNewFolderName] = useState<string>(DEFAULT_FOLDER_NAME);
+
+    // Operation destination: existing operation name, or the "new" sentinel.
+    const [selectedOperationValue, setSelectedOperationValue] = useState<string>(NEW_OPERATION_SENTINEL);
+    const [newOperationName, setNewOperationName] = useState<string>(() => deriveOperationName(log));
 
     const [requestName, setRequestName] = useState<string>(deriveDefaultName(log));
     const [includeAllHeaders, setIncludeAllHeaders] = useState<boolean>(false);
 
-    const selectedProject: ApinoxProject | undefined = writableProjects.find(p => p.name === selectedProjectName);
-    const interfaces: ApiInterface[] = selectedProject?.interfaces ?? [];
-    const selectedInterface: ApiInterface | undefined = interfaces.find(i => i.name === selectedInterfaceName);
-    const operations: ApiOperation[] = selectedInterface?.operations ?? [];
-    const existingFolders = selectedProject?.folders ?? [];
+    const selectedProject: UnifiedProject | undefined = writableProjects.find(p => p.name === selectedProjectName);
+    const operations = selectedProject?.operations ?? [];
 
-    // Reset cascading selections when project changes
+    // Reset the operation cascade when the project changes: default to a NEW
+    // operation (the captured request usually doesn't match a WSDL operation),
+    // re-seeding the suggested name from the traffic.
     useEffect(() => {
-        const firstIface = interfaces[0];
-        setSelectedInterfaceName(firstIface?.name ?? '');
-        // reset folder selection too
-        const firstFolder = existingFolders[0];
-        setSelectedFolderValue(firstFolder ? firstFolder.name : NEW_FOLDER_SENTINEL);
+        setSelectedOperationValue(NEW_OPERATION_SENTINEL);
+        setNewOperationName(deriveOperationName(log));
     }, [selectedProjectName]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Reset operation when interface changes
-    useEffect(() => {
-        const firstOp = operations[0];
-        setSelectedOperationName(firstOp?.name ?? '');
-    }, [selectedInterfaceName]); // eslint-disable-line react-hooks/exhaustive-deps
+    const resolvedOperationName = selectedOperationValue === NEW_OPERATION_SENTINEL
+        ? newOperationName.trim()
+        : selectedOperationValue;
 
-    const resolvedFolderName = selectedFolderValue === NEW_FOLDER_SENTINEL ? newFolderName.trim() : selectedFolderValue;
-
-    const canConfirm = mode === 'folder'
-        ? selectedProjectName !== '' && resolvedFolderName !== '' && requestName.trim() !== ''
-        : selectedProjectName !== '' && selectedInterfaceName !== '' && selectedOperationName !== '' && requestName.trim() !== '';
+    const canConfirm = selectedProjectName !== '' && resolvedOperationName !== '' && requestName.trim() !== '';
 
     function handleConfirm() {
         if (!canConfirm) return;
-        if (mode === 'folder') {
-            onConfirm(selectedProjectName, { type: 'folder', folderName: resolvedFolderName }, requestName.trim(), includeAllHeaders);
-        } else {
-            onConfirm(selectedProjectName, { type: 'operation', interfaceName: selectedInterfaceName, operationName: selectedOperationName }, requestName.trim(), includeAllHeaders);
-        }
+        onConfirm(
+            selectedProjectName,
+            { operationName: resolvedOperationName, isNew: selectedOperationValue === NEW_OPERATION_SENTINEL },
+            requestName.trim(),
+            includeAllHeaders,
+        );
     }
 
     function handleBackdropClick(e: React.MouseEvent) {
         if (e.target === e.currentTarget) onClose();
     }
-
-    const tabBase: React.CSSProperties = {
-        flex: 1, padding: '5px 0', fontSize: 'var(--apinox-fs-md)', fontWeight: 'var(--fw-semibold)',
-        border: `1px solid ${tokens.border.default}`,
-        cursor: 'pointer', transition: 'background 0.15s',
-    };
 
     return (
         <div style={backdrop} onMouseDown={handleBackdropClick}>
@@ -187,33 +203,6 @@ export function AddToProjectDialog({ log, projects, onConfirm, onClose }: AddToP
                     </div>
                 ) : (
                     <>
-                        {/* Mode toggle */}
-                        <div style={{ display: 'flex', borderRadius: tokens.radius.md, overflow: 'hidden' }}>
-                            <button
-                                style={{
-                                    ...tabBase,
-                                    borderRadius: `${tokens.radius.md} 0 0 ${tokens.radius.md}`,
-                                    borderRight: 'none',
-                                    background: mode === 'folder' ? tokens.status.accentDark : tokens.surface.elevated,
-                                    color: mode === 'folder' ? 'var(--apinox-button-foreground)' : tokens.text.secondary,
-                                }}
-                                onClick={() => setMode('folder')}
-                            >
-                                Folder
-                            </button>
-                            <button
-                                style={{
-                                    ...tabBase,
-                                    borderRadius: `0 ${tokens.radius.md} ${tokens.radius.md} 0`,
-                                    background: mode === 'operation' ? tokens.status.accentDark : tokens.surface.elevated,
-                                    color: mode === 'operation' ? 'var(--apinox-button-foreground)' : tokens.text.secondary,
-                                }}
-                                onClick={() => setMode('operation')}
-                            >
-                                Interface / Operation
-                            </button>
-                        </div>
-
                         {/* Project */}
                         <div style={rowStyle}>
                             <label style={label}>Project</label>
@@ -223,84 +212,44 @@ export function AddToProjectDialog({ log, projects, onConfirm, onClose }: AddToP
                                 onChange={e => setSelectedProjectName(e.target.value)}
                             >
                                 {writableProjects.map(p => (
-                                    <option key={p.name} value={p.name}>{p.name}</option>
+                                    <option key={p.name} value={p.name}>{p.displayName || p.name}</option>
                                 ))}
                             </select>
                         </div>
 
-                        {/* ── FOLDER MODE ── */}
-                        {mode === 'folder' && (
-                            <>
-                                <div style={rowStyle}>
-                                    <label style={label}>Folder</label>
-                                    <select
-                                        style={select}
-                                        value={selectedFolderValue}
-                                        onChange={e => setSelectedFolderValue(e.target.value)}
-                                    >
-                                        {existingFolders.map(f => (
-                                            <option key={f.id} value={f.name}>{f.name}</option>
-                                        ))}
-                                        <option value={NEW_FOLDER_SENTINEL}>New folder…</option>
-                                    </select>
+                        {/* Operation */}
+                        <div style={rowStyle}>
+                            <label style={label}>Operation</label>
+                            {operations.length > 0 && (
+                                <select
+                                    style={select}
+                                    value={selectedOperationValue}
+                                    onChange={e => setSelectedOperationValue(e.target.value)}
+                                >
+                                    {operations.map(op => (
+                                        <option key={op.id || op.name} value={op.name}>{op.displayName || op.name}</option>
+                                    ))}
+                                    <option value={NEW_OPERATION_SENTINEL}>New operation…</option>
+                                </select>
+                            )}
+                            {operations.length === 0 && (
+                                <div style={{ fontSize: 'var(--apinox-fs-sm)', color: tokens.text.muted, marginBottom: 4 }}>
+                                    No operations in this project — a new operation will be created.
                                 </div>
-                                {selectedFolderValue === NEW_FOLDER_SENTINEL && (
-                                    <div style={rowStyle}>
-                                        <label style={label}>New folder name</label>
-                                        <input
-                                            style={input}
-                                            type="text"
-                                            value={newFolderName}
-                                            onChange={e => setNewFolderName(e.target.value)}
-                                            onKeyDown={e => { if (e.key === 'Enter') handleConfirm(); if (e.key === 'Escape') onClose(); }}
-                                            autoFocus
-                                        />
-                                    </div>
-                                )}
-                            </>
-                        )}
-
-                        {/* ── OPERATION MODE ── */}
-                        {mode === 'operation' && (
-                            <>
-                                <div style={rowStyle}>
-                                    <label style={label}>Interface</label>
-                                    {interfaces.length === 0 ? (
-                                        <div style={{ fontSize: 'var(--apinox-fs-md)', color: tokens.text.muted }}>
-                                            No interfaces in this project.
-                                        </div>
-                                    ) : (
-                                        <select
-                                            style={select}
-                                            value={selectedInterfaceName}
-                                            onChange={e => setSelectedInterfaceName(e.target.value)}
-                                        >
-                                            {interfaces.map(i => (
-                                                <option key={i.name} value={i.name}>{i.displayName || i.name}</option>
-                                            ))}
-                                        </select>
-                                    )}
-                                </div>
-
-                                <div style={rowStyle}>
-                                    <label style={label}>Operation</label>
-                                    {interfaces.length > 0 && operations.length === 0 ? (
-                                        <div style={{ fontSize: 'var(--apinox-fs-md)', color: tokens.text.muted }}>
-                                            No operations in this interface.
-                                        </div>
-                                    ) : interfaces.length === 0 ? null : (
-                                        <select
-                                            style={select}
-                                            value={selectedOperationName}
-                                            onChange={e => setSelectedOperationName(e.target.value)}
-                                        >
-                                            {operations.map(o => (
-                                                <option key={o.name} value={o.name}>{o.displayName || o.name}</option>
-                                            ))}
-                                        </select>
-                                    )}
-                                </div>
-                            </>
+                            )}
+                        </div>
+                        {selectedOperationValue === NEW_OPERATION_SENTINEL && (
+                            <div style={rowStyle}>
+                                <label style={label}>New operation name</label>
+                                <input
+                                    style={input}
+                                    type="text"
+                                    value={newOperationName}
+                                    onChange={e => setNewOperationName(e.target.value)}
+                                    onKeyDown={e => { if (e.key === 'Enter') handleConfirm(); if (e.key === 'Escape') onClose(); }}
+                                    autoFocus={operations.length === 0}
+                                />
+                            </div>
                         )}
 
                         <div style={rowStyle}>
@@ -311,7 +260,7 @@ export function AddToProjectDialog({ log, projects, onConfirm, onClose }: AddToP
                                 value={requestName}
                                 onChange={e => setRequestName(e.target.value)}
                                 onKeyDown={e => { if (e.key === 'Enter') handleConfirm(); if (e.key === 'Escape') onClose(); }}
-                                autoFocus={mode === 'operation' || selectedFolderValue !== NEW_FOLDER_SENTINEL}
+                                autoFocus={selectedOperationValue !== NEW_OPERATION_SENTINEL}
                             />
                         </div>
 
