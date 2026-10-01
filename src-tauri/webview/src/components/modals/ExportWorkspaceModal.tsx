@@ -3,7 +3,7 @@ import { GhostButton } from '../common/Button';
 import styled from 'styled-components';
 import { Modal, Button } from './Modal';
 import { EmptyState } from '../common/EmptyState';
-import { ApinoxProject } from '@shared/models';
+import { UnifiedProject } from '@shared/models';
 
 const ProjectList = styled.div`
   display: flex;
@@ -73,8 +73,8 @@ const LinkButton = styled(GhostButton)`
 interface ExportWorkspaceModalProps {
   isOpen: boolean;
   onClose: () => void;
-  projects: ApinoxProject[];
-  onExport: (projects: ApinoxProject[]) => void;
+  projects: UnifiedProject[];
+  onExport: (projects: UnifiedProject[]) => void;
 }
 
 export const ExportWorkspaceModal: React.FC<ExportWorkspaceModalProps> = ({
@@ -85,9 +85,10 @@ export const ExportWorkspaceModal: React.FC<ExportWorkspaceModalProps> = ({
 }) => {
   const [selectedNames, setSelectedNames] = useState<Set<string>>(new Set());
 
-  const projectsWithPaths = useMemo(() => {
-    return projects.filter(p => p.fileName && p.fileName.trim() !== '');
-  }, [projects]);
+  // Every unified project is exportable — the backend re-sources each project
+  // from the canonical unified store by name, so no fileName presence check
+  // (unified projects never carry the legacy `fileName` field).
+  const exportableProjects = useMemo(() => projects, [projects]);
 
   const handleToggle = (name: string) => {
     setSelectedNames(prev => {
@@ -102,7 +103,7 @@ export const ExportWorkspaceModal: React.FC<ExportWorkspaceModalProps> = ({
   };
 
   const handleSelectAll = () => {
-    setSelectedNames(new Set(projectsWithPaths.map(p => p.name)));
+    setSelectedNames(new Set(exportableProjects.map(p => p.name)));
   };
 
   const handleDeselectAll = () => {
@@ -110,7 +111,7 @@ export const ExportWorkspaceModal: React.FC<ExportWorkspaceModalProps> = ({
   };
 
   const handleExport = () => {
-    const selectedProjects = projectsWithPaths.filter(p => selectedNames.has(p.name));
+    const selectedProjects = exportableProjects.filter(p => selectedNames.has(p.name));
     onExport(selectedProjects);
     setSelectedNames(new Set());
     onClose();
@@ -145,7 +146,7 @@ export const ExportWorkspaceModal: React.FC<ExportWorkspaceModalProps> = ({
         </>
       }
     >
-      {projectsWithPaths.length === 0 ? (
+      {exportableProjects.length === 0 ? (
         <EmptyState title="No projects loaded in workspace" />
       ) : (
         <>
@@ -154,15 +155,15 @@ export const ExportWorkspaceModal: React.FC<ExportWorkspaceModalProps> = ({
             <LinkButton onClick={handleDeselectAll}>Deselect All</LinkButton>
           </SelectionControls>
           <ProjectList>
-            {projectsWithPaths.map(project => (
+            {exportableProjects.map(project => (
               <ProjectItem key={project.name}>
                 <Checkbox
                   checked={selectedNames.has(project.name)}
                   onChange={() => handleToggle(project.name)}
                 />
                 <ProjectInfo>
-                  <ProjectName>{project.name}</ProjectName>
-                  <ProjectPath>{project.fileName}</ProjectPath>
+                  <ProjectName>{project.displayName || project.name}</ProjectName>
+                  <ProjectPath>{project.sourceUrl || project.source}</ProjectPath>
                 </ProjectInfo>
               </ProjectItem>
             ))}

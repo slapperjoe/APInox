@@ -30,7 +30,6 @@ import { useSidebarCallbacks } from '../hooks/useSidebarCallbacks';
 import { useWorkspaceCallbacks } from '../hooks/useWorkspaceCallbacks';
 import { useAppLifecycle } from '../hooks/useAppLifecycle';
 import { useLayoutHandler } from '../hooks/useLayoutHandler';
-import { useFolderManager } from '../hooks/useFolderManager';
 import { useMobileLayout } from '../hooks/useMobileLayout';
 import { useWorkflowHandlers } from '../hooks/useWorkflowHandlers';
 import { NotesProvider } from '../notes/NotesContext';
@@ -80,9 +79,6 @@ const SettingsView = React.lazy(() =>
 );
 const AddToDevOpsModal = React.lazy(() =>
     import('./modals/AddToDevOpsModal').then(module => ({ default: module.AddToDevOpsModal }))
-);
-const WsdlSyncModal = React.lazy(() =>
-    import('./modals/WsdlSyncModal').then(module => ({ default: module.WsdlSyncModal }))
 );
 const DebugModal = React.lazy(() =>
     import('./modals/DebugModal').then(module => ({ default: module.DebugModal }))
@@ -146,15 +142,7 @@ const MainContent: React.FC = () => {
         setDeleteConfirm,
         addProject,
         closeProject,
-        saveProject,
-        toggleProjectExpand,
-        toggleInterfaceExpand,
-        toggleOperationExpand,
-        expandAll,
-        collapseAll,
-        reorderItems,
-        reorderOperations,
-        reorderRequests
+        saveProject
     } = useProject();
 
     // ==========================================================================
@@ -407,34 +395,71 @@ const MainContent: React.FC = () => {
                     return { ...op, requests: enrichedRequests };
                 }),
             };
-            setUnifiedProjects(prev => prev.map(p => p.name === projectName ? enrichedProject : p));
+            const persisted: UnifiedProject = { ...enrichedProject, dirty: true };
+            setUnifiedProjects(prev => prev.map(p => p.name === projectName ? persisted : p));
+            // Persist the refreshed project. Previously only in-memory state was
+            // updated, so the refreshed operations/schemas silently vanished on
+            // restart. If the save fails, the dirty flag stays set and the
+            // unified auto-save retries it.
+            try {
+                await saveUnifiedProject(persisted);
+            } catch (e) {
+                console.error('[UnifiedExplorer] Persist after WSDL refresh failed:', e);
+            }
         } catch (e) {
             console.error('[UnifiedExplorer] Refresh failed:', e);
         }
-    }, [unifiedProjects]);
+    }, [unifiedProjects, saveUnifiedProject]);
     
     const handleUnifiedDeleteProject = useCallback(async (projectName: string) => {
         try {
             await bridge.invokeTauriCommand('delete_unified_project', { name: projectName });
             setUnifiedProjects(prev => prev.filter(p => p.name !== projectName));
+            // The selected node lived in the deleted project — clear it so the
+            // editor doesn't keep pointing at a ghost.
+            setUnifiedSelectedNode(null);
         } catch (e) {
             console.error('[UnifiedExplorer] Delete project failed:', e);
         }
-    }, []);
+    }, [setUnifiedSelectedNode]);
     
     const handleUnifiedDeleteOperation = useCallback(async (projectName: string, operationName: string) => {
+        // Capture the deleted subtree's selection ids before the state update
+        // so we can tell whether the current selection is inside it.
+        const project = unifiedProjects.find(p => p.name === projectName);
+        const deletedOp = project?.operations?.find(op => op.name === operationName);
+        const deletedIds = new Set<string>();
+        if (deletedOp) {
+            deletedIds.add(deletedOp.id || deletedOp.name);
+            deletedIds.add(deletedOp.name);
+            (deletedOp.requests || []).forEach(r => {
+                deletedIds.add(r.id || r.name);
+                deletedIds.add(r.name);
+            });
+        }
         try {
             await bridge.invokeTauriCommand('delete_unified_operation', { projectName, operationName });
             setUnifiedProjects(prev => prev.map(p => {
                 if (p.name !== projectName) return p;
                 return { ...p, operations: p.operations.filter(op => op.name !== operationName) };
             }));
+            if (unifiedSelectedNode && deletedIds.has(unifiedSelectedNode.id)) {
+                setUnifiedSelectedNode(null);
+            }
         } catch (e) {
             console.error('[UnifiedExplorer] Delete operation failed:', e);
         }
-    }, []);
+    }, [unifiedProjects, unifiedSelectedNode, setUnifiedSelectedNode]);
     
     const handleUnifiedDeleteRequest = useCallback(async (projectName: string, operationName: string, requestName: string) => {
+        // Capture the deleted request's selection id before removal.
+        const project = unifiedProjects.find(p => p.name === projectName);
+        const deletedReq = project?.operations?.find(op => op.name === operationName)?.requests?.find(r => r.name === requestName);
+        const deletedIds = new Set<string>();
+        if (deletedReq) {
+            deletedIds.add(deletedReq.id || deletedReq.name);
+            deletedIds.add(deletedReq.name);
+        }
         try {
             await bridge.invokeTauriCommand('delete_unified_request', { projectName, operationName, requestName });
             setUnifiedProjects(prev => prev.map(p => {
@@ -447,10 +472,13 @@ const MainContent: React.FC = () => {
                     })
                 };
             }));
+            if (unifiedSelectedNode && deletedIds.has(unifiedSelectedNode.id)) {
+                setUnifiedSelectedNode(null);
+            }
         } catch (e) {
             console.error('[UnifiedExplorer] Delete request failed:', e);
         }
-    }, []);
+    }, [unifiedProjects, unifiedSelectedNode, setUnifiedSelectedNode]);
     
     // ── R-10 (F-17): context-menu rename (display-only `displayName`) ──────
     // Each rename command loads the project, sets/clears the additive
@@ -709,50 +737,44 @@ const MainContent: React.FC = () => {
     }, []);
     
     const handleUnifiedReorderOperation = useCallback(async (projectName: string, fromIndex: number, toIndex: number) => {
-        const project = unifiedProjects.find(p => p.name === projectName);
-        if (!project) return;
-        const ops = [...project.operations];
-        const [moved] = ops.splice(fromIndex, 1);
-        // When moving down (fromIndex < original toIndex), removal shifts all later indices left
-        const adjustedTo = fromIndex < toIndex ? toIndex - 1 : toIndex;
-        ops.splice(adjustedTo, 0, moved);
-        const updated = { ...project, operations: ops };
         try {
-            await bridge.invokeTauriCommand("save_unified_project", {
-                dirPath: project.name,
-                project: JSON.parse(JSON.stringify(updated)),
+            // Route through the fullness-guarded updater: reordering a project
+            // that is still a body-less skeleton and saving it raw would persist
+            // the skeleton over the full on-disk data, dropping fullSchema +
+            // request bodies.
+            await updateUnifiedProject(projectName, (project) => {
+                const ops = [...(project.operations || [])];
+                const [moved] = ops.splice(fromIndex, 1);
+                // When moving down (fromIndex < original toIndex), removal shifts all later indices left
+                const adjustedTo = fromIndex < toIndex ? toIndex - 1 : toIndex;
+                ops.splice(adjustedTo, 0, moved);
+                return { ...project, operations: ops, dirty: true };
             });
-            setUnifiedProjects(prev => prev.map(p => p.name === projectName ? updated : p));
         } catch (e) {
             console.error("[UnifiedExplorer] Reorder operation failed:", e);
         }
-    }, [unifiedProjects]);
+    }, [updateUnifiedProject]);
 
     const handleUnifiedReorderRequest = useCallback(async (projectName: string, operationName: string, fromIndex: number, toIndex: number) => {
-        const project = unifiedProjects.find(p => p.name === projectName);
-        if (!project) return;
-        const updated = {
-            ...project,
-            operations: project.operations.map(op => {
-                if (op.name !== operationName) return op;
-                const reqs = [...(op.requests || [])];
-                const [moved] = reqs.splice(fromIndex, 1);
-                // When moving down (fromIndex < original toIndex), removal shifts all later indices left
-                const adjustedTo = fromIndex < toIndex ? toIndex - 1 : toIndex;
-                reqs.splice(adjustedTo, 0, moved);
-                return { ...op, requests: reqs };
-            }),
-        };
         try {
-            await bridge.invokeTauriCommand("save_unified_project", {
-                dirPath: project.name,
-                project: JSON.parse(JSON.stringify(updated)),
-            });
-            setUnifiedProjects(prev => prev.map(p => p.name === projectName ? updated : p));
+            // Fullness-guarded updater — see handleUnifiedReorderOperation.
+            await updateUnifiedProject(projectName, (project) => ({
+                ...project,
+                dirty: true,
+                operations: (project.operations || []).map(op => {
+                    if (op.name !== operationName) return op;
+                    const reqs = [...(op.requests || [])];
+                    const [moved] = reqs.splice(fromIndex, 1);
+                    // When moving down (fromIndex < original toIndex), removal shifts all later indices left
+                    const adjustedTo = fromIndex < toIndex ? toIndex - 1 : toIndex;
+                    reqs.splice(adjustedTo, 0, moved);
+                    return { ...op, requests: reqs };
+                }),
+            }));
         } catch (e) {
             console.error("[UnifiedExplorer] Reorder request failed:", e);
         }
-    }, [unifiedProjects]);
+    }, [updateUnifiedProject]);
     
     // Backend Connection
     const [backendConnected, setBackendConnected] = useState(false);
@@ -850,22 +872,13 @@ const MainContent: React.FC = () => {
         }
     }, [config?.performanceSuites, selectedPerformanceSuiteId, setSelectedPerformanceSuiteId]);
 
-    // WSDL sync-diff state (Projects view "refresh WSDL")
-    const [wsdlDiff, setWsdlDiff] = useState<WsdlDiff | null>(null);
+    // WSDL sync-diff state removed: the legacy interface-level refresh/sync flow
+    // (RefreshWsdl → WsdlSyncModal → apply_wsdl_sync) is dead — the unified
+    // explorer's "Refresh WSDL" (handleUnifiedRefresh → refresh_project_wsdl)
+    // replaced it.
 
-    // ==========================================================================
-    // FOLDER HANDLERS - Work with project.folders for unified structure
-    // ==========================================================================
-    const {
-        handleAddFolder,
-        handleAddRequestToFolder,
-        handleDeleteFolder,
-        handleToggleFolderExpand
-    } = useFolderManager({
-        setProjects,
-        setWorkspaceDirty,
-        setSelectedRequest
-    });
+    // Legacy folder handlers (useFolderManager) removed: the unified explorer
+    // owns folder/request structure; these were dead legacy-model writes.
 
     // Log unused handlers temporarily
 
@@ -1192,6 +1205,7 @@ const MainContent: React.FC = () => {
                 id: crypto.randomUUID(),
                 timestamp: Date.now(),
                 requestName: req.displayName || req.name,
+                requestId: req.id,
                 method: req.method || 'POST',
                 endpoint: req.endpoint || '',
                 projectName,
@@ -1356,7 +1370,7 @@ const MainContent: React.FC = () => {
     const [exportWorkspaceModal, setExportWorkspaceModal] = React.useState(false);
     // const [codeSnippetModal, setCodeSnippetModal] = React.useState<{ open: boolean, request: ApiRequest | null }>({ open: false, request: null });
 
-    const handleExportWorkspace = useCallback(async (selectedProjects: ApinoxProject[]) => {
+    const handleExportWorkspace = useCallback(async (selectedProjects: UnifiedProject[]) => {
         try {
             // Use Tauri dialog to choose save location first
             const { save } = await import('@tauri-apps/plugin-dialog');
@@ -1523,30 +1537,6 @@ const MainContent: React.FC = () => {
         }
     }, [requestHistory]);
 
-    const handleRefreshWsdl = useCallback((projectName: string, iface: ApiInterface) => {
-        bridge.sendMessage({
-            command: FrontendCommand.RefreshWsdl,
-            projectId: projectName,
-            // Use interface ID if available, fallback to definition (WSDL URL) for matching
-            interfaceId: iface.id || iface.definition,
-            interfaceName: iface.name // Keep for backward compatibility
-        });
-    }, []);
-
-    const handleApplyWsdlSync = useCallback((diff: WsdlDiff) => {
-        // Find project dirPath from projects context
-        const project = projects.find(p => p.id === diff.projectId);
-        const dirPath = project?.fileName || '';
-        
-        bridge.sendMessage({
-            command: FrontendCommand.ApplyWsdlSync,
-            projectId: diff.projectId,
-            diff,
-            dirPath
-        });
-        setWsdlDiff(null);
-    }, [projects]);
-
 
 
     // Message Handler Hook
@@ -1615,17 +1605,16 @@ const MainContent: React.FC = () => {
         requestIdRef,
 
         // Callbacks
-        saveProject,
-        setWsdlDiff
+        saveProject
     });
 
     // ==========================================================================
     // LIFECYCLE - Initial Load, Autosave, Shortcuts
     // ==========================================================================
     useAppLifecycle({
-        projects,
+        projects: unifiedProjects,
         selectedProjectName,
-        saveProject,
+        saveProject: saveUnifiedProject,
         setSelectedProjectName,
         setRequestHistory
     });
@@ -2135,7 +2124,7 @@ const MainContent: React.FC = () => {
                         <ExportWorkspaceModal
                             isOpen={exportWorkspaceModal}
                             onClose={() => setExportWorkspaceModal(false)}
-                            projects={projects}
+                            projects={unifiedProjects}
                             onExport={handleExportWorkspace}
                         />
                     )
@@ -2418,16 +2407,6 @@ const MainContent: React.FC = () => {
 
             </div>{/* end content-row */}
             </NotesProvider>
-
-            {wsdlDiff && (
-                <Suspense fallback={null}>
-                    <WsdlSyncModal
-                        diff={wsdlDiff}
-                        onClose={() => setWsdlDiff(null)}
-                        onSync={handleApplyWsdlSync}
-                    />
-                </Suspense>
-            )}
 
             {/* Import to Performance Suite Modal */}
             {importToPerformanceModal.open && (

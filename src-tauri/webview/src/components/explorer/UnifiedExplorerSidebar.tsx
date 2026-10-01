@@ -609,16 +609,22 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
     );
 
     // Project requests that are FAVORITES (starred history entries): the tree
-    // row draws a star at its right edge. Matched by project › operation ›
-    // request name — the same triple the "Add to Favorites" action stores.
+    // row draws a star at its right edge. New favorites match by the stable
+    // request `id` (rename-safe); entries stored before ids existed fall back
+    // to the project › operation › request-name triple.
     const favoritedRequestKeys = useMemo(() => {
-        const keys = new Set<string>();
+        const ids = new Set<string>();
+        const names = new Set<string>();
         for (const e of historyPanel?.entries || []) {
             if (e.starred && e.projectName && e.operationName) {
-                keys.add(`${e.projectName}::${e.operationName}::${e.requestName || ''}`);
+                if (e.requestId) {
+                    ids.add(e.requestId);
+                } else {
+                    names.add(`${e.projectName}::${e.operationName}::${e.requestName || ''}`);
+                }
             }
         }
-        return keys;
+        return { ids, names };
     }, [historyPanel]);
 
     // Quick Requests subwindow height (vertical resize via the handle above
@@ -1354,8 +1360,9 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                                                 dataDropParent={`${project.name}::${op.name}`}
                                                 selected={isSelected('request', reqId)}
                                                 starred={
-                                                    favoritedRequestKeys.has(`${project.name}::${op.name}::${req.displayName || req.name}`) ||
-                                                    favoritedRequestKeys.has(`${project.name}::${op.name}::${req.name}`)
+                                                    (!!req.id && favoritedRequestKeys.ids.has(req.id)) ||
+                                                    favoritedRequestKeys.names.has(`${project.name}::${op.name}::${req.displayName || req.name}`) ||
+                                                    favoritedRequestKeys.names.has(`${project.name}::${op.name}::${req.name}`)
                                                 }
                                                 onClick={() => onSelectNode('request', reqId)}
                                                 onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, type: 'request', data: req, projectName: project.name, operationName: op.name }); }}

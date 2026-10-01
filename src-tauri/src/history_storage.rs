@@ -28,6 +28,10 @@ pub struct RequestHistoryEntry {
     pub interface_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub operation_name: Option<String>,
+    /// Stable request UUID — the reliable favorite-match key (request_name
+    /// breaks when the request is renamed via displayName).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub request_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub request_body: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]

@@ -830,6 +830,9 @@ export interface RequestHistoryEntry {
     interfaceName: string;
     operationName: string;
     requestName: string;
+    /** Stable request UUID — the reliable favorite-match key (requestName
+        breaks when the request is renamed via displayName). */
+    requestId?: string;
     endpoint: string;
     /** HTTP method the request used (POST/GET/…). Persisted by both the
         legacy and unified history writers; not on the model previously. */

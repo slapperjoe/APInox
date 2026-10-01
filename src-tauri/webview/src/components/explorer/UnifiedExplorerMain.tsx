@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { debugLog } from '../../utils/logger';
 import { useScrapbookOptional } from '../../contexts/ScrapbookContext';
+import { useUnifiedProjectsSafe } from '../../contexts/UnifiedProjectContext';
 import { UnifiedProject, ApiOperation, ApiRequest, ScrapbookRequest } from '@shared/models';
 import { soapDefault, resolveEffectiveContentType, generateSampleWithMetadata } from '../../utils/soapUtils';
 import { parseXmlToTree } from '../../utils/xmlTreeParser';
@@ -138,6 +139,10 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
     /** F-01: endpoint text for the selected quick request (editable; committed on Run/Save). */
     const [scrapbookEndpoint, setScrapbookEndpoint] = useState<string>('');
 
+    // Unified store updater (fullness-guarded) — used by persistRequestUpdate so
+    // request edits never persist a body-less skeleton over full on-disk data.
+    const { updateProject: updateUnifiedProject } = useUnifiedProjectsSafe();
+
     // Load resolved environment variables on mount
     useEffect(() => {
         let cancelled = false;
@@ -187,26 +192,35 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
 
     // Persist an update to the current request (headers, assertions, extractors, body)
     const persistRequestUpdate = useCallback(async (updatedReq: ApiRequest, newXml?: string) => {
-        for (const project of projects) {
-            for (const op of (project.operations || [])) {
-                for (const req of (op.requests || [])) {
-                    if ((req.id || req.name) === (updatedReq.id || updatedReq.name)) {
-                        Object.assign(req, updatedReq);
-                        if (newXml !== undefined) req.request = newXml;
-                        try {
-                            await invokeTauriCommand('save_unified_project', {
-                                dirPath: project.name,
-                                project: JSON.parse(JSON.stringify(project)),
-                            });
-                        } catch (e: any) {
-                            debugLog('[UnifiedExplorerMain] Failed to persist request update', String(e));
-                        }
-                        return;
-                    }
-                }
-            }
+        const finalReq: ApiRequest = newXml !== undefined
+            ? { ...updatedReq, request: newXml }
+            : { ...updatedReq };
+        const matchKey = updatedReq.id || updatedReq.name;
+        // Route through the fullness-guarded unified updater. The previous
+        // in-place Object.assign + raw save_unified_project mutated React state
+        // directly and could persist a body-less skeleton over the full
+        // on-disk data, dropping fullSchema + request bodies.
+        const owner = (projects || []).find(project =>
+            (project.operations || []).some(op =>
+                (op.requests || []).some(req => (req.id || req.name) === matchKey)
+            )
+        );
+        if (!owner) return;
+        try {
+            await updateUnifiedProject(owner.name, (current) => ({
+                ...current,
+                dirty: true,
+                operations: (current.operations || []).map(op => ({
+                    ...op,
+                    requests: (op.requests || []).map(req =>
+                        (req.id || req.name) === matchKey ? { ...req, ...finalReq } : req
+                    ),
+                })),
+            }));
+        } catch (e: any) {
+            debugLog('[UnifiedExplorerMain] Failed to persist request update', String(e));
         }
-    }, [projects]);
+    }, [projects, updateUnifiedProject]);
 
     // Sync editor state when a request node is selected from the sidebar
     useEffect(() => {

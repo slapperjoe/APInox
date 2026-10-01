@@ -18,8 +18,7 @@ import {
     TestCase,
     SidebarView,
     RequestHistoryEntry,
-    RequestAttachment,
-    WsdlDiff
+    RequestAttachment
 } from '@shared/models';
 
 type SidebarProjectState = ApinoxProject & { loading?: boolean };
@@ -61,7 +60,6 @@ export interface MessageHandlerState {
     // Callbacks
     saveProject: (project: ApinoxProject) => void;
     onAttachmentSelected?: (attachment: RequestAttachment) => void;
-    setWsdlDiff: React.Dispatch<React.SetStateAction<WsdlDiff | null>>;
 }
 
 export function useMessageHandler(state: MessageHandlerState) {
@@ -105,8 +103,7 @@ export function useMessageHandler(state: MessageHandlerState) {
         startTimeRef,
         requestIdRef,
         saveProject,
-        onAttachmentSelected,
-        setWsdlDiff
+        onAttachmentSelected
     } = state;
 
     // MockProxyContext removed - proxy/mock features moved to APIprox
@@ -619,11 +616,6 @@ export function useMessageHandler(state: MessageHandlerState) {
                 case BackendCommand.ProjectSaved:
                 case BackendCommand.ProjectLoaded:
                     // Handled in ProjectContext
-                    break;
-
-                case BackendCommand.WsdlRefreshResult:
-                    debugLog('[useMessageHandler] wsdlRefreshResult', { hasDiff: !!message.diff });
-                    setWsdlDiff(message.diff);
                     break;
 
                 case BackendCommand.ScrapbookLoaded:

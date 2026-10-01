@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
 import { bridge, isTauri } from '../utils/bridge';
-import { ApinoxProject } from '@shared/models';
+import { UnifiedProject } from '@shared/models';
 
 interface UseAppLifecycleProps {
-    projects: ApinoxProject[];
+    projects: UnifiedProject[];
     selectedProjectName: string | null;
-    saveProject: (project: ApinoxProject) => void;
+    saveProject: (project: UnifiedProject) => Promise<void>;
     setSelectedProjectName: (name: string | null) => void;
     setRequestHistory: (history: any[]) => void;
 }
@@ -148,10 +148,12 @@ export const useAppLifecycle = ({
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault();
-                // Save all dirty projects
+                // Save all dirty UNIFIED projects (the canonical store). The
+                // legacy save_project path is retired — writing it would put
+                // nested interfaces/folders into unified project dirs.
                 projects.forEach(p => {
-                    if (p.dirty) {
-                        saveProject(p);
+                    if (p.dirty && !p.readOnly) {
+                        void saveProject(p);
                     }
                 });
             }

@@ -22,6 +22,7 @@ import { bridge, isTauri } from '../utils/bridge';
 import { BackendCommand, FrontendCommand } from '@shared/messages';
 import { getInitialXml } from '@shared/utils/xmlUtils';
 import { useTestSuites } from '../contexts/TestSuiteContext';
+import { useUnifiedProjectsSafe } from '../contexts/UnifiedProjectContext';
 
 interface UseTestCaseHandlersParams {
     projects: UnifiedProject[];
@@ -47,7 +48,7 @@ interface UseTestCaseHandlersReturn {
     handleSelectTestCase: (caseId: string) => void;
     handleAddAssertion: (data: { xpath: string, expectedContent: string }) => void;
     handleAddExistenceAssertion: (data: { xpath: string }) => void;
-    handleGenerateTestSuite: (target: ApiOperation) => void;
+    handleGenerateTestSuite: (target: ApiOperation) => Promise<void>;
     handleRunTestCaseWrapper: (caseId: string) => void;
     handleRunTestSuiteWrapper: (suiteId: string) => void;
     handleSaveExtractor: (data: { xpath: string, value: string, source: 'body' | 'header', variableName: string, defaultValue?: string, editingId?: string, type?: 'XPath' | 'JSONPath' | 'Regex' | 'Header' }) => void;
@@ -72,6 +73,7 @@ export function useTestCaseHandlers({
 }: UseTestCaseHandlersParams): UseTestCaseHandlersReturn {
 
     const { testSuites, addSuite, updateTestCase, findSuiteById, findCaseById } = useTestSuites();
+    const { ensureProjectFull } = useUnifiedProjectsSafe();
     /** Compute the next step object for an in-place step mutation (no-op if
         the step isn't a request step), then persist it through the global
         suite store and refresh the selection state. Replaces the old
@@ -188,7 +190,7 @@ export function useTestCaseHandlers({
         });
     }, [selectedTestCase, selectedStep, applyStepUpdate]);
 
-    const handleGenerateTestSuite = useCallback((target: ApiOperation) => {
+    const handleGenerateTestSuite = useCallback(async (target: ApiOperation) => {
         // C (global suites): the generated suite is stored in the GLOBAL test
         // suite store — no owning project to append it to. The target project
         // is still located to match operations by reference/name, but the
@@ -203,9 +205,24 @@ export function useTestCaseHandlers({
         }
         if (!targetProject) return;
 
+        // Ensure the owning project is FULL before reading schema fields: a
+        // first-paint skeleton has no targetNamespace/input/fullSchema, which
+        // would silently generate a tempuri.org placeholder envelope.
+        let fullTarget = target;
+        const alreadyFull = (targetProject.operations || []).some(op =>
+            op.fullSchema != null
+            || (op.requests || []).some(r => typeof r.request === 'string' && r.request.length > 0)
+        );
+        if (!alreadyFull) {
+            const upgraded = await ensureProjectFull(targetProject.name);
+            if (upgraded) {
+                fullTarget = (upgraded.operations || []).find(o => o.name === target.name) || target;
+            }
+        }
+
         // Identify Operations (the single target operation)
-        let operationsToProcess: ApiOperation[] = [target];
-        let baseName = target.name;
+        let operationsToProcess: ApiOperation[] = [fullTarget];
+        let baseName = fullTarget.name;
 
         // Create Suite
         const newSuite: TestSuite = {
@@ -270,7 +287,7 @@ export function useTestCaseHandlers({
 
         setActiveView(SidebarView.TESTS);
         closeContextMenu();
-    }, [projects, addSuite, setActiveView, closeContextMenu]);
+    }, [projects, addSuite, setActiveView, closeContextMenu, ensureProjectFull]);
 
     const handleRunTestCaseWrapper = useCallback((caseId: string) => {
         console.log('[handleRunTestCaseWrapper] CALLED with caseId:', caseId);
