@@ -603,6 +603,7 @@ pub fn run() {
             commands::proxy_server::start_proxy,
             commands::proxy_server::stop_proxy,
             commands::proxy_server::get_proxy_status,
+            commands::proxy_server::replay_traffic_request,
             commands::mock_server::get_mock_rules,
             commands::mock_server::add_mock_rule,
             commands::mock_server::update_mock_rule,

@@ -233,11 +233,13 @@ interface TrafficViewerProps {
   onCreateBreakpoint?: (log: TrafficLog) => void;
   /** Called when user right-clicks → "Add to APInox Project..." */
   onAddToApinoxProject?: (log: TrafficLog) => void;
+  /** Called when user right-clicks → "Replay Request" (re-send identically) */
+  onReplayRequest?: (log: TrafficLog) => void;
   /** Called when user clicks "Clear Traffic" */
   onClearTraffic?: () => void;
 }
 
-export function TrafficViewer({ logs, onSelectLog, ignoreRules = [], onAddIgnoreRule, onCreateMockRule, onCreateReplaceRule, onCreateBreakpoint, onAddToApinoxProject, onClearTraffic }: TrafficViewerProps) {
+export function TrafficViewer({ logs, onSelectLog, ignoreRules = [], onAddIgnoreRule, onCreateMockRule, onCreateReplaceRule, onCreateBreakpoint, onAddToApinoxProject, onReplayRequest, onClearTraffic }: TrafficViewerProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [urlFilter, setUrlFilter] = useState('');
   const [methodFilter, setMethodFilter] = useState('ALL');
@@ -416,6 +418,15 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = [], onAddIgnore
           sections.push({
             title: 'Create Rule From Traffic',
             items: [{ icon: VenetianMask, label: 'Create Rule From Traffic', sub: 'Generate rules from this request', subItems: createSubItems }],
+          });
+        }
+
+        // Replay — re-send this captured request identically (lands at the top
+        // of the traffic list via the replay traffic-event).
+        if (onReplayRequest) {
+          sections.push({
+            title: 'Replay',
+            items: [{ icon: RefreshCw, label: 'Replay Request', sub: 'Re-send this request identically', onClick: () => { onReplayRequest!(log); setCtxMenu(null); } }],
           });
         }
 

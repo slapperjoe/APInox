@@ -5,6 +5,7 @@ import { TrafficViewer, type TrafficLog } from './TrafficViewer';
 import { TrafficDetails } from './TrafficDetails';
 import { BreakpointsPage } from './BreakpointsPage';
 import { useIgnoreList } from '../../utils/useIgnoreList';
+import { bridge } from '../../utils/bridge';
 import { tokens } from './tokens';
 
 const SPLIT_KEY = 'apinox-traffic-split-px';
@@ -88,6 +89,32 @@ export function ProxyPanel({ onNavigateTo, onAddToApinoxProject }: ProxyPanelPro
     setActiveTab('breakpoints');
   }, []);
 
+  // Replay a captured request: re-send it identically to its original
+  // endpoint via the Rust backend, which emits a traffic-event (source
+  // "replay") that the listener below appends — so the new exchange appears
+  // at the top of the traffic list. A per-row busy guard prevents
+  // double-clicks on a slow endpoint.
+  const [replayingId, setReplayingId] = useState<string | null>(null);
+
+  const handleReplayRequest = useCallback(async (log: TrafficLog) => {
+    if (replayingId) return;
+    setReplayingId(log.id);
+    try {
+      await bridge.invokeTauriCommand('replay_traffic_request', {
+        request: {
+          method: log.method,
+          url: log.url,
+          requestHeaders: log.requestHeaders || {},
+          requestBody: log.requestBody || '',
+        },
+      });
+    } catch (e) {
+      console.error('[Proxy] Replay request failed:', e);
+    } finally {
+      setReplayingId(null);
+    }
+  }, [replayingId]);
+
   const tabBarStyle: React.CSSProperties = {
     display: 'flex',
     alignItems: 'center',
@@ -145,6 +172,7 @@ export function ProxyPanel({ onNavigateTo, onAddToApinoxProject }: ProxyPanelPro
                 onCreateBreakpoint={handleCreateBreakpoint}
                 onClearTraffic={handleClearTraffic}
                 onAddToApinoxProject={onAddToApinoxProject}
+                onReplayRequest={handleReplayRequest}
               />
             </div>
             {selectedLog && (
