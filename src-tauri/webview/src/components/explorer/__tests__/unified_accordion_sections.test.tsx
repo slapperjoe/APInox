@@ -184,6 +184,42 @@ describe('UnifiedExplorerSidebar — accordion sections', () => {
         expect(treeHeaderBtn.getAttribute('aria-expanded')).toBe('true');
     });
 
+    it('highlights each separator grip independently on hover (scoped CSS, no shared flag)', () => {
+        const { container } = renderSidebar();
+        // All three grips are present; the accent highlight is a CSS :hover
+        // rule scoped to each grip's own testid, and the at-rest colour is a
+        // CSS rule too (NOT inline style, which would outrank :hover and hide
+        // the highlight).
+        const historyGrip = screen.getByTestId('unified-history-resize-handle');
+        const favoritesGrip = screen.getByTestId('unified-favorites-resize-handle');
+        const qrGrip = screen.getByTestId('unified-quick-requests-resize-handle');
+        for (const grip of [historyGrip, favoritesGrip, qrGrip]) {
+            expect(grip).toBeInTheDocument();
+        }
+
+        // The sidebar owns a <style> block with both the at-rest and :hover
+        // rules (styled-components injects its own global sheet first, so find
+        // the one inside the component container, not document.querySelector).
+        const styleEl = container.querySelector('style');
+        expect(styleEl).not.toBeNull();
+        const css = styleEl!.textContent || '';
+        for (const testId of ['unified-history-resize-handle', 'unified-favorites-resize-handle', 'unified-quick-requests-resize-handle']) {
+            // At-rest rule (neutral) and per-grip :hover rule (accent).
+            expect(css).toContain(`[data-testid="${testId}"]`);
+            expect(css).toContain(`[data-testid="${testId}"]:hover`);
+        }
+        expect(css).toContain('var(--apinox-widget-shadow)');
+        expect(css).toContain('var(--apinox-focusBorder)');
+
+        // No shared inline hover state: the grips carry no inline background
+        // (the colour is stylesheet-driven), so entering one grip leaves the
+        // others unchanged.
+        fireEvent.mouseEnter(historyGrip);
+        expect(historyGrip.style.background).toBe('');
+        expect(favoritesGrip.style.background).toBe('');
+        expect(qrGrip.style.background).toBe('');
+    });
+
     it('omits the Favorites section when no entry is starred', () => {
         const history = makeHistoryProps();
         history.entries = history.entries.filter(e => !e.starred);
@@ -203,7 +239,7 @@ describe('UnifiedExplorerSidebar — accordion sections', () => {
         renderSidebar();
         const header = screen.getByTestId('unified-favorites-section-header');
         fireEvent.click(header.querySelector('button')!);
-        expect(screen.queryByTestId('unified-favorites')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('unified-favorites-body')).not.toBeInTheDocument();
         expect(screen.queryByTestId('unified-favorites-resize-handle')).not.toBeInTheDocument();
         // The header itself remains (title + chevron + count).
         expect(header).toBeInTheDocument();
@@ -228,7 +264,7 @@ describe('UnifiedExplorerSidebar — accordion sections', () => {
         renderSidebar();
         const header = screen.getByTestId('unified-history-section-header');
         fireEvent.click(header.querySelector('button')!);
-        expect(screen.queryByTestId('unified-history')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('unified-history-body')).not.toBeInTheDocument();
         expect(screen.queryByTestId('unified-history-resize-handle')).not.toBeInTheDocument();
         // The header itself remains (title + chevron).
         expect(header).toBeInTheDocument();
@@ -247,7 +283,7 @@ describe('UnifiedExplorerSidebar — accordion sections', () => {
         );
         const header = screen.getByTestId('unified-quick-requests-section-header');
         fireEvent.click(header.querySelector('button')!);
-        expect(screen.queryByTestId('unified-quick-requests')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('unified-quick-requests-body')).not.toBeInTheDocument();
         expect(screen.queryByTestId('unified-quick-requests-resize-handle')).not.toBeInTheDocument();
 
         // The "+" action lives on the accordion header, so it still works
@@ -273,7 +309,7 @@ describe('UnifiedExplorerSidebar — accordion sections', () => {
         renderSidebar();
         // Tree and Quick Requests restore collapsed; History stays expanded.
         expect(screen.queryByText('CountryInfo')).not.toBeInTheDocument();
-        expect(screen.queryByTestId('unified-quick-requests')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('unified-quick-requests-body')).not.toBeInTheDocument();
         expect(screen.getByTestId('unified-history')).toBeInTheDocument();
     });
 

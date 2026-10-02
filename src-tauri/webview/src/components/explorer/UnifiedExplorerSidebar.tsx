@@ -637,12 +637,16 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
     // latest height from this ref (kept in sync where the state is written)
     // to persist it on resize end without a stale closure.
     const quickRequestsHeightRef = useRef(quickRequestsHeight);
-    const [handleHovered, setHandleHovered] = useState(false);
     const isResizingQuickRequests = useRef(false);
 
     // The drag handler reads the container's current height on each move, so
     // an ancestor window resize mid-drag cannot break the clamp.
     const quickRequestsContainerRef = useRef<HTMLDivElement | null>(null);
+    // The Quick Requests grip element (the pill on the section header's top
+    // edge). The QR drag is bottom-pinned (it measures the container, not the
+    // handle), so this ref only binds the grip node — kept alongside the other
+    // handle refs for a uniform resizeProps contract.
+    const quickRequestsHandleRef = useRef<HTMLDivElement | null>(null);
 
     // History subwindow height (vertical resize via the handle between the
     // project tree and the History window, which sits above Quick Requests).
@@ -663,18 +667,13 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
     // stable measure independent of the variable tree height above.
     const historyHandleRef = useRef<HTMLDivElement | null>(null);
     const isResizingHistory = useRef(false);
-    // Kept in a ref so the (once-created) Quick Requests drag closure can read
-    // the current presence of the History subwindow without a stale capture.
-    const historyPanelPresentRef = useRef(!!historyPanel);
-    useEffect(() => {
-        historyPanelPresentRef.current = !!historyPanel;
-    }, [historyPanel]);
-    // Same pattern for the Favorites subwindow: the Quick Requests drag
-    // closure must read its current presence/height without a stale capture.
-    const favoritesEntriesPresentRef = useRef(false);
-    useEffect(() => {
-        favoritesEntriesPresentRef.current = !!historyPanel && historyPanel.entries.some(e => e.starred);
-    }, [historyPanel]);
+    // Wrapper divs for the three bottom sections. The drag clamps measure
+    // their ACTUAL rendered totals (header + body, collapsed or expanded)
+    // at mousedown and reserve them, so dragging one separator can never
+    // squeeze a sibling section out of the sidebar.
+    const historySectionRef = useRef<HTMLDivElement | null>(null);
+    const favoritesSectionRef = useRef<HTMLDivElement | null>(null);
+    const quickRequestsSectionRef = useRef<HTMLDivElement | null>(null);
 
     const handleQuickRequestsResizeStart = useCallback((e: React.MouseEvent) => {
         e.preventDefault();
@@ -682,6 +681,13 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
         if (!container) return;
         isResizingQuickRequests.current = true;
         const containerTop = container.getBoundingClientRect().top;
+        // Actual rendered totals (header + body) of the sections stacked
+        // ABOVE Quick Requests, measured at mousedown so the clamp reflects
+        // the current layout (collapsed sections included), not body-height
+        // estimates.
+        const reservedAbove =
+            (historySectionRef.current?.getBoundingClientRect().height ?? 0) +
+            (favoritesSectionRef.current?.getBoundingClientRect().height ?? 0);
 
         const handleMove = (ev: MouseEvent) => {
             if (!isResizingQuickRequests.current) return;
@@ -690,18 +696,14 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
             // height is the distance from the pointer down to the container's
             // bottom: dragging the handle up grows it, dragging it down
             // shrinks it (the drag direction matches the pointer). Clamped to
-            // [min, max]; the max also keeps the project tree visible (it
-            // needs at least the min height) — and when the History subwindow
-            // is present, reserves room for it plus the tree minimum, so the
-            // History window can never be squeezed out of the sidebar.
-            const reservedBelowTree = (historyPanelPresentRef.current
-                ? historyHeightRef.current + HISTORY_TREE_MIN
-                : 0) + (favoritesEntriesPresentRef.current
-                    ? favoritesHeightRef.current
-                    : 0);
+            // [min, max]; the max keeps the project tree (tree minimum) plus
+            // the actual stacked History/Favorites sections visible, so no
+            // section is squeezed out of the sidebar.
             const max = Math.max(
                 QUICK_REQUESTS_MIN_HEIGHT,
-                Math.floor(containerHeight - QUICK_REQUESTS_MIN_HEIGHT - reservedBelowTree),
+                Math.floor(
+                    containerHeight - Math.max(QUICK_REQUESTS_MIN_HEIGHT, HISTORY_TREE_MIN) - reservedAbove,
+                ),
             );
             const next = containerHeight - (ev.clientY - containerTop);
             const clamped = Math.min(max, Math.max(QUICK_REQUESTS_MIN_HEIGHT, Math.round(next)));
@@ -751,24 +753,38 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
     }, []);
 
     // History resize: the handle sits between the project tree and the
-    // History window (which is above Quick Requests). Because History is not
-    // bottom-pinned, its height is measured from the handle's top edge at
-    // mousedown — the pointer's travel below that edge, clamped to
-    // [HISTORY_MIN_HEIGHT, container - tree minimum]. The Quick Requests
-    // window height is held constant while History is dragged.
+    // History window (which is above Quick Requests). The drag is
+    // pointer-position based — "the separator goes where you put it": the
+    // History section's total height (header + body) is the distance from the
+    // pointer down to the bottom of the stacked sections below it (Favorites
+    // + Quick Requests, measured at mousedown). Dragging the handle up grows
+    // History, dragging it down shrinks it; the tree above absorbs the delta
+    // (it is the only flex child). Clamped to
+    // [HISTORY_MIN_HEIGHT, container - tree minimum - sections below].
     const handleHistoryResizeStart = useCallback((e: React.MouseEvent) => {
         e.preventDefault();
         const container = quickRequestsContainerRef.current;
         const handle = historyHandleRef.current;
         if (!container || !handle) return;
         isResizingHistory.current = true;
-        const handleTop = handle.getBoundingClientRect().top;
+        // Actual rendered totals of the sections stacked BELOW History
+        // (Favorites + Quick Requests), measured at mousedown. Reserving them
+        // (instead of only the body heights) keeps them on screen when
+        // History is dragged taller.
+        const reservedBelow =
+            (favoritesSectionRef.current?.getBoundingClientRect().height ?? 0) +
+            (quickRequestsSectionRef.current?.getBoundingClientRect().height ?? 0);
 
         const handleMove = (ev: MouseEvent) => {
             if (!isResizingHistory.current) return;
-            const containerHeight = container.getBoundingClientRect().height;
-            const next = ev.clientY - handleTop;
-            const max = Math.max(HISTORY_MIN_HEIGHT, Math.floor(containerHeight - HISTORY_TREE_MIN));
+            const rect = container.getBoundingClientRect();
+            // The pointer rides the handle's top edge, so the History total is
+            // the pointer's distance to the bottom of the reserved stack.
+            const next = rect.bottom - ev.clientY - reservedBelow;
+            const max = Math.max(
+                HISTORY_MIN_HEIGHT,
+                Math.floor(rect.height - HISTORY_TREE_MIN - reservedBelow),
+            );
             const clamped = Math.min(max, Math.max(HISTORY_MIN_HEIGHT, Math.round(next)));
             historyHeightRef.current = clamped;
             setHistoryHeight(clamped);
@@ -789,26 +805,34 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
 
     // Favorites resize: the handle sits between the History window and the
     // Favorites window (Favorites sits directly above Quick Requests, which
-    // is bottom-pinned). Same semantics as History — measured from the
-    // handle's top edge at mousedown, clamped to
-    // [FAVORITES_MIN_HEIGHT, container - tree minimum - History height] — and
-    // Quick Requests is held constant while Favorites is dragged.
+    // is bottom-pinned). Pointer-position based like History — the Favorites
+    // section's total height is the distance from the pointer down to the
+    // bottom of the Quick Requests section (measured at mousedown); the tree
+    // and History keep their current sizes and the tree absorbs the delta.
+    // Clamped to
+    // [FAVORITES_MIN_HEIGHT, container - tree minimum - the actual rendered
+    // History section].
     const handleFavoritesResizeStart = useCallback((e: React.MouseEvent) => {
         e.preventDefault();
         const container = quickRequestsContainerRef.current;
         const handle = favoritesHandleRef.current;
         if (!container || !handle) return;
         isResizingFavorites.current = true;
-        const handleTop = handle.getBoundingClientRect().top;
+        // Actual rendered totals (header + body) of the sections stacked
+        // ABOVE Favorites (the project tree keeps its minimum; History keeps
+        // its current size) and BELOW it (Quick Requests, bottom-pinned),
+        // measured at mousedown.
+        const reservedAbove = HISTORY_TREE_MIN + (historySectionRef.current?.getBoundingClientRect().height ?? 0);
+        const reservedBelow = quickRequestsSectionRef.current?.getBoundingClientRect().height ?? 0;
 
         const handleMove = (ev: MouseEvent) => {
             if (!isResizingFavorites.current) return;
-            const containerHeight = container.getBoundingClientRect().height;
-            // Reserve the tree minimum + the History window (it sits above
-            // Favorites) so the drag can't squeeze either out of view.
-            const reservedAbove = HISTORY_TREE_MIN + (historyPanelPresentRef.current ? historyHeightRef.current : 0);
-            const max = Math.max(FAVORITES_MIN_HEIGHT, Math.floor(containerHeight - reservedAbove));
-            const next = ev.clientY - handleTop;
+            const rect = container.getBoundingClientRect();
+            const next = rect.bottom - ev.clientY - reservedBelow;
+            const max = Math.max(
+                FAVORITES_MIN_HEIGHT,
+                Math.floor(rect.height - reservedAbove - reservedBelow),
+            );
             const clamped = Math.min(max, Math.max(FAVORITES_MIN_HEIGHT, Math.round(next)));
             favoritesHeightRef.current = clamped;
             setFavoritesHeight(clamped);
@@ -840,7 +864,16 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
         if (!container) return;
         const containerHeight = container.getBoundingClientRect().height;
         if (containerHeight <= 0) return;
-        const max = Math.max(QUICK_REQUESTS_MIN_HEIGHT, Math.floor(containerHeight - QUICK_REQUESTS_MIN_HEIGHT));
+        // Reserve the tree minimum plus the sections stacked ABOVE Quick
+        // Requests (History + Favorites), so a large saved value can't push
+        // them out of a smaller window.
+        const reservedAbove =
+            (historySectionRef.current?.getBoundingClientRect().height ?? 0) +
+            (favoritesSectionRef.current?.getBoundingClientRect().height ?? 0);
+        const max = Math.max(
+            QUICK_REQUESTS_MIN_HEIGHT,
+            Math.floor(containerHeight - Math.max(QUICK_REQUESTS_MIN_HEIGHT, HISTORY_TREE_MIN) - reservedAbove),
+        );
         if (quickRequestsHeightRef.current > max) {
             quickRequestsHeightRef.current = max;
             setQuickRequestsHeight(max);
@@ -858,7 +891,16 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
         if (!container) return;
         const containerHeight = container.getBoundingClientRect().height;
         if (containerHeight <= 0) return;
-        const max = Math.max(HISTORY_MIN_HEIGHT, Math.floor(containerHeight - HISTORY_TREE_MIN));
+        // Reserve the sections stacked BELOW History (Favorites + Quick
+        // Requests) so a large saved History value can't push them off the
+        // bottom of a smaller window.
+        const reservedBelow =
+            (favoritesSectionRef.current?.getBoundingClientRect().height ?? 0) +
+            (quickRequestsSectionRef.current?.getBoundingClientRect().height ?? 0);
+        const max = Math.max(
+            HISTORY_MIN_HEIGHT,
+            Math.floor(containerHeight - HISTORY_TREE_MIN - reservedBelow),
+        );
         if (historyHeightRef.current > max) {
             historyHeightRef.current = max;
             setHistoryHeight(max);
@@ -1040,12 +1082,27 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
         label: string,
         testId: string,
         actions?: React.ReactNode,
+        // Optional vertical-resize affordance for sections whose body height is
+        // user-adjustable (History / Favorites / Quick Requests). When present
+        // AND the section is expanded, a clearly-visible grab pill is rendered
+        // along the header's TOP edge — the traditional "the header IS the
+        // divider" pattern (like VS Code panels). The pill carries the
+        // data-testid + ref + mousedown the drag handlers need; the rest of
+        // the header row stays the collapse toggle.
+        resizeProps?: {
+            testId: string;
+            title: string;
+            ref: React.MutableRefObject<HTMLDivElement | null>;
+            onMouseDown: (e: React.MouseEvent) => void;
+        },
     ) => {
         const collapsed = sectionCollapsed[name];
+        const showGrip = !!resizeProps && !collapsed;
         return (
             <div
                 data-testid={testId}
                 style={{
+                    position: 'relative',
                     display: 'flex',
                     alignItems: 'center',
                     gap: 8,
@@ -1053,8 +1110,8 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                     // 8px TOP padding (not the 4px of the panel header above):
                     // the accordion titles sit directly on the row above them
                     // (the "Unified Explorer" panel header for Projects, the
-                    // resize handle for History / Favorites / Quick Requests)
-                    // and read cramped with only the row's 4px breathing room.
+                    // previous section's body) and read cramped with only the
+                    // row's 4px breathing room.
                     // 2px LEFT (floor — any less and the header touches the
                     // sidebar's edge): the section chevrons use the
                     // sidebar's full width, in line with the tree rows'
@@ -1075,6 +1132,35 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                     flexShrink: 0,
                 }}
             >
+                {/* Vertical resize grip — a full-width horizontal bar centred
+                    on the section's top edge (the divider between this section
+                    and the one above). Always visible (not hover-only) so the
+                    affordance is obvious. Its colours (neutral at rest, accent
+                    on hover) come from the <style> block below — kept out of
+                    the inline style so the :hover rule isn't outranked. It is
+                    flat and a couple px thick to read like the main
+                    SplitResizer. */}
+                {showGrip && resizeProps && (
+                    <div
+                        ref={resizeProps.ref}
+                        data-testid={resizeProps.testId}
+                        title={resizeProps.title}
+                        onMouseDown={resizeProps.onMouseDown}
+                        style={{
+                            position: 'absolute',
+                            // Centred on the section's top edge so the bar
+                            // straddles the divider line between this section
+                            // and the one above it.
+                            top: -3,
+                            left: 0,
+                            right: 0,
+                            height: 6,
+                            cursor: 'row-resize',
+                            transition: 'background-color 0.2s',
+                            zIndex: 1,
+                        }}
+                    />
+                )}
                 <button
                     type="button"
                     aria-expanded={!collapsed}
@@ -1120,6 +1206,25 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                 minHeight: 0,
             }}
         >
+        {/* Separator grip colours — match the main SplitResizer: a neutral
+            widget-shadow line at rest, brightening to the accent while hovered
+            so it's obvious the splitter is draggable. Both states live in CSS
+            (not inline style, which would outrank the :hover rule and hide the
+            highlight); each :hover is scoped to its own grip so only the
+            hovered splitter lights up. A shared React hover flag used to light
+            all three at once. */}
+        <style>{`
+            [data-testid="unified-history-resize-handle"],
+            [data-testid="unified-favorites-resize-handle"],
+            [data-testid="unified-quick-requests-resize-handle"] {
+                background: var(--apinox-widget-shadow);
+            }
+            [data-testid="unified-history-resize-handle"]:hover,
+            [data-testid="unified-favorites-resize-handle"]:hover,
+            [data-testid="unified-quick-requests-resize-handle"]:hover {
+                background: var(--apinox-focusBorder);
+            }
+        `}</style>
         {/* Sidebar header — matches the other sidebar panels (TestsUi etc.):
             an uppercase "UNIFIED EXPLORER" title. The former "+" Add button
             (New Request / Load Definition) was removed: request creation is
@@ -1446,39 +1551,45 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
             was a top-level rail view (SidebarView.HISTORY); it is now a
             sub-section of the unified explorer, like Quick Requests. */}
         {historyPanel && (
-            <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+            <div
+                ref={historySectionRef}
+                data-testid="unified-history"
+                style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    flexShrink: 0,
+                    // The resized quantity is the WHOLE section (header +
+                    // body), applied here on the wrapper ONLY while expanded.
+                    // The grip sits on the wrapper's TOP edge, so keeping that
+                    // edge under the pointer makes the splitter track the drag
+                    // 1:1 with no initial snap. The body below fills the
+                    // remainder. When collapsed the wrapper shrinks to the
+                    // header row (no reserved height).
+                    height: sectionCollapsed.history ? undefined : historyHeight,
+                    minHeight: sectionCollapsed.history ? undefined : HISTORY_MIN_HEIGHT,
+                    overflow: 'hidden',
+                }}
+            >
                 {renderSectionHeader(
                     'history',
                     `History${historyPanel.entries.length > 0 ? ` (${historyPanel.entries.length})` : ''}`,
                     'unified-history-section-header',
+                    undefined,
+                    {
+                        testId: 'unified-history-resize-handle',
+                        title: 'Drag to resize History',
+                        ref: historyHandleRef,
+                        onMouseDown: handleHistoryResizeStart,
+                    },
                 )}
 
                 {!sectionCollapsed.history && (
                     <>
                         <div
-                            ref={historyHandleRef}
-                            data-testid="unified-history-resize-handle"
-                            title="Drag to resize History"
-                            onMouseDown={handleHistoryResizeStart}
-                            onMouseEnter={() => setHandleHovered(true)}
-                            onMouseLeave={() => setHandleHovered(false)}
+                            data-testid="unified-history-body"
                             style={{
-                                flexShrink: 0,
-                                height: 4,
-                                cursor: 'row-resize',
-                                background: handleHovered
-                                    ? 'var(--apinox-focusBorder)'
-                                    : 'var(--apinox-panel-border)',
-                                transition: 'background 0.2s',
-                            }}
-                        />
-
-                        <div
-                            data-testid="unified-history"
-                            style={{
-                                flexShrink: 0,
-                                height: historyHeight,
-                                minHeight: HISTORY_MIN_HEIGHT,
+                                flex: 1,
+                                minHeight: 0,
                                 display: 'flex',
                                 flexDirection: 'column',
                                 overflow: 'hidden',
@@ -1506,39 +1617,41 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
             right-click menu owns those actions), and the handle above the
             window resizes it. */}
         {historyPanel && historyPanel.entries.some(e => e.starred) && (
-            <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+            <div
+                ref={favoritesSectionRef}
+                data-testid="unified-favorites"
+                style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    flexShrink: 0,
+                    // Whole-section height on the wrapper while expanded (see
+                    // History above); collapsed, the wrapper shrinks to its
+                    // header row.
+                    height: sectionCollapsed.favorites ? undefined : favoritesHeight,
+                    minHeight: sectionCollapsed.favorites ? undefined : FAVORITES_MIN_HEIGHT,
+                    overflow: 'hidden',
+                }}
+            >
                 {renderSectionHeader(
                     'favorites',
                     `Favorites (${historyPanel.entries.filter(e => e.starred).length})`,
                     'unified-favorites-section-header',
+                    undefined,
+                    {
+                        testId: 'unified-favorites-resize-handle',
+                        title: 'Drag to resize Favorites',
+                        ref: favoritesHandleRef,
+                        onMouseDown: handleFavoritesResizeStart,
+                    },
                 )}
 
                 {!sectionCollapsed.favorites && (
                     <>
                         <div
-                            ref={favoritesHandleRef}
-                            data-testid="unified-favorites-resize-handle"
-                            title="Drag to resize Favorites"
-                            onMouseDown={handleFavoritesResizeStart}
-                            onMouseEnter={() => setHandleHovered(true)}
-                            onMouseLeave={() => setHandleHovered(false)}
+                            data-testid="unified-favorites-body"
                             style={{
-                                flexShrink: 0,
-                                height: 4,
-                                cursor: 'row-resize',
-                                background: handleHovered
-                                    ? 'var(--apinox-focusBorder)'
-                                    : 'var(--apinox-panel-border)',
-                                transition: 'background 0.2s',
-                            }}
-                        />
-
-                        <div
-                            data-testid="unified-favorites"
-                            style={{
-                                flexShrink: 0,
-                                height: favoritesHeight,
-                                minHeight: FAVORITES_MIN_HEIGHT,
+                                flex: 1,
+                                minHeight: 0,
                                 display: 'flex',
                                 flexDirection: 'column',
                                 overflow: 'hidden',
@@ -1564,7 +1677,21 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
             action stays available while collapsed); while expanded the handle
             above the window resizes it and the request list scrolls inside. */}
         {scrapbook && (
-            <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+            <div
+                ref={quickRequestsSectionRef}
+                data-testid="unified-quick-requests"
+                style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    flexShrink: 0,
+                    // Whole-section height on the wrapper while expanded (see
+                    // History above); collapsed, the wrapper shrinks to its
+                    // header row.
+                    height: sectionCollapsed.quickRequests ? undefined : quickRequestsHeight,
+                    minHeight: sectionCollapsed.quickRequests ? undefined : QUICK_REQUESTS_MIN_HEIGHT,
+                    overflow: 'hidden',
+                }}
+            >
                 {renderSectionHeader(
                     'quickRequests',
                     `Quick Requests${scrapbook.requests.length > 0 ? ` (${scrapbook.requests.length})` : ''}`,
@@ -1582,41 +1709,22 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                       >
                         <PlusIcon size={14} />
                       </HeaderButton>
-                    </Tooltip>
+                    </Tooltip>,
+                    {
+                        testId: 'unified-quick-requests-resize-handle',
+                        title: 'Drag to resize Quick Requests',
+                        ref: quickRequestsHandleRef,
+                        onMouseDown: handleQuickRequestsResizeStart,
+                    },
                 )}
 
                 {!sectionCollapsed.quickRequests && (
                     <>
-                        {/* Vertical resize handle between the project tree
-                            and the Quick Requests subwindow. Always visible
-                            as a thin line (not only on hover) so the grip is
-                            easy to find; it brightens to the accent color
-                            while hovered. It doubles as the section
-                            separator, so the subwindow below has no border
-                            of its own. */}
                         <div
-                            data-testid="unified-quick-requests-resize-handle"
-                            title="Drag to resize Quick Requests"
-                            onMouseDown={handleQuickRequestsResizeStart}
-                            onMouseEnter={() => setHandleHovered(true)}
-                            onMouseLeave={() => setHandleHovered(false)}
+                            data-testid="unified-quick-requests-body"
                             style={{
-                                flexShrink: 0,
-                                height: 4,
-                                cursor: 'row-resize',
-                                background: handleHovered
-                                    ? 'var(--apinox-focusBorder)'
-                                    : 'var(--apinox-panel-border)',
-                                transition: 'background 0.2s',
-                            }}
-                        />
-
-                        <div
-                            data-testid="unified-quick-requests"
-                            style={{
-                                flexShrink: 0,
-                                height: quickRequestsHeight,
-                                minHeight: QUICK_REQUESTS_MIN_HEIGHT,
+                                flex: 1,
+                                minHeight: 0,
                                 display: 'flex',
                                 flexDirection: 'column',
                                 overflow: 'hidden',

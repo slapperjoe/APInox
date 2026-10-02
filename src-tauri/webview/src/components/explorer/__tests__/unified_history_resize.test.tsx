@@ -176,24 +176,28 @@ describe('UnifiedExplorerSidebar — History resizable sub-window', () => {
         expect(historySection.compareDocumentPosition(qrSection) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 
-    it('dragging the handle changes the sub-window height (pointer travel from the handle top)', () => {
+    it('dragging the handle moves the separator to the pointer (History total = pointer to sections-below bottom)', () => {
         const { root } = renderSidebar();
-        // Sidebar root (the measured container) is 500px tall at the top of the
-        // document; the History handle's top edge sits 300px down.
+        // Sidebar root (the measured container) is 500px tall at the top of
+        // the document. No sections are stacked below History in this
+        // fixture (no scrapbook/favorites), so the History section's total
+        // (header + body) is the pointer's distance to the container bottom.
         stubRect(root, { top: 0, height: 500 });
-        const handle = screen.getByTestId('unified-history-resize-handle');
-        stubRect(handle, { top: 300, height: 4 });
 
+        const handle = screen.getByTestId('unified-history-resize-handle');
         const section = screen.getByTestId('unified-history');
 
         fireEvent.mouseDown(handle);
-        // History is NOT bottom-pinned: its height is the pointer's travel below
-        // the handle's top edge. clientY 400, handle top 300 → 100px.
+        // Pointer at 400 in a 500px container → 100px section total.
         fireEvent.mouseMove(document, { clientY: 400 });
         expect(section.style.height).toBe('100px');
-        // Drag the pointer up toward the handle: 40px pre-clamp → clamps to the
-        // minimum (History keeps its header + a full row).
+        // Drag the handle UP: the separator follows the pointer and the
+        // section grows (the body keeps its minimum, so a 160px total holds).
         fireEvent.mouseMove(document, { clientY: 340 });
+        expect(section.style.height).toBe('160px');
+        // Drag the handle DOWN past the minimum: pointer 448 → 52px total,
+        // clamped so the section keeps its header + a full row.
+        fireEvent.mouseMove(document, { clientY: 448 });
         expect(section.style.height).toBe(`${HISTORY_MIN_HEIGHT}px`);
         fireEvent.mouseUp(document);
     });
@@ -202,14 +206,13 @@ describe('UnifiedExplorerSidebar — History resizable sub-window', () => {
         const { root } = renderSidebar();
         stubRect(root, { top: 0, height: 500 });
         const handle = screen.getByTestId('unified-history-resize-handle');
-        stubRect(handle, { top: 300, height: 4 });
 
         const section = screen.getByTestId('unified-history');
 
         fireEvent.mouseDown(handle);
-        // Pointer just below the handle top: the sub-window would be ~2px, so
+        // Pointer near the bottom edge: the section total would be ~2px, so
         // it clamps to the minimum.
-        fireEvent.mouseMove(document, { clientY: 302 });
+        fireEvent.mouseMove(document, { clientY: 498 });
         expect(section.style.height).toBe(`${HISTORY_MIN_HEIGHT}px`);
         fireEvent.mouseUp(document);
     });
@@ -218,14 +221,14 @@ describe('UnifiedExplorerSidebar — History resizable sub-window', () => {
         const { root } = renderSidebar();
         stubRect(root, { top: 0, height: 300 });
         const handle = screen.getByTestId('unified-history-resize-handle');
-        stubRect(handle, { top: 10, height: 4 });
 
         const section = screen.getByTestId('unified-history');
 
         fireEvent.mouseDown(handle);
-        // Drag far past the bottom: the sub-window caps at container - tree
-        // minimum (300 - 64 = 236).
-        fireEvent.mouseMove(document, { clientY: 1000 });
+        // Drag the handle UP to the very top: the section total would be the
+        // full 300px, but the tree must keep its minimum, so it caps at
+        // 300 - 64 = 236.
+        fireEvent.mouseMove(document, { clientY: 1 });
         expect(section.style.height).toBe(`${300 - 64}px`);
         fireEvent.mouseUp(document);
     });
@@ -250,15 +253,17 @@ describe('UnifiedExplorerSidebar — History resizable sub-window', () => {
         const root = utils.container.firstChild as HTMLElement;
         stubRect(root, { top: 0, height: 500 });
         const historyHandle = screen.getByTestId('unified-history-resize-handle');
-        stubRect(historyHandle, { top: 200, height: 4 });
 
         const historySection = screen.getByTestId('unified-history');
         const qrSection = screen.getByTestId('unified-quick-requests');
         const qrBefore = qrSection.style.height;
 
         fireEvent.mouseDown(historyHandle);
+        // Pointer-position based: History total = distance from the pointer
+        // to the bottom of the sections below it. In jsdom the QR section's
+        // rect is 0, so 500 - 400 = 100.
         fireEvent.mouseMove(document, { clientY: 400 });
-        expect(historySection.style.height).toBe('200px');
+        expect(historySection.style.height).toBe('100px');
         // Quick Requests is pinned to its own (unchanged) height.
         expect(qrSection.style.height).toBe(qrBefore);
         fireEvent.mouseUp(document);
