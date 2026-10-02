@@ -45,35 +45,56 @@ const HistoryList = styled.div`
     overflow-y: auto;
 `;
 
-const SearchBar = styled.input`
-    background: var(--apinox-input-background);
-    color: var(--apinox-input-foreground);
-    border: 1px solid var(--apinox-input-border);
-    /* Normal-height input: compact vertical padding (the header row's
-       default input used the taller SPACING_SM vertical padding). */
-    padding: ${SPACING_XS} ${SPACING_SM};
-    border-radius: 4px;
-    font-size: var(--apinox-fs-md);
-    &:focus {
-        outline: 1px solid var(--apinox-focusBorder);
-    }
-`;
-
 /**
- * The History sub-window header row: the search field (left, flexes to fill
- * the remaining width) and the filter menu trigger (right). Replaces the
- * former full-width search + inline "Advanced Filters" section.
+ * The History sub-window header row: a single search field that carries the
+ * filter-menu trigger INSIDE its right edge (an embedded button, not a
+ * sibling). Replaces the former full-width search + inline "Advanced
+ * Filters" section, and fixes the overlap where the standalone hamburger sat
+ * half over the search box.
  */
 const HeaderRow = styled.div`
     display: flex;
     align-items: center;
-    gap: ${SPACING_SM};
     margin-bottom: ${SPACING_SM};
 `;
 
-const SearchWrap = styled.div`
+/**
+ * The search field is a bordered container holding the text input and the
+ * embedded trigger so the two share one visual control (one border, one
+ * rounded box) instead of sitting side by side.
+ */
+const SearchField = styled.div`
+    position: relative;
     flex: 1;
     min-width: 0;
+    display: flex;
+    align-items: center;
+    background: var(--apinox-input-background);
+    border: 1px solid var(--apinox-input-border);
+    border-radius: 4px;
+
+    &:focus-within {
+        outline: 1px solid var(--apinox-focusBorder);
+    }
+`;
+
+const SearchInput = styled.input`
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    color: var(--apinox-input-foreground);
+    border: none;
+    /* Compact vertical padding; the right edge clears the embedded trigger. */
+    padding: ${SPACING_XS} 32px ${SPACING_XS} ${SPACING_SM};
+    font-size: var(--apinox-fs-md);
+
+    &::placeholder {
+        opacity: 0.6;
+    }
+
+    &:focus {
+        outline: none;
+    }
 `;
 
 const FilterSection = styled.div`
@@ -171,12 +192,17 @@ const ClearFiltersButton = styled(GhostButton)`
     }
 `;
 
-/** Hamburger trigger for the filter menu (right side of the header row).
-    Square, compact — matches the row height of the search input. */
+/** Hamburger trigger for the filter menu, EMBEDDED in the search field's right
+    edge. No border of its own (the field owns the single border) — it sits
+    absolutely inside the field so the two read as one control. */
 const FilterMenuTrigger = styled(GhostButton)<{ $active: boolean }>`
+    position: absolute;
+    right: 3px;
+    top: 50%;
+    transform: translateY(-50%);
     background: ${props => props.$active ? 'var(--apinox-button-background)' : 'transparent'};
     color: ${props => props.$active ? 'var(--apinox-button-foreground)' : 'var(--apinox-icon-foreground)'};
-    border: 1px solid ${props => props.$active ? 'var(--apinox-button-background)' : 'var(--apinox-input-border)'};
+    border: none;
     padding: ${SPACING_XS};
     border-radius: 4px;
     display: flex;
@@ -624,24 +650,24 @@ export default function HistorySidebar({
     return (
         <>
             <HeaderRow>
-                <SearchWrap>
-                    <SearchBar
+                <SearchField>
+                    <SearchInput
                         type="text"
                         placeholder="Search history..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
-                </SearchWrap>
-                <FilterMenuTrigger
-                    ref={filterTriggerRef}
-                    $active={filterMenuOpen || hasActiveFilters}
-                    onClick={openFilterMenu}
-                    title="Advanced Filters"
-                    aria-label="Advanced Filters"
-                    aria-expanded={filterMenuOpen}
-                >
-                    <Menu size={14} />
-                </FilterMenuTrigger>
+                    <FilterMenuTrigger
+                        ref={filterTriggerRef}
+                        $active={filterMenuOpen || hasActiveFilters}
+                        onClick={openFilterMenu}
+                        title="Advanced Filters"
+                        aria-label="Advanced Filters"
+                        aria-expanded={filterMenuOpen}
+                    >
+                        <Menu size={14} />
+                    </FilterMenuTrigger>
+                </SearchField>
             </HeaderRow>
 
             {filterMenuOpen && filterMenuPos && (
