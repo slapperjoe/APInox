@@ -13,6 +13,39 @@ import { ScriptStepEditor } from './ScriptStepEditor';
 import { RequestStepEditor } from './RequestStepEditor';
 import { WorkflowPropertiesPanel } from './WorkflowPropertiesPanel';
 import { PickRequestModal, PickRequestItem } from '../modals/PickRequestModal';
+import { useResizableWidth } from '../../hooks/useResizableWidth';
+
+// Workflow editor panel widths. The Steps panel width persists as absolute px
+// in localStorage (clamped by the band below on load); the default 350px
+// matches the historical fixed width.
+const WORKFLOW_PANEL_MIN = 220;
+const WORKFLOW_PANEL_MAX = 520;
+const WORKFLOW_PANEL_DEFAULT = 350;
+const WORKFLOW_PANEL_WIDTH_KEY = 'apinox_workflow_panel_width_px';
+
+const clampWorkflowPanelWidth = (w: number): number =>
+    Math.min(WORKFLOW_PANEL_MAX, Math.max(WORKFLOW_PANEL_MIN, w));
+
+const loadWorkflowPanelWidth = (): number => {
+    try {
+        const raw = window.localStorage.getItem(WORKFLOW_PANEL_WIDTH_KEY);
+        if (raw !== null) {
+            const parsed = parseFloat(raw);
+            if (!Number.isNaN(parsed)) return clampWorkflowPanelWidth(parsed);
+        }
+    } catch {
+        /* localStorage unavailable — fall through to the default. */
+    }
+    return WORKFLOW_PANEL_DEFAULT;
+};
+
+const saveWorkflowPanelWidth = (w: number): void => {
+    try {
+        window.localStorage.setItem(WORKFLOW_PANEL_WIDTH_KEY, String(clampWorkflowPanelWidth(w)));
+    } catch {
+        /* Non-fatal: the width simply won't persist across restarts. */
+    }
+};
 
 const Container = styled.div`
     display: flex;
@@ -21,13 +54,53 @@ const Container = styled.div`
     width:100%
 `;
 
-const StepsPanel = styled.div`
-    flex: 0 0 350px;
+// The Steps panel width is drag-owned (220–520px, persisted in px); the
+// border is drawn by the resize handle on the right edge, so it lives here.
+const StepsPanel = styled.div<{ $width: number }>`
+    flex: 0 0 ${props => props.$width}px;
     display: flex;
     flex-direction: column;
-    border-right: 1px solid var(--apinox-panel-border);
     background: var(--apinox-sideBar-background);
     overflow: hidden;
+`;
+
+// The vertical divider you drag to resize the Steps panel — same grip
+// contract as the sidebar handle (components/Sidebar.tsx): a 5px full-height
+// hit area on the panel's right edge, the 1px panel border as its background,
+// and a small centred grip that lights up on hover.
+const StepsResizeHandle = styled.div`
+    position: relative;
+    width: 5px;
+    height: 100%;
+    flex-shrink: 0;
+    cursor: col-resize;
+    background: var(--apinox-panel-border);
+    transition: background 0.15s ease;
+
+    &:hover {
+        background: var(--apinox-focusBorder, var(--apinox-panel-border));
+    }
+
+    /* Tiny drag grip centred half-way down. */
+    &::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: 2px;
+        height: 28px;
+        border-radius: 2px;
+        background: var(--apinox-sideBarSectionHeader-border, rgba(128, 128, 128, 0.5));
+        opacity: 0.7;
+        pointer-events: none;
+        transition: background 0.15s ease, opacity 0.15s ease;
+    }
+
+    &:hover::after {
+        background: var(--apinox-focusBorder, rgba(128, 128, 128, 0.9));
+        opacity: 1;
+    }
 `;
 
 const StepsPanelHeader = styled.div`
@@ -232,6 +305,17 @@ export const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
     const [addStepDropdownOpen, setAddStepDropdownOpen] = useState(false);
     const [collapsedLoops, setCollapsedLoops] = useState<Set<string>>(new Set());
     const [showRequestPicker, setShowRequestPicker] = useState(false);
+
+    // Steps panel width (220–520px), seeded from localStorage so the last
+    // chosen width is restored on startup; the neighbour (EditorPanel,
+    // flex: 1) absorbs the delta when the divider is dragged.
+    const initialStepsPanelWidth = React.useMemo(() => loadWorkflowPanelWidth(), []);
+    const { width: stepsPanelWidth, startResize: startStepsPanelResize } = useResizableWidth(
+        WORKFLOW_PANEL_MIN,
+        WORKFLOW_PANEL_MAX,
+        initialStepsPanelWidth,
+        saveWorkflowPanelWidth,
+    );
 
     // UNIFIED STORE (single source of truth): read the unified project list
     // directly from context. The legacy `projects` prop (from the workspace
@@ -531,7 +615,7 @@ export const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
     return (
         <>
             <Container>
-            <StepsPanel>
+            <StepsPanel $width={stepsPanelWidth}>
                 <StepsPanelHeader>
                     <StepsPanelTitle>Workflow Steps</StepsPanelTitle>
                 </StepsPanelHeader>
@@ -563,6 +647,10 @@ export const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
                     </AddStepButton>
                 </AddStepContainer>
             </StepsPanel>
+            <StepsResizeHandle
+                onMouseDown={startStepsPanelResize}
+                data-testid="workflow-steps-resize-handle"
+            />
             <EditorPanel>
                 {renderEditor()}
             </EditorPanel>

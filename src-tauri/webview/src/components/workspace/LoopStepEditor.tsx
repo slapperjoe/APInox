@@ -28,6 +28,7 @@ import {
   StepNameField,
 } from "./StepEditorShell";
 import { v4 as uuidv4 } from "uuid";
+import { useResizableWidth } from "../../hooks/useResizableWidth";
 import { CustomSelect } from "../common/CustomSelect";
 
 const Container = styled.div`
@@ -38,14 +39,80 @@ const Container = styled.div`
   box-sizing: border-box;
 `;
 
-const LeftPanel = styled.div`
-  flex: 0 0 300px;
+// Left (loop configuration) panel width: drag-owned, persisted in px with
+// the same band/persistence contract as the WorkflowEditor steps panel.
+const LOOP_PANEL_MIN = 220;
+const LOOP_PANEL_MAX = 520;
+const LOOP_PANEL_DEFAULT = 300;
+const LOOP_PANEL_WIDTH_KEY = "apinox_loop_panel_width_px";
+
+const clampLoopPanelWidth = (w: number): number =>
+  Math.min(LOOP_PANEL_MAX, Math.max(LOOP_PANEL_MIN, w));
+
+const loadLoopPanelWidth = (): number => {
+  try {
+    const raw = window.localStorage.getItem(LOOP_PANEL_WIDTH_KEY);
+    if (raw !== null) {
+      const parsed = parseFloat(raw);
+      if (!Number.isNaN(parsed)) return clampLoopPanelWidth(parsed);
+    }
+  } catch {
+    /* localStorage unavailable — fall through to the default. */
+  }
+  return LOOP_PANEL_DEFAULT;
+};
+
+const saveLoopPanelWidth = (w: number): void => {
+  try {
+    window.localStorage.setItem(LOOP_PANEL_WIDTH_KEY, String(clampLoopPanelWidth(w)));
+  } catch {
+    /* Non-fatal: the width simply won't persist across restarts. */
+  }
+};
+
+const LeftPanel = styled.div<{ $width: number }>`
+  flex: 0 0 ${(props) => props.$width}px;
   display: flex;
   flex-direction: column;
   gap: ${SPACING_MD};
   padding: ${SPACING_MD};
-  border-right: 1px solid var(--apinox-panel-border);
   overflow-y: auto;
+`;
+
+// The vertical divider you drag to resize the loop config panel — same grip
+// contract as the WorkflowEditor steps-panel handle.
+const LoopPanelResizeHandle = styled.div`
+  position: relative;
+  width: 5px;
+  height: 100%;
+  flex-shrink: 0;
+  cursor: col-resize;
+  background: var(--apinox-panel-border);
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: var(--apinox-focusBorder, var(--apinox-panel-border));
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 2px;
+    height: 28px;
+    border-radius: 2px;
+    background: var(--apinox-sideBarSectionHeader-border, rgba(128, 128, 128, 0.5));
+    opacity: 0.7;
+    pointer-events: none;
+    transition: background 0.15s ease, opacity 0.15s ease;
+  }
+
+  &:hover::after {
+    background: var(--apinox-focusBorder, rgba(128, 128, 128, 0.9));
+    opacity: 1;
+  }
 `;
 
 const RightPanel = styled.div`
@@ -196,6 +263,17 @@ export const LoopStepEditor: React.FC<LoopStepEditorProps> = ({
   >(null);
   const [addStepDropdownOpen, setAddStepDropdownOpen] = useState(false);
 
+  // Loop config panel width (220–520px), seeded from localStorage so the last
+  // chosen width is restored; the neighbour (RightPanel, flex: 1) absorbs the
+  // delta when the divider is dragged.
+  const initialLoopPanelWidth = React.useMemo(() => loadLoopPanelWidth(), []);
+  const { width: loopPanelWidth, startResize: startLoopPanelResize } = useResizableWidth(
+    LOOP_PANEL_MIN,
+    LOOP_PANEL_MAX,
+    initialLoopPanelWidth,
+    saveLoopPanelWidth,
+  );
+
   useEffect(() => {
     setName(step.name);
     setLoopType(step.loop?.type || "count");
@@ -332,7 +410,7 @@ export const LoopStepEditor: React.FC<LoopStepEditorProps> = ({
 
   return (
     <Container>
-      <LeftPanel>
+      <LeftPanel $width={loopPanelWidth}>
         <StepHeader>
           <StepIcon $color="var(--apinox-charts-blue)">
             <Repeat size={20} />
@@ -454,7 +532,10 @@ export const LoopStepEditor: React.FC<LoopStepEditorProps> = ({
           <PrimaryButton onClick={handleSave}>Save Loop Config</PrimaryButton>
         </StepActionRow>
       </LeftPanel>
-
+      <LoopPanelResizeHandle
+        onMouseDown={startLoopPanelResize}
+        data-testid="loop-panel-resize-handle"
+      />
       <RightPanel>
         {selectedNestedStepIndex !== null &&
         step.loopSteps &&

@@ -14,6 +14,7 @@ import { ConditionPickerModal, suggestConditionsFromSoapXml } from './ConditionP
 import { tokens } from './tokens';
 import { EditorPane, SplitDivider, naturalPanePx, useSplitPaneDrag } from './splitPane';
 import { ProxyModal } from './ProxyModal';
+import { useResizableWidth } from '../../hooks/useResizableWidth';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -67,11 +68,84 @@ const Container = styled.div`
   font-size: var(--apinox-fs-base);
 `;
 
-const WatchSidebar = styled.div`
-  width: 240px;
-  min-width: 200px;
+// Vertical divider you drag to resize a left-hand panel (the Watch list and
+// the Pair list). Same grip contract as the sidebar/workflow handles: a 5px
+// full-height hit area, the 1px panel border as its background, and a small
+// centred grip that lights up on hover.
+const PanelResizeHandle = styled.div`
+  position: relative;
+  width: 5px;
+  height: 100%;
+  flex-shrink: 0;
+  cursor: col-resize;
+  background: ${tokens.border.default};
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: var(--apinox-focusBorder, ${tokens.border.default});
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 2px;
+    height: 28px;
+    border-radius: 2px;
+    background: var(--apinox-sideBarSectionHeader-border, rgba(128, 128, 128, 0.5));
+    opacity: 0.7;
+    pointer-events: none;
+    transition: background 0.15s ease, opacity 0.15s ease;
+  }
+
+  &:hover::after {
+    background: var(--apinox-focusBorder, rgba(128, 128, 128, 0.9));
+    opacity: 1;
+  }
+`;
+
+// Panel width persistence bands (absolute px, localStorage). The defaults
+// match the historical fixed widths (Watches 240px, Pairs 280px).
+const WATCH_PANEL_MIN = 180;
+const WATCH_PANEL_MAX = 420;
+const WATCH_PANEL_DEFAULT = 240;
+const WATCH_PANEL_WIDTH_KEY = 'apinox_watcher_watch_panel_width_px';
+
+const PAIR_PANEL_MIN = 180;
+const PAIR_PANEL_MAX = 420;
+const PAIR_PANEL_DEFAULT = 280;
+const PAIR_PANEL_WIDTH_KEY = 'apinox_watcher_pair_panel_width_px';
+
+const clampWidth = (min: number, max: number) => (w: number): number =>
+  Math.min(max, Math.max(min, w));
+
+const loadPanelWidth = (key: string, min: number, max: number, fallback: number): number => {
+  const clamp = clampWidth(min, max);
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (raw !== null) {
+      const parsed = parseFloat(raw);
+      if (!Number.isNaN(parsed)) return clamp(parsed);
+    }
+  } catch {
+    /* localStorage unavailable — fall through to the default. */
+  }
+  return fallback;
+};
+
+const savePanelWidth = (key: string, w: number): void => {
+  try {
+    window.localStorage.setItem(key, String(w));
+  } catch {
+    /* Non-fatal: the width simply won't persist across restarts. */
+  }
+};
+
+const WatchSidebar = styled.div<{ $width: number }>`
+  width: ${(p) => p.$width}px;
   background: ${tokens.surface.panel};
-  border-right: 1px solid ${tokens.border.default};
   display: flex;
   flex-direction: column;
 `;
@@ -149,10 +223,8 @@ const MainArea = styled.div`
   overflow: hidden;
 `;
 
-const PairList = styled.div`
-  width: 280px;
-  min-width: 220px;
-  border-right: 1px solid ${tokens.border.default};
+const PairList = styled.div<{ $width: number }>`
+  width: ${(p) => p.$width}px;
   display: flex;
   flex-direction: column;
 `;
@@ -496,6 +568,32 @@ export const FileWatcherPage: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingWatch, setEditingWatch] = useState<FileWatch | null>(null);
 
+  // Watch-list panel width (180–420px), seeded from localStorage so the last
+  // chosen width is restored; the MainArea (flex: 1) absorbs the delta.
+  const initialWatchWidth = React.useMemo(
+    () => loadPanelWidth(WATCH_PANEL_WIDTH_KEY, WATCH_PANEL_MIN, WATCH_PANEL_MAX, WATCH_PANEL_DEFAULT),
+    [],
+  );
+  const { width: watchPanelWidth, startResize: startWatchPanelResize } = useResizableWidth(
+    WATCH_PANEL_MIN,
+    WATCH_PANEL_MAX,
+    initialWatchWidth,
+    (w) => savePanelWidth(WATCH_PANEL_WIDTH_KEY, w),
+  );
+
+  // Pair-list panel width (180–420px) — independent of the watch panel; the
+  // DetailPanel (flex: 1) absorbs this delta.
+  const initialPairWidth = React.useMemo(
+    () => loadPanelWidth(PAIR_PANEL_WIDTH_KEY, PAIR_PANEL_MIN, PAIR_PANEL_MAX, PAIR_PANEL_DEFAULT),
+    [],
+  );
+  const { width: pairPanelWidth, startResize: startPairPanelResize } = useResizableWidth(
+    PAIR_PANEL_MIN,
+    PAIR_PANEL_MAX,
+    initialPairWidth,
+    (w) => savePanelWidth(PAIR_PANEL_WIDTH_KEY, w),
+  );
+
   const [formName, setFormName] = useState('');
   const [formRequestFile, setFormRequestFile] = useState('');
   const [formResponseFile, setFormResponseFile] = useState('');
@@ -688,7 +786,7 @@ export const FileWatcherPage: React.FC = () => {
   return (
     <Container>
       {/* ── Left: Watch list ── */}
-      <WatchSidebar>
+      <WatchSidebar $width={watchPanelWidth}>
         <SidebarHeader>
           <h3>Watches</h3>
           <Tooltip content="Add Watch">
@@ -729,10 +827,14 @@ export const FileWatcherPage: React.FC = () => {
           ))}
         </WatchList>
       </WatchSidebar>
+      <PanelResizeHandle
+        onMouseDown={startWatchPanelResize}
+        data-testid="watcher-watch-resize-handle"
+      />
 
       {/* ── Centre: Pair list ── */}
       <MainArea>
-        <PairList>
+        <PairList $width={pairPanelWidth}>
           <PairListHeader>
             <h3>{selectedWatchName ?? 'All Pairs'}</h3>
             <SecondaryBtn onClick={handleClearPairs}>Clear</SecondaryBtn>
@@ -761,6 +863,10 @@ export const FileWatcherPage: React.FC = () => {
             )}
           </PairScroll>
         </PairList>
+        <PanelResizeHandle
+          onMouseDown={startPairPanelResize}
+          data-testid="watcher-pair-resize-handle"
+        />
 
         {/* ── Right: Detail panel ── */}
         <DetailPanel>
