@@ -125,3 +125,6 @@ apinox-0.16.114-1-x86_64.pkg.tar.zst
 
 # Git worktree scratch dirs (kanban agent worktrees live inside the repo)
 .worktrees/
+
+# Agent workspace (plans, scratch) — not project code
+.hermes/
