@@ -13,6 +13,8 @@
  */
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import styled from "styled-components";
+import { SidebarRow } from "./shared/SidebarStyles";
+import { resolveDisplayRequestTitle } from "../../utils/requestNaming";
 import {
     Star,
     Trash2,
@@ -250,24 +252,14 @@ const FilterMenuTitle = styled.div`
     padding: ${SPACING_XS} ${SPACING_XS} ${SPACING_SM};
 `;
 
-// Matches the other sidebar list rows (tree items, Quick Requests): a
-// transparent background, inherited text colour and a hover highlight — no
-// gray "card" and no coloured left border. The success/fail signal lives on
-// the status-code text (see HistoryRow), not a border.
-const HistoryItem = styled.div`
-    display: flex;
-    align-items: flex-start;
-    gap: ${SPACING_SM};
-    padding: 4px 8px;
-    margin-bottom: 2px;
-    background: transparent;
-    cursor: pointer;
-    color: inherit;
-
-    &:hover {
-        background: var(--apinox-list-hoverBackground);
-    }
-`;
+// The history row IS the shared SidebarRow — the exact same generated class
+// as the Projects tree, Favorites and Quick Requests rows (8px base left
+// padding, fs-base font, flex/gap/selection/hover all from one place).
+// Matches the other sidebar list rows: transparent background, inherited
+// text colour and a hover highlight — no gray "card" and no coloured left
+// border. The success/fail signal lives on the status-code text (see
+// HistoryRow), not a border.
+const HistoryItem = SidebarRow;
 
 const ItemContent = styled.div`
     flex: 1;
@@ -334,13 +326,17 @@ export const HistoryRow: React.FC<HistoryRowProps> = ({
     onContextMenu,
     detailsOverride,
 }) => {
-    // The generic "Request" placeholder (stored by unnamed quick requests)
-    // carries no information, so fall back to the operation — but NOT the
-    // HTTP method: "POST" on every row is noise. Named requests and project
-    // requests keep their real names.
-    const rawName = entry.requestName;
-    const title =
-        rawName && rawName !== 'Request' ? rawName : (entry.operationName || rawName || '');
+    // Title: the best display name the entry carries — a real name wins, then
+    // the operation, the SOAPAction, the envelope's body element, the endpoint
+    // (see utils/requestNaming). Never the bare "Request" placeholder if any
+    // of those identify it.
+    const title = resolveDisplayRequestTitle({
+      name: entry.requestName,
+      operationName: entry.operationName,
+      headers: entry.headers,
+      requestBody: entry.requestBody,
+      endpoint: entry.endpoint,
+    });
     // Details line: join only the non-empty parts — a blank quick request has
     // no project/interface/operation, and joining empties rendered as stray
     // "› ›" separators at the start of every row.

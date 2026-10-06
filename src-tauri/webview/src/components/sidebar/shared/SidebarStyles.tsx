@@ -11,6 +11,53 @@
 import styled, { keyframes, css } from 'styled-components';
 
 /**
+ * Shared row geometry for the unified explorer sidebar list rows. ONE font
+ * size and ONE 8px base left padding across every section (Projects tree,
+ * History, Favorites, Quick Requests) so they read as a single list:
+ *
+ *   font size   SIDEBAR_ROW_FONT = --apinox-fs-base (13px) — every row, no
+ *               per-row type hierarchy; the tree's hierarchy is carried by
+ *               indentation alone (see docs/FONT_SIZE_TOKENS.md).
+ *   left edge   SIDEBAR_ROW_BASE_PAD (8px) — the row's base content margin.
+ *               Tree rows add `indent` per nesting step on top.
+ *
+ * `SidebarRow` is the canonical row element. The Projects tree (TreeItem),
+ * Quick Requests (ScrapbookPanel) and Favorites (FavoritesPanel) all render
+ * their rows with it (or extend it) so they share this exact setup. The
+ * History rows already match this geometry (8px base) and are kept as the
+ * reference rather than re-pointed.
+ */
+export const SIDEBAR_ROW_BASE_PAD = 8;
+export const SIDEBAR_ROW_FONT = "var(--apinox-fs-base)";
+
+/**
+ * Canonical sidebar list row. `$indent` adds extra left padding per nesting
+ * step (tree levels); `$selected` drives the active-selection colours. A
+ * single-line clamp (nowrap + ellipsis) keeps every row to one line.
+ */
+export const SidebarRow = styled.div<{ $indent?: number; $selected?: boolean }>`
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    /* 8px base edge (SIDEBAR_ROW_BASE_PAD); nested levels add their indent
+       step on top. Matches the History row's 8px left padding — the shared
+       reference. */
+    padding: 4px ${SIDEBAR_ROW_BASE_PAD}px 4px ${SIDEBAR_ROW_BASE_PAD}px;
+    padding-left: ${p => SIDEBAR_ROW_BASE_PAD + (p.$indent ?? 0)}px;
+    font-size: ${SIDEBAR_ROW_FONT};
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background-color: ${p => p.$selected ? 'var(--apinox-list-activeSelectionBackground)' : 'transparent'};
+    color: ${p => p.$selected ? 'var(--apinox-list-activeSelectionForeground)' : 'inherit'};
+
+    &:hover {
+        background-color: ${p => p.$selected ? 'var(--apinox-list-activeSelectionBackground)' : 'var(--apinox-list-hoverBackground)'};
+    }
+`;
+
+/**
  * RowActions - Inline action buttons inside a sidebar row.
  * Hidden by default; revealed on hover of the parent row.
  * Pass the row's styled component as `$parent` so the hover selector binds to it.

@@ -95,7 +95,7 @@ export const UnifiedHistoryPanel: React.FC<UnifiedHistoryPanelProps> = ({
                     filter bar and entry list stack vertically — as row items
                     they overflow the sidebar width (the filter bar declares
                     width:100%, which in a row pushes the list out of view). */}
-                <div style={{ flex: 1, minHeight: 0, overflow: "auto", display: "flex", flexDirection: "column", padding: "0 4px" }}>
+                <div style={{ flex: 1, minHeight: 0, overflow: "auto", display: "flex", flexDirection: "column" }}>
                     {body}
                 </div>
             </div>

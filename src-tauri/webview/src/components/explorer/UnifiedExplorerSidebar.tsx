@@ -24,6 +24,7 @@ import {
     Pencil as PencilIcon,
 } from '../sidebar/shared/SidebarContextMenu';
 import { ScrapbookPanel } from '../sidebar/ScrapbookPanel';
+import { SidebarRow } from '../sidebar/shared/SidebarStyles';
 import { UnifiedHistoryPanel } from './UnifiedHistoryPanel';
 import { FavoritesPanel } from './FavoritesPanel';
 import { RenameModal } from '../modals/RenameModal';
@@ -322,12 +323,19 @@ export const TreeItem: React.FC<TreeItemProps> = ({
             color = 'var(--apinox-descriptionForeground)';
     }
 
-    // Indentation: 0px for project, 12px for operation, 24px for request
-    const paddingLeft = indentLevel * TREE_INDENT_STEP;
+    // Indentation: 0px for project, 12px for operation, 24px for request.
+    // SidebarRow's 8px base left padding (SIDEBAR_ROW_BASE_PAD) is the shared
+    // reference (matches the History row); nested levels add TREE_INDENT_STEP
+    // via the row's $indent prop. Font size is uniform (SIDEBAR_ROW_FONT)
+    // across every row kind — hierarchy is carried by indentation, not type
+    // size (see docs/FONT_SIZE_TOKENS.md).
 
     return (
         <>
-            <div
+            <SidebarRow
+                as="div"
+                $indent={indentLevel * TREE_INDENT_STEP}
+                $selected={selected}
                 draggable={draggable}
                 onClick={onClick}
                 onContextMenu={handleContextMenuInternal}
@@ -338,26 +346,6 @@ export const TreeItem: React.FC<TreeItemProps> = ({
                 data-drop-type={dataDropType}
                 data-drop-index={dataDropIndex}
                 data-drop-parent={dataDropParent}
-                style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    // 8px base edge: indented one step from the accordion
-                    // headers (whose chevrons sit at 2px) so projects read as
-                    // content under the section, not as another top-level
-                    // row — but not a full column over.
-                    padding: `4px 8px 4px ${paddingLeft + 8}px`,
-                    cursor: 'pointer',
-                    backgroundColor: selected ? 'var(--apinox-list-activeSelectionBackground)' : 'transparent',
-                    color: selected ? 'var(--apinox-list-activeSelectionForeground)' : 'inherit',
-                    fontSize:
-                        type === 'project'
-                            ? 'var(--apinox-fs-md)'
-                            : 'var(--apinox-fs-sm)',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                }}
             >
                 {/* Expand/collapse chevron slot — ALWAYS rendered at a fixed
                     14px width so the icon + text line up across every row,
@@ -402,8 +390,7 @@ export const TreeItem: React.FC<TreeItemProps> = ({
                         <StarIcon size={14} fill="currentColor" />
                     </span>
                 )}
-            </div>
-
+            </SidebarRow>
 
             {expanded && hasChildren && <div>{children}</div>}
         </>

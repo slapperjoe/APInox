@@ -78,17 +78,38 @@ Deviation: larger than baseline (see audit `t_e8e2f709`).
 
 ### Unified explorer sidebar (`components/explorer/UnifiedExplorerSidebar.tsx`)
 
-Deviation: `TreeItem` rows (132-170) inherit the 13px app base — no
-font-size is set anywhere in the render chain. Give rows explicit sizes that
-restore the legacy em hierarchy:
+**Consolidated (t_8f2b97a4 follow-up):** the four bottom sections of the
+unified explorer sidebar — **Projects, History, Favorites, Quick Requests** —
+now render their rows with the ONE shared component `SidebarRow` in
+`components/sidebar/shared/SidebarStyles.tsx` (same generated class in
+devtools across all four): one font size, one 8px base left padding, one
+hover/selection treatment. History's old bespoke `styled.div` row and the
+Favorites/Quick-Requests wrapper re-definitions are gone — each is now a
+direct alias of `SidebarRow`. The Projects tree passes `$indent` for its
+nesting steps. The earlier per-level hierarchy (project `fs-md` 12px,
+operation/request `fs-sm` 11px) and the interim per-section paddings (QR
+2px, Favorites 16px) were flagged as inconsistent and flattened:
 
-| Element | Current | Target token |
+| Element | Size | Left edge |
 |---|---|---|
-| Project rows | 13px (inherited) | `var(--apinox-fs-md)` (12px, ≈ legacy `ServiceItem` 0.95em) |
-| Operation rows | 13px (inherited) | `var(--apinox-fs-sm)` (11px, ≈ legacy `OperationItem` 0.88em) |
-| Request rows | 13px (inherited) | `var(--apinox-fs-sm)` (11px, ≈ legacy `RequestItem` 0.82em) |
+| Project rows (`TreeItem` → `SidebarRow`) | `--apinox-fs-base` (13px) | 8px |
+| Operation rows (`TreeItem` → `SidebarRow`) | `--apinox-fs-base` (13px) | 8px + 12px (one `TREE_INDENT_STEP`) |
+| Request rows (`TreeItem` → `SidebarRow`) | `--apinox-fs-base` (13px) | 8px + 24px (two steps) |
+| History rows (`HistorySidebar` / `HistoryRow`) | `--apinox-fs-base` (13px, via `ItemTitle`) | 8px |
+| Favorites rows (`FavoritesPanel` → `SidebarRow`) | `--apinox-fs-base` (13px) | 8px |
+| Quick request rows (`ScrapbookPanel` → `SidebarRow`) | `--apinox-fs-base` (13px) | 8px |
+
+Hierarchy is carried by **indentation + icons** only — never by shrinking the
+type. The shared constants live in
+`components/sidebar/shared/SidebarStyles.tsx` (`SIDEBAR_ROW_BASE_PAD`,
+`SIDEBAR_ROW_FONT`, `SidebarRow`); a regression suite in
+`components/explorer/__tests__/unified_explorer_font_tokens.test.tsx`
+locks the uniform size (via `getComputedStyle` — the values come from the
+shared class, not inline styles).
+
+| Element | Current | Note |
+|---|---|---|
 | Quick Requests header (`SidebarHeaderTitle`) | 11px | `var(--apinox-fs-sm)` — already baseline, don't touch |
-| Quick request rows (`ScrapbookPanel` / `RequestItem` 0.82em) | ~10.7px | leave as-is — already baseline |
 | Empty state (448) | 12px | `var(--apinox-fs-md)` — already fine |
 
 ## Do not touch
@@ -113,9 +134,15 @@ is tracked in `t_d19eeb2d` (settings proxy page) and `t_8f2b97a4`
   uppercase 700, proxy `tokens.fontSize` xs/sm/base re-pointed at the
   shared tokens.
 - **Unified explorer sidebar** — applied in `t_8f2b97a4` (commit
-  `a078143`): `TreeItem` rows pinned to `--apinox-fs-md` (project) and
-  `--apinox-fs-sm` (operation/request), with a regression suite in
-  `components/explorer/__tests__/unified_explorer_font_tokens.test.tsx`.
+  `a078143`), then **consolidated in a follow-up**: the first pass pinned
+  `TreeItem` rows to `--apinox-fs-md` (project) and `--apinox-fs-sm`
+  (operation/request); that per-level hierarchy was flagged as inconsistent
+  with the History/Favorites/Quick-Requests rows and flattened so ALL four
+  sections render at `--apinox-fs-base` (13px), with the shared
+  `SIDEBAR_ROW_BASE_PAD` / `SIDEBAR_ROW_FONT` constants and a regression
+  suite in `components/explorer/__tests__/unified_explorer_font_tokens.test.tsx`
+  locking the uniform size. See the section table above for the current
+  per-row left edges.
 
 The 19-line sidebar-only revision of this file from `t_8f2b97a4` (which
 listed `--apinox-fs-title` as 16px and omitted the token definitions) was

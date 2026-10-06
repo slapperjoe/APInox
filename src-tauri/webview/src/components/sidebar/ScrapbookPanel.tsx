@@ -3,7 +3,8 @@ import styled from 'styled-components';
 import { Plus, Trash2, Play } from 'lucide-react';
 import { SidebarContextMenu, CtxMenuSection } from './shared/SidebarContextMenu';
 import { ScrapbookRequest } from '@shared/models';
-import { SidebarHeaderActions, SidebarHeaderTitle, RequestItem as BaseRequestItem } from './shared/SidebarStyles';
+import { SidebarHeaderActions, SidebarHeaderTitle, SidebarRow } from './shared/SidebarStyles';
+import { resolveDisplayRequestTitle } from '../../utils/requestNaming';
 import { HeaderButton, GhostButton } from '../common/Button';
 import { Tooltip } from '../common/Tooltip';
 import { SPACING_SM } from '../../styles/spacing';
@@ -47,22 +48,10 @@ const RequestList = styled.div<{ $fill?: boolean }>`
     display: flex;
     flex-direction: column;
     min-height: 0;
-    ${props => props.$fill
-        ? "flex: 1; overflow-y: auto; margin-left: -12px; margin-right: -12px;"
-        : ""}
+    ${props => props.$fill ? "flex: 1; overflow-y: auto;" : ""}
 `;
 
-const RequestItem = styled(BaseRequestItem)<{ $selected: boolean }>`
-    display: flex;
-    align-items: center;
-    gap: ${SPACING_SM};
-    background-color: ${props => props.$selected ? 'var(--apinox-list-activeSelectionBackground)' : 'transparent'};
-    color: ${props => props.$selected ? 'var(--apinox-list-activeSelectionForeground)' : 'inherit'};
-    
-    &:hover {
-        background-color: ${props => props.$selected ? 'var(--apinox-list-activeSelectionBackground)' : 'var(--apinox-list-hoverBackground)'};
-    }
-`;
+const RequestItem = SidebarRow;
 
 const RequestName = styled.div`
     flex: 1;
@@ -149,12 +138,20 @@ export const ScrapbookPanel: React.FC<ScrapbookPanelProps> = ({
                 <RequestItem
                     key={request.id}
                     $selected={selectedRequest?.id === request.id}
-                    $active={selectedRequest?.id === request.id}
                     onClick={() => onSelectRequest(request)}
                     onContextMenu={(e) => handleContextMenu(e, request)}
                 >
-                    <RequestName title={request.name}>
-                        {request.name}
+                    <RequestName title={request.displayName || request.name}>
+                        {/* A blank quick request is stored as "Request" — show
+                            the best identity it carries instead (SOAPAction /
+                            envelope body element / endpoint), last-resort
+                            "Request" (utils/requestNaming). */}
+                        {resolveDisplayRequestTitle({
+                            name: request.displayName || request.name,
+                            headers: request.headers,
+                            requestBody: request.request,
+                            endpoint: request.endpoint,
+                        })}
                     </RequestName>
                     <RequestActions>
                         <IconButton

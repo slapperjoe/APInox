@@ -15,6 +15,8 @@ import { Star, Trash2, Pencil } from "lucide-react";
 import { SidebarContextMenu, CtxMenuSection } from "../sidebar/shared/SidebarContextMenu";
 import { EmptyState } from "../common/EmptyState";
 import { RequestHistoryEntry } from "@shared/models";
+import { SidebarRow } from "../sidebar/shared/SidebarStyles";
+import { resolveDisplayRequestTitle } from "../../utils/requestNaming";
 
 export interface FavoritesPanelProps {
     /** Starred request-history entries (any order). */
@@ -35,18 +37,9 @@ const List = styled.div`
     overflow-y: auto;
 `;
 
-const Row = styled.div`
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 8px;
-    cursor: pointer;
-    color: inherit;
-
-    &:hover {
-        background: var(--apinox-list-hoverBackground);
-    }
-`;
+/* The favorite row IS the shared SidebarRow — same generated class as the
+   Projects tree and Quick Requests rows (8px base, fs-base, hover). */
+const Row = SidebarRow;
 
 const RowName = styled.div`
     flex: 1;
@@ -54,7 +47,6 @@ const RowName = styled.div`
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: var(--apinox-fs-sm);
 `;
 
 /** Inline rename input shown in place of the row's name. */
@@ -66,7 +58,7 @@ const RenameInput = styled.input`
     border: 1px solid var(--apinox-focusBorder);
     border-radius: 4px;
     padding: 1px 6px;
-    font-size: var(--apinox-fs-sm);
+    font-size: var(--apinox-fs-base);
     font-family: inherit;
 
     &:focus {
@@ -74,10 +66,17 @@ const RenameInput = styled.input`
     }
 `;
 
-/** A favorite shows just its name (the generic "Request" placeholder is
-    kept here — it's the label an unnamed favorited request gets). */
+/** A favorite shows the best display name the entry carries (real name →
+    operation → SOAPAction → envelope body element → endpoint → 'Request') —
+    same chain as the History rows (utils/requestNaming). */
 const resolveName = (entry: RequestHistoryEntry): string => {
-    return entry.requestName || 'Request';
+    return resolveDisplayRequestTitle({
+        name: entry.requestName,
+        operationName: entry.operationName,
+        headers: entry.headers,
+        requestBody: entry.requestBody,
+        endpoint: entry.endpoint,
+    });
 };
 
 export const FavoritesPanel: React.FC<FavoritesPanelProps> = ({

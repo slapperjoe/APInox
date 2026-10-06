@@ -4,22 +4,29 @@ import { UnifiedExplorerSidebar, TreeItem, type TreeItemProps } from "../Unified
 
 /**
  * Font-size tokens: the unified explorer sidebar's project/operation/request
- * rows must render at the standardized quick-request baseline sizes
- * (docs/FONT_SIZE_TOKENS.md, kanban t_8f2b97a4).
+ * rows must ALL render at the same size — --apinox-fs-base (13px) — so the
+ * four sections (Projects, History, Favorites, Quick Requests) read as one
+ * uniform list. Hierarchy is carried by indentation + icons only, never by
+ * shrinking the type.
  *
- *   project rows    --apinox-fs-md   (12px)
- *   operation rows  --apinox-fs-sm   (11px)
- *   request rows    --apinox-fs-sm   (11px)
+ * This supersedes the earlier per-level hierarchy (project fs-md 12px,
+ * operation/request fs-sm 11px) from kanban t_8f2b97a4: the user flagged the
+ * mixed sizes as inconsistent ("how is that the same size?") and asked for a
+ * single size across all four sections (docs/FONT_SIZE_TOKENS.md,
+ * t_8f2b97a4 consolidation).
  *
- * Regression guard: without the per-type font-size the rows inherit the
- * 13px app base, which is what broke the baseline before this change.
+ * Regression guard: the row now takes its font + 8px base left padding from
+ * the shared SidebarRow class (not inline styles), so we assert on
+ * getComputedStyle of the row element — the value jsdom resolves from the
+ * styled-components class. This guards against a per-type font size or a
+ * non-8px base padding drifting back in.
  */
 
-describe("explorer tree rows use the shared font-size tokens", () => {
+describe("explorer tree rows use the shared font + 8px base padding (uniform)", () => {
   it.each([
-    { type: "project", token: "var(--apinox-fs-md)" },
-    { type: "operation", token: "var(--apinox-fs-sm)" },
-    { type: "request", token: "var(--apinox-fs-sm)" },
+    { type: "project", token: "var(--apinox-fs-base)" },
+    { type: "operation", token: "var(--apinox-fs-base)" },
+    { type: "request", token: "var(--apinox-fs-base)" },
   ])("renders %s rows at %s", ({ type, token }) => {
     const props: TreeItemProps = {
       label: `a-${type}-row`,
@@ -27,7 +34,7 @@ describe("explorer tree rows use the shared font-size tokens", () => {
     };
     render(<TreeItem {...props} />);
     const row = screen.getByText(`a-${type}-row`).closest("div")!;
-    expect(row.style.fontSize).toBe(token);
+    expect(getComputedStyle(row).fontSize).toBe(token);
   });
 
   it("does not shrink request rows to the 10px badge size", () => {
@@ -89,7 +96,7 @@ describe("UnifiedExplorerSidebar tree row tokens", () => {
   it("renders project/operation/request rows at the baseline tokens", () => {
     renderSidebar([makeProject()]);
     const projectRow = screen.getByText("Proj").closest("div")!;
-    expect(projectRow.style.fontSize).toBe("var(--apinox-fs-md)");
+    expect(getComputedStyle(projectRow).fontSize).toBe("var(--apinox-fs-base)");
     // Operation/request rows live behind the expand chevron; the TreeItem
     // unit tests above cover their token values.
     expect(screen.queryByText("Op")).toBeNull();
