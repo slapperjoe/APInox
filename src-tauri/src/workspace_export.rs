@@ -234,6 +234,48 @@ fn unified_project_to_nested(unified: &serde_json::Value) -> serde_json::Value {
     })
 }
 
+/// The workspace envelope written by `export_unified_project` (single-project
+/// "Export Project") holds FLAT UNIFIED project values — a top-level
+/// `operations[]` and NO `interfaces[]` — whereas the multi-project
+/// `export_workspace` writes NESTED values (`unified_project_to_nested`).
+/// The import path, however, is nested-shaped end to end: the frontend
+/// publishes the raw value to the in-session legacy readers (PROXY /
+/// WORKFLOWS read `interfaces[]`) and persists it through
+/// `save_imported_project_as_unified` → `nested_project_to_unified`, which
+/// flattens `interfaces[]` and therefore sees NOTHING in a flat value. The
+/// result was a silently-empty import: `projectLoaded { hasData: false }`, a
+/// project with no operations, and a follow-up `save_project` failure
+/// ("Missing or invalid interfaces array") when the empty nested value
+/// autosaved.
+///
+/// A value is "flat unified" when it carries a top-level `operations` array
+/// and no `interfaces` array (a flat export can carry operations without the
+/// key at all). Legacy nested values always carry `interfaces` (possibly
+/// empty) and no top-level `operations`, so the two shapes are unambiguous.
+fn is_flat_unified_project(project: &serde_json::Value) -> bool {
+    project.get("operations").map(|o| o.is_array()).unwrap_or(false)
+        && !project.get("interfaces").map(|i| i.is_array()).unwrap_or(false)
+}
+
+/// Normalise an imported project value to the NESTED shape the import path
+/// expects, so the export/import round-trip is symmetric for BOTH export
+/// variants (multi-project nested and single-project flat).
+///
+/// Nested values (SoapUI `.xml`, multi-project `.apinox`/`.json`) pass
+/// through unchanged. Flat unified values (single-project
+/// `export_unified_project` output) are converted with
+/// [`unified_project_to_nested`] — the exact inverse of the flat write path —
+/// so the operations + request bodies survive and the downstream
+/// `nested_project_to_unified` flattener (and the legacy `interfaces[]`
+/// readers) see a well-formed nested project.
+fn normalize_imported_project(project: serde_json::Value) -> serde_json::Value {
+    if is_flat_unified_project(&project) {
+        unified_project_to_nested(&project)
+    } else {
+        project
+    }
+}
+
 /// Import workspace from file (.apinox, .json, or legacy XML)
 /// 
 /// This command receives a file path and returns the projects contained in the workspace.
@@ -241,6 +283,12 @@ fn unified_project_to_nested(unified: &serde_json::Value) -> serde_json::Value {
 /// - .apinox: Compressed gzip JSON format
 /// - .json: Plain JSON format
 /// - Directory: Single project folder (loads as one project)
+///
+/// APInox exports (`.apinox` / `.json`) may carry NESTED projects (multi-project
+/// `export_workspace`, SoapUI) or FLAT UNIFIED projects (single-project
+/// `export_unified_project`); both are normalised to the nested shape before
+/// being returned so the import path (nested→unified flatten + legacy readers)
+/// handles them identically — see [`normalize_imported_project`].
 #[tauri::command]
 pub async fn import_workspace(
     file_path: String,
@@ -301,7 +349,9 @@ pub async fn import_workspace(
             
             Ok(ImportResult {
                 imported: true,
-                projects: workspace.projects,
+                // Normalise flat-unified projects (single-project export) to the
+                // nested shape the import path expects; nested values pass through.
+                projects: workspace.projects.into_iter().map(normalize_imported_project).collect(),
                 project_count,
             })
         },
@@ -315,14 +365,16 @@ pub async fn import_workspace(
             let workspace: Workspace = serde_json::from_str(&json_content)
                 .map_err(|e| format!("Failed to parse JSON: {}", e))?;
             
-            log::info!("import_workspace: Imported JSON workspace: {} ({} projects)", 
+            log::info!("import_workspace: Imported JSON workspace: {} ({} projects)",
                 workspace.name, workspace.projects.len());
             
             let project_count = workspace.projects.len();
             
             Ok(ImportResult {
                 imported: true,
-                projects: workspace.projects,
+                // Normalise flat-unified projects (single-project export) to the
+                // nested shape the import path expects; nested values pass through.
+                projects: workspace.projects.into_iter().map(normalize_imported_project).collect(),
                 project_count,
             })
         },
@@ -486,6 +538,58 @@ mod tests {
         assert_eq!(reqs.len(), 1);
         assert_eq!(reqs[0]["request"], "<doWork/>");
         assert_eq!(reqs[0]["endpoint"], "http://example.com/svc");
+    }
+
+    /// A single-project `export_unified_project` file is FLAT (top-level
+    /// `operations[]`, no `interfaces[]`). `normalize_imported_project` must
+    /// convert it to the nested shape, and the downstream flattener
+    /// (`nested_project_to_unified`) must then recover the operations — this is
+    /// the exact bug where a flat import flattened to zero operations (empty
+    /// project + "Missing or invalid interfaces array" save error).
+    #[test]
+    fn normalize_imported_project_flattens_flat_unified_value() {
+        let flat = sample_unified_project("RTSvc");
+        assert!(is_flat_unified_project(&flat), "the fixture must be flat");
+
+        let nested = normalize_imported_project(flat.clone());
+        let ifaces = nested["interfaces"].as_array().expect("nested shape");
+        assert_eq!(ifaces.len(), 1);
+        assert_eq!(ifaces[0]["operations"][0]["name"], "DoWork");
+        assert_eq!(ifaces[0]["operations"][0]["requests"][0]["request"], "<doWork/>");
+
+        // The downstream import flattener must now see the operations.
+        let unified = crate::project_storage::nested_project_to_unified(&nested)
+            .expect("nested → unified");
+        let ops = unified["operations"].as_array().expect("ops");
+        assert_eq!(ops.len(), 1, "the flat op must survive the full import path");
+        assert_eq!(ops[0]["name"], "DoWork");
+    }
+
+    /// A NESTED value (SoapUI / multi-project export) must pass through
+    /// `normalize_imported_project` UNCHANGED — it already carries the
+    /// `interfaces[]` the import path expects.
+    #[test]
+    fn normalize_imported_project_passes_nested_value_through() {
+        let nested = serde_json::json!({
+            "name": "Legacy",
+            "id": "legacy-1",
+            "interfaces": [
+                {
+                    "name": "Port",
+                    "type": "wsdl",
+                    "definition": "http://example.com/legacy.wsdl",
+                    "operations": [
+                        { "name": "LegacyOp", "requests": [] }
+                    ]
+                }
+            ],
+            "testSuites": [],
+            "folders": []
+        });
+        assert!(!is_flat_unified_project(&nested), "a nested value is not flat");
+
+        let out = normalize_imported_project(nested.clone());
+        assert_eq!(out, nested, "nested values must be returned as-is");
     }
 
     /// End-to-end regression guard for the workspace export bug: exporting a
