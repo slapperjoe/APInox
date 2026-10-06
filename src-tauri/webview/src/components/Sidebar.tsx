@@ -216,6 +216,7 @@ export const Sidebar: React.FC = () => {
                         onToggleCaseExpand={testsProps.onToggleCaseExpand}
                         onSelectTestStep={testsProps.onSelectTestStep}
                         onRenameTestStep={testsProps.onRenameTestStep}
+                        onDeleteTestStep={testsProps.onDeleteTestStep}
                         deleteConfirm={testsProps.deleteConfirm}
                     />
                 )}

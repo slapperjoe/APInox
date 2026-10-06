@@ -127,6 +127,7 @@ export interface TestsUiProps {
     onToggleCaseExpand: (caseId: string) => void;
     onSelectTestStep?: (caseId: string, stepId: string) => void;
     onRenameTestStep?: (caseId: string, stepId: string, newName: string) => void;
+    onDeleteTestStep?: (caseId: string, stepId: string) => void;
     deleteConfirm: string | null;
 }
 
@@ -154,6 +155,7 @@ export const TestsUi: React.FC<TestsUiProps> = ({
     onToggleCaseExpand,
     onSelectTestStep,
     onRenameTestStep,
+    onDeleteTestStep,
     deleteConfirm
 }) => {
     const addSuiteBtnRef = useRef<HTMLButtonElement>(null);
@@ -499,6 +501,15 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                                     { icon: Play, label: 'Run Test Case', onClick: () => { onRunCase(contextMenu.caseId!); closeContextMenu(); } },
                                     { icon: Pencil, label: 'Rename', onClick: handleRenameFromMenu },
                                     { icon: Trash2, label: deleteConfirm === contextMenu.caseId ? 'Click again to delete' : 'Delete', danger: deleteConfirm === contextMenu.caseId, onClick: () => menuDelete(contextMenu.caseId!, onDeleteTestCase) }
+                                ]
+                            }
+                        ]
+                        : contextMenu.type === 'step' && contextMenu.caseId && contextMenu.stepId ? [
+                            {
+                                title: 'Test Step',
+                                items: [
+                                    { icon: Pencil, label: 'Rename', onClick: handleRenameFromMenu },
+                                    { icon: Trash2, label: deleteConfirm === contextMenu.stepId ? 'Click again to delete' : 'Delete', danger: deleteConfirm === contextMenu.stepId, onClick: () => menuDelete(contextMenu.stepId!, () => onDeleteTestStep?.(contextMenu.caseId!, contextMenu.stepId!)) }
                                 ]
                             }
                         ]

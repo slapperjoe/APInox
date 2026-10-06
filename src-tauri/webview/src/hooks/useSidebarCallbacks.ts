@@ -36,6 +36,7 @@ interface UseSidebarCallbacksReturn {
     handleRenameTestCase: (caseId: string, newName: string) => void;
     handleRenameSuite: (suiteId: string, newName: string) => void;
     handleRenameTestStep: (caseId: string, stepId: string, newName: string) => void;
+    handleDeleteTestStep: (caseId: string, stepId: string) => void;
     handleSaveUiState: () => void;
 }
 
@@ -137,6 +138,23 @@ export function useSidebarCallbacks({
         }));
     }, [updateTestCase]);
 
+    // Two-click confirm for the RIGHT-CLICK menu delete (matches suite/case):
+    // first click arms `deleteConfirm`, second deletes. Step ids are distinct
+    // from case/suite ids (`step-${Date.now()}`), so the shared `deleteConfirm`
+    // never cross-arms an unrelated row.
+    const handleDeleteTestStep = useCallback((caseId: string, stepId: string) => {
+        if (deleteConfirm === stepId) {
+            void updateTestCase(caseId, tc => ({
+                ...tc,
+                steps: tc.steps.filter(s => s.id !== stepId)
+            }));
+            setDeleteConfirm(null);
+        } else {
+            setDeleteConfirm(stepId);
+            setTimeout(() => setDeleteConfirm(null), 2000);
+        }
+    }, [deleteConfirm, updateTestCase, setDeleteConfirm]);
+
     const handleSaveUiState = useCallback(() => {
         if (config) {
             bridge.sendMessage({ command: 'saveUiState', ui: config.ui });
@@ -153,6 +171,7 @@ export function useSidebarCallbacks({
         handleRenameTestCase,
         handleRenameSuite,
         handleRenameTestStep,
+        handleDeleteTestStep,
         handleSaveUiState
     };
 }

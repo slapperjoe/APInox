@@ -62,6 +62,7 @@ describe('TestsUi', () => {
         onToggleCaseExpand: vi.fn(),
         onSelectTestStep: vi.fn(),
         onRenameTestStep: vi.fn(),
+        onDeleteTestStep: vi.fn(),
         deleteConfirm: null
     };
 
@@ -264,6 +265,48 @@ describe('TestsUi', () => {
         fireEvent.contextMenu(v3b.getByText('Case 1'));
         v3b.getByText('Click again to delete').click();
         expect(defaultProps.onDeleteTestCase).toHaveBeenCalledTimes(2);
+        v3b.unmount();
+    });
+
+    it('right-clicking a test step offers rename/delete with the two-click confirm', () => {
+        // Each action in its own mount (the shared menu only closes on outside
+        // mousedown, so stale menus would duplicate labels across renders).
+        const openStepMenu = () => {
+            const view = render(<TestsUi {...defaultProps} />);
+            fireEvent.contextMenu(view.getByText('Step 1'));
+            return view;
+        };
+
+        // Rename + Delete both render for a step.
+        const v1 = openStepMenu();
+        expect(v1.getByText('Rename')).toBeInTheDocument();
+        expect(v1.getByText('Delete')).toBeInTheDocument();
+        v1.unmount();
+
+        // Rename drives the inline input.
+        const v2 = openStepMenu();
+        fireEvent.click(v2.getByText('Rename'));
+        const input = v2.getByDisplayValue('Step 1');
+        fireEvent.change(input, { target: { value: 'Renamed Step' } });
+        fireEvent.blur(input);
+        expect(defaultProps.onRenameTestStep).toHaveBeenCalledWith('case-1', 'step-1', 'Renamed Step');
+        v2.unmount();
+
+        // Delete is the two-click confirm: the (unarmed) click arms it — the
+        // parent's handler is called once but the shared `deleteConfirm` is not
+        // yet set for this step, so nothing is actually removed.
+        const v3 = openStepMenu();
+        fireEvent.click(v3.getByText('Delete'));
+        expect(defaultProps.onDeleteTestStep).toHaveBeenCalledTimes(1); // arm click
+        expect(v3.getByText('Delete')).toBeInTheDocument(); // menu stays open
+        v3.unmount();
+
+        // Second click (armed) performs the delete with (caseId, stepId).
+        const v3b = render(<TestsUi {...defaultProps} deleteConfirm="step-1" />);
+        fireEvent.contextMenu(v3b.getByText('Step 1'));
+        v3b.getByText('Click again to delete').click();
+        expect(defaultProps.onDeleteTestStep).toHaveBeenCalledTimes(2); // delete click
+        expect(defaultProps.onDeleteTestStep).toHaveBeenLastCalledWith('case-1', 'step-1');
         v3b.unmount();
     });
 

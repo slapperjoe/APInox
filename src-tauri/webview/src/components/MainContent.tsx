@@ -1056,6 +1056,7 @@ const MainContent: React.FC = () => {
         handleRenameTestCase,
         handleRenameSuite,
         handleRenameTestStep,
+        handleDeleteTestStep,
         handleSaveUiState
     } = useSidebarCallbacks({
         // Phase B (t_86c34d38): TESTS suite CRUD (add/delete/toggle/rename)
@@ -1093,6 +1094,17 @@ const MainContent: React.FC = () => {
             setSelectedStep(null);
         }
     };
+
+    // TESTS sidebar step delete (two-click confirm lives in `handleDeleteTestStep`).
+    // Clear the in-editor step selection if the removed step was the open one,
+    // so the editor doesn't point at a step that no longer exists.
+    const handleDeleteStepFromMenu = useCallback((caseId: string, stepId: string) => {
+        handleDeleteTestStep(caseId, stepId);
+        if (selectedStep?.id === stepId) {
+            setSelectedStep(null);
+            setSelectedRequest(null);
+        }
+    }, [handleDeleteTestStep, selectedStep, setSelectedStep, setSelectedRequest]);
 
     // Performance Handlers
     // ==========================================================================
@@ -1854,6 +1866,7 @@ const MainContent: React.FC = () => {
                 if (step) handleSelectStep(step);
             },
             onRenameTestStep: handleRenameTestStep,
+            onDeleteTestStep: handleDeleteStepFromMenu,
             onToggleSuiteExpand: handleToggleSuiteExpand,
             onToggleCaseExpand: handleToggleCaseExpand,
             deleteConfirm,
@@ -1959,6 +1972,7 @@ const MainContent: React.FC = () => {
         handleAddTestCase, handleDeleteTestCase, handleRenameTestCase, handleRenameSuite,
         handleRunTestCaseWrapper, handleSelectTestSuite, handleSelectTestCase,
         handleToggleSuiteExpand, handleToggleCaseExpand, handleSelectStep, handleRenameTestStep,
+        handleDeleteStepFromMenu,
         selectedTestSuite, selectedTestCase,
         config, activeRunId, selectedPerformanceSuiteId,
         handleAddWorkflow, handleEditWorkflow, handleRunWorkflow,

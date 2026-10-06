@@ -43,6 +43,7 @@ export interface SidebarTestsProps {
     onSelectTestCase: (caseId: string) => void;
     onSelectTestStep?: (caseId: string, stepId: string) => void;
     onRenameTestStep?: (caseId: string, stepId: string, newName: string) => void;
+    onDeleteTestStep?: (caseId: string, stepId: string) => void;
     onToggleSuiteExpand: (suiteId: string) => void;
     onToggleCaseExpand: (caseId: string) => void;
     deleteConfirm: string | null;
