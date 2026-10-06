@@ -134,8 +134,12 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
     const [isExecuting, setIsExecuting] = useState(false);
     /** R-11 (F-11): the Rust-side cancel token id for the in-flight request (SOAP `cancel_request` / REST/GraphQL `cancel_rest_request`). */
     const activeRequestIdRef = useRef<string | null>(null);
-    /** F-01: the selected quick (scrapbook) request, kept in sync with the app-level ScrapbookContext. */
-    const [selectedScrapbook, setSelectedScrapbook] = useState<ScrapbookRequest | null>(null);
+    /** F-01: the selected quick (scrapbook) request. Read SYNCHRONOUSLY from
+     * the app-level ScrapbookContext — a one-commit-behind useState mirror of
+     * this (the former design) made the editor-sync effect see a stale id on
+     * every entry switch and run its clear-branch, flashing the editor blank
+     * and re-seeding (visible XML redraw) before settling. */
+    const selectedScrapbook = useScrapbookOptional()?.selectedScrapbookRequest ?? null;
     /** F-01: endpoint text for the selected quick request (editable; committed on Run/Save). */
     const [scrapbookEndpoint, setScrapbookEndpoint] = useState<string>('');
 
@@ -242,6 +246,8 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
             for (const op of (project.operations || [])) {
                 for (const req of (op.requests || [])) {
                     if ((req.id || req.name) === selectedNode.id) {
+                        // [LOOPPROBE] temporary instrumentation — remove after diagnosis
+                        console.warn(`[LOOPPROBE] req-seed FOUND (editingXml ${editingXml.length} -> ${req.request?.length ?? 0}) proj='${project.name}' op='${op.name}' reqId='${req.id}'`);
                         setEditingRequest(req);
                         setEditingXml(req.request || '');
                         return;
@@ -262,6 +268,16 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
         setScrapbookEndpoint(resolvedTopBarEndpoint || '');
     }, [resolvedTopBarEndpoint]);
 
+    // The WSDL/definition loader is shown only when the current selection is
+    // NOT a concrete endpoint-bearing node (request / operation / quick request).
+    // A project selection — or no selection — shows the loader; selecting a
+    // request/operation always shows the endpoint input, even when no endpoint
+    // value resolved yet (e.g. a WSDL whose service endpoint wasn't captured, so
+    // `originalEndpoint` is null and `request.endpoint` is empty). That keeps the
+    // Run affordance for an already-open request instead of flipping the bar back
+    // to "load a WSDL" for a project that is already open.
+    const isWsdlLoaderMode = !selectedNode || selectedNode.type === 'project';
+
     // F-01: keep the selected quick request in sync with the app-level
     // ScrapbookContext (selection is owned by the provider; this only mirrors
     // it so the editor can render the selected entry's data). A deleted
@@ -274,21 +290,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
     // is only re-seeded when switching entries or when the stored entry's
     // data actually changed (save / auto-capture).
     const scrapbookSyncRef = useRef<{ id: string | null; endpoint: string; body: string }>({ id: null, endpoint: '', body: '' });
-    const contextScrapbook = useScrapbookOptional()?.selectedScrapbookRequest ?? null;
     const updateScrapbookRequest = useScrapbookOptional()?.updateRequest;
-    useEffect(() => {
-        const s = scrapbookSyncRef.current;
-        if (contextScrapbook && contextScrapbook.id !== s.id) {
-            scrapbookSyncRef.current = {
-                id: contextScrapbook.id,
-                endpoint: contextScrapbook.endpoint || '',
-                body: contextScrapbook.request || '',
-            };
-        } else if (!contextScrapbook && s.id !== null) {
-            scrapbookSyncRef.current = { id: null, endpoint: '', body: '' };
-        }
-        setSelectedScrapbook(contextScrapbook);
-    }, [contextScrapbook]);
 
     // F-01: sync the quick-request editor when a `scrapbook` node is selected.
     // The node id is the scrapbook request id (selection contract from
@@ -299,22 +301,32 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
         if (!isScrapbookNode(selectedNode) || !selectedNode) {
             return;
         }
-        if (selectedScrapbook && selectedScrapbook.id === selectedNode.id) {
+        // The `selectedScrapbook` state mirrors the context one render late
+        // (it is flushed by the sync effect above). Resolving the target
+        // against the CONTEXT directly when the mirror is still catching up
+        // prevents a blank-flash: without this, switching entries runs the
+        // else-branch (clearing editor + sync ref) for one commit, then
+        // re-seeds — which visibly redraws the XML on every selection.
+        const target =
+            selectedScrapbook && selectedScrapbook.id === selectedNode.id
+                ? selectedScrapbook
+                : null;
+        if (target) {
             const s = scrapbookSyncRef.current;
             const changed =
-                s.id !== selectedScrapbook.id ||
-                selectedScrapbook.request !== s.body ||
-                (selectedScrapbook.endpoint || '') !== s.endpoint;
-            setEditingRequest(selectedScrapbook);
+                s.id !== target.id ||
+                target.request !== s.body ||
+                (target.endpoint || '') !== s.endpoint;
+            setEditingRequest(target);
             if (changed) {
                 // Switching entries, or the stored entry changed on the
                 // server side (save / auto-capture): re-seed the editor.
-                setEditingXml(selectedScrapbook.request || '');
-                setScrapbookEndpoint(selectedScrapbook.endpoint || '');
+                setEditingXml(target.request || '');
+                setScrapbookEndpoint(target.endpoint || '');
                 scrapbookSyncRef.current = {
-                    id: selectedScrapbook.id,
-                    endpoint: selectedScrapbook.endpoint || '',
-                    body: selectedScrapbook.request || '',
+                    id: target.id,
+                    endpoint: target.endpoint || '',
+                    body: target.request || '',
                 };
             }
         } else {
@@ -925,7 +937,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                     transition: 'border-color 120ms ease, background-color 120ms ease',
                 }}
             >
-                {resolvedTopBarEndpoint === null ? (
+                {isWsdlLoaderMode ? (
                     <>
                         <input
                             type="text"

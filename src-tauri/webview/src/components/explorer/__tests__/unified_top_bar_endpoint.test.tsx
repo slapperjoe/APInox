@@ -90,6 +90,71 @@ describe('UnifiedExplorerMain top-bar endpoint (F-14)', () => {
         expect(screen.queryByTestId('unified-endpoint-input')).not.toBeInTheDocument();
     });
 
+    it('shows the endpoint input + Run (not the WSDL loader) for a request whose endpoint was never captured', () => {
+        // Reproduces GetClient/Request1.xml: a WSDL whose service endpoint was
+        // not captured (`originalEndpoint: null`) and a request with `endpoint:
+        // ''`. Selecting that request must show the Run affordance, not flip the
+        // bar back to "load a WSDL".
+        const project: UnifiedProject = {
+            name: 'ClientServiceSoap',
+            source: 'wsdl',
+            sourceUrl: 'http://acg.example.com/Client?WSDL',
+            parsedAt: new Date(),
+            soapVersion: '1.1',
+            operations: [
+                {
+                    id: 'op-getclient',
+                    name: 'GetClient',
+                    action: '',
+                    targetNamespace: null,
+                    originalEndpoint: null,
+                    input: null,
+                    fullSchema: null,
+                    requests: [{ id: 'req-2d66', name: 'Request1.xml', request: '<GetClient/>', endpoint: '', contentType: 'application/soap+xml' }],
+                },
+            ],
+        };
+        render(
+            <UnifiedExplorerMain {...baseProps} projects={[project]}
+                selectedNode={{ type: 'request', id: 'req-2d66' }} />,
+        );
+        // Endpoint mode: the input (empty, editable) + a Run button; the WSDL
+        // loader is gone.
+        expect(screen.queryByPlaceholderText('Enter WSDL URL and press Load')).not.toBeInTheDocument();
+        const input = screen.getByTestId('unified-endpoint-input') as HTMLInputElement;
+        expect(input.value).toBe('');
+        const run = screen.getByTestId('unified-topbar-run') as HTMLButtonElement;
+        expect(run.disabled).toBe(false);
+    });
+
+    it('shows the endpoint input (not the WSDL loader) for an operation whose endpoint was never captured', () => {
+        const project: UnifiedProject = {
+            name: 'ClientServiceSoap',
+            source: 'wsdl',
+            sourceUrl: 'http://acg.example.com/Client?WSDL',
+            parsedAt: new Date(),
+            soapVersion: '1.1',
+            operations: [
+                {
+                    id: 'op-getclient',
+                    name: 'GetClient',
+                    action: '',
+                    targetNamespace: null,
+                    originalEndpoint: null,
+                    input: null,
+                    fullSchema: null,
+                    requests: [],
+                },
+            ],
+        };
+        render(
+            <UnifiedExplorerMain {...baseProps} projects={[project]}
+                selectedNode={{ type: 'operation', id: 'op-getclient' }} />,
+        );
+        expect(screen.queryByPlaceholderText('Enter WSDL URL and press Load')).not.toBeInTheDocument();
+        expect(screen.getByTestId('unified-endpoint-input')).toBeInTheDocument();
+    });
+
     it('sends the edited endpoint from the bar on Run (SOAP override)', async () => {
         render(
             <UnifiedExplorerMain {...baseProps} projects={[makeProject()]}
