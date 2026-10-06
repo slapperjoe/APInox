@@ -1226,15 +1226,21 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
             }
         `}</style>
         {/* Sidebar header — matches the other sidebar panels (TestsUi etc.):
-            an uppercase "UNIFIED EXPLORER" title. The former "+" Add button
+            an uppercase "UNIFIED EXPLORER" title. The "+" Add button
             (New Request / Load Definition) was removed: request creation is
             reachable from the operation right-click menu and the main-area
             Create Request button, and definition loading from the main-area
-            top bar's URL loader. */}
+            top bar's URL loader. A trailing "+" now opens the same Import menu
+            as the blank-space right-click (sidebarCtxMenu / buildSidebarSections)
+            so the import flows have an always-visible affordance in the header
+            — previously they were only reachable by right-clicking empty space.
+            Guarded on at least one import prop (same guard as
+            handleSidebarContextMenu) so no dead button appears in non-Tauri dev. */}
         <div
             style={{
                 display: 'flex',
                 alignItems: 'center',
+                gap: 8,
                 padding: '4px 12px',
                 height: 44,
                 borderBottom: '1px solid var(--apinox-sideBarSectionHeader-border)',
@@ -1242,9 +1248,31 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                 userSelect: 'none',
             }}
         >
-            <SectionLabel as="div">
+            <SectionLabel
+                as="div"
+                style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
                 Unified Explorer
             </SectionLabel>
+            {(onImportWorkspace || onImportSoapUI || onBulkImport) && (
+                <Tooltip content="Import (APInox / SoapUI / WSDL)">
+                    <HeaderButton
+                        data-testid="unified-explorer-import-button"
+                        // Open the same menu the blank-space right-click shows,
+                        // anchored as a dropdown just below the button (left edge
+                        // aligned). SidebarContextMenu clamps to the viewport.
+                        // No native title= here — the wrapping Tooltip already
+                        // provides the label + aria-label (a native title would
+                        // double the tooltip).
+                        onClick={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setSidebarCtxMenu({ x: rect.left, y: rect.bottom + 4 });
+                        }}
+                    >
+                        <PlusIcon size={14} />
+                    </HeaderButton>
+                </Tooltip>
+            )}
         </div>
         {/* ── "Projects" accordion section — the project tree body. Its
             header carries a chevron that collapses the whole tree down to the

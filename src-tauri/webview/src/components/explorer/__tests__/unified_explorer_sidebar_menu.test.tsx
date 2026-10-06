@@ -153,3 +153,49 @@ describe('UnifiedExplorerSidebar sidebar-level context menu (imports)', () => {
         expect(screen.queryByText('Bulk Import WSDLs')).not.toBeInTheDocument();
     });
 });
+
+describe('UnifiedExplorerSidebar header "+" import button', () => {
+    const importButton = () => screen.getByTestId('unified-explorer-import-button');
+
+    it('renders the header + button when import handlers are provided', async () => {
+        render(<UnifiedExplorerSidebar {...baseProps} {...importProps} projects={[]} />);
+        expect(await screen.findByTestId('unified-explorer-import-button')).toBeInTheDocument();
+    });
+
+    it('hides the header + button when no import handlers are provided (non-Tauri dev)', async () => {
+        render(<UnifiedExplorerSidebar {...baseProps} projects={[]} />);
+        expect(screen.queryByTestId('unified-explorer-import-button')).not.toBeInTheDocument();
+    });
+
+    it('clicking the header + button opens the same import menu', async () => {
+        render(<UnifiedExplorerSidebar {...baseProps} {...importProps} projects={[]} />);
+
+        fireEvent.click(await screen.findByTestId('unified-explorer-import-button'));
+
+        // The same three items as the blank-space right-click menu appear.
+        await screen.findByText('Import Workspace');
+        expect(screen.getByText('Import Workspace')).toBeInTheDocument();
+        expect(screen.getByText('Import SoapUI Workspace')).toBeInTheDocument();
+        expect(screen.getByText('Bulk Import WSDLs')).toBeInTheDocument();
+    });
+
+    it('header + button → Import Workspace click calls onImportWorkspace', async () => {
+        render(<UnifiedExplorerSidebar {...baseProps} {...importProps} projects={[]} />);
+
+        fireEvent.click(await screen.findByTestId('unified-explorer-import-button'));
+        fireEvent.click(await screen.findByText('Import Workspace'));
+
+        expect(importProps.onImportWorkspace).toHaveBeenCalledTimes(1);
+        expect(importProps.onImportSoapUI).not.toHaveBeenCalled();
+        expect(importProps.onBulkImport).not.toHaveBeenCalled();
+    });
+
+    it('header + button works with an existing project (no empty state required)', async () => {
+        render(<UnifiedExplorerSidebar {...baseProps} {...importProps} projects={[makeProject()]} />);
+
+        fireEvent.click(await screen.findByTestId('unified-explorer-import-button'));
+
+        await screen.findByText('Import Workspace');
+        expect(screen.getByText('Import Workspace')).toBeInTheDocument();
+    });
+});
