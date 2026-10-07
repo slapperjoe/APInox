@@ -1009,21 +1009,58 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: 4,
-                                fontSize: 'var(--apinox-fs-md)',
-                                color: 'var(--apinox-foreground)',
-                                opacity: 0.85,
+                                gap: 6,
                                 cursor: 'pointer',
                                 userSelect: 'none',
+                                padding: '0 4px',
                             }}
                         >
                             <input
                                 type="checkbox"
                                 checked={useProxy}
                                 onChange={(e) => setUseProxy(e.target.checked)}
-                                style={{ margin: 0, accentColor: 'var(--apinox-focusBorder)' }}
+                                style={{ position: 'absolute', width: 1, height: 1, margin: 0, padding: 0, opacity: 0, overflow: 'hidden', border: 'none', clip: 'rect(0 0 0 0)' }}
                             />
-                            Proxy
+                            {/* Pill switch track */}
+                            <span
+                                aria-hidden="true"
+                                style={{
+                                    position: 'relative',
+                                    display: 'inline-block',
+                                    width: 26,
+                                    height: 14,
+                                    borderRadius: 999,
+                                    backgroundColor: useProxy ? 'var(--apinox-focusBorder)' : 'var(--apinox-descriptionForeground, #8b949e)',
+                                    opacity: useProxy ? 1 : 0.55,
+                                    transition: 'background-color 0.15s ease, opacity 0.15s ease',
+                                }}
+                            >
+                                <span
+                                    aria-hidden="true"
+                                    style={{
+                                        position: 'absolute',
+                                        top: 2,
+                                        left: 2,
+                                        width: 10,
+                                        height: 10,
+                                        borderRadius: '50%',
+                                        backgroundColor: useProxy ? '#ffffff' : 'rgba(255,255,255,0.85)',
+                                        transform: useProxy ? 'translateX(12px)' : 'translateX(0)',
+                                        transition: 'transform 0.15s ease',
+                                    }}
+                                />
+                            </span>
+                            <span
+                                data-testid="unified-load-proxy-label"
+                                style={{
+                                    fontSize: 'var(--apinox-fs-sm)',
+                                    color: useProxy ? 'var(--apinox-foreground)' : 'var(--apinox-descriptionForeground, #8b949e)',
+                                    letterSpacing: 0.3,
+                                    transition: 'color 0.15s ease',
+                                }}
+                            >
+                                Proxy
+                            </span>
                         </label>
                         <button
                             onClick={handleLoadFile}
