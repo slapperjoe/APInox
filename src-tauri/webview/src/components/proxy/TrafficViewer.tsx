@@ -4,6 +4,7 @@ import { SidebarContextMenu, CtxMenuSection, CtxMenuItem, VenetianMask, Pencil, 
 import { tokens } from './tokens';
 import { methodBg, statusStyle } from './trafficStyles';
 import { formatXml } from '@shared/utils/xmlFormatter';
+import { useEditorSettings } from '@apinox/request-editor/core';
 import { IgnoreRule, matchesAnyIgnoreRule, ignorePatternFor } from '../../utils/useIgnoreList';
 
 export interface TrafficLog {
@@ -246,6 +247,12 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = [], onAddIgnore
   const [statusGroups, setStatusGroups] = useState<Set<StatusGroupKey>>(new Set(DEFAULT_STATUS_GROUPS));
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; log: TrafficLog } | null>(null);
 
+  // Live editor settings (same object the detail pane's Monaco uses) so the
+  // right-click "copy" options format XML exactly as the app currently does —
+  // inline values, attribute alignment, causality stripping — instead of
+  // always defaulting.
+  const { settings: editorSettings } = useEditorSettings();
+
   // Close context menu on any click outside
   useEffect(() => {
     if (!ctxMenu) return;
@@ -438,14 +445,21 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = [], onAddIgnore
           });
         }
 
-        // Copy to Clipboard — collapsed into single parent item with sub-menu
+        // Copy to Clipboard — collapsed into single parent item with sub-menu.
+        // Formatting follows the live editor settings so the clipboard matches
+        // the detail pane's Monaco exactly.
+        const copyOpts: XmlFormatOpts = {
+          alignAttributes: editorSettings.alignAttributes,
+          inlineValues: editorSettings.inlineValues,
+          hideCausality: editorSettings.hideCausality,
+        };
         const copySubItems: CtxMenuItem[] = [
-          { icon: Code, label: 'URL + Request', sub: 'Method, URL and request body', copyText: copyFullRequest(log) },
-          { icon: FileText, label: 'Full Exchange', sub: 'URL, request and response', copyText: copyFullExchange(log) },
-          { icon: File, label: 'All (URL + Request + Response)', sub: 'Formatted with XML', copyText: copyAllTraffic(log) },
+          { icon: Code, label: 'URL + Request', sub: 'URL and request body', copyText: copyFullRequest(log, copyOpts) },
+          { icon: FileText, label: 'URL + Response', sub: 'URL and response', copyText: copyUrlAndResponse(log, copyOpts) },
+          { icon: File, label: 'All (URL + Request + Response)', sub: 'Formatted with XML', copyText: copyAllTraffic(log, copyOpts) },
         ];
         if (isSoap) {
-          copySubItems.unshift({ icon: Copy, label: 'SOAP Body', sub: 'URL + inner XML', copyText: copySoapBody(log) });
+          copySubItems.unshift({ icon: Copy, label: 'SOAP Body', sub: 'URL + inner XML', copyText: copySoapBody(log, copyOpts) });
         }
         sections.push({
           title: 'Copy to Clipboard',
@@ -477,9 +491,18 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = [], onAddIgnore
 // ── Clipboard helpers ──────────────────────────────────────────────────────
 const SEP = '==============================';
 
-function formatIfNeeded(content: string): string {
+/** The subset of editor settings that drive XML formatting. Mirrors the
+ *  arguments `formatXml` takes, so the copy output matches the detail pane's
+ *  Monaco exactly. */
+interface XmlFormatOpts {
+  alignAttributes: boolean;
+  inlineValues: boolean;
+  hideCausality: boolean;
+}
+
+function formatIfNeeded(content: string, opts: XmlFormatOpts): string {
   if (content && (content.trim().startsWith('<') && content.includes('</'))) {
-    return formatXml(content);
+    return formatXml(content, opts.alignAttributes, opts.inlineValues, opts.hideCausality);
   }
   return content;
 }
@@ -495,32 +518,30 @@ function extractSoapBodyXml(body: string | undefined): string {
   return match ? match[1].trim() : '';
 }
 
-function copySoapBody(log: TrafficLog): string {
+function copySoapBody(log: TrafficLog, opts: XmlFormatOpts): string {
   const path = extractPath(log.url);
   const innerXml = extractSoapBodyXml(log.requestBody);
-  const formatted = innerXml.startsWith('<') ? formatXml(innerXml) : innerXml;
+  const formatted = innerXml.startsWith('<') ? formatXml(innerXml, opts.alignAttributes, opts.inlineValues, opts.hideCausality) : innerXml;
   return `URL: ${path}\n${formatted}`;
 }
 
-function copyFullRequest(log: TrafficLog): string {
+function copyFullRequest(log: TrafficLog, opts: XmlFormatOpts): string {
   const body = log.requestBody || '';
-  const formatted = formatIfNeeded(body);
+  const formatted = formatIfNeeded(body, opts);
   return `URL: ${log.url}\n${formatted}`;
 }
 
-function copyFullExchange(log: TrafficLog): string {
-  const reqBody = log.requestBody || '';
+function copyUrlAndResponse(log: TrafficLog, opts: XmlFormatOpts): string {
   const resBody = log.responseBody || '';
-  const fmtReq = formatIfNeeded(reqBody);
-  const fmtRes = formatIfNeeded(resBody);
-  return `URL: ${log.url}\n\nREQUEST:\n${fmtReq}\n\nRESPONSE:\n${fmtRes}`;
+  const fmtRes = formatIfNeeded(resBody, opts);
+  return `URL: ${log.url}\n${fmtRes}`;
 }
 
-function copyAllTraffic(log: TrafficLog): string {
+function copyAllTraffic(log: TrafficLog, opts: XmlFormatOpts): string {
   const reqBody = log.requestBody || '';
   const resBody = log.responseBody || '';
-  const fmtReq = formatIfNeeded(reqBody);
-  const fmtRes = formatIfNeeded(resBody);
+  const fmtReq = formatIfNeeded(reqBody, opts);
+  const fmtRes = formatIfNeeded(resBody, opts);
   const lines = [
     `URL: ${log.url}`,
     SEP,
