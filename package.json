@@ -7,7 +7,7 @@
     "url": "https://github.com/slapperjoe/apinox.git"
   },
   "license": "MIT",
-  "version": "0.50.387",
+  "version": "0.51.388",
   "scripts": {
     "clean": "node scripts/clean.js",
     "clean:rust": "cargo clean --manifest-path src-tauri/Cargo.toml",
