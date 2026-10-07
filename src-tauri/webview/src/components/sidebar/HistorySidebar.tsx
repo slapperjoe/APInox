@@ -21,7 +21,8 @@ import {
     Clock,
     X,
     Menu,
-    Copy
+    Copy,
+    Link
 } from "lucide-react";
 import { RequestHistoryEntry } from "@shared/models";
 import { EmptyState } from "../common/EmptyState";
@@ -606,6 +607,7 @@ export default function HistorySidebar({
                     setRowCtxMenu(null);
                 },
             },
+            { icon: Link, label: 'Copy URL', copyText: entry.endpoint || '' },
             { icon: Copy, label: 'Copy Request XML', copyText: entry.requestBody || '' },
             {
                 icon: Trash2,

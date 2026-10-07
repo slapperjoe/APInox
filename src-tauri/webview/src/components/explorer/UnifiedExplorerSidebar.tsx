@@ -977,10 +977,10 @@ export const UnifiedExplorerSidebar: React.FC<UnifiedExplorerSidebarProps> = ({
                 });
             }
             if (onBulkImport) {
-                items.push({ icon: DownloadIcon, label: 'Bulk Import', onClick: () => { onBulkImport(); closeCtxMenu(); } });
+                items.push({ icon: FolderInput, label: 'Bulk Import', onClick: () => { onBulkImport(); closeCtxMenu(); } });
             }
             if (onImportSoapUI) {
-                items.push({ icon: DownloadIcon, label: 'Import SoapUI Workspace', onClick: () => { onImportSoapUI(); closeCtxMenu(); } });
+                items.push({ icon: FolderInput, label: 'Import SoapUI Workspace', onClick: () => { onImportSoapUI(); closeCtxMenu(); } });
             }
         } else if (state.type === 'operation') {
             const op = state.data as ApiOperation;
