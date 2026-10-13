@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::time::Instant;
 
 use crate::settings_manager;
-use crate::utils::{RegexExtractor, XPathEvaluator, substitute_variables, CONTENT_TYPE_XML};
+use crate::utils::{RegexExtractor, XPathEvaluator, WildcardProcessor, substitute_variables, CONTENT_TYPE_XML};
 use crate::workflow::commands::build_frontend_request;
 
 use super::frontend_types::{
@@ -286,6 +286,20 @@ async fn run_workflow_step(
     })
 }
 
+/// Apply template substitution to a step endpoint/body.
+///
+/// Workflow/context variables first (`{{name}}` / `${name}` — the wizard's
+/// manual variables and extractor values), then the `WildcardProcessor`
+/// built-in template functions (`{{uuid}}`, `{{now}}`, `{{epoch}}`,
+/// `{{randomInt(min,max)}}`, ...), so built-ins work in workflow/test-step
+/// endpoints and bodies the same way they do in single-request runs.
+/// A user variable named like a built-in (e.g. `uuid`) wins, because the
+/// variable pass runs first.
+pub(crate) fn substitute_step_template(template: &str, context: &HashMap<String, String>) -> String {
+    let substituted = substitute_variables(template, context);
+    WildcardProcessor::process(&substituted, &HashMap::new(), &HashMap::new(), None)
+}
+
 pub(crate) async fn run_request_step(
     req: &FrontendRequest,
     fallback_endpoint: Option<&str>,
@@ -306,7 +320,7 @@ pub(crate) async fn run_request_step(
         .unwrap_or("")
         .to_string();
 
-    let endpoint = substitute_variables(&endpoint, &str_context);
+    let endpoint = substitute_step_template(&endpoint, &str_context);
 
     if endpoint.is_empty() {
         return Ok(StepExecutionResult {
@@ -326,7 +340,7 @@ pub(crate) async fn run_request_step(
         .as_deref()
         .unwrap_or("")
         .to_string();
-    let body = substitute_variables(&body, &str_context);
+    let body = substitute_step_template(&body, &str_context);
 
     let method = req.method.as_deref().unwrap_or("POST").to_uppercase();
     let content_type = req
@@ -621,4 +635,57 @@ fn run_extractors(
         }
     }
     vars
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn ctx(pairs: &[(&str, &str)]) -> HashMap<String, String> {
+        pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect()
+    }
+
+    #[test]
+    fn substitutes_workflow_variables_in_double_and_dollar_braces() {
+        let out = substitute_step_template(
+            "http://{{host}}/svc ${token}",
+            &ctx(&[("host", "api.example.com"), ("token", "TKN-999")]),
+        );
+        assert_eq!(out, "http://api.example.com/svc TKN-999");
+    }
+
+    #[test]
+    fn built_in_functions_expand_in_templates() {
+        // {{uuid}} -> a UUID-shaped value (no literal {{uuid}} left behind).
+        let out = substitute_step_template("<Id>{{uuid}}</Id>", &ctx(&[]));
+        assert!(!out.contains("{{uuid}}"), "got: {}", out);
+        let inner = out.trim_start_matches("<Id>").trim_end_matches("</Id>");
+        assert_eq!(inner.len(), 36);
+        assert_eq!(inner.matches('-').count(), 4);
+
+        // {{epoch}} -> integer seconds.
+        let epoch = substitute_step_template("{{epoch}}", &ctx(&[]));
+        assert!(epoch.parse::<i64>().is_ok(), "epoch was: {}", epoch);
+
+        // {{randomInt(1,1)}} is deterministic within its range.
+        assert_eq!(substitute_step_template("{{randomInt(1,1)}}", &ctx(&[])), "1");
+
+        // {{now}} -> ISO-8601 (contains a 'T' separator, not a literal token).
+        let now = substitute_step_template("{{now}}", &ctx(&[]));
+        assert!(now.contains('T'), "now was: {}", now);
+    }
+
+    #[test]
+    fn user_variable_named_like_built_in_wins() {
+        // The wizard can legitimately create a variable named `uuid` (element
+        // tag); its value must be used instead of generating a fresh UUID.
+        let out = substitute_step_template("{{uuid}}", &ctx(&[("uuid", "fixed-value")]));
+        assert_eq!(out, "fixed-value");
+    }
+
+    #[test]
+    fn no_variables_leaves_template_unchanged() {
+        let template = "<GetUser><Name>Mark</Name></GetUser>";
+        assert_eq!(substitute_step_template(template, &ctx(&[])), template);
+    }
 }
