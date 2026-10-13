@@ -568,6 +568,8 @@ pub fn run() {
             workflow::commands::get_workflows,
             workflow::commands::save_workflow,
             workflow::commands::delete_workflow,
+            workflow::commands::export_workflow_to_file,
+            workflow::commands::import_workflow_from_file,
             workspace_export::export_workspace,
             workspace_export::import_workspace,
             workspace_export::export_unified_project,

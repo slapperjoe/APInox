@@ -65,6 +65,17 @@ describe('WorkflowsUi (right-click context menu + double-click confirm delete)',
         expect(baseProps.onDelete).toHaveBeenCalledWith(wf);
     });
 
+    it('right-clicking the empty content area offers load-from-file', () => {
+        const onLoadFromFile = vi.fn();
+        const wf = makeWorkflow('wf-1', 'Checkout Flow', []);
+        render(<WorkflowsUi workflows={[wf]} {...baseProps} onLoadFromFile={onLoadFromFile} />);
+        // Right-click the scrollable content area (not a row) to open the list menu.
+        fireEvent.contextMenu(screen.getByTestId('workflows-content'));
+        expect(screen.getByText('Load workflow from file')).toBeInTheDocument();
+        fireEvent.click(screen.getByText('Load workflow from file'));
+        expect(onLoadFromFile).toHaveBeenCalledTimes(1);
+    });
+
     it('right-clicking a step offers move up/down + double-click confirm delete', () => {
         const wf = makeWorkflow('wf-1', 'Checkout Flow', [
             makeStep('s1', 'First Step'),

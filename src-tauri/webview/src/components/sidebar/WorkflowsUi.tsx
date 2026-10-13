@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { Play, Plus, Trash2, GitBranch, Edit2, Copy, ChevronDown, ChevronRight, ArrowUp, ArrowDown } from 'lucide-react';
+import { Play, Plus, Trash2, GitBranch, Edit2, Copy, ChevronDown, ChevronRight, ArrowUp, ArrowDown, Save, FolderOpen } from 'lucide-react';
 import { SidebarContextMenu, CtxMenuSection } from './shared/SidebarContextMenu';
 import { Workflow, WorkflowStep } from '@shared/models';
 import { SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle, RowActions } from './shared/SidebarStyles';
@@ -137,6 +137,8 @@ interface WorkflowsUiProps {
     onRun?: (workflow: Workflow) => void;
     onDelete?: (workflow: Workflow) => void;
     onDuplicate?: (workflow: Workflow) => void;
+    onSaveToDisk?: (workflow: Workflow) => void;
+    onLoadFromFile?: () => void;
     onSelect?: (workflow: Workflow) => void;
     onSelectStep?: (workflow: Workflow, step: WorkflowStep) => void;
     onAddStep?: (workflow: Workflow) => void;
@@ -151,6 +153,8 @@ export const WorkflowsUi: React.FC<WorkflowsUiProps> = ({
     onRun,
     onDelete,
     onDuplicate,
+    onSaveToDisk,
+    onLoadFromFile,
     onSelect,
     onSelectStep,
     onAddStep,
@@ -158,9 +162,10 @@ export const WorkflowsUi: React.FC<WorkflowsUiProps> = ({
     onMoveStep,
 }) => {
     const [expandedWorkflows, setExpandedWorkflows] = useState<Set<string>>(new Set());
-    // Per-row right-click context menu (workflow or step). Delete/rename live
-    // here; destructive deletes use the shared menu's double-click-to-confirm.
-    const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; type: 'workflow' | 'step'; workflow: Workflow; step?: WorkflowStep } | null>(null);
+    // Per-row right-click context menu (workflow or step), plus a list-level
+    // menu on the empty content area (Load workflow from file). Delete uses the
+    // shared menu's double-click-to-confirm.
+    const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; type: 'workflow' | 'step' | 'list'; workflow?: Workflow; step?: WorkflowStep } | null>(null);
 
     const openWorkflowMenu = (e: React.MouseEvent, workflow: Workflow) => {
         e.preventDefault();
@@ -174,11 +179,26 @@ export const WorkflowsUi: React.FC<WorkflowsUiProps> = ({
         setCtxMenu({ x: e.clientX, y: e.clientY, type: 'step', workflow, step });
     };
 
+    const openListMenu = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setCtxMenu({ x: e.clientX, y: e.clientY, type: 'list' });
+    };
+
     const closeCtxMenu = () => setCtxMenu(null);
 
     const buildCtxSections = (): CtxMenuSection[] => {
         if (!ctxMenu) return [];
         const { workflow, step, type } = ctxMenu;
+        if (type === 'list') {
+            return [{
+                title: 'Workflows',
+                items: [
+                    { icon: FolderOpen, label: 'Load workflow from file', tooltip: 'Import a workflow from a .json file', onClick: () => { onLoadFromFile?.(); closeCtxMenu(); } },
+                ],
+            }];
+        }
+        if (!workflow) return [];
         if (type === 'step' && step) {
             return [{
                 title: 'Step',
@@ -195,6 +215,7 @@ export const WorkflowsUi: React.FC<WorkflowsUiProps> = ({
                 { icon: Play, label: 'Run Workflow', onClick: () => { onRun?.(workflow); closeCtxMenu(); } },
                 { icon: Edit2, label: 'Edit Workflow', onClick: () => { onEdit?.(workflow); closeCtxMenu(); } },
                 { icon: Copy, label: 'Duplicate Workflow', onClick: () => { onDuplicate?.(workflow); closeCtxMenu(); } },
+                { icon: Save, label: 'Save to disk', tooltip: 'Export this workflow to a JSON file', onClick: () => { onSaveToDisk?.(workflow); closeCtxMenu(); } },
                 { icon: Trash2, label: 'Delete', confirm: true, confirmLabel: 'Click again to delete', onClick: () => { onDelete?.(workflow); closeCtxMenu(); } },
             ],
         }];
@@ -223,7 +244,7 @@ export const WorkflowsUi: React.FC<WorkflowsUiProps> = ({
                 </SidebarHeaderActions>
             </SidebarHeader>
 
-            <WorkflowsContent>
+            <WorkflowsContent data-testid="workflows-content" onContextMenu={openListMenu}>
                 {workflows.length === 0 ? (
                     <EmptyState
                         icon={GitBranch}

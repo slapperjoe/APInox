@@ -425,8 +425,71 @@ pub async fn delete_workflow(workflow_id: String) -> Result<SaveResponse, String
         .map_err(|e| format!("Failed to delete workflow: {}", e))?;
     
     log::info!("Workflow deleted successfully: {}", workflow_id);
-    
+
     Ok(SaveResponse { success: true })
+}
+
+/// Export a single workflow to a file.
+///
+/// "Save to disk" action from the workflow sidebar context menu: looks the
+/// workflow up by id in the global config and writes its JSON to the target
+/// path as a standalone `.json` (for version control / sharing) without
+/// touching the in-app config.
+#[tauri::command]
+pub async fn export_workflow_to_file(
+    workflow_id: String,
+    file_path: String,
+) -> Result<SaveResponse, String> {
+    log::info!("export_workflow_to_file: Exporting workflow '{}' to {}", workflow_id, file_path);
+
+    if workflow_id.is_empty() {
+        return Err("Workflow ID required".to_string());
+    }
+
+    let workflows = settings_manager::get_workflows_internal()
+        .map_err(|e| format!("Failed to load workflows: {}", e))?;
+
+    let workflow = workflows
+        .iter()
+        .find(|w| w.get("id").and_then(|v| v.as_str()) == Some(workflow_id.as_str()))
+        .ok_or_else(|| format!("Workflow '{}' not found", workflow_id))?
+        .clone();
+
+    let json_content = serde_json::to_string_pretty(&workflow)
+        .map_err(|e| format!("Failed to serialize workflow: {}", e))?;
+
+    std::fs::write(&file_path, json_content)
+        .map_err(|e| format!("Failed to write workflow file: {}", e))?;
+
+    log::info!("export_workflow_to_file: Wrote workflow '{}' to {}", workflow_id, file_path);
+
+    Ok(SaveResponse { success: true })
+}
+
+/// Read a workflow JSON file from disk and return it so the webview can import
+/// it into the global config (the "Load workflow from file" action from the
+/// workflow sidebar). Thin by design: parse + shape check only — the webview
+/// keeps/assigns the id and persists via the standard save path.
+#[tauri::command]
+pub async fn import_workflow_from_file(file_path: String) -> Result<Value, String> {
+    log::info!("import_workflow_from_file: Loading workflow from {}", file_path);
+
+    let json_content = std::fs::read_to_string(&file_path)
+        .map_err(|e| format!("Failed to read workflow file: {}", e))?;
+
+    let workflow: Value = serde_json::from_str(&json_content)
+        .map_err(|e| format!("Failed to parse workflow JSON: {}", e))?;
+
+    if !workflow.is_object() {
+        return Err("Workflow file must contain a JSON object".to_string());
+    }
+
+    log::info!(
+        "import_workflow_from_file: Loaded workflow '{}'",
+        workflow.get("name").and_then(|v| v.as_str()).unwrap_or("(unnamed)")
+    );
+
+    Ok(workflow)
 }
 
 #[derive(Debug, Serialize)]

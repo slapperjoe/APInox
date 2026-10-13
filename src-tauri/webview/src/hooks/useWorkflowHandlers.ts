@@ -109,6 +109,28 @@ export function useWorkflowHandlers({
         setWorkflowBuilderModal({ open: true, workflow: duplicated, projectPath: '' });
     }, []);
 
+    const handleSaveWorkflowToDisk = useCallback(async (workflow: Workflow) => {
+        try {
+            const { save } = await import('@tauri-apps/plugin-dialog');
+            const safeName = (workflow.name || workflow.id)
+                .replace(/[^a-zA-Z0-9\-_ ]/g, '')
+                .trim()
+                .replace(/\s+/g, '-') || workflow.id;
+            const filePath = await save({
+                defaultPath: `${safeName}.workflow.json`,
+                filters: [{ name: 'APInox Workflow', extensions: ['json'] }],
+            });
+            if (!filePath) return; // user cancelled the dialog
+            await bridge.invokeTauriCommand('export_workflow_to_file', {
+                workflowId: workflow.id,
+                filePath,
+            });
+        } catch (error) {
+            console.error('[useWorkflowHandlers] Failed to save workflow to disk:', error);
+            alert(`Failed to save workflow to disk: ${(error as any)?.message || error}`);
+        }
+    }, []);
+
     const handleSelectWorkflow = useCallback((workflow: Workflow) => {
         setSelectedRequest(null);
         setSelectedWorkflowStep({ workflow, step: null as any });
@@ -148,6 +170,28 @@ export function useWorkflowHandlers({
             console.error('[useWorkflowHandlers] Failed to update workflow:', error);
         }
     }, [setConfig, setSelectedWorkflowStep, selectedWorkflowStep]);
+
+    const handleLoadWorkflowFromFile = useCallback(async () => {
+        try {
+            const { open } = await import('@tauri-apps/plugin-dialog');
+            const res = await open({
+                multiple: false,
+                directory: false,
+                filters: [{ name: 'APInox Workflow', extensions: ['json'] }],
+            });
+            const filePath = Array.isArray(res) ? res[0] : res;
+            if (!filePath) return; // user cancelled the dialog
+            const imported: Workflow = await bridge.invokeTauriCommand('import_workflow_from_file', { filePath });
+            if (!imported || typeof imported !== 'object' || !imported.id) {
+                throw new Error('Invalid workflow file: missing id');
+            }
+            // Persist via the standard save path (upsert by id) and reload config.
+            await handleUpdateWorkflow(imported);
+        } catch (error) {
+            console.error('[useWorkflowHandlers] Failed to load workflow from file:', error);
+            alert(`Failed to load workflow from file: ${(error as any)?.message || error}`);
+        }
+    }, [handleUpdateWorkflow]);
 
     // ── step management (lives in the app-sidebar expanded workflow) ────────
     const handleAddWorkflowStep = useCallback(async (workflow: Workflow) => {
@@ -189,10 +233,12 @@ export function useWorkflowHandlers({
         handleRunWorkflow,
         handleDeleteWorkflow,
         handleDuplicateWorkflow,
+        handleSaveWorkflowToDisk,
         handleSelectWorkflow,
         handleSelectWorkflowStep,
         handleUpdateWorkflowStep,
         handleUpdateWorkflow,
+        handleLoadWorkflowFromFile,
         handleAddWorkflowStep,
         handleDeleteWorkflowStep,
         handleMoveWorkflowStep,
