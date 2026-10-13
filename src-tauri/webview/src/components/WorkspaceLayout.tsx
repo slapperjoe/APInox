@@ -15,6 +15,7 @@ import { RequestWorkspace, MonacoRequestEditorWithToolbar as MonacoRequestEditor
 import type { ApiRequest as PackageApiRequest, ExecutionResponse as PackageExecutionResponse, Variable as PackageVariable, MonacoRequestEditorHandle, MonacoSingleLineInputHandle } from '@apinox/request-editor/monaco';
 import { WelcomePanel, TestCaseView, EmptyTestCase } from './workspace';
 import { WorkflowEditor } from './workspace/WorkflowEditor';
+import { RequestStepEditor } from './workspace/RequestStepEditor';
 import { DelayStepEditor } from './workspace/DelayStepEditor';
 import { ConditionStepEditor } from './workspace/ConditionStepEditor';
 import { LoopStepEditor } from './workspace/LoopStepEditor';
@@ -810,9 +811,19 @@ export const WorkspaceLayout: React.FC = () => {
                     );
             }
         }
-        
-        // If workflow step IS selected and it's a request type, fall through to main editor
-        // effectiveRequest/activeRequest has been set above
+
+        // Request step: render with the dedicated RequestStepEditor (not the
+        // shared Monaco editor) so every workflow step renders the same way
+        // regardless of whether it was selected from the app sidebar or the
+        // workflow editor's list.
+        return (
+            <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <RequestStepEditor
+                    step={step}
+                    onUpdate={(updatedStep) => workspace.updateWorkflowStep(workflow, updatedStep)}
+                />
+            </div>
+        );
     }
 
     // Phase B (t_86c34d38): the PROJECTS view was deleted. Its dedicated

@@ -11,7 +11,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { RequestStepEditor } from '../RequestStepEditor';
-import type { WorkflowStep } from '@shared/models';
+import type { WorkflowStep, WorkflowExtractor } from '@shared/models';
 
 vi.mock('@apinox/request-editor/monaco', () => ({
     MonacoEditorWrapper: ({ value }: { value?: string }) => (
@@ -26,6 +26,13 @@ function step(partial: Partial<WorkflowStep> = {}): WorkflowStep {
     };
 }
 
+const ORDER_EXTRACTOR: WorkflowExtractor = {
+    id: 'e1', variable: 'orderId', type: 'xpath', pattern: '//OrderId/text()', source: 'body',
+};
+const TOKEN_EXTRACTOR: WorkflowExtractor = {
+    id: 'e2', variable: 'sessionToken', type: 'xpath', pattern: '//SessionToken/text()', source: 'body',
+};
+
 describe('RequestStepEditor', () => {
     beforeEach(() => vi.clearAllMocks());
 
@@ -34,9 +41,7 @@ describe('RequestStepEditor', () => {
             step={step({ endpoint: 'http://x/login', requestBody: '<Login/>' })}
             onUpdate={vi.fn()}
         />);
-        // No empty "pick a request" state for a self-contained step.
         expect(screen.queryByText('No request selected')).not.toBeInTheDocument();
-        // The injected body is visible in the Monaco editor.
         expect(screen.getByTestId('mock-monaco')).toHaveValue('<Login/>');
     });
 
@@ -65,4 +70,73 @@ describe('RequestStepEditor', () => {
         fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
         expect(onUpdate).toHaveBeenCalledWith(expect.objectContaining({ endpoint: 'http://x/other' }));
     });
+
+    // ── extractors (populated from the wizard: OrderId, sessionToken, …) ──
+    it('renders each extractor with its variable name and pattern', () => {
+        render(<RequestStepEditor
+            step={step({ endpoint: 'http://x/login', requestBody: '<Login/>', extractors: [ORDER_EXTRACTOR, TOKEN_EXTRACTOR] })}
+            onUpdate={vi.fn()}
+        />);
+        expect(screen.getByText('Extractors')).toBeInTheDocument();
+        expect(screen.getByDisplayValue('orderId')).toBeInTheDocument();
+        expect(screen.getByDisplayValue('//OrderId/text()')).toBeInTheDocument();
+        expect(screen.getByDisplayValue('sessionToken')).toBeInTheDocument();
+        expect(screen.getByDisplayValue('//SessionToken/text()')).toBeInTheDocument();
+    });
+
+    it('shows an empty state when the step has no extractors', () => {
+        render(<RequestStepEditor
+            step={step({ endpoint: 'http://x/login', requestBody: '<Login/>' })}
+            onUpdate={vi.fn()}
+        />);
+        expect(screen.getByText(/no extractors/i)).toBeInTheDocument();
+    });
+
+    it('edits an extractor pattern and persists via onUpdate on save', () => {
+        const onUpdate = vi.fn();
+        render(<RequestStepEditor
+            step={step({ endpoint: 'http://x/login', requestBody: '<Login/>', extractors: [ORDER_EXTRACTOR] })}
+            onUpdate={onUpdate}
+        />);
+        fireEvent.change(screen.getByDisplayValue('//OrderId/text()'), { target: { value: '//Order/Id/text()' } });
+        fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
+        const updated = onUpdate.mock.calls[0][0];
+        expect(updated.extractors).toHaveLength(1);
+        expect(updated.extractors[0]).toMatchObject({ id: 'e1', variable: 'orderId', pattern: '//Order/Id/text()' });
+    });
+
+    it('removes an extractor and persists via onUpdate on save', () => {
+        const onUpdate = vi.fn();
+        render(<RequestStepEditor
+            step={step({ endpoint: 'http://x/login', requestBody: '<Login/>', extractors: [ORDER_EXTRACTOR, TOKEN_EXTRACTOR] })}
+            onUpdate={onUpdate}
+        />);
+        const removeBtns = screen.getAllByRole('button', { name: /remove extractor/i });
+        fireEvent.click(removeBtns[0]);
+        fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
+        const updated = onUpdate.mock.calls[0][0];
+        expect(updated.extractors).toHaveLength(1);
+        expect(updated.extractors[0].variable).toBe('sessionToken');
+    });
+
+    it('adds a new extractor and persists via onUpdate on save', () => {
+        const onUpdate = vi.fn();
+        render(<RequestStepEditor
+            step={step({ endpoint: 'http://x/login', requestBody: '<Login/>' })}
+            onUpdate={onUpdate}
+        />);
+        fireEvent.click(screen.getByRole('button', { name: /add extractor/i }));
+        // A blank extractor row appears.
+        const added = screen.getAllByRole('button', { name: /remove extractor/i });
+        expect(added).toHaveLength(1);
+        // Fill in a variable name.
+        const varInput = screen.getAllByPlaceholderText('variable')[0];
+        fireEvent.change(varInput, { target: { value: 'orderId' } });
+        fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
+        const updated = onUpdate.mock.calls[0][0];
+        expect(updated.extractors).toHaveLength(1);
+        expect(updated.extractors[0].variable).toBe('orderId');
+        expect(updated.extractors[0].type).toBe('xpath');
+    });
 });
+
