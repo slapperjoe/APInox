@@ -37,6 +37,13 @@ pub struct FrontendStepConfig {
     pub delay_ms: Option<u64>,
     /// For 'script' steps
     pub script_content: Option<String>,
+    /// For 'workflow' steps: id of the referenced workflow
+    pub workflow_id: Option<String>,
+    /// For 'workflow' steps: variable overrides (beat workflow defaults)
+    pub workflow_variables: Option<std::collections::HashMap<String, String>>,
+    /// For 'workflow' steps: self-contained steps embedded by the webview
+    /// (avoids a config lookup / save-race; falls back to config by id)
+    pub workflow_steps: Option<Vec<serde_json::Value>>,
 }
 
 /// Matches TypeScript `ApiRequest`
@@ -114,6 +121,8 @@ pub struct AssertionResult {
 #[serde(rename_all = "camelCase")]
 pub struct StepExecutionResult {
     pub passed: bool,
+    /// The request body actually sent (after variable substitution).
+    pub request_body: Option<String>,
     pub response_body: Option<String>,
     pub status_code: Option<u16>,
     pub duration_ms: u64,

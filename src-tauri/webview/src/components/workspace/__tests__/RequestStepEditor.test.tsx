@@ -17,6 +17,23 @@ vi.mock('@apinox/request-editor/monaco', () => ({
     MonacoEditorWrapper: ({ value }: { value?: string }) => (
         <textarea data-testid="mock-monaco" value={value || ''} readOnly />
     ),
+    applyMonacoTheme: (_monacoInstance: unknown, theme: string) => `apinox-${theme}`,
+}));
+
+// The step editors import the monaco-editor namespace for applyMonacoTheme —
+// mock it so the real (large, browser-only) module never loads in jsdom.
+vi.mock('monaco-editor', () => ({}));
+
+// RequestStepEditor reads the active skin's Monaco theme via useTheme —
+// mock the hook (avoids pulling the package ThemeProvider's Tauri/Monaco
+// side effects into jsdom).
+vi.mock('@apinox/request-editor/core', () => ({
+    useTheme: () => ({
+        theme: 'dark',
+        setTheme: () => {},
+        isStandalone: true,
+        monacoTheme: 'vs-dark',
+    }),
 }));
 
 function step(partial: Partial<WorkflowStep> = {}): WorkflowStep {

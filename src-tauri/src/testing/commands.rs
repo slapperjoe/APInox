@@ -130,7 +130,18 @@ pub async fn run_test_case(request: RunTestCaseRequest) -> Result<RunTestCaseRes
                     "stepId": step_id
                 }));
 
-                match run_step(step, fallback_endpoint.as_deref(), &mut context).await {
+                match run_step(step, fallback_endpoint.as_deref(), &mut context, Some(&mut |update: serde_json::Value| {
+                    // Sub-step events (workflowStep*) emitted from inside
+                    // 'workflow' test steps don't carry the case id — stamp
+                    // it on so the webview can nest them under the right case.
+                    let mut u = update;
+                    if let Some(obj) = u.as_object_mut() {
+                        if !obj.contains_key("caseId") {
+                            obj.insert("caseId".to_string(), serde_json::json!(&case_id));
+                        }
+                    }
+                    push_update(&run_id_clone, u);
+                })).await {
                     Ok(result) => {
                         // Merge extracted variables into context for next steps
                         for (k, v) in &result.extracted_variables {
@@ -202,7 +213,8 @@ pub async fn run_test_case(request: RunTestCaseRequest) -> Result<RunTestCaseRes
 
         let mut all_passed = true;
         for step in &request.test_case.steps {
-            match run_step(step, request.fallback_endpoint.as_deref(), &mut context).await {
+            // Sync mode has no run id to stream into — no emitter.
+            match run_step(step, request.fallback_endpoint.as_deref(), &mut context, None).await {
                 Ok(result) => {
                     for (k, v) in &result.extracted_variables {
                         context.insert(k.clone(), serde_json::Value::String(v.clone()));

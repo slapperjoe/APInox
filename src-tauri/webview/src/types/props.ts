@@ -28,6 +28,9 @@ export interface SidebarTestsProps {
     // TESTS rail (the global store). When omitted, the rail falls back to
     // `projects[].testSuites`.
     testSuites?: import('@shared/models').TestSuite[];
+    // Workflows referenced by 'workflow' test steps — lets the rail expand a
+    // workflow step and show the steps inside the referenced workflow.
+    workflows?: Workflow[];
     projects: UnifiedProject[];
     selectedTestSuite?: import('@shared/models').TestSuite | null;
     selectedTestCase?: TestCase | null;

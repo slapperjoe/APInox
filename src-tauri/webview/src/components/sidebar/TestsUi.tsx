@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import styled from 'styled-components';
-import { Play, Plus, Trash2, ChevronDown, ChevronRight, FlaskConical, ListChecks, Clock, FileCode, ArrowRight, FileText } from 'lucide-react';
-import { UnifiedProject, TestSuite } from '@shared/models';
+import { Play, Plus, Trash2, ChevronDown, ChevronRight, FlaskConical, ListChecks, Clock, FileCode, ArrowRight, FileText, GitBranch, RefreshCw } from 'lucide-react';
+import { UnifiedProject, TestSuite, Workflow, WorkflowStep } from '@shared/models';
 import { SidebarContextMenu, CtxMenuSection, CtxMenuItem, Pencil } from './shared/SidebarContextMenu';
 import { SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle, OperationItem, RequestItem } from './shared/SidebarStyles';
 import { EmptyState } from '../common/EmptyState';
@@ -93,11 +93,48 @@ const StepTypeIcon = styled.span`
     opacity: 0.7;
 `;
 
+// Chevron slot on a 'workflow' test step that references a workflow with
+// steps — same fixed-width pattern as CaseToggle (empty slot = no dead
+// toggle when the step isn't expandable).
+const WfStepToggle = styled.span<{ $hasChildren?: boolean }>`
+    cursor: ${props => (props.$hasChildren ? 'pointer' : 'default')};
+    display: flex;
+    align-items: center;
+    margin-right: ${SPACING_XS};
+    width: 14px;
+    flex-shrink: 0;
+`;
+
+// A step of the workflow referenced by an expanded 'workflow' test step.
+// Read-only (edit them in the WORKFLOWS view); clicking selects the parent
+// test step for context.
+const WorkflowSubStepItem = styled(RequestItem)`
+    padding-left: 70px !important;
+    font-size: 0.85em;
+    opacity: 0.75;
+
+    &:hover {
+        opacity: 1;
+    }
+`;
+
 const StepName = styled.span`
     flex: 1;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+`;
+
+// Dimmed workflow name shown on 'workflow' test steps (which workflow the
+// step runs) — kept short so the step name keeps priority on truncation.
+const StepWfName = styled.span`
+    flex-shrink: 1;
+    max-width: 45%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    opacity: 0.55;
+    font-size: 0.85em;
 `;
 
 const AddSuiteRow = styled.div`
@@ -111,6 +148,9 @@ export interface TestsUiProps {
     // tests that render without a provider).
     testSuites?: TestSuite[];
     projects: UnifiedProject[];
+    // Workflows referenced by 'workflow' test steps — lets the rail expand a
+    // workflow step and show the steps inside the referenced workflow.
+    workflows?: Workflow[];
     selectedTestSuite?: TestSuite | null;
     selectedTestCase?: any | null;
     onAddSuite: (projectName?: string, suiteName?: string) => void;
@@ -139,6 +179,7 @@ interface FlatSuite {
 export const TestsUi: React.FC<TestsUiProps> = ({
     testSuites,
     projects,
+    workflows,
     selectedTestSuite,
     selectedTestCase,
     onAddSuite,
@@ -160,6 +201,35 @@ export const TestsUi: React.FC<TestsUiProps> = ({
 }) => {
     const addSuiteBtnRef = useRef<HTMLButtonElement>(null);
     const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
+    // 'workflow' test steps that reference a workflow with steps are expandable
+    // in the rail (nested rows = the referenced workflow's steps; read-only,
+    // edit them in the WORKFLOWS view). Expansion is UI-only state — not
+    // persisted to the step config.
+    const [expandedWfStepIds, setExpandedWfStepIds] = useState<Set<string>>(new Set());
+
+    const toggleWfStepExpand = (stepId: string) => {
+        setExpandedWfStepIds(prev => {
+            const next = new Set(prev);
+            if (next.has(stepId)) {
+                next.delete(stepId);
+            } else {
+                next.add(stepId);
+            }
+            return next;
+        });
+    };
+
+    const workflowSubStepIcon = (type: WorkflowStep["type"]) => {
+        switch (type) {
+            case 'delay': return <Clock size={11} />;
+            case 'script': return <FileCode size={11} />;
+            case 'condition': return <GitBranch size={11} />;
+            case 'loop': return <RefreshCw size={11} />;
+            case 'request':
+            default: return <FileText size={11} />;
+        }
+    };
+
     const [renameId, setRenameId] = useState<string | null>(null);
     const [renameType, setRenameType] = useState<'case' | 'step' | 'suite' | null>(null);
     const [renameParentId, setRenameParentId] = useState<string | null>(null);
@@ -412,55 +482,100 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                                             </CaseRequestItem>
 
                                             {/* Test Steps */}
-                                            {tc.expanded !== false && (tc.steps || []).map(step => (
-                                                <StepItem
-                                                    key={step.id}
-                                                    $active={selectedStepId === step.id}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setSelectedStepId(step.id);
-                                                        // Also select the parent case if we want context, but usually explicit step selection is enough
-                                                        // if (selectedCaseId !== tc.id) setSelectedCaseId(tc.id);
-                                                        if (onSelectTestStep) onSelectTestStep(tc.id, step.id);
-                                                    }}
-                                                    onContextMenu={(e) => handleContextMenu(e, step.name, 'step', tc.id, step.id)}
-                                                >
-                                                    {renameId === step.id ? (
-                                                        <InlineFormInput
-                                                            type="text"
-                                                            title="Rename test step"
-                                                            placeholder="Rename"
-                                                            value={renameName}
-                                                            onChange={(e) => setRenameName(e.target.value)}
-                                                            onBlur={submitRename}
-                                                            onKeyDown={(e) => {
-                                                                if (e.key === 'Enter') submitRename();
-                                                                if (e.key === 'Escape') cancelRename();
+                                            {tc.expanded !== false && (tc.steps || []).map(step => {
+                                                // 'workflow' steps can reference a workflow — when it exists and has
+                                                // steps, the row gets a chevron and the referenced workflow's steps
+                                                // render nested below (read-only).
+                                                const referencedWorkflow = step.type === 'workflow'
+                                                    ? (workflows || []).find(w => w.id === step.config?.workflowId)
+                                                    : undefined;
+                                                const wfSubSteps = referencedWorkflow?.steps || [];
+                                                const hasWfSubSteps = step.type === 'workflow' && wfSubSteps.length > 0;
+                                                const isWfExpanded = expandedWfStepIds.has(step.id);
+                                                return (
+                                                    <React.Fragment key={step.id}>
+                                                        <StepItem
+                                                            $active={selectedStepId === step.id}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setSelectedStepId(step.id);
+                                                                // Also select the parent case if we want context, but usually explicit step selection is enough
+                                                                // if (selectedCaseId !== tc.id) setSelectedCaseId(tc.id);
+                                                                if (onSelectTestStep) onSelectTestStep(tc.id, step.id);
                                                             }}
-                                                            onClick={(e) => e.stopPropagation()}
-                                                            autoFocus
-                                                            style={{ marginLeft: '4px', fontSize: '0.9em' }}
-                                                        />
-                                                    ) : (
-                                                        <>
-                                                            <StepTypeIcon>
-                                                                {(() => {
-                                                                    switch (step.type) {
-                                                                        case 'delay': return <Clock size={12} />;
-                                                                        case 'transfer': return <ArrowRight size={12} />;
-                                                                        case 'script': return <FileCode size={12} />;
-                                                                        case 'request':
-                                                                        default: return <FileText size={12} />;
-                                                                    }
-                                                                })()}
-                                                            </StepTypeIcon>
-                                                            <StepName title="Right-click to rename">
-                                                                {step.name}
-                                                            </StepName>
-                                                        </>
-                                                    )}
-                                                </StepItem>
-                                            ))}
+                                                            onContextMenu={(e) => handleContextMenu(e, step.name, 'step', tc.id, step.id)}
+                                                        >
+                                                            {renameId === step.id ? (
+                                                                <InlineFormInput
+                                                                    type="text"
+                                                                    title="Rename test step"
+                                                                    placeholder="Rename"
+                                                                    value={renameName}
+                                                                    onChange={(e) => setRenameName(e.target.value)}
+                                                                    onBlur={submitRename}
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === 'Enter') submitRename();
+                                                                        if (e.key === 'Escape') cancelRename();
+                                                                    }}
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                    autoFocus
+                                                                    style={{ marginLeft: '4px', fontSize: '0.9em' }}
+                                                                />
+                                                            ) : (
+                                                                <>
+                                                                    <WfStepToggle
+                                                                        $hasChildren={hasWfSubSteps}
+                                                                        title={hasWfSubSteps ? (isWfExpanded ? 'Collapse workflow steps' : 'Expand workflow steps') : undefined}
+                                                                        onClick={hasWfSubSteps ? (e) => { e.stopPropagation(); toggleWfStepExpand(step.id); } : undefined}
+                                                                    >
+                                                                        {hasWfSubSteps && (isWfExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />)}
+                                                                    </WfStepToggle>
+                                                                    <StepTypeIcon>
+                                                                        {(() => {
+                                                                            switch (step.type) {
+                                                                                case 'delay': return <Clock size={12} />;
+                                                                                case 'transfer': return <ArrowRight size={12} />;
+                                                                                case 'script': return <FileCode size={12} />;
+                                                                                case 'request':
+                                                                                default: return <FileText size={12} />;
+                                                                            }
+                                                                        })()}
+                                                                    </StepTypeIcon>
+                                                                    <StepName title="Right-click to rename">
+                                                                        {step.name}
+                                                                    </StepName>
+                                                                    {step.type === 'workflow' && referencedWorkflow && (
+                                                                        <StepWfName title={`Runs workflow: ${referencedWorkflow.name}`}>
+                                                                            {referencedWorkflow.name}
+                                                                        </StepWfName>
+                                                                    )}
+                                                                </>
+                                                            )}
+                                                        </StepItem>
+
+                                                        {/* Nested workflow steps (read-only preview of the
+                                                            referenced workflow; edit in the WORKFLOWS view).
+                                                            Clicking one selects the parent workflow step. */}
+                                                        {isWfExpanded && referencedWorkflow && wfSubSteps.map(ws => (
+                                                            <WorkflowSubStepItem
+                                                                key={ws.id}
+                                                                $active={selectedStepId === step.id}
+                                                                title={`${ws.name} — edit in the WORKFLOWS view`}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setSelectedStepId(step.id);
+                                                                    if (onSelectTestStep) onSelectTestStep(tc.id, step.id);
+                                                                }}
+                                                            >
+                                                                <StepTypeIcon>
+                                                                    {workflowSubStepIcon(ws.type)}
+                                                                </StepTypeIcon>
+                                                                <StepName>{ws.name}</StepName>
+                                                            </WorkflowSubStepItem>
+                                                        ))}
+                                                    </React.Fragment>
+                                                );
+                                            })}
                                         </React.Fragment>
                                     );
                                 })}

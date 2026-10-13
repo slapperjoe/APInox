@@ -8,20 +8,26 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::time::Instant;
 
+use crate::settings_manager;
 use crate::utils::{RegexExtractor, XPathEvaluator, substitute_variables, CONTENT_TYPE_XML};
+use crate::workflow::commands::build_frontend_request;
 
 use super::frontend_types::{
     AssertionResult, FrontendAssertion, FrontendExtractor, FrontendRequest,
     FrontendTestStep, StepExecutionResult,
 };
 
-/// Execute a single test step and return its result.
+/// Executes a single test step and returns its result.
 ///
 /// `context` holds variables extracted by previous steps (for substitution).
+/// `emit` (streaming mode) receives live sub-update events — for 'workflow'
+/// steps these are the per-workflow-step `workflowStepStart/Pass/Fail/Skip`
+/// events the webview uses to show which inner requests succeeded.
 pub async fn run_step(
     step: &FrontendTestStep,
     fallback_endpoint: Option<&str>,
     context: &mut HashMap<String, Value>,
+    emit: Option<&mut (dyn FnMut(Value) + Send)>,
 ) -> Result<StepExecutionResult> {
     let start = Instant::now();
 
@@ -37,6 +43,7 @@ pub async fn run_step(
             tokio::time::sleep(tokio::time::Duration::from_millis(ms)).await;
             Ok(StepExecutionResult {
                 passed: true,
+                request_body: None,
                 response_body: None,
                 status_code: None,
                 duration_ms: start.elapsed().as_millis() as u64,
@@ -45,11 +52,13 @@ pub async fn run_step(
                 error: None,
             })
         }
+        "workflow" => run_workflow_step(step, context, emit).await,
         other => {
-            // script, transfer, workflow — not yet implemented in Rust, skip with pass
+            // script, transfer — not yet implemented in Rust, skip with pass
             log::warn!("[FrontendRunner] Step type '{}' not yet implemented, skipping", other);
             Ok(StepExecutionResult {
                 passed: true,
+                request_body: None,
                 response_body: None,
                 status_code: None,
                 duration_ms: 0,
@@ -61,7 +70,223 @@ pub async fn run_step(
     }
 }
 
-async fn run_request_step(
+/// Resolve the referenced workflow's steps + initial variables.
+///
+/// Steps prefer the self-contained payload the webview embedded
+/// (`config.workflowSteps`); variables and (when un-embedded) steps fall back
+/// to the persisted config by `workflowId`.
+fn resolve_workflow(
+    step: &FrontendTestStep,
+) -> (Vec<Value>, HashMap<String, String>, Option<String>) {
+    let workflow_id = step
+        .config
+        .workflow_id
+        .as_deref()
+        .filter(|s| !s.is_empty());
+
+    let mut steps = step
+        .config
+        .workflow_steps
+        .clone()
+        .unwrap_or_default();
+    let mut wf_vars: HashMap<String, String> = HashMap::new();
+
+    if let Some(id) = workflow_id {
+        if let Ok(cfg) = settings_manager::load_config_internal() {
+            if let Some(w) = cfg
+                .workflows
+                .unwrap_or_default()
+                .into_iter()
+                .find(|w| w.get("id").and_then(|v| v.as_str()) == Some(id))
+            {
+                if steps.is_empty() {
+                    steps = w
+                        .get("steps")
+                        .and_then(|v| v.as_array())
+                        .cloned()
+                        .unwrap_or_default();
+                }
+                if let Some(vars) = w.get("variables").and_then(|v| v.as_object()) {
+                    for (k, v) in vars {
+                        if let Some(s) = v.as_str() {
+                            wf_vars.insert(k.clone(), s.to_string());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    (steps, wf_vars, workflow_id.map(String::from))
+}
+
+/// Execute a 'workflow' test step: run the referenced workflow's steps in
+/// order, sharing a variable context seeded from the test-case context, the
+/// workflow's own initial variables, and the step's variable overrides
+/// (highest priority). Emits per-workflow-step events so the webview can show
+/// which inner requests succeeded. Mirrors `run_workflow`'s execution rules
+/// (request/delay executed; condition/loop/script skipped, not failures).
+async fn run_workflow_step(
+    step: &FrontendTestStep,
+    context: &mut HashMap<String, Value>,
+    emit: Option<&mut (dyn FnMut(Value) + Send)>,
+) -> Result<StepExecutionResult> {
+    let start = Instant::now();
+    let (wf_steps, wf_vars, workflow_id) = resolve_workflow(step);
+
+    let fail = |message: String| StepExecutionResult {
+        passed: false,
+        request_body: None,
+        response_body: None,
+        status_code: None,
+        duration_ms: start.elapsed().as_millis() as u64,
+        assertion_results: vec![],
+        extracted_variables: HashMap::new(),
+        error: Some(message),
+    };
+
+    if wf_steps.is_empty() {
+        return match &workflow_id {
+            Some(id) => Ok(fail(format!(
+                "Workflow '{}' not found or has no steps",
+                id
+            ))),
+            None => Ok(fail("No workflow selected for this step".to_string())),
+        };
+    }
+
+    // Variable context: test-case context as the base, the workflow's own
+    // initial variables layered on top, then the step's overrides (highest).
+    let mut variables = context.clone();
+    for (k, v) in &wf_vars {
+        variables.insert(k.clone(), Value::String(v.clone()));
+    }
+    if let Some(overrides) = &step.config.workflow_variables {
+        for (k, v) in overrides {
+            variables.insert(k.clone(), Value::String(v.clone()));
+        }
+    }
+
+    let mut all_passed = true;
+    let mut errors: Vec<String> = Vec::new();
+    let mut extracted: HashMap<String, String> = HashMap::new();
+    // Snapshot of the context before the run, so the result only reports
+    // variables this workflow actually produced.
+    let pre_run: std::collections::HashSet<String> = context.keys().cloned().collect();
+
+    let mut emit = emit;
+    for ws in &wf_steps {
+        let ws_id = ws.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let ws_name = ws.get("name").and_then(|v| v.as_str()).unwrap_or("step").to_string();
+        let ws_type = ws
+            .get("type")
+            .and_then(|v| v.as_str())
+            .unwrap_or("request")
+            .to_string();
+        let ws_start = Instant::now();
+
+        if let Some(emitter) = emit.as_deref_mut() {
+            emitter(serde_json::json!({
+                "type": "workflowStepStart",
+                "stepId": step.id,
+                "workflowStepId": ws_id,
+                "name": ws_name
+            }));
+        }
+
+        let (sub_passed, sub_error, sub_response, sub_duration) = match ws_type.as_str() {
+            "delay" => {
+                let ms = ws.get("delayMs").and_then(|v| v.as_u64()).unwrap_or(0);
+                tokio::time::sleep(tokio::time::Duration::from_millis(ms)).await;
+                (true, None, None, ws_start.elapsed().as_millis() as u64)
+            }
+            "request" => {
+                let req = build_frontend_request(ws);
+                match run_request_step(&req, None, &variables, ws_start).await {
+                    Ok(r) => {
+                        for (k, v) in &r.extracted_variables {
+                            variables.insert(k.clone(), Value::String(v.clone()));
+                            extracted.insert(k.clone(), v.clone());
+                        }
+                        (
+                            r.passed,
+                            r.error,
+                            Some((r.status_code, r.duration_ms, r.response_body)),
+                            r.duration_ms,
+                        )
+                    }
+                    Err(e) => (false, Some(e.to_string()), None, ws_start.elapsed().as_millis() as u64),
+                }
+            }
+            other => {
+                // condition / loop / script: not executed by the backend
+                // (mirrors run_workflow) — surfaced as skipped, not failed.
+                log::warn!(
+                    "[FrontendRunner] workflow step '{}' type '{}' not executed in test run",
+                    ws_name,
+                    other
+                );
+                (true, None, None, 0)
+            }
+        };
+
+        if let Some(emitter) = emit.as_deref_mut() {
+            let event_type = if !sub_passed {
+                "workflowStepFail"
+            } else {
+                match ws_type.as_str() {
+                    "condition" | "loop" | "script" => "workflowStepSkip",
+                    _ => "workflowStepPass",
+                }
+            };
+            emitter(serde_json::json!({
+                "type": event_type,
+                "stepId": step.id,
+                "workflowStepId": ws_id,
+                "name": ws_name,
+                "durationMs": sub_duration,
+                "error": sub_error,
+                "response": sub_response.map(|(status_code, duration_ms, body)| {
+                    serde_json::json!({
+                        "rawResponse": body,
+                        "duration": duration_ms as f64 / 1000.0,
+                        "statusCode": status_code
+                    })
+                })
+            }));
+        }
+
+        // Propagate produced variables into the outer test-case context so
+        // later top-level steps can use them.
+        for (k, v) in &extracted {
+            context.insert(k.clone(), Value::String(v.clone()));
+        }
+
+        if !sub_passed {
+            all_passed = false;
+            if let Some(e) = sub_error {
+                errors.push(format!("{}: {}", ws_name, e));
+            }
+        }
+    }
+
+    // Report only variables this workflow produced (new or changed keys).
+    extracted.retain(|k, _| !pre_run.contains(k));
+
+    let error = if errors.is_empty() { None } else { Some(errors.join("; ")) };
+    Ok(StepExecutionResult {
+        passed: all_passed,
+        request_body: None,
+        response_body: None,
+        status_code: None,
+        duration_ms: start.elapsed().as_millis() as u64,
+        assertion_results: vec![],
+        extracted_variables: extracted,
+        error,
+    })
+}
+
+pub(crate) async fn run_request_step(
     req: &FrontendRequest,
     fallback_endpoint: Option<&str>,
     context: &HashMap<String, Value>,
@@ -86,6 +311,7 @@ async fn run_request_step(
     if endpoint.is_empty() {
         return Ok(StepExecutionResult {
             passed: false,
+            request_body: None,
             response_body: None,
             status_code: None,
             duration_ms: start.elapsed().as_millis() as u64,
@@ -153,6 +379,7 @@ async fn run_request_step(
             let duration_ms = start.elapsed().as_millis() as u64;
             return Ok(StepExecutionResult {
                 passed: false,
+                request_body: Some(body.clone()),
                 response_body: None,
                 status_code: None,
                 duration_ms,
@@ -212,6 +439,7 @@ async fn run_request_step(
 
     Ok(StepExecutionResult {
         passed,
+        request_body: Some(body.clone()),
         response_body: Some(response_body),
         status_code: Some(status_code),
         duration_ms,

@@ -22,7 +22,8 @@ import type {
     SidebarView,
     PerformanceRun,
     Workflow,
-    WorkflowStep
+    WorkflowStep,
+    WorkflowExecutionResult
 } from '@shared/models';
 
 /**
@@ -63,6 +64,8 @@ interface WorkspaceContextValue {
     // ==================== SELECTION STATE - Workflows ====================
     /** Currently selected workflow step */
     selectedWorkflowStep: { workflow: any; step: any } | null;
+    /** Last run result per workflow id (frontend WorkflowExecutionResult). */
+    workflowRunResults: Record<string, any>;
 
     // ==================== SELECTION STATE - Performance ====================
     /** Currently selected performance suite ID */
@@ -143,6 +146,10 @@ interface WorkspaceContextValue {
     // ==================== ACTIONS - Workflow ====================
     /** Select a workflow step */
     selectWorkflowStep: (step: { workflow: any; step: any } | null) => void;
+    /** Run a workflow (executes its request steps, persists to history). */
+    handleRunWorkflow: (workflow: Workflow) => void;
+    /** History of workflow executions (newest first). */
+    workflowRunHistory: WorkflowExecutionResult[];
     /** Execute an HTTP/SOAP request */
     executeRequest: (xml: string) => void;
     /** Cancel a running request */

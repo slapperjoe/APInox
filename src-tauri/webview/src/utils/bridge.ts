@@ -616,23 +616,25 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
             return response;
         }
 
-        // Route ExecuteWorkflow to Rust run_workflow command
-        if (message.command === FrontendCommand.ExecuteWorkflow) {
-            const response = await tauriInvoke('run_workflow', {
-                request: {
-                    workflow: message.workflow,
-                    environment: message.environment || {}
+        // Route ExecuteWorkflow to Rust run_workflow command. The webview sends
+                // the flat Workflow model; Rust's run_workflow expects { id, name,
+                // steps, variables } and executes each self-contained request step.
+                // The invoke resolves DIRECTLY with the WorkflowExecutionResult (no
+                // { success, error, result } envelope) — a Rust Err rejects the invoke.
+                if (message.command === FrontendCommand.ExecuteWorkflow) {
+                    const wf: any = message.workflow || {};
+                    const result = await tauriInvoke('run_workflow', {
+                        request: {
+                            id: wf.id || '',
+                            name: wf.name || '',
+                            steps: wf.steps || [],
+                            variables: wf.variables || {},
+                        }
+                    });
+                    return result || {};
                 }
-            });
 
-            if (!response.success) {
-                throw new Error(response.error || 'Workflow execution failed');
-            }
-
-            return response.result || {};
-        }
-
-        if (message.command === 'saveUiState') {
+                if (message.command === 'saveUiState') {
             // Save UI state via Rust
             try {
                 await tauriInvoke('update_ui_settings', { ui: message.ui });

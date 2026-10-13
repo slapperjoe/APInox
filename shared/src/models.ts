@@ -537,6 +537,10 @@ export interface TestStep {
         // For 'workflow' - reusable workflow execution
         workflowId?: string; // Reference to a workflow in project.workflows
         workflowVariables?: Record<string, string>; // Override workflow variables
+        /** Self-contained copy of the referenced workflow's steps, embedded by
+         * the webview into the run payload so execution is not subject to a
+         * config save-race (runtime-only, not persisted to step files). */
+        workflowSteps?: WorkflowStep[];
     };
 }
 
@@ -656,6 +660,8 @@ export interface ApinoxConfig {
     performanceSchedules?: PerformanceSchedule[];
     /** Workflows for request chaining */
     workflows?: Workflow[];
+    /** History of workflow executions (newest appended, capped at 50). */
+    workflowRunHistory?: WorkflowExecutionResult[];
 }
 
 // ============================================
@@ -1022,6 +1028,8 @@ export interface WorkflowStepResult {
     status: 'success' | 'failed' | 'skipped';
     /** Response data */
     response?: any;
+    /** The request body actually sent (after variable substitution). */
+    request?: string;
     /** Status code (for request steps) */
     statusCode?: number;
     /** Extracted variables */

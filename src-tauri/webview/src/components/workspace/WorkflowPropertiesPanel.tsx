@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { Workflow } from '@shared/models';
+import { Workflow, WorkflowExecutionResult } from '@shared/models';
 import { SPACING_SM, SPACING_MD, SPACING_XS } from '../../styles/spacing';
-import { Settings } from 'lucide-react';
+import { Settings, Play, Clock, ChevronDown, ChevronRight, CheckCircle, XCircle } from 'lucide-react';
+import { formatXml } from '@shared/utils/xmlFormatter';
 
 const Container = styled.div`
     padding: ${SPACING_MD};
@@ -147,15 +148,210 @@ const RemoveButton = styled.button`
     }
 `;
 
+const RunResultCard = styled.div`
+    border: 1px solid var(--apinox-panel-border);
+    border-radius: 6px;
+    padding: ${SPACING_SM};
+    background: var(--apinox-sideBar-background);
+`;
+
+const RunResultHeader = styled.div`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: ${SPACING_XS};
+`;
+
+const RunBadge = styled.span<{ $pass: boolean }>`
+    font-size: 12px;
+    font-weight: var(--fw-bold);
+    padding: 2px 10px;
+    border-radius: 10px;
+    color: #fff;
+    background: ${props => props.$pass ? 'var(--apinox-charts-green)' : 'var(--apinox-errorForeground)'};
+`;
+
+const RunDuration = styled.span`
+    font-size: var(--apinox-fs-sm);
+    opacity: 0.7;
+`;
+
+const RunStepRow = styled.div`
+    display: flex;
+    align-items: center;
+    gap: ${SPACING_SM};
+    padding: 4px 0;
+    font-size: var(--apinox-fs-md);
+    border-top: 1px solid var(--apinox-panel-border);
+`;
+
+const RunStepDot = styled.span<{ $status: string }>`
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: ${props =>
+        props.$status === 'success' ? 'var(--apinox-charts-green)'
+        : props.$status === 'failed' ? 'var(--apinox-errorForeground)'
+        : 'var(--apinox-symbolIcon-variableForeground)'};
+`;
+
+const RunStepName = styled.span`
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+`;
+
+const RunStepMeta = styled.span`
+    font-size: var(--apinox-fs-sm);
+    opacity: 0.7;
+    flex-shrink: 0;
+`;
+
+const RunStepError = styled.div`
+    font-size: var(--apinox-fs-sm);
+    color: var(--apinox-errorForeground);
+    margin-left: 16px;
+`;
+
+const RunEmpty = styled.div`
+    font-size: var(--apinox-fs-sm);
+    opacity: 0.6;
+    padding: ${SPACING_XS} 0;
+`;
+
+const RunButton = styled.button`
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--apinox-charts-green);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 14px;
+    font-size: var(--apinox-fs-sm);
+    font-weight: var(--fw-semibold);
+    cursor: pointer;
+    margin-left: auto;
+
+    &:hover {
+        opacity: 0.9;
+    }
+`;
+
+const HistoryItem = styled.div`
+    border: 1px solid var(--apinox-panel-border);
+    border-radius: 6px;
+    margin-bottom: ${SPACING_SM};
+    background: var(--apinox-sideBar-background);
+`;
+
+const HistoryHeader = styled.div`
+    display: flex;
+    align-items: center;
+    gap: ${SPACING_SM};
+    padding: ${SPACING_SM};
+    cursor: pointer;
+    font-size: var(--apinox-fs-md);
+
+    &:hover {
+        background: var(--apinox-list-hoverBackground);
+    }
+`;
+
+const HistoryStatus = styled.span<{ $status: string }>`
+    font-size: 11px;
+    font-weight: var(--fw-bold);
+    padding: 1px 8px;
+    border-radius: 8px;
+    color: #fff;
+    background: ${props =>
+        props.$status === 'completed' ? 'var(--apinox-charts-green)'
+        : 'var(--apinox-errorForeground)'};
+`;
+
+const HistoryMeta = styled.span`
+    font-size: var(--apinox-fs-sm);
+    opacity: 0.7;
+    margin-left: auto;
+`;
+
+const HistoryDetails = styled.div`
+    padding: ${SPACING_SM};
+    border-top: 1px solid var(--apinox-panel-border);
+`;
+
+const HistoryStepRow = styled.div`
+    display: flex;
+    align-items: center;
+    gap: ${SPACING_SM};
+    padding: 4px 0;
+    font-size: var(--apinox-fs-md);
+    cursor: pointer;
+
+    &:hover {
+        background: var(--apinox-list-hoverBackground);
+    }
+`;
+
+const HistoryStepName = styled.span`
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+`;
+
+const HistoryStepMeta = styled.span`
+    font-size: var(--apinox-fs-sm);
+    opacity: 0.7;
+    flex-shrink: 0;
+`;
+
+const HistoryBody = styled.pre`
+    margin: 4px 0 8px 16px;
+    padding: ${SPACING_SM};
+    background: var(--apinox-textCodeBlock-background);
+    border: 1px solid var(--apinox-panel-border);
+    border-radius: 4px;
+    font-size: var(--apinox-fs-sm);
+    font-family: var(--apinox-font-family-mono, monospace);
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 200px;
+    overflow: auto;
+`;
+
+const HistoryBodyLabel = styled.div`
+    font-size: var(--apinox-fs-sm);
+    font-weight: var(--fw-semibold);
+    opacity: 0.7;
+    margin: 6px 0 2px 16px;
+`;
+
 interface WorkflowPropertiesPanelProps {
     workflow: Workflow;
+    /** Last run result for this workflow (rendered as a run summary). */
+    runResult?: WorkflowExecutionResult;
+    /** Run this workflow (executes its request steps). */
+    onRun?: () => void;
+    /** History of this workflow's executions (newest first). */
+    runHistory?: WorkflowExecutionResult[];
     onUpdate: (updates: Partial<Workflow>) => void;
 }
 
 export const WorkflowPropertiesPanel: React.FC<WorkflowPropertiesPanelProps> = ({
     workflow,
+    runResult,
+    onRun,
+    runHistory = [],
     onUpdate
 }) => {
+    const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
+    const [expandedStepId, setExpandedStepId] = useState<string | null>(null);
+    // Newest run first (mirrors the performance tester's history ordering).
+    const sortedHistory = [...runHistory].sort((a, b) => (b.startTime || 0) - (a.startTime || 0));
+    const pretty = (s?: string) => (s ? formatXml(s, false, true) : '');
     const [name, setName] = useState(workflow.name);
     const [description, setDescription] = useState(workflow.description || '');
     const [variables, setVariables] = useState<Array<{ name: string; value: string }>>(() =>
@@ -217,6 +413,9 @@ export const WorkflowPropertiesPanel: React.FC<WorkflowPropertiesPanelProps> = (
                     <Settings size={20} />
                 </IconContainer>
                 <Title>Workflow Properties</Title>
+                <RunButton onClick={onRun} title="Run this workflow">
+                    <Play size={14} /> Run
+                </RunButton>
             </Header>
 
             <Section>
@@ -265,7 +464,111 @@ export const WorkflowPropertiesPanel: React.FC<WorkflowPropertiesPanelProps> = (
             </Section>
 
             <Section>
-                <Label>Variables</Label>
+                <Label>Last Run</Label>
+                {runResult ? (
+                    <RunResultCard>
+                        <RunResultHeader>
+                            <RunBadge $pass={runResult.status === 'completed'}>
+                                {runResult.status === 'completed' ? 'PASS' : 'FAIL'}
+                            </RunBadge>
+                            <RunDuration>
+                                {(runResult.stepResults || []).length} step{(runResult.stepResults || []).length === 1 ? '' : 's'} · {(runResult.endTime || 0) - (runResult.startTime || 0)}ms
+                            </RunDuration>
+                        </RunResultHeader>
+                        {runResult.error && <RunStepError>{runResult.error}</RunStepError>}
+                        {(runResult.stepResults || []).map((s, i) => (
+                            <div key={s.stepId || i}>
+                                <RunStepRow>
+                                    <RunStepDot $status={s.status} />
+                                    <RunStepName title={s.stepName}>{s.stepName}</RunStepName>
+                                    <RunStepMeta>
+                                        {s.statusCode ? `${s.statusCode} · ` : ''}{s.duration}ms
+                                    </RunStepMeta>
+                                </RunStepRow>
+                                {s.error && <RunStepError>{s.error}</RunStepError>}
+                            </div>
+                        ))}
+                    </RunResultCard>
+                ) : (
+                    <RunEmpty>
+                        Press the play icon on a workflow in the sidebar to run it. Per-step pass/fail results
+                        appear here.
+                    </RunEmpty>
+                )}
+            </Section>
+
+                        <Section>
+                            <Label>Run History ({sortedHistory.length})</Label>
+                            {sortedHistory.length === 0 ? (
+                                <RunEmpty>No previous runs yet. Run this workflow to build history.</RunEmpty>
+                            ) : (
+                                sortedHistory.map(run => {
+                                        const runKey = `${run.workflowId}:${run.startTime}`;
+                                        const isExpanded = expandedRunId === runKey;
+                                        return (
+                                            <HistoryItem key={runKey}>
+                                                <HistoryHeader onClick={() => setExpandedRunId(isExpanded ? null : runKey)}>
+                                                    {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                                    {run.status === 'completed' ? (
+                                                        <CheckCircle size={16} style={{ color: 'var(--apinox-testing-iconPassed)' }} />
+                                                    ) : (
+                                                        <XCircle size={16} style={{ color: 'var(--apinox-testing-iconFailed)' }} />
+                                                    )}
+                                                    <span style={{ fontWeight: 'var(--fw-medium)' }}>
+                                                        {new Date(run.startTime).toLocaleString()}
+                                                    </span>
+                                                    <HistoryStatus $status={run.status}>
+                                                        {run.status === 'completed' ? 'PASS' : 'FAIL'}
+                                                    </HistoryStatus>
+                                                    <HistoryMeta>
+                                                        {(run.stepResults || []).length} steps · {(run.endTime || 0) - (run.startTime || 0)}ms
+                                                    </HistoryMeta>
+                                                </HistoryHeader>
+                                                {isExpanded && (
+                                                    <HistoryDetails>
+                                                        {(run.stepResults || []).map((s, i) => {
+                                                            const stepKey = s.stepId || `step-${i}`;
+                                                            const stepExpanded = expandedStepId === stepKey;
+                                                            return (
+                                                                <div key={stepKey}>
+                                                                    <HistoryStepRow onClick={() => setExpandedStepId(stepExpanded ? null : stepKey)}>
+                                                                        <RunStepDot $status={s.status} />
+                                                                        <HistoryStepName title={s.stepName}>{s.stepName}</HistoryStepName>
+                                                                        <HistoryStepMeta>
+                                                                            {s.statusCode ? `${s.statusCode} · ` : ''}{s.duration}ms
+                                                                        </HistoryStepMeta>
+                                                                        {stepExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                                                                    </HistoryStepRow>
+                                                                    {stepExpanded && (
+                                                                        <>
+                                                                    {s.request && (
+                                                                        <>
+                                                                            <HistoryBodyLabel>Request</HistoryBodyLabel>
+                                                                            <HistoryBody>{pretty(s.request)}</HistoryBody>
+                                                                        </>
+                                                                    )}
+                                                                    {s.response && (
+                                                                        <>
+                                                                            <HistoryBodyLabel>Response</HistoryBodyLabel>
+                                                                            <HistoryBody>{pretty(s.response)}</HistoryBody>
+                                                                        </>
+                                                                    )}
+                                                                            {s.error && <RunStepError>{s.error}</RunStepError>}
+                                                                        </>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </HistoryDetails>
+                                                )}
+                                            </HistoryItem>
+                                        );
+                                    })
+                            )}
+                        </Section>
+
+            <Section>
+                            <Label>Variables</Label>
                 <InfoBox>
                     Reusable name→value pairs available to every step as {'{{name}}'}. These are the
                     variables tagged when creating a workflow from traffic.

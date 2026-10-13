@@ -16,7 +16,9 @@ import {
     TestSuite,
     Assertion,
     RequestExtractor,
-    SidebarView
+    SidebarView,
+    ApinoxConfig,
+    Workflow
 } from '@shared/models';
 import { bridge, isTauri } from '../utils/bridge';
 import { BackendCommand, FrontendCommand } from '@shared/messages';
@@ -41,6 +43,9 @@ interface UseTestCaseHandlersParams {
     closeContextMenu: () => void;
     selectedTestSuite: TestSuite | null;
     setSelectedTestSuite: React.Dispatch<React.SetStateAction<TestSuite | null>>;
+    /** App config — workflow definitions are embedded into run payloads so the
+        backend executes a self-contained copy (no config save-race). */
+    config: ApinoxConfig | null;
 }
 
 interface UseTestCaseHandlersReturn {
@@ -69,11 +74,33 @@ export function useTestCaseHandlers({
     setResponse,
     setActiveView,
     closeContextMenu,
-    setSelectedTestSuite
+    setSelectedTestSuite,
+    config
 }: UseTestCaseHandlersParams): UseTestCaseHandlersReturn {
 
     const { testSuites, addSuite, updateTestCase, findSuiteById, findCaseById } = useTestSuites();
     const { ensureProjectFull } = useUnifiedProjectsSafe();
+
+    /** Embed each 'workflow' test step's referenced workflow steps into the
+        run payload so the Rust runner executes a self-contained copy (no
+        config save-race / dangling id) and can stream per-sub-step results. */
+    const withEmbeddedWorkflows = useCallback((tc: TestCase, workflows: Workflow[]): TestCase => {
+        return {
+            ...tc,
+            steps: tc.steps.map(s => {
+                if (s.type !== 'workflow' || !s.config?.workflowId) return s;
+                const wf = workflows.find(w => w.id === s.config.workflowId);
+                if (!wf) return s;
+                return {
+                    ...s,
+                    config: {
+                        ...s.config,
+                        workflowSteps: wf.steps || []
+                    }
+                };
+            })
+        };
+    }, []);
     /** Compute the next step object for an in-place step mutation (no-op if
         the step isn't a request step), then persist it through the global
         suite store and refresh the selection state. Replaces the old
@@ -310,7 +337,8 @@ export function useTestCaseHandlers({
                     const start = await bridge.sendMessageAsync<{ runId: string }>({
                         command: FrontendCommand.RunTestCase,
                         caseId,
-                        testCase,
+                        // Embed referenced workflow steps (self-contained run)
+                        testCase: withEmbeddedWorkflows(testCase, config?.workflows || []),
                         fallbackEndpoint: testCase.steps[0]?.config?.request?.endpoint || '',
                         stream: true
                     });
@@ -358,7 +386,7 @@ export function useTestCaseHandlers({
             testCase,
             fallbackEndpoint: testCase.steps[0]?.config?.request?.endpoint || ''
         });
-    }, [findCaseById]);
+    }, [findCaseById, withEmbeddedWorkflows, config]);
 
     const handleRunTestSuiteWrapper = useCallback((suiteId: string) => {
         console.log('[handleRunTestSuiteWrapper] CALLED with suiteId:', suiteId);

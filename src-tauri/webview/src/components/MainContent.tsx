@@ -1441,6 +1441,7 @@ const MainContent: React.FC = () => {
     const {
         workflowBuilderModal,
         setWorkflowBuilderModal,
+        workflowRunResults,
         handleAddWorkflow,
         handleEditWorkflow,
         handleSaveWorkflow,
@@ -1757,6 +1758,9 @@ const MainContent: React.FC = () => {
         selectedTestCase,
         selectedTestStep: selectedStep,
         selectedWorkflowStep,
+        workflowRunResults,
+        handleRunWorkflow,
+        workflowRunHistory: config?.workflowRunHistory || [],
         selectedPerformanceSuiteId,
         performanceHistory: config?.performanceHistory || [],
         performanceProgress,
@@ -1881,6 +1885,9 @@ const MainContent: React.FC = () => {
             // C (global suites): the TESTS suite tree renders from the GLOBAL
             // suite store (the single source of truth).
             testSuites: globalTestSuites,
+            // Feeds the TESTS rail's expandable 'workflow' test steps (the
+            // steps inside a referenced workflow render as nested rows).
+            workflows: config?.workflows || [],
             projects: unifiedProjects,
             selectedTestSuite,
             selectedTestCase,

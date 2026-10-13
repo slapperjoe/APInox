@@ -5,7 +5,9 @@ import { SPACING_SM } from '../../styles/spacing';
 import { GitBranch, AlertCircle, Plus, X } from 'lucide-react';
 import { PrimaryButton, SecondaryButton } from '../common/Button';
 import { EmptyState } from '../common/EmptyState';
-import { MonacoEditorWrapper } from '@apinox/request-editor/monaco';
+import { MonacoEditorWrapper, applyMonacoTheme } from '@apinox/request-editor/monaco';
+import * as monaco from 'monaco-editor';
+import { useTheme } from '@apinox/request-editor/core'; // package ThemeContext (mounted in the app tree)
 import {
     StepEditorContainer,
     StepHeader,
@@ -83,6 +85,16 @@ interface RequestStepEditorProps {
 }
 
 export const RequestStepEditor: React.FC<RequestStepEditorProps> = ({ step, onUpdate, onPickRequest }) => {
+    // Monaco theme: define the skin theme from the live --apinox-editor-*
+    // CSS vars (same contract as MonacoRequestEditor / SettingsView). Just
+    // passing the theme id would setTheme() an undefined id once nothing
+    // else has defined it, and Monaco silently falls back to its default
+    // LIGHT theme.
+    const { theme } = useTheme();
+    const [editorTheme, setEditorTheme] = useState<string>('vs-dark');
+    useEffect(() => {
+        setEditorTheme(applyMonacoTheme(monaco, theme));
+    }, [theme]);
     const [name, setName] = useState(step.name);
     const [requestBody, setRequestBody] = useState(step.requestBody || '');
     const [endpoint, setEndpoint] = useState(step.endpoint || '');
@@ -176,7 +188,7 @@ export const RequestStepEditor: React.FC<RequestStepEditorProps> = ({ step, onUp
                             <MonacoEditorWrapper
                                 height="100%"
                                 language="xml"
-                                theme="vs-dark"
+                                theme={editorTheme}
                                 value={requestBody}
                                 onChange={(value) => setRequestBody(value || '')}
                                 options={{

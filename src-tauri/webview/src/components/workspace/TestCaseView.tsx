@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { Play, Plus, FileCode, ArrowUp, ArrowDown, Trash2, ListChecks, CheckCircle, XCircle } from 'lucide-react';
-import { TestCase, TestStep, TestStepType } from '@shared/models';
+import { Play, Plus, FileCode, ArrowUp, ArrowDown, Trash2, ListChecks, CheckCircle, XCircle, Clock, FileText, GitBranch, RefreshCw, ChevronDown, ChevronRight, Minus } from 'lucide-react';
+import { TestCase, TestStep, TestStepType, WorkflowStep } from '@shared/models';
 import { ToolbarButton, IconButton, RunButton } from '../../styles/WorkspaceLayout.styles';
 import { ContextHelpButton } from '../ContextHelpButton';
 import { EmptyState } from '../common/EmptyState';
 import { Spinner } from '../common/Spinner';
-import { SPACING_XS, SPACING_SM, SPACING_MD, SPACING_LG, SPACING_XL } from '../../styles/spacing';
+import { SPACING_XS, SPACING_SM, SPACING_MD, SPACING_LG, SPACING_XL, SPACING_3XL } from '../../styles/spacing';
 
 // Empty state component
 interface EmptyTestCaseProps {
@@ -149,6 +149,66 @@ const DeleteStepButton = styled(IconButton)`
     margin-left: ${SPACING_XS};
 `;
 
+// Chevron slot on a 'workflow' step row — expands the referenced workflow's
+// steps (read-only; edit them in the WORKFLOWS view). Rendered on every row
+// (empty when there's nothing to expand) so the step-number column stays
+// aligned across rows.
+const WfStepToggle = styled.button<{ $hasChildren?: boolean }>`
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    flex-shrink: 0;
+    border: none;
+    background: transparent;
+    color: inherit;
+    opacity: 0.7;
+    cursor: ${props => (props.$hasChildren ? 'pointer' : 'default')};
+
+    /* Larger hit area so a click expands instead of selecting/editing the step. */
+    &:hover {
+        background: ${props => (props.$hasChildren ? 'var(--apinox-button-hoverBackground)' : 'transparent')};
+        border-radius: 2px;
+    }
+`;
+
+// A step of the workflow referenced by an expanded 'workflow' test step —
+// shows the live per-step result (running / passed / failed / skipped).
+const WfSubStepRow = styled.li`
+    padding: 4px ${SPACING_SM} 4px ${SPACING_3XL};
+    border-bottom: 1px solid var(--apinox-panel-border);
+    display: flex;
+    align-items: center;
+    gap: ${SPACING_XS};
+    font-size: 0.85em;
+    opacity: 0.85;
+    background-color: var(--apinox-list-hoverBackground);
+
+    &:hover {
+        opacity: 1;
+    }
+`;
+
+const WfSubStepName = styled.span`
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+`;
+
+const WfSubStepError = styled.span`
+    color: var(--apinox-errorForeground);
+    opacity: 1;
+    font-size: 0.9em;
+`;
+
+const WfSubStepDuration = styled.span`
+    opacity: 0.5;
+    white-space: nowrap;
+`;
+
 const EmptyTestCase: React.FC<EmptyTestCaseProps> = ({ onCreateTestSuite, projectName }) => (
     <EmptyTestCaseContainer>
         <EmptyHelp>
@@ -175,6 +235,14 @@ export interface TestExecutionStatus {
         duration?: number;
         rawResponse?: string;
     };
+    /** Live per-workflow-step results for 'workflow' test steps. */
+    workflowSteps?: Record<string, {
+        status: 'running' | 'pass' | 'fail' | 'skipped';
+        name?: string;
+        error?: string;
+        response?: any;
+        durationMs?: number;
+    }>;
 }
 
 export interface TestCaseViewProps {
@@ -187,8 +255,9 @@ export interface TestCaseViewProps {
     onDeleteStep?: (stepId: string) => void;
     /** @deprecated Use onSelectStep */
     onOpenStepRequest?: (request: any) => void;
-    // Optional: For displaying workflow/request names
-    workflows?: Array<{ id: string; name: string }>;
+    // Optional: For displaying workflow/request names + the steps inside each
+    // referenced workflow (shown when a 'workflow' step is expanded).
+    workflows?: Array<{ id: string; name: string; steps?: WorkflowStep[] }>;
     projects?: Array<any>;
 }
 
@@ -208,6 +277,35 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
     // projects // Unused
 }) => {
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+    // 'workflow' steps are expandable in place: manually via the chevron, and
+    // automatically once a run has touched the step (so per-request results
+    // are visible right after a run). Collapsing after a run is remembered.
+    const [expandedWfStepIds, setExpandedWfStepIds] = useState<Set<string>>(new Set());
+    const [collapsedWfStepIds, setCollapsedWfStepIds] = useState<Set<string>>(new Set());
+
+    const wfStepIcon = (type: string) => {
+        switch (type) {
+            case 'delay': return <Clock size={12} />;
+            case 'script': return <FileCode size={12} />;
+            case 'condition': return <GitBranch size={12} />;
+            case 'loop': return <RefreshCw size={12} />;
+            case 'request':
+            default: return <FileText size={12} />;
+        }
+    };
+
+    const isWfExpanded = (stepId: string, hasStatus: boolean) =>
+        !collapsedWfStepIds.has(stepId) && (hasStatus || expandedWfStepIds.has(stepId));
+
+    const toggleWfExpand = (stepId: string, hasStatus: boolean) => {
+        if (isWfExpanded(stepId, hasStatus)) {
+            setCollapsedWfStepIds(prev => new Set(prev).add(stepId));
+            setExpandedWfStepIds(prev => { const next = new Set(prev); next.delete(stepId); return next; });
+        } else {
+            setExpandedWfStepIds(prev => new Set(prev).add(stepId));
+            setCollapsedWfStepIds(prev => { const next = new Set(prev); next.delete(stepId); return next; });
+        }
+    };
 
     return (
         <ViewContainer>
@@ -244,9 +342,17 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
                     {testCase.steps.map((step, index) => {
                         const status = testExecution && testExecution[testCase.id] && testExecution[testCase.id][step.id];
                         const isConfirming = deleteConfirm === step.id;
+                        // 'workflow' step: resolve the referenced workflow so its
+                        // steps can render nested below (read-only preview).
+                        const referencedWorkflow = step.type === 'workflow'
+                            ? (workflows || []).find(w => w.id === step.config?.workflowId)
+                            : undefined;
+                        const wfSubSteps: WorkflowStep[] = referencedWorkflow?.steps || [];
+                        const hasWfSubSteps = step.type === 'workflow' && wfSubSteps.length > 0;
+                        const wfExpanded = hasWfSubSteps && isWfExpanded(step.id, !!status);
                         return (
+                            <React.Fragment key={step.id}>
                             <StepRow
-                                key={step.id}
                                 $clickable={step.type === 'request' || step.type === 'delay' || step.type === 'script' || step.type === 'workflow'}
                                 onClick={() => {
                                     if (onSelectStep) {
@@ -256,6 +362,17 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
                                     }
                                 }}
                             >
+                                <WfStepToggle
+                                    $hasChildren={hasWfSubSteps}
+                                    title={hasWfSubSteps ? (wfExpanded ? 'Collapse workflow steps' : 'Expand workflow steps') : undefined}
+                                    onClick={(e) => {
+                                        if (!hasWfSubSteps) return;
+                                        e.stopPropagation();
+                                        toggleWfExpand(step.id, !!status);
+                                    }}
+                                >
+                                    {hasWfSubSteps && (wfExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />)}
+                                </WfStepToggle>
                                 <StepIndex>
                                     <StepIndexNumber>{index + 1}.</StepIndexNumber>
                                     {status?.status === 'running' && (
@@ -349,6 +466,54 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
                                     )}
                                 </StepActions>
                             </StepRow>
+
+                            {/* Nested workflow steps (read-only preview of the
+                                referenced workflow; edit in the WORKFLOWS view).
+                                Status icons reflect this run's per-step results. */}
+                            {wfExpanded && wfSubSteps.map(ws => {
+                                const wsExec = status?.workflowSteps?.[ws.id];
+                                return (
+                                    <WfSubStepRow
+                                        key={ws.id}
+                                        title={`${ws.name} — edit in the WORKFLOWS view`}
+                                    >
+                                        {wsExec?.status === 'running' && (
+                                            <StepStatusRunning title="Running...">
+                                                <Spinner size={13} />
+                                            </StepStatusRunning>
+                                        )}
+                                        {wsExec?.status === 'pass' && (
+                                            <StepStatusPass title="Passed">
+                                                <CheckCircle size={13} />
+                                            </StepStatusPass>
+                                        )}
+                                        {wsExec?.status === 'fail' && (
+                                            <StepStatusFail title="Failed">
+                                                <XCircle size={13} />
+                                            </StepStatusFail>
+                                        )}
+                                        {wsExec?.status === 'skipped' && (
+                                            <span title="Skipped (not executed in test runs)" style={{ opacity: 0.4, display: 'inline-flex' }}>
+                                                <Minus size={13} />
+                                            </span>
+                                        )}
+                                        {!wsExec && (
+                                            <span style={{ width: 13, display: 'inline-flex' }} />
+                                        )}
+                                        <span style={{ opacity: 0.6, display: 'inline-flex', flexShrink: 0 }}>
+                                            {wfStepIcon(ws.type)}
+                                        </span>
+                                        <WfSubStepName>{ws.name}</WfSubStepName>
+                                        {wsExec?.error && (
+                                            <WfSubStepError>{wsExec.error}</WfSubStepError>
+                                        )}
+                                        {typeof wsExec?.durationMs === 'number' && (
+                                            <WfSubStepDuration>{wsExec.durationMs} ms</WfSubStepDuration>
+                                        )}
+                                    </WfSubStepRow>
+                                );
+                            })}
+                            </React.Fragment>
                         );
                     })}
                 </StepsList>

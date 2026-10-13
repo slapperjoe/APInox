@@ -31,8 +31,10 @@ export function useWorkflowHandlers({
     setLoading,
 }: UseWorkflowHandlersProps) {
     const [workflowBuilderModal, setWorkflowBuilderModal] = useState<WorkflowBuilderModalState>({
-        open: false, workflow: null, projectPath: null
+        open: false, workflow: null, projectPath: ''
     });
+    // Last run result per workflow id (frontend WorkflowExecutionResult shape).
+    const [workflowRunResults, setWorkflowRunResults] = useState<Record<string, any>>({});
 
     const handleAddWorkflow = useCallback(() => {
         setWorkflowBuilderModal({ open: true, workflow: null, projectPath: '' });
@@ -57,20 +59,32 @@ export function useWorkflowHandlers({
     const handleRunWorkflow = useCallback(async (workflow: Workflow) => {
         try {
             setLoading(true);
+            // Open the workflow in the main area so the run results are visible.
+            setActiveView(SidebarView.WORKFLOWS);
+            setSelectedWorkflowStep({ workflow, step: null });
             const result: any = await bridge.sendMessageAsync({
                 command: FrontendCommand.ExecuteWorkflow,
                 workflow,
                 environment: config?.activeEnvironment
             });
-            if (result?.status !== 'completed') {
-                console.error(`[Workflow] ${workflow.name} failed:`, result?.error);
-            }
+            setWorkflowRunResults(prev => ({ ...prev, [workflow.id]: result || {} }));
+            // Reload config so the persisted run history (workflowRunHistory) updates.
+            const updated: any = await bridge.sendMessageAsync({ command: FrontendCommand.GetSettings });
+            if (updated) setConfig(updated);
         } catch (error) {
-            console.error('Failed to run workflow:', error);
+            console.error(`[Workflow] ${workflow.name} failed:`, error);
+            setWorkflowRunResults(prev => ({
+                ...prev,
+                [workflow.id]: {
+                    status: 'failed',
+                    error: (error as any)?.message || String(error),
+                    stepResults: []
+                }
+            }));
         } finally {
             setLoading(false);
         }
-    }, [config?.activeEnvironment, setLoading]);
+    }, [config?.activeEnvironment, setLoading, setActiveView, setSelectedWorkflowStep]);
 
     const handleDeleteWorkflow = useCallback(async (workflow: Workflow) => {
         try {
@@ -167,6 +181,8 @@ export function useWorkflowHandlers({
     return {
         workflowBuilderModal,
         setWorkflowBuilderModal,
+        workflowRunResults,
+        setWorkflowRunResults,
         handleAddWorkflow,
         handleEditWorkflow,
         handleSaveWorkflow,

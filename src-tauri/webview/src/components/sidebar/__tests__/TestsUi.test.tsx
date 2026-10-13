@@ -18,6 +18,8 @@ vi.mock('lucide-react', () => ({
     FileCode: () => <span data-testid="icon-file-code" />,
     ArrowRight: () => <span data-testid="icon-arrow-right" />,
     FileText: () => <span data-testid="icon-file-text" />,
+    GitBranch: () => <span data-testid="icon-git-branch" />,
+    RefreshCw: () => <span data-testid="icon-refresh-cw" />,
     // SidebarContextMenu re-exports Pencil from lucide-react and renders it as
     // the context-menu item icon; without it the menu crashes with
     // "Element type is invalid ... got: undefined".
@@ -375,5 +377,98 @@ describe('TestsUi', () => {
         // Suite B has 1 case -> exactly one chevron (the suite's). The case
         // with zero steps contributes none.
         expect(screen.getAllByTestId('icon-chevron-down')).toHaveLength(1);
+    });
+
+    describe('workflow test steps (expandable to the referenced workflow)', () => {
+        const workflowProject: ApinoxProject = {
+            name: 'Project WF',
+            fileName: 'wf.json',
+            readOnly: false,
+            interfaces: [],
+            testSuites: [
+                {
+                    id: 'suite-wf',
+                    name: 'Suite WF',
+                    testCases: [
+                        {
+                            id: 'case-wf',
+                            name: 'Case WF',
+                            steps: [
+                                { id: 'step-wf', name: 'Run WF', type: 'workflow', config: { workflowId: 'wf-1' } }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        };
+
+        const sampleWorkflow = {
+            id: 'wf-1',
+            name: 'Login Flow',
+            steps: [
+                { id: 'wf-step-1', name: 'Login Request', type: 'request', order: 0 },
+                { id: 'wf-step-2', name: 'Wait', type: 'delay', order: 1 }
+            ]
+        };
+
+        it('a workflow step referencing a workflow with steps is expandable and shows the nested steps', () => {
+            const { rerender } = render(
+                <TestsUi {...defaultProps} projects={[workflowProject]} workflows={[sampleWorkflow]} />
+            );
+
+            // Collapsed by default: chevron present, sub-steps hidden.
+            expect(screen.getByText('Run WF')).toBeInTheDocument();
+            expect(screen.queryByText('Login Request')).not.toBeInTheDocument();
+            // Exactly one RIGHT-pointing chevron: the workflow step's own
+            // (the expanded suite and case rows point down).
+            expect(screen.getAllByTestId('icon-chevron-right')).toHaveLength(1);
+
+            // Click the step's chevron (title attribute gates it).
+            fireEvent.click(screen.getByTitle('Expand workflow steps'));
+            expect(screen.getByText('Login Request')).toBeInTheDocument();
+            expect(screen.getByText('Wait')).toBeInTheDocument();
+            expect(screen.queryByTitle('Expand workflow steps')).not.toBeInTheDocument();
+
+            // Collapse again.
+            fireEvent.click(screen.getByTitle('Collapse workflow steps'));
+            expect(screen.queryByText('Login Request')).not.toBeInTheDocument();
+
+            // Clicking a nested step selects the PARENT workflow step.
+            fireEvent.click(screen.getByTitle('Expand workflow steps'));
+            fireEvent.click(screen.getByText('Login Request'));
+            expect(defaultProps.onSelectTestStep).toHaveBeenCalledWith('case-wf', 'step-wf');
+        });
+
+        it('a workflow step with no matching workflow shows no chevron', () => {
+            render(<TestsUi {...defaultProps} projects={[workflowProject]} workflows={[]} />);
+
+            expect(screen.getByText('Run WF')).toBeInTheDocument();
+            // No right-pointing chevron anywhere: the dangling workflow step
+            // isn't expandable (the expanded suite/case rows point down).
+            expect(screen.queryAllByTestId('icon-chevron-right')).toHaveLength(0);
+            expect(screen.queryByTitle('Expand workflow steps')).not.toBeInTheDocument();
+        });
+
+        it('a workflow step referencing an empty workflow shows no chevron', () => {
+            render(
+                <TestsUi
+                    {...defaultProps}
+                    projects={[workflowProject]}
+                    workflows={[{ ...sampleWorkflow, steps: [] }]}
+                />
+            );
+
+            expect(screen.getByText('Run WF')).toBeInTheDocument();
+            expect(screen.queryByTitle('Expand workflow steps')).not.toBeInTheDocument();
+        });
+
+        it('non-workflow steps show no chevron even when workflows are present', () => {
+            render(<TestsUi {...defaultProps} workflows={[sampleWorkflow]} />);
+
+            // The default project has a plain request step: no workflow-step
+            // chevrons (no right-pointing chevron; no expand toggle title).
+            expect(screen.queryAllByTestId('icon-chevron-right')).toHaveLength(0);
+            expect(screen.queryByTitle('Expand workflow steps')).not.toBeInTheDocument();
+        });
     });
 });

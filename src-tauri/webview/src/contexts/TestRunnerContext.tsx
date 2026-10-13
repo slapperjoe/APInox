@@ -16,6 +16,16 @@ interface TestExecutionState {
     error?: string;
     assertionResults?: any[];
     response?: any;
+    /** Per-workflow-step results for 'workflow' test steps (live as they run). */
+    workflowSteps?: Record<string, WorkflowStepExecution>;
+}
+
+interface WorkflowStepExecution {
+    status: 'running' | 'pass' | 'fail' | 'skipped';
+    name?: string;
+    error?: string;
+    response?: any;
+    durationMs?: number;
 }
 
 interface TestRunnerContextType {
@@ -141,7 +151,10 @@ export const TestRunnerProvider = ({ children }: { children: ReactNode }) => {
                         [stepId]: {
                             status: 'pass',
                             response: update.response,
-                            assertionResults: update.assertionResults
+                            assertionResults: update.assertionResults,
+                            // Keep the per-workflow-step results collected while
+                            // the step ran (workflow test steps).
+                            workflowSteps: prev[caseId]?.[stepId]?.workflowSteps
                         }
                     }
                 };
@@ -159,7 +172,48 @@ export const TestRunnerProvider = ({ children }: { children: ReactNode }) => {
                             status: 'fail',
                             error: update.error,
                             response: update.response,
-                            assertionResults: update.assertionResults
+                            assertionResults: update.assertionResults,
+                            // Keep the per-workflow-step results collected while
+                            // the step ran (workflow test steps).
+                            workflowSteps: prev[caseId]?.[stepId]?.workflowSteps
+                        }
+                    }
+                };
+            }
+
+            // Live per-workflow-step events from 'workflow' test steps:
+            // workflowStepStart / Pass / Fail / Skip. Nested under the parent
+            // test step so the test case view can show which inner requests
+            // succeeded or failed.
+            if (type === 'workflowStepStart' || type === 'workflowStepPass' || type === 'workflowStepFail' || type === 'workflowStepSkip') {
+                const caseId = update.caseId;
+                const stepId = update.stepId;
+                const wsId = update.workflowStepId;
+                if (!caseId || !stepId || !wsId) return prev;
+                const status: WorkflowStepExecution['status'] =
+                    type === 'workflowStepStart' ? 'running'
+                        : type === 'workflowStepPass' ? 'pass'
+                            : type === 'workflowStepFail' ? 'fail'
+                                : 'skipped';
+                const step = prev[caseId]?.[stepId];
+                const wfStep: WorkflowStepExecution = {
+                    ...(step?.workflowSteps?.[wsId] || {}),
+                    status,
+                    name: update.name ?? step?.workflowSteps?.[wsId]?.name
+                };
+                if (update.error) wfStep.error = update.error;
+                if (update.response) wfStep.response = update.response;
+                if (typeof update.durationMs === 'number') wfStep.durationMs = update.durationMs;
+                return {
+                    ...prev,
+                    [caseId]: {
+                        ...(prev[caseId] || {}),
+                        [stepId]: {
+                            ...(step || { status: 'running' as const }),
+                            workflowSteps: {
+                                ...(step?.workflowSteps || {}),
+                                [wsId]: wfStep
+                            }
                         }
                     }
                 };
@@ -236,7 +290,8 @@ export const TestRunnerProvider = ({ children }: { children: ReactNode }) => {
         closeContextMenu: noOpCloseContextMenu, // Temporary decoupling
         selectedTestSuite,
         setSelectedTestSuite,
-        setSelectedPerformanceSuiteId
+        setSelectedPerformanceSuiteId,
+        config
     });
 
     const requestExecution = useRequestExecution({

@@ -202,6 +202,7 @@ export const Sidebar: React.FC = () => {
                     <TestsUi
                         projects={testsProps.projects}
                         testSuites={testsProps.testSuites}
+                        workflows={testsProps.workflows}
                         selectedTestSuite={testsProps.selectedTestSuite}
                         selectedTestCase={testsProps.selectedTestCase}
                         onAddSuite={testsProps.onAddSuite}
