@@ -14,6 +14,7 @@
  */
 import React, { useState, useMemo } from 'react';
 import { Workflow, WorkflowExtractor } from '@shared/models';
+import { formatXml } from '@shared/utils/xmlFormatter';
 import { tokens } from './tokens';
 import type { TrafficLog } from './TrafficViewer';
 import { lastPathSegment, detectChainedValues, assembleWorkflow } from '../../utils/trafficWorkflow';
@@ -148,7 +149,10 @@ function nameFromTag(tag: string, fallback: string): string {
 const HIGHLIGHT_RE = /<([A-Za-z0-9_:\-]+)([^>]*)>([^<]*)<\/\1>/g;
 
 /**
- * Render an XML body as plain text with element-text parts marked up.
+ * Render an XML body as formatted text with element-text parts marked up.
+ * The body is pretty-printed with the app's XML formatter (inline element
+ * values, matching the request editor) before the element-text parts are
+ * extracted, so the wizard's step-2 preview matches the rest of the app.
  * `isHighlighted` decides the styling for an element's inner text; when
  * `onPart` is given each element part is clickable (select-to-vary-ify).
  */
@@ -158,13 +162,14 @@ function renderXmlParts(
     partTestId: (text: string) => string,
     onPart?: (text: string, tag: string) => void,
 ): React.ReactNode[] {
+    const formatted = formatXml(body, false, true);
     const parts: React.ReactNode[] = [];
     const re = new RegExp(HIGHLIGHT_RE.source, "g");
     let last = 0; let m: RegExpExecArray | null; let k = 0;
-    while ((m = re.exec(body)) !== null) {
-        if (m.index > last) parts.push(<span key={`t${k++}`}>{body.slice(last, m.index)}</span>);
+    while ((m = re.exec(formatted)) !== null) {
+        if (m.index > last) parts.push(<span key={`t${k++}`}>{formatted.slice(last, m.index)}</span>);
         const tag = m[1].split(":").pop() || m[1];
-        const text = m[3];
+        const text = m[3].trim();
         const hl = isHighlighted(text, tag);
         parts.push(
             <span
@@ -214,6 +219,12 @@ export function TrafficWorkflowWizard({ logs, onDone, onCancel }: TrafficWorkflo
     // Selected part of the source request (clicked element text) so the user
     // can promote it to a manual variable.
     const [selectedPart, setSelectedPart] = useState<SelectedPart | null>(null);
+
+    // Which request/response accordion is open in step 2 (one at a time).
+    // First included log expanded by default. Does not reset every render.
+    const [openLogId, setOpenLogId] = useState<string | null>(null);
+    const firstIncludedId = includedLogs[0]?.id ?? null;
+    const effectiveOpenLogId = openLogId ?? firstIncludedId;
 
     const stepNameFor = (logId: string, log: TrafficLog) =>
         stepNames[logId] || `${log.method} ${lastPathSegment(log.url)}`;
@@ -365,10 +376,6 @@ export function TrafficWorkflowWizard({ logs, onDone, onCancel }: TrafficWorkflo
         setSelectedPart(null);
     }
 
-    // The first captured step is the one whose response feeds the chain — show
-    // its request (editable parts) + response (captured value highlighted).
-    const sourceLog = chained.length ? logs.find(l => l.id === chained[0].sourceLogId) : undefined;
-
     // ── step 2: variables ──────────────────────────────────────────────────
     function renderStep2() {
         return (
@@ -473,65 +480,96 @@ export function TrafficWorkflowWizard({ logs, onDone, onCancel }: TrafficWorkflo
                     )}
                 </div>
 
-                {sourceLog && (
-                    <>
-                        <div style={divider} />
-                        <div>
-                            <div style={sectionLabel}>
-                                Source request — {stepNameFor(sourceLog.id, sourceLog)}
-                            </div>
-                            <div style={{ ...hint, marginBottom: 8 }}>
-                                Highlighted values are captured &amp; reused. Click any value to select it, then promote it to a manual variable.
-                            </div>
-                            <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ ...hint, marginBottom: 4 }}>Request body</div>
-                                    <div style={{
-                                        ...mono, fontSize: 'var(--apinox-fs-sm)', lineHeight: 1.6,
-                                        background: tokens.surface.deep, border: `1px solid ${tokens.border.default}`,
-                                        borderRadius: tokens.radius.md, padding: '10px 12px',
-                                        whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 260, overflow: 'auto',
-                                    }}>
-                                        {renderXmlParts(
-                                            sourceLog.requestBody || '(no body)',
-                                            () => false,
-                                            text => 'wf-varpart-' + text,
-                                            (text, tag) => setSelectedPart({ value: text, tag }),
-                                        )}
-                                    </div>
-                                    {selectedPart && (
-                                        <div style={{ ...rowStyle, marginTop: 8, gap: 10 }}>
-                                            <span style={{ ...chip }}>
-                                                {'{{' + nameFromTag(selectedPart.tag, selectedPart.value) + '}}'} = {selectedPart.value}
-                                            </span>
-                                            <button onClick={useSelectedAsManualVar} style={btnGhost}>
-                                                Use as manual variable
-                                            </button>
-                                            <button onClick={() => setSelectedPart(null)} style={{ ...btnGhost, color: tokens.text.muted }}>
-                                                Clear
-                                            </button>
+                <div style={divider} />
+                <div>
+                    <div style={sectionLabel}>Requests &amp; responses</div>
+                    <div style={{ ...hint, marginBottom: 10 }}>
+                        Review any captured request/response to make a variable. Highlighted values are captured &amp; reused. Click a value in a request to select it, then promote it to a manual variable.
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {includedLogs.map((log, i) => {
+                            const open = effectiveOpenLogId === log.id;
+                            const srcName = stepNameFor(log.id, log);
+                            return (
+                                <div key={log.id} style={{
+                                    borderRadius: tokens.radius.md,
+                                    border: `1px solid ${tokens.border.default}`,
+                                    background: tokens.surface.deep, overflow: 'hidden',
+                                }}>
+                                    <button
+                                        data-testid={'wf-acc-' + log.id}
+                                        onClick={() => setOpenLogId(prev => prev === log.id ? null : log.id)}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: 10,
+                                            width: '100%', padding: '8px 10px', cursor: 'pointer',
+                                            background: 'transparent', border: 'none',
+                                            color: tokens.text.primary, textAlign: 'left',
+                                        }}
+                                    >
+                                        <span style={{ ...mono, fontSize: 'var(--apinox-fs-sm)', color: tokens.text.hint, minWidth: 18 }}>#{i + 1}</span>
+                                        <span style={methodBadge}>{log.method}</span>
+                                        <span style={{ ...mono, fontSize: 'var(--apinox-fs-sm)', color: tokens.text.secondary, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            {srcName}
+                                        </span>
+                                        <span style={{ fontSize: 'var(--apinox-fs-sm)', color: tokens.text.hint, flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
+                                    </button>
+                                    {open && (
+                                        <div style={{ padding: '0 10px 12px', display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ ...hint, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Request body</div>
+                                                <div data-testid={'wf-body-' + log.id} style={{
+                                                    ...mono, fontSize: 'var(--apinox-fs-sm)', lineHeight: 1.6,
+                                                    background: tokens.surface.base, border: `1px solid ${tokens.border.subtle}`,
+                                                    borderRadius: tokens.radius.md, padding: '10px 12px',
+                                                    whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 260, overflow: 'auto',
+                                                }}>
+                                                    {log.requestBody ? (
+                                                        renderXmlParts(
+                                                            log.requestBody,
+                                                            () => false,
+                                                            text => 'wf-varpart-' + text,
+                                                            (text, tag) => setSelectedPart({ value: text, tag }),
+                                                        )
+                                                    ) : '(no request body)'}
+                                                </div>
+                                                {selectedPart && (
+                                                    <div style={{ ...rowStyle, marginTop: 8, gap: 10, flexWrap: 'wrap' }}>
+                                                        <span style={{ ...chip }}>
+                                                            {'{{' + nameFromTag(selectedPart.tag, selectedPart.value) + '}}'} = {selectedPart.value}
+                                                        </span>
+                                                        <button onClick={useSelectedAsManualVar} style={btnGhost}>
+                                                            Use as manual variable
+                                                        </button>
+                                                        <button onClick={() => setSelectedPart(null)} style={{ ...btnGhost, color: tokens.text.muted }}>
+                                                            Clear
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ ...hint, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Response body</div>
+                                                <div data-testid={'wf-resbody-' + log.id} style={{
+                                                    ...mono, fontSize: 'var(--apinox-fs-sm)', lineHeight: 1.6,
+                                                    background: tokens.surface.base, border: `1px solid ${tokens.border.subtle}`,
+                                                    borderRadius: tokens.radius.md, padding: '10px 12px',
+                                                    whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 260, overflow: 'auto',
+                                                }}>
+                                                    {log.responseBody ? (
+                                                        renderXmlParts(
+                                                            log.responseBody,
+                                                            text => chained.some(c => c.sourceLogId === log.id && c.value === text.trim()),
+                                                            text => 'wf-highlight-' + text,
+                                                        )
+                                                    ) : '(no response body)'}
+                                                </div>
+                                            </div>
                                         </div>
                                     )}
                                 </div>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ ...hint, marginBottom: 4 }}>Source response (captured value highlighted)</div>
-                                    <div style={{
-                                        ...mono, fontSize: 'var(--apinox-fs-sm)', lineHeight: 1.6,
-                                        background: tokens.surface.deep, border: `1px solid ${tokens.border.default}`,
-                                        borderRadius: tokens.radius.md, padding: '10px 12px',
-                                        whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 260, overflow: 'auto',
-                                    }}>
-                                        {renderXmlParts(
-                                            sourceLog.responseBody || '(no body)',
-                                            text => chained.some(c => c.sourceLogId === sourceLog.id && c.value === text.trim()),
-                                            text => 'wf-highlight-' + text,
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </>
-                )}
+                            );
+                        })}
+                    </div>
+                </div>
             </>
         );
     }

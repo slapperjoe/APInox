@@ -1,10 +1,3 @@
-/**
- * TrafficWorkflowWizard tests.
- *
- * Tests the state machine (3 steps) and the save payload, not pixels.
- * Hermetic mocks mirror file_watcher_panel_resize.test.tsx — the wizard itself
- * imports only type-only from TrafficViewer, so these are belt-and-suspenders.
- */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
@@ -36,11 +29,15 @@ function twoLogs() {
 describe('TrafficWorkflowWizard', () => {
     beforeEach(() => vi.clearAllMocks());
 
+    function gotoStep2() {
+        fireEvent.change(screen.getByPlaceholderText(/workflow name/i), { target: { value: 'Login' } });
+        fireEvent.click(screen.getByRole('button', { name: /continue/i }));
+    }
+
     it('requires a name + at least one step before Continue', () => {
         render(<TrafficWorkflowWizard logs={twoLogs()} onDone={vi.fn()} onCancel={vi.fn()} />);
         const cont = screen.getByRole('button', { name: /continue/i });
         fireEvent.click(cont); // no name -> nothing advances
-        // still on step 1: the name input is present
         expect(screen.getByPlaceholderText(/workflow name/i)).toBeInTheDocument();
     });
 
@@ -55,16 +52,12 @@ describe('TrafficWorkflowWizard', () => {
         const wf = onDone.mock.calls[0][0];
         expect(wf.name).toBe('Login');
         expect(wf.steps).toHaveLength(2);
-        // The chained TKN-999 was auto-accepted -> extractor on step 0 (source step).
-        // Default variable name is the source element tag: SessionToken -> sessionToken.
         expect(wf.steps[0].extractors?.some(e => e.variable === 'sessionToken')).toBe(true);
     });
 
     it('defaults each chain variable to its source element name', () => {
         render(<TrafficWorkflowWizard logs={twoLogs()} onDone={vi.fn()} onCancel={vi.fn()} />);
-        fireEvent.change(screen.getByPlaceholderText(/workflow name/i), { target: { value: 'Login' } });
-        fireEvent.click(screen.getByRole('button', { name: /continue/i }));       // -> step 2
-        // The auto-detected TKN-999 (captured from <SessionToken>) is named "sessionToken".
+        gotoStep2();
         const nameInput = screen.getByTestId('wf-varname-TKN-999');
         expect(nameInput).toHaveValue('sessionToken');
     });
@@ -72,8 +65,7 @@ describe('TrafficWorkflowWizard', () => {
     it('lets the user rename a chain variable; the rename flows through to the extractor', () => {
         const onDone = vi.fn();
         render(<TrafficWorkflowWizard logs={twoLogs()} onDone={onDone} onCancel={vi.fn()} />);
-        fireEvent.change(screen.getByPlaceholderText(/workflow name/i), { target: { value: 'Login' } });
-        fireEvent.click(screen.getByRole('button', { name: /continue/i }));       // -> step 2
+        gotoStep2();
         fireEvent.change(screen.getByTestId('wf-varname-TKN-999'), { target: { value: 'myToken' } });
         fireEvent.click(screen.getByRole('button', { name: /continue/i }));       // -> step 3
         fireEvent.click(screen.getByRole('button', { name: /create workflow/i }));
@@ -82,13 +74,30 @@ describe('TrafficWorkflowWizard', () => {
         expect(wf.steps[0].extractors?.some(e => e.variable === 'sessionToken')).toBe(false);
     });
 
-    it('shows the source request/response with the captured value highlighted', () => {
+    it('shows every captured request/response as a collapsible accordion, first expanded by default', () => {
         render(<TrafficWorkflowWizard logs={twoLogs()} onDone={vi.fn()} onCancel={vi.fn()} />);
-        fireEvent.change(screen.getByPlaceholderText(/workflow name/i), { target: { value: 'Login' } });
-        fireEvent.click(screen.getByRole('button', { name: /continue/i }));       // -> step 2
-        // The first (source) request of the chain is viewable, and the captured
-        // value is highlighted in the source response body.
-        expect(screen.getByText(/^Source request —/i)).toBeInTheDocument();
+        gotoStep2();
+        // Header rows for BOTH logs are present.
+        expect(screen.getByTestId('wf-acc-a')).toBeInTheDocument();
+        expect(screen.getByTestId('wf-acc-b')).toBeInTheDocument();
+        // First log (a) is expanded by default: its bodies are visible.
+        expect(screen.getByTestId('wf-body-a')).toBeInTheDocument();
+        // Second log (b) is collapsed.
+        expect(screen.queryByTestId('wf-body-b')).not.toBeInTheDocument();
+        // Clicking b's header expands it and collapses a (one open at a time).
+        fireEvent.click(screen.getByTestId('wf-acc-b'));
+        expect(screen.queryByTestId('wf-body-a')).not.toBeInTheDocument();
+        expect(screen.getByTestId('wf-body-b')).toBeInTheDocument();
+    });
+
+    it('formats the source request/response XML the same way the app formats XML', () => {
+        render(<TrafficWorkflowWizard logs={twoLogs()} onDone={vi.fn()} onCancel={vi.fn()} />);
+        gotoStep2();
+        // The source response body (first expanded log a) is pretty-printed
+        // (multi-line) — not the raw single-line capture.
+        const resBody = screen.getByTestId('wf-resbody-a');
+        expect(resBody.textContent).toContain('\n');
+        // The captured value is still highlighted within the formatted body.
         const mark = screen.getByTestId('wf-highlight-TKN-999');
         expect(mark).toHaveTextContent('TKN-999');
     });
@@ -96,24 +105,29 @@ describe('TrafficWorkflowWizard', () => {
     it('lets the user make a manual variable from a highlighted part of the source request', () => {
         const onDone = vi.fn();
         render(<TrafficWorkflowWizard logs={twoLogs()} onDone={onDone} onCancel={vi.fn()} />);
-        fireEvent.change(screen.getByPlaceholderText(/workflow name/i), { target: { value: 'Login' } });
-        fireEvent.click(screen.getByRole('button', { name: /continue/i }));       // -> step 2
-        // The source request body exposes each element text as a selectable,
-        // highlighted part. Pick <User>mark</User> and promote it to a variable.
+        gotoStep2();
         fireEvent.click(screen.getByTestId('wf-varpart-mark'));
         fireEvent.click(screen.getByRole('button', { name: /use as manual variable/i }));
         fireEvent.click(screen.getByRole('button', { name: /continue/i }));       // -> step 3
         fireEvent.click(screen.getByRole('button', { name: /create workflow/i }));
         const wf = onDone.mock.calls[0][0];
-        // Default name from the element tag (User -> user), value = the part text.
         expect(wf.variables).toEqual({ user: 'mark' });
+    });
+
+    it('shows manually added variables on the review screen', () => {
+        render(<TrafficWorkflowWizard logs={twoLogs()} onDone={vi.fn()} onCancel={vi.fn()} />);
+        gotoStep2();
+        fireEvent.click(screen.getByTestId('wf-varpart-mark'));
+        fireEvent.click(screen.getByRole('button', { name: /use as manual variable/i }));
+        fireEvent.click(screen.getByRole('button', { name: /continue/i }));       // -> step 3
+        // The manual variable's name shows up in the Variables section as {{user}}.
+        expect(screen.getByText('{{user}}')).toBeInTheDocument();
     });
 
     it('excludes unchecked steps from the saved workflow', () => {
         const onDone = vi.fn();
         render(<TrafficWorkflowWizard logs={twoLogs()} onDone={onDone} onCancel={vi.fn()} />);
         fireEvent.change(screen.getByPlaceholderText(/workflow name/i), { target: { value: 'X' } });
-        // uncheck the 2nd step (row "next") via its stable testid
         const rowB = screen.getByTestId('wf-step-b');
         fireEvent.click(rowB.querySelector('input[type="checkbox"]')!);
         fireEvent.click(screen.getByRole('button', { name: /continue/i }));
