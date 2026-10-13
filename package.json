@@ -29,6 +29,7 @@
     "tauri:test": "npm run build:packages && cd src-tauri/webview && node ../../scripts/run-npm-install.js && cd ../.. && npx tauri dev",
     "tauri:run": "npx tauri dev",
     "tauri:dev": "node scripts/version.js increment && node scripts/version.js sync && npm run build:packages && cd src-tauri/webview && node ../../scripts/run-npm-install.js && cd ../.. && npx tauri dev",
+    "tauri:dev:traffic-demo": "node scripts/tauri-dev-traffic-demo.js",
     "appimage": "APP=$(ls -t target/release/bundle/appimage/APInox*.AppImage 2>/dev/null | head -1) && [ -n \"$APP\" ] && chmod +x \"$APP\" && LD_LIBRARY_PATH=$APP/usr/lib \"$APP\" || { echo 'No AppImage found.'; exit 1; }",
     "tauri:build": "node scripts/version.js build",
     "tauri": "tauri",

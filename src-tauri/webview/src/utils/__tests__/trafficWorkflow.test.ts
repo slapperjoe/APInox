@@ -110,6 +110,23 @@ describe("detectChainedValues", () => {
         expect(found.map(c => c.value)).toEqual(["TKN-999"]);
         expect(found[0].sourceXPath).toBe("//SessionToken/text()");
     });
+
+    it("excludes XML tag names from body candidates (structure, not data)", () => {
+        const env = (inner: string) =>
+            `<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body>${inner}</soap:Body></soap:Envelope>`;
+        const logs = [
+            mkLog({ id: "a", url: "http://x/step1",
+                    requestBody: env("<S1/>"),
+                    responseBody: env("<R><OrderId>ORD-4829</OrderId></R>") }),
+            mkLog({ id: "b", url: "http://x/step2",
+                    requestBody: env("<S2><OrderId>ORD-4829</OrderId></S2>") }),
+        ];
+        const found = detectChainedValues(logs);
+        // "OrderId" is an element name (shared structure across requests), not a
+        // captured value — must not be suggested. Only the real data value is.
+        expect(found.map(c => c.value)).toEqual(["ORD-4829"]);
+        expect(found[0].sourceXPath).toBe("//OrderId/text()");
+    });
 });
 
 describe("assembleWorkflow", () => {
