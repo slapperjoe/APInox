@@ -17,7 +17,7 @@ export const StepEditorContainer = styled.div<{ $scroll?: boolean }>`
   width: 100%;
   height: 100%;
   overflow-x: hidden;
-  overflow-y: ${(p) => (p.$scroll ? "auto" : "hidden")};
+  overflow-y: ${(p) => (p.$scroll === false ? "hidden" : "auto")};
   box-sizing: border-box;
 `;
 

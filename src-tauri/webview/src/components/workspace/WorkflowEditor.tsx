@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-import { Workflow } from '@shared/models';
+import { Workflow, WorkflowExecutionResult } from '@shared/models';
 import { WorkflowPropertiesPanel } from './WorkflowPropertiesPanel';
 
 const Container = styled.div`
@@ -20,6 +20,12 @@ const EditorPanel = styled.div`
 
 interface WorkflowEditorProps {
     workflow: Workflow;
+    /** Last run result for this workflow (rendered in the properties panel). */
+    runResult?: WorkflowExecutionResult;
+    /** Run this workflow. */
+    onRun?: () => void;
+    /** History of this workflow's executions (newest first). */
+    runHistory?: WorkflowExecutionResult[];
     onUpdate: (workflow: Workflow) => void;
 }
 
@@ -32,6 +38,9 @@ interface WorkflowEditorProps {
  */
 export const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
     workflow,
+    runResult,
+    onRun,
+    runHistory,
     onUpdate,
 }) => {
     const handleUpdateWorkflow = (updates: Partial<Workflow>) => {
@@ -43,6 +52,9 @@ export const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
             <EditorPanel>
                 <WorkflowPropertiesPanel
                     workflow={workflow}
+                    runResult={runResult}
+                    onRun={onRun}
+                    runHistory={runHistory}
                     onUpdate={handleUpdateWorkflow}
                 />
             </EditorPanel>

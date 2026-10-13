@@ -3,7 +3,9 @@ import styled from 'styled-components';
 import { WorkflowStep } from '@shared/models';
 import { Code } from 'lucide-react';
 import { PrimaryButton } from '../common/Button';
-import { MonacoEditorWrapper } from '@apinox/request-editor/monaco';
+import { MonacoEditorWrapper, applyMonacoTheme } from '@apinox/request-editor/monaco';
+import * as monaco from 'monaco-editor';
+import { useTheme } from '@apinox/request-editor/core'; // package ThemeContext (mounted in the app tree)
 import {
     StepEditorContainer,
     StepHeader,
@@ -31,6 +33,16 @@ interface ScriptStepEditorProps {
 }
 
 export const ScriptStepEditor: React.FC<ScriptStepEditorProps> = ({ step, onUpdate }) => {
+    // Monaco theme: define the skin theme from the live --apinox-editor-*
+    // CSS vars (same contract as MonacoRequestEditor / SettingsView). Just
+    // passing the theme id would setTheme() an undefined id once nothing
+    // else has defined it, and Monaco silently falls back to its default
+    // LIGHT theme.
+    const { theme } = useTheme();
+    const [editorTheme, setEditorTheme] = useState<string>('vs-dark');
+    useEffect(() => {
+        setEditorTheme(applyMonacoTheme(monaco, theme));
+    }, [theme]);
     const [name, setName] = useState(step.name);
     const [script, setScript] = useState(step.script || '// Your JavaScript code here\n// Available: variables, console.log\n');
 
@@ -63,7 +75,7 @@ export const ScriptStepEditor: React.FC<ScriptStepEditorProps> = ({ step, onUpda
                 <EditorContainer>
                     <MonacoEditorWrapper
                         language="javascript"
-                        theme="vs-dark"
+                        theme={editorTheme}
                         value={script}
                         onChange={(value) => setScript(value || '')}
                         options={{
