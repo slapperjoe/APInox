@@ -25,6 +25,7 @@ import {
   ExternalLink,
   Code,
   File,
+  Workflow,
 } from 'lucide-react';
 import { tokens } from '../../proxy/tokens';
 
@@ -391,5 +392,5 @@ export function SidebarContextMenu({ x, y, sections, onClose, onCopy }: SidebarC
 export {
   Pencil, Trash2, Globe, Link, Copy, FileText,
   RefreshCw, Pause, Download, VenetianMask, Check,
-  FolderOpen, Plus, ExternalLink, Code, File,
+  FolderOpen, Plus, ExternalLink, Code, File, Workflow,
 };

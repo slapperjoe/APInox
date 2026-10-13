@@ -143,24 +143,6 @@ export function ProxyPanel({ onNavigateTo, onAddToApinoxProject, onCreateWorkflo
     userSelect: 'none',
   });
 
-  const createWorkflowBtnStyle: React.CSSProperties = {
-    marginLeft: 'auto',
-    padding: '5px 12px',
-    fontSize: 'var(--apinox-fs-sm)',
-    fontWeight: 600,
-    borderRadius: 6,
-    cursor: logs.length === 0 ? 'not-allowed' : 'pointer',
-    border: `1px solid ${tokens.border.default}`,
-    background: tokens.surface.elevated,
-    color: tokens.text.primary,
-    opacity: logs.length === 0 ? 0.5 : 1,
-  };
-
-  const handleCreateWorkflow = useCallback(() => {
-    if (logs.length === 0) return;
-    onCreateWorkflowFromTraffic?.(logs);
-  }, [logs, onCreateWorkflowFromTraffic]);
-
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: tokens.surface.base }}>
       {/* Server control bar */}
@@ -175,14 +157,6 @@ export function ProxyPanel({ onNavigateTo, onAddToApinoxProject, onCreateWorkflo
             {tab === 'traffic' ? 'Traffic' : 'Breakpoints'}
           </button>
         ))}
-        <button
-          style={createWorkflowBtnStyle}
-          onClick={handleCreateWorkflow}
-          disabled={logs.length === 0}
-          title={logs.length === 0 ? 'Capture some traffic first' : 'Create a workflow from captured traffic'}
-        >
-          Create workflow
-        </button>
       </div>
 
       {/* Tab content */}
@@ -201,6 +175,7 @@ export function ProxyPanel({ onNavigateTo, onAddToApinoxProject, onCreateWorkflo
                 onClearTraffic={handleClearTraffic}
                 onAddToApinoxProject={onAddToApinoxProject}
                 onReplayRequest={handleReplayRequest}
+                onCreateWorkflowFromTraffic={() => { if (logs.length > 0) onCreateWorkflowFromTraffic?.(logs); }}
               />
             </div>
             {selectedLog && (
