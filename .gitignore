@@ -128,3 +128,7 @@ apinox-0.16.114-1-x86_64.pkg.tar.zst
 
 # Agent workspace (plans, scratch) — not project code
 .hermes/
+
+# Agent context (local-only, untracked)
+AGENTS.md
+CLAUDE.md
