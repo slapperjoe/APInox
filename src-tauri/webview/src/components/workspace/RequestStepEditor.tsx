@@ -70,7 +70,13 @@ export const RequestStepEditor: React.FC<RequestStepEditorProps> = ({ step, onUp
         });
     };
 
-    const hasRequest = step.projectName && step.interfaceName && step.operationName;
+    // A request step has data two ways: project-referenced (all three refs) OR
+    // self-contained (own endpoint/requestBody — what the traffic->workflow
+    // wizard emits). Either makes it a real, editable request step; only a step
+    // with neither shows the "Pick a request" empty state.
+    const isProjectRef = step.projectName && step.interfaceName && step.operationName;
+    const isSelfContained = !!(step.endpoint || (step.requestBody && step.requestBody.trim()));
+    const hasRequest = !!(isProjectRef || isSelfContained);
 
     return (
         <StepEditorContainer>
@@ -85,19 +91,21 @@ export const RequestStepEditor: React.FC<RequestStepEditorProps> = ({ step, onUp
 
             {hasRequest ? (
                 <>
-                    <StepSection>
-                        <StepLabel>Request Details</StepLabel>
-                        <RequestDetails>
-                            <div><strong>Project:</strong> {step.projectName}</div>
-                            <div><strong>Interface:</strong> {step.interfaceName}</div>
-                            <div><strong>Operation:</strong> {step.operationName}</div>
-                        </RequestDetails>
-                        {onPickRequest && (
-                            <SecondaryButton onClick={onPickRequest} style={{ marginTop: SPACING_SM }}>
-                                Change Request
-                            </SecondaryButton>
-                        )}
-                    </StepSection>
+                    {isProjectRef && (
+                        <StepSection>
+                            <StepLabel>Request Details</StepLabel>
+                            <RequestDetails>
+                                <div><strong>Project:</strong> {step.projectName}</div>
+                                <div><strong>Interface:</strong> {step.interfaceName}</div>
+                                <div><strong>Operation:</strong> {step.operationName}</div>
+                            </RequestDetails>
+                            {onPickRequest && (
+                                <SecondaryButton onClick={onPickRequest} style={{ marginTop: SPACING_SM }}>
+                                    Change Request
+                                </SecondaryButton>
+                            )}
+                        </StepSection>
+                    )}
 
                     <StepSection>
                         <StepLabel>Endpoint URL</StepLabel>
