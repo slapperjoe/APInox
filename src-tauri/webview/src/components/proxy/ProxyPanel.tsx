@@ -18,9 +18,11 @@ type ProxyTab = 'traffic' | 'breakpoints';
 interface ProxyPanelProps {
   onNavigateTo?: (view: string) => void;
   onAddToApinoxProject?: (log: TrafficLog) => void;
+  /** Opens the full-screen "Create workflow from traffic" wizard with the current logs. */
+  onCreateWorkflowFromTraffic?: (logs: TrafficLog[]) => void;
 }
 
-export function ProxyPanel({ onNavigateTo, onAddToApinoxProject }: ProxyPanelProps) {
+export function ProxyPanel({ onNavigateTo, onAddToApinoxProject, onCreateWorkflowFromTraffic }: ProxyPanelProps) {
   const [activeTab, setActiveTab] = useState<ProxyTab>('traffic');
   const [logs, setLogs] = useState<TrafficLog[]>([]);
   const [selectedLog, setSelectedLog] = useState<TrafficLog | null>(null);
@@ -141,6 +143,24 @@ export function ProxyPanel({ onNavigateTo, onAddToApinoxProject }: ProxyPanelPro
     userSelect: 'none',
   });
 
+  const createWorkflowBtnStyle: React.CSSProperties = {
+    marginLeft: 'auto',
+    padding: '5px 12px',
+    fontSize: 'var(--apinox-fs-sm)',
+    fontWeight: 600,
+    borderRadius: 6,
+    cursor: logs.length === 0 ? 'not-allowed' : 'pointer',
+    border: `1px solid ${tokens.border.default}`,
+    background: tokens.surface.elevated,
+    color: tokens.text.primary,
+    opacity: logs.length === 0 ? 0.5 : 1,
+  };
+
+  const handleCreateWorkflow = useCallback(() => {
+    if (logs.length === 0) return;
+    onCreateWorkflowFromTraffic?.(logs);
+  }, [logs, onCreateWorkflowFromTraffic]);
+
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: tokens.surface.base }}>
       {/* Server control bar */}
@@ -155,6 +175,14 @@ export function ProxyPanel({ onNavigateTo, onAddToApinoxProject }: ProxyPanelPro
             {tab === 'traffic' ? 'Traffic' : 'Breakpoints'}
           </button>
         ))}
+        <button
+          style={createWorkflowBtnStyle}
+          onClick={handleCreateWorkflow}
+          disabled={logs.length === 0}
+          title={logs.length === 0 ? 'Capture some traffic first' : 'Create a workflow from captured traffic'}
+        >
+          Create workflow
+        </button>
       </div>
 
       {/* Tab content */}

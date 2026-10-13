@@ -50,6 +50,9 @@ const WorkspaceLayout = React.lazy(() =>
 const ProxyPanel = React.lazy(() =>
     import('./proxy/ProxyPanel').then(module => ({ default: module.ProxyPanel }))
 );
+const TrafficWorkflowWizard = React.lazy(() =>
+    import('./proxy/TrafficWorkflowWizard').then(module => ({ default: module.TrafficWorkflowWizard }))
+);
 const RulesAndMockPage = React.lazy(() =>
     import('./proxy/RulesAndMockPage').then(module => ({ default: module.RulesAndMockPage }))
 );
@@ -1459,6 +1462,28 @@ const MainContent: React.FC = () => {
         setLoading,
     });
 
+    // Traffic→workflow wizard: full-screen page rendered in place of ProxyPanel.
+    const [trafficWizard, setTrafficWizard] = useState<{ logs: TrafficLog[] } | null>(null);
+
+    const handleCreateWorkflowFromTraffic = useCallback((logs: TrafficLog[]) => {
+        setTrafficWizard({ logs });
+    }, []);
+
+    // Save the wizard's workflow, then select it so the app lands on the new
+    // workflow (handleSaveWorkflow closes its own modal and does NOT select).
+    const handleSaveWorkflowThenSelect = useCallback(async (wf: Workflow) => {
+        try {
+            await bridge.sendMessageAsync({ command: FrontendCommand.SaveWorkflow, workflow: wf });
+            const response = await bridge.sendMessageAsync({ command: FrontendCommand.GetSettings });
+            if (response) setConfig(response as any);
+            setWorkspaceDirty(true);
+            const updated = (response as any)?.workflows?.find((w: Workflow) => w.id === wf.id) ?? wf;
+            handleSelectWorkflow(updated);
+        } catch (e) {
+            console.error('[Workflows] Failed to save traffic workflow:', e);
+        }
+    }, [setConfig, setWorkspaceDirty, handleSelectWorkflow]);
+
     const pickRequestItems = useMemo<PickRequestItem[]>(() => {
         const items: PickRequestItem[] = [];
         const seen = new Set<string>();
@@ -2041,10 +2066,19 @@ const MainContent: React.FC = () => {
             {hasOpenedProxyView && (
                 <div style={{ display: activeView === SidebarView.PROXY ? 'flex' : 'none', flex: 1, overflow: 'hidden', flexDirection: 'column', minHeight: 0 }}>
                     <Suspense fallback={<div style={{ flex: 1, background: 'var(--apinox-editor-background)' }} />}>
-                        <ProxyPanel
-                            onNavigateTo={(view) => handleSetActiveViewWrapper(view as SidebarView)}
-                            onAddToApinoxProject={handleAddTrafficToProject}
-                        />
+                        {trafficWizard ? (
+                            <TrafficWorkflowWizard
+                                logs={trafficWizard.logs}
+                                onCancel={() => setTrafficWizard(null)}
+                                onDone={(wf) => { setTrafficWizard(null); void handleSaveWorkflowThenSelect(wf); }}
+                            />
+                        ) : (
+                            <ProxyPanel
+                                onNavigateTo={(view) => handleSetActiveViewWrapper(view as SidebarView)}
+                                onAddToApinoxProject={handleAddTrafficToProject}
+                                onCreateWorkflowFromTraffic={handleCreateWorkflowFromTraffic}
+                            />
+                        )}
                     </Suspense>
                 </div>
             )}
