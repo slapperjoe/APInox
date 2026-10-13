@@ -1465,7 +1465,8 @@ const MainContent: React.FC = () => {
         setLoading,
     });
 
-    // Traffic→workflow wizard: full-screen page rendered in place of ProxyPanel.
+    // Traffic→workflow wizard: full-screen page rendered over ProxyPanel, which
+    // stays mounted underneath so the captured-traffic history survives it.
     const [trafficWizard, setTrafficWizard] = useState<{ logs: TrafficLog[] } | null>(null);
 
     const handleCreateWorkflowFromTraffic = useCallback((logs: TrafficLog[]) => {
@@ -2084,17 +2085,23 @@ const MainContent: React.FC = () => {
             {hasOpenedProxyView && (
                 <div style={{ display: activeView === SidebarView.PROXY ? 'flex' : 'none', flex: 1, overflow: 'hidden', flexDirection: 'column', minHeight: 0 }}>
                     <Suspense fallback={<div style={{ flex: 1, background: 'var(--apinox-editor-background)' }} />}>
-                        {trafficWizard ? (
-                            <TrafficWorkflowWizard
-                                logs={trafficWizard.logs}
-                                onCancel={() => setTrafficWizard(null)}
-                                onDone={(wf) => { setTrafficWizard(null); void handleSaveWorkflowThenSelect(wf); }}
-                            />
-                        ) : (
+                        {/* ProxyPanel stays mounted (hidden) while the wizard is
+                            open: its captured-traffic history lives in its local
+                            state, so unmounting it to render the wizard "in
+                            place" would wipe the traffic list on the way back.
+                            The wizard fills the same work area on top instead. */}
+                        <div style={{ display: trafficWizard ? 'none' : 'flex', flex: 1, overflow: 'hidden', flexDirection: 'column', minHeight: 0 }}>
                             <ProxyPanel
                                 onNavigateTo={(view) => handleSetActiveViewWrapper(view as SidebarView)}
                                 onAddToApinoxProject={handleAddTrafficToProject}
                                 onCreateWorkflowFromTraffic={handleCreateWorkflowFromTraffic}
+                            />
+                        </div>
+                        {trafficWizard && (
+                            <TrafficWorkflowWizard
+                                logs={trafficWizard.logs}
+                                onCancel={() => setTrafficWizard(null)}
+                                onDone={(wf) => { setTrafficWizard(null); void handleSaveWorkflowThenSelect(wf); }}
                             />
                         )}
                     </Suspense>
