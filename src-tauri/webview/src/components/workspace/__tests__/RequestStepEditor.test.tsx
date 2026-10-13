@@ -34,6 +34,16 @@ vi.mock('@apinox/request-editor/core', () => ({
         isStandalone: true,
         monacoTheme: 'vs-dark',
     }),
+    // The webview EmptyState re-exports the package component; render the
+    // title/description/action in their own elements (like the real one) so
+    // per-part text assertions still work.
+    EmptyState: (props: { title?: string; description?: string; action?: { label: string; onClick: () => void } }) => (
+        <div data-testid="mock-empty-state">
+            {props.title ? <span>{props.title}</span> : null}
+            {props.description ? <span>{props.description}</span> : null}
+            {props.action ? <button type="button" onClick={props.action.onClick}>{props.action.label}</button> : null}
+        </div>
+    ),
 }));
 
 function step(partial: Partial<WorkflowStep> = {}): WorkflowStep {

@@ -2,10 +2,10 @@
  * History sub-window regression test.
  *
  * Request history was a top-level rail view (SidebarView.HISTORY, rendered in
- * Sidebar.tsx). It was folded into the unified explorer as a bottom sub-window
- * — a sibling of Quick Requests — stacked ABOVE Quick Requests (which stays
- * bottom-most so its pinned drag math is unchanged). These tests pin the new
- * placement, the vertical-resize handle, and the independent clamp math.
+ * Sidebar.tsx). It was folded into the unified explorer as a sub-window —
+ * bottom-pinned, below Quick Requests (and the optional Favorites window).
+ * These tests pin the new placement, the vertical-resize handle, and the
+ * independent clamp math.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
@@ -172,8 +172,9 @@ describe('UnifiedExplorerSidebar — History resizable sub-window', () => {
         );
         const historySection = screen.getByTestId('unified-history');
         const qrSection = screen.getByTestId('unified-quick-requests');
-        // History is stacked ABOVE Quick Requests (QR stays bottom-most).
-        expect(historySection.compareDocumentPosition(qrSection) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        // History is bottom-pinned — rendered after Quick Requests (and the
+        // optional Favorites window) in document order.
+        expect(qrSection.compareDocumentPosition(historySection) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 
     it('dragging the handle moves the separator to the pointer (History total = pointer to sections-below bottom)', () => {
