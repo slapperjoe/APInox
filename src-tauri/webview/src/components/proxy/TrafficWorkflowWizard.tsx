@@ -127,11 +127,64 @@ function Btn({ label, onClick, primary, disabled }: {
 type WizardStep = 1 | 2 | 3;
 interface ManualVar { name: string; value: string; }
 interface ChainPick {
+    /** The raw captured value (stable key). */
+    value: string;
+    /** Current variable name (editable; defaults to the source element name). */
     variable: string;
     source: 'body' | 'header';
     header?: string;
     xpath?: string;
     sourceLogId: string;
+}
+interface SelectedPart { value: string; tag: string; }
+
+/** Lowercased, safe variable name from an element tag (fallback: the value). */
+function nameFromTag(tag: string, fallback: string): string {
+    let base = tag.replace(/[^A-Za-z0-9]/g, "_").replace(/_+/g, "_").replace(/^_+|_+$/g, "").slice(0, 32) || fallback;
+    base = base[0].toLowerCase() + base.slice(1);
+    return base;
+}
+
+const HIGHLIGHT_RE = /<([A-Za-z0-9_:\-]+)([^>]*)>([^<]*)<\/\1>/g;
+
+/**
+ * Render an XML body as plain text with element-text parts marked up.
+ * `isHighlighted` decides the styling for an element's inner text; when
+ * `onPart` is given each element part is clickable (select-to-vary-ify).
+ */
+function renderXmlParts(
+    body: string,
+    isHighlighted: (text: string, tag: string) => boolean,
+    partTestId: (text: string) => string,
+    onPart?: (text: string, tag: string) => void,
+): React.ReactNode[] {
+    const parts: React.ReactNode[] = [];
+    const re = new RegExp(HIGHLIGHT_RE.source, "g");
+    let last = 0; let m: RegExpExecArray | null; let k = 0;
+    while ((m = re.exec(body)) !== null) {
+        if (m.index > last) parts.push(<span key={`t${k++}`}>{body.slice(last, m.index)}</span>);
+        const tag = m[1].split(":").pop() || m[1];
+        const text = m[3];
+        const hl = isHighlighted(text, tag);
+        parts.push(
+            <span
+                key={`e${k++}`}
+                data-testid={partTestId(text)}
+                onClick={onPart ? (e => { e.stopPropagation(); onPart(text, tag); }) : undefined}
+                style={{
+                    ...(hl ? { background: 'rgba(0, 127, 212, 0.35)', borderRadius: 3, padding: '0 3px' } : {}),
+                    ...(onPart ? { cursor: 'pointer', textDecoration: hl ? 'none' : 'underline dotted' } : {}),
+                    color: hl ? tokens.text.primary : undefined,
+                }}
+                title={onPart ? "Click to select this value" : undefined}
+            >
+                {m[0]}
+            </span>,
+        );
+        last = re.lastIndex;
+    }
+    if (last < body.length) parts.push(<span key={`t${k++}`}>{body.slice(last)}</span>);
+    return parts;
 }
 
 export function TrafficWorkflowWizard({ logs, onDone, onCancel }: TrafficWorkflowWizardProps) {
@@ -145,8 +198,11 @@ export function TrafficWorkflowWizard({ logs, onDone, onCancel }: TrafficWorkflo
     const includedLogs = useMemo(() => logs.filter(l => !disabledIds.has(l.id)), [logs, disabledIds]);
 
     // Seed accepted chain picks once per logs (all accepted by default).
+    // Default variable name = the source element tag (e.g. SessionToken), which
+    // the detector records in c.variable.
     const [chainPicks, setChainPicks] = useState<ChainPick[]>(() =>
         chained.map(c => ({
+            value: c.value,
             variable: c.variable,
             source: c.source,
             header: c.sourceHeaderName,
@@ -154,6 +210,10 @@ export function TrafficWorkflowWizard({ logs, onDone, onCancel }: TrafficWorkflo
             sourceLogId: c.sourceLogId,
         })),
     );
+
+    // Selected part of the source request (clicked element text) so the user
+    // can promote it to a manual variable.
+    const [selectedPart, setSelectedPart] = useState<SelectedPart | null>(null);
 
     const stepNameFor = (logId: string, log: TrafficLog) =>
         stepNames[logId] || `${log.method} ${lastPathSegment(log.url)}`;
@@ -273,6 +333,42 @@ export function TrafficWorkflowWizard({ logs, onDone, onCancel }: TrafficWorkflo
         });
     }
 
+    const setVarName = (value: string, name: string) =>
+        setChainPicks(ps => ps.map(p => p.value === value ? { ...p, variable: name } : p));
+
+    function toggleChainPick(value: string) {
+        setChainPicks(ps => {
+            const existing = ps.find(p => p.value === value);
+            if (existing) return ps.filter(p => p.value !== value);
+            const c = chained.find(x => x.value === value);
+            if (!c) return ps;
+            return [...ps, {
+                value: c.value,
+                variable: c.variable,
+                source: c.source,
+                header: c.sourceHeaderName,
+                xpath: c.sourceXPath,
+                sourceLogId: c.sourceLogId,
+            }];
+        });
+    }
+
+    // Promote the selected source-request part to a manual variable
+    // (name defaulted from the element tag, value = the part text).
+    function useSelectedAsManualVar() {
+        if (!selectedPart) return;
+        const name = nameFromTag(selectedPart.tag, selectedPart.value);
+        setInitialVars(vs => {
+            if (vs.some(v => v.value === selectedPart.value && v.name === name)) return vs;
+            return [...vs, { name, value: selectedPart.value }];
+        });
+        setSelectedPart(null);
+    }
+
+    // The first captured step is the one whose response feeds the chain — show
+    // its request (editable parts) + response (captured value highlighted).
+    const sourceLog = chained.length ? logs.find(l => l.id === chained[0].sourceLogId) : undefined;
+
     // ── step 2: variables ──────────────────────────────────────────────────
     function renderStep2() {
         return (
@@ -280,7 +376,7 @@ export function TrafficWorkflowWizard({ logs, onDone, onCancel }: TrafficWorkflo
                 <div>
                     <div style={sectionLabel}>Manual variables</div>
                     {initialVars.length === 0 && (
-                        <div style={{ ...hint, marginBottom: 8 }}>No manual variables. Add one below.</div>
+                        <div style={{ ...hint, marginBottom: 8 }}>No manual variables. Add one below, or click a value in the source request.</div>
                     )}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {initialVars.map((v, i) => (
@@ -320,38 +416,47 @@ export function TrafficWorkflowWizard({ logs, onDone, onCancel }: TrafficWorkflo
                     <div style={sectionLabel}>Captured &amp; reused values</div>
                     <div style={{ ...hint, marginBottom: 10 }}>
                         Accepted values are captured from the source step's response at run time and available as <span style={mono}>{'{{variable}}'}</span>.
+                        Names default to the element tag and are editable.
                     </div>
                     {chained.length === 0 ? (
                         <div style={hint}>No response values were detected being reused in later requests.</div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                             {chained.map((c, i) => {
+                                const pick = chainPicks.find(p => p.value === c.value);
                                 const srcName = stepNameFor(c.sourceLogId, logs.find(l => l.id === c.sourceLogId) ?? { method: '', url: '' } as TrafficLog);
                                 const useName = stepNameFor(c.consumedByLogId, logs.find(l => l.id === c.consumedByLogId) ?? { method: '', url: '' } as TrafficLog);
                                 const from = c.source === 'header'
                                     ? `header ${c.sourceHeaderName ?? ''}`
-                                    : 'body';
+                                    : c.sourceElementName ? `<${c.sourceElementName}>` : 'body';
                                 const usedIn = c.consumedIn === 'header'
                                     ? `header ${c.consumedHeaderName ?? ''}`
                                     : c.consumedIn;
                                 return (
-                                    <label
+                                    <div
                                         key={i}
                                         style={{
                                             display: 'flex', alignItems: 'center', gap: 10,
                                             padding: '8px 10px', borderRadius: tokens.radius.md,
                                             background: tokens.surface.deep,
-                                            border: `1px solid ${tokens.border.default}`, cursor: 'pointer', userSelect: 'none',
+                                            border: `1px solid ${tokens.border.default}`, userSelect: 'none',
                                         }}
                                     >
                                         <input
                                             type="checkbox"
-                                            checked={chainPicks.some(p => p.variable === c.variable)}
-                                            onChange={() => toggleChainPick(c.variable)}
-                                            style={{ cursor: 'pointer', accentColor: tokens.status.accentDark }}
+                                            checked={!!pick}
+                                            onChange={() => toggleChainPick(c.value)}
+                                            style={{ cursor: 'pointer', accentColor: tokens.status.accentDark, flexShrink: 0 }}
                                             data-testid={'wf-chain-' + i}
                                         />
-                                        <span style={{ ...chip, margin: 0 }}>{c.variable}</span>
+                                        <input
+                                            style={{ ...input, width: 160, flex: '0 0 160px', padding: '3px 8px' }}
+                                            type="text"
+                                            value={pick?.variable ?? ''}
+                                            onChange={e => setVarName(c.value, e.target.value)}
+                                            data-testid={'wf-varname-' + c.value}
+                                            aria-label={'Variable name for ' + c.value}
+                                        />
                                         <span style={{ ...mono, fontSize: 'var(--apinox-fs-sm)', color: tokens.text.secondary, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                             {c.value}
                                         </span>
@@ -361,30 +466,74 @@ export function TrafficWorkflowWizard({ logs, onDone, onCancel }: TrafficWorkflo
                                         <span style={{ ...mono, fontSize: 'var(--apinox-fs-sm)', color: tokens.text.hint, flexShrink: 0 }}>
                                             used in {useName} ({usedIn})
                                         </span>
-                                    </label>
+                                    </div>
                                 );
                             })}
                         </div>
                     )}
                 </div>
+
+                {sourceLog && (
+                    <>
+                        <div style={divider} />
+                        <div>
+                            <div style={sectionLabel}>
+                                Source request — {stepNameFor(sourceLog.id, sourceLog)}
+                            </div>
+                            <div style={{ ...hint, marginBottom: 8 }}>
+                                Highlighted values are captured &amp; reused. Click any value to select it, then promote it to a manual variable.
+                            </div>
+                            <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ ...hint, marginBottom: 4 }}>Request body</div>
+                                    <div style={{
+                                        ...mono, fontSize: 'var(--apinox-fs-sm)', lineHeight: 1.6,
+                                        background: tokens.surface.deep, border: `1px solid ${tokens.border.default}`,
+                                        borderRadius: tokens.radius.md, padding: '10px 12px',
+                                        whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 260, overflow: 'auto',
+                                    }}>
+                                        {renderXmlParts(
+                                            sourceLog.requestBody || '(no body)',
+                                            () => false,
+                                            text => 'wf-varpart-' + text,
+                                            (text, tag) => setSelectedPart({ value: text, tag }),
+                                        )}
+                                    </div>
+                                    {selectedPart && (
+                                        <div style={{ ...rowStyle, marginTop: 8, gap: 10 }}>
+                                            <span style={{ ...chip }}>
+                                                {'{{' + nameFromTag(selectedPart.tag, selectedPart.value) + '}}'} = {selectedPart.value}
+                                            </span>
+                                            <button onClick={useSelectedAsManualVar} style={btnGhost}>
+                                                Use as manual variable
+                                            </button>
+                                            <button onClick={() => setSelectedPart(null)} style={{ ...btnGhost, color: tokens.text.muted }}>
+                                                Clear
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ ...hint, marginBottom: 4 }}>Source response (captured value highlighted)</div>
+                                    <div style={{
+                                        ...mono, fontSize: 'var(--apinox-fs-sm)', lineHeight: 1.6,
+                                        background: tokens.surface.deep, border: `1px solid ${tokens.border.default}`,
+                                        borderRadius: tokens.radius.md, padding: '10px 12px',
+                                        whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 260, overflow: 'auto',
+                                    }}>
+                                        {renderXmlParts(
+                                            sourceLog.responseBody || '(no body)',
+                                            text => chained.some(c => c.sourceLogId === sourceLog.id && c.value === text.trim()),
+                                            text => 'wf-highlight-' + text,
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </>
+                )}
             </>
         );
-    }
-
-    function toggleChainPick(variable: string) {
-        setChainPicks(ps => {
-            const existing = ps.find(p => p.variable === variable);
-            if (existing) return ps.filter(p => p.variable !== variable);
-            const c = chained.find(x => x.variable === variable);
-            if (!c) return ps;
-            return [...ps, {
-                variable: c.variable,
-                source: c.source,
-                header: c.sourceHeaderName,
-                xpath: c.sourceXPath,
-                sourceLogId: c.sourceLogId,
-            }];
-        });
     }
 
     // ── step 3: review & save ──────────────────────────────────────────────

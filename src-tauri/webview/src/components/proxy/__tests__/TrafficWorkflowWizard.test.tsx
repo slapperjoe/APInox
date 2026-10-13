@@ -26,7 +26,7 @@ vi.mock('../../../utils/bridge', () => ({
 function twoLogs() {
     return [
         { id: 'a', timestamp: 1, method: 'POST', url: 'http://x/login',
-          requestBody: '<B>1</B>', responseHeaders: {},
+          requestBody: '<B><User>mark</User></B>', responseHeaders: {},
           responseBody: '<R><SessionToken>TKN-999</SessionToken></R>' },
         { id: 'b', timestamp: 2, method: 'POST', url: 'http://x/next',
           requestBody: '<B><Auth>TKN-999</Auth></B>', requestHeaders: {} },
@@ -56,8 +56,57 @@ describe('TrafficWorkflowWizard', () => {
         expect(wf.name).toBe('Login');
         expect(wf.steps).toHaveLength(2);
         // The chained TKN-999 was auto-accepted -> extractor on step 0 (source step).
-        // sanitizeVariable lowercases only the first char, so "TKN-999" -> "tKN_999".
-        expect(wf.steps[0].extractors?.some(e => e.variable === 'tKN_999')).toBe(true);
+        // Default variable name is the source element tag: SessionToken -> sessionToken.
+        expect(wf.steps[0].extractors?.some(e => e.variable === 'sessionToken')).toBe(true);
+    });
+
+    it('defaults each chain variable to its source element name', () => {
+        render(<TrafficWorkflowWizard logs={twoLogs()} onDone={vi.fn()} onCancel={vi.fn()} />);
+        fireEvent.change(screen.getByPlaceholderText(/workflow name/i), { target: { value: 'Login' } });
+        fireEvent.click(screen.getByRole('button', { name: /continue/i }));       // -> step 2
+        // The auto-detected TKN-999 (captured from <SessionToken>) is named "sessionToken".
+        const nameInput = screen.getByTestId('wf-varname-TKN-999');
+        expect(nameInput).toHaveValue('sessionToken');
+    });
+
+    it('lets the user rename a chain variable; the rename flows through to the extractor', () => {
+        const onDone = vi.fn();
+        render(<TrafficWorkflowWizard logs={twoLogs()} onDone={onDone} onCancel={vi.fn()} />);
+        fireEvent.change(screen.getByPlaceholderText(/workflow name/i), { target: { value: 'Login' } });
+        fireEvent.click(screen.getByRole('button', { name: /continue/i }));       // -> step 2
+        fireEvent.change(screen.getByTestId('wf-varname-TKN-999'), { target: { value: 'myToken' } });
+        fireEvent.click(screen.getByRole('button', { name: /continue/i }));       // -> step 3
+        fireEvent.click(screen.getByRole('button', { name: /create workflow/i }));
+        const wf = onDone.mock.calls[0][0];
+        expect(wf.steps[0].extractors?.some(e => e.variable === 'myToken')).toBe(true);
+        expect(wf.steps[0].extractors?.some(e => e.variable === 'sessionToken')).toBe(false);
+    });
+
+    it('shows the source request/response with the captured value highlighted', () => {
+        render(<TrafficWorkflowWizard logs={twoLogs()} onDone={vi.fn()} onCancel={vi.fn()} />);
+        fireEvent.change(screen.getByPlaceholderText(/workflow name/i), { target: { value: 'Login' } });
+        fireEvent.click(screen.getByRole('button', { name: /continue/i }));       // -> step 2
+        // The first (source) request of the chain is viewable, and the captured
+        // value is highlighted in the source response body.
+        expect(screen.getByText(/^Source request —/i)).toBeInTheDocument();
+        const mark = screen.getByTestId('wf-highlight-TKN-999');
+        expect(mark).toHaveTextContent('TKN-999');
+    });
+
+    it('lets the user make a manual variable from a highlighted part of the source request', () => {
+        const onDone = vi.fn();
+        render(<TrafficWorkflowWizard logs={twoLogs()} onDone={onDone} onCancel={vi.fn()} />);
+        fireEvent.change(screen.getByPlaceholderText(/workflow name/i), { target: { value: 'Login' } });
+        fireEvent.click(screen.getByRole('button', { name: /continue/i }));       // -> step 2
+        // The source request body exposes each element text as a selectable,
+        // highlighted part. Pick <User>mark</User> and promote it to a variable.
+        fireEvent.click(screen.getByTestId('wf-varpart-mark'));
+        fireEvent.click(screen.getByRole('button', { name: /use as manual variable/i }));
+        fireEvent.click(screen.getByRole('button', { name: /continue/i }));       // -> step 3
+        fireEvent.click(screen.getByRole('button', { name: /create workflow/i }));
+        const wf = onDone.mock.calls[0][0];
+        // Default name from the element tag (User -> user), value = the part text.
+        expect(wf.variables).toEqual({ user: 'mark' });
     });
 
     it('excludes unchecked steps from the saved workflow', () => {
