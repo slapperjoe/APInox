@@ -93,9 +93,6 @@ export const WorkflowsUi: React.FC<WorkflowsUiProps> = ({
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
     const [expandedWorkflows, setExpandedWorkflows] = useState<Set<string>>(new Set());
 
-    console.log('[WorkflowsUi] Rendering with workflows:', workflows?.length || 0);
-    console.log('[WorkflowsUi] Workflows:', workflows);
-
     const toggleWorkflow = (workflowId: string) => {
         const newExpanded = new Set(expandedWorkflows);
         if (newExpanded.has(workflowId)) {
@@ -210,8 +207,6 @@ export const WorkflowsUi: React.FC<WorkflowsUiProps> = ({
                                     <StepItem 
                                         key={step.id}
                                         onClick={() => {
-                                            console.log('[WorkflowsUi] Step clicked:', workflow.name, '→', step.name);
-                                            console.log('[WorkflowsUi] onSelectStep exists:', !!onSelectStep);
                                             onSelectStep?.(workflow, step);
                                         }}
                                         style={{ cursor: 'pointer' }}

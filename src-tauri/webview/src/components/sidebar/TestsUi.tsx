@@ -194,13 +194,10 @@ export const TestsUi: React.FC<TestsUiProps> = ({
     };
 
     const submitRename = () => {
-        console.log('[TestsUi] submitRename called:', { renameId, renameName, renameType, renameParentId });
         if (renameId && renameName.trim()) {
             if (renameType === 'step' && renameParentId && onRenameTestStep) {
-                console.log('[TestsUi] Calling onRenameTestStep');
                 onRenameTestStep(renameParentId, renameId, renameName.trim());
             } else if (renameType === 'case' && onRenameTestCase) {
-                console.log('[TestsUi] Calling onRenameTestCase');
                 onRenameTestCase(renameId, renameName.trim());
             } else if (renameType === 'suite' && onRenameSuite) {
                 onRenameSuite(renameId, renameName.trim());

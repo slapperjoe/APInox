@@ -246,8 +246,6 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
             for (const op of (project.operations || [])) {
                 for (const req of (op.requests || [])) {
                     if ((req.id || req.name) === selectedNode.id) {
-                        // [LOOPPROBE] temporary instrumentation — remove after diagnosis
-                        console.warn(`[LOOPPROBE] req-seed FOUND (editingXml ${editingXml.length} -> ${req.request?.length ?? 0}) proj='${project.name}' op='${op.name}' reqId='${req.id}'`);
                         setEditingRequest(req);
                         setEditingXml(req.request || '');
                         return;

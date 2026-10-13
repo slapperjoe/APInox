@@ -43,7 +43,6 @@ export const SampleRequestPanel: React.FC<SampleRequestPanelProps> = ({
         
         try {
             await navigator.clipboard.writeText(sampleData.sampleXml);
-            console.log('Sample XML copied to clipboard');
         } catch (err) {
             console.error('Failed to copy XML:', err);
         }

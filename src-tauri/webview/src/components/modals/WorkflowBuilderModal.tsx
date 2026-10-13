@@ -325,8 +325,6 @@ export const WorkflowBuilderModal: React.FC<WorkflowBuilderModalProps> = ({
     }, [isOpen, workflow]);
 
     const handleSave = () => {
-        console.log('[WorkflowBuilder] Saving workflow, steps:', steps.length);
-        
         const workflowToSave: Workflow = {
             id: workflow?.id || uuidv4(),
             name,
@@ -336,8 +334,6 @@ export const WorkflowBuilderModal: React.FC<WorkflowBuilderModalProps> = ({
             createdAt: workflow?.createdAt || Date.now(),
             modifiedAt: Date.now()
         };
-        
-        console.log('[WorkflowBuilder] Workflow to save:', workflowToSave);
 
         onSave(workflowToSave);
         onClose();

@@ -476,9 +476,6 @@ export const WorkspaceLayout: React.FC = () => {
     React.useEffect(() => {
         setSelection(null);
         setCurrentXPath(null);
-        if (selectedStep?.config.request?.assertions) {
-            console.log("WorkspaceLayout: Step Updated. Assertions:", selectedStep.config.request.assertions.length);
-        }
     }, [selectedStep?.id, response, selectedStep?.config.request?.assertions]);
 
     const handleCreateExtractor = () => {
@@ -551,7 +548,6 @@ export const WorkspaceLayout: React.FC = () => {
         setBodyValidationError(null);
         
         // All validations passed - execute
-        console.log('✅ All validations passed, executing request');
         if (onExecute) {
             onExecute(activeRequest.request);
         }
@@ -762,24 +758,18 @@ export const WorkspaceLayout: React.FC = () => {
 
     // WORKFLOWS VIEW
     if (activeView === SidebarView.WORKFLOWS) {
-        console.log('[WorkspaceLayout] In WORKFLOWS view, selectedWorkflowStep:', !!selectedWorkflowStep);
-        
         if (!selectedWorkflowStep) {
-            console.log('[WorkspaceLayout] No workflow step selected, showing welcome');
             return <WelcomePanel />;
         }
         
         // Check if a workflow is selected (but not a step within it)
         // This happens when the user clicks the workflow itself, not a step
         const { workflow, step } = selectedWorkflowStep;
-        console.log('[WorkspaceLayout] workflow:', workflow?.name, 'step:', step?.name || 'null/undefined');
-        console.log('[WorkspaceLayout] step check:', !step, '|| !step.type:', !step?.type);
         
         // If step is actually the first step or we're showing the workflow summary
         // We need to check if we're showing a step or the workflow itself
         // For now, let's check if step type exists - if not, show workflow editor
         if (!step || !step.type) {
-            console.log('[WorkspaceLayout] Showing workflow editor for:', workflow?.name);
             return (
                 <WorkflowEditor
                     workflow={workflow}
@@ -796,8 +786,6 @@ export const WorkspaceLayout: React.FC = () => {
         
         // Check if this is a non-request step type (delay, condition, loop, script)
         if (step.type !== 'request') {
-            console.log('[WorkspaceLayout] Non-request step type:', step.type);
-            
             const updateHandler = (updatedStep: WorkflowStep) => {
                 workspace.updateWorkflowStep(workflow, updatedStep);
             };
@@ -825,7 +813,6 @@ export const WorkspaceLayout: React.FC = () => {
         
         // If workflow step IS selected and it's a request type, fall through to main editor
         // effectiveRequest/activeRequest has been set above
-        console.log('[WorkspaceLayout] Rendering workflow request step editor');
     }
 
     // Phase B (t_86c34d38): the PROJECTS view was deleted. Its dedicated

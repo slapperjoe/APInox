@@ -171,11 +171,6 @@ const MainContent: React.FC = () => {
         setSelectedTestSuite
     } = useSelection();
 
-    // Notify backend that the Webview is ready and load initial data
-    useEffect(() => {
-        console.log('[MainContent] App initialized');
-    }, []);
-
     // ==========================================================================
     // WSDL -> project (shared by Bulk Import; legacy EXPLORER staging retired)
     // ==========================================================================
@@ -1684,11 +1679,8 @@ const MainContent: React.FC = () => {
         console.log('[MainContent] Workspace dirty, scheduling auto-save');
         
         const timer = setTimeout(() => {
-            console.log('[MainContent] Auto-save executing for', projects.length, 'projects');
-
             // All projects are always persisted to ~/.apinox/projects/{name}/
             projects.forEach(project => {
-                console.log('[MainContent] Auto-saving project:', project.name);
                 saveProject(project);
             });
 
