@@ -46,6 +46,15 @@ export interface CtxMenuItem {
   copyText?: string;
   /** Danger styling for destructive actions */
   danger?: boolean;
+  /**
+   * Double-click-to-confirm: the first click ARMS the item (its label swaps to
+   * the confirm prompt and it takes on danger styling); the second click, while
+   * armed, fires onClick. Auto-disarms after a few seconds if not confirmed.
+   * Ignored for items that carry sub-items.
+   */
+  confirm?: boolean;
+  /** Label shown while a `confirm` item is armed (default "Click again to confirm"). */
+  confirmLabel?: string;
   /** Optional nested sub-items (creates a submenu on hover) */
   subItems?: CtxMenuItem[];
   /** Optional icon for sub-menu parent items */
@@ -181,6 +190,22 @@ function MenuItemRow({ item, onCopy }: { item: CtxMenuItem; onCopy: (text: strin
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const IconComp = item.icon;
   const hasSubItems = item.subItems && item.subItems.length > 0;
+  // Double-click-to-confirm (arm) state for destructive `confirm` items: the
+  // first click arms, the second (while armed) fires. Ignored for sub-items.
+  const isConfirm = !!item.confirm && !hasSubItems;
+  const [armed, setArmed] = useState(false);
+  const armTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearArmTimer = () => {
+    if (armTimerRef.current) {
+      clearTimeout(armTimerRef.current);
+      armTimerRef.current = null;
+    }
+  };
+  // Disarm on unmount so a stale timer can't fire after the menu has closed.
+  useEffect(() => () => { clearArmTimer(); }, []);
+  const confirmPrompt = item.confirmLabel ?? 'Click again to confirm';
+  const displayLabel = isConfirm && armed ? confirmPrompt : item.label;
+  const isDanger = item.danger || (isConfirm && armed);
 
   // Calculate viewport position for the sub-menu with edge clamping
   const updateSubMenuPos = () => {
@@ -227,12 +252,31 @@ function MenuItemRow({ item, onCopy }: { item: CtxMenuItem; onCopy: (text: strin
     }
   };
 
-  const handleClick = async () => {
+  const fireItem = async () => {
     if (item.copyText !== undefined) {
       await onCopy(item.copyText);
     } else if (item.onClick) {
       item.onClick();
     }
+  };
+
+  const handleClick = async () => {
+    // Double-click-to-confirm: click 1 arms (the menu stays open and the label
+    // / danger styling swap), click 2 (while armed) actually fires the action.
+    // Non-confirm items fire on the first click, exactly as before.
+    if (isConfirm) {
+      if (armed) {
+        setArmed(false);
+        clearArmTimer();
+        await fireItem();
+      } else {
+        setArmed(true);
+        clearArmTimer();
+        armTimerRef.current = setTimeout(() => setArmed(false), 3000);
+      }
+      return;
+    }
+    await fireItem();
   };
 
   const handleParentLeave = () => {
@@ -268,16 +312,16 @@ function MenuItemRow({ item, onCopy }: { item: CtxMenuItem; onCopy: (text: strin
       >
         <MenuItem
           ref={menuItemRef}
-          $danger={item.danger}
+          $danger={isDanger}
           $hover={hover || false}
-          title={item.tooltip}
+          title={isConfirm && armed ? confirmPrompt : item.tooltip}
           onClick={hasSubItems ? undefined : handleClick}
         >
           <IconWrapper>
             <IconComp size={14} />
           </IconWrapper>
           <LabelWrapper>
-            <Label $danger={item.danger}>{item.label}</Label>
+            <Label $danger={isDanger}>{displayLabel}</Label>
             {item.sub && <SubLabel>{item.sub}</SubLabel>}
           </LabelWrapper>
           {hasSubItems && <ChevronRight>▶</ChevronRight>}

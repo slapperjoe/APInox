@@ -70,8 +70,6 @@ export interface SidebarPerformanceProps {
     isRunning: boolean;
     activeRunId?: string;
     selectedSuiteId?: string;
-    deleteConfirm: string | null;
-    setDeleteConfirm: (id: string | null) => void;
     // Request handlers
     onAddRequest?: (suiteId: string) => void;
     onDeleteRequest?: (suiteId: string, requestId: string) => void;

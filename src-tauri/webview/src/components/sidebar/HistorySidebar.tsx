@@ -612,7 +612,8 @@ export default function HistorySidebar({
             {
                 icon: Trash2,
                 label: 'Delete from history',
-                danger: true,
+                confirm: true,
+                confirmLabel: 'Click again to delete',
                 onClick: () => {
                     onDelete?.(entry.id);
                     setRowCtxMenu(null);

@@ -119,7 +119,7 @@ describe('ScrapbookPanel (doc §8.2)', () => {
         expect(baseProps.onSelectRequest).not.toHaveBeenCalled();
     });
 
-    it('onDeleteRequest fires with the right id and does not bubble to select', () => {
+    it('onDeleteRequest fires via the right-click menu (double-click to confirm)', () => {
         render(
             <ScrapbookPanel
                 {...baseProps}
@@ -127,11 +127,16 @@ describe('ScrapbookPanel (doc §8.2)', () => {
                 selectedRequest={reqA}
             />,
         );
-        const deleteButtons = screen.getAllByTitle('Delete Request');
-        fireEvent.click(deleteButtons[0]);
+        // Delete now lives in the right-click menu, not on the row.
+        fireEvent.contextMenu(screen.getByText('Request A'));
+        // Click 1 arms the Delete item — the label swaps to the confirm prompt.
+        fireEvent.click(screen.getByText('Delete'));
+        expect(baseProps.onDeleteRequest).not.toHaveBeenCalled();
+        expect(screen.getByText('Click again to delete')).toBeInTheDocument();
+        // Click 2 (while armed) actually deletes and closes the menu.
+        fireEvent.click(screen.getByText('Click again to delete'));
         expect(baseProps.onDeleteRequest).toHaveBeenCalledTimes(1);
         expect(baseProps.onDeleteRequest).toHaveBeenCalledWith('id-a');
-        expect(baseProps.onSelectRequest).not.toHaveBeenCalled();
     });
 
     it('highlights the selected request row (styled-components selection state)', () => {

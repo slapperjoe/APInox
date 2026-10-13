@@ -1,12 +1,10 @@
 import React, { useState } from "react";
-import styled, { css } from "styled-components";
+import styled from "styled-components";
 import { EmptyState } from "../common/EmptyState";
-import { shake, GhostButton } from "../common/Button";
 import {
   FilePlus,
   FolderOpen,
   Trash2,
-  Edit2,
   FileText,
   Binary,
   Code2,
@@ -20,7 +18,6 @@ import {
   SidebarHeader,
   SidebarHeaderTitle,
   SidebarHeaderActions,
-  RowActions,
 } from "./shared/SidebarStyles";
 import { HeaderButton } from "../common/Button";
 import { Tooltip } from "../common/Tooltip";
@@ -64,24 +61,6 @@ const ItemName = styled.span`
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-`;
-
-const SmallBtn = styled(GhostButton)<{ $confirming?: boolean }>`
-  display: flex;
-  align-items: center;
-  padding: 2px;
-  border: none;
-  border-radius: 4px;
-  background: transparent;
-  color: ${(p) => p.$confirming ? "var(--apinox-errorForeground, #f48771)" : "var(--apinox-foreground, #cccccc)"};
-  cursor: pointer;
-  opacity: 0.7;
-  animation: ${(p) => p.$confirming ? css`${shake} 0.4s ease-in-out` : "none"};
-
-  &:hover {
-    background: var(--apinox-list-hoverBackground, #2a2d2e);
-    opacity: 1;
-  }
 `;
 
 const DirtyDot = styled.span<{ $kind: "external" | "managed" }>`
@@ -141,20 +120,6 @@ export const NotesList: React.FC = () => {
   };
 
   const closeCtxMenu = () => setCtxMenu(null);
-
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-
-  const handleDelete = async (e: React.MouseEvent, entry: NoteEntry) => {
-    e.stopPropagation();
-    if (deleteConfirm === entry.id) {
-      // Second click: actually delete
-      await deleteNote(entry.id);
-      setDeleteConfirm(null);
-    } else {
-      // First click: enter confirmation mode
-      setDeleteConfirm(entry.id);
-    }
-  };
 
   const handleOpenInExplorer = async (entry: NoteEntry) => {
     closeCtxMenu();
@@ -233,15 +198,6 @@ export const NotesList: React.FC = () => {
                   title={dirtyKind === "external" ? "Unsaved changes" : "Modified — auto-saving"}
                 />
               )}
-
-              <RowActions $parent={Item} $gap="2px">
-                <SmallBtn onClick={(e) => startRename(e, entry)} title="Rename">
-                  <Edit2 size={12} />
-                </SmallBtn>
-                <SmallBtn onClick={(e) => handleDelete(e, entry)} title={deleteConfirm === entry.id ? "Click again to Confirm Delete" : "Delete"} $confirming={deleteConfirm === entry.id}>
-                  <Trash2 size={12} />
-                </SmallBtn>
-              </RowActions>
             </Item>
           );
         })}
@@ -256,7 +212,7 @@ export const NotesList: React.FC = () => {
             title: 'Actions',
             items: [
               { icon: Pencil, label: 'Rename', onClick: (e: any) => { e?.stopPropagation?.(); startRename(e as any, ctxMenu.entry); closeCtxMenu(); } },
-              { icon: Trash2, label: 'Delete', danger: true, onClick: () => { handleDelete({ stopPropagation: () => {} } as any, ctxMenu.entry); closeCtxMenu(); } },
+              { icon: Trash2, label: 'Delete', confirm: true, confirmLabel: 'Click again to delete', onClick: () => { void deleteNote(ctxMenu.entry.id); closeCtxMenu(); } },
               { icon: ExternalLink, label: 'Show in Explorer', onClick: () => handleOpenInExplorer(ctxMenu.entry) },
             ],
           }] as CtxMenuSection[]}

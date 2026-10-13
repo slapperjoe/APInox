@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { Play, Plus, Trash2, GitBranch, Edit2, Copy, ChevronDown, ChevronRight, ArrowUp, ArrowDown } from 'lucide-react';
+import { SidebarContextMenu, CtxMenuSection } from './shared/SidebarContextMenu';
 import { Workflow, WorkflowStep } from '@shared/models';
 import { SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle, RowActions } from './shared/SidebarStyles';
 import { EmptyState } from '../common/EmptyState';
@@ -156,8 +157,48 @@ export const WorkflowsUi: React.FC<WorkflowsUiProps> = ({
     onDeleteStep,
     onMoveStep,
 }) => {
-    const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
     const [expandedWorkflows, setExpandedWorkflows] = useState<Set<string>>(new Set());
+    // Per-row right-click context menu (workflow or step). Delete/rename live
+    // here; destructive deletes use the shared menu's double-click-to-confirm.
+    const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; type: 'workflow' | 'step'; workflow: Workflow; step?: WorkflowStep } | null>(null);
+
+    const openWorkflowMenu = (e: React.MouseEvent, workflow: Workflow) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setCtxMenu({ x: e.clientX, y: e.clientY, type: 'workflow', workflow });
+    };
+
+    const openStepMenu = (e: React.MouseEvent, workflow: Workflow, step: WorkflowStep) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setCtxMenu({ x: e.clientX, y: e.clientY, type: 'step', workflow, step });
+    };
+
+    const closeCtxMenu = () => setCtxMenu(null);
+
+    const buildCtxSections = (): CtxMenuSection[] => {
+        if (!ctxMenu) return [];
+        const { workflow, step, type } = ctxMenu;
+        if (type === 'step' && step) {
+            return [{
+                title: 'Step',
+                items: [
+                    { icon: ArrowUp, label: 'Move up', onClick: () => { onMoveStep?.(workflow, step.id, -1); closeCtxMenu(); } },
+                    { icon: ArrowDown, label: 'Move down', onClick: () => { onMoveStep?.(workflow, step.id, 1); closeCtxMenu(); } },
+                    { icon: Trash2, label: 'Delete step', confirm: true, confirmLabel: 'Click again to delete', onClick: () => { onDeleteStep?.(workflow, step.id); closeCtxMenu(); } },
+                ],
+            }];
+        }
+        return [{
+            title: 'Workflow',
+            items: [
+                { icon: Play, label: 'Run Workflow', onClick: () => { onRun?.(workflow); closeCtxMenu(); } },
+                { icon: Edit2, label: 'Edit Workflow', onClick: () => { onEdit?.(workflow); closeCtxMenu(); } },
+                { icon: Copy, label: 'Duplicate Workflow', onClick: () => { onDuplicate?.(workflow); closeCtxMenu(); } },
+                { icon: Trash2, label: 'Delete', confirm: true, confirmLabel: 'Click again to delete', onClick: () => { onDelete?.(workflow); closeCtxMenu(); } },
+            ],
+        }];
+    };
 
     const toggleWorkflow = (workflowId: string) => {
         const newExpanded = new Set(expandedWorkflows);
@@ -199,14 +240,17 @@ export const WorkflowsUi: React.FC<WorkflowsUiProps> = ({
 
                         return (
                             <div key={workflow.id}>
-                                <WorkflowItem onClick={() => {
-                                    // Toggle expansion
-                                    toggleWorkflow(workflow.id);
-                                    // Also select the workflow to show summary
-                                    if (onSelect) {
-                                        onSelect(workflow);
-                                    }
-                                }}>
+                                <WorkflowItem
+                                    onClick={() => {
+                                        // Toggle expansion
+                                        toggleWorkflow(workflow.id);
+                                        // Also select the workflow to show summary
+                                        if (onSelect) {
+                                            onSelect(workflow);
+                                        }
+                                    }}
+                                    onContextMenu={(e) => openWorkflowMenu(e, workflow)}
+                                >
                                     <WorkflowIcon>
                                         {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                                     </WorkflowIcon>
@@ -247,24 +291,6 @@ export const WorkflowsUi: React.FC<WorkflowsUiProps> = ({
                                         >
                                             <Copy size={14} />
                                         </IconButton>
-                                        <IconButton
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                if (deleteConfirm === workflow.id) {
-                                                    onDelete?.(workflow);
-                                                    setDeleteConfirm(null);
-                                                } else {
-                                                    setDeleteConfirm(workflow.id);
-                                                    setTimeout(() => setDeleteConfirm(null), 3000);
-                                                }
-                                            }}
-                                            title={deleteConfirm === workflow.id ? "Click again to confirm" : "Delete Workflow"}
-                                            style={{
-                                                color: deleteConfirm === workflow.id ? 'var(--apinox-errorForeground)' : undefined
-                                            }}
-                                        >
-                                            <Trash2 size={14} />
-                                        </IconButton>
                                     </RowActions>
                                 </WorkflowItem>
 
@@ -275,6 +301,7 @@ export const WorkflowsUi: React.FC<WorkflowsUiProps> = ({
                                         onClick={() => {
                                             onSelectStep?.(workflow, step);
                                         }}
+                                        onContextMenu={(e) => openStepMenu(e, workflow, step)}
                                         style={{ cursor: 'pointer' }}
                                     >
                                         <StepNumber>#{idx + 1}</StepNumber>
@@ -303,17 +330,6 @@ export const WorkflowsUi: React.FC<WorkflowsUiProps> = ({
                                             >
                                                 <ArrowDown size={12} />
                                             </StepActionBtn>
-                                            <StepActionBtn
-                                                className="danger"
-                                                title="Delete step"
-                                                aria-label={`Delete step ${step.name}`}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    onDeleteStep?.(workflow, step.id);
-                                                }}
-                                            >
-                                                <Trash2 size={12} />
-                                            </StepActionBtn>
                                         </StepActions>
                                     </StepItem>
                                 ))}
@@ -329,6 +345,15 @@ export const WorkflowsUi: React.FC<WorkflowsUiProps> = ({
                     })
                 )}
             </WorkflowsContent>
+
+            {ctxMenu && (
+                <SidebarContextMenu
+                    x={ctxMenu.x}
+                    y={ctxMenu.y}
+                    sections={buildCtxSections()}
+                    onClose={closeCtxMenu}
+                />
+            )}
         </WorkflowsContainer>
     );
 };

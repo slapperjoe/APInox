@@ -153,7 +153,12 @@ describe('UnifiedExplorerSidebar + Quick Requests (doc §8.3 — Q1(a) bottom se
         expect(scrapbook.onExecuteRequest).toHaveBeenCalledTimes(1);
         expect(scrapbook.onExecuteRequest).toHaveBeenCalledWith(quickRequest);
 
-        fireEvent.click(screen.getByTitle('Delete Request'));
+        // Delete now lives in the right-click menu (double-click to confirm).
+        fireEvent.contextMenu(screen.getByText('Quick Rate Check'));
+        fireEvent.click(screen.getByText('Delete'));
+        expect(scrapbook.onDeleteRequest).not.toHaveBeenCalled();
+        expect(screen.getByText('Click again to delete')).toBeInTheDocument();
+        fireEvent.click(screen.getByText('Click again to delete'));
         expect(scrapbook.onDeleteRequest).toHaveBeenCalledTimes(1);
         expect(scrapbook.onDeleteRequest).toHaveBeenCalledWith('quick-1');
     });

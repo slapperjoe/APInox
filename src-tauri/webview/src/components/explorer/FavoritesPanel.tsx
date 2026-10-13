@@ -144,7 +144,8 @@ export const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
                 {
                     icon: Trash2,
                     label: "Delete",
-                    danger: true,
+                    confirm: true,
+                    confirmLabel: "Click again to delete",
                     onClick: () => {
                         onDelete?.(entry.id);
                         setRowCtxMenu(null);

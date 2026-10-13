@@ -163,15 +163,6 @@ export const ScrapbookPanel: React.FC<ScrapbookPanelProps> = ({
                         >
                             <Play size={14} />
                         </IconButton>
-                        <IconButton
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onDeleteRequest(request.id);
-                            }}
-                            title="Delete Request"
-                        >
-                            <Trash2 size={14} />
-                        </IconButton>
                     </RequestActions>
                 </RequestItem>
             ))}
@@ -186,7 +177,7 @@ export const ScrapbookPanel: React.FC<ScrapbookPanelProps> = ({
                 title: 'Actions',
                 items: [
                     { icon: Play, label: 'Execute Request', onClick: () => { onExecuteRequest(ctxMenu.request); closeCtxMenu(); } },
-                    { icon: Trash2, label: 'Delete', danger: true, onClick: () => { onDeleteRequest(ctxMenu.request.id); closeCtxMenu(); } },
+                    { icon: Trash2, label: 'Delete', confirm: true, confirmLabel: 'Click again to delete', onClick: () => { onDeleteRequest(ctxMenu.request.id); closeCtxMenu(); } },
                 ],
             }] as CtxMenuSection[]}
             onClose={closeCtxMenu}
