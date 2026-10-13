@@ -162,6 +162,7 @@ export const Sidebar: React.FC = () => {
         isMobileOpen,
         onMobileClose,
         hasUpdate,
+        trafficCapturing,
     } = useSidebarContext();
 
     // Phase B (t_86c34d38): the PROJECTS view (ProjectList) was deleted —
@@ -191,6 +192,7 @@ export const Sidebar: React.FC = () => {
                 onChangeEnvironment={onChangeEnvironment}
                 onMobileClose={onMobileClose}
                 hasUpdate={hasUpdate}
+                trafficCapturing={trafficCapturing}
             />
 
             {/* Content Area */}

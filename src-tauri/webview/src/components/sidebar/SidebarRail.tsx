@@ -26,9 +26,11 @@ interface SidebarRailProps {
   onChangeEnvironment?: (env: string) => void;
   onMobileClose?: () => void;
   hasUpdate?: boolean;
+  /** True while the proxy is actively capturing traffic — shows a dot on the traffic entry. */
+  trafficCapturing?: boolean;
 }
 
-const NavItem = ({ icon: Icon, active, onClick, title, showBadge }: any) => (
+const NavItem = ({ icon: Icon, active, onClick, title, showBadge, badgeColor }: any) => (
   <Tooltip content={title} side="right">
     <div
       onClick={onClick}
@@ -57,6 +59,7 @@ const NavItem = ({ icon: Icon, active, onClick, title, showBadge }: any) => (
       <Icon size={20} strokeWidth={active ? 2.5 : 2} />
       {showBadge && (
         <div
+          data-testid="rail-badge"
           style={{
             position: "absolute",
             top: 2,
@@ -64,9 +67,12 @@ const NavItem = ({ icon: Icon, active, onClick, title, showBadge }: any) => (
             width: 7,
             height: 7,
             borderRadius: "50%",
-            backgroundColor: "var(--apinox-badge-background, #4d4d4d)",
+            backgroundColor: badgeColor || "var(--apinox-badge-background, #4d4d4d)",
             border: "1px solid var(--apinox-activityBar-background, #333333)",
             pointerEvents: "none",
+            // A gentle pulse makes a "live capture" dot read as activity,
+            // distinct from the static update badge.
+            animation: badgeColor ? "apinox-badge-pulse 1.6s ease-in-out infinite" : undefined,
           }}
         />
       )}
@@ -97,6 +103,7 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
   onChangeEnvironment,
   onMobileClose,
   hasUpdate,
+  trafficCapturing,
 }) => {
   return (
     <div
@@ -145,7 +152,9 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
         icon={TrafficLightIcon}
         active={activeView === SidebarView.PROXY}
         onClick={() => onChangeView(SidebarView.PROXY)}
-        title="Proxy / Traffic"
+        title={trafficCapturing ? "Proxy / Traffic — capturing" : "Proxy / Traffic"}
+        showBadge={!!trafficCapturing}
+        badgeColor="var(--apinox-testing-iconPassed, #73c991)"
       />
       <NavItem
         icon={Server}

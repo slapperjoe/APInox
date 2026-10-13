@@ -42,6 +42,8 @@ export interface SidebarContextValue {
     onOpenSettings?: () => void;
     onOpenHelp?: () => void;
     hasUpdate?: boolean;
+    /** True while the proxy is actively capturing traffic — drives the live dot on the rail's traffic entry. */
+    trafficCapturing?: boolean;
 
     // ==================== ENVIRONMENT ====================
     activeEnvironment?: string;

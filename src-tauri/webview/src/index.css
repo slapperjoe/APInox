@@ -368,6 +368,14 @@ code,
     }
 }
 
+/* Pulse for the "live traffic capture" indicator dot on the Proxy/Traffic rail
+   entry — a gentle fade + scale so it reads as activity, distinct from the
+   static grey update badge on Settings. */
+@keyframes apinox-badge-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: 0.4; transform: scale(0.75); }
+}
+
 /* Hamburger for narrow desktop windows — fixed overlay sitting in the TitleBar */
 .narrow-desktop-hamburger {
     display: none;

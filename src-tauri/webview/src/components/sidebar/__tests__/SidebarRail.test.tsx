@@ -69,7 +69,7 @@ describe('SidebarRail (workspace tab removal)', () => {
                 activeView={SidebarView.SETTINGS}
                 onChangeView={vi.fn()}
                 onOpenSettings={onOpenSettings}
-            />,
+            />
         );
 
         const settings = container.querySelector('[aria-label="Settings"]')!;
@@ -80,5 +80,22 @@ describe('SidebarRail (workspace tab removal)', () => {
         );
         fireEvent.click(settings);
         expect(onOpenSettings).toHaveBeenCalledTimes(1);
+    });
+
+    it('shows a live indicator dot on the traffic entry only while traffic is being captured', () => {
+        const { container, rerender } = render(
+            <SidebarRail {...baseProps} trafficCapturing={false} />
+        );
+
+        // Off: the traffic entry renders but carries no badge dot.
+        const offItem = container.querySelector('[aria-label="Proxy / Traffic"]')!;
+        expect(offItem).toBeTruthy();
+        expect(offItem.querySelector('[data-testid="rail-badge"]')).toBeNull();
+
+        // On: the dot appears and the tooltip reflects the capturing state.
+        rerender(<SidebarRail {...baseProps} trafficCapturing={true} />);
+        const onItem = container.querySelector('[aria-label="Proxy / Traffic — capturing"]')!;
+        expect(onItem).toBeTruthy();
+        expect(onItem.querySelector('[data-testid="rail-badge"]')).toBeTruthy();
     });
 });

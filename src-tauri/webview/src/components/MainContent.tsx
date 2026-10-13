@@ -835,6 +835,21 @@ const MainContent: React.FC = () => {
             .then((res) => { if (res?.has_update) setHasUpdate(true); })
             .catch((err) => { captureLog('warn', '[Updates] check_for_updates failed (offline or backend unavailable)', err); });
     }, []);
+    // ── Traffic capture indicator ────────────────────────────────────────────
+    // Live dot on the rail's Proxy/Traffic entry while the proxy is capturing.
+    // Polled (not event-driven) so it stays correct even when the proxy view is
+    // closed — the dot is the whole point of showing it from the rail.
+    const [trafficCapturing, setTrafficCapturing] = useState(false);
+    useEffect(() => {
+        let alive = true;
+        const poll = () =>
+            bridge.invokeTauriCommand<{ running?: boolean }>('get_proxy_status')
+                .then((s) => { if (alive) setTrafficCapturing(!!s?.running); })
+                .catch(() => { if (alive) setTrafficCapturing(false); }); // not in Tauri / backend down
+        poll();
+        const id = setInterval(poll, 3000);
+        return () => { alive = false; clearInterval(id); };
+    }, []);
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.ctrlKey && e.shiftKey && e.key === 'D') {
@@ -1958,6 +1973,7 @@ const MainContent: React.FC = () => {
         isMobileOpen: isMobileDrawerOpen,
         onMobileClose: isMobile ? () => setIsMobileDrawerOpen(false) : undefined,
         hasUpdate,
+        trafficCapturing,
     }), [
         // Phase B (t_86c34d38): the projectProps / selectionProps entries above
         // were removed with the deleted PROJECTS view; the remaining deps cover
@@ -1994,6 +2010,7 @@ const MainContent: React.FC = () => {
         activeView, handleSetActiveViewWrapper, sidebarExpanded, backendConnected,
         workspaceDirty, handleSaveUiState, setShowHelp,
         isMobileDrawerOpen, isMobile, setIsMobileDrawerOpen, hasUpdate,
+        trafficCapturing,
     ]);
 
     return (
