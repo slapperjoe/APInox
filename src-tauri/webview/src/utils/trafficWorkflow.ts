@@ -50,6 +50,8 @@ export interface ChainedValue {
     sourceHeaderName?: string;
     /** XPath to re-extract the value from the response body (source === 'body'). */
     sourceXPath?: string;
+    /** Element/attribute tag the value was captured from (source === 'body'). */
+    sourceElementName?: string;
     /** Log id of the request that consumes the value. */
     consumedByLogId: string;
     /** Where it is consumed: 'body' | 'url' | 'header'. */
@@ -122,6 +124,26 @@ function sanitizeVariable(raw: string, used: Set<string>): string {
 }
 
 /**
+ * Element tag name whose inner text is `value` (exact match preferred, else the
+ * first containing match). Namespace prefixes are stripped. Returns null when
+ * the value is not an element's text (e.g. it came from a header).
+ * Used to give a captured value a human default variable name.
+ */
+export function elementNameFor(xml: string, value: string): string | null {
+    if (!xml) return null;
+    const tagTextRe = /<([A-Za-z0-9_:\-]+)[^>]*>([^<]*)<\/\1>/g;
+    let m: RegExpExecArray | null;
+    let containsBest: string | null = null;
+    while ((m = tagTextRe.exec(xml)) !== null) {
+        const tag = m[1].split(":").pop() || m[1];
+        const text = m[2].trim();
+        if (text === value) return tag;
+        if (text.includes(value) && !containsBest) containsBest = tag;
+    }
+    return containsBest;
+}
+
+/**
  * Detect values captured in an earlier response that are reused in a later request.
  * SOAP-only: body candidates come from XML element text; headers from header values.
  */
@@ -161,14 +183,15 @@ export function detectChainedValues(logs: TrafficLog[]): ChainedValue[] {
         const resLog = ordered[i];
         const boiler = boilerplateFor(resLog);
         // Values this log PRODUCES (its response).
-        const produced: Array<{ value: string; source: 'body' | 'header'; header?: string; xpath?: string }> = [];
+        const produced: Array<{ value: string; source: 'body' | 'header'; header?: string; xpath?: string; elementName?: string }> = [];
 
         if (resLog.responseBody) {
             const tags = tagNameSet(resLog.responseBody);
             for (const v of Array.from(new Set(candidateTokens(resLog.responseBody)))) {
                 if (boiler.has(v)) continue; // already in this request
                 if (tags.has(v)) continue;   // an element name here = structure
-                produced.push({ value: v, source: "body", xpath: deriveXPath(resLog.responseBody, v) ?? undefined });
+                const elName = elementNameFor(resLog.responseBody, v);
+                produced.push({ value: v, source: "body", xpath: deriveXPath(resLog.responseBody, v) ?? undefined, elementName: elName ?? undefined });
             }
         }
         for (const [h, val] of Object.entries(resLog.responseHeaders ?? {})) {
@@ -196,13 +219,17 @@ export function detectChainedValues(logs: TrafficLog[]): ChainedValue[] {
                 else if (headerHit) { consumedIn = "header"; consumedHeader = headerHit; }
 
                 if (consumedIn) {
+                    // Default variable name: the element/attribute tag it was
+                    // captured from (human-readable); fall back to the value.
+                    const nameBase = p.source === "body" && p.elementName ? p.elementName : p.value;
                     seen.set(p.value, {
                         value: p.value,
-                        variable: sanitizeVariable(p.value, usedNames),
+                        variable: sanitizeVariable(nameBase, usedNames),
                         sourceLogId: resLog.id,
                         source: p.source,
                         sourceHeaderName: p.header,
                         sourceXPath: p.xpath ?? undefined,
+                        sourceElementName: p.elementName,
                         consumedByLogId: reqLog.id,
                         consumedIn,
                         consumedHeaderName: consumedHeader,

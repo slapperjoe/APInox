@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildWorkflowStepsFromLogs, detectChainedValues, assembleWorkflow } from "../trafficWorkflow";
+import { buildWorkflowStepsFromLogs, detectChainedValues, assembleWorkflow, elementNameFor } from "../trafficWorkflow";
 import type { TrafficLog } from "../../components/proxy/TrafficViewer";
 
 function mkLog(partial: Partial<TrafficLog> & { id: string }): TrafficLog {
@@ -126,6 +126,25 @@ describe("detectChainedValues", () => {
         // captured value — must not be suggested. Only the real data value is.
         expect(found.map(c => c.value)).toEqual(["ORD-4829"]);
         expect(found[0].sourceXPath).toBe("//OrderId/text()");
+    });
+});
+
+describe("elementNameFor", () => {
+    it("returns the element tag that holds the value", () => {
+        expect(elementNameFor("<R><SessionToken>TKN-999</SessionToken></R>", "TKN-999")).toBe("SessionToken");
+    });
+
+    it("strips namespace prefixes", () => {
+        expect(elementNameFor("<R><urn:OrderId>ORD-4829</urn:OrderId></R>", "ORD-4829")).toBe("OrderId");
+    });
+
+    it("prefers an exact match over a containing match", () => {
+        const xml = "<R><Note>see TKN-999 below</Note><SessionToken>TKN-999</SessionToken></R>";
+        expect(elementNameFor(xml, "TKN-999")).toBe("SessionToken");
+    });
+
+    it("returns null when the value is not found as an element text", () => {
+        expect(elementNameFor("<R>only-here</R>", "absent")).toBeNull();
     });
 });
 
