@@ -159,24 +159,26 @@ body {
     font-family: var(--apinox-ui-font-family, var(--apinox-font-family, "Segoe UI", system-ui, sans-serif));
 }
 
-/* Scrollbar styling — thin overlay style (Zed-inspired) */
+/* Scrollbar styling — visible thin bar; the `--apinox-scrollbar*` vars are
+   not defined by the theme, so the fallbacks below are what actually render.
+   Kept thin and Zed-inspired, but opaque enough to see when content overflows. */
 ::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
+    width: 10px;
+    height: 10px;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: var(--apinox-scrollbarSlider-background, #79797966);
-    border-radius: 2px;
+    background: var(--apinox-scrollbarSlider-background, #797979);
+    border-radius: 5px;
     transition: background 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: var(--apinox-scrollbarSlider-hoverBackground, #646464b3);
+    background: var(--apinox-scrollbarSlider-hoverBackground, #9a9a9a);
 }
 
 ::-webkit-scrollbar-thumb:active {
-    background: var(--apinox-scrollbarSlider-activeBackground, #bfbfbf66);
+    background: var(--apinox-scrollbarSlider-activeBackground, #c0c0c0);
 }
 
 ::-webkit-scrollbar-track {

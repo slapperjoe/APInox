@@ -42,24 +42,6 @@ const DropdownContainer = styled.div<{ $isMacOS?: boolean }>`
 const ResultsList = styled.div`
     overflow-y: auto;
     flex: 1;
-    
-    /* Better scrollbar styling */
-    &::-webkit-scrollbar {
-        width: 4px;
-    }
-    
-    &::-webkit-scrollbar-track {
-        background: transparent;
-    }
-    
-    &::-webkit-scrollbar-thumb {
-        background: var(--apinox-scrollbarSlider-background);
-        border-radius: 4px;
-    }
-    
-    &::-webkit-scrollbar-thumb:hover {
-        background: var(--apinox-scrollbarSlider-hoverBackground);
-    }
 `;
 
 const GroupHeader = styled.div`
