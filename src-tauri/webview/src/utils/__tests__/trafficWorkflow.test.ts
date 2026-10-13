@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildWorkflowStepsFromLogs, detectChainedValues } from "../trafficWorkflow";
+import { buildWorkflowStepsFromLogs, detectChainedValues, assembleWorkflow } from "../trafficWorkflow";
 import type { TrafficLog } from "../../components/proxy/TrafficViewer";
 
 function mkLog(partial: Partial<TrafficLog> & { id: string }): TrafficLog {
@@ -92,5 +92,26 @@ describe("detectChainedValues", () => {
         ];
         // "200" is short / a status-ish token -> filtered.
         expect(detectChainedValues(logs)).toEqual([]);
+    });
+});
+
+describe("assembleWorkflow", () => {
+    it("builds a Workflow with steps, variables, and timestamps", () => {
+        const logs = [mkLog({ id: "a" }), mkLog({ id: "b" })];
+        const wf = assembleWorkflow({
+            name: "Login flow",
+            logs,
+            disabledIds: new Set(["b"]),
+            initialVariables: { clientId: "acme" },
+            extractors: { a: [{ id: "e1", variable: "token", type: "xpath", pattern: "//t", source: "body" }] },
+            stepNames: { a: "Login" },
+        });
+        expect(wf.name).toBe("Login flow");
+        expect(wf.variables).toEqual({ clientId: "acme" });
+        expect(wf.steps).toHaveLength(1);
+        expect(wf.steps[0].name).toBe("Login");
+        expect(typeof wf.id).toBe("string");
+        expect(typeof wf.createdAt).toBe("number");
+        expect(typeof wf.modifiedAt).toBe("number");
     });
 });

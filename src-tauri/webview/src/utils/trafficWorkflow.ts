@@ -1,4 +1,4 @@
-import type { WorkflowStep, WorkflowExtractor } from "@shared/models";
+import type { Workflow, WorkflowStep, WorkflowExtractor } from "@shared/models";
 import type { TrafficLog } from "../components/proxy/TrafficViewer";
 
 export interface BuildOpts {
@@ -179,4 +179,28 @@ export function detectChainedValues(logs: TrafficLog[]): ChainedValue[] {
         }
     }
     return Array.from(seen.values());
+}
+
+export interface AssembleInput {
+    name: string;
+    description?: string;
+    logs: TrafficLog[];
+    disabledIds?: Set<string>;
+    initialVariables?: Record<string, string>;
+    extractors?: Record<string, WorkflowExtractor[]>;
+    stepNames?: Record<string, string>;
+}
+
+/** Turn the wizard's final state into the `Workflow` object the save path expects. */
+export function assembleWorkflow(input: AssembleInput): Workflow {
+    const { name, description, logs, disabledIds, initialVariables = {}, extractors, stepNames } = input;
+    return {
+        id: crypto.randomUUID(),
+        name,
+        description,
+        steps: buildWorkflowStepsFromLogs(logs, { disabledIds, extractors, stepNames }),
+        variables: Object.keys(initialVariables).length ? initialVariables : undefined,
+        createdAt: Date.now(),
+        modifiedAt: Date.now(),
+    };
 }
