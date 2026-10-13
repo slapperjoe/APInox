@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { Play, Plus, Trash2, Settings, Clock, Repeat, Flame, Zap, GripVertical, Square, Calendar, ToggleLeft, ToggleRight, Import, Download, ChevronDown, ChevronRight, CheckCircle, XCircle, AlertTriangle, Users, Server, FileJson, BarChart3 } from 'lucide-react';
+import { Play, Plus, Trash2, Settings, Clock, Repeat, Flame, Zap, GripVertical, Square, Calendar, ToggleLeft, ToggleRight, Import, Download, ChevronDown, ChevronRight, CheckCircle, XCircle, AlertTriangle, Users, Server, FileJson, BarChart3, GitBranch, X } from 'lucide-react';
 import { Spinner } from '../common/Spinner';
 import { EmptyState } from '../common/EmptyState';
-import { PerformanceSuite, PerformanceRun, PerformanceSchedule, PerformanceRequest, CoordinatorStatus } from '@shared/models';
+import { PerformanceSuite, PerformanceRun, PerformanceSchedule, PerformanceRequest, CoordinatorStatus, Workflow } from '@shared/models';
 import { WorkerStatusPanel } from './WorkerStatusPanel';
 
 import {
@@ -19,7 +19,8 @@ import { SPACING_XS, SPACING_SM, SPACING_MD, SPACING_LG, SPACING_XL, SPACING_2XL
 
 const EditorContainer = styled.div`
     padding: ${SPACING_XL};
-    height: 100%;
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
     color: var(--apinox-editor-foreground);
     font-family: var(--apinox-font-family);
@@ -269,6 +270,8 @@ interface PerformanceSuiteEditorProps {
     coordinatorStatus?: CoordinatorStatus;
     onStartCoordinator?: (port: number, expectedWorkers: number) => void;
     onStopCoordinator?: () => void;
+    /** All workflows available to attach as the suite's source (alternative to requests). */
+    workflows?: Workflow[];
 }
 
 export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
@@ -290,7 +293,8 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
     history = [],
     coordinatorStatus,
     onStartCoordinator,
-    onStopCoordinator
+    onStopCoordinator,
+    workflows = []
 }) => {
     const [draggedId, setDraggedId] = useState<string | null>(null);
     const [dropTargetId, setDropTargetId] = useState<string | null>(null);
@@ -299,6 +303,20 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
     const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
     const [coordPort, setCoordPort] = useState(8765);
     const [coordExpected, setCoordExpected] = useState(1);
+    const [showWorkflowPicker, setShowWorkflowPicker] = useState(false);
+
+    // Resolved workflow when the suite is workflow-backed (alternative to requests).
+    const referencedWorkflow = suite.workflow ? workflows.find(w => w.id === suite.workflow?.workflowId) : undefined;
+    const workflowRequestCount = referencedWorkflow
+        ? referencedWorkflow.steps.filter(s => s.type === 'request').length
+        : 0;
+    const attachWorkflow = (w: Workflow) => {
+        onUpdate({ ...suite, workflow: { workflowId: w.id, workflowName: w.name }, requests: [] });
+        setShowWorkflowPicker(false);
+    };
+    const detachWorkflow = () => {
+        onUpdate({ ...suite, workflow: undefined });
+    };
 
     // Rename state
     const [renameId, setRenameId] = useState<string | null>(null);
@@ -469,7 +487,7 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                             <Grid style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
                                 <div>
                                     <div style={{ fontSize: '0.85em', opacity: 0.7, marginBottom: 4 }}>Total Requests</div>
-                                    <div style={{ fontSize: '1.5em', fontWeight: 'var(--fw-bold)' }}>{suite.requests?.length || 0}</div>
+                                    <div style={{ fontSize: '1.5em', fontWeight: 'var(--fw-bold)' }}>{suite.workflow ? workflowRequestCount : (suite.requests?.length || 0)}</div>
                                 </div>
                                 <div>
                                     <div style={{ fontSize: '0.85em', opacity: 0.7, marginBottom: 4 }}>Last Run</div>
@@ -502,7 +520,7 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                                     <div style={{ fontSize: '0.85em', opacity: 0.7, marginBottom: 4 }}>Iterations</div>
                                     <div style={{ fontSize: '1.5em', fontWeight: 'var(--fw-bold)' }}>{
                                         sortedHistory[0].summary?.totalRequests ?
-                                            Math.floor(sortedHistory[0].summary.totalRequests / (suite.requests?.length || 1))
+                                            Math.floor(sortedHistory[0].summary.totalRequests / (suite.workflow ? (workflowRequestCount || 1) : (suite.requests?.length || 1)))
                                             : '0'
                                     }</div>
                                 </div>
@@ -592,8 +610,51 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                     </SectionContent>
                 </Section>
 
+                {/* Workflow Section — shown when the suite load-tests a workflow
+                    instead of its own request collection (an alternative, not additive). */}
+                {suite.workflow && (
+                    <Section $collapsed={isCollapsed('workflow')}>
+                        <SectionHeader $clickable onClick={() => toggleSection('workflow')}>
+                            {isCollapsed('workflow') ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+                            <SectionTitle><GitBranch size={16} /> Workflow ({workflowRequestCount})</SectionTitle>
+                            {!isCollapsed('workflow') && (
+                                <ToolbarButton onClick={(e) => { e.stopPropagation(); detachWorkflow(); }} title="Switch back to a request collection">
+                                    <X size={14} /> Remove Workflow
+                                </ToolbarButton>
+                            )}
+                        </SectionHeader>
+                        <SectionContent $collapsed={isCollapsed('workflow')}>
+                            {referencedWorkflow ? (
+                                <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                                        <GitBranch size={16} style={{ color: 'var(--apinox-testing-iconPassed)' }} />
+                                        <span style={{ fontWeight: 'var(--fw-bold)' }}>{referencedWorkflow.name}</span>
+                                    </div>
+                                    <div style={{ fontSize: '0.9em', opacity: 0.7, marginBottom: 12 }}>
+                                        This suite load-tests the {workflowRequestCount} request step{workflowRequestCount === 1 ? '' : 's'} of this workflow, run sequentially per iteration with the configured warmup and delay. Variable chaining across steps is preserved.
+                                    </div>
+                                    <RequestList>
+                                        {referencedWorkflow.steps.filter(s => s.type === 'request').map((s, i) => (
+                                            <div key={s.id || i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 8, opacity: 0.85 }}>
+                                                <div style={{ fontWeight: 'var(--fw-bold)', width: 25, opacity: 0.6 }}>{i + 1}.</div>
+                                                <span style={{ fontWeight: 'var(--fw-medium)', flex: 1 }}>{s.name}</span>
+                                                {s.endpoint && <span style={{ fontSize: '0.85em', opacity: 0.6 }} title={s.endpoint}>{s.endpoint}</span>}
+                                            </div>
+                                        ))}
+                                    </RequestList>
+                                </div>
+                            ) : (
+                                <div style={{ padding: 16, textAlign: 'center', opacity: 0.7, fontStyle: 'italic' }}>
+                                    Referenced workflow &quot;{suite.workflow.workflowName}&quot; not found — it may have been deleted.{' '}
+                                    <button onClick={detachWorkflow} style={{ background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', color: 'inherit' }}>Remove reference</button>
+                                </div>
+                            )}
+                        </SectionContent>
+                    </Section>
+                )}
+
                 {/* Test Requests Section */}
-                <Section $collapsed={isCollapsed('requests')}>
+                {!suite.workflow && (<Section $collapsed={isCollapsed('requests')}>
                     <SectionHeader $clickable onClick={() => toggleSection('requests')}>
                         {isCollapsed('requests') ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
                         <SectionTitle><Play size={16} /> Test Requests ({suite.requests.length})</SectionTitle>
@@ -602,8 +663,40 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                                 <Plus size={14} /> Add Request
                             </ToolbarButton>
                         )}
+                        {workflows.length > 0 && !isCollapsed('requests') && (
+                            <ToolbarButton
+                                onClick={(e) => { e.stopPropagation(); setShowWorkflowPicker(p => !p); }}
+                                title="Load-test a workflow instead of these requests"
+                                style={{ color: showWorkflowPicker ? 'var(--apinox-testing-iconPassed)' : undefined }}
+                            >
+                                <GitBranch size={14} /> Use Workflow
+                            </ToolbarButton>
+                        )}
                     </SectionHeader>
                     <SectionContent $collapsed={isCollapsed('requests')}>
+                        {showWorkflowPicker && !isCollapsed('requests') && (
+                            <div style={{ marginBottom: 16, padding: 12, background: 'var(--apinox-input-background)', border: '1px solid var(--apinox-widget-border)', borderRadius: 4 }}>
+                                <div style={{ fontSize: '0.85em', opacity: 0.7, marginBottom: 8 }}>
+                                    Attach a workflow as this suite&apos;s source (replaces the requests above):
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    {workflows.map(w => (
+                                        <div
+                                            key={w.id}
+                                            onClick={() => attachWorkflow(w)}
+                                            title={`${w.name} (${w.steps.filter(s => s.type === 'request').length} request steps)`}
+                                            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', cursor: 'pointer', borderRadius: 4 }}
+                                            onMouseEnter={e => (e.currentTarget.style.background = 'var(--apinox-list-hoverBackground)')}
+                                            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                                        >
+                                            <GitBranch size={14} style={{ opacity: 0.6 }} />
+                                            <span style={{ flex: 1, fontWeight: 'var(--fw-medium)' }}>{w.name}</span>
+                                            <span style={{ fontSize: '0.8em', opacity: 0.6 }}>{w.steps.filter(s => s.type === 'request').length} steps</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                         <RequestList>
                             {sortedRequests.map((req, index) => (
                                 <RequestItem
@@ -703,7 +796,7 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                             )}
                         </RequestList>
                     </SectionContent>
-                </Section>
+                </Section>)}
 
                 {/* Scheduling Section */}
                 <Section $collapsed={isCollapsed('scheduling')}>

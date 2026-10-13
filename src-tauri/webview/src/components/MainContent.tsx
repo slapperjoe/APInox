@@ -1939,6 +1939,11 @@ const MainContent: React.FC = () => {
             deleteConfirm,
             setDeleteConfirm,
             onAddRequest: handleAddPerformanceRequestForUi,
+            // Lets a workflow-backed suite expand in the sidebar to show its steps.
+            workflows: config?.workflows || [],
+            // Expand/collapse state for the suite rows.
+            onToggleSuiteExpand: handleTogglePerformanceSuiteExpand,
+            expandedSuiteIds: expandedPerformanceSuiteIds,
         },
         unifiedProps: {
             projects: unifiedProjects,
@@ -2025,6 +2030,7 @@ const MainContent: React.FC = () => {
         handleDeleteWorkflow, handleDuplicateWorkflow, handleSelectWorkflow, handleSelectWorkflowStep,
         handleAddPerformanceSuite, handleDeletePerformanceSuite, handleRunPerformanceSuite,
         handleSelectPerformanceSuite, handleStopPerformanceRun, handleAddPerformanceRequestForUi,
+        expandedPerformanceSuiteIds, handleTogglePerformanceSuiteExpand,
         requestHistory, handleReplayRequest, handleToggleHistoryStar, handleDeleteHistory, handleRenameHistory, handleFavoriteRequest,
         unifiedProjects, unifiedSelectedNode,
         handleUnifiedSelectNode, handleUnifiedRefresh, handleUnifiedDeleteProject,

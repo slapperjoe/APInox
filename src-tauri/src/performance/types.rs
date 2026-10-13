@@ -35,6 +35,29 @@ pub struct PerformanceSuite {
     pub warmup_runs: u32,
     #[serde(default = "default_concurrency")]
     pub concurrency: u32,
+    /// When set, the suite load-tests this workflow's request steps instead of
+    /// its own `requests` collection (an alternative, not additive). The
+    /// frontend resolves the workflow and embeds its steps/variables so the
+    /// runner is self-contained; otherwise the runner falls back to a config
+    /// lookup by `workflow_id`.
+    #[serde(default)]
+    pub workflow: Option<PerformanceWorkflowRef>,
+}
+
+/// A workflow referenced by a performance suite. `steps`/`variables` are the
+/// optional embedded payload the frontend attaches (the flat `Workflow` model
+/// from the webview) so the run does not depend on the persisted config being
+/// in sync; when absent the runner resolves the workflow by `workflow_id`.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct PerformanceWorkflowRef {
+    pub workflow_id: String,
+    #[serde(default)]
+    pub workflow_name: Option<String>,
+    #[serde(default)]
+    pub steps: Option<Vec<serde_json::Value>>,
+    #[serde(default)]
+    pub variables: Option<HashMap<String, String>>,
 }
 
 fn default_iterations() -> u32 {
@@ -187,4 +210,69 @@ pub fn percentile(sorted: &[f64], p: f64) -> f64 {
         return sorted[lower];
     }
     sorted[lower] * (upper as f64 - idx) + sorted[upper] * (idx - lower as f64)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A suite JSON with a `workflow` ref (as the webview sends it) must
+    /// deserialize with the ref populated — this is what the save/load round
+    /// trip relies on.
+    #[test]
+    fn suite_with_workflow_ref_deserializes() {
+        let json = r#"{
+            "id": "perf-suite-1",
+            "name": "Login load",
+            "requests": [],
+            "iterations": 20,
+            "warmupRuns": 2,
+            "concurrency": 1,
+            "workflow": {
+                "workflowId": "wf-abc",
+                "workflowName": "Login flow",
+                "steps": [
+                    { "id": "s1", "name": "Login", "type": "request", "endpoint": "http://x/login", "requestBody": "<Login/>" },
+                    { "id": "s2", "name": "Fetch", "type": "request", "endpoint": "http://x/data", "requestBody": "<Data/>" }
+                ],
+                "variables": { "base": "http://x" }
+            }
+        }"#;
+        let suite: PerformanceSuite = serde_json::from_str(json).unwrap();
+        assert_eq!(suite.id, "perf-suite-1");
+        assert!(suite.requests.is_empty());
+        let wf = suite.workflow.expect("workflow ref present");
+        assert_eq!(wf.workflow_id, "wf-abc");
+        assert_eq!(wf.workflow_name.as_deref(), Some("Login flow"));
+        assert_eq!(wf.steps.as_ref().map(|s| s.len()), Some(2));
+        assert_eq!(wf.variables.as_ref().and_then(|m| m.get("base")), Some(&"http://x".to_string()));
+    }
+
+    /// A legacy suite JSON without a `workflow` field must still deserialize,
+    /// with `workflow` defaulting to `None` (backward compatibility).
+    #[test]
+    fn suite_without_workflow_ref_defaults_to_none() {
+        let json = r#"{
+            "id": "perf-suite-legacy",
+            "name": "Legacy",
+            "requests": [{ "id": "r1", "name": "R", "endpoint": "http://e", "requestBody": "<x/>", "order": 0 }],
+            "iterations": 5
+        }"#;
+        let suite: PerformanceSuite = serde_json::from_str(json).unwrap();
+        assert!(suite.workflow.is_none());
+        assert_eq!(suite.requests.len(), 1);
+        assert_eq!(suite.iterations, 5);
+    }
+
+    /// The ref round-trips through serialization (so config.jsonc keeps it).
+    #[test]
+    fn workflow_ref_round_trips() {
+        let original: PerformanceSuite = serde_json::from_value(serde_json::json!({
+            "id": "s", "name": "N", "requests": [],
+            "workflow": { "workflowId": "wf-1", "workflowName": "W", "steps": [], "variables": {} }
+        })).unwrap();
+        let value = serde_json::to_value(&original).unwrap();
+        let back: PerformanceSuite = serde_json::from_value(value).unwrap();
+        assert_eq!(back.workflow.as_ref().unwrap().workflow_id, "wf-1");
+    }
 }

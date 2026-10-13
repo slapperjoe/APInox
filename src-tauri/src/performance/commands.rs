@@ -8,8 +8,11 @@ use once_cell::sync::Lazy;
 
 use crate::http::client::CancelToken;
 use crate::performance::runner::execute_request;
-use crate::performance::types::{PerformanceRun, PerformanceStats, PerformanceSuite};
+use crate::performance::types::{PerformanceResult, PerformanceRun, PerformanceStats, PerformanceSuite};
 use crate::settings_manager;
+use crate::testing::frontend_runner::run_request_step;
+use crate::workflow::commands::build_frontend_request;
+use std::time::Instant;
 
 #[derive(Debug, Clone)]
 struct PerfRunData {
@@ -180,8 +183,189 @@ pub async fn run_performance_suite(
 
         let total_iterations = suite.iterations + suite.warmup_runs;
         let mut all_results = Vec::new();
-        let mut variables = initial_vars;
         let mut status = "completed".to_string();
+
+        if suite.workflow.is_some() {
+            // ── Workflow-backed pass ─────────────────────────────────────────
+            // The suite load-tests a referenced workflow's request steps instead
+            // of its own `requests` collection. Steps run sequentially per
+            // iteration (a workflow is an ordered, variable-sharing flow).
+            let wf_ref = suite.workflow.as_ref().unwrap();
+
+            // Resolve the steps: prefer the payload the frontend embedded (so
+            // the run is self-contained and not subject to a config save-race),
+            // otherwise look the workflow up by id in the persisted config.
+            let mut steps: Vec<Value> = wf_ref.steps.clone().unwrap_or_default();
+            let mut wf_vars: HashMap<String, String> = wf_ref.variables.clone().unwrap_or_default();
+            if steps.is_empty() {
+                if let Ok(cfg) = settings_manager::load_config_internal() {
+                    if let Some(w) = cfg
+                        .workflows
+                        .unwrap_or_default()
+                        .into_iter()
+                        .find(|w| w.get("id").and_then(|v| v.as_str()) == Some(wf_ref.workflow_id.as_str()))
+                    {
+                        steps = w
+                            .get("steps")
+                            .and_then(|v| v.as_array())
+                            .cloned()
+                            .unwrap_or_default();
+                        if wf_vars.is_empty() {
+                            if let Some(vars) = w.get("variables").and_then(|v| v.as_object()) {
+                                for (k, v) in vars {
+                                    if let Some(s) = v.as_str() {
+                                        wf_vars.insert(k.clone(), s.to_string());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if steps.is_empty() {
+                log::warn!(
+                    "[run_performance_suite] workflow-backed suite '{}' has no resolvable steps (workflowId={}) — emitting an empty run",
+                    suite.name,
+                    wf_ref.workflow_id
+                );
+            }
+
+            // Variable context: the run environment as the base, with the
+            // workflow's own initial variables layered on top. Persisted across
+            // iterations (matches the requests path above).
+            let mut variables: HashMap<String, Value> = initial_vars
+                .iter()
+                .map(|(k, v)| (k.clone(), Value::String(v.clone())))
+                .collect();
+            for (k, v) in &wf_vars {
+                variables.insert(k.clone(), Value::String(v.clone()));
+            }
+
+            'wf_outer: for iteration in 0..total_iterations {
+                if is_aborted(&run_id_clone) {
+                    status = "aborted".to_string();
+                    break;
+                }
+
+                let is_warmup = iteration < suite.warmup_runs;
+
+                for step in &steps {
+                    if is_aborted(&run_id_clone) {
+                        status = "aborted".to_string();
+                        break 'wf_outer;
+                    }
+
+                    let step_type = step
+                        .get("type")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("request")
+                        .to_string();
+                    let step_id = step
+                        .get("id")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let step_name = step
+                        .get("name")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("step")
+                        .to_string();
+
+                    match step_type.as_str() {
+                        "request" => {
+                            let req = build_frontend_request(step);
+                            let start = Instant::now();
+                            let outcome = run_request_step(&req, None, &variables, start).await;
+                            let perf_res = match outcome {
+                                Ok(r) => {
+                                    // Chain extracted variables into later steps.
+                                    for (k, v) in &r.extracted_variables {
+                                        variables.insert(k.clone(), Value::String(v.clone()));
+                                    }
+                                    let status_code = r.status_code.unwrap_or(0);
+                                    PerformanceResult {
+                                        request_id: step_id.clone(),
+                                        request_name: step_name.clone(),
+                                        interface_name: None,
+                                        operation_name: None,
+                                        iteration,
+                                        duration: r.duration_ms as f64,
+                                        status: status_code,
+                                        success: (200..300).contains(&status_code),
+                                        sla_breached: false,
+                                        error: r.error.clone(),
+                                        extracted_values: if r.extracted_variables.is_empty() {
+                                            None
+                                        } else {
+                                            Some(r.extracted_variables.clone())
+                                        },
+                                        timestamp: now_ms(),
+                                    }
+                                }
+                                Err(e) => {
+                                    log::warn!(
+                                        "[run_performance_suite] workflow step '{}' error: {}",
+                                        step_name,
+                                        e
+                                    );
+                                    PerformanceResult {
+                                        request_id: step_id.clone(),
+                                        request_name: step_name.clone(),
+                                        interface_name: None,
+                                        operation_name: None,
+                                        iteration,
+                                        duration: start.elapsed().as_millis() as f64,
+                                        status: 0,
+                                        success: false,
+                                        sla_breached: false,
+                                        error: Some(e.to_string()),
+                                        extracted_values: None,
+                                        timestamp: now_ms(),
+                                    }
+                                }
+                            };
+                            if !is_warmup {
+                                all_results.push(perf_res);
+                            }
+
+                            if suite.delay_between_requests > 0 {
+                                tokio::time::sleep(tokio::time::Duration::from_millis(
+                                    suite.delay_between_requests,
+                                ))
+                                .await;
+                            }
+                        }
+                        "delay" => {
+                            let ms = step
+                                .get("delayMs")
+                                .and_then(|v| v.as_u64())
+                                .unwrap_or(0);
+                            tokio::time::sleep(tokio::time::Duration::from_millis(ms)).await;
+                        }
+                        other => {
+                            // condition / loop / script: not executed in the perf
+                            // runner (mirrors run_workflow, which skips them).
+                            log::warn!(
+                                "[run_performance_suite] workflow step '{}' type '{}' not executed in perf run",
+                                step_name,
+                                other
+                            );
+                        }
+                    }
+                }
+
+                push_update(
+                    &run_id_clone,
+                    serde_json::json!({
+                        "type": "iterationComplete",
+                        "runId": run_id_clone,
+                        "iteration": iteration,
+                        "total": total_iterations
+                    }),
+                );
+            }
+        } else {
+        let mut variables = initial_vars;
 
         'outer: for iteration in 0..total_iterations {
             if is_aborted(&run_id_clone) {
@@ -290,6 +474,8 @@ pub async fn run_performance_suite(
                     "total": total_iterations
                 }),
             );
+        }
+
         }
 
         let end_time = now_ms();

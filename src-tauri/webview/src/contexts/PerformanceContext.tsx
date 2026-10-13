@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { bridge, isTauri } from '../utils/bridge';
-import { PerformanceSuite, PerformanceRequest, ApiRequest } from '@shared/models';
+import { PerformanceSuite, PerformanceRequest, ApiRequest, Workflow } from '@shared/models';
 import { BackendCommand, FrontendCommand } from '@shared/messages';
 import { getInitialXml } from '@shared/utils/soapUtils';
 import { useUI } from './UIContext';
@@ -133,11 +133,30 @@ export const PerformanceProvider = ({ children }: { children: ReactNode }) => {
                     const currentSuite = rawSuite
                         ? { ...rawSuite, requests: Array.isArray(rawSuite.requests) ? rawSuite.requests : [] }
                         : null;
+
+                    // If the suite is workflow-backed, embed the referenced workflow's
+                    // steps + variables so the backend runner is self-contained (avoids a
+                    // config save-race and a dangling reference). Falls back to the id-only
+                    // reference if the workflow isn't in the in-memory config.
+                    let suiteForRun: any = currentSuite;
+                    if (currentSuite && currentSuite.workflow) {
+                        const ref = currentSuite.workflow;
+                        const wf = (config?.workflows || []).find((w: Workflow) => w.id === ref.workflowId);
+                        suiteForRun = {
+                            ...currentSuite,
+                            workflow: {
+                                workflowId: ref.workflowId,
+                                workflowName: wf?.name || ref.workflowName,
+                                ...(wf ? { steps: wf.steps, variables: wf.variables } : {})
+                            }
+                        };
+                    }
+
                     const start = await bridge.sendMessageAsync<{ runId: string }>({
                         command: FrontendCommand.RunPerformanceSuite,
                         suiteId: id,
                         stream: true,
-                        suite: currentSuite
+                        suite: suiteForRun
                     });
 
                     const runId = start?.runId;

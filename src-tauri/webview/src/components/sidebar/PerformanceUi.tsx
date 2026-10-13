@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from '../common/EmptyState';
-import { Play, Square, Plus, ChevronRight, ChevronDown } from 'lucide-react';
+import { Play, Square, Plus, ChevronRight, ChevronDown, GitBranch } from 'lucide-react';
 import { SidebarPerformanceProps } from '../../types/props';
 import { SidebarContextMenu, CtxMenuSection, CtxMenuItem, Pencil, Trash2 } from './shared/SidebarContextMenu';
 import { SidebarContainer, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle, RowActions } from './shared/SidebarStyles';
@@ -81,13 +81,6 @@ const RequestItem = styled.div<{ active: boolean }>`
     }
 `;
 
-const RequestActions = styled(RowActions)`
-    color: var(--apinox-icon-foreground);
-    ${RequestItem}[data-active='true'] & {
-        color: var(--apinox-list-activeSelectionForeground);
-    }
-`;
-
 export const PerformanceUi: React.FC<SidebarPerformanceProps> = ({
     suites,
     onAddSuite,
@@ -97,14 +90,13 @@ export const PerformanceUi: React.FC<SidebarPerformanceProps> = ({
     onStopRun,
     isRunning,
     selectedSuiteId,
-    deleteConfirm,
-    setDeleteConfirm,
     onAddRequest,
     onDeleteRequest,
     onSelectRequest,
     onUpdateRequest,
     onToggleSuiteExpand,
-    expandedSuiteIds = []
+    expandedSuiteIds = [],
+    workflows = []
 }) => {
     const [isAdding, setIsAdding] = useState(false);
     const [newSuiteName, setNewSuiteName] = useState('');
@@ -168,13 +160,6 @@ export const PerformanceUi: React.FC<SidebarPerformanceProps> = ({
         setContextMenu({ x: e.clientX, y: e.clientY, type, id, name, parentId });
     };
 
-    // Close menu on click elsewhere
-    React.useEffect(() => {
-        const handleClick = () => setContextMenu(null);
-        window.addEventListener('click', handleClick);
-        return () => window.removeEventListener('click', handleClick);
-    }, []);
-
     return (
         <Container>
             <SidebarHeader>
@@ -214,45 +199,66 @@ export const PerformanceUi: React.FC<SidebarPerformanceProps> = ({
                                 active={selectedSuiteId === suite.id}
                                 data-active={selectedSuiteId === suite.id}
                                 onClick={() => onSelectSuite(suite.id)}
+                                onContextMenu={(e) => handleContextMenu(e, 'suite', suite.id, suite.name)}
                             >
                                 <SuiteIcon onClick={(e) => { e.stopPropagation(); onToggleSuiteExpand?.(suite.id); }}>
                                     {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                                 </SuiteIcon>
-                                <SuiteLabel>{suite.name}</SuiteLabel>
+                                <SuiteLabel>
+                                    {suite.name}
+                                    {suite.workflow && (
+                                        <GitBranch
+                                            size={12}
+                                            style={{ marginLeft: 6, verticalAlign: 'middle', opacity: 0.7 }}
+                                            aria-label="load-tests a workflow"
+                                        />
+                                    )}
+                                </SuiteLabel>
                                 <Actions $parent={SuiteItem}>
-                                    <IconButton
-                                        onClick={(e) => { e.stopPropagation(); onAddRequest?.(suite.id); }}
-                                        title="Add Request"
-                                    >
-                                        <Plus size={14} />
-                                    </IconButton>
+                                    {!suite.workflow && (
+                                        <IconButton
+                                            onClick={(e) => { e.stopPropagation(); onAddRequest?.(suite.id); }}
+                                            title="Add Request"
+                                        >
+                                            <Plus size={14} />
+                                        </IconButton>
+                                    )}
                                     <RunButton
                                         onClick={(e) => { e.stopPropagation(); onRunSuite(suite.id); }}
                                         title="Run Suite"
                                     >
                                         <Play size={14} fill="currentColor" />
                                     </RunButton>
-                                    <IconButton
-                                        $shake={deleteConfirm === suite.id}
-                                        $danger
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (deleteConfirm === suite.id) {
-                                                onDeleteSuite(suite.id);
-                                                setDeleteConfirm(null);
-                                            } else {
-                                                setDeleteConfirm(suite.id);
-                                            }
-                                        }}
-                                        title={deleteConfirm === suite.id ? "Click again to delete" : "Delete Suite"}
-                                    >
-                                        <Trash2 size={14} />
-                                    </IconButton>
                                 </Actions>
                             </SuiteItem>
 
-                            {/* Render Requests */}
-                            {expanded && suite.requests?.map(req => (
+                            {/* Render workflow steps when the suite is workflow-backed */}
+                            {expanded && suite.workflow && (() => {
+                                const wf = workflows.find(w => w.id === suite.workflow?.workflowId);
+                                if (!wf) {
+                                    return (
+                                        <RequestItem active={false} data-active={false} style={{ opacity: 0.6, fontStyle: 'italic' }}>
+                                            <RequestIndent />
+                                            <RequestLabel>workflow "{suite.workflow.workflowName}" not found</RequestLabel>
+                                        </RequestItem>
+                                    );
+                                }
+                                return wf.steps.filter(s => s.type === 'request').map((s, i) => (
+                                    <RequestItem
+                                        key={s.id || i}
+                                        active={false}
+                                        data-active={false}
+                                        title={s.endpoint}
+                                        style={{ cursor: 'default' }}
+                                    >
+                                        <RequestIndent />
+                                        <RequestLabel>{i + 1}. {s.name}</RequestLabel>
+                                    </RequestItem>
+                                ));
+                            })()}
+
+                            {/* Render Requests (request-backed suite) */}
+                            {expanded && !suite.workflow && suite.requests?.map(req => (
                                 <RequestItem
                                     key={req.id}
                                     active={false} // Currently we don't track selected request ID in sidebar explicitly? Or reuse selection context? using standard 'active' styling might be misleading if not synced
@@ -277,20 +283,6 @@ export const PerformanceUi: React.FC<SidebarPerformanceProps> = ({
                                     ) : (
                                         <RequestLabel>{req.name}</RequestLabel>
                                     )}
-                                    <RequestActions $parent={RequestItem}>
-                                        <IconButton
-                                            $danger
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                if (onDeleteRequest) {
-                                                    onDeleteRequest(suite.id, req.id);
-                                                }
-                                            }}
-                                            title="Delete Request"
-                                        >
-                                            <Trash2 size={14} />
-                                        </IconButton>
-                                    </RequestActions>
                                 </RequestItem>
                             ))}
                         </React.Fragment>
@@ -310,7 +302,7 @@ export const PerformanceUi: React.FC<SidebarPerformanceProps> = ({
                             items: [
                                 { icon: Pencil, label: 'Rename', onClick: () => startRename(contextMenu.id, contextMenu.name, contextMenu.type, contextMenu.parentId) },
                                 {
-                                    icon: Trash2, label: 'Delete', danger: true, onClick: () => {
+                                    icon: Trash2, label: 'Delete', confirm: true, confirmLabel: 'Click again to delete', onClick: () => {
                                         if (contextMenu.type === 'request' && onDeleteRequest && contextMenu.parentId) {
                                             onDeleteRequest(contextMenu.parentId, contextMenu.id);
                                         }
