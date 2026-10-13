@@ -129,6 +129,28 @@ describe('TrafficWorkflowWizard', () => {
         expect(screen.getByText('{{user}}')).toBeInTheDocument();
     });
 
+    it('shows a step name input on the review screen', () => {
+        render(<TrafficWorkflowWizard logs={twoLogs()} onDone={vi.fn()} onCancel={vi.fn()} />);
+        gotoStep2();
+        fireEvent.click(screen.getByRole('button', { name: /continue/i }));       // -> step 3
+        expect(screen.getByTestId('wf-review-name-a')).toBeInTheDocument();
+    });
+
+    it('renders each step request as pretty-printed XML on the review screen', () => {
+        render(<TrafficWorkflowWizard logs={twoLogs()} onDone={vi.fn()} onCancel={vi.fn()} />);
+        gotoStep2();
+        fireEvent.click(screen.getByRole('button', { name: /continue/i }));       // -> step 3
+        // Each step body is formatted (multi-line, indented), not raw single line.
+        const bodyA = screen.getByTestId('wf-review-xml-a');
+        expect(bodyA.textContent).toContain('\n');
+        expect(bodyA.textContent).toContain('<B>');
+        // The consuming step previews the {{sessionToken}} substitution that a
+        // created workflow will apply, not the raw TKN-999 literal.
+        const bodyB = screen.getByTestId('wf-review-xml-b');
+        expect(bodyB.textContent).toContain('{{sessionToken}}');
+        expect(bodyB.textContent).not.toContain('TKN-999');
+    });
+
     it('excludes unchecked steps from the saved workflow', () => {
         const onDone = vi.fn();
         render(<TrafficWorkflowWizard logs={twoLogs()} onDone={onDone} onCancel={vi.fn()} />);

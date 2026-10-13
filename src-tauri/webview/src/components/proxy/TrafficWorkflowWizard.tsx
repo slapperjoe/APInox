@@ -229,6 +229,30 @@ export function TrafficWorkflowWizard({ logs, onDone, onCancel }: TrafficWorkflo
     const stepNameFor = (logId: string, log: TrafficLog) =>
         stepNames[logId] || `${log.method} ${lastPathSegment(log.url)}`;
 
+    // Value → variable substitutions applied to generated step bodies/headers,
+    // shared by handleCreate and the step-3 XML preview so the review matches
+    // what actually gets created.
+    const valueSubstitutions = (): Array<{ value: string; variable: string }> => [
+        ...chainPicks
+            .filter(p => p.value.trim())
+            .map(p => ({ value: p.value.trim(), variable: p.variable.trim() })),
+        ...initialVars
+            .filter(v => v.name.trim() && (v.value || '').trim())
+            .map(v => ({ value: v.value.trim(), variable: v.name.trim() })),
+    ];
+
+    // Pretty-printed, substituted request body for a step — same transform
+    // buildWorkflowStepsFromLogs applies, so the review preview is faithful.
+    const previewBodyFor = (log: TrafficLog): string => {
+        const subs = valueSubstitutions();
+        let body = log.requestBody || '';
+        if (subs.length) {
+            const ordered = [...subs].sort((a, b) => b.value.length - a.value.length);
+            for (const s of ordered) body = body.split(s.value).join(`{{${s.variable}}}`);
+        }
+        return body ? formatXml(body, false, true) : '';
+    };
+
     const stepIndexById = useMemo(() => {
         const m: Record<string, number> = {};
         includedLogs.forEach((l, i) => { m[l.id] = i + 1; });
@@ -275,14 +299,6 @@ export function TrafficWorkflowWizard({ logs, onDone, onCancel }: TrafficWorkflo
         // them. Manual variables (value → name) are substituted the same way.
         // Chain picks substitute their source value (e.g. TKN-999) with the
         // variable everywhere it appears in a consuming request.
-        const valueSubstitutions: Array<{ value: string; variable: string }> = [
-            ...chainPicks
-                .filter(p => p.value.trim())
-                .map(p => ({ value: p.value.trim(), variable: p.variable.trim() })),
-            ...initialVars
-                .filter(v => v.name.trim() && (v.value || '').trim())
-                .map(v => ({ value: v.value.trim(), variable: v.name.trim() })),
-        ];
         const wf = assembleWorkflow({
             name: name.trim(),
             logs,
@@ -292,7 +308,7 @@ export function TrafficWorkflowWizard({ logs, onDone, onCancel }: TrafficWorkflo
             ),
             extractors: extractorsByLog,
             stepNames,
-            valueSubstitutions,
+            valueSubstitutions: valueSubstitutions(),
         });
         onDone(wf);
     }
@@ -599,37 +615,55 @@ export function TrafficWorkflowWizard({ logs, onDone, onCancel }: TrafficWorkflo
             <>
                 <div>
                     <div style={sectionLabel}>Steps</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {includedLogs.map((log, i) => {
                             const pickVars = chainPicks
                                 .filter(p => p.sourceLogId === log.id)
                                 .map(p => p.variable);
+                            const body = previewBodyFor(log);
                             return (
                                 <div
                                     key={log.id}
                                     data-testid={'wf-review-step-' + log.id}
                                     style={{
-                                        display: 'flex', alignItems: 'center', gap: 10,
-                                        padding: '8px 10px', borderRadius: tokens.radius.md,
+                                        borderRadius: tokens.radius.md,
                                         background: tokens.surface.deep,
                                         border: `1px solid ${tokens.border.default}`,
+                                        overflow: 'hidden',
                                     }}
                                 >
-                                    <span style={{ ...mono, fontSize: 'var(--apinox-fs-sm)', color: tokens.text.hint, minWidth: 18 }}>#{i + 1}</span>
-                                    <input
-                                        style={{ ...input, flex: 1, padding: '4px 8px' }}
-                                        type="text"
-                                        value={stepNameFor(log.id, log)}
-                                        onChange={e => setStepNames(m => ({ ...m, [log.id]: e.target.value }))}
-                                        data-testid={'wf-review-name-' + log.id}
-                                    />
-                                    <span style={methodBadge}>{log.method}</span>
-                                    <span style={{ ...mono, fontSize: 'var(--apinox-fs-sm)', color: tokens.text.secondary, flexShrink: 0 }}>
-                                        {lastPathSegment(log.url)}
-                                    </span>
-                                    {pickVars.map(v => (
-                                        <span key={v} style={chip}>{'{{' + v + '}}'}</span>
-                                    ))}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px' }}>
+                                        <span style={{ ...mono, fontSize: 'var(--apinox-fs-sm)', color: tokens.text.hint, minWidth: 18 }}>#{i + 1}</span>
+                                        <input
+                                            style={{ ...input, flex: 1, padding: '4px 8px' }}
+                                            type="text"
+                                            value={stepNameFor(log.id, log)}
+                                            onChange={e => setStepNames(m => ({ ...m, [log.id]: e.target.value }))}
+                                            data-testid={'wf-review-name-' + log.id}
+                                        />
+                                        <span style={methodBadge}>{log.method}</span>
+                                        <span style={{ ...mono, fontSize: 'var(--apinox-fs-sm)', color: tokens.text.secondary, flexShrink: 0 }}>
+                                            {lastPathSegment(log.url)}
+                                        </span>
+                                        {pickVars.map(v => (
+                                            <span key={v} style={chip}>{'{{' + v + '}}'}</span>
+                                        ))}
+                                    </div>
+                                    {body && (
+                                        <pre
+                                            data-testid={'wf-review-xml-' + log.id}
+                                            style={{
+                                                ...mono, fontSize: 'var(--apinox-fs-sm)', lineHeight: 1.5,
+                                                margin: 0, padding: '8px 12px',
+                                                background: tokens.surface.base,
+                                                borderTop: `1px solid ${tokens.border.subtle}`,
+                                                whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                                                maxHeight: 220, overflow: 'auto',
+                                            }}
+                                        >
+                                            {body}
+                                        </pre>
+                                    )}
                                 </div>
                             );
                         })}
