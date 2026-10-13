@@ -771,19 +771,15 @@ export const WorkspaceLayout: React.FC = () => {
         // We need to check if we're showing a step or the workflow itself
         // For now, let's check if step type exists - if not, show workflow editor
         if (!step || !step.type) {
-            return (
-                <WorkflowEditor
-                    workflow={workflow}
-                    onUpdate={(updatedWorkflow) => {
-                        workspace.updateWorkflow(updatedWorkflow);
-                    }}
-                    onSelectStep={(selectedStep) => {
-                        // Re-select with proper step
-                        workspace.selectWorkflowStep({ workflow, step: selectedStep });
-                    }}
-                />
-            );
-        }
+                    return (
+                        <WorkflowEditor
+                            workflow={workflow}
+                            onUpdate={(updatedWorkflow) => {
+                                workspace.updateWorkflow(updatedWorkflow);
+                            }}
+                        />
+                    );
+                }
         
         // Check if this is a non-request step type (delay, condition, loop, script)
         if (step.type !== 'request') {

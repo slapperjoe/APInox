@@ -135,6 +135,35 @@ export function useWorkflowHandlers({
         }
     }, [setConfig, setSelectedWorkflowStep, selectedWorkflowStep]);
 
+    // ── step management (lives in the app-sidebar expanded workflow) ────────
+    const handleAddWorkflowStep = useCallback(async (workflow: Workflow) => {
+        const newStep: WorkflowStep = {
+            id: crypto.randomUUID(),
+            name: 'New Request Step',
+            type: 'request',
+            order: workflow.steps?.length || 0,
+        };
+        await handleUpdateWorkflow({ ...workflow, steps: [...(workflow.steps || []), newStep] });
+    }, [handleUpdateWorkflow]);
+
+    const handleDeleteWorkflowStep = useCallback(async (workflow: Workflow, stepId: string) => {
+        await handleUpdateWorkflow({
+            ...workflow,
+            steps: (workflow.steps || []).filter(s => s.id !== stepId),
+        });
+    }, [handleUpdateWorkflow]);
+
+    const handleMoveWorkflowStep = useCallback(async (workflow: Workflow, stepId: string, direction: -1 | 1) => {
+        const steps = [...(workflow.steps || [])];
+        const idx = steps.findIndex(s => s.id === stepId);
+        const target = idx + direction;
+        if (idx < 0 || target < 0 || target >= steps.length) return;
+        const [moving] = steps.splice(idx, 1);
+        steps.splice(target, 0, moving);
+        const renumbered = steps.map((s, i) => ({ ...s, order: i }));
+        await handleUpdateWorkflow({ ...workflow, steps: renumbered });
+    }, [handleUpdateWorkflow]);
+
     return {
         workflowBuilderModal,
         setWorkflowBuilderModal,
@@ -148,5 +177,8 @@ export function useWorkflowHandlers({
         handleSelectWorkflowStep,
         handleUpdateWorkflowStep,
         handleUpdateWorkflow,
+        handleAddWorkflowStep,
+        handleDeleteWorkflowStep,
+        handleMoveWorkflowStep,
     };
 }

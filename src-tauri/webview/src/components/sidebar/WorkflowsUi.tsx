@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { Play, Plus, Trash2, GitBranch, Edit2, Copy, ChevronDown, ChevronRight } from 'lucide-react';
+import { Play, Plus, Trash2, GitBranch, Edit2, Copy, ChevronDown, ChevronRight, ArrowUp, ArrowDown } from 'lucide-react';
 import { Workflow, WorkflowStep } from '@shared/models';
 import { SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle, RowActions } from './shared/SidebarStyles';
 import { EmptyState } from '../common/EmptyState';
@@ -69,6 +69,66 @@ const StepName = styled.div`
     white-space: nowrap;
 `;
 
+const StepType = styled.div`
+    font-size: 10px;
+    opacity: 0.6;
+    flex-shrink: 0;
+`;
+
+const StepActions = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    opacity: 0;
+    flex-shrink: 0;
+
+    ${StepItem}:hover & {
+        opacity: 1;
+    }
+`;
+
+const StepActionBtn = styled.button`
+    background: transparent;
+    border: none;
+    color: var(--apinox-icon-foreground);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    padding: 2px;
+    border-radius: 3px;
+
+    &:hover {
+        background: var(--apinox-list-hoverBackground);
+    }
+
+    &.danger:hover {
+        color: var(--apinox-errorForeground);
+    }
+`;
+
+const AddStepRow = styled.div`
+    padding: ${SPACING_SM} 12px ${SPACING_SM} 40px;
+`;
+
+const AddStepButton = styled.button`
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: 1px dashed var(--apinox-panel-border);
+    color: var(--apinox-textLink-foreground);
+    border-radius: 4px;
+    padding: ${SPACING_XS} ${SPACING_SM};
+    font-size: var(--apinox-fs-sm);
+    cursor: pointer;
+    width: 100%;
+    justify-content: center;
+
+    &:hover {
+        background: var(--apinox-list-hoverBackground);
+    }
+`;
+
 interface WorkflowsUiProps {
     workflows: Workflow[];
     onAdd?: () => void;
@@ -78,6 +138,9 @@ interface WorkflowsUiProps {
     onDuplicate?: (workflow: Workflow) => void;
     onSelect?: (workflow: Workflow) => void;
     onSelectStep?: (workflow: Workflow, step: WorkflowStep) => void;
+    onAddStep?: (workflow: Workflow) => void;
+    onDeleteStep?: (workflow: Workflow, stepId: string) => void;
+    onMoveStep?: (workflow: Workflow, stepId: string, direction: -1 | 1) => void;
 }
 
 export const WorkflowsUi: React.FC<WorkflowsUiProps> = ({
@@ -88,7 +151,10 @@ export const WorkflowsUi: React.FC<WorkflowsUiProps> = ({
     onDelete,
     onDuplicate,
     onSelect,
-    onSelectStep
+    onSelectStep,
+    onAddStep,
+    onDeleteStep,
+    onMoveStep,
 }) => {
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
     const [expandedWorkflows, setExpandedWorkflows] = useState<Set<string>>(new Set());
@@ -130,7 +196,7 @@ export const WorkflowsUi: React.FC<WorkflowsUiProps> = ({
                 ) : (
                     workflows.map(workflow => {
                         const isExpanded = expandedWorkflows.has(workflow.id);
-                        
+
                         return (
                             <div key={workflow.id}>
                                 <WorkflowItem onClick={() => {
@@ -201,10 +267,10 @@ export const WorkflowsUi: React.FC<WorkflowsUiProps> = ({
                                         </IconButton>
                                     </RowActions>
                                 </WorkflowItem>
-                                
+
                                 {/* Show steps when expanded */}
                                 {isExpanded && workflow.steps?.map((step, idx) => (
-                                    <StepItem 
+                                    <StepItem
                                         key={step.id}
                                         onClick={() => {
                                             onSelectStep?.(workflow, step);
@@ -213,11 +279,51 @@ export const WorkflowsUi: React.FC<WorkflowsUiProps> = ({
                                     >
                                         <StepNumber>#{idx + 1}</StepNumber>
                                         <StepName title={step.name}>{step.name}</StepName>
-                                        <div style={{ fontSize: '10px', opacity: 0.6 }}>
-                                            {step.type}
-                                        </div>
+                                        <StepType>{step.type}</StepType>
+                                        <StepActions>
+                                            <StepActionBtn
+                                                title="Move up"
+                                                aria-label={`Move step ${step.name} up`}
+                                                disabled={idx === 0}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onMoveStep?.(workflow, step.id, -1);
+                                                }}
+                                            >
+                                                <ArrowUp size={12} />
+                                            </StepActionBtn>
+                                            <StepActionBtn
+                                                title="Move down"
+                                                aria-label={`Move step ${step.name} down`}
+                                                disabled={idx === (workflow.steps?.length || 0) - 1}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onMoveStep?.(workflow, step.id, 1);
+                                                }}
+                                            >
+                                                <ArrowDown size={12} />
+                                            </StepActionBtn>
+                                            <StepActionBtn
+                                                className="danger"
+                                                title="Delete step"
+                                                aria-label={`Delete step ${step.name}`}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onDeleteStep?.(workflow, step.id);
+                                                }}
+                                            >
+                                                <Trash2 size={12} />
+                                            </StepActionBtn>
+                                        </StepActions>
                                     </StepItem>
                                 ))}
+                                {isExpanded && onAddStep && (
+                                    <AddStepRow>
+                                        <AddStepButton onClick={() => onAddStep(workflow)}>
+                                            <Plus size={12} /> Add Step
+                                        </AddStepButton>
+                                    </AddStepRow>
+                                )}
                             </div>
                         );
                     })

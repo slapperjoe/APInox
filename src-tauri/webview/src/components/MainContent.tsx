@@ -1451,6 +1451,9 @@ const MainContent: React.FC = () => {
         handleSelectWorkflowStep,
         handleUpdateWorkflowStep,
         handleUpdateWorkflow,
+        handleAddWorkflowStep,
+        handleDeleteWorkflowStep,
+        handleMoveWorkflowStep,
     } = useWorkflowHandlers({
         config,
         setConfig,
@@ -1912,6 +1915,9 @@ const MainContent: React.FC = () => {
             onDuplicate: handleDuplicateWorkflow,
             onSelect: handleSelectWorkflow,
             onSelectStep: handleSelectWorkflowStep,
+            onAddStep: handleAddWorkflowStep,
+            onDeleteStep: handleDeleteWorkflowStep,
+            onMoveStep: handleMoveWorkflowStep,
         },
         performanceProps: {
             suites: config?.performanceSuites || [],
