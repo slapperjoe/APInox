@@ -53,6 +53,11 @@ describe('TrafficWorkflowWizard', () => {
         expect(wf.name).toBe('Login');
         expect(wf.steps).toHaveLength(2);
         expect(wf.steps[0].extractors?.some(e => e.variable === 'sessionToken')).toBe(true);
+        // Tagged captured value is emitted as a {{variable}} placeholder in the
+        // consuming step (not the raw token), and the body is pretty-printed.
+        expect(wf.steps[1].requestBody).toContain('{{sessionToken}}');
+        expect(wf.steps[1].requestBody).not.toContain('TKN-999');
+        expect(wf.steps[0].requestBody).toContain('\n');
     });
 
     it('defaults each chain variable to its source element name', () => {

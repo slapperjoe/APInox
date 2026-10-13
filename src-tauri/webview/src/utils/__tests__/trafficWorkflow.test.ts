@@ -167,4 +167,38 @@ describe("assembleWorkflow", () => {
         expect(typeof wf.createdAt).toBe("number");
         expect(typeof wf.modifiedAt).toBe("number");
     });
+
+    it("substitutes tagged values with {{variable}} in consuming request bodies", () => {
+        const logs = [
+            mkLog({ id: "a", url: "http://x/login", requestBody: "<B><User>mark</User></B>",
+                    responseBody: "<R><SessionToken>TKN-999</SessionToken></R>" }),
+            mkLog({ id: "b", url: "http://x/next",
+                    requestBody: "<B><Auth>TKN-999</Auth></B>" }),
+        ];
+        const wf = assembleWorkflow({
+            name: "Chain",
+            logs,
+            valueSubstitutions: [
+                { value: "TKN-999", variable: "sessionToken" },
+                { value: "mark", variable: "user" },
+            ],
+        });
+        // Raw captured token is replaced by the {{variable}} placeholder in the
+        // consuming step, so runtime extractor substitution can populate it.
+        expect(wf.steps[1].requestBody).toContain("{{sessionToken}}");
+        expect(wf.steps[1].requestBody).not.toContain("TKN-999");
+        // Manual variable also substituted.
+        expect(wf.steps[0].requestBody).toContain("{{user}}");
+        expect(wf.steps[0].requestBody).not.toContain(">mark<");
+    });
+
+    it("pretty-prints each created requestBody with the app XML formatter", () => {
+        const logs = [
+            mkLog({ id: "a", requestBody: "<B><User>mark</User></B>" }),
+        ];
+        const wf = assembleWorkflow({ name: "Fmt", logs });
+        // formatXml with inline element values -> multi-line, indented.
+        expect(wf.steps[0].requestBody).toContain("\n");
+        expect(wf.steps[0].requestBody).toContain("  <User>mark</User>");
+    });
 });

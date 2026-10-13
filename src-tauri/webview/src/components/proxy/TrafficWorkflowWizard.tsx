@@ -270,6 +270,19 @@ export function TrafficWorkflowWizard({ logs, onDone, onCancel }: TrafficWorkflo
                 extractor,
             ];
         }
+        // Tagged captured values become {{variable}} placeholders in the step
+        // bodies/headers they're consumed in, so runtime extractors re-populate
+        // them. Manual variables (value → name) are substituted the same way.
+        // Chain picks substitute their source value (e.g. TKN-999) with the
+        // variable everywhere it appears in a consuming request.
+        const valueSubstitutions: Array<{ value: string; variable: string }> = [
+            ...chainPicks
+                .filter(p => p.value.trim())
+                .map(p => ({ value: p.value.trim(), variable: p.variable.trim() })),
+            ...initialVars
+                .filter(v => v.name.trim() && (v.value || '').trim())
+                .map(v => ({ value: v.value.trim(), variable: v.name.trim() })),
+        ];
         const wf = assembleWorkflow({
             name: name.trim(),
             logs,
@@ -279,6 +292,7 @@ export function TrafficWorkflowWizard({ logs, onDone, onCancel }: TrafficWorkflo
             ),
             extractors: extractorsByLog,
             stepNames,
+            valueSubstitutions,
         });
         onDone(wf);
     }

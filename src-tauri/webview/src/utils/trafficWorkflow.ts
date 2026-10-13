@@ -1,5 +1,6 @@
 import type { Workflow, WorkflowStep, WorkflowExtractor } from "@shared/models";
 import type { TrafficLog } from "../components/proxy/TrafficViewer";
+import { formatXml } from "@shared/utils/xmlFormatter";
 
 export interface BuildOpts {
     /** Log ids to exclude (user unchecked in the wizard). */
@@ -8,6 +9,9 @@ export interface BuildOpts {
     extractors?: Record<string, WorkflowExtractor[]>;
     /** Explicit per-step names (keyed by log id). */
     stepNames?: Record<string, string>;
+    /** Value → variable substitutions applied to request bodies/headers so a
+     *  tagged captured value is emitted as `{{variable}}` (runtime-extracted). */
+    valueSubstitutions?: Array<{ value: string; variable: string }>;
 }
 
 export function lastPathSegment(url: string): string {
@@ -18,23 +22,53 @@ export function lastPathSegment(url: string): string {
     return "request";
 }
 
+/**
+ * Substitute tagged `value` literals with `{{variable}}` placeholders in a
+ * request body/header, so a captured token the wizard tagged is emitted as a
+ * runtime-extractable reference instead of a hardcoded value. Sort by longest
+ * value first so overlapping tokens don't clobber each other.
+ */
+function applyValueSubstitutions(text: string, subs: BuildOpts["valueSubstitutions"]): string {
+    if (!subs?.length || !text) return text;
+    const ordered = [...subs].sort((a, b) => b.value.length - a.value.length);
+    let out = text;
+    for (const s of ordered) {
+        out = out.split(s.value).join(`{{${s.variable}}}`);
+    }
+    return out;
+}
+
+/** Pretty-print an XML body with the app's formatter (inline element values). */
+function formatRequestXml(body: string | undefined): string {
+    if (!body) return "";
+    return formatXml(body, false, true);
+}
+
 /** Convert captured traffic into ordered, self-contained request steps (chronological). */
 export function buildWorkflowStepsFromLogs(logs: TrafficLog[], opts: BuildOpts = {}): WorkflowStep[] {
-    const { disabledIds, extractors = {}, stepNames = {} } = opts;
+    const { disabledIds, extractors = {}, stepNames = {}, valueSubstitutions } = opts;
     const included = logs.filter(l => !disabledIds?.has(l.id));
-    return included.map((log, idx) => ({
-        id: log.id,
-        name: stepNames[log.id] || `${log.method} ${lastPathSegment(log.url)}`,
-        type: "request",
-        order: idx,
-        endpoint: log.url,
-        method: log.method,
-        httpMethod: log.method as WorkflowStep["httpMethod"],
-        requestBody: log.requestBody || "",
-        headers: log.requestHeaders || {},
-        contentType: log.requestHeaders?.["Content-Type"] || log.requestHeaders?.["content-type"],
-        extractors: extractors[log.id]?.length ? extractors[log.id] : undefined,
-    }));
+    return included.map((log, idx) => {
+        const rawBody = log.requestBody || "";
+        const substitutedBody = applyValueSubstitutions(rawBody, valueSubstitutions);
+        const headers: Record<string, string> = { ...(log.requestHeaders || {}) };
+        for (const key of Object.keys(headers)) {
+            headers[key] = applyValueSubstitutions(headers[key], valueSubstitutions);
+        }
+        return {
+            id: log.id,
+            name: stepNames[log.id] || `${log.method} ${lastPathSegment(log.url)}`,
+            type: "request",
+            order: idx,
+            endpoint: applyValueSubstitutions(log.url, valueSubstitutions),
+            method: log.method,
+            httpMethod: log.method as WorkflowStep["httpMethod"],
+            requestBody: formatRequestXml(substitutedBody),
+            headers,
+            contentType: headers["Content-Type"] || headers["content-type"],
+            extractors: extractors[log.id]?.length ? extractors[log.id] : undefined,
+        };
+    });
 }
 
 export interface ChainedValue {
@@ -250,16 +284,18 @@ export interface AssembleInput {
     initialVariables?: Record<string, string>;
     extractors?: Record<string, WorkflowExtractor[]>;
     stepNames?: Record<string, string>;
+    /** Value → variable substitutions applied to generated step bodies/headers. */
+    valueSubstitutions?: Array<{ value: string; variable: string }>;
 }
 
 /** Turn the wizard's final state into the `Workflow` object the save path expects. */
 export function assembleWorkflow(input: AssembleInput): Workflow {
-    const { name, description, logs, disabledIds, initialVariables = {}, extractors, stepNames } = input;
+    const { name, description, logs, disabledIds, initialVariables = {}, extractors, stepNames, valueSubstitutions } = input;
     return {
         id: crypto.randomUUID(),
         name,
         description,
-        steps: buildWorkflowStepsFromLogs(logs, { disabledIds, extractors, stepNames }),
+        steps: buildWorkflowStepsFromLogs(logs, { disabledIds, extractors, stepNames, valueSubstitutions }),
         variables: Object.keys(initialVariables).length ? initialVariables : undefined,
         createdAt: Date.now(),
         modifiedAt: Date.now(),
