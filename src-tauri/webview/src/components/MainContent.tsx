@@ -56,9 +56,6 @@ const TrafficWorkflowWizard = React.lazy(() =>
 const RulesAndMockPage = React.lazy(() =>
     import('./proxy/RulesAndMockPage').then(module => ({ default: module.RulesAndMockPage }))
 );
-const FileWatcherPage = React.lazy(() =>
-    import('./proxy/FileWatcherPage').then(module => ({ default: module.FileWatcherPage }))
-);
 const UnifiedExplorerView = React.lazy(() =>
     import('./explorer/UnifiedExplorerView').then(module => ({ default: module.UnifiedExplorerView }))
 );
@@ -1936,8 +1933,6 @@ const MainContent: React.FC = () => {
             isRunning: !!activeRunId,
             activeRunId,
             selectedSuiteId: selectedPerformanceSuiteId ?? undefined,
-            deleteConfirm,
-            setDeleteConfirm,
             onAddRequest: handleAddPerformanceRequestForUi,
             // Lets a workflow-backed suite expand in the sidebar to show its steps.
             workflows: config?.workflows || [],
@@ -2108,15 +2103,8 @@ const MainContent: React.FC = () => {
                     </Suspense>
                 </div>
             )}
-            {activeView === SidebarView.WATCHER && (
-                <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-                    <Suspense fallback={<div style={{ flex: 1, background: 'var(--apinox-editor-background)' }} />}>
-                        <FileWatcherPage />
-                    </Suspense>
-                </div>
-            )}
             {/* WorkspaceLayout using WorkspaceContext - no props needed */}
-            {activeView !== SidebarView.PROXY && activeView !== SidebarView.MOCK && activeView !== SidebarView.WATCHER && activeView !== SidebarView.NOTES && activeView !== SidebarView.UNIFIED_EXPLORER && activeView !== SidebarView.SETTINGS && (
+            {activeView !== SidebarView.PROXY && activeView !== SidebarView.MOCK && activeView !== SidebarView.NOTES && activeView !== SidebarView.UNIFIED_EXPLORER && activeView !== SidebarView.SETTINGS && (
                 <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                     <WorkspaceContext.Provider value={workspaceContextValue}>
                         <Suspense fallback={<div style={{ flex: 1, background: 'var(--apinox-editor-background)' }} />}>

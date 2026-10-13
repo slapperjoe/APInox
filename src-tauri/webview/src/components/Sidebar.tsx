@@ -173,7 +173,7 @@ export const Sidebar: React.FC = () => {
     // remaining sidebar children (Tests/Workflows/Performance/Unified) use
     // their own prop groups below.
 
-    const fullPanelView = activeView === SidebarView.PROXY || activeView === SidebarView.MOCK || activeView === SidebarView.WATCHER || activeView === SidebarView.SETTINGS;
+    const fullPanelView = activeView === SidebarView.PROXY || activeView === SidebarView.MOCK || activeView === SidebarView.SETTINGS;
     const hideContent = !sidebarExpanded || fullPanelView;
 
     return (

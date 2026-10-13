@@ -1,7 +1,7 @@
 /**
  * ProxyModal.tsx
  * Shared modal chrome for the proxy pages (Mock rules, Breakpoints,
- * Replace rules, File watcher). Replaces per-page hand-rolled fixed
+ * Replace rules). Replaces per-page hand-rolled fixed
  * overlays + panel divs.
  */
 import React, { ReactNode } from "react";

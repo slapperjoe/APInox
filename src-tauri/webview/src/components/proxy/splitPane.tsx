@@ -1,7 +1,7 @@
 /**
  * splitPane.tsx
  * Shared request/response split-pane primitives for the proxy views
- * (TrafficDetails / FileWatcherPage): pane chrome, divider, and the
+ * (TrafficDetails): pane chrome, divider, and the
  * drag-to-resize algorithm (natural size = line count * line height +
  * pane chrome overhead, clamped to the container).
  */

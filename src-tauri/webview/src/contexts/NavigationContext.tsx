@@ -61,7 +61,6 @@ export const NavigationProvider = ({ children }: { children: ReactNode }) => {
                             'history': SidebarView.UNIFIED_EXPLORER,
                             'proxy': SidebarView.PROXY,
                             'mock': SidebarView.MOCK,
-                            'watcher': SidebarView.WATCHER,
                             'tests': SidebarView.TESTS,
                             'performance': SidebarView.PERFORMANCE,
                             'settings': SidebarView.SETTINGS

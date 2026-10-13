@@ -33,9 +33,6 @@ const ProxyPanel = React.lazy(() =>
 const RulesAndMockPage = React.lazy(() =>
     import('./proxy/RulesAndMockPage').then(module => ({ default: module.RulesAndMockPage }))
 );
-const FileWatcherPage = React.lazy(() =>
-    import('./proxy/FileWatcherPage').then(module => ({ default: module.FileWatcherPage }))
-);
 
 /**
  * Get Content-Type header based on body type
@@ -945,17 +942,6 @@ export const WorkspaceLayout: React.FC = () => {
             <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                 <Suspense fallback={<div style={{ flex: 1, background: 'var(--apinox-editor-background)' }} />}>
                     <RulesAndMockPage />
-                </Suspense>
-            </div>
-        );
-    }
-
-    // WATCHER VIEW
-    if (activeView === SidebarView.WATCHER) {
-        return (
-            <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                <Suspense fallback={<div style={{ flex: 1, background: 'var(--apinox-editor-background)' }} />}>
-                    <FileWatcherPage />
                 </Suspense>
             </div>
         );

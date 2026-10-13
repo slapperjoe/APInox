@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use serde_json;
 use std::path::PathBuf;
-use crate::proxy_models::{MockRule, ReplaceRule, BreakpointRule, FileWatch};
+use crate::proxy_models::{MockRule, ReplaceRule, BreakpointRule};
 
 pub struct RulesStorage {
     config_dir: PathBuf,
@@ -42,16 +42,6 @@ impl RulesStorage {
         self.save_json("breakpoint-rules.json", rules)
     }
 
-    // --- File Watches ---
-
-    pub fn load_file_watches(&self) -> Vec<FileWatch> {
-        self.load_json("file-watches.json").unwrap_or_default()
-    }
-
-    pub fn save_file_watches(&self, watches: &[FileWatch]) -> Result<()> {
-        self.save_json("file-watches.json", watches)
-    }
-
     // --- Helpers ---
 
     fn load_json<T: serde::de::DeserializeOwned>(&self, filename: &str) -> Result<T> {
@@ -80,7 +70,7 @@ impl RulesStorage {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::proxy_models::{MockMatchCondition, MockRule, ReplaceRule, BreakpointRule, BreakpointCondition, FileWatch};
+    use crate::proxy_models::{MockMatchCondition, MockRule, ReplaceRule, BreakpointRule, BreakpointCondition};
     use tempfile::TempDir;
 
     fn temp_storage() -> (TempDir, RulesStorage) {
@@ -172,28 +162,6 @@ mod tests {
         assert_eq!(loaded[0].target, "request");
     }
 
-    // --- File watches round-trip ---
-
-    #[test]
-    fn file_watches_round_trip() {
-        let (_dir, storage) = temp_storage();
-        let watches = vec![FileWatch {
-            id: "w1".to_string(),
-            name: "Temp Watcher".to_string(),
-            enabled: true,
-            request_file: "/tmp/request.xml".to_string(),
-            response_file: "/tmp/response.xml".to_string(),
-            correlation_id_elements: vec!["CorrelationId".to_string()],
-        }];
-
-        storage.save_file_watches(&watches).unwrap();
-        let loaded = storage.load_file_watches();
-        assert_eq!(loaded.len(), 1);
-        assert_eq!(loaded[0].id, "w1");
-        assert_eq!(loaded[0].request_file, "/tmp/request.xml");
-        assert!(loaded[0].enabled);
-    }
-
     // --- Empty lists persist and load ---
 
     #[test]
@@ -212,7 +180,6 @@ mod tests {
         assert!(storage.load_mock_rules().is_empty());
         assert!(storage.load_replace_rules().is_empty());
         assert!(storage.load_breakpoint_rules().is_empty());
-        assert!(storage.load_file_watches().is_empty());
     }
 
     // --- Multiple rules all persisted ---

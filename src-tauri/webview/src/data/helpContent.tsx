@@ -1,4 +1,4 @@
-import { MonitorPlay, Eye, FileJson, Network, Radio, Layout, FlaskConical, Compass, FolderOpen, Settings, Cloud, Clock, ListChecks, Braces } from 'lucide-react';
+import { MonitorPlay, FileJson, Network, Radio, Layout, FlaskConical, Compass, FolderOpen, Settings, Cloud, Clock, ListChecks, Braces } from 'lucide-react';
 
 const normalizeContent = (text: string) => {
     const trimmed = text.replace(/^\n/, '').replace(/\n\s*$/, '');
@@ -619,30 +619,6 @@ const HELP_SECTIONS_RAW = [
     Utility views for monitoring traffic and reviewing request history.
     `,
         children: [
-            {
-                id: 'file-watcher',
-                label: 'File Watcher',
-                icon: Eye,
-                order: 1,
-                content: `
-    # File Watcher
-
-    The File Watcher monitors request/response files written by external tools (e.g., middleware, test harnesses, or the APIprox proxy CLI).
-
-    ## Setup
-
-    1. Configure the watch directory or file paths in **Settings → JSON (Advanced)** under \`fileWatcher.requestPath\` and \`fileWatcher.responsePath\`.
-    2. Click **Start Watcher** in the sidebar.
-
-    ## Functionality
-
-    - Real-time updates as files change on disk.
-    - Smart naming inferred from the SOAP body root element.
-    - Full-featured Monaco editor for inspecting request and response content.
-    - Editor settings (font size, word wrap, line numbers) persist per session.
-    - Export captured history to CSV.
-    `
-            },
             {
                 id: 'history',
                 label: 'History',

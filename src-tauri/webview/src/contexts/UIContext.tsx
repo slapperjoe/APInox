@@ -3,7 +3,7 @@
  * 
  * Centralizes UI configuration and layout state for the APInox application.
  * This context manages:
- * - Active sidebar view (projects, explorer, watcher, proxy)
+ * - Active sidebar view (projects, explorer, proxy)
  * - Layout preferences (vertical/horizontal, line numbers, etc.)
  * - Modal visibility states
  * - Settings and configuration

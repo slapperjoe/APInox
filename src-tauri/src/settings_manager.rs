@@ -13,8 +13,6 @@ pub struct ApinoxConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub network: Option<NetworkConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub file_watcher: Option<FileWatcherConfig>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub ui: Option<UiConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub active_environment: Option<String>,
@@ -38,6 +36,8 @@ pub struct ApinoxConfig {
     pub performance_schedules: Option<Vec<Value>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub workflows: Option<Vec<Value>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub workflow_run_history: Option<Vec<Value>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -49,15 +49,6 @@ pub struct NetworkConfig {
     pub proxy: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub strict_ssl: Option<bool>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FileWatcherConfig {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub request_path: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub response_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -117,13 +108,13 @@ impl Default for ApinoxConfig {
             globals: Some(Self::default_globals()),
             recent_workspaces: Some(Vec::new()),
             last_config_path: Some(String::new()),
-            file_watcher: None,
             last_proxy_target: None,
             open_projects: None,
             performance_suites: None,
             performance_history: None,
             performance_schedules: None,
             workflows: None,
+            workflow_run_history: None,
         }
     }
 }

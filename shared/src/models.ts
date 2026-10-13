@@ -602,7 +602,6 @@ export enum SidebarView {
     // the HISTORY member is gone — same as the deleted PROJECTS member above.
     PROXY = 'proxy',     // Proxy/traffic interceptor (from APIprox)
     MOCK = 'mock',       // Mock server (from APIprox)
-    WATCHER = 'watcher', // File watcher / SOAP pair viewer (from APIprox)
     NOTES = 'notes',     // Notes / markdown scratchpad
     SETTINGS = 'settings', // Settings (full work-area view, was a modal)
 }
@@ -1176,45 +1175,6 @@ export interface BreakpointResolution {
     modifiedHeaders?: Record<string, string>;
     modifiedBody?: string;
     modifiedStatusCode?: number;
-}
-
-export interface FileWatch {
-    id: string;
-    name: string;
-    enabled: boolean;
-    requestFile: string;
-    responseFile: string;
-    correlationIdElements: string[];
-}
-
-export interface SoapMessage {
-    id: string;
-    watchId: string;
-    timestamp: number;
-    /** 'request' | 'response' */
-    messageType: string;
-    filePath: string;
-    content: string;
-    operationName?: string;
-    correlationId?: string;
-}
-
-export interface SoapPair {
-    id: string;
-    watchId: string;
-    operationName?: string;
-    request?: SoapMessage;
-    response?: SoapMessage;
-    /** 'pending' | 'matched' */
-    status: string;
-    createdAt: number;
-    updatedAt: number;
-}
-
-export interface WatcherSoapEvent {
-    /** 'new_request' | 'pair_matched' | 'orphan_response' */
-    eventType: string;
-    pair: SoapPair;
 }
 
 export interface CertInfo {

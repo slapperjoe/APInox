@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { TrafficWorkflowWizard } from '../TrafficWorkflowWizard';
 
-// hermetic mocks (mirror file_watcher_panel_resize.test.tsx)
+// hermetic mocks (mirror proxy panel resize tests)
 vi.mock('@apinox/request-editor/monaco', () => ({
     MonacoRequestEditorWithToolbar: () => <textarea data-testid="mock-monaco" />,
     MonacoResponseViewer: () => <pre data-testid="mock-monaco-viewer" />,

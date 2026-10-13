@@ -37,7 +37,6 @@ pub mod proxy;
 pub mod mock;
 pub mod replacer;
 pub mod breakpoint;
-pub mod filewatcher;
 pub mod certificates;
 pub mod storage;
 pub mod commands;
@@ -73,7 +72,6 @@ pub struct ProxyAppState {
     pub mock: mock::state::SharedMockState,
     pub replacer: replacer::service::SharedReplacerService,
     pub breakpoint: breakpoint::service::SharedBreakpointService,
-    pub filewatcher: filewatcher::service::SharedFileWatcherService,
     pub storage: Arc<storage::rules::RulesStorage>,
     pub cert_manager: Arc<certificates::manager::CertManager>,
 }
@@ -419,7 +417,7 @@ fn init_window(app: &mut tauri::App) {
 }
 
 /// Initialise and register proxy/mock/cert Tauri state.
-async fn build_proxy_state(app: &tauri::AppHandle) -> Result<ProxyAppState, String> {
+async fn build_proxy_state(_app: &tauri::AppHandle) -> Result<ProxyAppState, String> {
     let config_dir = dirs_next::home_dir()
         .unwrap_or_else(|| std::path::PathBuf::from("."))
         .join(".apinox");
@@ -441,14 +439,6 @@ async fn build_proxy_state(app: &tauri::AppHandle) -> Result<ProxyAppState, Stri
         svc.set_rules(proxy_storage.load_breakpoint_rules());
     }
 
-    let filewatcher_svc = filewatcher::service::new_shared();
-    {
-        let mut svc = filewatcher_svc.lock().await;
-        for watch in proxy_storage.load_file_watches() {
-            svc.add_watch(watch);
-        }
-    }
-
     let mock_state = mock::state::new_shared();
     {
         let mut state = mock_state.lock().await;
@@ -462,24 +452,11 @@ async fn build_proxy_state(app: &tauri::AppHandle) -> Result<ProxyAppState, Stri
         }
     }
 
-    // Re-spawn file watchers for persisted watches.
-    {
-        let watches = filewatcher_svc.lock().await.get_watches();
-        for watch in watches {
-            commands::filewatcher_server::spawn_watcher(
-                watch,
-                filewatcher_svc.clone(),
-                app.clone(),
-            );
-        }
-    }
-
     let state = ProxyAppState {
         proxy: proxy::state::new_shared(),
         mock: mock_state,
         replacer: replacer_svc,
         breakpoint: breakpoint_svc,
-        filewatcher: filewatcher_svc,
         storage: proxy_storage,
         cert_manager,
     };
@@ -621,12 +598,6 @@ pub fn run() {
             commands::breakpoint_server::get_paused_traffic,
             commands::breakpoint_server::continue_breakpoint,
             commands::breakpoint_server::drop_breakpoint,
-            commands::filewatcher_server::get_file_watches,
-            commands::filewatcher_server::add_file_watch,
-            commands::filewatcher_server::update_file_watch,
-            commands::filewatcher_server::delete_file_watch,
-            commands::filewatcher_server::get_soap_pairs,
-            commands::filewatcher_server::clear_watcher_events,
             commands::certificates_server::get_ca_certificate_info,
             commands::certificates_server::generate_ca_certificate,
             commands::certificates_server::trust_ca_certificate,

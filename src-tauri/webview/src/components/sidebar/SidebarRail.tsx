@@ -6,7 +6,6 @@ import {
   FlaskConical,
   Workflow,
   Server,
-  Eye,
   Activity,
   FileText,
   Layers,
@@ -161,12 +160,6 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
         active={activeView === SidebarView.MOCK}
         onClick={() => onChangeView(SidebarView.MOCK)}
         title="Mock Server"
-      />
-      <NavItem
-        icon={Eye}
-        active={activeView === SidebarView.WATCHER}
-        onClick={() => onChangeView(SidebarView.WATCHER)}
-        title="File Watcher"
       />
 
       <div style={{ flex: 1 }}></div>
