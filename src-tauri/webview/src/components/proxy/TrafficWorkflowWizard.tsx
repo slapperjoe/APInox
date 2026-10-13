@@ -17,7 +17,7 @@ import { Workflow, WorkflowExtractor } from '@shared/models';
 import { formatXml } from '@shared/utils/xmlFormatter';
 import { tokens } from './tokens';
 import type { TrafficLog } from './TrafficViewer';
-import { lastPathSegment, detectChainedValues, assembleWorkflow } from '../../utils/trafficWorkflow';
+import { lastPathSegment, detectChainedValues, assembleWorkflow, chainSourceLine } from '../../utils/trafficWorkflow';
 
 interface TrafficWorkflowWizardProps {
     /** Captured traffic in chronological order (oldest first). */
@@ -453,6 +453,7 @@ export function TrafficWorkflowWizard({ logs, onDone, onCancel }: TrafficWorkflo
                     <div style={sectionLabel}>Captured &amp; reused values</div>
                     <div style={{ ...hint, marginBottom: 10 }}>
                         Accepted values are captured from the source step's response at run time and available as <span style={mono}>{'{{variable}}'}</span>.
+                        The raw source line each value would be captured from is shown so you can verify the suggestion.
                         Names default to the element tag and are editable.
                     </div>
                     {chained.length === 0 ? (
@@ -461,8 +462,12 @@ export function TrafficWorkflowWizard({ logs, onDone, onCancel }: TrafficWorkflo
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                             {chained.map((c, i) => {
                                 const pick = chainPicks.find(p => p.value === c.value);
-                                const srcName = stepNameFor(c.sourceLogId, logs.find(l => l.id === c.sourceLogId) ?? { method: '', url: '' } as TrafficLog);
+                                const srcLog = logs.find(l => l.id === c.sourceLogId);
+                                const srcName = stepNameFor(c.sourceLogId, srcLog ?? { method: '', url: '' } as TrafficLog);
                                 const useName = stepNameFor(c.consumedByLogId, logs.find(l => l.id === c.consumedByLogId) ?? { method: '', url: '' } as TrafficLog);
+                                // The raw line the runtime extractor will read —
+                                // shown so the user can verify the suggestion.
+                                const sourceLine = srcLog ? chainSourceLine(srcLog, c) : '';
                                 const from = c.source === 'header'
                                     ? `header ${c.sourceHeaderName ?? ''}`
                                     : c.sourceElementName ? `<${c.sourceElementName}>` : 'body';
@@ -496,6 +501,13 @@ export function TrafficWorkflowWizard({ logs, onDone, onCancel }: TrafficWorkflo
                                         />
                                         <span style={{ ...mono, fontSize: 'var(--apinox-fs-sm)', color: tokens.text.secondary, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                             {c.value}
+                                        </span>
+                                        <span
+                                            title={sourceLine || undefined}
+                                            data-testid={'wf-chain-line-' + i}
+                                            style={{ ...mono, fontSize: 'var(--apinox-fs-sm)', color: tokens.text.secondary, flex: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                        >
+                                            {sourceLine}
                                         </span>
                                         <span style={{ ...mono, fontSize: 'var(--apinox-fs-sm)', color: tokens.text.muted, flexShrink: 0 }}>
                                             from {srcName} ({from})

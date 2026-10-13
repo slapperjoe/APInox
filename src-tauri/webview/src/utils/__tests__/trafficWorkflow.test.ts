@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { buildWorkflowStepsFromLogs, detectChainedValues, assembleWorkflow, elementNameFor } from "../trafficWorkflow";
+import { buildWorkflowStepsFromLogs, detectChainedValues, assembleWorkflow, elementNameFor, chainSourceLine } from "../trafficWorkflow";
+import type { ChainedValue } from "../trafficWorkflow";
 import type { TrafficLog } from "../../components/proxy/TrafficViewer";
 
 function mkLog(partial: Partial<TrafficLog> & { id: string }): TrafficLog {
@@ -127,6 +128,38 @@ describe("detectChainedValues", () => {
         expect(found.map(c => c.value)).toEqual(["ORD-4829"]);
         expect(found[0].sourceXPath).toBe("//OrderId/text()");
     });
+
+    it("excludes attribute names and namespace-URI fragments (structure, not data)", () => {
+        // The response declares a namespace + a version attr whose tokens are
+        // reused verbatim in the later request's markup. None of them are
+        // element text values, so only the real data value should surface.
+        const logs = [
+            mkLog({ id: "a", url: "http://x/step1",
+                    requestBody: "<S1/>",
+                    responseBody: '<R xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" version="1.2"><OrderId>ORD-4829</OrderId></R>' }),
+            mkLog({ id: "b", url: "http://x/step2",
+                    requestBody: '<S2 xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" version="1.2"><OrderId>ORD-4829</OrderId></S2>' }),
+        ];
+        const found = detectChainedValues(logs);
+        // "soap", "envelope", "schemas", "xmlsoap", "version", "1" etc. are all
+        // structure (attr names / namespace URIs). Only the data value remains.
+        expect(found.map(c => c.value)).toEqual(["ORD-4829"]);
+    });
+
+    it("still suggests a real value that also appears as a shared attribute value", () => {
+        // A genuine data token that happens to equal an attribute value must
+        // still be suggested when it is element text in the response and is
+        // reused in a later request.
+        const logs = [
+            mkLog({ id: "a", url: "http://x/step1",
+                    requestBody: "<S1/>",
+                    responseBody: '<R ref="TKN-999"><OrderId>TKN-999</OrderId></R>' }),
+            mkLog({ id: "b", url: "http://x/step2",
+                    requestBody: "<S2><OrderId>TKN-999</OrderId></S2>" }),
+        ];
+        const found = detectChainedValues(logs);
+        expect(found.map(c => c.value)).toEqual(["TKN-999"]);
+    });
 });
 
 describe("elementNameFor", () => {
@@ -145,6 +178,46 @@ describe("elementNameFor", () => {
 
     it("returns null when the value is not found as an element text", () => {
         expect(elementNameFor("<R>only-here</R>", "absent")).toBeNull();
+    });
+});
+
+describe("chainSourceLine", () => {
+    it("returns the raw element holding the value for a body source", () => {
+        const log = mkLog({ id: "a", responseBody: "<R><SessionToken>TKN-999</SessionToken></R>" });
+        const c: ChainedValue = {
+            value: "TKN-999", variable: "sessionToken", sourceLogId: "a", source: "body",
+            sourceXPath: "//SessionToken/text()", sourceElementName: "SessionToken",
+            consumedByLogId: "b", consumedIn: "body",
+        };
+        expect(chainSourceLine(log, c)).toBe("<SessionToken>TKN-999</SessionToken>");
+    });
+
+    it("prefers the exact-match element over a containing one", () => {
+        const log = mkLog({ id: "a", responseBody: "<R><Note>see TKN-999 below</Note><SessionToken>TKN-999</SessionToken></R>" });
+        const c: ChainedValue = {
+            value: "TKN-999", variable: "sessionToken", sourceLogId: "a", source: "body",
+            sourceXPath: "//SessionToken/text()", sourceElementName: "SessionToken",
+            consumedByLogId: "b", consumedIn: "body",
+        };
+        expect(chainSourceLine(log, c)).toBe("<SessionToken>TKN-999</SessionToken>");
+    });
+
+    it("returns the full header line for a header source", () => {
+        const log = mkLog({ id: "a", responseHeaders: { "Set-Cookie": "t=TKN-999; Path=/" } });
+        const c: ChainedValue = {
+            value: "TKN-999", variable: "t", sourceLogId: "a", source: "header",
+            sourceHeaderName: "Set-Cookie", consumedByLogId: "b", consumedIn: "header",
+        };
+        expect(chainSourceLine(log, c)).toBe("Set-Cookie: t=TKN-999; Path=/");
+    });
+
+    it("falls back to the XPath reference when the element cannot be found", () => {
+        const log = mkLog({ id: "a", responseBody: "<R/>" });
+        const c: ChainedValue = {
+            value: "GONE-1", variable: "gone", sourceLogId: "a", source: "body",
+            sourceXPath: "//Gone/text()", consumedByLogId: "b", consumedIn: "body",
+        };
+        expect(chainSourceLine(log, c)).toBe("//Gone/text(): GONE-1");
     });
 });
 

@@ -101,8 +101,20 @@ const MIN_HEADER_VAL_LEN = 3;     // header values are whole candidates; allow s
 /** Token-ish value: alnum plus common token chars, no surrounding spaces. */
 const TOKEN_RE = /[A-Za-z0-9_\-]{6,128}/g;
 
-/** XML element name (for filtering structure out of body candidates). */
-const TAG_NAME_RE = /<([A-Za-z0-9_:\-]+)/g;
+/**
+ * Element text content only — the "data" parts of an XML document. Excludes
+ * element names, attribute names and attribute values (namespace URIs etc.),
+ * which are structure, not data, and must never be suggested as values.
+ * (Nested elements: text is collected from each element whose direct text
+ * content matches; text adjacent to child elements is not a candidate.)
+ */
+function elementTexts(xml: string): string[] {
+    const texts: string[] = [];
+    const re = /<([A-Za-z0-9_:\-]+)(?:\s[^<>]*)?>([^<]*)<\/\1>/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(xml)) !== null) texts.push(m[2]);
+    return texts;
+}
 
 function candidateTokens(text: string): string[] {
     if (!text) return [];
@@ -178,25 +190,41 @@ export function elementNameFor(xml: string, value: string): string | null {
 }
 
 /**
+ * The raw source line a suggestion is based on — what the runtime extractor
+ * will read at run time. Body: the element holding the value as raw XML (e.g.
+ * `<SessionToken>TKN-999</SessionToken>`); header: the full header line.
+ * Lets the wizard show the user exactly what each pick would capture.
+ */
+export function chainSourceLine(log: TrafficLog, c: ChainedValue): string {
+    if (c.source === "header") {
+        const name = c.sourceHeaderName ?? "";
+        const raw = name ? log.responseHeaders?.[name] : undefined;
+        return name ? `${name}: ${raw ?? c.value}` : c.value;
+    }
+    // Same match the detector used to find the value (exact text preferred,
+    // else the containing element), shown as raw XML.
+    const re = /<([A-Za-z0-9_:\-]+)([^>]*)>([^<]*)<\/\1>/g;
+    let m: RegExpExecArray | null;
+    let containsBest: string | null = null;
+    while ((m = re.exec(log.responseBody ?? "")) !== null) {
+        const text = m[3].trim();
+        if (text === c.value) return m[0];
+        if (text.includes(c.value) && !containsBest) containsBest = m[0];
+    }
+    if (containsBest) return containsBest;
+    return c.sourceXPath ? `${c.sourceXPath}: ${c.value}` : c.value;
+}
+
+/**
  * Detect values captured in an earlier response that are reused in a later request.
- * SOAP-only: body candidates come from XML element text; headers from header values.
+ * SOAP-only: body candidates come from XML element TEXT only (structure —
+ * element/attribute names and attribute values — is never a candidate);
+ * headers from header values.
  */
 export function detectChainedValues(logs: TrafficLog[]): ChainedValue[] {
     const ordered = logs;
     const seen = new Map<string, ChainedValue>();
     const usedNames = new Set<string>();
-
-    // Element names appearing in a response XML are structure shared across
-    // requests (e.g. <OrderId>), not data — exclude them from body candidates.
-    const tagNameSet = (xml: string): Set<string> => {
-        const s = new Set<string>();
-        let m: RegExpExecArray | null;
-        while ((m = TAG_NAME_RE.exec(xml)) !== null) {
-            const name = m[1];
-            if (name.length >= MIN_TOKEN_LEN) s.add(name);
-        }
-        return s;
-    };
 
     // Values already present in an entry's own request body/URL/headers are
     // boilerplate shared with other requests (SOAP namespace URIs, shared
@@ -220,10 +248,12 @@ export function detectChainedValues(logs: TrafficLog[]): ChainedValue[] {
         const produced: Array<{ value: string; source: 'body' | 'header'; header?: string; xpath?: string; elementName?: string }> = [];
 
         if (resLog.responseBody) {
-            const tags = tagNameSet(resLog.responseBody);
-            for (const v of Array.from(new Set(candidateTokens(resLog.responseBody)))) {
+            // Candidates come from element TEXT only, so element/attribute
+            // names and attribute values (namespace URIs etc.) — structure,
+            // not data — can never be suggested as captured values.
+            const valueText = elementTexts(resLog.responseBody).join("\n");
+            for (const v of Array.from(new Set(candidateTokens(valueText)))) {
                 if (boiler.has(v)) continue; // already in this request
-                if (tags.has(v)) continue;   // an element name here = structure
                 const elName = elementNameFor(resLog.responseBody, v);
                 produced.push({ value: v, source: "body", xpath: deriveXPath(resLog.responseBody, v) ?? undefined, elementName: elName ?? undefined });
             }

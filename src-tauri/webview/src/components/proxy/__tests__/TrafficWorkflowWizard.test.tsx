@@ -67,6 +67,17 @@ describe('TrafficWorkflowWizard', () => {
         expect(nameInput).toHaveValue('sessionToken');
     });
 
+    it('shows the raw source line each chain value would be captured from', () => {
+        render(<TrafficWorkflowWizard logs={twoLogs()} onDone={vi.fn()} onCancel={vi.fn()} />);
+        gotoStep2();
+        // The chain row shows the element (raw XML) the runtime extractor will
+        // read, so the user can verify the suggestion.
+        const line = screen.getByTestId('wf-chain-line-0');
+        expect(line).toHaveTextContent('<SessionToken>TKN-999</SessionToken>');
+        // Full text is available on hover (the column is ellipsized).
+        expect(line).toHaveAttribute('title', '<SessionToken>TKN-999</SessionToken>');
+    });
+
     it('lets the user rename a chain variable; the rename flows through to the extractor', () => {
         const onDone = vi.fn();
         render(<TrafficWorkflowWizard logs={twoLogs()} onDone={onDone} onCancel={vi.fn()} />);
