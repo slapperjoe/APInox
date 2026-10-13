@@ -93,6 +93,23 @@ describe("detectChainedValues", () => {
         // "200" is short / a status-ish token -> filtered.
         expect(detectChainedValues(logs)).toEqual([]);
     });
+
+    it("ignores boilerplate that was already in the source request (SOAP namespace URIs)", () => {
+        const env = (inner: string) =>
+            `<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body>${inner}</soap:Body></soap:Envelope>`;
+        const logs = [
+            mkLog({ id: "a", url: "http://x/login",
+                    requestBody: env("<Login/>"),
+                    responseBody: env("<R><SessionToken>TKN-999</SessionToken></R>") }),
+            mkLog({ id: "b", url: "http://x/next",
+                    requestBody: env("<D><Auth>TKN-999</Auth></D>") }),
+        ];
+        const found = detectChainedValues(logs);
+        // Only the real captured token survives; namespace-URI words shared by
+        // both envelopes are boilerplate, not captured response values.
+        expect(found.map(c => c.value)).toEqual(["TKN-999"]);
+        expect(found[0].sourceXPath).toBe("//SessionToken/text()");
+    });
 });
 
 describe("assembleWorkflow", () => {

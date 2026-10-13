@@ -127,13 +127,30 @@ export function detectChainedValues(logs: TrafficLog[]): ChainedValue[] {
     const seen = new Map<string, ChainedValue>();
     const usedNames = new Set<string>();
 
+    // Values already present in an entry's own request body/URL/headers are
+    // boilerplate shared with other requests (SOAP namespace URIs, shared
+    // client ids) — not values this entry's response captured. Track them
+    // per-entry so a value is only treated as "captured" if the response
+    // introduced it relative to that request.
+    const boilerplateFor = (log: TrafficLog): Set<string> => {
+        const s = new Set<string>();
+        for (const m of (log.requestBody ?? "").match(TOKEN_RE) ?? []) s.add(m);
+        for (const m of (log.url ?? "").match(TOKEN_RE) ?? []) s.add(m);
+        for (const [, val] of Object.entries(log.requestHeaders ?? {})) {
+            for (const m of String(val).match(TOKEN_RE) ?? []) s.add(m);
+        }
+        return s;
+    };
+
     for (let i = 0; i < ordered.length; i++) {
         const resLog = ordered[i];
+        const boiler = boilerplateFor(resLog);
         // Values this log PRODUCES (its response).
         const produced: Array<{ value: string; source: 'body' | 'header'; header?: string; xpath?: string }> = [];
 
         if (resLog.responseBody) {
             for (const v of Array.from(new Set(candidateTokens(resLog.responseBody)))) {
+                if (boiler.has(v)) continue; // already in this request
                 produced.push({ value: v, source: "body", xpath: deriveXPath(resLog.responseBody, v) ?? undefined });
             }
         }
