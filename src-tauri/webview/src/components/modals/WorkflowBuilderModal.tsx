@@ -7,7 +7,9 @@ import { PrimaryButton, SecondaryButton, IconButton, GhostButton } from '../comm
 import { SPACING_SM, SPACING_MD, SPACING_XS } from '../../styles/spacing';
 import { v4 as uuidv4 } from 'uuid';
 import { PickRequestModal, PickRequestItem } from './PickRequestModal';
-import { MonacoEditorWrapper } from '@apinox/request-editor/monaco';
+import { MonacoEditorWrapper, applyMonacoTheme } from '@apinox/request-editor/monaco';
+import * as monaco from 'monaco-editor';
+import { useTheme } from '@apinox/request-editor/core'; // package ThemeContext (mounted in the app tree)
 
 const WorkflowBuilderContent = styled.div`
     display: flex;
@@ -243,6 +245,16 @@ export const WorkflowBuilderModal: React.FC<WorkflowBuilderModalProps> = ({
     onSave,
     projects
 }) => {
+    // Monaco theme: define the skin theme from the live --apinox-editor-*
+    // CSS vars (same contract as MonacoRequestEditor / SettingsView). Just
+    // passing the theme id would setTheme() an undefined id once nothing
+    // else has defined it, and Monaco silently falls back to its default
+    // LIGHT theme.
+    const { theme } = useTheme();
+    const [editorTheme, setEditorTheme] = useState<string>('vs-dark');
+    useEffect(() => {
+        setEditorTheme(applyMonacoTheme(monaco, theme));
+    }, [theme]);
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [steps, setSteps] = useState<WorkflowStep[]>([]);
@@ -986,7 +998,7 @@ export const WorkflowBuilderModal: React.FC<WorkflowBuilderModalProps> = ({
                                             <MonacoEditorWrapper
                                                 height="300px"
                                                 language="javascript"
-                                                theme="vs-dark"
+                                                theme={editorTheme}
                                                 value={currentStep.script || ''}
                                                 onChange={(value) => updateCurrentStep({ script: value || '' })}
                                                 options={{
@@ -1053,7 +1065,7 @@ export const WorkflowBuilderModal: React.FC<WorkflowBuilderModalProps> = ({
                                                     <MonacoEditorWrapper
                                                         height="300px"
                                                         language="xml"
-                                                        theme="vs-dark"
+                                                        theme={editorTheme}
                                                         value={currentStep.requestBody || ''}
                                                         onChange={(value) => updateCurrentStep({ requestBody: value || '' })}
                                                         options={{
