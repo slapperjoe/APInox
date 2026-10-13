@@ -90,6 +90,34 @@ export async function invokeTauriCommand<T = any>(command: string, args?: Record
     }
 }
 
+/**
+ * Merge a resolved environment map under the workflow's own variables, for
+ * `{{var}}` substitution in workflow request steps.
+ *
+ * The Rust runner (run_workflow → substitute_variables) resolves placeholders
+ * in BOTH the step endpoint (URL) and the XML body against this merged map.
+ * Precedence (highest wins on name clash):
+ *   1. Workflow variables — manual wizard variables + extractor values from
+ *      prior steps, so chained values keep winning.
+ *   2. The `{{url}}` / `{{env}}` shortcuts — always the environment's
+ *      `endpoint_url` when defined (mirrors the single-request path's
+ *      WildcardProcessor, which overrides the environment's own `env` label
+ *      key with the endpoint URL).
+ *   3. Environment variables (Settings → Environments, active selection).
+ */
+export function mergeWorkflowEnvironmentVariables(
+    environmentVariables: Record<string, string>,
+    workflowVariables: Record<string, string> | null | undefined,
+): Record<string, string> {
+    const envBase = { ...environmentVariables };
+    const endpointUrl = environmentVariables?.endpoint_url;
+    if (typeof endpointUrl === "string" && endpointUrl) {
+        envBase.url = endpointUrl;
+        envBase.env = endpointUrl;
+    }
+    return { ...envBase, ...(workflowVariables || {}) };
+}
+
 // ============== Rust Backend Routing ==============
 
 const BODY_METHODS = new Set(['POST', 'PUT', 'PATCH']);
@@ -623,12 +651,42 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                 // { success, error, result } envelope) — a Rust Err rejects the invoke.
                 if (message.command === FrontendCommand.ExecuteWorkflow) {
                     const wf: any = message.workflow || {};
+                    // Resolve the active environment's variables (secrets
+                    // included, via get_resolved_environment — same source as
+                    // the single-request path) so {{var}} placeholders in
+                    // step URLs and XML bodies resolve at run time. The
+                    // message may carry either an environment name (from the
+                    // Environment selector) or an already-resolved flat map.
+                    let envVariables: Record<string, string> = {};
+                    if (message.environment && typeof message.environment === "object") {
+                        envVariables = message.environment as Record<string, string>;
+                    } else {
+                        let envName: string | undefined =
+                            typeof message.environment === "string" && message.environment.trim()
+                                ? message.environment.trim()
+                                : undefined;
+                        if (!envName) {
+                            try {
+                                const cfg: any = await tauriInvoke('get_settings', {});
+                                envName = cfg?.config?.activeEnvironment || cfg?.activeEnvironment;
+                            } catch {
+                                // non-fatal — run without environment variables
+                            }
+                        }
+                        if (envName) {
+                            try {
+                                envVariables = (await tauriInvoke('get_resolved_environment', { envName })) || {};
+                            } catch {
+                                // non-fatal — run without environment variables
+                            }
+                        }
+                    }
                     const result = await tauriInvoke('run_workflow', {
                         request: {
                             id: wf.id || '',
                             name: wf.name || '',
                             steps: wf.steps || [],
-                            variables: wf.variables || {},
+                            variables: mergeWorkflowEnvironmentVariables(envVariables, wf.variables),
                         }
                     });
                     return result || {};
