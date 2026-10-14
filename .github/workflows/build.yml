@@ -41,6 +41,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # Full history: the patch version is the commit count
+          # (git rev-list --count HEAD), which a shallow checkout cannot compute.
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -145,6 +149,9 @@ jobs:
 
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # Full history: the patch version is the commit count.
+          fetch-depth: 0
 
       - name: Update system and install build dependencies
         run: |
@@ -170,7 +177,6 @@ jobs:
 
       - name: Pre-build steps
         run: |
-          node scripts/version.js increment
           node scripts/version.js sync
           npm run build:packages
 

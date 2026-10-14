@@ -3,27 +3,28 @@
  * APInox Version Management
  *
  * Single script replacing increment-build.js, sync-version.js, bump.js,
- * tauri-build.js, and update_changelog.js. The build number lives inside
- * this file as BUILD_NO.
+ * tauri-build.js, and update_changelog.js.
+ *
+ * Version = major.minor.<commit count>: the patch component is the number
+ * of commits reachable from HEAD (`git rev-list --count HEAD`), so a given
+ * commit always yields the same version (reproducible builds) and no
+ * counter stored in the tree can drift out of sync. It advances as commits
+ * land — never rewrite published main history (force-push / rebase of main
+ * itself) or the count can go backwards and the updater will treat a new
+ * release as a downgrade.
  *
  * Commands:
- *   node scripts/version.js increment              — bump BUILD_NO in this file
- *   node scripts/version.js sync [x.y.z]          — write version to all config files
- *   node scripts/version.js set x.y.z             — force BUILD_NO + version (release reuse)
- *   node scripts/version.js bump <major|minor|patch> ["msg"] — bump + changelog + git commit + tag (patch preserved for major/minor)
- *   node scripts/version.js build [tauri-args...]  — increment + sync + build:packages + tauri build
+ *   node scripts/version.js sync [x.y.z]       — write version to all config files
+ *   node scripts/version.js set x.y.z          — force the exact version (release reuse)
+ *   node scripts/version.js bump <major|minor> ["msg"] — bump + changelog + git commit + tag
+ *   node scripts/version.js build [tauri-args...] — sync + build:packages + tauri build
  */
-
-// ─── BUILD NUMBER (auto-managed — do not edit manually) ───────────────────
-const BUILD_NO = 396;
-// ─────────────────────────────────────────────────────────────────────────
 
 const fs = require("fs");
 const path = require("path");
 const { execSync, spawnSync } = require("child_process");
 
 const root = path.join(__dirname, "..");
-const scriptFile = __filename;
 
 const configFiles = {
   rootPackage: path.join(root, "package.json"),
@@ -122,30 +123,37 @@ function tryFinalizeLinuxAppImage() {
   return true;
 }
 
-// ── increment ──────────────────────────────────────────────────────────────
-// Reads BUILD_NO from this file, increments it, and writes it back.
-// Must be invoked as a separate process so the next command sees the new value.
-function increment() {
-  const self = fs.readFileSync(scriptFile, "utf8");
-  const next = BUILD_NO + 1;
-  const re = /^(const BUILD_NO = )\d+(;)$/m;
-  if (!re.test(self)) {
-    console.error("❌ Could not locate BUILD_NO line in version.js");
+// ── commit count ───────────────────────────────────────────────────────────
+// The patch component: number of commits reachable from HEAD. Derived from
+// git so the version is a pure function of the commit and no counter stored
+// in the tree can drift. Requires a full (non-shallow) history — a shallow
+// clone would under-report the count.
+function commitCount() {
+  const shallow = execSync("git rev-parse --is-shallow-repository", {
+    cwd: root,
+  })
+    .toString()
+    .trim();
+  if (shallow === "true") {
+    console.error(
+      "❌ Shallow clone: the patch component (commit count) requires full history.\n" +
+        "   Run `git fetch --unshallow` (or clone with full depth) and retry.",
+    );
     process.exit(1);
   }
-  const updated = self.replace(re, (_m, p1, p2) => `${p1}${next}${p2}`);
-  fs.writeFileSync(scriptFile, updated, "utf8");
-  console.log(`✅ Build number incremented to: ${next}`);
+  return Number(
+    execSync("git rev-list --count HEAD", { cwd: root }).toString().trim(),
+  );
 }
 
 // ── sync ───────────────────────────────────────────────────────────────────
-// Composes major.minor.BUILD_NO and writes it to the files that are actually
-// consumed: root package.json (single source of truth — webview
+// Composes major.minor.<commit count> and writes it to the files that are
+// actually consumed: root package.json (single source of truth — webview
 // __APP_VERSION__ + Rust build.rs) and tauri.conf.json (bundle metadata).
 // Cargo.toml / Cargo.lock / webview package.json are no longer mirrored
 // (see the configFiles note above).
-// When called as a fresh Node.js process (after increment), BUILD_NO will
-// already hold the incremented value.
+// The patch component is derived from git (commitCount), so a given commit
+// always syncs to the same version — repeated runs are stable no-ops.
 function sync(forcedVersion) {
   let targetVersion = forcedVersion;
 
@@ -158,7 +166,7 @@ function sync(forcedVersion) {
       console.error("❌ Version in package.json must be at least major.minor");
       process.exit(1);
     }
-    targetVersion = `${parts[0]}.${parts[1]}.${BUILD_NO}`;
+    targetVersion = `${parts[0]}.${parts[1]}.${commitCount()}`;
   }
 
   const vParts = targetVersion.split(".");
@@ -191,10 +199,14 @@ function sync(forcedVersion) {
 }
 
 // ── set ────────────────────────────────────────────────────────────────────
-// Forces BUILD_NO and the synced version to an exact value. Used by the
-// release workflow when it adopts the version already baked into a build's
-// artifacts (the binaries are the ground truth — a rebuild is the only way to
-// produce a different number).
+// Forces the synced version to an exact value. Used by the release workflow
+// when it adopts the version already baked into a build's artifacts (the
+// binaries are the ground truth — a rebuild is the only way to produce a
+// different number). There is no stored counter to force anymore: the patch
+// was already determined by the commit count at build time, so adopting just
+// syncs the exact value into the config files. Idempotent: adopting a
+// version the tree is already at is a no-op, not an error (the release
+// workflow re-runs `set` against an already-synced tree).
 function setVersion(version) {
   if (!version || version.split(".").length !== 3) {
     console.error("Usage: node scripts/version.js set <major.minor.patch>");
@@ -207,21 +219,7 @@ function setVersion(version) {
     process.exit(1);
   }
 
-  const self = fs.readFileSync(scriptFile, "utf8");
-  const re = /^(const BUILD_NO = )\d+(;)$/m;
-  if (!re.test(self)) {
-    console.error("❌ Could not locate BUILD_NO line in version.js");
-    process.exit(1);
-  }
-
-  // Idempotent: adopting a version the tree is already at is a no-op, not an
-  // error (the release workflow re-runs `set` against an already-synced tree).
-  const updated = self.replace(re, (_m, p1, p2) => `${p1}${patch}${p2}`);
-  if (updated !== self) {
-    fs.writeFileSync(scriptFile, updated, "utf8");
-  }
-  console.log(`✅ Build number set to: ${patch}`);
-
+  console.log(`✅ Adopting version: ${version}`);
   sync(version);
 }
 
@@ -292,17 +290,23 @@ function updateChangelog(version, customMessage) {
 function bump(type, message) {
   if (!["major", "minor", "patch"].includes(type)) {
     console.error(
-      "Usage: node scripts/version.js bump <major|minor|patch> [commit_message]",
+      "Usage: node scripts/version.js bump <major|minor> [commit_message]",
     );
     process.exit(1);
   }
 
   if (type === "patch") {
-    // patch: increment BUILD_NO then sync in a fresh process each time
-    run("node scripts/version.js increment");
-    run("node scripts/version.js sync");
+    // The patch component is derived from the commit count, so it cannot be
+    // bumped in isolation — committing is what advances it.
+    console.error(
+      "❌ 'bump patch' no longer applies: the patch component is the commit count\n" +
+        "   (git rev-list --count HEAD). Commit your changes, then run `npm run sync-version`\n" +
+        "   (or just build — the version is derived automatically).",
+    );
+    process.exit(1);
   } else {
-    // major/minor: let npm handle the arithmetic, preserve the existing BUILD_NO as patch
+    // major/minor: let npm handle the arithmetic; the patch is re-derived
+    // from the commit count by sync
     run(`npm version ${type} --no-git-tag-version`);
     run("node scripts/version.js sync");
   }
@@ -322,7 +326,6 @@ function bump(type, message) {
 
 // ── build ──────────────────────────────────────────────────────────────────
 function build(extraArgs) {
-  run("node scripts/version.js increment");
   run("node scripts/version.js sync");
   run("npm run build:packages");
   run("node scripts/run-npm-install.js src-tauri/webview");
@@ -414,9 +417,6 @@ function build(extraArgs) {
 const [, , cmd, ...args] = process.argv;
 
 switch (cmd) {
-  case "increment":
-    increment();
-    break;
   case "sync":
     sync(args[0]);
     break;
@@ -432,7 +432,7 @@ switch (cmd) {
   default:
     console.error(`Unknown command: ${cmd}`);
     console.error(
-      "Commands: increment | sync [x.y.z] | bump <major|minor|patch> [msg] | build [tauri-args...]",
+      "Commands: sync [x.y.z] | set x.y.z | bump <major|minor> [msg] | build [tauri-args...]",
     );
     process.exit(1);
 }

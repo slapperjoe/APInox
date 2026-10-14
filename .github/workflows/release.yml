@@ -15,6 +15,10 @@ name: Release
 #   in sync. To change the minor (or major), bump it in package.json and push
 #   (or run `npm run version-bump-minor`) before building.
 #
+# The patch component is derived from the commit count (git rev-list
+# --count HEAD) by scripts/version.js at build time, so a given commit
+# always produces the same version.
+#
 # Including Arch Linux packages:
 #   Dispatch "Build Tauri App" with `build_arch = true` for the commit you want
 #   to release; the Arch packages ride along in that run and are picked up here
@@ -143,7 +147,7 @@ jobs:
             exit 1
           fi
 
-      - name: Adopt that version (BUILD_NO + synced config files)
+      - name: Adopt that version (synced config files)
         run: node scripts/version.js set "${{ steps.version.outputs.version }}"
 
       - name: Commit version bump
