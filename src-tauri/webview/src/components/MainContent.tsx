@@ -13,7 +13,8 @@ import type { AddToProjectDestination } from './proxy/AddToProjectDialog';
 import type { TrafficLog } from './proxy/TrafficViewer';
 import type { PickRequestItem } from './modals/PickRequestModal';
 import type { BulkImportResult } from './modals/BulkImportModal';
-import { ApiRequest, TestCase, TestStep, SidebarView, RequestHistoryEntry, WsdlDiff, ApiInterface, ApiOperation, Workflow, WorkflowStep, ApinoxProject, UnifiedProject, ScrapbookRequest } from '@shared/models';
+import { ApiRequest, TestCase, TestStep, TestSuite, SidebarView, RequestHistoryEntry, WsdlDiff, ApiInterface, ApiOperation, Workflow, WorkflowStep, ApinoxProject, UnifiedProject, ScrapbookRequest } from '@shared/models';
+import { lastPathSegment } from '../utils/trafficWorkflow';
 import { BackendCommand, FrontendCommand } from '@shared/messages';
 import { PERF_REQUEST_ID_PREFIX } from '../constants';
 import { useMessageHandler } from '../hooks/useMessageHandler';
@@ -67,6 +68,10 @@ const AddToProjectDialog = React.lazy(() =>
 );
 const AddToTestCaseModal = React.lazy(() =>
     import('./modals/AddToTestCaseModal').then(module => ({ default: module.AddToTestCaseModal }))
+);
+
+const CreateTestCaseFromTrafficModal = React.lazy(() =>
+    import('./modals/CreateTestCaseFromTrafficModal').then(module => ({ default: module.CreateTestCaseFromTrafficModal }))
 );
 const ConfirmationModal = React.lazy(() =>
     import('./modals/ConfirmationModal').then(module => ({ default: module.ConfirmationModal }))
@@ -1387,6 +1392,14 @@ const MainContent: React.FC = () => {
     // Modals (remaining)
     const [confirmationModal, setConfirmationModal] = useState<ConfirmationState | null>(null);
     const [addToTestCaseModal, setAddToTestCaseModal] = React.useState<{ open: boolean, request: ApiRequest | null }>({ open: false, request: null });
+    // Create Test Case from Traffic: the full capture (capture order) plus the
+    // right-clicked log as the pre-selected anchor.
+    const [createTestCaseFromTraffic, setCreateTestCaseFromTraffic] = React.useState<{ open: boolean; logs: TrafficLog[]; anchorLogId: string | null }>({ open: false, logs: [], anchorLogId: null });
+
+    const handleCreateTestCaseFromTraffic = React.useCallback((anchorLog: TrafficLog, allLogs: TrafficLog[]) => {
+        if (allLogs.length === 0) return;
+        setCreateTestCaseFromTraffic({ open: true, logs: allLogs, anchorLogId: anchorLog.id });
+    }, []);
     const [pickRequestModal, setPickRequestModal] = React.useState<{ open: boolean, mode: 'testcase' | 'performance', caseId: string | null, suiteId: string | null }>({ open: false, mode: 'testcase', caseId: null, suiteId: null });
     const [importToPerformanceModal, setImportToPerformanceModal] = React.useState<{ open: boolean, suiteId: string | null }>({ open: false, suiteId: null });
     const [exportWorkspaceModal, setExportWorkspaceModal] = React.useState(false);
@@ -2127,6 +2140,7 @@ const MainContent: React.FC = () => {
                                 onNavigateTo={(view) => handleSetActiveViewWrapper(view as SidebarView)}
                                 onAddToApinoxProject={handleAddTrafficToProject}
                                 onCreateWorkflowFromTraffic={handleCreateWorkflowFromTraffic}
+                                onCreateTestCaseFromTraffic={handleCreateTestCaseFromTraffic}
                             />
                         </div>
                         {trafficWizard && (
@@ -2316,6 +2330,79 @@ const MainContent: React.FC = () => {
                                     }));
                                 }
                                 setAddToTestCaseModal({ open: false, request: null });
+                            }}
+                        />
+                    </Suspense>
+                )
+            }
+
+            {/* Create Test Case from Traffic */}
+            {
+                createTestCaseFromTraffic.open && createTestCaseFromTraffic.logs.length > 0 && (
+                    <Suspense fallback={null}>
+                        <CreateTestCaseFromTrafficModal
+                            logs={createTestCaseFromTraffic.logs}
+                            anchorLogId={createTestCaseFromTraffic.anchorLogId}
+                            testSuites={globalTestSuites}
+                            onClose={() => setCreateTestCaseFromTraffic({ open: false, logs: [], anchorLogId: null })}
+                            onCreate={(result) => {
+                                // Raw, identical calls: copy each selected log's method,
+                                // URL, headers and body verbatim into a standalone
+                                // request step — no variables, no substitutions.
+                                const steps: TestStep[] = result.selectedLogs.map((log) => {
+                                    const headers = { ...(log.requestHeaders || {}) };
+                                    let rawCT = '';
+                                    for (const [k, v] of Object.entries(headers)) {
+                                        if (k.toLowerCase() === 'content-type') { rawCT = v; break; }
+                                    }
+                                    // SOAP content-type → raw-XML SOAP route; everything
+                                    // else → raw REST route (method + URL + headers +
+                                    // body pass through untouched).
+                                    const requestType = rawCT.toLowerCase().includes('soap') ? 'soap' as const : 'rest' as const;
+                                    const apiRequest: ApiRequest = {
+                                        id: crypto.randomUUID(),
+                                        name: `${log.method} ${lastPathSegment(log.url)}`,
+                                        request: log.requestBody || '',
+                                        endpoint: log.url,
+                                        method: log.method || 'POST',
+                                        contentType: rawCT,
+                                        headers,
+                                        requestType,
+                                        // bodyType intentionally omitted: the runner
+                                        // passes the captured headers through untouched
+                                        // (no content-type "fixing"), keeping the replay
+                                        // identical to the capture.
+                                        dirty: true,
+                                    };
+                                    return {
+                                        id: crypto.randomUUID(),
+                                        name: apiRequest.name,
+                                        type: 'request' as const,
+                                        config: { request: apiRequest, requestId: undefined },
+                                    };
+                                });
+                                const newCase: TestCase = {
+                                    id: crypto.randomUUID(),
+                                    name: result.caseName,
+                                    expanded: true,
+                                    steps,
+                                };
+                                // C (global suites): the new case lands in the
+                                // GLOBAL suite store (no owning project).
+                                if (result.suite.kind === 'new') {
+                                    addGlobalSuite({
+                                        id: crypto.randomUUID(),
+                                        name: result.suite.name,
+                                        testCases: [newCase],
+                                        expanded: true,
+                                    });
+                                } else {
+                                    const suite = findGlobalSuite(result.suite.suiteId);
+                                    if (suite) {
+                                        updateGlobalSuite({ ...suite, testCases: [...(suite.testCases || []), newCase] });
+                                    }
+                                }
+                                setCreateTestCaseFromTraffic({ open: false, logs: [], anchorLogId: null });
                             }}
                         />
                     </Suspense>

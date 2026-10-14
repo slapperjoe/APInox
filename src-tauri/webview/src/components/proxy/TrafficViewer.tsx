@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { SPACING_MD, SPACING_SM, SPACING_XL } from "../../styles/spacing";
 import { SidebarContextMenu, CtxMenuSection, CtxMenuItem, VenetianMask, Pencil, Pause, Download, Copy, FileText, RefreshCw, Globe, Link, Code, File, Workflow } from '../sidebar/shared/SidebarContextMenu';
+import { TestTube } from 'lucide-react';
 import { tokens } from './tokens';
 import { methodBg, statusStyle } from './trafficStyles';
 import { formatXml } from '@shared/utils/xmlFormatter';
@@ -236,13 +237,15 @@ interface TrafficViewerProps {
   onAddToApinoxProject?: (log: TrafficLog) => void;
   /** Called when user right-clicks → "Create Workflow from Traffic" (opens the wizard with the full capture). */
   onCreateWorkflowFromTraffic?: () => void;
+  /** Called when user right-clicks → "Create Test Case from Traffic". */
+  onCreateTestCaseFromTraffic?: (log: TrafficLog) => void;
   /** Called when user right-clicks → "Replay Request" (re-send identically) */
   onReplayRequest?: (log: TrafficLog) => void;
   /** Called when user clicks "Clear Traffic" */
   onClearTraffic?: () => void;
 }
 
-export function TrafficViewer({ logs, onSelectLog, ignoreRules = [], onAddIgnoreRule, onCreateMockRule, onCreateReplaceRule, onCreateBreakpoint, onAddToApinoxProject, onCreateWorkflowFromTraffic, onReplayRequest, onClearTraffic }: TrafficViewerProps) {
+export function TrafficViewer({ logs, onSelectLog, ignoreRules = [], onAddIgnoreRule, onCreateMockRule, onCreateReplaceRule, onCreateBreakpoint, onAddToApinoxProject, onCreateWorkflowFromTraffic, onCreateTestCaseFromTraffic, onReplayRequest, onClearTraffic }: TrafficViewerProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [urlFilter, setUrlFilter] = useState('');
   const [methodFilter, setMethodFilter] = useState('ALL');
@@ -453,6 +456,15 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = [], onAddIgnore
           sections.push({
             title: 'Workflow',
             items: [{ icon: Workflow, label: 'Create Workflow from Traffic', sub: 'Build a workflow from this capture', onClick: () => { onCreateWorkflowFromTraffic!(); setCtxMenu(null); } }],
+          });
+        }
+
+        // Test Case — save a set of captured requests as a raw test case
+        // (pick the suite and which requests; identical calls, no variables).
+        if (onCreateTestCaseFromTraffic) {
+          sections.push({
+            title: 'Test Case',
+            items: [{ icon: TestTube, label: 'Create Test Case from Traffic', sub: 'Save this capture as a test case', onClick: () => { onCreateTestCaseFromTraffic!(log); setCtxMenu(null); } }],
           });
         }
 
