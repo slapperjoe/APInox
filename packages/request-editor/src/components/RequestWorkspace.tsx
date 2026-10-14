@@ -259,6 +259,25 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
     onUpdateRequest({ ...request, contentType });
   }, [request, onUpdateRequest]);
 
+  // Keep the `contentType` field in lockstep with the Content-Type header
+  // when the headers tab edits it (only possible while the row is unlocked —
+  // see HeadersPanel). Without the sync the field stays stale: the toolbar
+  // dropdown shows the old value and the runner's content-type fixing
+  // (useRequestExecution.fixContentType) would overwrite the edited header
+  // at run time.
+  const handleTabUpdate = useCallback((updated: RequestWorkspaceProps['request']) => {
+    const ctOf = (h?: Record<string, string>) => {
+      if (!h) return undefined;
+      const entry = Object.entries(h).find(([k]) => k.toLowerCase() === 'content-type');
+      return entry ? entry[1] : undefined;
+    };
+    if (ctOf(updated.headers) !== ctOf(request.headers)) {
+      onUpdateRequest({ ...updated, contentType: ctOf(updated.headers) ?? '' });
+      return;
+    }
+    onUpdateRequest(updated);
+  }, [request, onUpdateRequest]);
+
   // Handle variable insertion
   const handleInsertVariable = useCallback((varName: string) => {
     if (urlInputRef.current) {
@@ -568,7 +587,7 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
               <RequestTabContent
                 activeTab={activeTab}
                 request={request}
-                onUpdateRequest={onUpdateRequest}
+                onUpdateRequest={handleTabUpdate}
                 readOnly={readOnly}
                 contentTypeLocked={contentTypeLocked}
                 availableVariables={availableVariables}

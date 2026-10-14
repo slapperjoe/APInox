@@ -247,7 +247,13 @@ export interface ApiRequest {
     graphqlConfig?: GraphQLConfig;
     /** Marks the request as read-only (e.g. within Samples project) */
     readOnly?: boolean;
-    
+
+    /** Set when the request was created from captured proxy traffic (the
+     * watcher): the Content-Type header row is unlocked in the editor so the
+     * exact captured string — which may carry extra parameters such as the
+     * SOAP 1.2 `action="urn:..."` — stays editable and verbatim. */
+    fromTraffic?: boolean;
+
     // Form Data & Binary Body Support
     /** Form fields for multipart/form-data or application/x-www-form-urlencoded */
     formFields?: FormField[];

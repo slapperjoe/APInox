@@ -136,6 +136,18 @@ export const RequestTypeSelector: React.FC<RequestTypeSelectorProps> = ({
         { value: 'application/xml', label: 'application/xml' }
     ];
 
+    // A captured/edited Content-Type (e.g. `application/soap+xml;
+    // charset=utf-8; action="urn:..."`) is not one of the fixed options.
+    // Include the current value as its own option so the <select> can render
+    // it instead of silently falling back to the first option and so picking
+    // it again keeps the string verbatim.
+    const contentTypeOptions = soapContentTypes.some(ct => ct.value === contentType)
+        ? soapContentTypes
+        : [
+            ...(contentType ? [{ value: contentType, label: contentType }] : []),
+            ...soapContentTypes
+        ];
+
     // Default body type based on request type
     const effectiveBodyType = bodyType || (
         requestType === 'graphql' ? 'graphql' :
@@ -186,7 +198,7 @@ export const RequestTypeSelector: React.FC<RequestTypeSelectorProps> = ({
                     title="Content Type"
                 >
                     <option value="">SOAP default {soapDefaultLabel ? `(${soapDefaultLabel})` : ''}{interfaceOverride ? ` — override: ${interfaceOverride}` : ''}</option>
-                    {soapContentTypes.map(ct => (
+                    {contentTypeOptions.map(ct => (
                         <option key={ct.value} value={ct.value}>{ct.label}</option>
                     ))}
                 </Select>

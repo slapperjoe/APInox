@@ -14,7 +14,7 @@ import type { TrafficLog } from './proxy/TrafficViewer';
 import type { PickRequestItem } from './modals/PickRequestModal';
 import type { BulkImportResult } from './modals/BulkImportModal';
 import { ApiRequest, TestCase, TestStep, TestSuite, SidebarView, RequestHistoryEntry, WsdlDiff, ApiInterface, ApiOperation, Workflow, WorkflowStep, ApinoxProject, UnifiedProject, ScrapbookRequest } from '@shared/models';
-import { lastPathSegment } from '../utils/trafficWorkflow';
+import { buildTrafficTestSteps } from '../utils/trafficTestCase';
 import { BackendCommand, FrontendCommand } from '@shared/messages';
 import { PERF_REQUEST_ID_PREFIX } from '../constants';
 import { useMessageHandler } from '../hooks/useMessageHandler';
@@ -2346,41 +2346,14 @@ const MainContent: React.FC = () => {
                             testSuites={globalTestSuites}
                             onClose={() => setCreateTestCaseFromTraffic({ open: false, logs: [], anchorLogId: null })}
                             onCreate={(result) => {
-                                // Raw, identical calls: copy each selected log's method,
-                                // URL, headers and body verbatim into a standalone
-                                // request step — no variables, no substitutions.
-                                const steps: TestStep[] = result.selectedLogs.map((log) => {
-                                    const headers = { ...(log.requestHeaders || {}) };
-                                    let rawCT = '';
-                                    for (const [k, v] of Object.entries(headers)) {
-                                        if (k.toLowerCase() === 'content-type') { rawCT = v; break; }
-                                    }
-                                    // SOAP content-type → raw-XML SOAP route; everything
-                                    // else → raw REST route (method + URL + headers +
-                                    // body pass through untouched).
-                                    const requestType = rawCT.toLowerCase().includes('soap') ? 'soap' as const : 'rest' as const;
-                                    const apiRequest: ApiRequest = {
-                                        id: crypto.randomUUID(),
-                                        name: `${log.method} ${lastPathSegment(log.url)}`,
-                                        request: log.requestBody || '',
-                                        endpoint: log.url,
-                                        method: log.method || 'POST',
-                                        contentType: rawCT,
-                                        headers,
-                                        requestType,
-                                        // bodyType intentionally omitted: the runner
-                                        // passes the captured headers through untouched
-                                        // (no content-type "fixing"), keeping the replay
-                                        // identical to the capture.
-                                        dirty: true,
-                                    };
-                                    return {
-                                        id: crypto.randomUUID(),
-                                        name: apiRequest.name,
-                                        type: 'request' as const,
-                                        config: { request: apiRequest, requestId: undefined },
-                                    };
-                                });
+                                // Raw, identical calls: copy each selected log's
+                                // method, URL, headers and body verbatim into a
+                                // standalone request step — no variables, no
+                                // substitutions. The Content-Type string is
+                                // copied exactly (including any `action=...`
+                                // parameter) and the step is tagged fromTraffic
+                                // so its Content-Type header row is unlocked.
+                                const steps = buildTrafficTestSteps(result.selectedLogs);
                                 const newCase: TestCase = {
                                     id: crypto.randomUUID(),
                                     name: result.caseName,
