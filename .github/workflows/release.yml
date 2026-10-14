@@ -1,303 +1,158 @@
 name: Release
 
 # Manually triggered from the GitHub Actions UI.
-# Reads the version from tauri.conf.json and creates a GitHub Release
-# with platform installers (Windows NSIS, macOS DMG, Linux DEB/RPM/Arch) attached.
+#
+# This workflow does NOT rebuild the app. It reuses the installers produced by
+# the most recent successful "Build Tauri App" run (build.yml) on main *for the
+# exact commit that is currently HEAD*, and publishes them as a GitHub Release.
+#
+# Why the version is adopted from the artifacts:
+#   The app version is compiled into the binaries (Rust reads it via build.rs ->
+#   APINOX_APP_VERSION, the webview bakes __APP_VERSION__) and into the bundle
+#   filenames at build time. A *different* number can therefore only be obtained
+#   by building again — so the push build is the ground truth and this workflow
+#   adopts the number it already produced, then commits it back to keep the tree
+#   in sync. To change the minor (or major), bump it in package.json and push
+#   (or run `npm run version-bump-minor`) before building.
+#
+# Including Arch Linux packages:
+#   Dispatch "Build Tauri App" with `build_arch = true` for the commit you want
+#   to release; the Arch packages ride along in that run and are picked up here
+#   automatically.
 #
 # Requirements:
-#   - The most recent CI build on main must have passed (enforced below).
-#   - TAURI_SIGNING_PRIVATE_KEY / _PASSWORD secrets must be set.
+#   - A successful build.yml run on main whose headSha == HEAD.
 #   - GITHUB_TOKEN is provided automatically by GitHub Actions.
 on:
-  workflow_dispatch:
-    inputs:
-      build_arch:
-        description: 'Build Arch Linux'
-        type: boolean
-        default: false
+  workflow_dispatch: {}
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  # ── Gate: verify CI + bump version ─────────────────────────────────────────
-  check-ci:
+  publish:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    outputs:
-      version: ${{ steps.version.outputs.version }}
+      actions: read
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
+          fetch-tags: true
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Verify latest CI build on main passed
+      - name: Locate the successful build for HEAD
+        id: build
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          STATUS=$(gh run list \
+          set -euo pipefail
+          HEAD_SHA=$(git rev-parse HEAD)
+          echo "HEAD: $HEAD_SHA"
+
+          RUNS=$(gh run list \
             --workflow build.yml \
             --branch main \
-            --limit 1 \
-            --json conclusion \
-            --jq '.[0].conclusion')
-          echo "Latest CI conclusion: $STATUS"
-          if [ "$STATUS" != "success" ]; then
-            echo "❌ Latest CI build did not pass (status: $STATUS). Fix it before releasing."
+            --status success \
+            --limit 50 \
+            --json databaseId,headSha)
+
+          RUN_ID=$(echo "$RUNS" \
+            | jq -r --arg sha "$HEAD_SHA" '[.[] | select(.headSha == $sha)] | .[0].databaseId // empty')
+
+          if [ -z "$RUN_ID" ]; then
+            echo "❌ No successful Build Tauri App run found for HEAD ($HEAD_SHA)."
+            echo "   Wait for the build of the current commit to finish, then retry."
             exit 1
           fi
 
-      - name: Bump version (minor = run number)
-        run: |
-          node scripts/version.js increment
-          MAJOR=$(jq -r '.version' package.json | cut -d. -f1)
-          RUN_NO=$GITHUB_RUN_NUMBER
-          BUILD_NO=$(grep 'const BUILD_NO' scripts/version.js | grep -oE '[0-9]+' | head -1)
-          VERSION="${MAJOR}.${RUN_NO}.${BUILD_NO}"
-          node scripts/version.js sync "$VERSION"
+          echo "Using build run: $RUN_ID"
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
 
-      - name: Read bumped version
+      - name: Download artifacts from that build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          rm -rf artifacts
+          gh run download "${{ steps.build.outputs.run_id }}" --dir artifacts
+          echo "Downloaded:"
+          find artifacts -type f | sort
+
+      - name: Determine version from the built installers
         id: version
         run: |
-          VERSION=$(jq -r '.version' src-tauri/tauri.conf.json)
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Releasing v$VERSION"
+          set -euo pipefail
+          # Installer filenames carry the version baked in at build time,
+          # e.g. apinox-v0.56.394-linux-x64.deb / -archlinux-x86_64.pkg.tar.zst
+          VERSIONS=$(find artifacts -type f \
+            | grep -oE 'apinox-v[0-9]+\.[0-9]+\.[0-9]+' \
+            | sed 's/^apinox-v//' \
+            | sort -u)
 
-      - name: Commit and push version bump
+          if [ -z "$VERSIONS" ]; then
+            echo "❌ Could not determine a version from the downloaded artifacts."
+            exit 1
+          fi
+
+          COUNT=$(echo "$VERSIONS" | wc -l | tr -d ' ')
+          if [ "$COUNT" != "1" ]; then
+            echo "❌ Artifacts contain more than one version:"
+            echo "$VERSIONS"
+            exit 1
+          fi
+
+          echo "Version from artifacts: $VERSIONS"
+          echo "version=$VERSIONS" >> "$GITHUB_OUTPUT"
+
+      - name: Refuse if the tag already exists
         run: |
+          set -euo pipefail
+          TAG="v${{ steps.version.outputs.version }}"
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "❌ Tag $TAG already exists. Bump the version and push a new build before releasing."
+            exit 1
+          fi
+
+      - name: Adopt that version (BUILD_NO + synced config files)
+        run: node scripts/version.js set "${{ steps.version.outputs.version }}"
+
+      - name: Commit version bump
+        run: |
+          set -euo pipefail
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add scripts/version.js package.json src-tauri/tauri.conf.json
-          git commit -m "chore: bump version to v${{ steps.version.outputs.version }}"
-          git push origin HEAD:main
-
-  # ── Desktop builds (Windows + macOS + Linux) ───────────────────────────────
-  build:
-    needs: check-ci
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: macos-latest
-            target: aarch64-apple-darwin
-            artifact_name: macos-arm64
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            artifact_name: windows-x64
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            artifact_name: linux-x64
-
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          ref: main
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
-
-      - name: Ensure cargo is available (macOS)
-        if: runner.os == 'macOS'
-        run: rustup default stable && cargo --version
-
-      - name: Cache Rust build
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: '. -> target'
-
-      - name: Install dependencies (Linux only)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf rpm
-
-      - name: Install dependencies (macOS only)
-        if: runner.os == 'macOS'
-        run: brew install create-dmg
-
-      - name: Install root dependencies
-        run: npm ci
-
-      - name: Install webview dependencies
-        run: cd src-tauri/webview && npm ci
-
-      - name: Install request-editor dependencies
-        run: cd packages/request-editor && npm install && npm run build
-
-      - name: Build Tauri app
-        run: npx tauri build --target ${{ matrix.target }}
-        env:
-          # Increase Node heap on macOS to prevent intermittent Vite/Node OOM during beforeBuildCommand
-          NODE_OPTIONS: ${{ matrix.os == 'macos-latest' && '--max-old-space-size=8192' || '' }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-
-      - name: Stage Windows portable exe
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $src = "target/${{ matrix.target }}/release/APInox.exe"
-          $dst = "target/${{ matrix.target }}/release/APInox-portable.exe"
-          if (Test-Path $src) { Copy-Item $src $dst }
-
-      - name: Stage desktop release assets
-        shell: pwsh
-        run: |
-          $version = "${{ needs.check-ci.outputs.version }}"
-          $releaseDir = "target/${{ matrix.target }}/release/release-assets"
-          New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
-
-          if ("${{ runner.os }}" -eq "Windows") {
-            $setup = Get-ChildItem -Path "target/${{ matrix.target }}/release/bundle/nsis/*.exe" -File -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($setup) {
-              Copy-Item $setup.FullName (Join-Path $releaseDir "apinox-v$version-windows_x64-setup.exe")
-            }
-
-            $portable = "target/${{ matrix.target }}/release/APInox-portable.exe"
-            if (Test-Path $portable) {
-              Copy-Item $portable (Join-Path $releaseDir "APInox-portable.exe")
-            }
-          }
-
-          if ("${{ runner.os }}" -eq "macOS") {
-            $dmg = Get-ChildItem -Path "target/${{ matrix.target }}/release/bundle/dmg/*.dmg" -File -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($dmg) {
-              Copy-Item $dmg.FullName (Join-Path $releaseDir "apinox-v$version-macos-arm64.dmg")
-            }
-          }
-
-          if ("${{ runner.os }}" -eq "Linux") {
-            $deb = Get-ChildItem -Path "target/${{ matrix.target }}/release/bundle/deb/*.deb" -File -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($deb) {
-              Copy-Item $deb.FullName (Join-Path $releaseDir "apinox-v$version-linux-x64.deb")
-            }
-
-            $rpm = Get-ChildItem -Path "target/${{ matrix.target }}/release/bundle/rpm/*.rpm" -File -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($rpm) {
-              Copy-Item $rpm.FullName (Join-Path $releaseDir "apinox-v$version-linux-x64.rpm")
-            }
-          }
-
-      - name: Upload release artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-${{ matrix.artifact_name }}
-          path: target/${{ matrix.target }}/release/release-assets/*
-          if-no-files-found: ignore
-
-  # ── Arch Linux build ────────────────────────────────────────────────────────
-  build-arch:
-    if: inputs.build_arch == true
-    needs: check-ci
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    container:
-      image: archlinux/archlinux:latest
-
-    steps:
-      - name: Install git
-        run: pacman -Sy --noconfirm git
-
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          ref: main
-
-      - name: Update system and install build dependencies
-        run: |
-          pacman -Syu --noconfirm
-          pacman -S --noconfirm \
-            base-devel nodejs npm rust \
-            webkit2gtk-4.1 gtk3 libsoup3 openssl patchelf dpkg rpm-tools
-
-      - name: Install root dependencies
-        run: npm ci
-
-      - name: Install webview dependencies
-        run: cd src-tauri/webview && npm ci
-
-      - name: Install request-editor dependencies
-        run: cd packages/request-editor && npm install && npm run build
-
-      - name: Build Tauri app
-        run: npx tauri build
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-
-      - name: Package for Arch Linux
-        run: |
-          useradd -m builder
-          WORKDIR="$(pwd)"
-          chown -R builder:builder "$WORKDIR"
-          cat > /tmp/run-makepkg.sh << SCRIPT
-          #!/bin/bash
-          set -e
-          cd "$WORKDIR"
-          mkdir -p target/release/bundle/arch
-          PKGDEST="$WORKDIR/target/release/bundle/arch" makepkg -f --nodeps --nocheck --noconfirm
-          SCRIPT
-          chmod +x /tmp/run-makepkg.sh
-          su -s /bin/bash builder /tmp/run-makepkg.sh
-          node scripts/gen-arch-install.js
-
-      - name: Upload Arch artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-linux-archlinux-x86_64
-          path: target/release/bundle/arch/release-assets/*
-          if-no-files-found: ignore
-
-  # ── Publish GitHub Release ──────────────────────────────────────────────────
-  publish:
-    needs: [check-ci, build, build-arch]
-    if: |
-      always() &&
-      needs.build.result == 'success' &&
-      (needs.build-arch.result == 'success' || needs.build-arch.result == 'skipped')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-          ref: main
+          if git diff --cached --quiet; then
+            echo "Nothing to commit — tree already at v${{ steps.version.outputs.version }}."
+          else
+            # [skip ci] is load-bearing: without it this push would trigger
+            # another full build.yml run for a commit nobody will ever release.
+            git commit -m "chore: bump version to v${{ steps.version.outputs.version }} [skip ci]"
+            git push origin HEAD:main
+          fi
 
       - name: Create and push version tag
         run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag "v${{ needs.check-ci.outputs.version }}"
-          git push origin "v${{ needs.check-ci.outputs.version }}"
+          set -euo pipefail
+          TAG="v${{ steps.version.outputs.version }}"
+          git tag "$TAG"
+          git push origin "$TAG"
 
       - name: Build changelog from commits since last tag
         id: changelog
         run: |
-          VERSION="v${{ needs.check-ci.outputs.version }}"
-          PREV_TAG=$(git tag --sort=-version:refname | grep -v "^${VERSION}$" | head -1)
+          set -euo pipefail
+          VERSION="v${{ steps.version.outputs.version }}"
+          PREV_TAG=$(git tag --sort=-version:refname | grep -v "^${VERSION}$" | head -1 || true)
           if [ -z "$PREV_TAG" ]; then
             RANGE="HEAD"
           else
@@ -312,7 +167,7 @@ jobs:
             || true)
 
           if [ -z "$COMMITS" ]; then
-            COMMITS="_No user-facing changes since ${PREV_TAG}._"
+            COMMITS="_No user-facing changes since ${PREV_TAG:-the beginning}._"
           fi
 
           {
@@ -327,22 +182,15 @@ jobs:
 
           cat changelog.md
 
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          merge-multiple: true
-
-      - name: List artifacts
-        run: find artifacts -type f | sort
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ needs.check-ci.outputs.version }}
-          name: APInox v${{ needs.check-ci.outputs.version }}
+          tag_name: v${{ steps.version.outputs.version }}
+          name: APInox v${{ steps.version.outputs.version }}
           draft: true
           body_path: changelog.md
-          files: artifacts/**
+          files: |
+            artifacts/**/apinox-v*
+            artifacts/**/APInox-portable.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -9,6 +9,7 @@
  * Commands:
  *   node scripts/version.js increment              — bump BUILD_NO in this file
  *   node scripts/version.js sync [x.y.z]          — write version to all config files
+ *   node scripts/version.js set x.y.z             — force BUILD_NO + version (release reuse)
  *   node scripts/version.js bump <major|minor|patch> ["msg"] — bump + changelog + git commit + tag (patch preserved for major/minor)
  *   node scripts/version.js build [tauri-args...]  — increment + sync + build:packages + tauri build
  */
@@ -127,11 +128,12 @@ function tryFinalizeLinuxAppImage() {
 function increment() {
   const self = fs.readFileSync(scriptFile, "utf8");
   const next = BUILD_NO + 1;
-  const updated = self.replace(/^(const BUILD_NO = )\d+(;)$/m, `$1${next}$2`);
-  if (updated === self) {
+  const re = /^(const BUILD_NO = )\d+(;)$/m;
+  if (!re.test(self)) {
     console.error("❌ Could not locate BUILD_NO line in version.js");
     process.exit(1);
   }
+  const updated = self.replace(re, (_m, p1, p2) => `${p1}${next}${p2}`);
   fs.writeFileSync(scriptFile, updated, "utf8");
   console.log(`✅ Build number incremented to: ${next}`);
 }
@@ -186,6 +188,41 @@ function sync(forcedVersion) {
   console.log(`✓ src-tauri/tauri.conf.json → ${targetVersion}`);
 
   console.log("\n✅ Version sync complete.\n");
+}
+
+// ── set ────────────────────────────────────────────────────────────────────
+// Forces BUILD_NO and the synced version to an exact value. Used by the
+// release workflow when it adopts the version already baked into a build's
+// artifacts (the binaries are the ground truth — a rebuild is the only way to
+// produce a different number).
+function setVersion(version) {
+  if (!version || version.split(".").length !== 3) {
+    console.error("Usage: node scripts/version.js set <major.minor.patch>");
+    process.exit(1);
+  }
+
+  const patch = Number(version.split(".")[2]);
+  if (!Number.isInteger(patch) || patch < 0) {
+    console.error(`❌ Patch component must be a non-negative integer: ${version}`);
+    process.exit(1);
+  }
+
+  const self = fs.readFileSync(scriptFile, "utf8");
+  const re = /^(const BUILD_NO = )\d+(;)$/m;
+  if (!re.test(self)) {
+    console.error("❌ Could not locate BUILD_NO line in version.js");
+    process.exit(1);
+  }
+
+  // Idempotent: adopting a version the tree is already at is a no-op, not an
+  // error (the release workflow re-runs `set` against an already-synced tree).
+  const updated = self.replace(re, (_m, p1, p2) => `${p1}${patch}${p2}`);
+  if (updated !== self) {
+    fs.writeFileSync(scriptFile, updated, "utf8");
+  }
+  console.log(`✅ Build number set to: ${patch}`);
+
+  sync(version);
 }
 
 // ── changelog ─────────────────────────────────────────────────────────────
@@ -382,6 +419,9 @@ switch (cmd) {
     break;
   case "sync":
     sync(args[0]);
+    break;
+  case "set":
+    setVersion(args[0]);
     break;
   case "bump":
     bump(args[0], args.slice(1).join(" "));
