@@ -58,20 +58,41 @@ jobs:
           HEAD_SHA=$(git rev-parse HEAD)
           echo "HEAD: $HEAD_SHA"
 
-          RUNS=$(gh run list \
-            --workflow build.yml \
-            --branch main \
-            --status success \
-            --limit 50 \
-            --json databaseId,headSha)
+          # Ask for THIS commit's build runs specifically. The previous version
+          # listed only successful runs, which hides the two cases that
+          # actually happen: the build for this commit is still running, or no
+          # run was ever created for it (two pushes seconds apart leave the tip
+          # unbuilt — GitHub only created runs for the first one). Both used to
+          # report "wait for the build to finish", which was wrong and sent you
+          # looking for a build that either wasn't there yet or never would be.
+          RUNS=$(gh api --paginate \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/build.yml/runs?head_sha=${HEAD_SHA}&per_page=100" \
+            --jq '[.workflow_runs[] | {id, status, conclusion, url}]')
 
-          RUN_ID=$(echo "$RUNS" \
-            | jq -r --arg sha "$HEAD_SHA" '[.[] | select(.headSha == $sha)] | .[0].databaseId // empty')
+          echo "Build runs for this commit: $RUNS"
+
+          RUN_ID=$(echo "$RUNS" | jq -r '[.[] | select(.conclusion == "success")] | .[0].id // empty')
 
           if [ -z "$RUN_ID" ]; then
-            echo "❌ No successful Build Tauri App run found for HEAD ($HEAD_SHA)."
-            echo "   Wait for the build of the current commit to finish, then retry."
-            exit 1
+            PENDING=$(echo "$RUNS" \
+              | jq -r '[.[] | select(.status == "queued" or .status == "in_progress" or .status == "pending")] | .[0].id // empty')
+
+            if [ -n "$PENDING" ]; then
+              echo "⏳ The build for this commit is still running (run $PENDING) — waiting for it (max 30 min)."
+              timeout 1800 gh run watch "$PENDING" --exit-status --interval 20 || true
+              RUN_ID=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${PENDING}" \
+                --jq 'select(.conclusion == "success") | .id // empty')
+              if [ -z "$RUN_ID" ]; then
+                echo "❌ The build for this commit did not succeed:"
+                echo "   $(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${PENDING}" --jq .html_url)"
+                exit 1
+              fi
+            else
+              echo "❌ No Build Tauri App run exists for this commit ($HEAD_SHA) — nothing will change by waiting."
+              echo "   Start one, let it finish, then re-run this workflow:"
+              echo "       gh workflow run build.yml --ref main"
+              exit 1
+            fi
           fi
 
           echo "Using build run: $RUN_ID"
