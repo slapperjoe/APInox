@@ -40,7 +40,12 @@ raw-window-handle = "0.6"
 tauri-plugin-decorum = "1.1.1"
 
 # HTTP client and networking
-reqwest = { version = "0.12", default-features = false, features = ["json", "cookies", "gzip", "rustls-tls", "charset", "http2", "stream"] }
+# `rustls-tls` alone trusts ONLY the bundled Mozilla (webpki) roots, so any
+# server using a private/enterprise CA (e.g. government internal services)
+# fails the handshake while curl/browsers — which use the OS trust store —
+# succeed. `rustls-tls-native-roots` adds the system store on top of webpki
+# (reqwest unions both), so such servers verify normally.
+reqwest = { version = "0.12", default-features = false, features = ["json", "cookies", "gzip", "rustls-tls", "rustls-tls-native-roots", "charset", "http2", "stream"] }
 tokio = { version = "1.45", features = ["full"] }
 
 # HTTP proxy/mock server (from APIprox integration)
