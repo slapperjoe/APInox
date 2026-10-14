@@ -15,6 +15,16 @@ pub struct FrontendTestCase {
     pub steps: Vec<FrontendTestStep>,
 }
 
+/// Matches TypeScript `TestSuite`
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FrontendTestSuite {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub test_cases: Vec<FrontendTestCase>,
+}
+
 /// Matches TypeScript `TestStep`
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

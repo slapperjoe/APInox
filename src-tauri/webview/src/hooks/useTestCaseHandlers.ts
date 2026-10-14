@@ -123,6 +123,39 @@ export function useTestCaseHandlers({
         [selectedTestCase, selectedStep, updateTestCase, setSelectedStep, setSelectedRequest]
     );
 
+    /** Poll a streaming test run (case or suite) until it completes,
+        re-emitting every batch as TestRunnerUpdate events so the rail's
+        live step status + the case view update in place. */
+    const pollTestRunUpdates = useCallback(async (runId: string) => {
+        let fromIndex = 0;
+        let done = false;
+        while (!done) {
+            const batch = await bridge.sendMessageAsync<{ updates: any[]; nextIndex: number; done: boolean; error?: string }>({
+                command: FrontendCommand.GetTestRunUpdates,
+                runId,
+                fromIndex
+            });
+
+            if (batch?.updates?.length) {
+                batch.updates.forEach(update => {
+                    bridge.emit({ command: BackendCommand.TestRunnerUpdate, update });
+                });
+                fromIndex = batch.nextIndex;
+            }
+
+            if (batch?.error) {
+                console.error('[TestRun] Test run error:', batch.error);
+                done = true;
+                break;
+            }
+
+            done = !!batch?.done;
+            if (!done) {
+                await new Promise(resolve => setTimeout(resolve, 250));
+            }
+        }
+    }, []);
+
     const handleSelectTestSuite = useCallback((suiteId: string) => {
         const suite = findSuiteById(suiteId);
         if (suite) {
@@ -345,34 +378,7 @@ export function useTestCaseHandlers({
 
                     const runId = start?.runId;
                     if (!runId) return;
-
-                    let fromIndex = 0;
-                    let done = false;
-                    while (!done) {
-                        const batch = await bridge.sendMessageAsync<{ updates: any[]; nextIndex: number; done: boolean; error?: string }>({
-                            command: FrontendCommand.GetTestRunUpdates,
-                            runId,
-                            fromIndex
-                        });
-
-                        if (batch?.updates?.length) {
-                            batch.updates.forEach(update => {
-                                bridge.emit({ command: BackendCommand.TestRunnerUpdate, update });
-                            });
-                            fromIndex = batch.nextIndex;
-                        }
-
-                        if (batch?.error) {
-                            console.error('[handleRunTestCaseWrapper] Test run error:', batch.error);
-                            done = true;
-                            break;
-                        }
-
-                        done = !!batch?.done;
-                        if (!done) {
-                            await new Promise(resolve => setTimeout(resolve, 250));
-                        }
-                    }
+                    await pollTestRunUpdates(runId);
                 } catch (error) {
                     console.error('[handleRunTestCaseWrapper] Tauri run failed', error);
                 }
@@ -386,17 +392,56 @@ export function useTestCaseHandlers({
             testCase,
             fallbackEndpoint: testCase.steps[0]?.config?.request?.endpoint || ''
         });
-    }, [findCaseById, withEmbeddedWorkflows, config]);
+    }, [findCaseById, withEmbeddedWorkflows, config, pollTestRunUpdates]);
 
     const handleRunTestSuiteWrapper = useCallback((suiteId: string) => {
         console.log('[handleRunTestSuiteWrapper] CALLED with suiteId:', suiteId);
 
-        // Send runTestSuite command to backend (matches RunTestSuiteCommand in TestCommands.ts)
+        // Find the suite in the global suite store — the run payload must
+        // carry the full suite (the Rust run_test_suite command deserializes
+        // it); sending only the suiteId leaves the backend with nothing.
+        const suite = findSuiteById(suiteId);
+        if (!suite) {
+            console.error('[App] Could not find Test Suite for ID', suiteId);
+            return;
+        }
+
+        // Send runTestSuite command to backend
+        console.log('[handleRunTestSuiteWrapper] Sending runTestSuite to backend for:', suite.name);
+
+        if (isTauri()) {
+            (async () => {
+                try {
+                    const start = await bridge.sendMessageAsync<{ runId: string }>({
+                        command: FrontendCommand.RunTestSuite,
+                        suiteId,
+                        // Embed referenced workflow steps in EVERY case so the
+                        // backend executes a self-contained copy (no config
+                        // save-race), same as single-case runs.
+                        testSuite: {
+                            ...suite,
+                            testCases: (suite.testCases || []).map(tc =>
+                                withEmbeddedWorkflows(tc, config?.workflows || []))
+                        },
+                        stream: true
+                    });
+
+                    const runId = start?.runId;
+                    if (!runId) return;
+                    await pollTestRunUpdates(runId);
+                } catch (error) {
+                    console.error('[handleRunTestSuiteWrapper] Tauri run failed', error);
+                }
+            })();
+            return;
+        }
+
         bridge.sendMessage({
-            command: 'runTestSuite',
-            suiteId
+            command: FrontendCommand.RunTestSuite,
+            suiteId,
+            testSuite: suite
         });
-    }, []);
+    }, [findSuiteById, withEmbeddedWorkflows, config, pollTestRunUpdates]);
 
     const handleSaveExtractor = useCallback((data: { xpath: string, value: string, source: 'body' | 'header', variableName: string, defaultValue?: string, editingId?: string, type?: 'XPath' | 'JSONPath' | 'Regex' | 'Header' }) => {
         if (!selectedTestCase || !selectedStep) {
