@@ -78,6 +78,27 @@ const ExtractorRemove = styled.button`
     }
 `;
 
+const HeaderRow = styled.div`
+    display: flex;
+    align-items: center;
+    gap: ${SPACING_SM};
+`;
+
+const HeaderRemove = styled.button`
+    background: transparent;
+    border: none;
+    color: var(--apinox-errorForeground);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    padding: 4px;
+    flex-shrink: 0;
+
+    &:hover {
+        opacity: 0.8;
+    }
+`;
+
 interface RequestStepEditorProps {
     step: WorkflowStep;
     onUpdate: (step: WorkflowStep) => void;
@@ -99,23 +120,43 @@ export const RequestStepEditor: React.FC<RequestStepEditorProps> = ({ step, onUp
     const [requestBody, setRequestBody] = useState(step.requestBody || '');
     const [endpoint, setEndpoint] = useState(step.endpoint || '');
     const [extractors, setExtractors] = useState<WorkflowExtractor[]>(step.extractors || []);
+    const [headerRows, setHeaderRows] = useState<Array<{ name: string; value: string }>>(() =>
+        Object.entries(step.headers ?? {}).map(([n, v]) => ({ name: n, value: String(v ?? '') })),
+    );
 
     useEffect(() => {
         setName(step.name);
         setRequestBody(step.requestBody || '');
         setEndpoint(step.endpoint || '');
         setExtractors(step.extractors || []);
+        setHeaderRows(Object.entries(step.headers ?? {}).map(([n, v]) => ({ name: n, value: String(v ?? '') })));
     }, [step]);
 
     const handleSave = () => {
+        // Header rows → Record (blank names dropped; duplicate names: last wins).
+        const headers: Record<string, string> = {};
+        for (const row of headerRows) {
+            if (!row.name.trim()) continue;
+            headers[row.name] = row.value;
+        }
         onUpdate({
             ...step,
             name,
             requestBody,
             endpoint,
+            headers: Object.keys(headers).length ? headers : undefined,
             extractors: extractors.length ? extractors : undefined,
         });
     };
+
+    const updateHeaderRow = (index: number, updates: Partial<{ name: string; value: string }>) =>
+        setHeaderRows(rs => rs.map((r, i) => i === index ? { ...r, ...updates } : r));
+
+    const removeHeaderRow = (index: number) =>
+        setHeaderRows(rs => rs.filter((_, i) => i !== index));
+
+    const addHeaderRow = () =>
+        setHeaderRows(rs => [...rs, { name: '', value: '' }]);
 
     const updateExtractor = (index: number, updates: Partial<WorkflowExtractor>) =>
         setExtractors(xs => xs.map((x, i) => i === index ? { ...x, ...updates } : x));
@@ -180,6 +221,50 @@ export const RequestStepEditor: React.FC<RequestStepEditorProps> = ({ step, onUp
                         <StepInfoBox $inline>
                             Leave empty to use the default endpoint from the WSDL
                         </StepInfoBox>
+                    </StepSection>
+
+                    <StepSection>
+                        <StepLabel>Request Headers</StepLabel>
+                        <StepInfoBox>
+                            Extra HTTP headers sent with this step (captured headers are pre-filled when the
+                            step came from proxy traffic). Use {`{{variableName}}`} in values — they're resolved at run time.
+                        </StepInfoBox>
+                        {headerRows.length === 0 ? (
+                            <div style={{ fontSize: 'var(--apinox-fs-sm)', opacity: 0.6, padding: `${SPACING_SM} 0` }}>
+                                No headers. Add one to send a custom header with this request.
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: SPACING_SM }}>
+                                {headerRows.map((row, i) => (
+                                    <HeaderRow key={i}>
+                                        <StepInput
+                                            type="text"
+                                            placeholder="Header name"
+                                            aria-label={`Header name ${i}`}
+                                            value={row.name}
+                                            onChange={(e) => updateHeaderRow(i, { name: e.target.value })}
+                                        />
+                                        <StepInput
+                                            type="text"
+                                            placeholder={`value (e.g. {{token}} or text/xml)`}
+                                            aria-label={`Header value ${i}`}
+                                            value={row.value}
+                                            onChange={(e) => updateHeaderRow(i, { value: e.target.value })}
+                                        />
+                                        <HeaderRemove
+                                            aria-label={`Remove header ${i}`}
+                                            title="Remove header"
+                                            onClick={() => removeHeaderRow(i)}
+                                        >
+                                            <X size={14} />
+                                        </HeaderRemove>
+                                    </HeaderRow>
+                                ))}
+                            </div>
+                        )}
+                        <SecondaryButton onClick={addHeaderRow} style={{ marginTop: SPACING_SM, alignSelf: 'flex-start' }}>
+                            <Plus size={14} /> Add Header
+                        </SecondaryButton>
                     </StepSection>
 
                     <StepFlexSection>

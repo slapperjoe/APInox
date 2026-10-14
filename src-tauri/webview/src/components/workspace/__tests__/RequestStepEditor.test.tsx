@@ -165,5 +165,83 @@ describe('RequestStepEditor', () => {
         expect(updated.extractors[0].variable).toBe('orderId');
         expect(updated.extractors[0].type).toBe('xpath');
     });
+
+    // ── headers (populated from proxy traffic by the wizard) ──
+    it('renders every captured header with its name and value', () => {
+        render(<RequestStepEditor
+            step={step({
+                endpoint: 'http://x/login', requestBody: '<Login/>',
+                headers: { SOAPAction: '"urn:svc#Login"', 'Content-Type': 'text/xml' },
+            })}
+            onUpdate={vi.fn()}
+        />);
+        expect(screen.getByText('Request Headers')).toBeInTheDocument();
+        expect(screen.getByDisplayValue('"urn:svc#Login"')).toBeInTheDocument();
+        expect(screen.getByDisplayValue('text/xml')).toBeInTheDocument();
+        expect(screen.getByDisplayValue('SOAPAction')).toBeInTheDocument();
+    });
+
+    it('shows an empty state when the step has no headers', () => {
+        render(<RequestStepEditor
+            step={step({ endpoint: 'http://x/login', requestBody: '<Login/>' })}
+            onUpdate={vi.fn()}
+        />);
+        expect(screen.getByText(/no headers/i)).toBeInTheDocument();
+    });
+
+    it('edits a header value and persists via onUpdate on save', () => {
+        const onUpdate = vi.fn();
+        render(<RequestStepEditor
+            step={step({
+                endpoint: 'http://x/login', requestBody: '<Login/>',
+                headers: { SOAPAction: '"urn:svc#Login"', Authorization: 'Bearer TKN-999' },
+            })}
+            onUpdate={onUpdate}
+        />);
+        fireEvent.change(screen.getByDisplayValue('Bearer TKN-999'), { target: { value: 'Bearer {{sessionToken}}' } });
+        fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
+        const updated = onUpdate.mock.calls[0][0];
+        expect(updated.headers).toEqual({
+            SOAPAction: '"urn:svc#Login"',
+            Authorization: 'Bearer {{sessionToken}}',
+        });
+    });
+
+    it('adds a new header and persists via onUpdate on save', () => {
+        const onUpdate = vi.fn();
+        render(<RequestStepEditor
+            step={step({ endpoint: 'http://x/login', requestBody: '<Login/>', headers: { 'Content-Type': 'text/xml' } })}
+            onUpdate={onUpdate}
+        />);
+        fireEvent.click(screen.getByRole('button', { name: /add header/i }));
+        // Fill the new blank row (last of the rows).
+        const names = screen.getAllByPlaceholderText('Header name');
+        const values = screen.getAllByPlaceholderText(/^value \(e\.g\./);
+        fireEvent.change(names[names.length - 1], { target: { value: 'X-Extra' } });
+        fireEvent.change(values[values.length - 1], { target: { value: '1' } });
+        fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
+        const updated = onUpdate.mock.calls[0][0];
+        expect(updated.headers).toEqual({ 'Content-Type': 'text/xml', 'X-Extra': '1' });
+    });
+
+    it('removes a header and persists via onUpdate on save; all removed → headers omitted', () => {
+        const onUpdate = vi.fn();
+        render(<RequestStepEditor
+            step={step({
+                endpoint: 'http://x/login', requestBody: '<Login/>',
+                headers: { SOAPAction: '"urn:svc#Login"', 'Content-Type': 'text/xml' },
+            })}
+            onUpdate={onUpdate}
+        />);
+        fireEvent.click(screen.getAllByRole('button', { name: /remove header/i })[0]);
+        fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
+        const updated = onUpdate.mock.calls[0][0];
+        expect(updated.headers).toEqual({ 'Content-Type': 'text/xml' });
+        // Remove the last one too → headers key omitted.
+        fireEvent.click(screen.getByRole('button', { name: /remove header/i }));
+        fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
+        const updated2 = onUpdate.mock.calls[1][0];
+        expect(updated2.headers).toBeUndefined();
+    });
 });
 
