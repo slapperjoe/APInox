@@ -17,7 +17,7 @@ import { Workflow, WorkflowExtractor } from '@shared/models';
 import { formatXml } from '@shared/utils/xmlFormatter';
 import { tokens } from './tokens';
 import type { TrafficLog } from './TrafficViewer';
-import { lastPathSegment, detectChainedValues, assembleWorkflow, chainSourceLine } from '../../utils/trafficWorkflow';
+import { lastPathSegment, detectChainedValues, assembleWorkflow, chainSourceLine, trafficStepName } from '../../utils/trafficWorkflow';
 
 interface TrafficWorkflowWizardProps {
     /** Captured traffic in chronological order (oldest first). */
@@ -237,7 +237,7 @@ export function TrafficWorkflowWizard({ logs, onDone, onCancel }: TrafficWorkflo
     const effectiveOpenLogId = openLogId ?? firstIncludedId;
 
     const stepNameFor = (logId: string, log: TrafficLog) =>
-        stepNames[logId] || `${log.method} ${lastPathSegment(log.url)}`;
+        stepNames[logId] || trafficStepName(log);
 
     // Value → variable substitutions applied to generated step bodies/headers,
     // shared by handleCreate and the step-3 XML preview so the review matches

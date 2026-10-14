@@ -7,6 +7,7 @@ import { methodBg, statusStyle } from './trafficStyles';
 import { formatXml } from '@shared/utils/xmlFormatter';
 import { useEditorSettings } from '@apinox/request-editor/core';
 import { IgnoreRule, matchesAnyIgnoreRule, ignorePatternFor } from '../../utils/useIgnoreList';
+import { extractPath, extractSoapAction } from '../../utils/trafficWorkflow';
 
 export interface TrafficLog {
   id: string;
@@ -580,33 +581,8 @@ function copyAllTraffic(log: TrafficLog, opts: XmlFormatOpts): string {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────
-function extractPath(url: string): string {
-  try { const u = new URL(url); return u.pathname + u.search; } catch { return url; }
-}
-
-/**
- * Extract a SOAP action string for display if the request looks like SOAP.
- * Priority: SOAPAction header → soapAction header → first Body child element local name.
- * Returns null if it doesn't appear to be a SOAP request.
- */
-function extractSoapAction(log: TrafficLog): string | null {
-  const headers = log.requestHeaders ?? {};
-  for (const key of Object.keys(headers)) {
-    if (key.toLowerCase() === 'soapaction') {
-      const val = (headers[key] as string).replace(/"/g, '').trim();
-      if (val) {
-        const hash = val.lastIndexOf('#');
-        const slash = val.lastIndexOf('/');
-        const idx = Math.max(hash, slash);
-        return idx >= 0 && idx < val.length - 1 ? val.slice(idx + 1) : val;
-      }
-    }
-  }
-  const body = log.requestBody ?? '';
-  if (!body.trim().startsWith('<') || !body.includes('Body')) return null;
-  const match = body.match(/<(?:[a-zA-Z0-9_]+:)?Body[^>]*>\s*<(?:[a-zA-Z0-9_]+:)?([a-zA-Z0-9_]+)/);
-  return match ? match[1] : null;
-}
+// (extractPath / extractSoapAction live in utils/trafficWorkflow — they are
+// the traffic sidebar's line-1/line-2 text and also drive step naming.)
 
 // ── TrafficRow card ────────────────────────────────────────────────────────
 function TrafficRow({ log, isSelected, onClick, onContextMenu }: {

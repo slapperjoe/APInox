@@ -55,7 +55,7 @@ describe("buildTrafficTestSteps", () => {
                 id: "a",
                 method: "POST",
                 url: "http://x/api/login?tenant=42",
-                requestHeaders: { "Content-Type": "text/xml; charset=utf-8", "SOAPAction": '"urn:login"' },
+                requestHeaders: { "Content-Type": "text/xml; charset=utf-8", "SOAPAction": '"http://tempuri.org/IService/Login"' },
                 requestBody: "<a:Login><a:User>u</a:User></a:Login>",
             }),
         ];
@@ -64,8 +64,10 @@ describe("buildTrafficTestSteps", () => {
         expect(req.method).toBe("POST");
         expect(req.endpoint).toBe("http://x/api/login?tenant=42");
         expect(req.request).toBe("<a:Login><a:User>u</a:User></a:Login>");
-        expect(req.headers["SOAPAction"]).toBe('"urn:login"');
-        expect(step.name).toBe("POST login");
+        expect(req.headers["SOAPAction"]).toBe('"http://tempuri.org/IService/Login"');
+        // Named from the traffic sidebar entry's lines: method + path (line 1)
+        // + SOAP action (line 2).
+        expect(step.name).toBe("POST /api/login?tenant=42 Login");
         expect(step.type).toBe("request");
     });
 
@@ -120,5 +122,75 @@ describe("buildTrafficTestSteps", () => {
         const logs: TrafficLog[] = [mkLog({ id: "a", requestHeaders: headers })];
         buildTrafficTestSteps(logs);
         expect(Object.keys(headers)).toEqual(["Content-Type"]);
+    });
+});
+
+describe("buildTrafficTestSteps with chain capture", () => {
+    it("emits {{variable}} for tagged values in body, URL and headers, and attaches extractors", () => {
+        const logs: TrafficLog[] = [
+            mkLog({
+                id: "a",
+                url: "http://x/login",
+                requestHeaders: { "Content-Type": "text/xml" },
+                requestBody: "<Login/>",
+            }),
+            mkLog({
+                id: "b",
+                url: "http://x/me?token=TKN-999",
+                requestHeaders: { Authorization: "Bearer TKN-999" },
+                requestBody: "<Call><t>TKN-999</t></Call>",
+            }),
+        ];
+        const steps = buildTrafficTestSteps(logs, {
+            valueSubstitutions: [{ value: "TKN-999", variable: "token" }],
+            extractors: { a: [{ id: "e1", variable: "token", type: "XPath", source: "body", path: "//Token/text()" }] },
+        });
+        const ra = reqOf(steps[0]);
+        const rb = reqOf(steps[1]);
+        // Extractor lands on the SOURCE step only.
+        expect(ra.extractors).toEqual([{ id: "e1", variable: "token", type: "XPath", source: "body", path: "//Token/text()" }]);
+        expect(rb.extractors).toBeUndefined();
+        // The tagged value is a placeholder in the consuming step's URL/headers/body.
+        expect(rb.endpoint).toBe("http://x/me?token={{token}}");
+        expect(rb.headers.Authorization).toBe("Bearer {{token}}");
+        expect(rb.request).toBe("<Call><t>{{token}}</t></Call>");
+        // Untagged content stays verbatim.
+        expect(ra.request).toBe("<Login/>");
+        expect(ra.endpoint).toBe("http://x/login");
+    });
+
+    it("substitutes the longest value first so overlapping tokens don't clobber", () => {
+        const logs: TrafficLog[] = [
+            mkLog({ id: "a", url: "http://x/a", requestHeaders: {}, requestBody: "<v>AB-12345</v><w>AB-1234</w>" }),
+        ];
+        const steps = buildTrafficTestSteps(logs, {
+            valueSubstitutions: [
+                { value: "AB-1234", variable: "short" },
+                { value: "AB-12345", variable: "long" },
+            ],
+        });
+        expect(reqOf(steps[0]).request).toBe("<v>{{long}}</v><w>{{short}}</w>");
+    });
+
+    it("keeps the Content-Type field and header in sync after substitution", () => {
+        const logs: TrafficLog[] = [
+            mkLog({
+                id: "a",
+                url: "http://x/a",
+                requestHeaders: { "Content-Type": "text/xml; token=TKN-999" },
+            }),
+        ];
+        const steps = buildTrafficTestSteps(logs, {
+            valueSubstitutions: [{ value: "TKN-999", variable: "token" }],
+        });
+        const req = reqOf(steps[0]);
+        expect(req.headers["Content-Type"]).toBe("text/xml; token={{token}}");
+        expect(req.contentType).toBe("text/xml; token={{token}}");
+    });
+
+    it("omits extractors when none are provided for a log", () => {
+        const logs: TrafficLog[] = [mkLog({ id: "a", url: "http://x/a" })];
+        const steps = buildTrafficTestSteps(logs, { extractors: { b: [] } });
+        expect(reqOf(steps[0]).extractors).toBeUndefined();
     });
 });

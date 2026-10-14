@@ -25,13 +25,53 @@ export function lastPathSegment(url: string): string {
     return "request";
 }
 
+/** URL without host — the path (+ query) the traffic sidebar shows on line 1. */
+export function extractPath(url: string): string {
+    try { const u = new URL(url); return u.pathname + u.search; } catch { return url; }
+}
+
+/**
+ * Extract a SOAP action string for display if the request looks like SOAP.
+ * Priority: SOAPAction header → soapAction header → first Body child element
+ * local name. Returns null if it doesn't appear to be a SOAP request.
+ */
+export function extractSoapAction(log: TrafficLog): string | null {
+    const headers = log.requestHeaders ?? {};
+    for (const key of Object.keys(headers)) {
+        if (key.toLowerCase() === 'soapaction') {
+            const val = (headers[key] as string).replace(/"/g, '').trim();
+            if (val) {
+                const hash = val.lastIndexOf('#');
+                const slash = val.lastIndexOf('/');
+                const idx = Math.max(hash, slash);
+                return idx >= 0 && idx < val.length - 1 ? val.slice(idx + 1) : val;
+            }
+        }
+    }
+    const body = log.requestBody ?? '';
+    if (!body.trim().startsWith('<') || !body.includes('Body')) return null;
+    const match = body.match(/<(?:[a-zA-Z0-9_]+:)?Body[^>]*>\s*<(?:[a-zA-Z0-9_]+:)?([a-zA-Z0-9_]+)/);
+    return match ? match[1] : null;
+}
+
+/**
+ * Default step name from the text the traffic sidebar shows for this entry:
+ * line 1 (method + path, no host) and, for SOAP requests, line 2 (the SOAP
+ * action) — so the created step is named exactly what the capture looks like.
+ */
+export function trafficStepName(log: TrafficLog): string {
+    const line1 = `${log.method} ${extractPath(log.url)}`;
+    const action = extractSoapAction(log);
+    return action ? `${line1} ${action}` : line1;
+}
+
 /**
  * Substitute tagged `value` literals with `{{variable}}` placeholders in a
  * request body/header, so a captured token the wizard tagged is emitted as a
  * runtime-extractable reference instead of a hardcoded value. Sort by longest
  * value first so overlapping tokens don't clobber each other.
  */
-function applyValueSubstitutions(text: string, subs: BuildOpts["valueSubstitutions"]): string {
+export function applyValueSubstitutions(text: string, subs: BuildOpts["valueSubstitutions"]): string {
     if (!subs?.length || !text) return text;
     const ordered = [...subs].sort((a, b) => b.value.length - a.value.length);
     let out = text;
@@ -65,7 +105,7 @@ export function buildWorkflowStepsFromLogs(logs: TrafficLog[], opts: BuildOpts =
         }
         return {
             id: log.id,
-            name: stepNames[log.id] || `${log.method} ${lastPathSegment(log.url)}`,
+            name: stepNames[log.id] || trafficStepName(log),
             type: "request",
             order: idx,
             endpoint: applyValueSubstitutions(log.url, valueSubstitutions),

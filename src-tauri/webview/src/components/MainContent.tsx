@@ -70,8 +70,8 @@ const AddToTestCaseModal = React.lazy(() =>
     import('./modals/AddToTestCaseModal').then(module => ({ default: module.AddToTestCaseModal }))
 );
 
-const CreateTestCaseFromTrafficModal = React.lazy(() =>
-    import('./modals/CreateTestCaseFromTrafficModal').then(module => ({ default: module.CreateTestCaseFromTrafficModal }))
+const CreateTestCaseFromTrafficWizard = React.lazy(() =>
+    import('./proxy/CreateTestCaseFromTrafficWizard').then(module => ({ default: module.CreateTestCaseFromTrafficWizard }))
 );
 const ConfirmationModal = React.lazy(() =>
     import('./modals/ConfirmationModal').then(module => ({ default: module.ConfirmationModal }))
@@ -1393,12 +1393,14 @@ const MainContent: React.FC = () => {
     const [confirmationModal, setConfirmationModal] = useState<ConfirmationState | null>(null);
     const [addToTestCaseModal, setAddToTestCaseModal] = React.useState<{ open: boolean, request: ApiRequest | null }>({ open: false, request: null });
     // Create Test Case from Traffic: the full capture (capture order) plus the
-    // right-clicked log as the pre-selected anchor.
-    const [createTestCaseFromTraffic, setCreateTestCaseFromTraffic] = React.useState<{ open: boolean; logs: TrafficLog[]; anchorLogId: string | null }>({ open: false, logs: [], anchorLogId: null });
+    // right-clicked log as the pre-selected anchor. Full-page wizard rendered
+    // in place of ProxyPanel (the same hosting as the traffic→workflow
+    // wizard) — not a modal.
+    const [testCaseWizard, setTestCaseWizard] = useState<{ logs: TrafficLog[]; anchorLogId: string | null } | null>(null);
 
     const handleCreateTestCaseFromTraffic = React.useCallback((anchorLog: TrafficLog, allLogs: TrafficLog[]) => {
         if (allLogs.length === 0) return;
-        setCreateTestCaseFromTraffic({ open: true, logs: allLogs, anchorLogId: anchorLog.id });
+        setTestCaseWizard({ logs: allLogs, anchorLogId: anchorLog.id });
     }, []);
     const [pickRequestModal, setPickRequestModal] = React.useState<{ open: boolean, mode: 'testcase' | 'performance', caseId: string | null, suiteId: string | null }>({ open: false, mode: 'testcase', caseId: null, suiteId: null });
     const [importToPerformanceModal, setImportToPerformanceModal] = React.useState<{ open: boolean, suiteId: string | null }>({ open: false, suiteId: null });
@@ -1647,13 +1649,14 @@ const MainContent: React.FC = () => {
     });
 
     // ── Traffic-wizard sidebar lock ─────────────────────────────────────────
-    // The traffic→workflow wizard is a full-screen flow the user must exit
-    // with its own "Cancel". While it is open the sidebar is disabled (Sidebar
-    // renders dimmed + pointer-events off via `sidebarLocked`) AND every
-    // navigation surface is blocked here at the state level, so no rail /
-    // settings / help click — pointer or keyboard — can walk away from the
-    // wizard mid-flow (which would unmount it and lose the in-progress work).
-    const sidebarLocked = !!trafficWizard;
+    // The traffic→workflow and traffic→test-case wizards are full-page flows
+    // the user must exit with their own "Cancel". While either is open the
+    // sidebar is disabled (Sidebar renders dimmed + pointer-events off via
+    // `sidebarLocked`) AND every navigation surface is blocked here at the
+    // state level, so no rail / settings / help click — pointer or keyboard —
+    // can walk away from the wizard mid-flow (which would unmount it and
+    // lose the in-progress work).
+    const sidebarLocked = !!trafficWizard || !!testCaseWizard;
     const guardedChangeView = useCallback((view: SidebarView) => {
         if (sidebarLocked) return;
         handleSetActiveViewWrapper(view);
@@ -2130,12 +2133,12 @@ const MainContent: React.FC = () => {
             {hasOpenedProxyView && (
                 <div style={{ display: activeView === SidebarView.PROXY ? 'flex' : 'none', flex: 1, overflow: 'hidden', flexDirection: 'column', minHeight: 0 }}>
                     <Suspense fallback={<div style={{ flex: 1, background: 'var(--apinox-editor-background)' }} />}>
-                        {/* ProxyPanel stays mounted (hidden) while the wizard is
+                        {/* ProxyPanel stays mounted (hidden) while a wizard is
                             open: its captured-traffic history lives in its local
                             state, so unmounting it to render the wizard "in
                             place" would wipe the traffic list on the way back.
                             The wizard fills the same work area on top instead. */}
-                        <div style={{ display: trafficWizard ? 'none' : 'flex', flex: 1, overflow: 'hidden', flexDirection: 'column', minHeight: 0 }}>
+                        <div style={{ display: trafficWizard || testCaseWizard ? 'none' : 'flex', flex: 1, overflow: 'hidden', flexDirection: 'column', minHeight: 0 }}>
                             <ProxyPanel
                                 onNavigateTo={(view) => handleSetActiveViewWrapper(view as SidebarView)}
                                 onAddToApinoxProject={handleAddTrafficToProject}
@@ -2148,6 +2151,51 @@ const MainContent: React.FC = () => {
                                 logs={trafficWizard.logs}
                                 onCancel={() => setTrafficWizard(null)}
                                 onDone={(wf) => { setTrafficWizard(null); void handleSaveWorkflowThenSelect(wf); }}
+                            />
+                        )}
+                        {testCaseWizard && (
+                            <CreateTestCaseFromTrafficWizard
+                                logs={testCaseWizard.logs}
+                                anchorLogId={testCaseWizard.anchorLogId}
+                                testSuites={globalTestSuites}
+                                onCancel={() => setTestCaseWizard(null)}
+                                onCreate={(result) => {
+                                    // Verbatim calls with optional chain capture: each
+                                    // selected log's method, URL, headers and body are
+                                    // copied into a standalone request step, with the
+                                    // wizard's tagged captured values emitted as
+                                    // {{variable}} (extractor on the source step).
+                                    // The Content-Type string is copied exactly
+                                    // (including any `action=...` parameter) and the
+                                    // step is tagged fromTraffic so its Content-Type
+                                    // header row is unlocked.
+                                    const steps = buildTrafficTestSteps(result.selectedLogs, {
+                                        extractors: result.extractors,
+                                        valueSubstitutions: result.valueSubstitutions,
+                                    });
+                                    const newCase: TestCase = {
+                                        id: crypto.randomUUID(),
+                                        name: result.caseName,
+                                        expanded: true,
+                                        steps,
+                                    };
+                                    // C (global suites): the new case lands in the
+                                    // GLOBAL suite store (no owning project).
+                                    if (result.suite.kind === 'new') {
+                                        addGlobalSuite({
+                                            id: crypto.randomUUID(),
+                                            name: result.suite.name,
+                                            testCases: [newCase],
+                                            expanded: true,
+                                        });
+                                    } else {
+                                        const suite = findGlobalSuite(result.suite.suiteId);
+                                        if (suite) {
+                                            updateGlobalSuite({ ...suite, testCases: [...(suite.testCases || []), newCase] });
+                                        }
+                                    }
+                                    setTestCaseWizard(null);
+                                }}
                             />
                         )}
                     </Suspense>
@@ -2330,52 +2378,6 @@ const MainContent: React.FC = () => {
                                     }));
                                 }
                                 setAddToTestCaseModal({ open: false, request: null });
-                            }}
-                        />
-                    </Suspense>
-                )
-            }
-
-            {/* Create Test Case from Traffic */}
-            {
-                createTestCaseFromTraffic.open && createTestCaseFromTraffic.logs.length > 0 && (
-                    <Suspense fallback={null}>
-                        <CreateTestCaseFromTrafficModal
-                            logs={createTestCaseFromTraffic.logs}
-                            anchorLogId={createTestCaseFromTraffic.anchorLogId}
-                            testSuites={globalTestSuites}
-                            onClose={() => setCreateTestCaseFromTraffic({ open: false, logs: [], anchorLogId: null })}
-                            onCreate={(result) => {
-                                // Raw, identical calls: copy each selected log's
-                                // method, URL, headers and body verbatim into a
-                                // standalone request step — no variables, no
-                                // substitutions. The Content-Type string is
-                                // copied exactly (including any `action=...`
-                                // parameter) and the step is tagged fromTraffic
-                                // so its Content-Type header row is unlocked.
-                                const steps = buildTrafficTestSteps(result.selectedLogs);
-                                const newCase: TestCase = {
-                                    id: crypto.randomUUID(),
-                                    name: result.caseName,
-                                    expanded: true,
-                                    steps,
-                                };
-                                // C (global suites): the new case lands in the
-                                // GLOBAL suite store (no owning project).
-                                if (result.suite.kind === 'new') {
-                                    addGlobalSuite({
-                                        id: crypto.randomUUID(),
-                                        name: result.suite.name,
-                                        testCases: [newCase],
-                                        expanded: true,
-                                    });
-                                } else {
-                                    const suite = findGlobalSuite(result.suite.suiteId);
-                                    if (suite) {
-                                        updateGlobalSuite({ ...suite, testCases: [...(suite.testCases || []), newCase] });
-                                    }
-                                }
-                                setCreateTestCaseFromTraffic({ open: false, logs: [], anchorLogId: null });
                             }}
                         />
                     </Suspense>

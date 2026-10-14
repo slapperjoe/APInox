@@ -161,6 +161,16 @@ describe('TrafficWorkflowWizard', () => {
         expect(screen.getByTestId('wf-review-name-a')).toBeInTheDocument();
     });
 
+    it('pre-fills the review step name from the traffic entry lines (method + path + SOAP action)', () => {
+        render(<TrafficWorkflowWizard logs={logsWithHeaders()} onDone={vi.fn()} onCancel={vi.fn()} />);
+        gotoStep2();
+        fireEvent.click(screen.getByRole('button', { name: /continue/i }));       // -> step 3
+        // log a: SOAPAction "urn:svc#Login" -> the sidebar's second line is "Login".
+        expect(screen.getByTestId('wf-review-name-a')).toHaveValue('POST /login Login');
+        // log b: no SOAP action -> just the line-1 text (method + path).
+        expect(screen.getByTestId('wf-review-name-b')).toHaveValue('POST /next');
+    });
+
     it('renders each step request as pretty-printed XML on the review screen', () => {
         render(<TrafficWorkflowWizard logs={twoLogs()} onDone={vi.fn()} onCancel={vi.fn()} />);
         gotoStep2();

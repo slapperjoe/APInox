@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildWorkflowStepsFromLogs, detectChainedValues, assembleWorkflow, elementNameFor, chainSourceLine } from "../trafficWorkflow";
+import { buildWorkflowStepsFromLogs, detectChainedValues, assembleWorkflow, elementNameFor, chainSourceLine, trafficStepName, extractPath, extractSoapAction } from "../trafficWorkflow";
 import type { ChainedValue } from "../trafficWorkflow";
 import type { TrafficLog } from "../../components/proxy/TrafficViewer";
 
@@ -43,10 +43,19 @@ describe("buildWorkflowStepsFromLogs", () => {
         expect(steps[1].extractors).toBeUndefined();
     });
 
-    it("sets step.name from a stable default (method + last path segment)", () => {
-        const logs = [mkLog({ id: "a", method: "POST", url: "http://x/a/b" })];
+    it("names a step from the traffic sidebar entry lines (method + path, no host)", () => {
+        const logs = [mkLog({ id: "a", method: "POST", url: "http://x/a/b?k=1" })];
         const steps = buildWorkflowStepsFromLogs(logs, {});
-        expect(steps[0].name).toBe("POST b");
+        expect(steps[0].name).toBe("POST /a/b?k=1");
+    });
+
+    it("appends the SOAP action (the sidebar's second line) to the step name", () => {
+        const logs = [mkLog({
+            id: "a", method: "POST", url: "http://x/svc/Service1.asmx",
+            requestHeaders: { "SOAPAction": '"http://tempuri.org/IService/Login"' },
+        })];
+        const steps = buildWorkflowStepsFromLogs(logs, {});
+        expect(steps[0].name).toBe("POST /svc/Service1.asmx Login");
     });
 
     it("carries every captured request header into the step verbatim", () => {
@@ -101,6 +110,50 @@ describe("buildWorkflowStepsFromLogs", () => {
             headersByLog: { a: { "X-A": "1", "   ": "junk" } },
         });
         expect(steps[0].headers).toEqual({ "X-A": "1" });
+    });
+});
+
+describe("trafficStepName", () => {
+    it("uses the sidebar line-1 text (method + path + query) for non-SOAP requests", () => {
+        expect(trafficStepName(mkLog({ id: "a", method: "GET", url: "http://x/users/profile" })))
+            .toBe("GET /users/profile");
+    });
+
+    it("appends the SOAP action from the SOAPAction header as the second line", () => {
+        const log = mkLog({
+            id: "a", method: "POST", url: "http://x/svc/Service1.asmx",
+            requestHeaders: { "SOAPAction": '"urn:svc#Login"' },
+        });
+        expect(trafficStepName(log)).toBe("POST /svc/Service1.asmx Login");
+    });
+
+    it("falls back to the first Body child element name when no SOAPAction header is set", () => {
+        const log = mkLog({
+            id: "a", method: "POST", url: "http://x/svc",
+            requestBody: '<soap:Envelope><soap:Body><Login/></soap:Body></soap:Envelope>',
+        });
+        expect(trafficStepName(log)).toBe("POST /svc Login");
+    });
+
+    it("returns the raw URL as the path when it is not parseable", () => {
+        expect(trafficStepName(mkLog({ id: "a", method: "POST", url: "not a url" })))
+            .toBe("POST not a url");
+    });
+});
+
+describe("extractPath / extractSoapAction", () => {
+    it("extractPath keeps pathname + query and drops the host", () => {
+        expect(extractPath("http://x:8080/a/b?c=d")).toBe("/a/b?c=d");
+        expect(extractPath("junk")).toBe("junk");
+    });
+
+    it("extractSoapAction reads the header (uri-tail) and falls back to the Body child", () => {
+        expect(extractSoapAction(mkLog({ id: "a", requestHeaders: { "SOAPAction": '"http://t.org/I/Login"' } })))
+            .toBe("Login");
+        expect(extractSoapAction(mkLog({ id: "a", requestBody: "<e:Envelope><e:Body><Get/></e:Body></e:Envelope>" })))
+            .toBe("Get");
+        expect(extractSoapAction(mkLog({ id: "a", requestBody: "<B>plain</B>" })))
+            .toBeNull();
     });
 });
 
