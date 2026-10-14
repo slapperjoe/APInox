@@ -12,6 +12,9 @@ export interface BuildOpts {
     /** Value → variable substitutions applied to request bodies/headers so a
      *  tagged captured value is emitted as `{{variable}}` (runtime-extracted). */
     valueSubstitutions?: Array<{ value: string; variable: string }>;
+    /** Final per-log request headers (keyed by log id) — the wizard's edited
+     *  header rows. Wins over `log.requestHeaders` when present for a log. */
+    headersByLog?: Record<string, Record<string, string>>;
 }
 
 export function lastPathSegment(url: string): string {
@@ -46,14 +49,19 @@ function formatRequestXml(body: string | undefined): string {
 
 /** Convert captured traffic into ordered, self-contained request steps (chronological). */
 export function buildWorkflowStepsFromLogs(logs: TrafficLog[], opts: BuildOpts = {}): WorkflowStep[] {
-    const { disabledIds, extractors = {}, stepNames = {}, valueSubstitutions } = opts;
+    const { disabledIds, extractors = {}, stepNames = {}, valueSubstitutions, headersByLog } = opts;
     const included = logs.filter(l => !disabledIds?.has(l.id));
     return included.map((log, idx) => {
         const rawBody = log.requestBody || "";
         const substitutedBody = applyValueSubstitutions(rawBody, valueSubstitutions);
-        const headers: Record<string, string> = { ...(log.requestHeaders || {}) };
-        for (const key of Object.keys(headers)) {
-            headers[key] = applyValueSubstitutions(headers[key], valueSubstitutions);
+        // All captured request headers flow into the step. The wizard's
+        // edited rows (headersByLog) win over the raw capture for that log;
+        // untouched logs keep the captured headers verbatim.
+        const captured = headersByLog?.[log.id] ?? log.requestHeaders ?? {};
+        const headers: Record<string, string> = {};
+        for (const key of Object.keys(captured)) {
+            if (!key.trim()) continue; // drop rows with a blank name
+            headers[key] = applyValueSubstitutions(String(captured[key] ?? ""), valueSubstitutions);
         }
         return {
             id: log.id,
@@ -260,6 +268,13 @@ export function detectChainedValues(logs: TrafficLog[]): ChainedValue[] {
         }
         for (const [h, val] of Object.entries(resLog.responseHeaders ?? {})) {
             for (const v of candidateHeaderValues(val)) {
+                // Same boilerplate rule as body candidates: a value the client
+                // already sent in this request's own headers (e.g. a
+                // Content-Type echoed back by the server) is not a value the
+                // response captured — skip it.
+                const alreadySent = Object.values(resLog.requestHeaders ?? {})
+                    .some(rv => String(rv).trim().toLowerCase() === v.trim().toLowerCase());
+                if (alreadySent) continue;
                 produced.push({ value: v, source: "header", header: h });
             }
         }
@@ -316,16 +331,18 @@ export interface AssembleInput {
     stepNames?: Record<string, string>;
     /** Value → variable substitutions applied to generated step bodies/headers. */
     valueSubstitutions?: Array<{ value: string; variable: string }>;
+    /** Wizard-edited per-log request headers (win over the raw capture). */
+    headersByLog?: Record<string, Record<string, string>>;
 }
 
 /** Turn the wizard's final state into the `Workflow` object the save path expects. */
 export function assembleWorkflow(input: AssembleInput): Workflow {
-    const { name, description, logs, disabledIds, initialVariables = {}, extractors, stepNames, valueSubstitutions } = input;
+    const { name, description, logs, disabledIds, initialVariables = {}, extractors, stepNames, valueSubstitutions, headersByLog } = input;
     return {
         id: crypto.randomUUID(),
         name,
         description,
-        steps: buildWorkflowStepsFromLogs(logs, { disabledIds, extractors, stepNames, valueSubstitutions }),
+        steps: buildWorkflowStepsFromLogs(logs, { disabledIds, extractors, stepNames, valueSubstitutions, headersByLog }),
         variables: Object.keys(initialVariables).length ? initialVariables : undefined,
         createdAt: Date.now(),
         modifiedAt: Date.now(),

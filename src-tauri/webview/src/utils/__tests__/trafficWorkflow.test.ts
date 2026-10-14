@@ -48,6 +48,60 @@ describe("buildWorkflowStepsFromLogs", () => {
         const steps = buildWorkflowStepsFromLogs(logs, {});
         expect(steps[0].name).toBe("POST b");
     });
+
+    it("carries every captured request header into the step verbatim", () => {
+        const logs = [mkLog({
+            id: "a",
+            requestHeaders: {
+                "SOAPAction": '"urn:svc#Login"',
+                "Content-Type": "text/xml; charset=utf-8",
+                "User-Agent": "WCF/6.0",
+                "Host": "svc.example.com",
+            },
+        })];
+        const steps = buildWorkflowStepsFromLogs(logs, {});
+        expect(steps[0].headers).toEqual({
+            "SOAPAction": '"urn:svc#Login"',
+            "Content-Type": "text/xml; charset=utf-8",
+            "User-Agent": "WCF/6.0",
+            "Host": "svc.example.com",
+        });
+        // contentType is derived from the carried headers.
+        expect(steps[0].contentType).toBe("text/xml; charset=utf-8");
+    });
+
+    it("applies value substitutions to header values like it does to bodies", () => {
+        const logs = [mkLog({
+            id: "a",
+            requestHeaders: { Authorization: "Bearer TKN-999" },
+        })];
+        const steps = buildWorkflowStepsFromLogs(logs, {
+            valueSubstitutions: [{ value: "TKN-999", variable: "sessionToken" }],
+        });
+        expect(steps[0].headers).toEqual({ Authorization: "Bearer {{sessionToken}}" });
+    });
+
+    it("honors wizard-edited per-log headers (headersByLog) over the raw capture", () => {
+        const logs = [
+            mkLog({ id: "a", requestHeaders: { "X-Old": "1", "X-Keep": "2" } }),
+            mkLog({ id: "b", requestHeaders: { "X-B": "3" } }),
+        ];
+        const steps = buildWorkflowStepsFromLogs(logs, {
+            headersByLog: { a: { "X-Keep": "2", "X-Added": "4" } },
+        });
+        // Edited log: the edited map wins (X-Old dropped, X-Added present).
+        expect(steps[0].headers).toEqual({ "X-Keep": "2", "X-Added": "4" });
+        // Untouched log: raw capture flows through unchanged.
+        expect(steps[1].headers).toEqual({ "X-B": "3" });
+    });
+
+    it("drops header rows with a blank name", () => {
+        const logs = [mkLog({ id: "a", requestHeaders: { "X-A": "1" } })];
+        const steps = buildWorkflowStepsFromLogs(logs, {
+            headersByLog: { a: { "X-A": "1", "   ": "junk" } },
+        });
+        expect(steps[0].headers).toEqual({ "X-A": "1" });
+    });
 });
 
 describe("detectChainedValues", () => {
@@ -66,7 +120,7 @@ describe("detectChainedValues", () => {
         expect(found[0].source).toBe("body");
     });
 
-    it("flags a response-header value used later in a request header", () => {
+    it('flags a response-header value used later in a request header', () => {
         const logs = [
             mkLog({ id: "a", responseHeaders: { "X-Session": "S-1" }, requestBody: "<Q/>" }),
             mkLog({ id: "b", requestHeaders: { "X-Session": "S-1" }, requestBody: "<Q/>" }),
@@ -76,6 +130,17 @@ describe("detectChainedValues", () => {
         expect(found[0].value).toBe("S-1");
         expect(found[0].source).toBe("header");
         expect(found[0].sourceHeaderName).toBe("X-Session");
+    });
+
+    it("ignores a response header value the client already sent (Content-Type boilerplate)", () => {
+        // A Content-Type echoed back by the server is not a captured value —
+        // the request itself carried the same value.
+        const logs = [
+            mkLog({ id: "a", requestHeaders: { "Content-Type": "text/xml" },
+                    responseHeaders: { "Content-Type": "text/xml" }, requestBody: "<Q/>" }),
+            mkLog({ id: "b", requestHeaders: { "Content-Type": "text/xml" }, requestBody: "<Q/>" }),
+        ];
+        expect(detectChainedValues(logs)).toEqual([]);
     });
 
     it("returns empty when no value is reused across requests", () => {
@@ -273,5 +338,34 @@ describe("assembleWorkflow", () => {
         // formatXml with inline element values -> multi-line, indented.
         expect(wf.steps[0].requestBody).toContain("\n");
         expect(wf.steps[0].requestBody).toContain("  <User>mark</User>");
+    });
+
+    it("includes all captured request headers in the created steps, with wizard edits applied", () => {
+        const logs = [
+            mkLog({ id: "a", url: "http://x/login",
+                    requestHeaders: { "SOAPAction": '"urn:svc#Login"', "Content-Type": "text/xml" },
+                    responseBody: "<R><SessionToken>TKN-999</SessionToken></R>" }),
+            mkLog({ id: "b", url: "http://x/next",
+                    requestHeaders: { "SOAPAction": '"urn:svc#Next"', Authorization: "Bearer TKN-999" },
+                    requestBody: "<B/>" }),
+        ];
+        const wf = assembleWorkflow({
+            name: "Hdrs",
+            logs,
+            valueSubstitutions: [{ value: "TKN-999", variable: "sessionToken" }],
+            headersByLog: { a: { "SOAPAction": '"urn:svc#Login"', "Content-Type": "text/xml", "X-Extra": "1" } },
+        });
+        // Untouched log keeps every captured header; a tagged value consumed in
+        // a header is emitted as {{variable}} for runtime extraction.
+        expect(wf.steps[1].headers).toEqual({
+            "SOAPAction": '"urn:svc#Next"',
+            Authorization: "Bearer {{sessionToken}}",
+        });
+        // Edited log: the wizard's rows (including the added header) win.
+        expect(wf.steps[0].headers).toEqual({
+            "SOAPAction": '"urn:svc#Login"',
+            "Content-Type": "text/xml",
+            "X-Extra": "1",
+        });
     });
 });

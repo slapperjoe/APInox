@@ -220,6 +220,16 @@ export function TrafficWorkflowWizard({ logs, onDone, onCancel }: TrafficWorkflo
     // can promote it to a manual variable.
     const [selectedPart, setSelectedPart] = useState<SelectedPart | null>(null);
 
+    // Per-log request header rows the user edited in step 2. A log only gets
+    // an entry once it is touched; untouched logs fall back to the raw
+    // capture (`log.requestHeaders`), so every captured header is included
+    // in the created workflow by default.
+    const [headerEdits, setHeaderEdits] = useState<Record<string, Array<{ name: string; value: string }>>>({});
+    const headerRowsFor = (log: TrafficLog): Array<{ name: string; value: string }> =>
+        headerEdits[log.id] ?? Object.entries(log.requestHeaders ?? {}).map(([name, value]) => ({ name, value: String(value ?? "") }));
+    const setHeaderRowsFor = (logId: string, rows: Array<{ name: string; value: string }>) =>
+        setHeaderEdits(m => ({ ...m, [logId]: rows }));
+
     // Which request/response accordion is open in step 2 (one at a time).
     // First included log expanded by default. Does not reset every render.
     const [openLogId, setOpenLogId] = useState<string | null>(null);
@@ -241,16 +251,29 @@ export function TrafficWorkflowWizard({ logs, onDone, onCancel }: TrafficWorkflo
             .map(v => ({ value: v.value.trim(), variable: v.name.trim() })),
     ];
 
+    // Apply the current substitutions to one piece of text (body or header
+    // value) — longest value first so overlapping tokens don't clobber.
+    const substituteText = (text: string): string => {
+        const subs = valueSubstitutions();
+        if (!subs.length || !text) return text;
+        const ordered = [...subs].sort((a, b) => b.value.length - a.value.length);
+        let out = text;
+        for (const s of ordered) out = out.split(s.value).join(`{{${s.variable}}}`);
+        return out;
+    };
+
     // Pretty-printed, substituted request body for a step — same transform
     // buildWorkflowStepsFromLogs applies, so the review preview is faithful.
     const previewBodyFor = (log: TrafficLog): string => {
-        const subs = valueSubstitutions();
-        let body = log.requestBody || '';
-        if (subs.length) {
-            const ordered = [...subs].sort((a, b) => b.value.length - a.value.length);
-            for (const s of ordered) body = body.split(s.value).join(`{{${s.variable}}}`);
-        }
-        return body ? formatXml(body, false, true) : '';
+        const body = log.requestBody || '';
+        return body ? formatXml(substituteText(body), false, true) : '';
+    };
+
+    // Final request headers for a step, with substitutions applied — the
+    // step-3 preview of exactly what the created workflow will carry.
+    const previewHeadersFor = (log: TrafficLog): Array<[string, string]> => {
+        const rows = headerRowsFor(log).filter(r => r.name.trim());
+        return rows.map(r => [r.name, substituteText(r.value)] as [string, string]);
     };
 
     const stepIndexById = useMemo(() => {
@@ -299,6 +322,17 @@ export function TrafficWorkflowWizard({ logs, onDone, onCancel }: TrafficWorkflo
         // them. Manual variables (value → name) are substituted the same way.
         // Chain picks substitute their source value (e.g. TKN-999) with the
         // variable everywhere it appears in a consuming request.
+        // Per-log header edits win over the raw capture for that log; logs the
+        // user never touched keep every captured header verbatim.
+        const headersByLog: Record<string, Record<string, string>> = {};
+        for (const [logId, rows] of Object.entries(headerEdits)) {
+            const rec: Record<string, string> = {};
+            for (const r of rows) {
+                if (!r.name.trim()) continue;
+                rec[r.name] = r.value;
+            }
+            headersByLog[logId] = rec;
+        }
         const wf = assembleWorkflow({
             name: name.trim(),
             logs,
@@ -309,6 +343,7 @@ export function TrafficWorkflowWizard({ logs, onDone, onCancel }: TrafficWorkflo
             extractors: extractorsByLog,
             stepNames,
             valueSubstitutions: valueSubstitutions(),
+            headersByLog,
         });
         onDone(wf);
     }
@@ -527,6 +562,7 @@ export function TrafficWorkflowWizard({ logs, onDone, onCancel }: TrafficWorkflo
                     <div style={sectionLabel}>Requests &amp; responses</div>
                     <div style={{ ...hint, marginBottom: 10 }}>
                         Review any captured request/response to make a variable. Highlighted values are captured &amp; reused. Click a value in a request to select it, then promote it to a manual variable.
+                        Every captured request header is included in the created step — edit them (or add/remove rows) directly under each request. Response headers are shown for reference only.
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {includedLogs.map((log, i) => {
@@ -553,12 +589,69 @@ export function TrafficWorkflowWizard({ logs, onDone, onCancel }: TrafficWorkflo
                                         <span style={{ ...mono, fontSize: 'var(--apinox-fs-sm)', color: tokens.text.secondary, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                             {srcName}
                                         </span>
+                                        {headerRowsFor(log).length > 0 && (
+                                            <span style={{ ...chip, flexShrink: 0, margin: 0 }} title={headerRowsFor(log).length + ' request headers captured'}>
+                                                {headerRowsFor(log).length} hdr
+                                            </span>
+                                        )}
                                         <span style={{ fontSize: 'var(--apinox-fs-sm)', color: tokens.text.hint, flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
                                     </button>
                                     {open && (
                                         <div style={{ padding: '0 10px 12px', display: 'flex', gap: 16, alignItems: 'flex-start' }}>
                                             <div style={{ flex: 1, minWidth: 0 }}>
-                                                <div style={{ ...hint, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Request body</div>
+                                                {/* Request headers — editable; every captured header shows by
+                                                    default and is carried into the created step. */}
+                                                <div style={{ ...hint, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Request headers</div>
+                                                <div
+                                                    data-testid={'wf-reqheaders-' + log.id}
+                                                    style={{
+                                                        background: tokens.surface.base, border: `1px solid ${tokens.border.subtle}`,
+                                                        borderRadius: tokens.radius.md, padding: '8px 10px',
+                                                        maxHeight: 150, overflow: 'auto',
+                                                        display: 'flex', flexDirection: 'column', gap: 5,
+                                                    }}
+                                                >
+                                                    {headerRowsFor(log).length === 0 ? (
+                                                        <span style={{ ...mono, fontSize: 'var(--apinox-fs-sm)', color: tokens.text.muted }}>(no request headers captured)</span>
+                                                    ) : (
+                                                        headerRowsFor(log).map((row, j) => (
+                                                            <div key={j} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                                <input
+                                                                    type="text"
+                                                                    value={row.name}
+                                                                    onChange={e => {
+                                                                        const next = headerRowsFor(log).map((r, k) => k === j ? { ...r, name: e.target.value } : r);
+                                                                        setHeaderRowsFor(log.id, next);
+                                                                    }}
+                                                                    aria-label={'Header name ' + j}
+                                                                    data-testid={'wf-hdrname-' + log.id + '-' + j}
+                                                                    style={{ ...mono, ...input, flex: 1, padding: '3px 8px' }}
+                                                                />
+                                                                <input
+                                                                    type="text"
+                                                                    value={row.value}
+                                                                    onChange={e => {
+                                                                        const next = headerRowsFor(log).map((r, k) => k === j ? { ...r, value: e.target.value } : r);
+                                                                        setHeaderRowsFor(log.id, next);
+                                                                    }}
+                                                                    aria-label={'Header value ' + j}
+                                                                    data-testid={'wf-hdrvalue-' + log.id + '-' + j}
+                                                                    style={{ ...mono, ...input, flex: 1.5, padding: '3px 8px' }}
+                                                                />
+                                                                <button
+                                                                    onClick={() => setHeaderRowsFor(log.id, headerRowsFor(log).filter((_, k) => k !== j))}
+                                                                    aria-label={'Remove header ' + j}
+                                                                    style={{ ...btnGhost, color: tokens.text.muted, flexShrink: 0, padding: '2px 7px' }}
+                                                                >×</button>
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
+                                                <button
+                                                    onClick={() => setHeaderRowsFor(log.id, [...headerRowsFor(log), { name: '', value: '' }])}
+                                                    style={{ ...btnGhost, marginTop: 6, alignSelf: 'flex-start' }}
+                                                >+ Add header</button>
+                                                <div style={{ ...hint, margin: '10px 0 4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Request body</div>
                                                 <div data-testid={'wf-body-' + log.id} style={{
                                                     ...mono, fontSize: 'var(--apinox-fs-sm)', lineHeight: 1.6,
                                                     background: tokens.surface.base, border: `1px solid ${tokens.border.subtle}`,
@@ -604,6 +697,26 @@ export function TrafficWorkflowWizard({ logs, onDone, onCancel }: TrafficWorkflo
                                                         )
                                                     ) : '(no response body)'}
                                                 </div>
+                                                {/* Response headers — captured, read-only (header extractors read
+                                                    these at run time; the workflow never sends them). */}
+                                                {Object.entries(log.responseHeaders ?? {}).length > 0 && (
+                                                    <>
+                                                        <div style={{ ...hint, margin: '10px 0 4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Response headers</div>
+                                                        <div
+                                                            data-testid={'wf-resheaders-' + log.id}
+                                                            style={{
+                                                                ...mono, fontSize: 'var(--apinox-fs-sm)', lineHeight: 1.6,
+                                                                background: tokens.surface.base, border: `1px solid ${tokens.border.subtle}`,
+                                                                borderRadius: tokens.radius.md, padding: '8px 10px',
+                                                                whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 150, overflow: 'auto',
+                                                            }}
+                                                        >
+                                                            {Object.entries(log.responseHeaders ?? {})
+                                                                .map(([k, v]) => `${k}: ${v}`)
+                                                                .join('\n')}
+                                                        </div>
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
                                     )}
@@ -674,6 +787,23 @@ export function TrafficWorkflowWizard({ logs, onDone, onCancel }: TrafficWorkflo
                                             }}
                                         >
                                             {body}
+                                        </pre>
+                                    )}
+                                    {/* Final request headers for this step (substitutions
+                                        applied) — what the created workflow will send. */}
+                                    {previewHeadersFor(log).length > 0 && (
+                                        <pre
+                                            data-testid={'wf-review-headers-' + log.id}
+                                            style={{
+                                                ...mono, fontSize: 'var(--apinox-fs-sm)', lineHeight: 1.5,
+                                                margin: 0, padding: '6px 12px',
+                                                background: tokens.surface.deep,
+                                                borderTop: `1px solid ${tokens.border.subtle}`,
+                                                whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                                                maxHeight: 120, overflow: 'auto',
+                                            }}
+                                        >
+                                            {previewHeadersFor(log).map(([k, v]) => `${k}: ${v}`).join('\n')}
                                         </pre>
                                     )}
                                 </div>

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { TrafficWorkflowWizard } from '../TrafficWorkflowWizard';
+import type { TrafficLog } from '../TrafficViewer';
 
 // hermetic mocks (mirror proxy panel resize tests)
 vi.mock('@apinox/request-editor/monaco', () => ({
@@ -23,6 +24,19 @@ function twoLogs() {
           responseBody: '<R><SessionToken>TKN-999</SessionToken></R>' },
         { id: 'b', timestamp: 2, method: 'POST', url: 'http://x/next',
           requestBody: '<B><Auth>TKN-999</Auth></B>', requestHeaders: {} },
+    ];
+}
+
+function logsWithHeaders(): TrafficLog[] {
+    return [
+        { id: 'a', timestamp: 1, method: 'POST', url: 'http://x/login',
+          requestHeaders: { 'SOAPAction': '"urn:svc#Login"', 'Content-Type': 'text/xml', 'User-Agent': 'WCF/6.0' },
+          requestBody: '<B><User>mark</User></B>',
+          responseHeaders: { 'Set-Cookie': 'sid=TKN-999; path=/', 'Content-Type': 'text/xml' },
+          responseBody: '<R><SessionToken>TKN-999</SessionToken></R>' },
+        { id: 'b', timestamp: 2, method: 'POST', url: 'http://x/next',
+          requestHeaders: { 'Content-Type': 'text/xml', Authorization: 'Bearer TKN-999' },
+          requestBody: '<B><Auth>TKN-999</Auth></B>' },
     ];
 }
 
@@ -179,5 +193,69 @@ describe('TrafficWorkflowWizard', () => {
     it('shows an empty state when there is no traffic', () => {
         render(<TrafficWorkflowWizard logs={[]} onDone={vi.fn()} onCancel={vi.fn()} />);
         expect(screen.getByText(/no traffic captured/i)).toBeInTheDocument();
+    });
+
+    // ── request/response headers ──────────────────────────────────────────
+    it('shows every captured request header as an editable row (step 2)', () => {
+        render(<TrafficWorkflowWizard logs={logsWithHeaders()} onDone={vi.fn()} onCancel={vi.fn()} />);
+        gotoStep2();
+        const box = screen.getByTestId('wf-reqheaders-a');
+        expect(box).toBeInTheDocument();
+        // All captured headers are present, pre-filled.
+        expect(screen.getByDisplayValue('"urn:svc#Login"')).toBeInTheDocument();
+        expect(screen.getByDisplayValue('SOAPAction')).toBeInTheDocument();
+        expect(screen.getByDisplayValue('text/xml')).toBeInTheDocument();
+        expect(screen.getByDisplayValue('WCF/6.0')).toBeInTheDocument();
+        // Header-count badges: 3 on the open log a, 2 on the collapsed log b.
+        expect(screen.getByText('3 hdr')).toBeInTheDocument();
+        expect(screen.getByText('2 hdr')).toBeInTheDocument();
+    });
+
+    it('shows captured response headers read-only (step 2)', () => {
+        render(<TrafficWorkflowWizard logs={logsWithHeaders()} onDone={vi.fn()} onCancel={vi.fn()} />);
+        gotoStep2();
+        const res = screen.getByTestId('wf-resheaders-a');
+        expect(res).toHaveTextContent('Set-Cookie: sid=TKN-999; path=/');
+    });
+
+    it('flows header edits, additions and removals into the created workflow', () => {
+        const onDone = vi.fn();
+        render(<TrafficWorkflowWizard logs={logsWithHeaders()} onDone={onDone} onCancel={vi.fn()} />);
+        gotoStep2();
+        // Edit a value.
+        fireEvent.change(screen.getByDisplayValue('"urn:svc#Login"'), { target: { value: '"urn:svc#Login2"' } });
+        // Remove the Content-Type row (index 1 in log a).
+        fireEvent.click(screen.getByRole('button', { name: 'Remove header 1' }));
+        // Add a new header.
+        fireEvent.click(screen.getByRole('button', { name: /^\+ Add header$/i }));
+        // The new blank row is the last name/value pair; fill it by aria-label.
+        fireEvent.change(screen.getByLabelText('Header name 2'), { target: { value: 'X-Extra' } });
+        fireEvent.change(screen.getByLabelText('Header value 2'), { target: { value: '1' } });
+        fireEvent.click(screen.getByRole('button', { name: /continue/i }));       // -> step 3
+        fireEvent.click(screen.getByRole('button', { name: /create workflow/i }));
+        const wf = onDone.mock.calls[0][0];
+        // Log a: edited + added headers, Content-Type removed, User-Agent kept.
+        expect(wf.steps[0].headers).toEqual({
+            'SOAPAction': '"urn:svc#Login2"',
+            'User-Agent': 'WCF/6.0',
+            'X-Extra': '1',
+        });
+        // Log b untouched: every captured header carried over, with the tagged
+        // value substituted for runtime extraction.
+        expect(wf.steps[1].headers).toEqual({
+            'Content-Type': 'text/xml',
+            Authorization: 'Bearer {{sessionToken}}',
+        });
+    });
+
+    it('shows the final (substituted) headers on the step-3 review', () => {
+        render(<TrafficWorkflowWizard logs={logsWithHeaders()} onDone={vi.fn()} onCancel={vi.fn()} />);
+        gotoStep2();
+        fireEvent.click(screen.getByRole('button', { name: /continue/i }));       // -> step 3
+        expect(screen.getByTestId('wf-review-headers-a')).toHaveTextContent('SOAPAction: "urn:svc#Login"');
+        // Log b's Authorization carries the {{sessionToken}} placeholder that
+        // the created workflow will actually send.
+        expect(screen.getByTestId('wf-review-headers-b')).toHaveTextContent('Authorization: Bearer {{sessionToken}}');
+        expect(screen.getByTestId('wf-review-headers-b')).not.toHaveTextContent('TKN-999');
     });
 });
