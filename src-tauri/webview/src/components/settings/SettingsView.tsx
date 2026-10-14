@@ -380,6 +380,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ rawConfig, onSave, i
 
     const persistGuiConfig = (config: ApinoxConfig) => {
         if (!configLoaded) return;
+        // Clobber guard: skip the write when nothing changed since the last
+        // save. The view snapshots the WHOLE config and, on autosave/unmount,
+        // writes it all back. Without this guard, merely opening and leaving
+        // the Settings view would persist the snapshot even when the user made
+        // no change — and if the snapshot is stale (e.g. missing a workflow
+        // created elsewhere), that write clobbers the on-disk config.
+        if (JSON.stringify(config) === lastSavedConfigRef.current) return;
         onSave('', config);
         lastSavedConfigRef.current = JSON.stringify(config);
     };
@@ -411,6 +418,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ rawConfig, onSave, i
                 lastSavedConfigRef.current = JSON.stringify(parsed);
                 return true;
             }
+            // Same clobber guard as persistGuiConfig: don't re-write an
+            // unchanged snapshot on unmount (which would clobber fields this
+            // view doesn't own, e.g. workflows).
+            if (JSON.stringify(parsed) === lastSavedConfigRef.current) return true;
             onSave('', parsed);
             lastSavedConfigRef.current = JSON.stringify(parsed);
             return true;

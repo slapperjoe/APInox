@@ -12,6 +12,10 @@ interface WorkflowBuilderModalState {
 interface UseWorkflowHandlersProps {
     config: ApinoxConfig | null;
     setConfig: (config: ApinoxConfig | null) => void;
+    /** Keep the raw config string in lockstep with `config` after a save so
+     *  whole-config surfaces (e.g. the Settings editor) never persist a stale
+     *  snapshot that would clobber the workflows just written by Rust. */
+    setRawConfig?: (raw: string) => void;
     setWorkspaceDirty: (dirty: boolean) => void;
     selectedWorkflowStep: { workflow: Workflow; step: WorkflowStep | null } | null;
     setSelectedWorkflowStep: (step: { workflow: Workflow; step: WorkflowStep | null } | null) => void;
@@ -23,6 +27,7 @@ interface UseWorkflowHandlersProps {
 export function useWorkflowHandlers({
     config,
     setConfig,
+    setRawConfig,
     setWorkspaceDirty,
     selectedWorkflowStep,
     setSelectedWorkflowStep,
@@ -36,6 +41,23 @@ export function useWorkflowHandlers({
     // Last run result per workflow id (frontend WorkflowExecutionResult shape).
     const [workflowRunResults, setWorkflowRunResults] = useState<Record<string, any>>({});
 
+    /**
+     * Apply a fresh GetSettings response to BOTH `config` and `rawConfig`.
+     *
+     * Keeping `rawConfig` in lockstep matters: the Settings editor snapshots
+     * the config into local state and, on autosave/unmount, writes the whole
+     * config back. If only `config` were refreshed after a workflow save, the
+     * Settings editor would later persist a stale snapshot (missing the new
+     * workflow) and clobber the on-disk copy — the workflow would vanish on
+     * the next boot. Serializing the same response into `rawConfig` keeps the
+     * two sources of truth consistent.
+     */
+    const applyConfigResponse = useCallback((response: any) => {
+        if (!response) return;
+        setConfig(response as any);
+        setRawConfig?.(JSON.stringify(response, null, 2));
+    }, [setConfig, setRawConfig]);
+
     const handleAddWorkflow = useCallback(() => {
         setWorkflowBuilderModal({ open: true, workflow: null, projectPath: '' });
     }, []);
@@ -48,13 +70,13 @@ export function useWorkflowHandlers({
         try {
             await bridge.sendMessageAsync({ command: FrontendCommand.SaveWorkflow, workflow });
             const response = await bridge.sendMessageAsync({ command: FrontendCommand.GetSettings });
-            if (response) setConfig(response as any);
+            applyConfigResponse(response);
             setWorkspaceDirty(true);
             setWorkflowBuilderModal({ open: false, workflow: null, projectPath: '' });
         } catch (error) {
             console.error('[useWorkflowHandlers] Failed to save workflow:', error);
         }
-    }, [setConfig, setWorkspaceDirty]);
+    }, [applyConfigResponse, setWorkspaceDirty]);
 
     const handleRunWorkflow = useCallback(async (workflow: Workflow) => {
         try {
@@ -70,7 +92,7 @@ export function useWorkflowHandlers({
             setWorkflowRunResults(prev => ({ ...prev, [workflow.id]: result || {} }));
             // Reload config so the persisted run history (workflowRunHistory) updates.
             const updated: any = await bridge.sendMessageAsync({ command: FrontendCommand.GetSettings });
-            if (updated) setConfig(updated);
+            applyConfigResponse(updated);
         } catch (error) {
             console.error(`[Workflow] ${workflow.name} failed:`, error);
             setWorkflowRunResults(prev => ({
@@ -84,7 +106,7 @@ export function useWorkflowHandlers({
         } finally {
             setLoading(false);
         }
-    }, [config?.activeEnvironment, setLoading, setActiveView, setSelectedWorkflowStep]);
+    }, [config?.activeEnvironment, setLoading, setActiveView, setSelectedWorkflowStep, applyConfigResponse]);
 
     const handleDeleteWorkflow = useCallback(async (workflow: Workflow) => {
         try {
@@ -93,12 +115,12 @@ export function useWorkflowHandlers({
                 setSelectedWorkflowStep(null);
             }
             const updatedConfig: any = await bridge.sendMessageAsync({ command: FrontendCommand.GetSettings });
-            if (updatedConfig) setConfig(updatedConfig);
+            applyConfigResponse(updatedConfig);
             setWorkspaceDirty(true);
         } catch (error) {
             console.error('Failed to delete workflow:', error);
         }
-    }, [setConfig, setWorkspaceDirty, selectedWorkflowStep, setSelectedWorkflowStep]);
+    }, [applyConfigResponse, setWorkspaceDirty, selectedWorkflowStep, setSelectedWorkflowStep]);
 
     const handleDuplicateWorkflow = useCallback((workflow: Workflow) => {
         const duplicated: Workflow = {
@@ -151,25 +173,25 @@ export function useWorkflowHandlers({
         try {
             await bridge.sendMessageAsync({ command: FrontendCommand.SaveWorkflow, workflow: updatedWorkflow });
             const response = await bridge.sendMessageAsync({ command: FrontendCommand.GetSettings });
-            if (response) setConfig(response as any);
+            applyConfigResponse(response);
             setSelectedWorkflowStep({ workflow: updatedWorkflow, step: updatedStep });
         } catch (error) {
             console.error('[useWorkflowHandlers] Failed to update workflow step:', error);
         }
-    }, [setConfig, setSelectedWorkflowStep]);
+    }, [applyConfigResponse, setSelectedWorkflowStep]);
 
     const handleUpdateWorkflow = useCallback(async (updatedWorkflow: Workflow) => {
         try {
             await bridge.sendMessageAsync({ command: FrontendCommand.SaveWorkflow, workflow: updatedWorkflow });
             const response = await bridge.sendMessageAsync({ command: FrontendCommand.GetSettings });
-            if (response) setConfig(response as any);
+            applyConfigResponse(response);
             if (selectedWorkflowStep?.workflow.id === updatedWorkflow.id) {
                 setSelectedWorkflowStep({ workflow: updatedWorkflow, step: selectedWorkflowStep.step });
             }
         } catch (error) {
             console.error('[useWorkflowHandlers] Failed to update workflow:', error);
         }
-    }, [setConfig, setSelectedWorkflowStep, selectedWorkflowStep]);
+    }, [applyConfigResponse, setSelectedWorkflowStep, selectedWorkflowStep]);
 
     const handleLoadWorkflowFromFile = useCallback(async () => {
         try {

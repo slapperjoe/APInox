@@ -1457,6 +1457,7 @@ const MainContent: React.FC = () => {
     } = useWorkflowHandlers({
         config,
         setConfig,
+        setRawConfig,
         setWorkspaceDirty,
         selectedWorkflowStep,
         setSelectedWorkflowStep: setSelectedWorkflowStep as (step: { workflow: Workflow; step: WorkflowStep | null } | null) => void,
@@ -1475,18 +1476,24 @@ const MainContent: React.FC = () => {
 
     // Save the wizard's workflow, then select it so the app lands on the new
     // workflow (handleSaveWorkflow closes its own modal and does NOT select).
+    // Refresh BOTH `config` and `rawConfig` from the GetSettings response so
+    // the Settings editor (which snapshots + whole-config-persits `rawConfig`)
+    // can't later clobber this workflow with a stale snapshot.
     const handleSaveWorkflowThenSelect = useCallback(async (wf: Workflow) => {
         try {
             await bridge.sendMessageAsync({ command: FrontendCommand.SaveWorkflow, workflow: wf });
             const response = await bridge.sendMessageAsync({ command: FrontendCommand.GetSettings });
-            if (response) setConfig(response as any);
+            if (response) {
+                setConfig(response as any);
+                setRawConfig(JSON.stringify(response, null, 2));
+            }
             setWorkspaceDirty(true);
             const updated = (response as any)?.workflows?.find((w: Workflow) => w.id === wf.id) ?? wf;
             handleSelectWorkflow(updated);
         } catch (e) {
             console.error('[Workflows] Failed to save traffic workflow:', e);
         }
-    }, [setConfig, setWorkspaceDirty, handleSelectWorkflow]);
+    }, [setConfig, setRawConfig, setWorkspaceDirty, handleSelectWorkflow]);
 
     const pickRequestItems = useMemo<PickRequestItem[]>(() => {
         const items: PickRequestItem[] = [];
