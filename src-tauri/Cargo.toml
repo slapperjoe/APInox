@@ -78,6 +78,12 @@ regex = "1.11"
 # Compression (gzip for workspace export)
 flate2 = "1.0"
 
+# ZIP archives (update payload: download a zip, stage the exe out of it)
+# default-features off: the default feature set pulls C-backed codecs
+# (zstd-sys, bzip2-sys, lzma-sys) the updater never uses; deflate alone
+# (miniz_oxide, pure Rust) covers Compress-Archive's output.
+zip = { version = "2.2", default-features = false, features = ["deflate"] }
+
 # Error handling
 anyhow = "1.0"
 

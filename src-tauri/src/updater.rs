@@ -1,10 +1,15 @@
 //! Self-update mechanism for APInox.
 //!
-//! Checks GitHub Releases for newer versions, downloads the platform-appropriate
-//! installer (Windows NSIS `.exe`, macOS `.dmg`), and applies it without leaving
-//! the app.  On macOS the app mounts the DMG, copies the new bundle to a staging
-//! path, then launches a small shell script that swaps the bundles after the app
-//! has exited and re-opens it.
+//! Checks GitHub Releases for newer versions and downloads the
+//! platform-appropriate payload. On Windows the payload is a ZIP of the plain
+//! app executable (the zip is verified, and the executable is staged straight
+//! out of it — nothing executable is ever downloaded into the temp dir); on
+//! macOS it is the `.dmg` installer. After download the new build is applied
+//! without leaving the app: Windows stages it next to the installed executable
+//! and hands over to a helper pass (`--apply-update`) that swaps the files
+//! after the app has exited; macOS mounts the DMG, copies the new bundle to a
+//! staging path, then launches a small shell script that swaps the bundles
+//! after the app has exited and re-opens it.
 
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -39,8 +44,9 @@ pub struct UpdateCheckResult {
     pub has_update: bool,
     /// Human-readable reason why the update check could not complete.
     pub check_error: Option<String>,
-    /// Platform-appropriate installer download URL:
-    /// - Windows: NSIS `.exe` URL, or `None` when no matching asset was found.
+    /// Platform-appropriate payload download URL:
+    /// - Windows: update `.zip` URL (preferred), plain-executable `.exe` URL,
+    ///   or `None` when no matching asset was found.
     /// - macOS: `.dmg` URL, or `None` when no matching asset was found.
     /// - Other platforms: always `None` (use `release_url` for browser download).
     pub download_url: Option<String>,
@@ -631,6 +637,43 @@ async fn get_with_fallback(url: &str) -> Result<reqwest::Response, String> {
 
 // ── Tauri commands ─────────────────────────────────────────────────────────
 
+/// Local name for a downloaded update payload, in the system temp dir.
+///
+/// The name follows the payload's REAL extension (taken from the download
+/// URL): a zip update payload is stored as `apinox-update.zip`, never as an
+/// `.exe` — so the temp dir never receives a file whose declared type
+/// disagrees with its contents (a mismatch an on-write real-time scan keys
+/// on), and no cleanup step ever mistakes an archive for an executable.
+/// Unknown extensions keep the legacy per-OS payload names.
+pub fn update_download_path(download_url: &str) -> std::path::PathBuf {
+    let ext = download_url
+        .rsplit('/')
+        .next()
+        .and_then(|file| file.rsplit_once('.'))
+        .map(|(_, ext)| ext.to_ascii_lowercase());
+    match ext.as_deref() {
+        Some("zip") => std::env::temp_dir().join("apinox-update.zip"),
+        Some("dmg") => std::env::temp_dir().join("apinox-update.dmg"),
+        _ => {
+            // Windows: a copy-update payload is the plain app executable, not
+            // an installer — hence a distinct name (and no `.exe` installer
+            // semantics).
+            #[cfg(target_os = "macos")]
+            {
+                std::env::temp_dir().join("apinox-update.dmg")
+            }
+            #[cfg(target_os = "windows")]
+            {
+                std::env::temp_dir().join("apinox-update-payload.exe")
+            }
+            #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+            {
+                std::env::temp_dir().join("apinox-update.exe")
+            }
+        }
+    }
+}
+
 /// Calls the GitHub Releases API to determine whether a newer version exists.
 #[tauri::command]
 pub async fn check_for_updates() -> Result<UpdateCheckResult, String> {
@@ -774,14 +817,11 @@ pub async fn download_update(
     }
 
     let total_bytes = response.content_length().unwrap_or(0);
-    #[cfg(target_os = "macos")]
-    let dest_path = std::env::temp_dir().join("apinox-update.dmg");
-    // Windows: a copy-update payload is the plain app executable, not an
-    // installer — hence a distinct name (and no `.exe` installer semantics).
-    #[cfg(target_os = "windows")]
-    let dest_path = std::env::temp_dir().join("apinox-update-payload.exe");
-    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
-    let dest_path = std::env::temp_dir().join("apinox-update.exe");
+    // The temp file name follows the payload's REAL extension (via its URL),
+    // so the temp dir never receives an "exe" that is really a zip (the zip
+    // update path) or any other type mismatch — exactly the sort of
+    // mismatch Defender's on-write scan keys on.
+    let dest_path = update_download_path(&download_url);
 
     let mut file = tokio::fs::File::create(&dest_path)
         .await
@@ -1031,19 +1071,29 @@ pub async fn launch_installer(
 //
 // Why: the NSIS installer is a self-extracting executable. Defender's ML
 // flags it (seen: `Trojan:Win32/Wacatac.F!ml`) and quarantines it mid-update,
-// so the in-app updater appears to do nothing.
+// so the in-app updater appears to do nothing. The plain executable is
+// flagged by on-write scans too — an unknown exe being written into %TEMP% is
+// a classic real-time/cloud escalation trigger.
 //
 // Instead of downloading a self-extracting installer, the updater downloads
-// the PLAIN app executable — the same bytes the installer would write, which
-// the release pipeline already publishes as `APInox-portable.exe` — stages it
-// next to the installed one as `<exe>.new`, and hands over to a helper pass of
-// the app itself (`--apply-update`) that waits for this process to exit, swaps
-// the files and relaunches. Nothing is installed by running a downloaded
-// executable.
+// a ZIP of the plain app executable — the same bytes the installer would
+// write, which the release pipeline publishes as
+// `apinox-v<ver>-windows_x64-update.zip` (plus `APInox-portable.exe` for
+// releases before the zip existed) — and stages the executable straight out
+// of the archive next to the installed one as `<exe>.new`. What lands in the
+// temp dir is an inert archive, whose contents are only scanned when read;
+// the executable itself goes directly from the archive into the install dir
+// and is never downloaded as an `.exe`. Then a helper pass of the app itself
+// (`--apply-update`) waits for this process to exit, swaps the files and
+// relaunches. Nothing is installed by running a downloaded executable.
 //
-// The NSIS installer stays the fallback: for first installs, for releases that
-// publish no plain-executable payload, and for per-machine installs where the
-// install directory is not writable by the user.
+// (Defender still scans the new executable when it first runs after the
+// swap — that is unavoidable for any update. The fix for that class of flag
+// is Authenticode code-signing the build.)
+//
+// The NSIS installer stays the fallback: for first installs, for releases
+// that publish neither zip nor plain-executable payload, and for per-machine
+// installs where the install directory is not writable by the user.
 
 /// Staged (not yet swapped) update payload's file suffix.
 const STAGED_SUFFIX: &str = ".new";
@@ -1102,9 +1152,14 @@ pub fn parse_digest(digest: Option<&str>) -> Option<String> {
 /// Picks the update payload for `platform` (`"windows"`, `"macos"`, other).
 ///
 /// Windows preference order:
-///   1. a dedicated update payload (`*windows_x64-update.exe`),
-///   2. the plain app executable (`APInox-portable.exe`) — the copy path,
-///   3. the NSIS installer (`*_x64-setup.exe`) — the fallback for releases
+///   1. the update zip (`*windows_x64-update.zip`) — a zip of the plain app
+///      executable. Downloading an archive (instead of a bare exe) keeps
+///      Defender's on-write real-time/cloud scan off the executable itself —
+///      archive contents are only scanned when read — and the exe is staged
+///      straight out of the zip (never written to the temp dir).
+///   2. a dedicated plain-executable payload (`*windows_x64-update.exe`),
+///   3. the plain app executable (`APInox-portable.exe`),
+///   4. the NSIS installer (`*_x64-setup.exe`) — the fallback for releases
 ///      published before the copy path existed.
 /// macOS keeps the `.dmg` installer path.
 pub fn select_payload(assets: &[AssetRef], platform: &str) -> Option<PayloadChoice> {
@@ -1112,6 +1167,14 @@ pub fn select_payload(assets: &[AssetRef], platform: &str) -> Option<PayloadChoi
 
     match platform {
         "windows" => {
+            if let Some(asset) = find("-windows_x64-update.zip") {
+                return Some(PayloadChoice {
+                    name: asset.name.clone(),
+                    url: asset.url.clone(),
+                    sha256: parse_digest(asset.digest.as_deref()),
+                    mode: UpdateMode::Copy,
+                });
+            }
             if let Some(asset) = find("-windows_x64-update.exe") {
                 return Some(PayloadChoice {
                     name: asset.name.clone(),
@@ -1236,6 +1299,39 @@ fn iso_now() -> String {
     format!("unix:{}", secs)
 }
 
+/// Plausibility check on a candidate update executable: a real PE (MZ header)
+/// of a plausible size. A truncated HTML error page, a stale partial download
+/// or a zip of junk must never end up staged over a working installation.
+///
+/// `stage_self_update` runs this on the downloaded payload (before the copy);
+/// `stage_self_update_from_zip` runs it on the staged file (the zip path
+/// streams the extracted bytes straight into place).
+fn validate_update_payload(path: &std::path::Path) -> Result<(), String> {
+    let size = std::fs::metadata(path)
+        .map_err(|e| format!("Downloaded payload is not readable: {}", e))?
+        .len();
+    if size < MIN_PAYLOAD_BYTES {
+        return Err(format!(
+            "Downloaded payload is only {} bytes — refusing to stage it as an update",
+            size
+        ));
+    }
+    // Cheap sanity check: a Windows executable starts with the MZ header.
+    use std::io::Read;
+    let mut head = [0u8; 2];
+    std::fs::File::open(path)
+        .and_then(|mut file| file.read_exact(&mut head))
+        .map_err(|e| format!("Downloaded payload is not readable: {}", e))?;
+    if &head != b"MZ" {
+        return Err(
+            "Downloaded payload is not a Windows executable (missing MZ header) — \
+             not staging it over the installed app"
+                .to_string(),
+        );
+    }
+    Ok(())
+}
+
 /// Stages `payload` next to the installed executable as `<exe>.new` so the
 /// helper pass can swap it in after this process exits.
 ///
@@ -1246,32 +1342,7 @@ pub fn stage_self_update(
     install_dir: &std::path::Path,
     exe_name: &str,
 ) -> Result<std::path::PathBuf, String> {
-    let size = std::fs::metadata(payload)
-        .map_err(|e| format!("Downloaded payload is not readable: {}", e))?
-        .len();
-    if size < MIN_PAYLOAD_BYTES {
-        return Err(format!(
-            "Downloaded payload is only {} bytes — refusing to stage it as an update",
-            size
-        ));
-    }
-    // Cheap sanity check: a Windows executable starts with the MZ header. A
-    // truncated HTML error page or a stale partial download must never be
-    // staged over a working installation.
-    {
-        use std::io::Read;
-        let mut head = [0u8; 2];
-        std::fs::File::open(payload)
-            .and_then(|mut file| file.read_exact(&mut head))
-            .map_err(|e| format!("Downloaded payload is not readable: {}", e))?;
-        if &head != b"MZ" {
-            return Err(
-                "Downloaded payload is not a Windows executable (missing MZ header) — \
-                 not staging it over the installed app"
-                    .to_string(),
-            );
-        }
-    }
+    validate_update_payload(payload)?;
 
     let staged = install_dir.join(format!("{}{}", exe_name, STAGED_SUFFIX));
     let _ = std::fs::remove_file(&staged);
@@ -1288,6 +1359,111 @@ pub fn stage_self_update(
     })?;
     log::info!("[Updater] Staged copy update at {}", staged.display());
     Ok(staged)
+}
+
+/// Upper bound on the declared size of the executable entry inside an update
+/// zip. A build is tens of MB; anything bigger is not a build (zip bomb or a
+/// mistaken asset) and must not be staged.
+const MAX_ZIP_ENTRY_BYTES: u64 = 1_000_000_000;
+
+/// Stages the app executable out of a downloaded update zip, straight into
+/// `<install-dir>/<exe>.new` — the executable never touches the temp dir.
+///
+/// The zip is the download-time mitigation for Defender's scans: the file
+/// that is written from the network is an inert archive (its contents are
+/// only scanned when read), not an unknown executable appearing in %TEMP%.
+/// The executable is then streamed from the archive into the install dir,
+/// validated exactly like the plain-exe path, and handed to the same swap
+/// helper. On validation failure no partial staging is left behind.
+pub fn stage_self_update_from_zip(
+    payload_zip: &std::path::Path,
+    install_dir: &std::path::Path,
+    exe_name: &str,
+) -> Result<std::path::PathBuf, String> {
+    let file = std::fs::File::open(payload_zip)
+        .map_err(|e| format!("Downloaded zip is not readable: {}", e))?;
+    let mut archive = zip::ZipArchive::new(file)
+        .map_err(|e| format!("Downloaded zip is not a valid archive: {}", e))?;
+
+    let mut entry = pick_exe_entry(&mut archive, exe_name)?;
+    let declared = entry.size();
+    if declared > MAX_ZIP_ENTRY_BYTES {
+        return Err(format!(
+            "The executable inside the update zip is declared as {} bytes — \
+             refusing to stage it as an update",
+            declared
+        ));
+    }
+
+    let staged = install_dir.join(format!("{}{}", exe_name, STAGED_SUFFIX));
+    let _ = std::fs::remove_file(&staged);
+    let backup = install_dir.join(format!("{}{}", exe_name, BACKUP_SUFFIX));
+    let _ = std::fs::remove_file(&backup);
+
+    let mut out = std::fs::File::create(&staged).map_err(|e| {
+        format!(
+            "Failed to stage the update into {} ({}). The install directory may be read-only \
+             (per-machine install) — use the installer instead.",
+            install_dir.display(),
+            e
+        )
+    })?;
+    let written = std::io::copy(&mut entry, &mut out)
+        .map_err(|e| format!("Failed to extract the update from the zip: {}", e))?;
+
+    // Validate the staged bytes the same way the plain-exe path validates
+    // the downloaded payload.
+    if let Err(e) = validate_update_payload(&staged) {
+        let _ = std::fs::remove_file(&staged);
+        return Err(e);
+    }
+    log::info!(
+        "[Updater] Staged copy update from zip at {} ({} bytes)",
+        staged.display(),
+        written
+    );
+    Ok(staged)
+}
+
+/// Picks the executable entry from an update zip: the entry named after the
+/// installed executable (case-insensitive — `Compress-Archive` stores the
+/// basename), or — when there is exactly one — any other `.exe` entry.
+/// Anything ambiguous is refused.
+fn pick_exe_entry<'a>(
+    archive: &'a mut zip::ZipArchive<std::fs::File>,
+    exe_name: &str,
+) -> Result<zip::read::ZipFile<'a>, String> {
+    // Collect the name before calling `by_name`: the `file_names()` iterator
+    // immutably borrows the archive, and `by_name` needs the mutable borrow.
+    let name = archive
+        .file_names()
+        .find(|n| n.eq_ignore_ascii_case(exe_name))
+        .map(String::from);
+    if let Some(name) = name {
+        return archive
+            .by_name(&name)
+            .map_err(|e| format!("No readable executable in the update zip: {}", e));
+    }
+
+    let candidates: Vec<String> = archive
+        .file_names()
+        .filter(|n| !n.ends_with('/'))
+        .filter(|n| n.to_ascii_lowercase().ends_with(".exe"))
+        .map(String::from)
+        .collect();
+    match candidates.len() {
+        1 => archive
+            .by_name(&candidates[0])
+            .map_err(|e| format!("No readable executable in the update zip: {}", e)),
+        0 => Err(
+            "No executable entry found in the update zip — not staging it over the installed app"
+                .to_string(),
+        ),
+        n => Err(format!(
+            "The update zip contains {} executable entries (expected one) — refusing to guess",
+            n
+        )),
+    }
 }
 
 /// Swaps `<exe>.new` into place, keeping the replaced executable as
@@ -1475,13 +1651,22 @@ fn cleanup_downloaded_payload(path: &str) {
 
 /// Applies a downloaded copy-update payload: stage it next to the installed
 /// executable, then hand over to the helper pass and exit.
+///
+/// The payload is either the plain executable (staged by copying it) or an
+/// update zip (the executable is streamed straight out of the archive — it
+/// never touches the temp dir). Both paths stage `<exe>.new` and then run the
+/// identical swap/relaunch handover.
 #[tauri::command]
 pub async fn apply_copy_update(app: tauri::AppHandle, payload_path: String) -> Result<(), String> {
     let (install_dir, exe_name) = current_install_target()?;
 
     emit_install_step(&app, "staging");
     let payload = std::path::PathBuf::from(&payload_path);
-    stage_self_update(&payload, &install_dir, &exe_name)?;
+    if payload.extension().is_some_and(|e| e.eq_ignore_ascii_case("zip")) {
+        stage_self_update_from_zip(&payload, &install_dir, &exe_name)?;
+    } else {
+        stage_self_update(&payload, &install_dir, &exe_name)?;
+    }
 
     // The helper is this same executable, started with the swap flag: it waits
     // for this process to exit (the file lock is the synchronisation), swaps
@@ -2349,7 +2534,11 @@ mod tests {
     // ── Copy-based self-update ──────────────────────────────────────────────
 
     /// An asset list shaped like a real Windows release.
-    fn windows_assets(with_update_payload: bool, with_portable: bool) -> Vec<AssetRef> {
+    fn windows_assets(
+        with_update_zip: bool,
+        with_update_payload: bool,
+        with_portable: bool,
+    ) -> Vec<AssetRef> {
         let mut assets = vec![
             AssetRef {
                 name: "apinox-v1.2.3-linux-x64.deb".into(),
@@ -2376,6 +2565,13 @@ mod tests {
                 digest: Some(format!("sha256:{}", "c".repeat(64))),
             });
         }
+        if with_update_zip {
+            assets.push(AssetRef {
+                name: "apinox-v1.2.3-windows_x64-update.zip".into(),
+                url: "https://example.test/update.zip".into(),
+                digest: Some(format!("sha256:{}", "d".repeat(64))),
+            });
+        }
         assets
     }
 
@@ -2383,19 +2579,19 @@ mod tests {
     fn test_select_payload_prefers_copy_over_installer() {
         // The plain executable wins: copying it needs no installer, which is
         // the whole point (Defender quarantines the NSIS self-extractor).
-        let chosen = select_payload(&windows_assets(false, true), "windows").unwrap();
+        let chosen = select_payload(&windows_assets(false, false, true), "windows").unwrap();
         assert_eq!(chosen.name, "APInox-portable.exe");
         assert_eq!(chosen.mode, UpdateMode::Copy);
         assert_eq!(chosen.url, "https://example.test/portable.exe");
         assert_eq!(chosen.sha256.as_deref(), Some("b".repeat(64).as_str()));
 
         // A dedicated update payload outranks the portable download.
-        let chosen = select_payload(&windows_assets(true, true), "windows").unwrap();
+        let chosen = select_payload(&windows_assets(false, true, true), "windows").unwrap();
         assert_eq!(chosen.name, "apinox-v1.2.3-windows_x64-update.exe");
         assert_eq!(chosen.mode, UpdateMode::Copy);
 
         // No plain payload (an older release): fall back to the installer.
-        let chosen = select_payload(&windows_assets(false, false), "windows").unwrap();
+        let chosen = select_payload(&windows_assets(false, false, false), "windows").unwrap();
         assert_eq!(chosen.name, "apinox-v1.2.3-windows_x64-setup.exe");
         assert_eq!(chosen.mode, UpdateMode::Installer);
         // A digest that is not a SHA-256 is ignored rather than trusted.
@@ -2403,8 +2599,24 @@ mod tests {
     }
 
     #[test]
+    fn test_select_payload_prefers_zip_over_every_other_payload() {
+        // The update zip outranks both the dedicated update exe and the
+        // portable download: a downloaded executable is the thing Defender's
+        // on-write scan escalates on, and a downloaded archive is not.
+        let chosen = select_payload(&windows_assets(true, true, true), "windows").unwrap();
+        assert_eq!(chosen.name, "apinox-v1.2.3-windows_x64-update.zip");
+        assert_eq!(chosen.mode, UpdateMode::Copy);
+        assert_eq!(chosen.url, "https://example.test/update.zip");
+        assert_eq!(chosen.sha256.as_deref(), Some("d".repeat(64).as_str()));
+
+        // The zip wins even when it is the only plain payload available.
+        let chosen = select_payload(&windows_assets(true, false, false), "windows").unwrap();
+        assert_eq!(chosen.name, "apinox-v1.2.3-windows_x64-update.zip");
+    }
+
+    #[test]
     fn test_select_payload_other_platforms() {
-        assert!(select_payload(&windows_assets(true, true), "linux").is_none());
+        assert!(select_payload(&windows_assets(false, true, true), "linux").is_none());
         let mac = vec![AssetRef {
             name: "apinox-v1.2.3-macos-arm64.dmg".into(),
             url: "https://example.test/app.dmg".into(),
@@ -2528,6 +2740,146 @@ mod tests {
         );
 
         let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    /// Writes a zip with the given (name → bytes) entries to `path`, using
+    /// deflate compression (the shape `Compress-Archive` produces on CI).
+    fn write_test_zip(path: &std::path::Path, entries: &[(&str, &[u8])]) {
+        use std::io::Write;
+        let file = std::fs::File::create(path).unwrap();
+        let mut zip = zip::ZipWriter::new(file);
+        for (name, data) in entries {
+            zip
+                .start_file(*name, zip::write::SimpleFileOptions::default())
+                .unwrap();
+            zip.write_all(data).unwrap();
+        }
+        zip.finish().unwrap();
+    }
+
+    #[test]
+    fn test_stage_from_zip_stages_the_inner_exe() {
+        let tmp = std::env::temp_dir().join(format!("apinox-zip-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        let install = tmp.join("install");
+        std::fs::create_dir_all(&install).unwrap();
+        std::fs::write(install.join("APInox.exe"), b"OLD-BUILD").unwrap();
+
+        // A zip holding a real (fake) build — MZ header, plausible size —
+        // named exactly like the installed executable (the Compress-Archive
+        // shape: the basename at the zip root).
+        let mut new_bytes = vec![b'M', b'Z'];
+        new_bytes.extend(std::iter::repeat(b'x').take(MIN_PAYLOAD_BYTES as usize));
+        let zip_path = tmp.join("apinox-update.zip");
+        write_test_zip(&zip_path, &[("APInox.exe", &new_bytes)]);
+
+        let staged = stage_self_update_from_zip(&zip_path, &install, "APInox.exe").unwrap();
+        assert_eq!(staged.file_name().unwrap(), "APInox.exe.new");
+        assert_eq!(
+            std::fs::read(&staged).unwrap(),
+            new_bytes,
+            "the staged bytes are the zip's contents, byte for byte"
+        );
+
+        // The zip's staging feeds the same swap helper as the plain-exe path.
+        swap_staged_update(&install, "APInox.exe").unwrap();
+        assert_eq!(std::fs::read(install.join("APInox.exe")).unwrap(), new_bytes);
+        assert_eq!(
+            std::fs::read(install.join("APInox.exe.old")).unwrap(),
+            b"OLD-BUILD",
+            "the previous build is kept for rollback"
+        );
+        assert!(!staged.exists(), "the staged payload is consumed");
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn test_stage_from_zip_accepts_a_single_renamed_exe_entry() {
+        let tmp = std::env::temp_dir().join(format!("apinox-zip-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        let install = tmp.join("install");
+        std::fs::create_dir_all(&install).unwrap();
+        std::fs::write(install.join("APInox.exe"), b"OLD-BUILD").unwrap();
+
+        // Entry named differently (a versioned file name): exactly one .exe
+        // entry is still accepted.
+        let mut new_bytes = vec![b'M', b'Z'];
+        new_bytes.extend(std::iter::repeat(b'x').take(MIN_PAYLOAD_BYTES as usize));
+        let zip_path = tmp.join("renamed.zip");
+        write_test_zip(&zip_path, &[("APInox-1.2.3.exe", &new_bytes)]);
+
+        let staged = stage_self_update_from_zip(&zip_path, &install, "APInox.exe").unwrap();
+        assert_eq!(std::fs::read(&staged).unwrap(), new_bytes);
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn test_stage_from_zip_refuses_junk_and_ambiguous_archives() {
+        let tmp = std::env::temp_dir().join(format!("apinox-zip-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        let install = tmp.join("install");
+        std::fs::create_dir_all(&install).unwrap();
+        std::fs::write(install.join("APInox.exe"), b"OLD-BUILD").unwrap();
+
+        // A zip with no executable at all.
+        let zip_path = tmp.join("no-exe.zip");
+        write_test_zip(&zip_path, &[("README.txt", b"not an update")]);
+        let err = stage_self_update_from_zip(&zip_path, &install, "APInox.exe").unwrap_err();
+        assert!(err.contains("No executable entry"), "unexpected error: {err}");
+        assert!(!install.join("APInox.exe.new").exists(), "nothing is staged");
+
+        // A zip whose only executable fails the MZ/size validation: refused,
+        // and no partial staging is left behind.
+        let zip_path = tmp.join("tiny.zip");
+        write_test_zip(&zip_path, &[("APInox.exe", b"MZ")]);
+        assert!(stage_self_update_from_zip(&zip_path, &install, "APInox.exe").is_err());
+        assert!(
+            !install.join("APInox.exe.new").exists(),
+            "a failed stage leaves no .new behind"
+        );
+
+        // Two executables: ambiguous — refuse rather than guess.
+        let zip_path = tmp.join("two-exes.zip");
+        write_test_zip(&zip_path, &[("a.exe", b"MZ"), ("b.exe", b"MZ")]);
+        let err = stage_self_update_from_zip(&zip_path, &install, "APInox.exe").unwrap_err();
+        assert!(err.contains("2 executable entries"), "unexpected error: {err}");
+
+        // A corrupt (non-zip) file is reported as such, never staged.
+        let corrupt = tmp.join("corrupt.zip");
+        std::fs::write(&corrupt, b"this is not a zip archive at all").unwrap();
+        let err = stage_self_update_from_zip(&corrupt, &install, "APInox.exe").unwrap_err();
+        assert!(err.contains("not a valid archive"), "unexpected error: {err}");
+
+        // The installation itself was never touched by any of the failures.
+        assert_eq!(std::fs::read(install.join("APInox.exe")).unwrap(), b"OLD-BUILD");
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn test_update_download_path_follows_the_real_extension() {
+        // A zip payload is stored as a zip — never masquerading as an .exe in
+        // the temp dir (an on-write scan keys on exactly that mismatch).
+        let p = update_download_path(
+            "https://github.com/slapperjoe/apinox/releases/download/v1.2.3/apinox-v1.2.3-windows_x64-update.zip",
+        );
+        assert_eq!(p.file_name().unwrap(), "apinox-update.zip");
+
+        let p = update_download_path("https://example.test/app-v1.2.3.dmg");
+        assert_eq!(p.file_name().unwrap(), "apinox-update.dmg");
+
+        // Unknown/no extension keeps the legacy per-OS payload names.
+        let p = update_download_path("https://example.test/APInox-portable.exe");
+        let name = p.to_string_lossy();
+        assert!(
+            name.ends_with(".exe") || name.ends_with(".dmg"),
+            "legacy payload name, got: {name}"
+        );
     }
 
     /// A staged update that never got applied is discarded at startup (no

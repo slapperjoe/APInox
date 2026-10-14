@@ -146,6 +146,33 @@ function commitCount() {
   );
 }
 
+// ── previous release minor ─────────────────────────────────────────────────
+// The minor component advances by one per RELEASE. It is derived from git at
+// build time (like the patch) so it survives the "release adopts the version
+// from the build artifacts" model, where release.yml no longer builds or bumps
+// anything. We take the newest *release* tag (a `v<major>.<minor>.<patch>` —
+// NOT arbitrary v-prefixed tags like verify-*), read its minor, and add one.
+// With no prior release tag we fall back to the minor already in package.json,
+// so a fresh repo keeps whatever minor it was seeded with.
+// A higher minor always outranks a lower one under semver, so this can never
+// make the updater treat a newer release as a downgrade.
+function nextMinor(fallbackMinor) {
+  const out = execSync(
+    "git tag -l 'v*' --sort=-version:refname",
+    { cwd: root },
+  )
+    .toString()
+    .trim();
+  const tags = out.split("\n").map((t) => t.trim()).filter(Boolean);
+  for (const tag of tags) {
+    // Only real semver release tags: vMAJOR.MINOR.PATCH
+    const m = /^v(\d+)\.(\d+)\.(\d+)$/.exec(tag);
+    if (!m) continue;
+    return Number(m[2]) + 1;
+  }
+  return fallbackMinor;
+}
+
 // ── sync ───────────────────────────────────────────────────────────────────
 // Composes major.minor.<commit count> and writes it to the files that are
 // actually consumed: root package.json (single source of truth — webview
@@ -166,7 +193,11 @@ function sync(forcedVersion) {
       console.error("❌ Version in package.json must be at least major.minor");
       process.exit(1);
     }
-    targetVersion = `${parts[0]}.${parts[1]}.${commitCount()}`;
+    // Minor = previous release's minor + 1 (advances once per release);
+    // patch = commit count. Both derived from git so a given commit + tag set
+    // always yields the same version.
+    const minor = nextMinor(parts[1]);
+    targetVersion = `${parts[0]}.${minor}.${commitCount()}`;
   }
 
   const vParts = targetVersion.split(".");
@@ -305,10 +336,15 @@ function bump(type, message) {
     );
     process.exit(1);
   } else {
-    // major/minor: let npm handle the arithmetic; the patch is re-derived
-    // from the commit count by sync
+    // major/minor: let npm handle the major.minor arithmetic, then re-derive
+    // ONLY the patch from the commit count. We pass a forced version so the
+    // tag-derived minor (nextMinor) does not clobber a deliberate bump.
     run(`npm version ${type} --no-git-tag-version`);
-    run("node scripts/version.js sync");
+    const bumped = JSON.parse(
+      fs.readFileSync(configFiles.rootPackage, "utf8"),
+    ).version;
+    const [maj, min] = bumped.split(".");
+    sync(`${maj}.${min}.${commitCount()}`);
   }
 
   const pkg = JSON.parse(fs.readFileSync(configFiles.rootPackage, "utf8"));

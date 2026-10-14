@@ -45,6 +45,10 @@ jobs:
           # Full history: the patch version is the commit count
           # (git rev-list --count HEAD), which a shallow checkout cannot compute.
           fetch-depth: 0
+          # All release tags: the minor version is derived from the latest
+          # v<major>.<minor>.<patch> release tag (scripts/version.js nextMinor),
+          # so the checkout must carry the tags or the minor can't advance.
+          fetch-tags: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -106,6 +110,15 @@ jobs:
             $portable = "target/${{ matrix.target }}/release/APInox.exe"
             if (Test-Path $portable) {
               Copy-Item $portable (Join-Path $releaseDir "APInox-portable.exe")
+
+              # Update zip: the plain executable compressed. The in-app
+              # updater prefers THIS payload over the bare exe — downloading
+              # an archive keeps Windows Defender's on-write scan off the
+              # executable itself; the updater streams the exe straight out
+              # of the zip (see src-tauri/src/updater.rs).
+              Compress-Archive -Path $portable `
+                -DestinationPath (Join-Path $releaseDir "apinox-v$version-windows_x64-update.zip") `
+                -CompressionLevel Optimal -Force
             }
           }
 
@@ -152,6 +165,9 @@ jobs:
         with:
           # Full history: the patch version is the commit count.
           fetch-depth: 0
+          # All release tags: the minor version is derived from the latest
+          # release tag (scripts/version.js nextMinor).
+          fetch-tags: true
 
       - name: Update system and install build dependencies
         run: |
