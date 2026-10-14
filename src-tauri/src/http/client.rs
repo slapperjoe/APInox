@@ -169,10 +169,20 @@ impl HttpClient {
         );
 
         let client = {
-            let mut cache = CLIENT_CACHE.lock().unwrap();
-            if let Some(c) = cache.get(&key) {
-                c.clone()
+            // Fast path: look up under the lock, cloning the handle so the guard
+            // is released HERE — the scrutinee `if let` would otherwise keep the
+            // guard alive into the `else` and the insert below would deadlock on
+            // the same (non-reentrant) mutex.
+            let cached = {
+                let guard = CLIENT_CACHE.lock().unwrap();
+                guard.get(&key).cloned()
+            };
+            if let Some(c) = cached {
+                c
             } else {
+                // Slow path: build OUTSIDE the lock so a cold client construction
+                // (TLS stack, threadpool wiring) doesn't block every other request
+                // on the same mutex. A duplicate build on a race is tolerated.
                 let c = build_reqwest_client(
                     timeout_ms,
                     follow_redirects,
@@ -181,7 +191,7 @@ impl HttpClient {
                     request.proxy_username.clone(),
                     request.proxy_password.clone(),
                 )?;
-                cache.insert(key, c.clone());
+                CLIENT_CACHE.lock().unwrap().insert(key, c.clone());
                 c
             }
         };

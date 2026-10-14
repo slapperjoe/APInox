@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -33,6 +33,27 @@ static PROXY_CLIENT: Lazy<reqwest::Client> = Lazy::new(|| {
         .redirect(reqwest::redirect::Policy::none())
         .build()
         .expect("Failed to build proxy HTTP client")
+});
+
+/// Hop-by-hop and proxy-specific headers stripped before forwarding. Kept in a
+/// HashSet for O(1) membership on the per-request/per-response hot path.
+static HOP_BY_HOP: Lazy<HashSet<&'static str>> = Lazy::new(|| {
+    [
+        "host",
+        "connection",
+        "keep-alive",
+        "proxy-connection",
+        "proxy-authorization",
+        "proxy-authenticate",
+        "te",
+        "trailers",
+        "transfer-encoding",
+        "upgrade",
+        "content-length", // let reqwest calculate from actual body
+        "expect",         // 100-continue is meaningless after body is buffered
+    ]
+    .into_iter()
+    .collect()
 });
 
 /// Run the forward proxy server. Loops forever; cancel by aborting the spawned task.
@@ -272,32 +293,43 @@ async fn handle_http(
     // Check mock rules when mode includes mock matching ("both" or "mock").
     let mode = config.mode.as_str();
     if mode == "both" || mode == "mock" {
-        let (rules, _, _) = {
-            let ms = mock_state.lock().await;
-            (ms.config.rules.clone(), ms.config.passthrough_enabled, ms.config.target_url.clone())
+        // Match inside the lock and clone only the matched rule's fields, so the
+        // whole rule list (each MockRule carries response_body/headers/conditions)
+        // isn't deep-cloned on every captured request.
+        let matched = {
+            let mut ms = mock_state.lock().await;
+            let rule = find_matching_rule(&ms.config.rules, &method, &forward_url, &req_headers, &req_body);
+            if let Some(rule) = rule {
+                let cloned = (
+                    rule.name.clone(),
+                    rule.id.clone(),
+                    rule.status_code,
+                    rule.content_type.clone(),
+                    rule.response_body.clone(),
+                    rule.response_headers.clone(),
+                    rule.delay_ms,
+                );
+                // rule borrow ends here; bump the hit count under the same lock.
+                if let Some(r) = ms.config.rules.iter_mut().find(|r| r.id == cloned.1) {
+                    r.hit_count += 1;
+                }
+                Some(cloned)
+            } else {
+                None
+            }
         };
-        log::debug!("[Proxy] Checking {} mock rules for {}", rules.len(), forward_url);
-        if let Some(rule) = find_matching_rule(&rules, &method, &forward_url, &req_headers, &req_body) {
-            log::info!("[Proxy] Mock rule '{}' matched {}", rule.name, forward_url);
 
-            if let Some(delay) = rule.delay_ms {
+        if let Some((name, _id, status, content_type, resp_body, resp_headers, delay_ms)) = matched {
+            log::info!("[Proxy] Mock rule '{}' matched {}", name, forward_url);
+
+            if let Some(delay) = delay_ms {
                 if delay > 0 {
                     tokio::time::sleep(tokio::time::Duration::from_millis(delay)).await;
                 }
             }
 
-            // Increment hit count
-            {
-                let mut ms = mock_state.lock().await;
-                if let Some(r) = ms.config.rules.iter_mut().find(|r| r.id == rule.id) {
-                    r.hit_count += 1;
-                }
-            }
-
-            let status = rule.status_code;
-            let content_type = rule.content_type.clone().unwrap_or_else(|| CONTENT_TYPE_PLAIN.to_string());
-            let resp_body = rule.response_body.clone();
-            let mut resp_headers: HashMap<String, String> = rule.response_headers.clone().unwrap_or_default();
+            let content_type = content_type.unwrap_or_else(|| CONTENT_TYPE_PLAIN.to_string());
+            let mut resp_headers: HashMap<String, String> = resp_headers.unwrap_or_default();
             resp_headers.entry("content-type".to_string()).or_insert(content_type);
 
             let duration_ms = start.elapsed().as_millis() as u64;
@@ -314,7 +346,7 @@ async fn handle_http(
                 response_headers: Some(resp_headers.clone()),
                 response_body: Some(resp_body.clone()),
                 duration_ms: Some(duration_ms),
-                matched_rule: Some(rule.name.clone()),
+                matched_rule: Some(name),
                 passthrough: Some(false),
                 source: "proxy-mock".to_string(),
             }, "Proxy");
@@ -394,24 +426,9 @@ async fn handle_http(
     // alongside a fixed body causes WCF services to enter an ambiguous read path
     // (they create a buffered copy of the message, then the dispatcher reads the original
     // → "This message cannot support the operation because it has been copied").
-    const HOP_BY_HOP: &[&str] = &[
-        "host",
-        "connection",
-        "keep-alive",
-        "proxy-connection",
-        "proxy-authorization",
-        "proxy-authenticate",
-        "te",
-        "trailers",
-        "transfer-encoding",
-        "upgrade",
-        "content-length",   // let reqwest calculate from actual body
-        "expect",           // 100-continue is meaningless after body is buffered
-    ];
-
     for (k, v) in &req_headers {
         let lk = k.to_lowercase();
-        if !HOP_BY_HOP.contains(&lk.as_str()) {
+        if !HOP_BY_HOP.contains(lk.as_str()) {
             rb = rb.header(k.as_str(), v.as_str());
         }
     }
@@ -436,16 +453,7 @@ async fn handle_http(
                 .iter()
                 .filter_map(|(k, v)| {
                     let lk = k.as_str().to_lowercase();
-                    if matches!(
-                        lk.as_str(),
-                        "transfer-encoding"
-                            | "content-length"
-                            | "connection"
-                            | "keep-alive"
-                            | "te"
-                            | "trailers"
-                            | "upgrade"
-                    ) {
+                    if HOP_BY_HOP.contains(lk.as_str()) {
                         None
                     } else {
                         v.to_str().ok().map(|v| (k.to_string(), v.to_string()))
@@ -518,6 +526,24 @@ async fn handle_http(
     let duration_ms = start.elapsed().as_millis() as u64;
     let now = Utc::now();
 
+    // Build hyper response FIRST so it consumes the owned bodies, then move the
+    // now-unused strings into the TrafficEvent — avoids cloning the full request
+    // and response bodies on the passthrough hot path.
+    let mut hb = Response::builder().status(status);
+    for (k, v) in &resp_headers {
+        let lk = k.to_lowercase();
+        if !HOP_BY_HOP.contains(lk.as_str()) {
+            hb = hb.header(k.as_str(), v.as_str());
+        }
+    }
+    let body_bytes = Bytes::from(resp_body.clone());
+    hb = hb.header("content-length", body_bytes.len());
+
+    let response = hb.body(Full::new(body_bytes)).unwrap_or_else(|e| {
+        log::error!("[Proxy] Failed to build response: {}", e);
+        error_response(StatusCode::INTERNAL_SERVER_ERROR, "Response build error")
+    });
+
     emit_traffic_event(
         &app,
         &TrafficEvent {
@@ -529,8 +555,8 @@ async fn handle_http(
             request_headers: req_headers,
             request_body: req_body,
             status: Some(status),
-            response_headers: Some(resp_headers.clone()),
-            response_body: Some(resp_body.clone()),
+            response_headers: Some(resp_headers),
+            response_body: Some(resp_body),
             duration_ms: Some(duration_ms),
             matched_rule: None,
             passthrough: Some(true),
@@ -539,25 +565,7 @@ async fn handle_http(
         "Proxy",
     );
 
-    // Build hyper response. resp_headers was already stripped of hop-by-hop headers
-    // at collection time. The loop below is a safety net in case modified_headers
-    // from a breakpoint "Continue with Changes" still carries any of them.
-    let mut hb = Response::builder().status(status);
-    for (k, v) in &resp_headers {
-        let lk = k.to_lowercase();
-        if lk != "transfer-encoding" && lk != "content-length" && lk != "connection"
-            && lk != "keep-alive" && lk != "te" && lk != "trailers" && lk != "upgrade"
-        {
-            hb = hb.header(k.as_str(), v.as_str());
-        }
-    }
-    let body_bytes = Bytes::from(resp_body);
-    hb = hb.header("content-length", body_bytes.len());
-
-    hb.body(Full::new(body_bytes)).unwrap_or_else(|e| {
-        log::error!("[Proxy] Failed to build response: {}", e);
-        error_response(StatusCode::INTERNAL_SERVER_ERROR, "Response build error")
-    })
+    response
 }
 
 /// Resolve the URL to forward to.

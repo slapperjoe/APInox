@@ -3,10 +3,16 @@
 /// Executes test cases in the TypeScript format (FrontendTestCase) that the
 /// webview sends.
 use anyhow::Result;
+use once_cell::sync::Lazy;
 use reqwest::Client;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::time::Instant;
+
+/// Shared reqwest client for test-step execution. Reusing one client pools
+/// TCP/TLS connections across workflow/test steps instead of building a fresh
+/// connection pool (and background threads) per step.
+static TEST_CLIENT: Lazy<Client> = Lazy::new(Client::new);
 
 use crate::settings_manager;
 use crate::utils::{RegexExtractor, XPathEvaluator, WildcardProcessor, substitute_variables, CONTENT_TYPE_XML};
@@ -371,7 +377,7 @@ pub(crate) async fn run_request_step(
         .unwrap_or(CONTENT_TYPE_XML)
         .to_string();
 
-    let client = Client::new();
+    let client = &*TEST_CLIENT;
     let mut builder = match method.as_str() {
         "GET" => client.get(&endpoint),
         "PUT" => client.put(&endpoint),

@@ -43,17 +43,11 @@ impl WildcardProcessor {
         // Support ${#TestCase#VarName} and ${VarName}
         if let Some(vars) = context_vars {
             for (key, value) in vars.iter() {
-                // SoapUI-style: ${#TestCase#VarName}
-                let soapui_pattern = format!(r"\$\{{#TestCase#{}\}}", regex::escape(key));
-                if let Ok(re) = Regex::new(&soapui_pattern) {
-                    processed = re.replace_all(&processed, value).to_string();
-                }
-
+                // SoapUI-style: ${#TestCase#VarName} — plain literal replace, no
+                // regex needed (the key is inserted verbatim, so no escaping).
+                processed = processed.replace(&format!("${{#TestCase#{}}}", key), value);
                 // Simple style: ${VarName}
-                let simple_pattern = format!(r"\$\{{{}\}}", regex::escape(key));
-                if let Ok(re) = Regex::new(&simple_pattern) {
-                    processed = re.replace_all(&processed, value).to_string();
-                }
+                processed = processed.replace(&format!("${{{}}}", key), value);
             }
         }
 
