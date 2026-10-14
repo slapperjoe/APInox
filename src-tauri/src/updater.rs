@@ -775,10 +775,31 @@ pub async fn download_update(
     Ok(path_str)
 }
 
+/// Emits an `update-install-progress` event carrying the current installer
+/// step so the UI can show what is happening BEFORE the app exits (the
+/// "Run installer" action banner in `UpdatesTab` would otherwise have no
+/// time to render before the window closes).
+///
+/// Payload: `{ "step": &str }`. Steps:
+/// - Windows: `"launching"`, `"running"`
+/// - macOS:   `"preparing"`, `"mounting"`, `"copying"`, `"relaunching"`
+#[allow(dead_code)] // only used from the Windows/macOS branches below
+fn emit_install_step(app: &tauri::AppHandle, step: &str) {
+    let _ = app.emit(
+        "update-install-progress",
+        serde_json::json!({ "step": step }),
+    );
+}
+
 /// Applies the downloaded installer and relaunches APInox.
 ///
-/// - **Windows**: spawns the NSIS `.exe` installer and exits so it can replace
-///   the running binary.
+/// Emits `update-install-progress` events with payload `{ "step": &str }` as
+/// each stage runs, so the UI shows the installer action before the app exits
+/// (see the "Run installer" banner in `UpdatesTab`).
+///
+/// - **Windows**: spawns the NSIS `.exe` installer, waits briefly for the UI
+///   to render the "installer running" banner, then exits so the installer
+///   can replace the running binary.
 /// - **macOS**: mounts the `.dmg`, copies the new `.app` to a temp staging path,
 ///   strips the quarantine attribute, detaches the DMG, writes a small shell
 ///   script that swaps the bundles after the app has quit, launches it detached,
@@ -791,10 +812,20 @@ pub async fn launch_installer(
 ) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
+        // Tell the UI BEFORE spawning: the banner in UpdatesTab switches to
+        // "Launching installer…" as soon as this lands (it also sets the
+        // same initial state locally on click, so a missed event cannot
+        // leave the click without feedback).
+        emit_install_step(&app, "launching");
         std::process::Command::new(&installer_path)
             .spawn()
             .map_err(|e| format!("Failed to launch installer: {}", e))?;
         log::info!("[Updater] Installer launched: {}", installer_path);
+        emit_install_step(&app, "running");
+        // Give the webview a moment to render the "installer running" banner
+        // before the window closes — otherwise the click appears to do
+        // nothing (the NSIS window then has to be found by the user).
+        tokio::time::sleep(Duration::from_millis(750)).await;
         app.exit(0);
         return Ok(());
     }
@@ -814,6 +845,11 @@ pub async fn launch_installer(
         let mount_point = std::env::temp_dir().join("apinox-dmg-mount");
         let temp_app    = std::env::temp_dir().join("APInox-update.app");
 
+        // The DMG work below takes several seconds — stream the stage to the
+        // UI so the user sees the update is being applied (the banner in
+        // UpdatesTab updates on each `update-install-progress` event).
+        emit_install_step(&app, "preparing");
+
         // Strip quarantine from the DMG before hdiutil touches it.
         std::process::Command::new("xattr")
             .args(["-dr", "com.apple.quarantine", &installer_path])
@@ -829,6 +865,7 @@ pub async fn launch_installer(
         }
 
         // Mount the DMG silently (no Finder window).
+        emit_install_step(&app, "mounting");
         let mount_out = std::process::Command::new("hdiutil")
             .args([
                 "attach", &installer_path,
@@ -860,6 +897,7 @@ pub async fn launch_installer(
         }
 
         // Copy the .app out of the DMG to a temp staging path.
+        emit_install_step(&app, "copying");
         let cp_out = std::process::Command::new("cp")
             .args(["-r",
                 app_in_dmg.to_str().unwrap_or(""),
@@ -891,6 +929,7 @@ pub async fn launch_installer(
         // Paths are passed as positional arguments ($1/$2) to avoid
         // shell injection — no interpolation into the script body.
         // Fix: replaced format!()-built shell script with safe Command arg passing.
+        emit_install_step(&app, "relaunching");
         let app_bundle_str = app_bundle.to_string_lossy();
         let temp_app_str   = temp_app.to_string_lossy();
         std::process::Command::new("sh")

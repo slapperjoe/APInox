@@ -8,7 +8,8 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { RefreshCw, CheckCircle, Download, ExternalLink, AlertTriangle, Square } from 'lucide-react';
+import { RefreshCw, CheckCircle, Download, ExternalLink, AlertTriangle, Square, Play } from 'lucide-react';
+import styled, { keyframes } from 'styled-components';
 import { Spinner } from '../../common/Spinner';
 import { listen } from '@tauri-apps/api/event';
 import { invokeTauriCommand } from '../../../utils/bridge';
@@ -93,6 +94,20 @@ export const UpdatesTab: React.FC = () => {
     const [downloadProgress, setDownloadProgress] = useState(0);
     const [downloadedPath, setDownloadedPath] = useState<string | null>(null);
 
+    // ── Installer action state ─────────────────────────────────────────────
+    // `launch_installer` emits `update-install-progress` events ({ step }) as
+    // each stage runs, then exits the app — so the click on "Run installer"
+    // gets an in-app action banner (spinner + stage + indeterminate bar)
+    // before the window closes instead of vanishing with no feedback.
+    // `null` = not running; otherwise the current step name (see
+    // INSTALL_STEP_TEXT for the copy per step).
+    const [installStep, setInstallStep] = useState<string | null>(null);
+    // Set when `launch_installer` rejects (the app is still alive and the
+    // banner is cleared). Rendered in its own row — the shared `error` state
+    // only shows for check/download failures, so a launch failure would
+    // otherwise be swallowed silently.
+    const [installError, setInstallError] = useState<string | null>(null);
+
     // ── Proxy status — drives the conditional "Stop proxy" button ──────────
     const [proxyStatus, setProxyStatus] = useState<ProxyStatus | null>(null);
     const [stoppingProxy, setStoppingProxy] = useState(false);
@@ -114,6 +129,7 @@ export const UpdatesTab: React.FC = () => {
     }, [checkState, loadProxyStatus]);
 
     const unlistenRef = useRef<(() => void) | null>(null);
+    const installUnlistenRef = useRef<(() => void) | null>(null);
 
     // ── Check for updates ───────────────────────────────────────────────────
 
@@ -161,12 +177,16 @@ export const UpdatesTab: React.FC = () => {
         checkForUpdates();
     }, [checkForUpdates]);
 
-    // Clean up progress listener on unmount.
+    // Clean up progress listeners on unmount.
     useEffect(() => {
         return () => {
             if (unlistenRef.current) {
                 unlistenRef.current();
                 unlistenRef.current = null;
+            }
+            if (installUnlistenRef.current) {
+                installUnlistenRef.current();
+                installUnlistenRef.current = null;
             }
         };
     }, []);
@@ -208,13 +228,41 @@ export const UpdatesTab: React.FC = () => {
     // ── Launch installer ────────────────────────────────────────────────────
 
     const handleRunInstaller = useCallback(async () => {
-        if (!downloadedPath) return;
+        // Guard against double-clicks while the installer action is running.
+        if (!downloadedPath || installStep) return;
+        setError(null);
+        setInstallError(null);
+
+        // Show the action banner IMMEDIATELY (before the first progress
+        // event arrives) so the click has instant visual feedback. Rust
+        // starts from the same initial step, so a missed event can never
+        // leave the click without feedback.
+        setInstallStep(isMacOS ? 'preparing' : 'launching');
+
         try {
+            const unlisten = await listen<{ step: string }>(
+                'update-install-progress',
+                (event) => setInstallStep(event.payload.step)
+            );
+            installUnlistenRef.current = unlisten;
+
             await invokeTauriCommand('launch_installer', { installerPath: downloadedPath });
+            // On success Rust exits the app right after this resolves
+            // (Windows) or after the swap script is staged (macOS) — the
+            // banner simply stays up until the window closes.
         } catch (e) {
-            setError(String(e));
+            // Launch failed: the app is still alive, so drop the banner and
+            // surface the error in its own row (the shared `error` state is
+            // only rendered for check/download failures).
+            setInstallStep(null);
+            setInstallError(String(e));
+        } finally {
+            if (installUnlistenRef.current) {
+                installUnlistenRef.current();
+                installUnlistenRef.current = null;
+            }
         }
-    }, [downloadedPath]);
+    }, [downloadedPath, installStep, isMacOS]);
 
     // ── Open release page in browser ────────────────────────────────────────
 
@@ -357,9 +405,12 @@ export const UpdatesTab: React.FC = () => {
                             </button>
                         )}
 
-                        {/* After download: apply the update */}
-                        {downloadState === 'ready' && downloadedPath && (
+                        {/* After download: apply the update. Hidden while the
+                            installer action is running (the banner below
+                            replaces it). */}
+                        {downloadState === 'ready' && downloadedPath && !installStep && (
                             <button style={btnStyle(true)} onClick={handleRunInstaller}>
+                                <Play size={14} />
                                 {isMacOS ? 'Install & relaunch' : 'Run installer'}
                             </button>
                         )}
@@ -391,6 +442,42 @@ export const UpdatesTab: React.FC = () => {
                         />
                     </div>
                 </div>
+            )}
+
+            {/* ── Installer action banner ── */}
+            {/* Shown from the click on "Run installer" until the window closes:
+                the button has fired, the app is about to exit (Windows) or the
+                DMG swap is staged (macOS) — the bar keeps moving so the user
+                can see the update is actually being applied. */}
+            {installStep && downloadedPath && (
+                <div style={{ marginBottom: 20 }}>
+                    <StatusRow icon={<Spinner size={14} style={{ opacity: 0.9 }} />}>
+                        {installStepText(installStep)}
+                    </StatusRow>
+                    <IndeterminateBar />
+                    <div
+                        style={{
+                            fontSize: 'var(--apinox-fs-sm)',
+                            color: 'var(--apinox-descriptionForeground, #8b949e)',
+                            marginTop: 6,
+                        }}
+                    >
+                        {isMacOS
+                            ? 'APInox is closing and will relaunch with the new version.'
+                            : 'APInox is closing so the installer can finish — the new version opens automatically.'}
+                    </div>
+                </div>
+            )}
+
+            {/* Launch failure: the app is still alive — show what went wrong
+                so the user can retry (the button is back) or use the browser
+                fallback. */}
+            {installError && (
+                <StatusRow icon={<AlertTriangle size={14} color="var(--apinox-inputValidation-errorForeground, #f48771)" />}>
+                    <span style={{ color: 'var(--apinox-inputValidation-errorForeground, #f48771)' }}>
+                        {installError}
+                    </span>
+                </StatusRow>
             )}
 
             {/* ── Release notes ── */}
@@ -436,3 +523,59 @@ const StatusRow: React.FC<{ icon: React.ReactNode; children: React.ReactNode }> 
         {children}
     </div>
 );
+
+// ── Installer action banner ─────────────────────────────────────────────────
+
+/**
+ * Copy for each `update-install-progress` step (see `launch_installer` in
+ * `src-tauri/src/updater.rs`). The step sets are disjoint per platform —
+ * Windows emits `launching`/`running`, macOS emits `preparing`/`mounting`/
+ * `copying`/`relaunching` — so a flat map is enough.
+ */
+const INSTALL_STEP_TEXT: Record<string, string> = {
+    // Windows — the NSIS installer takes over from here
+    launching: 'Launching installer…',
+    running: 'Installer is running — APInox is closing…',
+    // macOS — the in-app update pipeline
+    preparing: 'Preparing update…',
+    mounting: 'Mounting update…',
+    copying: 'Installing update…',
+    relaunching: 'Almost done — APInox is closing and will relaunch…',
+};
+
+export function installStepText(step: string): string {
+    return INSTALL_STEP_TEXT[step] ?? 'Installing update…';
+}
+
+/**
+ * Indeterminate progress bar for the installer action — there is no
+ * percentage to report (Windows: the NSIS installer runs outside the app;
+ * macOS: the DMG stages have no byte totals), so a sliding highlight conveys
+ * "work is happening" the way the download bar conveys progress. Same visual
+ * language as the download bar above (same height, same accent colours).
+ */
+const indeterminateSlide = keyframes`
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(250%); }
+`;
+
+const IndeterminateBar = styled.div`
+    position: relative;
+    margin-top: 8px;
+    height: 6px;
+    border-radius: 3px;
+    overflow: hidden;
+    background: var(--apinox-panel-border, #3a3d41);
+
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 40%;
+        border-radius: 3px;
+        background: var(--apinox-progressBar-background, #0e70c0);
+        animation: ${indeterminateSlide} 1.2s ease-in-out infinite;
+    }
+`;
