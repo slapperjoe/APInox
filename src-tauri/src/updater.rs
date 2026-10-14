@@ -48,6 +48,15 @@ pub struct UpdateCheckResult {
     pub release_url: String,
     /// Trimmed release body (first 2 000 chars).
     pub release_notes: String,
+    /// How the payload at `download_url` is applied: copied over the installed
+    /// executable, or run as the platform installer.
+    pub update_mode: UpdateMode,
+    /// Expected SHA-256 of the payload (lowercase hex), when the release
+    /// publishes one — passed back to `download_update` for verification.
+    pub payload_sha256: Option<String>,
+    /// Why the previous update attempt failed, if one did. Shown in the UI so
+    /// a failed update never looks like "nothing happened".
+    pub last_attempt_error: Option<String>,
 }
 
 // ── Internal GitHub API shapes ─────────────────────────────────────────────
@@ -66,6 +75,10 @@ struct GitHubRelease {
 struct GitHubAsset {
     name: String,
     browser_download_url: String,
+    /// `sha256:<hex>` for release assets (GitHub API). Used to verify the
+    /// downloaded payload before it is staged over the installation.
+    #[serde(default)]
+    digest: Option<String>,
 }
 
 // ── Version comparison helper ──────────────────────────────────────────────
@@ -524,6 +537,9 @@ fn unavailable_result(reason: String) -> UpdateCheckResult {
         download_url: None,
         release_url: String::new(),
         release_notes: String::new(),
+        update_mode: UpdateMode::Installer,
+        payload_sha256: None,
+        last_attempt_error: read_update_state(),
     }
 }
 
@@ -635,6 +651,9 @@ pub async fn check_for_updates() -> Result<UpdateCheckResult, String> {
             download_url: None,
             release_url: String::new(),
             release_notes: String::new(),
+            update_mode: UpdateMode::Installer,
+            payload_sha256: None,
+            last_attempt_error: read_update_state(),
         });
     }
     if !status.is_success() {
@@ -658,22 +677,44 @@ pub async fn check_for_updates() -> Result<UpdateCheckResult, String> {
     let current_version = APP_VERSION.to_string();
     let has_update = is_newer(&latest_version, &current_version);
 
-    // Only resolve a download URL when there is actually an update to grab.
-    let download_url = if has_update {
-        #[cfg(target_os = "windows")]
-        let url = release.assets.iter()
-            .find(|a| a.name.ends_with("_x64-setup.exe"))
-            .map(|a| a.browser_download_url.clone());
-        #[cfg(target_os = "macos")]
-        let url = release.assets.iter()
-            .find(|a| a.name.ends_with(".dmg"))
-            .map(|a| a.browser_download_url.clone());
+    // Only resolve a payload when there is actually an update to grab, and
+    // prefer the plain-executable (copy) payload over the self-extracting
+    // installer on Windows — see the copy-update notes above.
+    let payload: Option<PayloadChoice> = if has_update {
+        #[cfg(any(target_os = "windows", target_os = "macos"))]
+        {
+            let assets: Vec<AssetRef> = release
+                .assets
+                .iter()
+                .map(|a| AssetRef {
+                    name: a.name.clone(),
+                    url: a.browser_download_url.clone(),
+                    digest: a.digest.clone(),
+                })
+                .collect();
+            select_payload(&assets, std::env::consts::OS)
+        }
         #[cfg(not(any(target_os = "windows", target_os = "macos")))]
-        let url: Option<String> = None;
-        url
+        {
+            None
+        }
     } else {
         None
     };
+
+    let download_url = payload.as_ref().map(|p| p.url.clone());
+    let update_mode = payload
+        .as_ref()
+        .map(|p| p.mode)
+        .unwrap_or(UpdateMode::Installer);
+    let payload_sha256 = payload.as_ref().and_then(|p| p.sha256.clone());
+    let last_attempt_error = read_update_state();
+    log::info!(
+        "[Updater] Update payload: {:?} (mode {:?}, verified: {})",
+        payload.as_ref().map(|p| p.name.clone()),
+        update_mode,
+        payload_sha256.is_some()
+    );
 
     let release_notes: String = release
         .body
@@ -698,6 +739,9 @@ pub async fn check_for_updates() -> Result<UpdateCheckResult, String> {
         download_url,
         release_url: release.html_url,
         release_notes,
+        update_mode,
+        payload_sha256,
+        last_attempt_error,
     })
 }
 
@@ -711,9 +755,14 @@ pub async fn check_for_updates() -> Result<UpdateCheckResult, String> {
 /// retried via the proxy-aware client.
 #[tauri::command]
 #[allow(clippy::manual_checked_ops)] // total_bytes > 0 guard prevents division by zero
+/// `expected_sha256` is the digest the release published for this asset
+/// (lowercase hex). When present the download is verified before it can be
+/// staged — a partial or swapped payload must never end up replacing the
+/// installation.
 pub async fn download_update(
     app: tauri::AppHandle,
     download_url: String,
+    expected_sha256: Option<String>,
 ) -> Result<String, String> {
     let response = get_with_fallback(&download_url).await?;
 
@@ -727,7 +776,11 @@ pub async fn download_update(
     let total_bytes = response.content_length().unwrap_or(0);
     #[cfg(target_os = "macos")]
     let dest_path = std::env::temp_dir().join("apinox-update.dmg");
-    #[cfg(not(target_os = "macos"))]
+    // Windows: a copy-update payload is the plain app executable, not an
+    // installer — hence a distinct name (and no `.exe` installer semantics).
+    #[cfg(target_os = "windows")]
+    let dest_path = std::env::temp_dir().join("apinox-update-payload.exe");
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     let dest_path = std::env::temp_dir().join("apinox-update.exe");
 
     let mut file = tokio::fs::File::create(&dest_path)
@@ -765,6 +818,26 @@ pub async fn download_update(
     file.flush()
         .await
         .map_err(|e| format!("Failed to flush file: {}", e))?;
+    drop(file);
+
+    // Verify against the digest the release published. A mismatch means a
+    // truncated/short download or a payload that is not the one advertised —
+    // it must never be staged over the installation.
+    if let Some(expected) = expected_sha256.as_deref().map(|s| s.trim().to_ascii_lowercase()) {
+        if !expected.is_empty() {
+            let actual = sha256_file(&dest_path)?;
+            if actual != expected {
+                let _ = std::fs::remove_file(&dest_path);
+                return Err(format!(
+                    "Downloaded payload failed its SHA-256 check (expected {}, got {}) — discarded",
+                    expected, actual
+                ));
+            }
+            log::info!("[Updater] Payload SHA-256 verified");
+        }
+    } else {
+        log::warn!("[Updater] Release published no SHA-256 digest for this asset — download unverified");
+    }
 
     let path_str = dest_path
         .to_str()
@@ -952,6 +1025,493 @@ pub async fn launch_installer(
         let _ = (app, installer_path);
         Err("In-app installer launch is not supported on this platform — use the browser link instead".to_string())
     }
+}
+
+// ── Copy-based self-update ──────────────────────────────────────────────────
+//
+// Why: the NSIS installer is a self-extracting executable. Defender's ML
+// flags it (seen: `Trojan:Win32/Wacatac.F!ml`) and quarantines it mid-update,
+// so the in-app updater appears to do nothing.
+//
+// Instead of downloading a self-extracting installer, the updater downloads
+// the PLAIN app executable — the same bytes the installer would write, which
+// the release pipeline already publishes as `APInox-portable.exe` — stages it
+// next to the installed one as `<exe>.new`, and hands over to a helper pass of
+// the app itself (`--apply-update`) that waits for this process to exit, swaps
+// the files and relaunches. Nothing is installed by running a downloaded
+// executable.
+//
+// The NSIS installer stays the fallback: for first installs, for releases that
+// publish no plain-executable payload, and for per-machine installs where the
+// install directory is not writable by the user.
+
+/// Staged (not yet swapped) update payload's file suffix.
+const STAGED_SUFFIX: &str = ".new";
+/// Previous executable kept for rollback while the swap runs.
+const BACKUP_SUFFIX: &str = ".old";
+/// CLI flag the helper pass is started with: `APInox.exe --apply-update <dir>`.
+const APPLY_UPDATE_FLAG: &str = "--apply-update";
+/// Name of the state file recording a failed attempt, in the config dir.
+const UPDATE_STATE_FILE: &str = "update-state.json";
+/// How long the helper waits for the running app to release its executable
+/// before giving up (poll interval × attempts).
+const SWAP_WAIT_ATTEMPTS: u32 = 120;
+const SWAP_WAIT_INTERVAL: Duration = Duration::from_millis(250);
+/// A payload smaller than this is never a real build — refuse to stage it.
+const MIN_PAYLOAD_BYTES: u64 = 1_000_000;
+
+/// How the update for this platform is applied.
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum UpdateMode {
+    /// Download the plain executable and copy it over the installed one.
+    Copy,
+    /// Download and run the platform installer (NSIS `.exe`, macOS `.dmg`).
+    Installer,
+}
+
+/// A release asset, reduced to what payload selection needs (kept separate
+/// from the GitHub API shape so the selection rule is unit-testable).
+pub struct AssetRef {
+    pub name: String,
+    pub url: String,
+    pub digest: Option<String>,
+}
+
+/// The chosen update payload.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PayloadChoice {
+    pub name: String,
+    pub url: String,
+    /// Expected SHA-256 (lowercase hex), when the release published one.
+    pub sha256: Option<String>,
+    pub mode: UpdateMode,
+}
+
+/// Strips the `sha256:` prefix GitHub puts in an asset `digest`.
+pub fn parse_digest(digest: Option<&str>) -> Option<String> {
+    let raw = digest?.trim();
+    let hex = raw.strip_prefix("sha256:").unwrap_or(raw).trim();
+    if hex.len() == 64 && hex.chars().all(|c| c.is_ascii_hexdigit()) {
+        Some(hex.to_ascii_lowercase())
+    } else {
+        None
+    }
+}
+
+/// Picks the update payload for `platform` (`"windows"`, `"macos"`, other).
+///
+/// Windows preference order:
+///   1. a dedicated update payload (`*windows_x64-update.exe`),
+///   2. the plain app executable (`APInox-portable.exe`) — the copy path,
+///   3. the NSIS installer (`*_x64-setup.exe`) — the fallback for releases
+///      published before the copy path existed.
+/// macOS keeps the `.dmg` installer path.
+pub fn select_payload(assets: &[AssetRef], platform: &str) -> Option<PayloadChoice> {
+    let find = |suffix: &str| assets.iter().find(|a| a.name.ends_with(suffix));
+
+    match platform {
+        "windows" => {
+            if let Some(asset) = find("-windows_x64-update.exe") {
+                return Some(PayloadChoice {
+                    name: asset.name.clone(),
+                    url: asset.url.clone(),
+                    sha256: parse_digest(asset.digest.as_deref()),
+                    mode: UpdateMode::Copy,
+                });
+            }
+            if let Some(asset) = find("APInox-portable.exe") {
+                return Some(PayloadChoice {
+                    name: asset.name.clone(),
+                    url: asset.url.clone(),
+                    sha256: parse_digest(asset.digest.as_deref()),
+                    mode: UpdateMode::Copy,
+                });
+            }
+            find("_x64-setup.exe").map(|asset| PayloadChoice {
+                name: asset.name.clone(),
+                url: asset.url.clone(),
+                sha256: parse_digest(asset.digest.as_deref()),
+                mode: UpdateMode::Installer,
+            })
+        }
+        "macos" => find(".dmg").map(|asset| PayloadChoice {
+            name: asset.name.clone(),
+            url: asset.url.clone(),
+            sha256: parse_digest(asset.digest.as_deref()),
+            mode: UpdateMode::Installer,
+        }),
+        _ => None,
+    }
+}
+
+/// SHA-256 of a file, lowercase hex (streamed — the payload is ~30 MB).
+pub fn sha256_file(path: &std::path::Path) -> Result<String, String> {
+    use sha2::{Digest, Sha256};
+    use std::io::Read;
+
+    let mut file = std::fs::File::open(path)
+        .map_err(|e| format!("Failed to open {}: {}", path.display(), e))?;
+    let mut hasher = Sha256::new();
+    let mut buffer = vec![0u8; 64 * 1024];
+    loop {
+        let read = file
+            .read(&mut buffer)
+            .map_err(|e| format!("Failed to read {}: {}", path.display(), e))?;
+        if read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..read]);
+    }
+    Ok(format!("{:x}", hasher.finalize()))
+}
+
+/// The install directory and executable file name of the running app.
+pub fn current_install_target() -> Result<(std::path::PathBuf, String), String> {
+    let exe = std::env::current_exe()
+        .map_err(|e| format!("Failed to locate the running executable: {}", e))?;
+    let dir = exe
+        .parent()
+        .ok_or_else(|| "Could not determine the install directory".to_string())?
+        .to_path_buf();
+    let name = exe
+        .file_name()
+        .ok_or_else(|| "Could not determine the executable name".to_string())?
+        .to_string_lossy()
+        .to_string();
+    Ok((dir, name))
+}
+
+/// Records why an update attempt failed, so the next start can say so instead
+/// of silently staying on the old version.
+pub fn write_update_state(error: &str) {
+    let Ok(dir) = resolve_config_dir() else {
+        return;
+    };
+    if std::fs::create_dir_all(&dir).is_err() {
+        return;
+    }
+    let payload = serde_json::json!({
+        "failedAt": iso_now(),
+        "error": error,
+    });
+    let _ = std::fs::write(
+        dir.join(UPDATE_STATE_FILE),
+        serde_json::to_string_pretty(&payload).unwrap_or_default(),
+    );
+}
+
+/// Clears the failure record after a successful swap.
+pub fn clear_update_state() {
+    if let Ok(dir) = resolve_config_dir() {
+        let _ = std::fs::remove_file(dir.join(UPDATE_STATE_FILE));
+    }
+}
+
+/// The last failed update attempt, if any (read by `check_for_updates`).
+pub fn read_update_state() -> Option<String> {
+    let dir = resolve_config_dir().ok()?;
+    let raw = std::fs::read_to_string(dir.join(UPDATE_STATE_FILE)).ok()?;
+    let value: serde_json::Value = serde_json::from_str(&raw).ok()?;
+    let at = value.get("failedAt").and_then(|v| v.as_str()).unwrap_or("");
+    let error = value.get("error").and_then(|v| v.as_str()).unwrap_or("");
+    if error.is_empty() {
+        return None;
+    }
+    Some(if at.is_empty() {
+        error.to_string()
+    } else {
+        format!("{} ({})", error, at)
+    })
+}
+
+/// Timestamp for the failure record. `unix:<seconds>` — this crate has no
+/// date/time dependency, and the value is only ever shown to identify the
+/// attempt, not parsed.
+fn iso_now() -> String {
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    format!("unix:{}", secs)
+}
+
+/// Stages `payload` next to the installed executable as `<exe>.new` so the
+/// helper pass can swap it in after this process exits.
+///
+/// Also removes any stale `.new` from an earlier attempt and, best-effort,
+/// a stale `.old` backup. Returns the staged path.
+pub fn stage_self_update(
+    payload: &std::path::Path,
+    install_dir: &std::path::Path,
+    exe_name: &str,
+) -> Result<std::path::PathBuf, String> {
+    let size = std::fs::metadata(payload)
+        .map_err(|e| format!("Downloaded payload is not readable: {}", e))?
+        .len();
+    if size < MIN_PAYLOAD_BYTES {
+        return Err(format!(
+            "Downloaded payload is only {} bytes — refusing to stage it as an update",
+            size
+        ));
+    }
+    // Cheap sanity check: a Windows executable starts with the MZ header. A
+    // truncated HTML error page or a stale partial download must never be
+    // staged over a working installation.
+    {
+        use std::io::Read;
+        let mut head = [0u8; 2];
+        std::fs::File::open(payload)
+            .and_then(|mut file| file.read_exact(&mut head))
+            .map_err(|e| format!("Downloaded payload is not readable: {}", e))?;
+        if &head != b"MZ" {
+            return Err(
+                "Downloaded payload is not a Windows executable (missing MZ header) — \
+                 not staging it over the installed app"
+                    .to_string(),
+            );
+        }
+    }
+
+    let staged = install_dir.join(format!("{}{}", exe_name, STAGED_SUFFIX));
+    let _ = std::fs::remove_file(&staged);
+    let backup = install_dir.join(format!("{}{}", exe_name, BACKUP_SUFFIX));
+    let _ = std::fs::remove_file(&backup);
+
+    std::fs::copy(payload, &staged).map_err(|e| {
+        format!(
+            "Failed to stage the update into {} ({}). The install directory may be read-only \
+             (per-machine install) — use the installer instead.",
+            install_dir.display(),
+            e
+        )
+    })?;
+    log::info!("[Updater] Staged copy update at {}", staged.display());
+    Ok(staged)
+}
+
+/// Swaps `<exe>.new` into place, keeping the replaced executable as
+/// `<exe>.old` for rollback. Pure filesystem work — identical on every OS, so
+/// it is unit-tested off-Windows; only the timing (waiting for the running
+/// process to release the file) is platform-specific.
+///
+/// Returns `Err` when the installed executable is still locked by the running
+/// app (the helper retries) or when the staged payload is missing.
+pub fn swap_staged_update(
+    install_dir: &std::path::Path,
+    exe_name: &str,
+) -> Result<(), String> {
+    let target = install_dir.join(exe_name);
+    let staged = install_dir.join(format!("{}{}", exe_name, STAGED_SUFFIX));
+    let backup = install_dir.join(format!("{}{}", exe_name, BACKUP_SUFFIX));
+
+    if !staged.is_file() {
+        return Err(format!(
+            "No staged update found at {} — nothing to swap in",
+            staged.display()
+        ));
+    }
+    if !target.is_file() {
+        return Err(format!(
+            "Installed executable {} is missing — refusing to swap",
+            target.display()
+        ));
+    }
+
+    // A stale backup from an interrupted run would block the rename below.
+    if backup.exists() {
+        std::fs::remove_file(&backup)
+            .map_err(|e| format!("Could not clear the previous backup: {}", e))?;
+    }
+
+    // Fails with a sharing violation while the old app is still running: that
+    // is the signal to wait, not an error to report.
+    std::fs::rename(&target, &backup)
+        .map_err(|e| format!("The running app has not released its files yet: {}", e))?;
+
+    if let Err(e) = std::fs::rename(&staged, &target) {
+        // Roll back so the user is never left without a working executable.
+        let _ = std::fs::rename(&backup, &target);
+        return Err(format!("Failed to move the new executable into place: {}", e));
+    }
+
+    log::info!(
+        "[Updater] Swapped in {} (previous kept as {})",
+        target.display(),
+        backup.display()
+    );
+    Ok(())
+}
+
+/// Waits for the swap to become possible, then swaps. Used by the helper pass.
+fn swap_when_unlocked(install_dir: &std::path::Path, exe_name: &str) -> Result<(), String> {
+    let mut last = String::new();
+    for _ in 0..SWAP_WAIT_ATTEMPTS {
+        match swap_staged_update(install_dir, exe_name) {
+            Ok(()) => return Ok(()),
+            Err(e) => last = e,
+        }
+        std::thread::sleep(SWAP_WAIT_INTERVAL);
+    }
+    Err(last)
+}
+
+/// Runs the swap pass when the app was started as the update helper
+/// (`APInox.exe --apply-update <install-dir>`), then relaunches the app.
+///
+/// Returns `true` when this process WAS the helper (the caller must exit and
+/// must not start the UI). Called from `main` before Tauri initialises, so the
+/// helper never creates a window.
+pub fn run_update_helper_if_requested() -> bool {
+    let args: Vec<String> = std::env::args().collect();
+    let Some(index) = args.iter().position(|a| a == APPLY_UPDATE_FLAG) else {
+        // Still do the post-update bookkeeping on every normal start.
+        reconcile_after_update();
+        return false;
+    };
+
+    let Some(dir) = args.get(index + 1) else {
+        eprintln!("[Updater] {} requires an install directory", APPLY_UPDATE_FLAG);
+        return true;
+    };
+    let install_dir = std::path::PathBuf::from(dir);
+    let (_, exe_name) = match current_install_target() {
+        Ok(target) => target,
+        Err(e) => {
+            write_update_state(&e);
+            return true;
+        }
+    };
+
+    match swap_when_unlocked(&install_dir, &exe_name) {
+        Ok(()) => {
+            clear_update_state();
+            // Relaunch only after a successful swap — the new executable now
+            // sits at the installed path.
+            let target = install_dir.join(&exe_name);
+            match spawn_detached(&target) {
+                Ok(()) => log::info!("[Updater] Relaunched {}", target.display()),
+                Err(e) => write_update_state(&format!(
+                    "Update applied but the app could not be restarted: {}",
+                    e
+                )),
+            }
+        }
+        Err(e) => {
+            // The old executable is untouched, so the app still works: record
+            // why the update did not land and bring it back up.
+            eprintln!("[Updater] Copy update failed: {}", e);
+            write_update_state(&format!("Copy update failed: {}", e));
+            let target = install_dir.join(&exe_name);
+            let _ = spawn_detached(&target);
+        }
+    }
+    true
+}
+
+/// Starts `exe` detached from this process (no console window on Windows).
+fn spawn_detached(exe: &std::path::Path) -> Result<(), String> {
+    let mut command = std::process::Command::new(exe);
+    command
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        // CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS | CREATE_NO_WINDOW
+        command.creation_flags(0x0000_0200 | 0x0000_0008 | 0x0800_0000);
+    }
+    command
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| format!("Failed to start {}: {}", exe.display(), e))
+}
+
+/// Post-update bookkeeping, run on every normal start:
+/// - removes the `.old` backup left by a successful swap,
+/// - discards a `.new` payload from an attempt that never completed, recording
+///   why, so the UI can say so instead of silently staying on the old version.
+pub fn reconcile_after_update() {
+    let Ok((install_dir, exe_name)) = current_install_target() else {
+        return;
+    };
+    if cleanup_leftovers_in(&install_dir, &exe_name) {
+        log::warn!("[Updater] A staged update never completed — discarded it");
+        write_update_state(
+            "The previous update was staged but never applied (the app did not restart cleanly). \
+             Try the update again.",
+        );
+    }
+}
+
+/// Directory-level half of `reconcile_after_update`, over an explicit path so
+/// it can be exercised without depending on the running binary's location.
+///
+/// Removes the `.old` backup a finished swap left behind, and discards a
+/// staged `.new` payload that was never applied (otherwise the next start would
+/// try the same doomed swap again and could loop). Returns `true` when a staged
+/// payload was found and discarded.
+fn cleanup_leftovers_in(install_dir: &std::path::Path, exe_name: &str) -> bool {
+    let backup = install_dir.join(format!("{}{}", exe_name, BACKUP_SUFFIX));
+    if backup.exists() && std::fs::remove_file(&backup).is_ok() {
+        log::info!("[Updater] Removed the previous version backup");
+    }
+
+    let staged = install_dir.join(format!("{}{}", exe_name, STAGED_SUFFIX));
+    if staged.exists() && std::fs::remove_file(&staged).is_ok() {
+        log::warn!("[Updater] Discarded an unapplied staged update at {}", staged.display());
+        return true;
+    }
+    false
+}
+
+/// Cleans up the temporary payload after a copy update has been applied.
+fn cleanup_downloaded_payload(path: &str) {
+    if std::fs::remove_file(path).is_err() {
+        log::debug!("[Updater] Could not remove the downloaded payload at {}", path);
+    }
+}
+
+/// Applies a downloaded copy-update payload: stage it next to the installed
+/// executable, then hand over to the helper pass and exit.
+#[tauri::command]
+pub async fn apply_copy_update(app: tauri::AppHandle, payload_path: String) -> Result<(), String> {
+    let (install_dir, exe_name) = current_install_target()?;
+
+    emit_install_step(&app, "staging");
+    let payload = std::path::PathBuf::from(&payload_path);
+    stage_self_update(&payload, &install_dir, &exe_name)?;
+
+    // The helper is this same executable, started with the swap flag: it waits
+    // for this process to exit (the file lock is the synchronisation), swaps
+    // the files and relaunches. Nothing is downloaded-and-executed as an
+    // installer, and nothing new lands in %TEMP%.
+    emit_install_step(&app, "applying");
+    let current = std::env::current_exe()
+        .map_err(|e| format!("Failed to locate the running executable: {}", e))?;
+    let mut command = std::process::Command::new(&current);
+    command
+        .arg(APPLY_UPDATE_FLAG)
+        .arg(&install_dir)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x0000_0008 | 0x0800_0000); // DETACHED_PROCESS | CREATE_NO_WINDOW
+    }
+    command
+        .spawn()
+        .map_err(|e| format!("Failed to start the update helper: {}", e))?;
+
+    cleanup_downloaded_payload(&payload_path);
+    emit_install_step(&app, "restarting");
+    // Let the webview paint the banner before the window goes away.
+    tokio::time::sleep(Duration::from_millis(750)).await;
+    app.exit(0);
+    Ok(())
 }
 
 /// Opens a URL in the system default browser.
@@ -1784,5 +2344,232 @@ mod tests {
         drop(genv);
         drop(g);
         let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    // ── Copy-based self-update ──────────────────────────────────────────────
+
+    /// An asset list shaped like a real Windows release.
+    fn windows_assets(with_update_payload: bool, with_portable: bool) -> Vec<AssetRef> {
+        let mut assets = vec![
+            AssetRef {
+                name: "apinox-v1.2.3-linux-x64.deb".into(),
+                url: "https://example.test/linux.deb".into(),
+                digest: None,
+            },
+            AssetRef {
+                name: "apinox-v1.2.3-windows_x64-setup.exe".into(),
+                url: "https://example.test/setup.exe".into(),
+                digest: Some("sha256:not-a-real-digest".into()),
+            },
+        ];
+        if with_portable {
+            assets.push(AssetRef {
+                name: "APInox-portable.exe".into(),
+                url: "https://example.test/portable.exe".into(),
+                digest: Some(format!("sha256:{}", "b".repeat(64))),
+            });
+        }
+        if with_update_payload {
+            assets.push(AssetRef {
+                name: "apinox-v1.2.3-windows_x64-update.exe".into(),
+                url: "https://example.test/update.exe".into(),
+                digest: Some(format!("sha256:{}", "c".repeat(64))),
+            });
+        }
+        assets
+    }
+
+    #[test]
+    fn test_select_payload_prefers_copy_over_installer() {
+        // The plain executable wins: copying it needs no installer, which is
+        // the whole point (Defender quarantines the NSIS self-extractor).
+        let chosen = select_payload(&windows_assets(false, true), "windows").unwrap();
+        assert_eq!(chosen.name, "APInox-portable.exe");
+        assert_eq!(chosen.mode, UpdateMode::Copy);
+        assert_eq!(chosen.url, "https://example.test/portable.exe");
+        assert_eq!(chosen.sha256.as_deref(), Some("b".repeat(64).as_str()));
+
+        // A dedicated update payload outranks the portable download.
+        let chosen = select_payload(&windows_assets(true, true), "windows").unwrap();
+        assert_eq!(chosen.name, "apinox-v1.2.3-windows_x64-update.exe");
+        assert_eq!(chosen.mode, UpdateMode::Copy);
+
+        // No plain payload (an older release): fall back to the installer.
+        let chosen = select_payload(&windows_assets(false, false), "windows").unwrap();
+        assert_eq!(chosen.name, "apinox-v1.2.3-windows_x64-setup.exe");
+        assert_eq!(chosen.mode, UpdateMode::Installer);
+        // A digest that is not a SHA-256 is ignored rather than trusted.
+        assert_eq!(chosen.sha256, None);
+    }
+
+    #[test]
+    fn test_select_payload_other_platforms() {
+        assert!(select_payload(&windows_assets(true, true), "linux").is_none());
+        let mac = vec![AssetRef {
+            name: "apinox-v1.2.3-macos-arm64.dmg".into(),
+            url: "https://example.test/app.dmg".into(),
+            digest: None,
+        }];
+        let chosen = select_payload(&mac, "macos").unwrap();
+        assert_eq!(chosen.mode, UpdateMode::Installer);
+        assert!(select_payload(&[], "windows").is_none());
+    }
+
+    #[test]
+    fn test_parse_digest() {
+        assert_eq!(
+            parse_digest(Some(&format!("sha256:{}", "A".repeat(64)))),
+            Some("a".repeat(64))
+        );
+        // Bare hex is accepted; anything malformed is treated as absent.
+        assert_eq!(parse_digest(Some(&"b".repeat(64))), Some("b".repeat(64)));
+        assert_eq!(parse_digest(Some("sha256:short")), None);
+        assert_eq!(parse_digest(Some("sha256:aa")), None);
+        assert_eq!(parse_digest(None), None);
+    }
+
+    #[test]
+    fn test_sha256_file_matches_known_vector() {
+        let tmp = std::env::temp_dir().join(format!("apinox-sha-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        let file = tmp.join("abc.bin");
+        std::fs::write(&file, b"abc").unwrap();
+        assert_eq!(
+            sha256_file(&file).unwrap(),
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    /// Stages a payload then swaps it in, checking the file-level contract: the
+    /// installed path ends up with the NEW bytes, the replaced build is kept as
+    /// `.old`, and the staged `.new` is consumed. Runs on any OS — the swap is
+    /// plain filesystem work; only the lock timing differs on Windows.
+    #[test]
+    fn test_stage_then_swap_replaces_the_executable() {
+        let tmp = std::env::temp_dir().join(format!("apinox-swap-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        let exe = tmp.join("APInox.exe");
+        std::fs::write(&exe, b"OLD-BUILD").unwrap();
+
+        let payload = tmp.join("payload.exe");
+        let mut new_bytes = vec![b'M', b'Z'];
+        new_bytes.extend(std::iter::repeat(b'x').take(MIN_PAYLOAD_BYTES as usize));
+        std::fs::write(&payload, &new_bytes).unwrap();
+
+        let staged = stage_self_update(&payload, &tmp, "APInox.exe").unwrap();
+        assert_eq!(staged.file_name().unwrap(), "APInox.exe.new");
+        assert!(staged.is_file());
+
+        swap_staged_update(&tmp, "APInox.exe").unwrap();
+
+        assert_eq!(
+            std::fs::read(&exe).unwrap(),
+            new_bytes,
+            "the installed file is the new build"
+        );
+        assert_eq!(
+            std::fs::read(tmp.join("APInox.exe.old")).unwrap(),
+            b"OLD-BUILD",
+            "the previous build is kept for rollback"
+        );
+        assert!(!staged.exists(), "the staged payload is consumed");
+
+        // The next start clears the backup the swap left behind.
+        assert!(cleanup_leftovers_in(&tmp, "APInox.exe") == false);
+        assert!(!tmp.join("APInox.exe.old").exists());
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn test_stage_refuses_junk_and_tiny_payloads() {
+        let tmp = std::env::temp_dir().join(format!("apinox-swap-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        std::fs::write(tmp.join("APInox.exe"), b"OLD-BUILD").unwrap();
+
+        // Nothing staged → refuse, and leave the installation untouched.
+        assert!(swap_staged_update(&tmp, "APInox.exe").is_err());
+        assert_eq!(std::fs::read(tmp.join("APInox.exe")).unwrap(), b"OLD-BUILD");
+
+        // A payload without the MZ header (e.g. an HTML error page saved by a
+        // proxy) must never be staged over a working install.
+        let junk = tmp.join("junk.exe");
+        std::fs::write(&junk, vec![b'<'; MIN_PAYLOAD_BYTES as usize]).unwrap();
+        let err = stage_self_update(&junk, &tmp, "APInox.exe").unwrap_err();
+        assert!(err.contains("MZ"), "unexpected error: {err}");
+        assert!(!tmp.join("APInox.exe.new").exists());
+
+        // Too small to be a build.
+        let tiny = tmp.join("tiny.exe");
+        std::fs::write(&tiny, b"MZ").unwrap();
+        assert!(stage_self_update(&tiny, &tmp, "APInox.exe").is_err());
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn test_swap_rolls_back_when_the_new_file_cannot_be_moved() {
+        let tmp = std::env::temp_dir().join(format!("apinox-swap-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        std::fs::write(tmp.join("APInox.exe"), b"OLD-BUILD").unwrap();
+        // A DIRECTORY named like the staged payload: `rename` onto the target
+        // still works, but a directory cannot be moved onto a file path, so the
+        // swap must roll the previous build back into place.
+        std::fs::create_dir_all(tmp.join("APInox.exe.new")).unwrap();
+
+        let err = swap_staged_update(&tmp, "APInox.exe").unwrap_err();
+        assert!(!err.is_empty());
+        assert_eq!(
+            std::fs::read(tmp.join("APInox.exe")).unwrap(),
+            b"OLD-BUILD",
+            "the previous build is restored after a failed swap"
+        );
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    /// A staged update that never got applied is discarded at startup (no
+    /// restart loops) and recorded so the UI can explain the failure.
+    #[test]
+    fn test_reconcile_discards_stale_staging_and_records_the_failure() {
+        let _lock = CONFIG_DIR_TEST_LOCK.lock().unwrap_or_else(|p| p.into_inner());
+        let tmp = std::env::temp_dir().join(format!("apinox-rec-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        let config = std::env::temp_dir().join(format!("apinox-cfg-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&config).unwrap();
+        let _guard = ConfigDirGuard::set(&config);
+
+        assert!(read_update_state().is_none(), "nothing recorded yet");
+
+        std::fs::write(tmp.join("APInox.exe.old"), b"OLD").unwrap();
+        std::fs::write(tmp.join("APInox.exe.new"), b"NEW").unwrap();
+
+        assert!(
+            cleanup_leftovers_in(&tmp, "APInox.exe"),
+            "an unapplied staged payload is reported"
+        );
+        assert!(!tmp.join("APInox.exe.old").exists());
+        assert!(!tmp.join("APInox.exe.new").exists(), "discarded, so no swap loop");
+
+        write_update_state("Copy update failed: the app never released its files");
+        let recorded = read_update_state().expect("the failure is recorded for the UI");
+        assert!(
+            recorded.contains("never released its files"),
+            "state: {recorded}"
+        );
+
+        clear_update_state();
+        assert!(read_update_state().is_none());
+
+        let _ = std::fs::remove_dir_all(&tmp);
+        let _ = std::fs::remove_dir_all(&config);
+    }
+
+    #[test]
+    fn test_spawn_detached_rejects_a_missing_binary() {
+        let missing = std::env::temp_dir().join("apinox-does-not-exist-12345");
+        assert!(spawn_detached(&missing).is_err());
     }
 }

@@ -577,6 +577,7 @@ pub fn run() {
             updater::check_for_updates,
             updater::download_update,
             updater::launch_installer,
+            updater::apply_copy_update,
             updater::open_url_in_browser,
             // ── Proxy / mock / cert (APIprox integration) ──────────────────
             commands::proxy_server::start_proxy,
