@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import styled from 'styled-components';
 import { Workflow, WorkflowExecutionResult } from '@shared/models';
 import { SPACING_SM, SPACING_MD, SPACING_XS } from '../../styles/spacing';
+import { VariablesEditor } from './VariablesEditor';
 import { Settings, Play, Clock, ChevronDown, ChevronRight, CheckCircle, XCircle } from 'lucide-react';
 import { formatXml } from '@shared/utils/xmlFormatter';
 
@@ -78,15 +79,6 @@ const TextArea = styled.textarea`
     }
 `;
 
-const InfoBox = styled.div`
-    padding: ${SPACING_SM};
-    background: var(--apinox-textCodeBlock-background);
-    border: 1px solid var(--apinox-panel-border);
-    border-radius: 4px;
-    font-size: var(--apinox-fs-md);
-    opacity: 0.8;
-`;
-
 const StatsGrid = styled.div`
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -111,41 +103,6 @@ const StatValue = styled.div`
     font-size: 20px;
     font-weight: var(--fw-semibold);
     margin-top: ${SPACING_XS};
-`;
-
-const VariableRow = styled.div`
-    display: flex;
-    gap: ${SPACING_SM};
-    align-items: center;
-`;
-
-const AddButton = styled.button`
-    background: transparent;
-    color: var(--apinox-textLink-foreground);
-    border: 1px dashed var(--apinox-textLink-foreground);
-    border-radius: 4px;
-    padding: ${SPACING_XS} ${SPACING_SM};
-    font-size: var(--apinox-fs-sm);
-    cursor: pointer;
-    align-self: flex-start;
-
-    &:hover {
-        background: var(--apinox-list-hoverBackground);
-    }
-`;
-
-const RemoveButton = styled.button`
-    background: transparent;
-    border: none;
-    color: var(--apinox-errorForeground);
-    font-size: 16px;
-    line-height: 1;
-    cursor: pointer;
-    padding: 4px 6px;
-
-    &:hover {
-        opacity: 0.8;
-    }
 `;
 
 const RunResultCard = styled.div`
@@ -354,39 +311,6 @@ export const WorkflowPropertiesPanel: React.FC<WorkflowPropertiesPanelProps> = (
     const pretty = (s?: string) => (s ? formatXml(s, false, true) : '');
     const [name, setName] = useState(workflow.name);
     const [description, setDescription] = useState(workflow.description || '');
-    const [variables, setVariables] = useState<Array<{ name: string; value: string }>>(() =>
-        Object.entries(workflow.variables || {}).map(([name, value]) => ({ name, value: String(value) })),
-    );
-
-    useEffect(() => {
-        setVariables(Object.entries(workflow.variables || {}).map(([name, value]) => ({ name, value: String(value) })));
-    }, [workflow.variables]);
-
-    const commitVariables = (rows: Array<{ name: string; value: string }>) => {
-        const next: Record<string, string> = {};
-        for (const r of rows) {
-            if (r.name.trim()) next[r.name.trim()] = r.value;
-        }
-        onUpdate({ variables: next });
-    };
-
-    const updateVariable = (index: number, patch: Partial<{ name: string; value: string }>) => {
-        const rows = variables.map((v, i) => (i === index ? { ...v, ...patch } : v));
-        setVariables(rows);
-        commitVariables(rows);
-    };
-
-    const addVariable = () => {
-        const rows = [...variables, { name: '', value: '' }];
-        setVariables(rows);
-        commitVariables(rows);
-    };
-
-    const removeVariable = (index: number) => {
-        const rows = variables.filter((_, i) => i !== index);
-        setVariables(rows);
-        commitVariables(rows);
-    };
 
     const handleNameBlur = () => {
         if (name !== workflow.name) {
@@ -567,45 +491,11 @@ export const WorkflowPropertiesPanel: React.FC<WorkflowPropertiesPanelProps> = (
                             )}
                         </Section>
 
-            <Section>
-                            <Label>Variables</Label>
-                <InfoBox>
-                    Reusable name→value pairs available to every step as {'{{name}}'}. These are the
-                    variables tagged when creating a workflow from traffic.
-                </InfoBox>
-                {variables.length === 0 ? (
-                    <div style={{ fontSize: 'var(--apinox-fs-sm)', opacity: 0.6, padding: `${SPACING_XS} 0` }}>
-                        No variables yet. Add one below.
-                    </div>
-                ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: SPACING_XS }}>
-                        {variables.map((v, i) => (
-                            <VariableRow key={i}>
-                                <Input
-                                    type="text"
-                                    placeholder="name"
-                                    aria-label={`Variable name ${i}`}
-                                    value={v.name}
-                                    onChange={(e) => updateVariable(i, { name: e.target.value })}
-                                />
-                                <Input
-                                    type="text"
-                                    placeholder="value"
-                                    aria-label={`Variable value ${i}`}
-                                    value={v.value}
-                                    onChange={(e) => updateVariable(i, { value: e.target.value })}
-                                />
-                                <RemoveButton
-                                    aria-label={`Remove variable ${i}`}
-                                    title="Remove variable"
-                                    onClick={() => removeVariable(i)}
-                                >×</RemoveButton>
-                            </VariableRow>
-                        ))}
-                    </div>
-                )}
-                <AddButton onClick={addVariable}>+ Add variable</AddButton>
-            </Section>
+            <VariablesEditor
+                variables={workflow.variables}
+                onChange={(vars) => onUpdate({ variables: vars })}
+                hint="Reusable name→value pairs available to every step as {{name}}. These are the variables tagged when creating a workflow from traffic."
+            />
         </Container>
     );
 };

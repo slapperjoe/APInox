@@ -180,6 +180,12 @@ interface WorkspaceContextValue {
     handleRunTestCase: (caseId: string) => void;
     /** Run all test cases in a suite */
     handleRunTestSuite: (suiteId: string) => void;
+    /** Replace a test suite's variables (suite-level {{name}} values,
+        shared by every case in the suite). */
+    updateTestSuiteVariables: (suiteId: string, variables: Record<string, string>) => void;
+    /** Replace a test case's variables (case-level {{name}} values,
+        scoped to this case only — override the suite's). */
+    updateTestCaseVariables: (caseId: string, variables: Record<string, string>) => void;
     
     // ==================== ACTIONS - Test Step Management ====================
     /** Update a test step */

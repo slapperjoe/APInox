@@ -1862,6 +1862,13 @@ const MainContent: React.FC = () => {
         handleAddAssertion,
         handleRunTestCase: handleRunTestCaseWrapper,
         handleRunTestSuite: handleRunTestSuiteWrapper,
+        updateTestSuiteVariables: (suiteId: string, variables: Record<string, string>) => {
+            const suite = findGlobalSuite(suiteId);
+            if (suite) updateGlobalSuite({ ...suite, variables });
+        },
+        updateTestCaseVariables: (caseId: string, variables: Record<string, string>) => {
+            updateGlobalTestCase(caseId, tc => ({ ...tc, variables }));
+        },
         // TEST STEP
         updateTestStep: handleUpdateStep,
         deleteTestStep: handleDeleteStep,
@@ -1906,6 +1913,7 @@ const MainContent: React.FC = () => {
         handleToggleLineNumbers, handleUpdateStep, handleDeleteStep, handleMoveStep,
         handleAddStep, handleRunTestCaseWrapper, handleRunTestSuiteWrapper,
         handleAddAssertion, handleAddPerformanceSuite, handleDeletePerformanceSuite,
+        findGlobalSuite, updateGlobalSuite, updateGlobalTestCase,
         handleRunPerformanceSuite, handleStopPerformanceRun, handleSelectPerformanceSuite,
         handleUpdatePerformanceSuite, handleAddPerformanceRequestForUi,
         handleDeletePerformanceRequest, handleUpdatePerformanceRequest,

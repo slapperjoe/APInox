@@ -6,6 +6,7 @@ import { ToolbarButton, IconButton, RunButton } from '../../styles/WorkspaceLayo
 import { ContextHelpButton } from '../ContextHelpButton';
 import { EmptyState } from '../common/EmptyState';
 import { Spinner } from '../common/Spinner';
+import { VariablesEditor } from './VariablesEditor';
 import { SPACING_XS, SPACING_SM, SPACING_MD, SPACING_LG, SPACING_XL, SPACING_3XL } from '../../styles/spacing';
 
 // Empty state component
@@ -51,6 +52,11 @@ const StepsToolbar = styled.div`
     border-bottom: 1px solid var(--apinox-panel-border);
     display: flex;
     gap: ${SPACING_SM};
+`;
+
+const VariablesRow = styled.div`
+    padding: ${SPACING_MD} 0;
+    border-bottom: 1px solid var(--apinox-panel-border);
 `;
 
 const StepsSection = styled.div`
@@ -255,6 +261,9 @@ export interface TestCaseViewProps {
     onDeleteStep?: (stepId: string) => void;
     /** @deprecated Use onSelectStep */
     onOpenStepRequest?: (request: any) => void;
+    /** Commit this case's variables (case-level {{name}} values). When
+        provided, a variable editor is shown above the steps. */
+    onUpdateVariables?: (variables: Record<string, string>) => void;
     // Optional: For displaying workflow/request names + the steps inside each
     // referenced workflow (shown when a 'workflow' step is expanded).
     workflows?: Array<{ id: string; name: string; steps?: WorkflowStep[] }>;
@@ -273,6 +282,7 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
     onMoveStep,
     onDeleteStep,
     onOpenStepRequest,
+    onUpdateVariables,
     workflows,
     // projects // Unused
 }) => {
@@ -334,6 +344,16 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
                         <ListChecks size={14} /> Add Workflow
                     </ToolbarButton>
                 </StepsToolbar>
+            )}
+
+            {onUpdateVariables && (
+                <VariablesRow>
+                    <VariablesEditor
+                        variables={testCase.variables}
+                        onChange={onUpdateVariables}
+                        hint="Reusable name→value pairs available to every step in this case as {{name}} — scoped to this case only. A case variable overrides the suite's variables and the active environment."
+                    />
+                </VariablesRow>
             )}
 
             <StepsSection>

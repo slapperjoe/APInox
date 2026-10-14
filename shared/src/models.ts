@@ -555,6 +555,9 @@ export interface TestCase {
     name: string;
     steps: TestStep[];
     expanded?: boolean;
+    /** Case-level variables (`{{name}}`) — scoped to this case only.
+     * At run time these override the parent suite's variables and the active environment. */
+    variables?: Record<string, string>;
 }
 
 export interface TestSuite {
@@ -562,6 +565,9 @@ export interface TestSuite {
     name: string;
     testCases: TestCase[];
     expanded?: boolean;
+    /** Suite-level variables (`{{name}}`) — shared by every case in this suite.
+     * A case's own `variables` override these; both override the active environment. */
+    variables?: Record<string, string>;
 }
 
 export interface WatcherEvent {

@@ -13,6 +13,11 @@ pub struct FrontendTestCase {
     pub id: String,
     pub name: String,
     pub steps: Vec<FrontendTestStep>,
+    /// Case-level variables (`{{name}}`). Layered over the suite-level map
+    /// passed in the request (case wins). Absent in payloads that predate
+    /// the field — deserializes to None.
+    #[serde(default)]
+    pub variables: Option<HashMap<String, String>>,
 }
 
 /// Matches TypeScript `TestSuite`

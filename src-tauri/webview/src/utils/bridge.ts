@@ -118,6 +118,48 @@ export function mergeWorkflowEnvironmentVariables(
     return { ...envBase, ...(workflowVariables || {}) };
 }
 
+/** Merge the resolved environment with the suite- and case-level variable
+    maps for a test run. Precedence: environment < suite < case (a case's own
+    variables win over its suite's and over the active environment). Returns
+    the flat map Rust uses as each case's initial substitution context. */
+export function mergeTestRunVariables(
+    environment: Record<string, string>,
+    suiteVariables?: Record<string, string> | null,
+    caseVariables?: Record<string, string> | null,
+): Record<string, string> {
+    return { ...environment, ...suiteVariables, ...caseVariables };
+}
+
+/** Resolve the environment variables for a run payload.
+    `envInput` is either an already-resolved flat map (a caller that resolved
+    it itself) or an environment name; with neither, falls back to the active
+    environment from settings. Never throws — a run without environment
+    variables is preferable to a failed run. */
+async function resolveRunEnvironmentVariables(envInput: unknown): Promise<Record<string, string>> {
+    if (envInput && typeof envInput === "object") {
+        return envInput as Record<string, string>;
+    }
+    if (!tauriInvoke) return {};
+    let envName: string | undefined =
+        typeof envInput === "string" && envInput.trim() ? envInput.trim() : undefined;
+    if (!envName) {
+        try {
+            const cfg: any = await tauriInvoke('get_settings', {});
+            envName = cfg?.config?.activeEnvironment || cfg?.activeEnvironment;
+        } catch {
+            // non-fatal — run without environment variables
+        }
+    }
+    if (envName) {
+        try {
+            return (await tauriInvoke('get_resolved_environment', { envName })) || {};
+        } catch {
+            // non-fatal — run without environment variables
+        }
+    }
+    return {};
+}
+
 // ============== Rust Backend Routing ==============
 
 const BODY_METHODS = new Set(['POST', 'PUT', 'PATCH']);
@@ -631,10 +673,14 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
 
         // Route RunTestCase to Rust run_test_case command
         if (message.command === FrontendCommand.RunTestCase) {
+            // The case's own variables are applied in Rust (where the case
+            // object is available); here we resolve the active environment and
+            // layer the suite's variables on top so all three scopes resolve.
+            const envVariables = await resolveRunEnvironmentVariables(message.environment);
             const response = await tauriInvoke('run_test_case', {
                 request: {
                     testCase: message.testCase,
-                    variables: message.environment || {},
+                    variables: mergeTestRunVariables(envVariables, message.suiteVariables),
                     stream: message.stream !== false,
                     fallbackEndpoint: message.fallbackEndpoint || ''
                 }
@@ -654,33 +700,8 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                     // Resolve the active environment's variables (secrets
                     // included, via get_resolved_environment — same source as
                     // the single-request path) so {{var}} placeholders in
-                    // step URLs and XML bodies resolve at run time. The
-                    // message may carry either an environment name (from the
-                    // Environment selector) or an already-resolved flat map.
-                    let envVariables: Record<string, string> = {};
-                    if (message.environment && typeof message.environment === "object") {
-                        envVariables = message.environment as Record<string, string>;
-                    } else {
-                        let envName: string | undefined =
-                            typeof message.environment === "string" && message.environment.trim()
-                                ? message.environment.trim()
-                                : undefined;
-                        if (!envName) {
-                            try {
-                                const cfg: any = await tauriInvoke('get_settings', {});
-                                envName = cfg?.config?.activeEnvironment || cfg?.activeEnvironment;
-                            } catch {
-                                // non-fatal — run without environment variables
-                            }
-                        }
-                        if (envName) {
-                            try {
-                                envVariables = (await tauriInvoke('get_resolved_environment', { envName })) || {};
-                            } catch {
-                                // non-fatal — run without environment variables
-                            }
-                        }
-                    }
+                    // step URLs and XML bodies resolve at run time.
+                    const envVariables = await resolveRunEnvironmentVariables(message.environment);
                     const result = await tauriInvoke('run_workflow', {
                         request: {
                             id: wf.id || '',
@@ -807,9 +828,13 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
         if (message.command === FrontendCommand.RunTestSuite) {
             debugLog('[Bridge] Routing RunTestSuite to Rust backend');
             try {
+                // Resolve the active environment and layer the suite's variables
+                // on top; each case's own variables are applied in Rust (where
+                // the per-case objects live).
+                const envVariables = await resolveRunEnvironmentVariables(message.environment);
                 const response = await tauriInvoke('run_test_suite', {
                     testSuite: message.testSuite,
-                    variables: message.environment || {},
+                    variables: mergeTestRunVariables(envVariables, message.testSuite?.variables),
                     stream: message.stream || false
                 });
                 

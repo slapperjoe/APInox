@@ -209,6 +209,8 @@ export const WorkspaceLayout: React.FC = () => {
     const onAddAssertion = workspace.handleAddAssertion;
     const onRunTestCase = workspace.handleRunTestCase;
     const onRunTestSuite = workspace.handleRunTestSuite;
+    const updateTestSuiteVariables = workspace.updateTestSuiteVariables;
+    const updateTestCaseVariables = workspace.updateTestCaseVariables;
     const onAddExtractor = workspace.handleAddExtractor;
     const onAddExistenceAssertion = workspace.handleAddExistenceAssertion;
     const onImportFromWorkspace = workspace.onImportFromWorkspace;
@@ -621,7 +623,11 @@ export const WorkspaceLayout: React.FC = () => {
     // TESTS VIEW
     if (activeView === SidebarView.TESTS) {
         if (selectedTestSuite && !selectedTestCase) {
-            return <TestSuiteSummary suite={selectedTestSuite} onSelectTestCase={navigationActions?.onSelectTestCase} />;
+            return <TestSuiteSummary
+                suite={selectedTestSuite}
+                onSelectTestCase={navigationActions?.onSelectTestCase}
+                onUpdateVariables={updateTestSuiteVariables ? (vars) => updateTestSuiteVariables(selectedTestSuite.id, vars) : undefined}
+            />;
         }
 
         if (selectedStep && selectedStep.type === 'workflow' && !isReadOnly && onUpdateStep) {
@@ -840,6 +846,7 @@ export const WorkspaceLayout: React.FC = () => {
                     onMoveStep={onMoveStep}
                     onDeleteStep={onDeleteStep}
                     onOpenStepRequest={onOpenStepRequest}
+                    onUpdateVariables={(vars) => updateTestCaseVariables(selectedTestCase.id, vars)}
                     workflows={config?.workflows}
                     projects={projects}
                 />

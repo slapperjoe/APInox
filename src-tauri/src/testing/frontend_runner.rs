@@ -328,6 +328,27 @@ pub(crate) fn apply_header_substitution(
         .collect()
 }
 
+/// Layer case-level variables onto the run's base variable map
+/// (environment + suite variables, already merged by the webview) and
+/// return the per-case initial substitution context. Case variables win
+/// over the base; everything else passes through untouched. Returns a
+/// `Value` map to seed `run_step`'s mutable context directly.
+pub(crate) fn merge_case_variables(
+    base: &HashMap<String, String>,
+    case: Option<&HashMap<String, String>>,
+) -> HashMap<String, Value> {
+    let mut ctx: HashMap<String, Value> = base
+        .iter()
+        .map(|(k, v)| (k.clone(), Value::String(v.clone())))
+        .collect();
+    if let Some(case_vars) = case {
+        for (k, v) in case_vars {
+            ctx.insert(k.clone(), Value::String(v.clone()));
+        }
+    }
+    ctx
+}
+
 /// Split substituted request headers into (kept, dropped).
 ///
 /// Stored `Content-Length` / `Transfer-Encoding` headers are never
@@ -772,6 +793,27 @@ mod tests {
     fn no_variables_leaves_template_unchanged() {
         let template = "<GetUser><Name>Mark</Name></GetUser>";
         assert_eq!(substitute_step_template(template, &ctx(&[])), template);
+    }
+
+    #[test]
+    fn merge_case_variables_case_overrides_base() {
+        let base = ctx(&[("host", "suit.example.com"), ("token", "suit-token")]);
+        let case = ctx(&[("token", "case-token"), ("extra", "case-only")]);
+        let merged = merge_case_variables(&base, Some(&case));
+        assert_eq!(merged["host"], Value::String("suit.example.com".into()));
+        // Same key: case wins.
+        assert_eq!(merged["token"], Value::String("case-token".into()));
+        // New key only in the case appears.
+        assert_eq!(merged["extra"], Value::String("case-only".into()));
+        assert_eq!(merged.len(), 3);
+    }
+
+    #[test]
+    fn merge_case_variables_without_case_keeps_base() {
+        let base = ctx(&[("host", "suit.example.com"), ("token", "suit-token")]);
+        let merged = merge_case_variables(&base, None);
+        assert_eq!(merged["token"], Value::String("suit-token".into()));
+        assert_eq!(merged.len(), 2);
     }
 
     #[test]

@@ -93,12 +93,19 @@ pub async fn run_test_case(request: RunTestCaseRequest) -> Result<RunTestCaseRes
         let run_id_clone = run_id.clone();
         let test_case = request.test_case;
         let fallback_endpoint = request.fallback_endpoint;
-        let initial_vars: HashMap<String, serde_json::Value> = request
+        let mut initial_vars: HashMap<String, serde_json::Value> = request
             .variables
             .unwrap_or_default()
             .into_iter()
             .map(|(k, v)| (k, serde_json::Value::String(v)))
             .collect();
+        // Case-level variables overlay the caller's merged map (the case's
+        // own scope wins over suite / environment variables).
+        if let Some(vars) = &test_case.variables {
+            for (k, v) in vars {
+                initial_vars.insert(k.clone(), serde_json::Value::String(v.clone()));
+            }
+        }
 
         let tc_handle = tokio::spawn(async move {
             use crate::testing::frontend_runner::run_step;
@@ -204,6 +211,11 @@ pub async fn run_test_case(request: RunTestCaseRequest) -> Result<RunTestCaseRes
             .into_iter()
             .map(|(k, v)| (k, serde_json::Value::String(v)))
             .collect();
+        if let Some(vars) = &request.test_case.variables {
+            for (k, v) in vars {
+                context.insert(k.clone(), serde_json::Value::String(v.clone()));
+            }
+        }
 
         let mut all_passed = true;
         for step in &request.test_case.steps {
@@ -283,19 +295,15 @@ pub async fn run_test_suite(request: RunTestSuiteRequest) -> Result<RunTestSuite
         
         let run_id_clone = run_id.clone();
         let suite = request.test_suite;
-        // Base variable context for EVERY case (the caller's merged env +
-        // caller variables). Each case starts from a fresh clone so
-        // variables extracted by one case's steps never leak into the next.
-        let base_vars: HashMap<String, serde_json::Value> = request
-            .variables
-            .unwrap_or_default()
-            .into_iter()
-            .map(|(k, v)| (k, serde_json::Value::String(v)))
-            .collect();
+        // Base variable map for EVERY case (environment + suite variables,
+        // already merged by the webview). Each case starts a fresh context
+        // seeded here plus its own case-level variables on top (case wins),
+        // so variables extracted by one case's steps never leak into the next.
+        let base_vars: HashMap<String, String> = request.variables.unwrap_or_default();
 
         // Spawn background task
         let ts_handle = tokio::spawn(async move {
-            use crate::testing::frontend_runner::run_step;
+            use crate::testing::frontend_runner::{run_step, merge_case_variables};
 
             for test_case in &suite.test_cases {
                 let case_id = test_case.id.clone();
@@ -315,7 +323,7 @@ pub async fn run_test_suite(request: RunTestSuiteRequest) -> Result<RunTestSuite
                 let fallback_endpoint = test_case.steps.iter()
                     .find_map(|s| s.config.request.as_ref().and_then(|r| r.endpoint.clone()));
 
-                let mut context = base_vars.clone();
+                let mut context = merge_case_variables(&base_vars, test_case.variables.as_ref());
                 let mut all_passed = true;
 
                 for step in &test_case.steps {
@@ -409,18 +417,12 @@ pub async fn run_test_suite(request: RunTestSuiteRequest) -> Result<RunTestSuite
         })
     } else {
         // Synchronous mode (not used by the webview but kept for completeness)
-        use crate::testing::frontend_runner::run_step;
+        use crate::testing::frontend_runner::{run_step, merge_case_variables};
 
         let mut results = Vec::new();
         let mut all_passed = true;
 
-        let base_vars: HashMap<String, serde_json::Value> = request
-            .variables
-            .clone()
-            .unwrap_or_default()
-            .into_iter()
-            .map(|(k, v)| (k, serde_json::Value::String(v)))
-            .collect();
+        let base_vars: HashMap<String, String> = request.variables.clone().unwrap_or_default();
 
         for test_case in &request.test_suite.test_cases {
             let start = std::time::Instant::now();
@@ -428,7 +430,7 @@ pub async fn run_test_suite(request: RunTestSuiteRequest) -> Result<RunTestSuite
             let fallback_endpoint = test_case.steps.iter()
                 .find_map(|s| s.config.request.as_ref().and_then(|r| r.endpoint.clone()));
 
-            let mut context = base_vars.clone();
+            let mut context = merge_case_variables(&base_vars, test_case.variables.as_ref());
             let mut case_passed = true;
             let mut step_results: Vec<serde_json::Value> = Vec::new();
             let mut case_error: Option<String> = None;
@@ -585,11 +587,13 @@ mod tests {
                     id: "case-1".to_string(),
                     name: "Case 1".to_string(),
                     steps: vec![delay_step("s1", 1)],
+                    variables: None,
                 },
                 FrontendTestCase {
                     id: "case-2".to_string(),
                     name: "Case 2".to_string(),
                     steps: vec![delay_step("s2", 1), delay_step("s3", 1)],
+                    variables: None,
                 },
             ],
         };

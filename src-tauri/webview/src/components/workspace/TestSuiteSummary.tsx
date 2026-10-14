@@ -1,12 +1,19 @@
 import React from 'react';
 import { ContextHelpButton } from '../ContextHelpButton';
+import { VariablesEditor } from './VariablesEditor';
 import {
     ProjectContainer, StatsGridSpaced, StatCard, StatLabel, StatValue,
     SectionHeading, OperationsList, OperationItem, OperationRow,
     OperationMeta, ChevronIconFaint
 } from '../../styles/WorkspaceLayout.styles';
 
-export const TestSuiteSummary: React.FC<{ suite: import('@shared/models').TestSuite; onSelectTestCase?: (c: import('@shared/models').TestCase) => void }> = ({ suite, onSelectTestCase }) => {
+export const TestSuiteSummary: React.FC<{
+    suite: import('@shared/models').TestSuite;
+    onSelectTestCase?: (c: import('@shared/models').TestCase) => void;
+    /** Commit this suite's variables (suite-level {{name}} values, shared by
+        every case in the suite). When provided, a variable editor is shown. */
+    onUpdateVariables?: (variables: Record<string, string>) => void;
+}> = ({ suite, onSelectTestCase, onUpdateVariables }) => {
     // Calculate total steps
     const totalSteps = suite.testCases.reduce((sum, tc) => sum + tc.steps.length, 0);
 
@@ -28,6 +35,16 @@ export const TestSuiteSummary: React.FC<{ suite: import('@shared/models').TestSu
                     <StatValue>{totalSteps}</StatValue>
                 </StatCard>
             </StatsGridSpaced>
+
+            {onUpdateVariables && (
+                <div style={{ margin: '16px 0 8px' }}>
+                    <VariablesEditor
+                        variables={suite.variables}
+                        onChange={onUpdateVariables}
+                        hint="Reusable name→value pairs shared by every case in this suite as {{name}}. A case's own variables override these; both override the active environment."
+                    />
+                </div>
+            )}
 
             <SectionHeading>Test Cases</SectionHeading>
             <OperationsList>

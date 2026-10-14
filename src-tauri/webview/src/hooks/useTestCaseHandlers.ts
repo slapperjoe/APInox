@@ -372,6 +372,10 @@ export function useTestCaseHandlers({
                         caseId,
                         // Embed referenced workflow steps (self-contained run)
                         testCase: withEmbeddedWorkflows(testCase, config?.workflows || []),
+                        // Suite-level variables — the bridge layers these over
+                        // the resolved environment; the case's own variables are
+                        // applied by Rust (case wins).
+                        suiteVariables: found?.suite?.variables,
                         fallbackEndpoint: testCase.steps[0]?.config?.request?.endpoint || '',
                         stream: true
                     });
