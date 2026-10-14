@@ -61,6 +61,10 @@ export interface SidebarWorkflowsProps {
     onDuplicate: (workflow: Workflow) => void;
     onSelect?: (workflow: Workflow) => void;
     onSelectStep: (workflow: Workflow, step: WorkflowStep) => void;
+    /** The step currently open in the workflow editor — its sidebar row is highlighted.
+        `step` may be null: "workflow open, no step" (workflow row clicked / Run)
+        still highlights the workflow row. */
+    selectedWorkflowStep?: { workflow: Workflow; step: WorkflowStep | null } | null;
 }
 
 export interface SidebarPerformanceProps {

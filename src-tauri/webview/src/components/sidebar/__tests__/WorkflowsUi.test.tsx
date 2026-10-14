@@ -97,3 +97,101 @@ describe('WorkflowsUi (right-click context menu + double-click confirm delete)',
         expect(baseProps.onDeleteStep).toHaveBeenCalledWith(wf, 's2');
     });
 });
+
+// ── active workflow/step highlight ─────────────────────────────────────────
+// `selectedWorkflowStep` drives the $active highlight in the sidebar: the
+// workflow row is highlighted whenever its workflow is open in the editor,
+// and the step row when a specific step is open. `step: null` is the
+// first-class "workflow open, no step" state (clicking the workflow row or
+// its Run button sets it) — it must not throw and still highlights the
+// workflow row.
+
+/** The active-selection CSS var used by the $active row styles. */
+const ACTIVE_BG_VAR = 'var(--apinox-list-activeSelectionBackground)';
+
+/** True when any injected styled-components rule targeting the element's
+    classes sets the active-selection background (the $active styling). */
+const hasActiveSelectionBg = (el: HTMLElement): boolean => {
+    const classes = (el.className || '').split(/\s+/);
+    for (const sheet of Array.from(document.styleSheets)) {
+        let rules: CSSRule[];
+        try {
+            rules = Array.from(sheet.cssRules);
+        } catch {
+            continue;
+        }
+        for (const rule of rules) {
+            if (
+                rule instanceof CSSStyleRule &&
+                rule.selectorText &&
+                classes.some(c => c && rule.selectorText.includes('.' + c)) &&
+                rule.style.getPropertyValue('background-color') === ACTIVE_BG_VAR
+            ) {
+                return true;
+            }
+        }
+    }
+    return false;
+};
+
+describe('WorkflowsUi (active workflow/step highlight)', () => {
+    it('does not throw when the selected workflow has no open step (step: null)', () => {
+        const wf = makeWorkflow('wf-1', 'Checkout Flow', [
+            makeStep('s1', 'Step 1'),
+            makeStep('s2', 'Step 2'),
+        ]);
+        // Rendering with step: null used to throw on
+        // `selectedWorkflowStep.step.id` during the step-row map.
+        render(
+            <WorkflowsUi
+                workflows={[wf]}
+                {...baseProps}
+                selectedWorkflowStep={{ workflow: wf, step: null }}
+            />
+        );
+        // Every row still renders.
+        expect(screen.getByText('Checkout Flow')).toBeInTheDocument();
+        expect(screen.getByText('Step 1')).toBeInTheDocument();
+        expect(screen.getByText('Step 2')).toBeInTheDocument();
+    });
+
+    it('highlights the workflow row (and no step row) when no step is open', () => {
+        const wf = makeWorkflow('wf-1', 'Checkout Flow', [
+            makeStep('s1', 'Step 1'),
+            makeStep('s2', 'Step 2'),
+        ]);
+        render(
+            <WorkflowsUi
+                workflows={[wf]}
+                {...baseProps}
+                selectedWorkflowStep={{ workflow: wf, step: null }}
+            />
+        );
+        const workflowRow = screen.getByText('Checkout Flow').parentElement as HTMLElement;
+        expect(hasActiveSelectionBg(workflowRow)).toBe(true);
+        const stepRow = screen.getByText('Step 1').parentElement as HTMLElement;
+        expect(hasActiveSelectionBg(stepRow)).toBe(false);
+    });
+
+    it('highlights the open step row and auto-expands its workflow', () => {
+        const wf = makeWorkflow('wf-1', 'Checkout Flow', [
+            makeStep('s1', 'Step 1'),
+            makeStep('s2', 'Step 2'),
+        ]);
+        render(
+            <WorkflowsUi
+                workflows={[wf]}
+                {...baseProps}
+                selectedWorkflowStep={{ workflow: wf, step: wf.steps[1] }}
+            />
+        );
+        // effectiveExpanded: the workflow expands on its own so the
+        // highlighted step stays visible (no click needed).
+        expect(screen.getByText('Step 1')).toBeInTheDocument();
+        expect(screen.getByText('Step 2')).toBeInTheDocument();
+        const activeRow = screen.getByText('Step 2').parentElement as HTMLElement;
+        const siblingRow = screen.getByText('Step 1').parentElement as HTMLElement;
+        expect(hasActiveSelectionBg(activeRow)).toBe(true);
+        expect(hasActiveSelectionBg(siblingRow)).toBe(false);
+    });
+});

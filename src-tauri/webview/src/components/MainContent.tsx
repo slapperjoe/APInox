@@ -1948,6 +1948,7 @@ const MainContent: React.FC = () => {
             onAddStep: handleAddWorkflowStep,
             onDeleteStep: handleDeleteWorkflowStep,
             onMoveStep: handleMoveWorkflowStep,
+            selectedWorkflowStep,
         },
         performanceProps: {
             suites: config?.performanceSuites || [],
@@ -2050,6 +2051,7 @@ const MainContent: React.FC = () => {
         config, activeRunId, selectedPerformanceSuiteId,
         handleAddWorkflow, handleEditWorkflow, handleRunWorkflow,
         handleDeleteWorkflow, handleDuplicateWorkflow, handleSaveWorkflowToDisk, handleLoadWorkflowFromFile, handleSelectWorkflow, handleSelectWorkflowStep,
+        selectedWorkflowStep,
         handleAddPerformanceSuite, handleDeletePerformanceSuite, handleRunPerformanceSuite,
         handleSelectPerformanceSuite, handleStopPerformanceRun, handleAddPerformanceRequestForUi,
         expandedPerformanceSuiteIds, handleTogglePerformanceSuiteExpand,

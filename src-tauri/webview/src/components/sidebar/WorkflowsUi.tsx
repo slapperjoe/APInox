@@ -47,7 +47,7 @@ const WorkflowStepCount = styled.div`
     margin-right: ${SPACING_XS};
 `;
 
-const StepItem = styled.div`
+const StepItem = styled.div<{ $active?: boolean }>`
     display: flex;
     align-items: center;
     padding: ${SPACING_SM} 12px ${SPACING_SM} 40px;
@@ -55,6 +55,12 @@ const StepItem = styled.div`
     opacity: 0.8;
     border-bottom: 1px solid var(--apinox-panel-border);
     gap: ${SPACING_XS};
+    background-color: ${props => props.$active ? 'var(--apinox-list-activeSelectionBackground)' : 'transparent'};
+    color: ${props => props.$active ? 'var(--apinox-list-activeSelectionForeground)' : 'var(--apinox-foreground)'};
+
+    &:hover {
+        background-color: ${props => props.$active ? 'var(--apinox-list-activeSelectionBackground)' : 'var(--apinox-list-hoverBackground)'};
+    }
 `;
 
 const StepNumber = styled.div`
@@ -144,6 +150,11 @@ interface WorkflowsUiProps {
     onAddStep?: (workflow: Workflow) => void;
     onDeleteStep?: (workflow: Workflow, stepId: string) => void;
     onMoveStep?: (workflow: Workflow, stepId: string, direction: -1 | 1) => void;
+    /** The step currently open in the workflow editor — its row is highlighted.
+        `step` may be null: "workflow open in the editor, no step" (set by
+        clicking the workflow row or its Run button) still highlights the
+        workflow row and auto-expands it. */
+    selectedWorkflowStep?: { workflow: Workflow; step: WorkflowStep | null } | null;
 }
 
 export const WorkflowsUi: React.FC<WorkflowsUiProps> = ({
@@ -160,8 +171,13 @@ export const WorkflowsUi: React.FC<WorkflowsUiProps> = ({
     onAddStep,
     onDeleteStep,
     onMoveStep,
+    selectedWorkflowStep,
 }) => {
     const [expandedWorkflows, setExpandedWorkflows] = useState<Set<string>>(new Set());
+    // The workflow whose step is open in the editor is always expanded, so the
+    // highlighted step stays visible even if the user collapsed it.
+    const effectiveExpanded = new Set(expandedWorkflows);
+    if (selectedWorkflowStep) effectiveExpanded.add(selectedWorkflowStep.workflow.id);
     // Per-row right-click context menu (workflow or step), plus a list-level
     // menu on the empty content area (Load workflow from file). Delete uses the
     // shared menu's double-click-to-confirm.
@@ -257,11 +273,13 @@ export const WorkflowsUi: React.FC<WorkflowsUiProps> = ({
                     />
                 ) : (
                     workflows.map(workflow => {
-                        const isExpanded = expandedWorkflows.has(workflow.id);
+                        const isExpanded = effectiveExpanded.has(workflow.id);
+                        const isActiveWorkflow = selectedWorkflowStep?.workflow.id === workflow.id;
 
                         return (
                             <div key={workflow.id}>
                                 <WorkflowItem
+                                    $active={isActiveWorkflow}
                                     onClick={() => {
                                         // Toggle expansion
                                         toggleWorkflow(workflow.id);
@@ -319,6 +337,7 @@ export const WorkflowsUi: React.FC<WorkflowsUiProps> = ({
                                 {isExpanded && workflow.steps?.map((step, idx) => (
                                     <StepItem
                                         key={step.id}
+                                        $active={selectedWorkflowStep?.step?.id === step.id}
                                         onClick={() => {
                                             onSelectStep?.(workflow, step);
                                         }}
