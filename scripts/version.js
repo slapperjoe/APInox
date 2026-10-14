@@ -157,10 +157,15 @@ function commitCount() {
 // A higher minor always outranks a lower one under semver, so this can never
 // make the updater treat a newer release as a downgrade.
 function nextMinor(fallbackMinor) {
-  const out = execSync(
-    "git tag -l 'v*' --sort=-version:refname",
-    { cwd: root },
-  )
+  // No shell glob pattern on purpose: execSync runs through the platform
+  // shell (bash on Linux/macOS, cmd.exe on Windows). bash strips the single
+  // quotes of `git tag -l 'v*'`; cmd.exe treats them as LITERAL characters,
+  // so git receives the pattern `'v*`, matches zero tags, and the minor
+  // silently falls back to package.json — the Windows build job then bakes
+  // a different minor than the Linux/macOS jobs and the release run refuses
+  // the mixed-version artifacts. Listing ALL tags and filtering in Node is
+  // identical on every platform (the regex below already does the filtering).
+  const out = execSync("git tag -l --sort=-version:refname", { cwd: root })
     .toString()
     .trim();
   const tags = out.split("\n").map((t) => t.trim()).filter(Boolean);
@@ -170,6 +175,14 @@ function nextMinor(fallbackMinor) {
     if (!m) continue;
     return Number(m[2]) + 1;
   }
+  // A full CI checkout always carries release tags once the first release
+  // has shipped — falling back here means the tags didn't reach the checkout
+  // (e.g. fetch-tags missing), so make it loud in the build log instead of
+  // silently freezing the minor at the package.json value.
+  console.error(
+    "⚠️ nextMinor: no release tags found — falling back to the package.json minor (" +
+      String(fallbackMinor) + "). If this ran in CI, check that the checkout fetched tags (fetch-tags: true).",
+  );
   return fallbackMinor;
 }
 

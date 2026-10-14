@@ -132,6 +132,10 @@ jobs:
           if [ "$COUNT" != "1" ]; then
             echo "❌ Artifacts contain more than one version:"
             echo "$VERSIONS"
+            echo "   Every job in one build must bake the SAME version — one of them derived"
+            echo "   a different minor (e.g. its checkout was missing release tags, so the"
+            echo "   tag-derived minor fell back). Check each job's version-sync log in the"
+            echo "   build run, fix, and re-run the build before releasing."
             exit 1
           fi
 
