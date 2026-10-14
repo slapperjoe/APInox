@@ -31,6 +31,13 @@ vi.mock("lucide-react", () => ({
     FileCode: () => <span data-testid="icon-file-code" />,
     ArrowRight: () => <span data-testid="icon-arrow-right" />,
     FileText: () => <span data-testid="icon-file-text" />,
+    // Live execution status icons (mirrored from the main TestCaseView) +
+    // the Spinner's Loader2 — TestsUi imports these even when no status is
+    // passed.
+    CheckCircle: () => <span data-testid="icon-check-circle" />,
+    XCircle: () => <span data-testid="icon-x-circle" />,
+    Minus: () => <span data-testid="icon-minus" />,
+    Loader2: () => <span data-testid="icon-loader" />,
     Pencil: () => <span data-testid="icon-pencil" />
 }));
 

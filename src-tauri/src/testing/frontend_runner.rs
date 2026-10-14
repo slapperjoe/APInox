@@ -328,6 +328,33 @@ pub(crate) fn apply_header_substitution(
         .collect()
 }
 
+/// Split substituted request headers into (kept, dropped).
+///
+/// Stored `Content-Length` / `Transfer-Encoding` headers are never
+/// forwarded: the body can have changed length since the header was
+/// saved (variable substitution, user edits), and hyper 1.x RESPECTS A
+/// USER-SUPPLIED CONTENT-LENGTH OVER THE BODY'S TRUE LENGTH — if it is
+/// smaller, it silently truncates the body to it with no client-side
+/// error (hyper 1.8.1 `Client::set_length` + `Encoder::Kind::Length`),
+/// so the server sees the XML cut off mid-element (e.g. OSB
+/// `WstxEOFException: Unexpected EOF`). reqwest recomputes
+/// Content-Length from the actual body instead — the same rule the
+/// proxy replay path applies.
+pub(crate) fn split_wire_headers(
+    headers: &[(String, String)],
+) -> (Vec<(String, String)>, Vec<String>) {
+    let mut kept = Vec::new();
+    let mut dropped = Vec::new();
+    for (k, v) in headers {
+        if k.eq_ignore_ascii_case("content-length") || k.eq_ignore_ascii_case("transfer-encoding") {
+            dropped.push(format!("{}: {}", k, v));
+        } else {
+            kept.push((k.clone(), v.clone()));
+        }
+    }
+    (kept, dropped)
+}
+
 pub(crate) async fn run_request_step(
     req: &FrontendRequest,
     fallback_endpoint: Option<&str>,
@@ -391,8 +418,12 @@ pub(crate) async fn run_request_step(
     // variables work in header values too; blank names are skipped there and
     // Content-Type may be overridden by an explicit header entry.
     let mut content_type_overridden = false;
+    let mut applied_headers: Vec<(String, String)> = Vec::new();
     if let Some(headers) = &req.headers {
-        for (k, v) in apply_header_substitution(headers, &str_context) {
+        let substituted = apply_header_substitution(headers, &str_context);
+        let (kept, dropped) = split_wire_headers(&substituted);
+        applied_headers = kept;
+        for (k, v) in &applied_headers {
             if k.eq_ignore_ascii_case("content-type") {
                 // Override the default Content-Type we set above
                 builder = builder.header("Content-Type", v.as_str());
@@ -401,17 +432,39 @@ pub(crate) async fn run_request_step(
                 builder = builder.header(k.as_str(), v.as_str());
             }
         }
+        if !dropped.is_empty() {
+            log::info!(
+                "[FrontendRunner] Dropped stored header(s), reqwest computes them from the actual body: {}",
+                dropped.join("; ")
+            );
+        }
     }
 
     if !content_type_overridden {
         builder = builder.header("Content-Type", &content_type);
+        applied_headers.push(("Content-Type".to_string(), content_type.clone()));
     }
 
     if method != "GET" && method != "DELETE" {
         builder = builder.body(body.clone());
     }
 
-    log::info!("[FrontendRunner] {} {}", method, endpoint);
+    // Log exactly what is about to go out on the wire: the effective
+    // (post-substitution) endpoint, every applied header, and the full
+    // substituted body. Test-step runs used to log method+URL only, so a
+    // server report of "only part of the request arrived" could not be
+    // checked against what was actually sent — the single-run SOAP path
+    // already logs `Request body:` (soap/client.rs).
+    log::info!(
+        "[FrontendRunner] {} {} (body {} bytes)",
+        method,
+        endpoint,
+        body.len()
+    );
+    for (k, v) in &applied_headers {
+        log::info!("[FrontendRunner] Request header: {}: {}", k, v);
+    }
+    log::info!("[FrontendRunner] Request body:\n{}", body);
 
     let response = match builder.send().await {
         Ok(r) => r,
@@ -439,7 +492,13 @@ pub(crate) async fn run_request_step(
     let response_body = response.text().await.unwrap_or_default();
     let duration_ms = start.elapsed().as_millis() as u64;
 
-    log::info!("[FrontendRunner] Response {} ({}ms)", status_code, duration_ms);
+    log::info!(
+        "[FrontendRunner] Response {} ({}ms, {} bytes)",
+        status_code,
+        duration_ms,
+        response_body.len()
+    );
+    log::info!("[FrontendRunner] Response body:\n{}", response_body);
 
     // Run assertions
     let assertion_results = run_assertions(
@@ -743,5 +802,22 @@ mod tests {
         let headers: HashMap<String, String> = [("X-A".to_string(), "{{missing}}".to_string())].into_iter().collect();
         let out = apply_header_substitution(&headers, &ctx(&[]));
         assert_eq!(out, vec![("X-A".to_string(), "{{missing}}".to_string())]);
+    }
+
+    #[test]
+    fn stored_content_length_and_transfer_encoding_are_dropped() {
+        // A stale stored Content-Length smaller than the real body would be
+        // silently honored by hyper and truncate the wire body — so it (and
+        // Transfer-Encoding) must be dropped; everything else is kept.
+        let headers = vec![
+            ("Content-Length".to_string(), "99".to_string()),
+            ("transfer-encoding".to_string(), "chunked".to_string()),
+            ("X-Keep".to_string(), "yes".to_string()),
+        ];
+        let (kept, dropped) = split_wire_headers(&headers);
+        assert_eq!(kept, vec![("X-Keep".to_string(), "yes".to_string())]);
+        assert_eq!(dropped.len(), 2);
+        assert!(dropped[0].contains("Content-Length: 99"));
+        assert!(dropped[1].contains("transfer-encoding: chunked"));
     }
 }

@@ -31,6 +31,9 @@ export interface SidebarTestsProps {
     // Workflows referenced by 'workflow' test steps — lets the rail expand a
     // workflow step and show the steps inside the referenced workflow.
     workflows?: Workflow[];
+    /** Live execution status (caseId → stepId), from TestRunnerContext —
+        mirrors the TestCaseView step status icons onto the rail's step rows. */
+    testExecution?: Record<string, Record<string, import('../components/workspace/TestCaseView').TestExecutionStatus>>;
     projects: UnifiedProject[];
     selectedTestSuite?: import('@shared/models').TestSuite | null;
     selectedTestCase?: TestCase | null;

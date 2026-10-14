@@ -1955,6 +1955,9 @@ const MainContent: React.FC = () => {
             onDeleteTestStep: handleDeleteStepFromMenu,
             onToggleSuiteExpand: handleToggleSuiteExpand,
             onToggleCaseExpand: handleToggleCaseExpand,
+            // Live per-step execution status — mirrors the TestCaseView status
+            // icons onto the rail's step rows (running / pass / fail).
+            testExecution,
             deleteConfirm,
         },
         workflowsProps: {
@@ -2065,6 +2068,7 @@ const MainContent: React.FC = () => {
         saveProject, refreshUnifiedProjects,
         handleUnifiedImportSoapUI, handleUnifiedImportWorkspace,
         deleteConfirm, setDeleteConfirm, setExportWorkspaceModal, setShowBulkImportModal,
+        testExecution,
         handleAddSuite, handleDeleteSuite, handleRunTestSuiteWrapper,
         handleAddTestCase, handleDeleteTestCase, handleRenameTestCase, handleRenameSuite,
         handleRunTestCaseWrapper, handleSelectTestSuite, handleSelectTestCase,

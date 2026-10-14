@@ -20,6 +20,13 @@ vi.mock('lucide-react', () => ({
     FileText: () => <span data-testid="icon-file-text" />,
     GitBranch: () => <span data-testid="icon-git-branch" />,
     RefreshCw: () => <span data-testid="icon-refresh-cw" />,
+    // Live execution status icons (mirrored from the main TestCaseView):
+    // CheckCircle/XCircle render on step rows; Loader2 is what the shared
+    // Spinner wraps; Minus marks skipped workflow sub-steps.
+    CheckCircle: () => <span data-testid="icon-check-circle" />,
+    XCircle: () => <span data-testid="icon-x-circle" />,
+    Minus: () => <span data-testid="icon-minus" />,
+    Loader2: () => <span data-testid="icon-loader" />,
     // SidebarContextMenu re-exports Pencil from lucide-react and renders it as
     // the context-menu item icon; without it the menu crashes with
     // "Element type is invalid ... got: undefined".
@@ -469,6 +476,167 @@ describe('TestsUi', () => {
             // chevrons (no right-pointing chevron; no expand toggle title).
             expect(screen.queryAllByTestId('icon-chevron-right')).toHaveLength(0);
             expect(screen.queryByTitle('Expand workflow steps')).not.toBeInTheDocument();
+        });
+    });
+
+    describe('live execution status on step rows (mirrors the main TestCaseView)', () => {
+        // Fixture: a case with two steps, so pass/fail can be asserted per step.
+        const twoStepProject: ApinoxProject = {
+            name: 'Project 2',
+            fileName: 'p2.json',
+            readOnly: false,
+            interfaces: [],
+            testSuites: [
+                {
+                    id: 'suite-2',
+                    name: 'Suite 2',
+                    testCases: [
+                        {
+                            id: 'case-2',
+                            name: 'Case 2',
+                            steps: [
+                                { id: 'step-2a', name: 'Step 2A', type: 'request', config: {} },
+                                { id: 'step-2b', name: 'Step 2B', type: 'request', config: {} }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        };
+
+        const workflowStepProject: ApinoxProject = {
+            name: 'Project WF2',
+            fileName: 'wf2.json',
+            readOnly: false,
+            interfaces: [],
+            testSuites: [
+                {
+                    id: 'suite-wf2',
+                    name: 'Suite WF2',
+                    testCases: [
+                        {
+                            id: 'case-wf2',
+                            name: 'Case WF2',
+                            steps: [
+                                { id: 'step-wf2', name: 'Run WF', type: 'workflow', config: { workflowId: 'wf-2' } }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        };
+
+        const sampleWorkflow2 = {
+            id: 'wf-2',
+            name: 'Order Flow',
+            steps: [
+                { id: 'wf-step-a', name: 'Create Order', type: 'request', order: 0 },
+                { id: 'wf-step-b', name: 'Pause', type: 'delay', order: 1 }
+            ]
+        };
+
+        it('renders the running spinner next to a running step (no pass/fail icons)', () => {
+            render(
+                <TestsUi
+                    {...defaultProps}
+                    testExecution={{
+                        'case-1': {
+                            'step-1': { status: 'running' }
+                        }
+                    }}
+                />
+            );
+
+            // The running step gets the shared Spinner (Lucide Loader2).
+            expect(screen.getByTestId('icon-loader')).toBeInTheDocument();
+            expect(screen.queryByTestId('icon-check-circle')).not.toBeInTheDocument();
+            expect(screen.queryByTestId('icon-x-circle')).not.toBeInTheDocument();
+        });
+
+        it('renders pass and fail icons on the affected steps only', () => {
+            render(
+                <TestsUi
+                    {...defaultProps}
+                    projects={[twoStepProject]}
+                    testExecution={{
+                        'case-2': {
+                            'step-2a': { status: 'pass' },
+                            'step-2b': { status: 'fail' }
+                        }
+                    }}
+                />
+            );
+
+            expect(screen.getAllByTestId('icon-check-circle')).toHaveLength(1);
+            expect(screen.getAllByTestId('icon-x-circle')).toHaveLength(1);
+            expect(screen.queryByTestId('icon-loader')).not.toBeInTheDocument();
+        });
+
+        it('keeps an empty fixed-width status slot on step rows without status', () => {
+            const view = render(<TestsUi {...defaultProps} />);
+
+            // The single step row carries the (empty) slot so the chevron +
+            // type-icon columns stay aligned, and no status icon renders.
+            expect(view.getAllByTestId('step-status-slot')).toHaveLength(1);
+            expect(screen.queryByTestId('icon-check-circle')).not.toBeInTheDocument();
+            expect(screen.queryByTestId('icon-x-circle')).not.toBeInTheDocument();
+            expect(screen.queryByTestId('icon-loader')).not.toBeInTheDocument();
+        });
+
+        it('mirrors per-workflow-step results (running/skipped) onto the expanded sub-step rows', () => {
+            const view = render(
+                <TestsUi
+                    {...defaultProps}
+                    projects={[workflowStepProject]}
+                    workflows={[sampleWorkflow2]}
+                    testExecution={{
+                        'case-wf2': {
+                            'step-wf2': {
+                                status: 'pass',
+                                workflowSteps: {
+                                    'wf-step-a': { status: 'running' },
+                                    'wf-step-b': { status: 'skipped' }
+                                }
+                            }
+                        }
+                    }}
+                />
+            );
+
+            // The workflow step row shows its own pass icon; the (collapsed)
+            // sub-steps do not render yet.
+            expect(view.getAllByTestId('icon-check-circle')).toHaveLength(1);
+            expect(view.queryByTestId('icon-loader')).not.toBeInTheDocument();
+            expect(view.queryByTestId('icon-minus')).not.toBeInTheDocument();
+
+            // Expanded: the sub-step rows mirror the per-step results —
+            // running → spinner, skipped → Minus.
+            fireEvent.click(view.getByTitle('Expand workflow steps'));
+            expect(view.getAllByTestId('icon-loader')).toHaveLength(1);
+            expect(view.getAllByTestId('icon-minus')).toHaveLength(1);
+        });
+
+        it('indents each tree level at half the legacy step (suite 8 / case 18 / step 26 / sub-step 35)', () => {
+            const view = render(
+                <TestsUi
+                    {...defaultProps}
+                    projects={[workflowStepProject]}
+                    workflows={[sampleWorkflow2]}
+                />
+            );
+            fireEvent.click(view.getByTitle('Expand workflow steps'));
+
+            const paddingLeft = (label: string) =>
+                window.getComputedStyle(
+                    view.getByText(label).parentElement as HTMLElement
+                ).paddingLeft;
+
+            // The halved indentation ladder: 8px base, ~8-9px per level —
+            // the former 8 / 35 / 52 / 70px values cut in half.
+            expect(paddingLeft('Suite WF2')).toBe('8px');
+            expect(paddingLeft('Case WF2')).toBe('18px');
+            expect(paddingLeft('Run WF')).toBe('26px');
+            expect(paddingLeft('Create Order')).toBe('35px');
         });
     });
 });

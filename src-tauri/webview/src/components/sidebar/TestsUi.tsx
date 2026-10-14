@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import styled from 'styled-components';
-import { Play, Plus, Trash2, ChevronDown, ChevronRight, FlaskConical, ListChecks, Clock, FileCode, ArrowRight, FileText, GitBranch, RefreshCw } from 'lucide-react';
+import { Play, Plus, Trash2, ChevronDown, ChevronRight, FlaskConical, ListChecks, Clock, FileCode, ArrowRight, FileText, GitBranch, RefreshCw, CheckCircle, XCircle, Minus } from 'lucide-react';
 import { UnifiedProject, TestSuite, Workflow, WorkflowStep } from '@shared/models';
 import { SidebarContextMenu, CtxMenuSection, CtxMenuItem, Pencil } from './shared/SidebarContextMenu';
 import { SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle, OperationItem, RequestItem } from './shared/SidebarStyles';
@@ -8,10 +8,16 @@ import { EmptyState } from '../common/EmptyState';
 import { HeaderButton } from '../common/Button';
 import { Tooltip } from '../common/Tooltip';
 import { InlineFormInput } from '../common/Form';
+import { Spinner } from '../common/Spinner';
 import { SPACING_SM, SPACING_XS } from '../../styles/spacing';
+import type { TestExecutionStatus } from '../workspace/TestCaseView';
+
+// One workflow step result inside a 'workflow' test step's live status map.
+type WorkflowStepExecution = NonNullable<TestExecutionStatus['workflowSteps']>[string];
 
 const StepItem = styled(RequestItem)`
-    padding-left: 52px !important;
+    /* Indentation halved (was 52px): suite 8px → case 18px → step 26px. */
+    padding-left: 26px !important;
     font-size: 0.9em;
     opacity: 0.9;
     
@@ -62,7 +68,8 @@ const SuiteCount = styled.span`
 `;
 
 const CaseRequestItem = styled(RequestItem)`
-    padding-left: 35px;
+    /* Indentation halved (was 35px): suite 8px → case 18px → step 26px. */
+    padding-left: 18px;
 `;
 
 const CaseToggle = styled.span<{ $hasChildren?: boolean }>`
@@ -93,6 +100,35 @@ const StepTypeIcon = styled.span`
     opacity: 0.7;
 `;
 
+// Live execution status on a step row — mirrors the TestCaseView status
+// icons (running spinner / pass / fail) onto the rail. The slot renders on
+// EVERY row (empty when there is no status) so the chevron + type-icon
+// columns stay aligned — the same fixed-slot pattern as the main view's
+// workflow sub-step rows.
+const StepStatusSlot = styled.span`
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 13px;
+    flex-shrink: 0;
+`;
+
+const StepStatusRunning = styled(StepStatusSlot)`
+    color: var(--apinox-testing-iconQueued);
+`;
+
+const StepStatusPass = styled(StepStatusSlot)`
+    color: var(--apinox-testing-iconPassed);
+`;
+
+const StepStatusFail = styled(StepStatusSlot)`
+    color: var(--apinox-testing-iconFailed);
+`;
+
+const StepStatusSkipped = styled(StepStatusSlot)`
+    opacity: 0.4;
+`;
+
 // Chevron slot on a 'workflow' test step that references a workflow with
 // steps — same fixed-width pattern as CaseToggle (empty slot = no dead
 // toggle when the step isn't expandable).
@@ -109,7 +145,9 @@ const WfStepToggle = styled.span<{ $hasChildren?: boolean }>`
 // Read-only (edit them in the WORKFLOWS view); clicking selects the parent
 // test step for context.
 const WorkflowSubStepItem = styled(RequestItem)`
-    padding-left: 70px !important;
+    /* Indentation halved (was 70px): suite 8px → case 18px → step 26px →
+       sub-step 35px — a near-uniform ~8px step per tree level. */
+    padding-left: 35px !important;
     font-size: 0.85em;
     opacity: 0.75;
 
@@ -151,6 +189,9 @@ export interface TestsUiProps {
     // Workflows referenced by 'workflow' test steps — lets the rail expand a
     // workflow step and show the steps inside the referenced workflow.
     workflows?: Workflow[];
+    /** Live execution status (caseId → stepId), from TestRunnerContext —
+        mirrors the TestCaseView step status icons onto the rail's step rows. */
+    testExecution?: Record<string, Record<string, TestExecutionStatus>>;
     selectedTestSuite?: TestSuite | null;
     selectedTestCase?: any | null;
     onAddSuite: (projectName?: string, suiteName?: string) => void;
@@ -180,6 +221,7 @@ export const TestsUi: React.FC<TestsUiProps> = ({
     testSuites,
     projects,
     workflows,
+    testExecution,
     selectedTestSuite,
     selectedTestCase,
     onAddSuite,
@@ -228,6 +270,67 @@ export const TestsUi: React.FC<TestsUiProps> = ({
             case 'request':
             default: return <FileText size={11} />;
         }
+    };
+
+    // Status icon (or empty slot) for a step row — running / pass / fail,
+    // mirroring the TestCaseView step status icons.
+    const stepStatusSlot = (status: TestExecutionStatus | undefined) => {
+        if (status?.status === 'running') {
+            return (
+                <StepStatusRunning data-testid="step-status-slot" title="Running...">
+                    <Spinner size={13} />
+                </StepStatusRunning>
+            );
+        }
+        if (status?.status === 'pass') {
+            return (
+                <StepStatusPass data-testid="step-status-slot" title="Passed">
+                    <CheckCircle size={13} />
+                </StepStatusPass>
+            );
+        }
+        if (status?.status === 'fail') {
+            return (
+                <StepStatusFail data-testid="step-status-slot" title="Failed">
+                    <XCircle size={13} />
+                </StepStatusFail>
+            );
+        }
+        return <StepStatusSlot data-testid="step-status-slot" />;
+    };
+
+    // Status icon (or empty slot) for a nested workflow sub-step row — the
+    // four-state mapping of the main view's sub-step rows (adds 'skipped').
+    const subStepStatusSlot = (status: WorkflowStepExecution | undefined) => {
+        if (status?.status === 'running') {
+            return (
+                <StepStatusRunning data-testid="substep-status-slot" title="Running...">
+                    <Spinner size={13} />
+                </StepStatusRunning>
+            );
+        }
+        if (status?.status === 'pass') {
+            return (
+                <StepStatusPass data-testid="substep-status-slot" title="Passed">
+                    <CheckCircle size={13} />
+                </StepStatusPass>
+            );
+        }
+        if (status?.status === 'fail') {
+            return (
+                <StepStatusFail data-testid="substep-status-slot" title="Failed">
+                    <XCircle size={13} />
+                </StepStatusFail>
+            );
+        }
+        if (status?.status === 'skipped') {
+            return (
+                <StepStatusSkipped data-testid="substep-status-slot" title="Skipped (not executed in test runs)">
+                    <Minus size={13} />
+                </StepStatusSkipped>
+            );
+        }
+        return <StepStatusSlot data-testid="substep-status-slot" />;
     };
 
     const [renameId, setRenameId] = useState<string | null>(null);
@@ -523,6 +626,7 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                                                                 />
                                                             ) : (
                                                                 <>
+                                                                    {stepStatusSlot(testExecution?.[tc.id]?.[step.id])}
                                                                     <WfStepToggle
                                                                         $hasChildren={hasWfSubSteps}
                                                                         title={hasWfSubSteps ? (isWfExpanded ? 'Collapse workflow steps' : 'Expand workflow steps') : undefined}
@@ -567,6 +671,7 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                                                                     if (onSelectTestStep) onSelectTestStep(tc.id, step.id);
                                                                 }}
                                                             >
+                                                                {subStepStatusSlot(testExecution?.[tc.id]?.[step.id]?.workflowSteps?.[ws.id])}
                                                                 <StepTypeIcon>
                                                                     {workflowSubStepIcon(ws.type)}
                                                                 </StepTypeIcon>
