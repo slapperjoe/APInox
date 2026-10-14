@@ -25,6 +25,14 @@ interface UpdateCheckResult {
     download_url: string | null;
     release_url: string;
     release_notes: string;
+    /** 'copy' = the payload is the plain executable, copied over the installed
+     *  one; 'installer' = the platform installer is run (macOS .dmg, or a
+     *  release with no plain-executable payload). */
+    update_mode: 'copy' | 'installer';
+    /** SHA-256 the release published for the payload (lowercase hex), or null. */
+    payload_sha256: string | null;
+    /** Why the previous update attempt failed, when one did. */
+    last_attempt_error: string | null;
 }
 
 type CheckState = 'idle' | 'checking' | 'done' | 'error';
@@ -212,6 +220,10 @@ export const UpdatesTab: React.FC = () => {
         try {
             const path = await invokeTauriCommand<string>('download_update', {
                 downloadUrl: result.download_url,
+                // Verified in Rust against the digest the release published —
+                // a partial or swapped payload is rejected before it can be
+                // staged over the installation.
+                expectedSha256: result.payload_sha256 ?? null,
             });
             setDownloadedPath(path);
             setDownloadState('ready');
@@ -225,7 +237,13 @@ export const UpdatesTab: React.FC = () => {
         }
     }, [result]);
 
-    // ── Launch installer ────────────────────────────────────────────────────
+    // ── Apply the update ────────────────────────────────────────────────────
+
+    // A copy update never runs a downloaded executable: Rust stages the new
+    // build next to the installed one and restarts into a helper pass that
+    // swaps the files (see `apply_copy_update`). Everything else — macOS, and
+    // releases with no plain-executable payload — keeps the installer path.
+    const isCopyUpdate = !isMacOS && result?.update_mode === 'copy';
 
     const handleRunInstaller = useCallback(async () => {
         // Guard against double-clicks while the installer action is running.
@@ -237,7 +255,7 @@ export const UpdatesTab: React.FC = () => {
         // event arrives) so the click has instant visual feedback. Rust
         // starts from the same initial step, so a missed event can never
         // leave the click without feedback.
-        setInstallStep(isMacOS ? 'preparing' : 'launching');
+        setInstallStep(isMacOS ? 'preparing' : isCopyUpdate ? 'staging' : 'launching');
 
         try {
             const unlisten = await listen<{ step: string }>(
@@ -246,12 +264,17 @@ export const UpdatesTab: React.FC = () => {
             );
             installUnlistenRef.current = unlisten;
 
-            await invokeTauriCommand('launch_installer', { installerPath: downloadedPath });
+            if (isCopyUpdate) {
+                await invokeTauriCommand('apply_copy_update', { payloadPath: downloadedPath });
+            } else {
+                await invokeTauriCommand('launch_installer', { installerPath: downloadedPath });
+            }
             // On success Rust exits the app right after this resolves
-            // (Windows) or after the swap script is staged (macOS) — the
-            // banner simply stays up until the window closes.
+            // (the helper pass then swaps the files and relaunches, or on
+            // macOS the swap script is staged) — the banner simply stays up
+            // until the window closes.
         } catch (e) {
-            // Launch failed: the app is still alive, so drop the banner and
+            // Applying failed: the app is still alive, so drop the banner and
             // surface the error in its own row (the shared `error` state is
             // only rendered for check/download failures).
             setInstallStep(null);
@@ -262,7 +285,7 @@ export const UpdatesTab: React.FC = () => {
                 installUnlistenRef.current = null;
             }
         }
-    }, [downloadedPath, installStep, isMacOS]);
+    }, [downloadedPath, installStep, isMacOS, isCopyUpdate]);
 
     // ── Open release page in browser ────────────────────────────────────────
 
@@ -353,6 +376,16 @@ export const UpdatesTab: React.FC = () => {
                     </StatusRow>
                 )}
 
+                {/* A previous attempt that did not land — without this the app
+                    would silently stay on the old version after a restart. */}
+                {result?.last_attempt_error && (
+                    <StatusRow icon={<AlertTriangle size={14} color="var(--apinox-inputValidation-errorForeground, #f48771)" />}>
+                        <span style={{ color: 'var(--apinox-inputValidation-errorForeground, #f48771)' }}>
+                            The last update attempt did not complete: {result.last_attempt_error}
+                        </span>
+                    </StatusRow>
+                )}
+
                 {/* Show download error regardless of checkState */}
                 {error && downloadState === 'error' && (
                     <StatusRow icon={<AlertTriangle size={14} color="var(--apinox-inputValidation-errorForeground, #f48771)" />}>
@@ -411,7 +444,11 @@ export const UpdatesTab: React.FC = () => {
                         {downloadState === 'ready' && downloadedPath && !installStep && (
                             <button style={btnStyle(true)} onClick={handleRunInstaller}>
                                 <Play size={14} />
-                                {isMacOS ? 'Install & relaunch' : 'Run installer'}
+                                {isMacOS
+                                    ? 'Install & relaunch'
+                                    : isCopyUpdate
+                                        ? 'Restart & update'
+                                        : 'Run installer'}
                             </button>
                         )}
                     </>
@@ -527,13 +564,19 @@ const StatusRow: React.FC<{ icon: React.ReactNode; children: React.ReactNode }> 
 // ── Installer action banner ─────────────────────────────────────────────────
 
 /**
- * Copy for each `update-install-progress` step (see `launch_installer` in
- * `src-tauri/src/updater.rs`). The step sets are disjoint per platform —
- * Windows emits `launching`/`running`, macOS emits `preparing`/`mounting`/
- * `copying`/`relaunching` — so a flat map is enough.
+ * Copy for each `update-install-progress` step (see `apply_copy_update` and
+ * `launch_installer` in `src-tauri/src/updater.rs`). The step sets are disjoint
+ * per mode — copy updates emit `staging`/`applying`/`restarting`, the NSIS
+ * installer path emits `launching`/`running`, macOS emits
+ * `preparing`/`mounting`/`copying`/`relaunching` — so a flat map is enough.
  */
 const INSTALL_STEP_TEXT: Record<string, string> = {
-    // Windows — the NSIS installer takes over from here
+    // Copy update — the new build is written next to the installed one, then a
+    // helper pass swaps it after APInox exits. No installer is run.
+    staging: 'Staging the new build…',
+    applying: 'Applying update…',
+    restarting: 'Almost done — APInox is closing and will relaunch…',
+    // Windows installer path — the NSIS installer takes over from here
     launching: 'Launching installer…',
     running: 'Installer is running — APInox is closing…',
     // macOS — the in-app update pipeline
