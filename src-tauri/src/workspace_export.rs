@@ -54,16 +54,14 @@ pub async fn export_workspace(
     let mut unified_by_name: std::collections::HashMap<String, serde_json::Value> =
         std::collections::HashMap::new();
     if let Ok(unified_projects) = crate::project_storage::list_unified_projects().await {
+        // list_unified_projects already returns the FULL project value (it calls
+        // load_unified_project per project), so don't re-read/re-parse each one.
         for unified in unified_projects {
             let uname = match unified["name"].as_str() {
                 Some(n) => n.to_string(),
                 None => continue,
             };
-            if let Ok(full) =
-                crate::project_storage::load_unified_project(uname.clone())
-            {
-                unified_by_name.insert(uname, full);
-            }
+            unified_by_name.insert(uname, unified);
         }
     }
 

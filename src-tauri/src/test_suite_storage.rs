@@ -95,8 +95,9 @@ pub async fn save_test_suites(suites: Vec<serde_json::Value>) -> Result<Vec<serd
     let path = get_test_suites_path()?;
     let data = TestSuiteStore { suites };
     save_store(&path, &data)?;
-    let reloaded = load_store(&path);
-    Ok(reloaded.suites)
+    // Return the value we just persisted instead of re-reading + re-parsing the
+    // whole file back (which serializes full embedded request copies per suite).
+    Ok(data.suites)
 }
 
 /// Read one project's suites from its `tests/` subdir (the historical layout):

@@ -1533,10 +1533,9 @@ fn load_unified_operation(op_dir: &Path) -> Result<serde_json::Value, String> {
                     .map_err(|e| format!("Failed to parse request metadata: {}", e))?;
                 if let Some(ref b) = body {
                     log::info!(
-                        "Loading request '{}': body_path={}, body exists={}, body_len={}",
+                        "Loading request '{}': body_path={}, body_len={}",
                         base,
                         body_path.display(),
-                        body_path.exists(),
                         b.len()
                     );
                     meta["request"] = serde_json::Value::String(b.clone());
