@@ -16,7 +16,7 @@
  *   const { projects, addProject, saveProject } = useProject();
  */
 
-import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo, ReactNode } from 'react';
 import { ApinoxProject } from '@shared/models';
 import { BackendCommand } from '@shared/messages';
 import { bridge } from '../utils/bridge';
@@ -946,7 +946,11 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
     // CONTEXT VALUE
     // -------------------------------------------------------------------------
 
-    const value: ProjectContextValue = {
+    // Memoize the context value so consumers only re-render when a state value
+    // they depend on actually changes, not on every provider render. All action
+    // callbacks are useCallback-stable and the setters are useState-stable, so
+    // only the volatile state fields drive the dep array.
+    const value = useMemo<ProjectContextValue>(() => ({
         // State
         projects,
         selectedProjectName,
@@ -983,7 +987,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
         // Utilities
         updateProject,
         findProjectByName
-    };
+    }), [projects, selectedProjectName, workspaceDirty, savedProjects, saveErrors, deleteConfirm]);
 
     return (
         <ProjectContext.Provider value={value}>

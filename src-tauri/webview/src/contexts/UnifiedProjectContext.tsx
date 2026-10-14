@@ -45,7 +45,7 @@
  * worker/IPC implementation.
  */
 
-import React, { createContext, useContext, useState, useCallback, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef, useMemo, ReactNode } from 'react';
 import { UnifiedProject, UnifiedProjectSkeleton, ExplorerLoadState, ExplorerLoadError } from '@shared/models';
 import { BackendCommand } from '@shared/messages';
 import { bridge, isTauri } from '../utils/bridge';
@@ -400,7 +400,10 @@ export function UnifiedProjectProvider({ children }: { children: ReactNode }) {
     // No-op when the project is already full or a load is in flight (dedupe).
     React.useEffect(() => {
         if (!selectedNode || (selectedNode.type !== 'operation' && selectedNode.type !== 'request')) return;
-        for (const project of projects) {
+        // Read the latest list via the ref so this effect doesn't re-run (and
+        // re-scan every project) on every setProjects — only when the selection
+        // or the loader changes.
+        for (const project of projectsRef.current) {
             for (const op of project.operations || []) {
                 const opId = op.id || op.name;
                 if (selectedNode.type === 'operation' && opId === selectedNode.id) {
@@ -415,7 +418,7 @@ export function UnifiedProjectProvider({ children }: { children: ReactNode }) {
                 }
             }
         }
-    }, [selectedNode, projects, ensureProjectFull]);
+    }, [selectedNode, ensureProjectFull]);
 
     /**
      * Load the unified project list from the backend (list_unified_projects).
@@ -532,8 +535,16 @@ export function UnifiedProjectProvider({ children }: { children: ReactNode }) {
         return null;
     }, [projects]);
 
+    // Memoize the context value so consumers only re-render when a state value
+    // they depend on actually changes. All action callbacks are useCallback-stable
+    // and the setters are useState-stable; only projects/selectedNode/load are volatile.
+    const value = useMemo(() => ({
+        projects, setProjects, selectedNode, setSelectedNode, load,
+        refresh, ensureProjectFull, saveProject, updateProject, findSuiteById, findCaseById,
+    }), [projects, selectedNode, load]);
+
     return (
-        <UnifiedProjectContext.Provider value={{ projects, setProjects, selectedNode, setSelectedNode, load, refresh, ensureProjectFull, saveProject, updateProject, findSuiteById, findCaseById }}>
+        <UnifiedProjectContext.Provider value={value}>
             {children}
         </UnifiedProjectContext.Provider>
     );

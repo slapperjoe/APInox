@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { SPACING_MD, SPACING_SM, SPACING_XL } from "../../styles/spacing";
 import { SidebarContextMenu, CtxMenuSection, CtxMenuItem, VenetianMask, Pencil, Pause, Download, Copy, FileText, RefreshCw, Globe, Link, Code, File, Workflow } from '../sidebar/shared/SidebarContextMenu';
 import { TestTube } from 'lucide-react';
@@ -23,6 +23,13 @@ export interface TrafficLog {
 }
 
 const HTTP_METHODS = ['ALL', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
+
+// Stable empty-array default so the filteredLogs memo doesn't invalidate on
+// every render when the caller omits ignoreRules.
+const EMPTY_RULES: IgnoreRule[] = [];
+
+// Reused formatter for the per-row timestamp (avoids a new Intl formatter per row).
+const TIME_FORMATTER = new Intl.DateTimeFormat(undefined, { timeStyle: 'short' });
 
 // ── Status group definitions ───────────────────────────────────────────────
 type StatusGroupKey = '1xx' | '2xx' | '3xx' | '4xx' | '5xx' | 'none';
@@ -246,7 +253,7 @@ interface TrafficViewerProps {
   onClearTraffic?: () => void;
 }
 
-export function TrafficViewer({ logs, onSelectLog, ignoreRules = [], onAddIgnoreRule, onCreateMockRule, onCreateReplaceRule, onCreateBreakpoint, onAddToApinoxProject, onCreateWorkflowFromTraffic, onCreateTestCaseFromTraffic, onReplayRequest, onClearTraffic }: TrafficViewerProps) {
+export function TrafficViewer({ logs, onSelectLog, ignoreRules = EMPTY_RULES, onAddIgnoreRule, onCreateMockRule, onCreateReplaceRule, onCreateBreakpoint, onAddToApinoxProject, onCreateWorkflowFromTraffic, onCreateTestCaseFromTraffic, onReplayRequest, onClearTraffic }: TrafficViewerProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [urlFilter, setUrlFilter] = useState('');
   const [methodFilter, setMethodFilter] = useState('ALL');
@@ -281,10 +288,15 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = [], onAddIgnore
       .reverse();
   }, [logs, urlFilter, methodFilter, statusGroups, ignoreRules]);
 
-  function handleSelect(log: TrafficLog) {
+  const handleSelect = useCallback((log: TrafficLog) => {
     setSelectedId(log.id);
     onSelectLog?.(log);
-  }
+  }, [onSelectLog]);
+
+  const handleContextMenu = useCallback((e: React.MouseEvent, log: TrafficLog) => {
+    e.preventDefault();
+    setCtxMenu({ x: e.clientX, y: e.clientY, log });
+  }, []);
 
   const isDefaultStatus = setsEqual(statusGroups, DEFAULT_STATUS_GROUPS);
   const hasFilters = !!urlFilter || methodFilter !== 'ALL' || !isDefaultStatus;
@@ -401,7 +413,7 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = [], onAddIgnore
               log={log}
               isSelected={selectedId === log.id}
               onClick={handleSelect}
-              onContextMenu={(e, l) => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, log: l }); }}
+              onContextMenu={handleContextMenu}
             />
           ))
         )}
@@ -585,7 +597,7 @@ function copyAllTraffic(log: TrafficLog, opts: XmlFormatOpts): string {
 // the traffic sidebar's line-1/line-2 text and also drive step naming.)
 
 // ── TrafficRow card ────────────────────────────────────────────────────────
-function TrafficRow({ log, isSelected, onClick, onContextMenu }: {
+const TrafficRow = React.memo(function TrafficRow({ log, isSelected, onClick, onContextMenu }: {
   log: TrafficLog; isSelected: boolean;
   onClick: (l: TrafficLog) => void;
   onContextMenu: (e: React.MouseEvent, l: TrafficLog) => void;
@@ -648,7 +660,7 @@ function TrafficRow({ log, isSelected, onClick, onContextMenu }: {
       {/* Line 3: time + status chip + duration */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
         <span style={{ fontSize: 'var(--apinox-fs-xs)', color: tokens.text.hint, flexShrink: 0 }}>
-          {new Date(log.timestamp).toLocaleTimeString()}
+          {TIME_FORMATTER.format(new Date(log.timestamp))}
         </span>
         {log.status != null && (
           <span style={{
@@ -665,4 +677,4 @@ function TrafficRow({ log, isSelected, onClick, onContextMenu }: {
       </div>
     </div>
   );
-}
+});
