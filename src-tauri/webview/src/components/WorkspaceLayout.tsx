@@ -1075,7 +1075,11 @@ export const WorkspaceLayout: React.FC = () => {
                     time: response.time,
                     size: response.size,
                     headers: response.headers,
-                    contentType: response.contentType
+                    contentType: response.contentType,
+                    // A transport failure arrives as `{ error }` with no body —
+                    // without this the response pane rendered empty and the
+                    // reason was lost.
+                    error: response.error
                 } as PackageExecutionResponse : undefined}
                 loading={loading}
                 onUpdateRequest={(updated) => onUpdateRequest(updated as any)}

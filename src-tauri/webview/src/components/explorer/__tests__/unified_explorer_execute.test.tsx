@@ -1,22 +1,28 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { UnifiedExplorerMain, UnifiedExplorerMainProps } from '../UnifiedExplorerMain';
 import { UnifiedProject, ApiRequest } from '@shared/models';
 
 // ── hermetic mocks ───────────────────────────────────────────────────────────
 // The monaco sub-panel package: stub the editor/viewer so the test exercises
 // the execute flow without a real Monaco editor.
-vi.mock('@apinox/request-editor/monaco', () => ({
-    MonacoRequestEditorWithToolbar: ({ value }: { value: string }) => (
-        <textarea data-testid="mock-monaco-editor" value={value} readOnly />
-    ),
-    MonacoResponseViewer: ({ value }: { value: string }) => (
-        <div data-testid="mock-response-viewer">{value}</div>
-    ),
-    HeadersPanel: () => null,
-    AssertionsPanel: () => null,
-    ExtractorsPanel: () => null,
-}));
+vi.mock('@apinox/request-editor/monaco', async importOriginal => {
+    const actual = await importOriginal<typeof import('@apinox/request-editor/monaco')>();
+    return {
+        MonacoRequestEditorWithToolbar: ({ value }: { value: string }) => (
+            <textarea data-testid="mock-monaco-editor" value={value} readOnly />
+        ),
+        MonacoResponseViewer: ({ value }: { value: string }) => (
+            <div data-testid="mock-response-viewer">{value}</div>
+        ),
+        HeadersPanel: () => null,
+        AssertionsPanel: () => null,
+        ExtractorsPanel: () => null,
+        // The REAL banner: the error surface is what these tests assert on,
+        // so mocking it away would assert on the mock instead.
+        ErrorDetailBanner: actual.ErrorDetailBanner,
+    };
+});
 
 // The Tauri command bridge: capture execute_soap_request invocations.
 // NOTE: path is relative to THIS test file (__tests__/), so the component's
@@ -71,13 +77,32 @@ const baseProps: Omit<UnifiedExplorerMainProps, 'projects' | 'selectedNode'> = {
     onNewRequest: vi.fn(),
 };
 
-const setupInvoke = (mode: 'reject' | 'resolve') => {
+/** The multi-line failure report the Rust backend now returns for a transport
+ *  failure (`describe_request_failure`): summary line, cause chain, kind. */
+const SOAP_FAILURE_REPORT = [
+    `error sending request for url (${TEST_ENDPOINT})`,
+    'caused by: client error (Connect)',
+    'caused by: invalid peer certificate: UnknownIssuer',
+    'kind: TLS — the TLS handshake was rejected',
+].join('\n');
+
+const setupInvoke = (mode: 'reject' | 'resolve' | 'transport-failure') => {
     invokeMock.mockReset();
     invokeMock.mockImplementation(async (cmd: string) => {
         if (cmd === 'get_settings') return {};
         if (cmd === 'execute_soap_request') {
             if (mode === 'reject') {
                 throw new Error('connection refused');
+            }
+            if (mode === 'transport-failure') {
+                // A send that never reached the server: no body, an error report.
+                return {
+                    success: false,
+                    statusCode: 0,
+                    headers: [],
+                    rawXml: '',
+                    error: SOAP_FAILURE_REPORT,
+                };
             }
             return { success: true, statusCode: 200, headers: [], rawXml: '<ok/>' };
         }
@@ -113,6 +138,33 @@ describe('UnifiedExplorerMain execute (R-01 / R-02)', () => {
         // Dismiss clears the banner.
         fireEvent.click(screen.getByLabelText('Dismiss error'));
         expect(screen.queryByTestId('execute-error-banner')).not.toBeInTheDocument();
+    });
+
+    it('R-01b: a failed SOAP send shows the cause chain behind the banner details', async () => {
+        setupInvoke('transport-failure');
+        render(
+            <UnifiedExplorerMain
+                {...baseProps}
+                projects={[makeProject('req-1')]}
+                selectedNode={{ type: 'request', id: 'req-1' }}
+            />,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: /run/i }));
+
+        const banner = await screen.findByTestId('execute-error-banner');
+        // Summary only: the reqwest line, and ONLY that line, in the banner —
+        // the certificate cause is what the Details toggle reveals.
+        expect(banner).toHaveTextContent(`error sending request for url (${TEST_ENDPOINT})`);
+        expect(
+            within(banner).getByText(/error sending request for url/).textContent,
+        ).toBe(`error sending request for url (${TEST_ENDPOINT})`);
+        expect(within(banner).queryByText(/invalid peer certificate/)).toBeNull();
+
+        fireEvent.click(screen.getByTestId('execute-error-banner-toggle'));
+        const detail = screen.getByTestId('execute-error-banner-detail');
+        expect(detail).toHaveTextContent('caused by: invalid peer certificate: UnknownIssuer');
+        expect(detail).toHaveTextContent('kind: TLS');
     });
 
     it('R-02: execute sends the real resolved operation, not the nulled stub', async () => {

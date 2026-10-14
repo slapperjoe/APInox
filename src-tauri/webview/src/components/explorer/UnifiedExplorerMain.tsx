@@ -31,7 +31,7 @@ import {
     ExecuteRestResponse,
 } from '../../utils/unifiedExecute';
 import { resolveTopBarEndpoint } from '../../utils/unifiedTopBarEndpoint';
-import { MonacoRequestEditorWithToolbar as MonacoRequestEditor, MonacoResponseViewer, HeadersPanel, AssertionsPanel, ExtractorsPanel } from '@apinox/request-editor/monaco';
+import { MonacoRequestEditorWithToolbar as MonacoRequestEditor, MonacoResponseViewer, HeadersPanel, AssertionsPanel, ExtractorsPanel, ErrorDetailBanner } from '@apinox/request-editor/monaco';
 import { ExecutionResponse } from '@apinox/request-editor/monaco';
 import { EmptyState } from '../common/EmptyState';
 import { SampleRequestPanel } from '../workspace/SampleRequestPanel';
@@ -602,7 +602,10 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                 }
 
                 debugLog('[UnifiedExplorerMain] Request executed', req.name);
-                setExecuteError(null);
+                // R-01b: a transport failure (no response at all) comes back as
+                // `success: false` + `error`; surface it in the banner so the
+                // cause chain is visible with its Details toggle.
+                setExecuteError(!result.success && result.error ? result.error : null);
                 return;
             }
 
@@ -730,7 +733,11 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
             }
 
             debugLog('[UnifiedExplorerMain] Request executed', req.name);
-            setExecuteError(null);
+            // R-01b: a transport failure (DNS/TLS/connection/timeout) comes back
+            // as `success: false` + `error` with no body — surface it in the
+            // banner (with its Details toggle). A SOAP fault is `success:false`
+            // WITH a body and no `error`, and stays in the response pane.
+            setExecuteError(!result.success && result.error ? result.error : null);
         } catch (e: any) {
             debugLog('[UnifiedExplorerMain] Request execution failed', String(e));
             // R-01: surface the failure to the user (previously debugLog-only —
@@ -1491,38 +1498,11 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                             </div>
                         </div>
                         {executeError && (
-                            <div
-                                role="alert"
-                                data-testid="execute-error-banner"
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    gap: 8,
-                                    padding: '8px 12px',
-                                    backgroundColor: 'var(--apinox-error-background)',
-                                    color: 'var(--apinox-errorForeground, #f48771)',
-                                    borderBottom: '1px solid var(--apinox-error-border)',
-                                    fontSize: 'var(--apinox-fs-md)',
-                                }}
-                            >
-                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{executeError}</span>
-                                <button
-                                    onClick={() => setExecuteError(null)}
-                                    aria-label="Dismiss error"
-                                    style={{
-                                        background: 'transparent',
-                                        border: 'none',
-                                        color: 'inherit',
-                                        cursor: 'pointer',
-                                        fontSize: 14,
-                                        lineHeight: 1,
-                                        padding: '0 4px',
-                                    }}
-                                >
-                                    ×
-                                </button>
-                            </div>
+                            <ErrorDetailBanner
+                                message={executeError}
+                                onDismiss={() => setExecuteError(null)}
+                                testId="execute-error-banner"
+                            />
                         )}
                         <div style={{ flex: currentResponse ? '0 0 50%' : 1, minHeight: 0, overflow: 'hidden' }}>
                             <MonacoRequestEditor
@@ -1553,40 +1533,11 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                             editor/response pane so a failed request is visible
                             (previously a failure produced no user feedback). */}
                         {executeError && (
-                            <div
-                                role="alert"
-                                data-testid="execute-error-banner"
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    gap: 8,
-                                    padding: '8px 12px',
-                                    backgroundColor: 'var(--apinox-error-background)',
-                                    color: 'var(--apinox-errorForeground, #f48771)',
-                                    borderBottom: '1px solid var(--apinox-error-border)',
-                                    fontSize: 'var(--apinox-fs-md)',
-                                }}
-                            >
-                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {executeError}
-                                </span>
-                                <button
-                                    onClick={() => setExecuteError(null)}
-                                    aria-label="Dismiss error"
-                                    style={{
-                                        background: 'transparent',
-                                        border: 'none',
-                                        color: 'inherit',
-                                        cursor: 'pointer',
-                                        fontSize: 14,
-                                        lineHeight: 1,
-                                        padding: '0 4px',
-                                    }}
-                                >
-                                    ×
-                                </button>
-                            </div>
+                            <ErrorDetailBanner
+                                message={executeError}
+                                onDismiss={() => setExecuteError(null)}
+                                testId="execute-error-banner"
+                            />
                         )}
                         <div style={{ flex: currentResponse ? '0 0 50%' : 1, minHeight: 0, overflow: 'hidden' }}>
                             <MonacoRequestEditor

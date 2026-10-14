@@ -15,6 +15,9 @@ export type { MonacoSingleLineInputHandle } from './components/MonacoSingleLineI
 export { RequestWorkspace } from './components/RequestWorkspace';
 export type { RequestWorkspaceProps, ApiRequest, ExecutionResponse, Variable } from './components/RequestWorkspace';
 
+export { ErrorDetailBanner } from './components/common/ErrorDetailBanner';
+export type { ErrorDetailBannerProps } from './components/common/ErrorDetailBanner';
+
 export { HeadersPanel } from './components/HeadersPanel';
 export { AssertionsPanel } from './components/AssertionsPanel';
 export { ExtractorsPanel } from './components/ExtractorsPanel';

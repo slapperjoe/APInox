@@ -18,6 +18,7 @@ import { useSettingsDropdown } from '../hooks/useSettingsDropdown';
 import type { ExtraTab } from './MonacoRequestEditorWithToolbar';
 import { EditorSettingsMenu } from './EditorSettingsMenu';
 import { RequestTabContent } from './RequestTabContent';
+import { ErrorDetailBanner } from './common/ErrorDetailBanner';
 
 // Types
 export interface ApiRequest {
@@ -48,6 +49,12 @@ export interface ExecutionResponse {
   size?: number;
   headers?: Record<string, string>;
   contentType?: string;
+  /**
+   * Failure report when the request never produced a response (DNS, TLS,
+   * connection, timeout). The first line is the summary, the rest is the
+   * backend's flattened cause chain — see `ErrorDetailBanner`.
+   */
+  error?: string | null;
 }
 
 export interface Variable {
@@ -624,6 +631,15 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
           {response && (
             <S.ResponsePane $ratio={splitRatio}>
               <S.ResponseSection>
+                {/* Failure surface: a transport error (DNS/TLS/connection/
+                    timeout) has no response body, so without this the pane
+                    rendered empty and the cause was invisible. */}
+                {response.error && (
+                  <ErrorDetailBanner
+                    message={response.error}
+                    testId="response-error-banner"
+                  />
+                )}
                 {/* Response Editor - Full height */}
                 <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
                   <MonacoResponseViewer
