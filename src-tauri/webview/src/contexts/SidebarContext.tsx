@@ -44,6 +44,10 @@ export interface SidebarContextValue {
     hasUpdate?: boolean;
     /** True while the proxy is actively capturing traffic — drives the live dot on the rail's traffic entry. */
     trafficCapturing?: boolean;
+    /** True while the full-screen traffic→workflow wizard is open. Disables
+        the whole sidebar (dimmed, pointer-events off, navigation ignored) so
+        the only way out of the wizard is its own "Cancel". */
+    sidebarLocked?: boolean;
 
     // ==================== ENVIRONMENT ====================
     activeEnvironment?: string;

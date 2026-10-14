@@ -43,7 +43,7 @@ const saveSidebarPct = (pct: number): void => {
     }
 };
 
-const SidebarContainer = styled.div<{ $collapsed: boolean; $width?: number }>`
+const SidebarContainer = styled.div<{ $collapsed: boolean; $width?: number; $locked?: boolean }>`
     display: flex;
     height: 100%;
     flex-direction: row;
@@ -55,6 +55,17 @@ const SidebarContainer = styled.div<{ $collapsed: boolean; $width?: number }>`
     flex-shrink: 0;
     border-right: 1px solid var(--apinox-sideBarSectionHeader-border);
     background: var(--apinox-sideBar-background);
+
+    /* While the traffic→workflow wizard is open the sidebar is disabled: it
+       dims, ignores all pointer input (rail, tree, resize handle) and shows
+       the disabled affordance, so the only way out of the wizard is its own
+       Cancel. */
+    ${props => (props.$locked ? `
+        pointer-events: none;
+        opacity: 0.5;
+        filter: saturate(0.5);
+        user-select: none;
+    ` : '')}
 `;
 
 /** The vertical divider you drag to resize the sidebar. It keeps a
@@ -163,6 +174,7 @@ export const Sidebar: React.FC = () => {
         onMobileClose,
         hasUpdate,
         trafficCapturing,
+        sidebarLocked,
     } = useSidebarContext();
 
     // Phase B (t_86c34d38): the PROJECTS view (ProjectList) was deleted —
@@ -180,6 +192,12 @@ export const Sidebar: React.FC = () => {
         <SidebarContainer
             $collapsed={hideContent}
             $width={sidebarWidth}
+            $locked={sidebarLocked}
+            aria-disabled={sidebarLocked || undefined}
+            data-locked={sidebarLocked || undefined}
+            title={sidebarLocked
+                ? 'Sidebar is disabled while the workflow wizard is open — use Cancel to return.'
+                : undefined}
             className={`sidebar-drawer${isMobileOpen ? ' sidebar-open' : ''}`}
         >
             <SidebarRail

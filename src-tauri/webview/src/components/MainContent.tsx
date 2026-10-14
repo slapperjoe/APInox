@@ -1625,6 +1625,27 @@ const MainContent: React.FC = () => {
         selectedPerformanceSuiteId,
         setSelectedPerformanceSuiteId
     });
+
+    // ── Traffic-wizard sidebar lock ─────────────────────────────────────────
+    // The traffic→workflow wizard is a full-screen flow the user must exit
+    // with its own "Cancel". While it is open the sidebar is disabled (Sidebar
+    // renders dimmed + pointer-events off via `sidebarLocked`) AND every
+    // navigation surface is blocked here at the state level, so no rail /
+    // settings / help click — pointer or keyboard — can walk away from the
+    // wizard mid-flow (which would unmount it and lose the in-progress work).
+    const sidebarLocked = !!trafficWizard;
+    const guardedChangeView = useCallback((view: SidebarView) => {
+        if (sidebarLocked) return;
+        handleSetActiveViewWrapper(view);
+    }, [sidebarLocked, handleSetActiveViewWrapper]);
+    const guardedOpenSettings = useCallback(() => {
+        if (sidebarLocked) return;
+        handleSetActiveViewWrapper(SidebarView.SETTINGS);
+    }, [sidebarLocked, handleSetActiveViewWrapper]);
+    const guardedOpenHelp = useCallback(() => {
+        if (sidebarLocked) return;
+        setShowHelp(true);
+    }, [sidebarLocked, setShowHelp]);
     useMessageHandler({
         setProjects,
         setLoading,
@@ -1994,13 +2015,14 @@ const MainContent: React.FC = () => {
             },
         },
         activeView,
-        onChangeView: handleSetActiveViewWrapper,
+        onChangeView: guardedChangeView,
         sidebarExpanded,
         backendConnected,
         workspaceDirty,
         showBackendStatus: true,
-        onOpenSettings: () => handleSetActiveViewWrapper(SidebarView.SETTINGS),
-        onOpenHelp: () => setShowHelp(true),
+        onOpenSettings: guardedOpenSettings,
+        onOpenHelp: guardedOpenHelp,
+        sidebarLocked,
         onSaveUiState: handleSaveUiState,
         activeEnvironment: config?.activeEnvironment,
         environments: config?.environments,
@@ -2045,6 +2067,7 @@ const MainContent: React.FC = () => {
         registerUnifiedExecute,
         activeView, handleSetActiveViewWrapper, sidebarExpanded, backendConnected,
         workspaceDirty, handleSaveUiState, setShowHelp,
+        trafficWizard, sidebarLocked, guardedChangeView, guardedOpenSettings, guardedOpenHelp,
         isMobileDrawerOpen, isMobile, setIsMobileDrawerOpen, hasUpdate,
         trafficCapturing,
     ]);
