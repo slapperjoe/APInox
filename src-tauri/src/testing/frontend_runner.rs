@@ -300,6 +300,28 @@ pub(crate) fn substitute_step_template(template: &str, context: &HashMap<String,
     WildcardProcessor::process(&substituted, &HashMap::new(), &HashMap::new(), None)
 }
 
+/// Resolve header names and values through the step template (workflow
+/// variables first, then built-in wildcards) and drop entries whose name is
+/// blank after substitution. Mirrors how endpoints and bodies are
+/// substituted, so a captured value the wizard emitted as `{{varName}}` in a
+/// header (e.g. `Authorization: Bearer {{sessionToken}}`) is resolved at run
+/// time instead of being sent literally.
+pub(crate) fn apply_header_substitution(
+    headers: &HashMap<String, String>,
+    context: &HashMap<String, String>,
+) -> Vec<(String, String)> {
+    headers
+        .iter()
+        .map(|(k, v)| {
+            (
+                substitute_step_template(k, context).trim().to_string(),
+                substitute_step_template(v, context),
+            )
+        })
+        .filter(|(k, _)| !k.is_empty())
+        .collect()
+}
+
 pub(crate) async fn run_request_step(
     req: &FrontendRequest,
     fallback_endpoint: Option<&str>,
@@ -358,21 +380,19 @@ pub(crate) async fn run_request_step(
         _ => client.post(&endpoint),
     };
 
-    // Apply extra headers from the request config, skipping empty/invalid names
-    // and letting Content-Type be overridden by any explicit header entry.
+    // Apply extra headers from the request config. Names/values are resolved
+    // through the step template (see apply_header_substitution) so workflow
+    // variables work in header values too; blank names are skipped there and
+    // Content-Type may be overridden by an explicit header entry.
     let mut content_type_overridden = false;
     if let Some(headers) = &req.headers {
-        for (k, v) in headers {
-            let k = k.trim();
-            if k.is_empty() {
-                continue; // skip blank header names (common when user leaves a row empty)
-            }
+        for (k, v) in apply_header_substitution(headers, &str_context) {
             if k.eq_ignore_ascii_case("content-type") {
                 // Override the default Content-Type we set above
                 builder = builder.header("Content-Type", v.as_str());
                 content_type_overridden = true;
             } else {
-                builder = builder.header(k, v.as_str());
+                builder = builder.header(k.as_str(), v.as_str());
             }
         }
     }
@@ -687,5 +707,35 @@ mod tests {
     fn no_variables_leaves_template_unchanged() {
         let template = "<GetUser><Name>Mark</Name></GetUser>";
         assert_eq!(substitute_step_template(template, &ctx(&[])), template);
+    }
+
+    #[test]
+    fn apply_header_substitution_resolves_variables_in_names_and_values() {
+        let headers: HashMap<String, String> = [
+            ("Authorization".to_string(), "Bearer {{sessionToken}}".to_string()),
+            ("Content-Type".to_string(), "text/xml; charset=\"utf-8\"".to_string()),
+            ("{{suffix}}-X-Custom".to_string(), "v1".to_string()),
+            ("   ".to_string(), "dropped".to_string()),
+        ]
+        .into_iter()
+        .collect();
+        let out = apply_header_substitution(&headers, &ctx(&[("sessionToken", "TKN-999"), ("suffix", "v1")]));
+        // Values are resolved like bodies/endpoints.
+        assert!(out.contains(&("Authorization".to_string(), "Bearer TKN-999".to_string())));
+        // Plain values pass through untouched.
+        assert!(out.contains(&("Content-Type".to_string(), "text/xml; charset=\"utf-8\"".to_string())));
+        // Names go through the same template resolution.
+        assert!(out.contains(&("v1-X-Custom".to_string(), "v1".to_string())));
+        // Blank (post-substitution) names are dropped.
+        assert!(out.iter().all(|(k, _)| !k.trim().is_empty()));
+        assert_eq!(out.len(), 3);
+    }
+
+    #[test]
+    fn apply_header_substitution_keeps_literal_template_when_unknown() {
+        // An unresolvable variable is left as-is (same as bodies) — never an error.
+        let headers: HashMap<String, String> = [("X-A".to_string(), "{{missing}}".to_string())].into_iter().collect();
+        let out = apply_header_substitution(&headers, &ctx(&[]));
+        assert_eq!(out, vec![("X-A".to_string(), "{{missing}}".to_string())]);
     }
 }
