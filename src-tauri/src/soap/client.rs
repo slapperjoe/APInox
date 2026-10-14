@@ -11,6 +11,7 @@ use super::{EnvelopeBuilder, SoapVersion};
 use super::ws_security::WsSecurityConfig;
 use crate::parsers::wsdl::types::ServiceOperation;
 use crate::http::client::{CancelToken, read_capped_body};
+use crate::utils::error_detail::describe_request_failure;
 
 /// SOAP Fault information
 #[derive(Debug, Clone)]
@@ -137,13 +138,13 @@ impl SoapClient {
 
         let response = if let Some(ref token) = cancel_token {
             tokio::select! {
-                res = request.send() => res?,
+                res = request.send() => res.map_err(|e| send_failure(&endpoint, &e))?,
                 _ = token.wait() => {
                     return Err(anyhow!("SOAP request cancelled"));
                 }
             }
         } else {
-            request.send().await?
+            request.send().await.map_err(|e| send_failure(&endpoint, &e))?
         };
 
         let status_code = response.status().as_u16();
@@ -236,13 +237,13 @@ impl SoapClient {
 
         let response = if let Some(ref token) = cancel_token {
             tokio::select! {
-                res = request.send() => res?,
+                res = request.send() => res.map_err(|e| send_failure(endpoint, &e))?,
                 _ = token.wait() => {
                     return Err(anyhow!("SOAP request cancelled"));
                 }
             }
         } else {
-            request.send().await?
+            request.send().await.map_err(|e| send_failure(endpoint, &e))?
         };
 
         let status_code = response.status().as_u16();
@@ -298,6 +299,18 @@ impl Default for SoapClient {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Turn a failed send into an error whose message names the real cause.
+///
+/// reqwest only reports `error sending request for url (<url>)`; the
+/// certificate/handshake/DNS/connection detail lives in its `source()` chain.
+/// `describe_request_failure` flattens that chain and classifies it, so both
+/// the log line and the message the UI shows explain the failure.
+fn send_failure(endpoint: &str, err: &reqwest::Error) -> anyhow::Error {
+    let report = describe_request_failure(endpoint, err);
+    log::error!("SOAP request to {} failed:\n{}", endpoint, report);
+    anyhow!(report)
 }
 
 /// Parse SOAP response and extract body or fault

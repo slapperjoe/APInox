@@ -3,11 +3,12 @@ use reqwest::{Client, Method, Proxy};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use std::error::Error as _;
 use std::time::{Duration, Instant};
 use once_cell::sync::Lazy;
 use tokio::sync::Notify;
 use futures_util::StreamExt as _;
+
+use crate::utils::error_detail::{describe_request_failure, format_error_chain};
 
 /// M5: response bodies larger than this are truncated and flagged on the
 /// HttpResponse (surfaced to the UI) instead of buffered whole into memory.
@@ -111,11 +112,19 @@ impl HttpClient {
         cancel_token: Option<Arc<CancelToken>>,
     ) -> HttpResponse {
         let start = Instant::now();
+        // Kept for the failure report: `request` is consumed by
+        // `execute_internal`, and the caller needs to see WHICH url failed.
+        let url = request.url.clone();
 
         match self.execute_internal(request, cancel_token).await {
             Ok(response) => response,
             Err(e) => {
                 let kind = classify_reqwest_error(&e);
+                // Flatten the source chain: `e.to_string()` alone reports only
+                // "error sending request for url (...)", dropping the actual
+                // cause (certificate/handshake/DNS/connection).
+                let detail = describe_request_failure(&url, e.as_ref());
+                log::error!("HTTP request to {} failed:\n{}", url, detail);
                 HttpResponse {
                     success: false,
                     status: 0,
@@ -123,7 +132,7 @@ impl HttpClient {
                     headers: HashMap::new(),
                     body: String::new(),
                     time_taken_ms: start.elapsed().as_millis() as u64,
-                    error: Some(e.to_string()),
+                    error: Some(detail),
                     error_kind: Some(kind),
                     truncated: false,
                 }
@@ -362,10 +371,18 @@ pub(crate) async fn read_capped_body(response: reqwest::Response) -> (String, bo
                 }
                 buf.extend_from_slice(&chunk);
             }
-            Err(_e) => {
+            Err(e) => {
                 // Surface the read failure as an empty body with the error in
                 // the HttpResponse.error field instead of throwing away the
-                // whole response.
+                // whole response. Log the cause chain too: an empty body on a
+                // 200 with nothing in the log is exactly the "request failed
+                // and said nothing" case this detail exists to prevent.
+                log::error!(
+                    "Failed to read response body after {} bytes (truncated={}): {}",
+                    buf.len(),
+                    truncated,
+                    format_error_chain(&e)
+                );
                 return (String::new(), truncated);
             }
         }
@@ -404,57 +421,9 @@ fn build_reqwest_client(
     builder.build().context("Failed to create HTTP client")
 }
 
+/// Classify a failed HTTP request. Delegates to the shared chain classifier in
+/// `utils::error_detail` so the REST/GraphQL and SOAP paths agree, and so the
+/// `error` message and `error_kind` are always derived from the same walk.
 fn classify_reqwest_error(e: &anyhow::Error) -> HttpErrorKind {
-    // Walk the chain of source errors looking for reqwest::Error.
-    let mut current: Option<&dyn std::error::Error> = Some(e.as_ref());
-    while let Some(err) = current {
-        if let Some(req_err) = err.downcast_ref::<reqwest::Error>() {
-            if req_err.is_timeout() {
-                return HttpErrorKind::Timeout;
-            }
-            if req_err.is_connect() {
-                let io_kind = 'scan: {
-                    let mut current: Option<&(dyn std::error::Error + 'static)> = req_err.source();
-                    while let Some(err) = current {
-                        if let Some(io_err) = err.downcast_ref::<std::io::Error>() {
-                            break 'scan Some(io_err.kind());
-                        }
-                        current = err.source();
-                    }
-                    None
-                };
-                if let Some(kind) = io_kind {
-                    if kind == std::io::ErrorKind::NotFound {
-                        return HttpErrorKind::Dns;
-                    }
-                    if kind == std::io::ErrorKind::ConnectionRefused
-                        || kind == std::io::ErrorKind::ConnectionReset
-                    {
-                        return HttpErrorKind::ConnectionRefused;
-                    }
-                }
-                let err_str = req_err.to_string().to_lowercase();
-                if err_str.contains("certificate")
-                    || err_str.contains("tls")
-                    || err_str.contains("ssl")
-                    || err_str.contains("handshake")
-                {
-                    return HttpErrorKind::Tls;
-                }
-                return HttpErrorKind::ConnectionRefused;
-            }
-            if req_err.is_builder() {
-                return HttpErrorKind::InvalidUrl;
-            }
-            break;
-        }
-        // Also check for hyper errors which may contain TLS info.
-        if let Some(io_err) = err.downcast_ref::<std::io::Error>() {
-            if io_err.kind() == std::io::ErrorKind::NotFound {
-                return HttpErrorKind::Dns;
-            }
-        }
-        current = err.source();
-    }
-    HttpErrorKind::Other
+    crate::utils::error_detail::classify_anyhow_error(e)
 }
