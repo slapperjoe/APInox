@@ -56,6 +56,7 @@ pub async fn run_step(
                 assertion_results: vec![],
                 extracted_variables: HashMap::new(),
                 error: None,
+                stop_remaining: false,
             })
         }
         "workflow" => run_workflow_step(step, context, emit).await,
@@ -71,6 +72,7 @@ pub async fn run_step(
                 assertion_results: vec![],
                 extracted_variables: HashMap::new(),
                 error: None,
+                stop_remaining: false,
             })
         }
     }
@@ -149,6 +151,7 @@ async fn run_workflow_step(
         assertion_results: vec![],
         extracted_variables: HashMap::new(),
         error: Some(message),
+        stop_remaining: false,
     };
 
     if wf_steps.is_empty() {
@@ -289,6 +292,7 @@ async fn run_workflow_step(
         assertion_results: vec![],
         extracted_variables: extracted,
         error,
+        stop_remaining: false,
     })
 }
 
@@ -304,6 +308,90 @@ async fn run_workflow_step(
 pub(crate) fn substitute_step_template(template: &str, context: &HashMap<String, String>) -> String {
     let substituted = substitute_variables(template, context);
     WildcardProcessor::process(&substituted, &HashMap::new(), &HashMap::new(), None)
+}
+
+/// Convert the mutable run context (stringly-typed `Value`s) to the flat
+/// string map the template-substitution helpers expect. Shared by
+/// `run_request_step` and `evaluate_condition`.
+pub(crate) fn context_to_strings(context: &HashMap<String, Value>) -> HashMap<String, String> {
+    context
+        .iter()
+        .map(|(k, v)| {
+            let s = match v {
+                Value::String(s) => s.clone(),
+                other => other.to_string(),
+            };
+            (k.clone(), s)
+        })
+        .collect()
+}
+
+/// If `raw` is exactly a whole-string variable template (`{{name}}` or
+/// `${name}`), return the variable name; otherwise None (literals, mixed
+/// text, or complex expressions).
+fn template_var_name(raw: &str) -> Option<&str> {
+    let inner = if let Some(rest) = raw.strip_prefix("{{").and_then(|s| s.strip_suffix("}}")) {
+        rest
+    } else if let Some(rest) = raw.strip_prefix("${").and_then(|s| s.strip_suffix('}')) {
+        rest
+    } else {
+        return None;
+    };
+    let name = inner.trim();
+    if name.is_empty() || name.contains('{') || name.contains('}') || name.contains(char::is_whitespace) {
+        None
+    } else {
+        Some(name)
+    }
+}
+
+/// Evaluate a flat `WorkflowCondition` ({ expression, operator, expectedValue })
+/// against the run context. The expression goes through the same template
+/// substitution as endpoints/bodies (`{{name}}`/`${name}` then built-ins), so
+/// `{{varName}}` compares the current variable value. Mirrors the operators
+/// exposed by the webview's ConditionStepEditor. Unknown operators → false.
+///
+/// `exists` / `notExists` test whether the referenced variable is present in
+/// the context (a whole-string `{{name}}`/`${name}` template), falling back to
+/// a non-empty/literal-empty check for non-template expressions.
+pub(crate) fn evaluate_condition(cond: &Value, context: &HashMap<String, Value>) -> bool {
+    let get_str = |k: &str| cond.get(k).and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let raw_expression = get_str("expression");
+    let expression = substitute_step_template(&raw_expression, &context_to_strings(context));
+    let operator = get_str("operator");
+    let expected = get_str("expectedValue");
+
+    match operator.as_str() {
+        "exists" => match template_var_name(&raw_expression) {
+            Some(name) => context.contains_key(name),
+            None => !expression.is_empty(),
+        },
+        "notExists" => match template_var_name(&raw_expression) {
+            Some(name) => !context.contains_key(name),
+            None => expression.is_empty(),
+        },
+        _ => {
+            if expression.is_empty() {
+                return false;
+            }
+            match operator.as_str() {
+                "equals" => expression == expected,
+                "notEquals" => expression != expected,
+                "contains" => expression.contains(&expected),
+                "notContains" => !expression.contains(&expected),
+                // Both sides must parse as f64, otherwise false.
+                "greaterThan" => match (expression.parse::<f64>(), expected.parse::<f64>()) {
+                    (Ok(a), Ok(b)) => a > b,
+                    _ => false,
+                },
+                "lessThan" => match (expression.parse::<f64>(), expected.parse::<f64>()) {
+                    (Ok(a), Ok(b)) => a < b,
+                    _ => false,
+                },
+                _ => false,
+            }
+        }
+    }
 }
 
 /// Resolve header names and values through the step template (workflow
@@ -383,10 +471,7 @@ pub(crate) async fn run_request_step(
     start: Instant,
 ) -> Result<StepExecutionResult> {
     // Convert context values to strings for template substitution
-    let str_context: HashMap<String, String> = context
-        .iter()
-        .map(|(k, v)| (k.clone(), match v { Value::String(s) => s.clone(), other => other.to_string() }))
-        .collect();
+    let str_context = context_to_strings(context);
 
     let endpoint = req
         .endpoint
@@ -408,6 +493,7 @@ pub(crate) async fn run_request_step(
             assertion_results: vec![],
             extracted_variables: HashMap::new(),
             error: Some("No endpoint specified".to_string()),
+            stop_remaining: false,
         });
     }
 
@@ -500,6 +586,7 @@ pub(crate) async fn run_request_step(
                 assertion_results: vec![],
                 extracted_variables: HashMap::new(),
                 error: Some(format!("HTTP request failed: {}", e)),
+                stop_remaining: false,
             });
         }
     };
@@ -566,6 +653,7 @@ pub(crate) async fn run_request_step(
         assertion_results,
         extracted_variables,
         error,
+        stop_remaining: false,
     })
 }
 
@@ -861,5 +949,50 @@ mod tests {
         assert_eq!(dropped.len(), 2);
         assert!(dropped[0].contains("Content-Length: 99"));
         assert!(dropped[1].contains("transfer-encoding: chunked"));
+    }
+
+    fn cond(expr: &str, op: &str, expected: &str) -> serde_json::Value {
+        serde_json::json!({ "id": "c1", "expression": expr, "operator": op, "expectedValue": expected })
+    }
+
+    #[test]
+    fn condition_equality_resolves_variables_first() {
+        let mut ctx: HashMap<String, Value> = HashMap::new();
+        ctx.insert("status".to_string(), Value::String("OK".into()));
+        assert!(evaluate_condition(&cond("{{status}}", "equals", "OK"), &ctx));
+        assert!(!evaluate_condition(&cond("{{status}}", "equals", "NOPE"), &ctx));
+    }
+
+    #[test]
+    fn condition_contains_and_not_contains() {
+        let mut ctx: HashMap<String, Value> = HashMap::new();
+        ctx.insert("body".to_string(), Value::String("<Fault/>".into()));
+        assert!(evaluate_condition(&cond("{{body}}", "contains", "Fault"), &ctx));
+        assert!(evaluate_condition(&cond("{{body}}", "notContains", "Error"), &ctx));
+    }
+
+    #[test]
+    fn condition_exists_operators() {
+        let mut ctx: HashMap<String, Value> = HashMap::new();
+        ctx.insert("token".to_string(), Value::String("t".into()));
+        assert!(evaluate_condition(&cond("{{token}}", "exists", ""), &ctx));
+        assert!(evaluate_condition(&cond("{{missing}}", "notExists", ""), &ctx));
+        assert!(!evaluate_condition(&cond("{{missing}}", "exists", ""), &ctx));
+    }
+
+    #[test]
+    fn condition_numeric_compare_requires_numbers_else_false() {
+        let mut ctx: HashMap<String, Value> = HashMap::new();
+        ctx.insert("count".to_string(), Value::String("10".into()));
+        assert!(evaluate_condition(&cond("{{count}}", "greaterThan", "5"), &ctx));
+        assert!(evaluate_condition(&cond("{{count}}", "lessThan", "20"), &ctx));
+        ctx.insert("word".to_string(), Value::String("abc".into()));
+        assert!(!evaluate_condition(&cond("{{word}}", "greaterThan", "5"), &ctx));
+    }
+
+    #[test]
+    fn condition_unknown_operator_is_false() {
+        let ctx: HashMap<String, Value> = HashMap::new();
+        assert!(!evaluate_condition(&cond("{{x}}", "startsWith", "a"), &ctx));
     }
 }

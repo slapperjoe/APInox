@@ -59,6 +59,28 @@ pub struct FrontendStepConfig {
     /// For 'workflow' steps: self-contained steps embedded by the webview
     /// (avoids a config lookup / save-race; falls back to config by id)
     pub workflow_steps: Option<Vec<serde_json::Value>>,
+    /// For 'condition' steps: the flat WorkflowCondition JSON
+    /// ({ expression, operator, expectedValue }).
+    #[serde(default)]
+    pub condition: Option<serde_json::Value>,
+    /// For 'loop' steps: the flat WorkflowLoop JSON
+    /// ({ type, count, listVariable, maxIterations, iteratorVariable, condition }).
+    /// `loop` is a Rust keyword — the field is renamed back to `loop` on the wire.
+    #[serde(default, rename = "loop")]
+    pub loop_config: Option<serde_json::Value>,
+    /// For 'loop' steps: nested body (flat WorkflowStep JSON values).
+    #[serde(default)]
+    pub loop_steps: Option<Vec<serde_json::Value>>,
+    /// For 'testCase' steps: id of the referenced global test case.
+    #[serde(default)]
+    pub test_case_id: Option<String>,
+    /// For 'testCase' steps: variable overrides (beat the case's own vars).
+    #[serde(default)]
+    pub test_case_variables: Option<std::collections::HashMap<String, String>>,
+    /// For 'testCase' steps: self-contained steps embedded by the webview
+    /// (avoids a store lookup / save-race; falls back to a clear error).
+    #[serde(default)]
+    pub test_case_steps: Option<Vec<serde_json::Value>>,
 }
 
 /// Matches TypeScript `ApiRequest`
@@ -144,4 +166,9 @@ pub struct StepExecutionResult {
     pub assertion_results: Vec<AssertionResult>,
     pub extracted_variables: HashMap<String, String>,
     pub error: Option<String>,
+    /// Set by a FAILED 'condition' step: the caller must stop executing the
+    /// remaining steps of its step list. Assertion semantics (user decision):
+    /// a false condition fails the case/workflow — see Task 5.
+    #[serde(default)]
+    pub stop_remaining: bool,
 }
