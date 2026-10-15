@@ -4,7 +4,9 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use crate::settings_manager;
-use crate::testing::frontend_runner::run_request_step;
+use crate::testing::frontend_runner::{
+    evaluate_condition, execute_loop_body, run_request_step, run_test_case_steps,
+};
 use crate::testing::frontend_types::{FrontendExtractor, FrontendRequest};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -248,8 +250,128 @@ pub async fn run_workflow(request: RunWorkflowRequest) -> Result<WorkflowRunResu
                     }
                 }
             }
+            "condition" => {
+                let met = step
+                    .get("condition")
+                    .map(|c| evaluate_condition(c, &context))
+                    .unwrap_or(false);
+                // Assertion semantics (matches test-case runs): a false
+                // condition FAILS this step and stops the whole workflow.
+                if !met {
+                    all_passed = false;
+                }
+                step_results.push(WorkflowRunStepResult {
+                    step_id,
+                    step_name,
+                    start_time: step_start_ms,
+                    end_time: now_ms(),
+                    duration: step_start.elapsed().as_millis() as u64,
+                    status: if met { "success" } else { "failed" }.to_string(),
+                    request: None,
+                    response: None,
+                    status_code: None,
+                    extracted_values: None,
+                    error: if met {
+                        None
+                    } else {
+                        Some("condition failed — stopping run".to_string())
+                    },
+                });
+                if !met {
+                    break;
+                }
+            }
+            "loop" => {
+                let (passed, error, duration) =
+                    execute_loop_body(step, &mut context, None, &step_id, 1).await;
+                if !passed {
+                    all_passed = false;
+                }
+                step_results.push(WorkflowRunStepResult {
+                    step_id,
+                    step_name,
+                    start_time: step_start_ms,
+                    end_time: now_ms(),
+                    duration,
+                    status: if passed { "success" } else { "failed" }.to_string(),
+                    request: None,
+                    response: None,
+                    status_code: None,
+                    extracted_values: None,
+                    error,
+                });
+            }
+            "testCase" => {
+                // Workflow-embedded testCase step: run the referenced case's
+                // self-contained steps (`testCase: { id, name, steps }`),
+                // scoped so its variables do not leak (extracted ones do).
+                let embedded = step
+                    .get("testCase")
+                    .and_then(|v| v.get("steps"))
+                    .and_then(|v| v.as_array())
+                    .cloned()
+                    .unwrap_or_default();
+                let overrides: Option<HashMap<String, String>> = step
+                    .get("testCaseVariables")
+                    .and_then(|v| v.as_object())
+                    .map(|o| {
+                        o.iter()
+                            .filter_map(|(k, v)| v.as_str().map(|s| (k.clone(), s.to_string())))
+                            .collect()
+                    });
+                if embedded.is_empty() {
+                    all_passed = false;
+                    step_results.push(WorkflowRunStepResult {
+                        step_id,
+                        step_name,
+                        start_time: step_start_ms,
+                        end_time: now_ms(),
+                        duration: 0,
+                        status: "failed".to_string(),
+                        request: None,
+                        response: None,
+                        status_code: None,
+                        extracted_values: None,
+                        error: Some(
+                            "Test case not available (missing id, deleted, or reference cycle)"
+                                .to_string(),
+                        ),
+                    });
+                } else {
+                    let r = run_test_case_steps(
+                        &embedded,
+                        overrides.as_ref(),
+                        None,
+                        &mut context,
+                        None,
+                        &step_id,
+                        1,
+                    )
+                    .await;
+                    if !r.passed {
+                        all_passed = false;
+                    }
+                    step_results.push(WorkflowRunStepResult {
+                        step_id,
+                        step_name,
+                        start_time: step_start_ms,
+                        end_time: now_ms(),
+                        duration: r.duration_ms,
+                        status: if r.passed { "success" } else { "failed" }.to_string(),
+                        request: None,
+                        response: None,
+                        status_code: None,
+                        extracted_values: if r.extracted_variables.is_empty() {
+                            None
+                        } else {
+                            Some(r.extracted_variables)
+                        },
+                        error: r.error,
+                    });
+                }
+            }
             other => {
-                // condition/loop/script not implemented in the backend — surface as skipped.
+                // script (and other un-executed types) — surface as skipped.
                 log::warn!(
                     "[run_workflow] step type '{}' not supported by backend, skipping",
                     other

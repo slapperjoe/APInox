@@ -117,6 +117,36 @@ pub async fn run_step(
                 stop_remaining: false,
             })
         }
+        "testCase" => {
+            // A 'testCase' step runs the referenced case's self-contained
+            // embedded steps (webview-built payload). Missing embedding means
+            // the reference was deleted, unset, or cut as a cycle/depth cap.
+            let id = step.config.test_case_id.clone().filter(|s| !s.is_empty());
+            let embedded = step.config.test_case_steps.clone().unwrap_or_default();
+            if embedded.is_empty() {
+                Ok(fail_result(
+                    start,
+                    format!(
+                        "Test case '{}' not available (missing id, deleted, or reference cycle)",
+                        id.as_deref().unwrap_or("(unspecified)")
+                    ),
+                ))
+            } else {
+                // The case's own variables are folded UNDER the step's
+                // overrides into `test_case_variables` at embed time (parent
+                // decision) — one map, applied to the sub-context copy.
+                Ok(run_test_case_steps(
+                    &embedded,
+                    step.config.test_case_variables.as_ref(),
+                    fallback_endpoint,
+                    context,
+                    emit,
+                    &step.id,
+                    depth + 1,
+                )
+                .await)
+            }
+        }
         other => {
             // script, transfer — not yet implemented in Rust, skip with pass
             log::warn!("[FrontendRunner] Step type '{}' not yet implemented, skipping", other);
@@ -281,6 +311,133 @@ async fn run_workflow_step(
     })
 }
 
+/// Execute a referenced test case's embedded steps against a scoped copy of
+/// the caller's context.
+///
+/// `variables` is the referenced case's variable layer: the webview folds the
+/// case's own variables UNDER the step's overrides into
+/// `config.testCaseVariables` at embed time, so one map carries both and is
+/// seeded into the sub-context after the copy. The key set is snapshotted
+/// AFTER seeding, and only keys the run produced that were not already present
+/// are merged back into `context` — so neither the case's configured variables
+/// nor unrelated outer keys leak out. Variables the case's steps extract DO
+/// become available to later outer steps.
+pub(crate) async fn run_test_case_steps(
+    embedded_steps: &[Value],
+    variables: Option<&HashMap<String, String>>,
+    fallback_endpoint: Option<&str>,
+    context: &mut HashMap<String, Value>,
+    mut emit: Option<&mut (dyn FnMut(Value) + Send)>,
+    _parent_step_id: &str,
+    depth: u32,
+) -> StepExecutionResult {
+    let start = Instant::now();
+    if depth >= MAX_REFERENCE_DEPTH {
+        return fail_result(start, "reference depth exceeded (possible cycle)".to_string());
+    }
+
+    let steps: Vec<FrontendTestStep> = match embedded_steps
+        .iter()
+        .map(|v| serde_json::from_value(v.clone()))
+        .collect::<Result<Vec<_>, _>>()
+    {
+        Ok(s) => s,
+        Err(e) => return fail_result(start, format!("invalid embedded test case steps: {e}")),
+    };
+
+    let mut sub: HashMap<String, Value> = context.clone();
+    if let Some(vars) = variables {
+        for (k, v) in vars {
+            sub.insert(k.clone(), Value::String(v.clone()));
+        }
+    }
+    // Snapshot AFTER seeding: the case's own variables must not merge back out.
+    let pre_run: std::collections::HashSet<String> = sub.keys().cloned().collect();
+
+    let mut all_passed = true;
+    let mut errors: Vec<String> = Vec::new();
+    for ts in &steps {
+        // `run_step` <-> `run_test_case_steps` are mutually recursive async
+        // fns; box the recursive link so the future has a finite size.
+        match Box::pin(run_step(
+            ts,
+            fallback_endpoint,
+            &mut sub,
+            emitter_ref(&mut emit),
+            depth + 1,
+        ))
+        .await
+        {
+            Ok(r) => {
+                for (k, v) in &r.extracted_variables {
+                    sub.insert(k.clone(), Value::String(v.clone()));
+                }
+                if !r.passed {
+                    all_passed = false;
+                    if let Some(e) = &r.error {
+                        errors.push(format!("{}: {e}", ts.name));
+                    }
+                }
+                if r.stop_remaining {
+                    // A failed condition inside the referenced case already
+                    // recorded its error above; just stop the remaining steps.
+                    break;
+                }
+            }
+            Err(e) => {
+                all_passed = false;
+                errors.push(format!("{}: {e}", ts.name));
+                break;
+            }
+        }
+    }
+
+    // Merge back only what this case produced (keys absent after seeding).
+    let mut extracted: HashMap<String, String> = HashMap::new();
+    for (k, v) in &sub {
+        if !pre_run.contains(k) {
+            let s = v
+                .as_str()
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| v.to_string());
+            extracted.insert(k.clone(), s);
+            context.insert(k.clone(), v.clone());
+        }
+    }
+
+    let error = if errors.is_empty() {
+        None
+    } else {
+        Some(errors.join("; "))
+    };
+    StepExecutionResult {
+        passed: all_passed,
+        request_body: None,
+        response_body: None,
+        status_code: None,
+        duration_ms: start.elapsed().as_millis() as u64,
+        assertion_results: vec![],
+        extracted_variables: extracted,
+        error,
+        stop_remaining: false,
+    }
+}
+
+/// Build a failed `StepExecutionResult` for the testCase depth / parse guards.
+fn fail_result(start: Instant, msg: String) -> StepExecutionResult {
+    StepExecutionResult {
+        passed: false,
+        request_body: None,
+        response_body: None,
+        status_code: None,
+        duration_ms: start.elapsed().as_millis() as u64,
+        assertion_results: vec![],
+        extracted_variables: HashMap::new(),
+        error: Some(msg),
+        stop_remaining: false,
+    }
+}
+
 /// Outcome of executing one flat (workflow-shaped) step.
 ///
 /// `id`/`r#type`/`response`/`duration_ms`/`stop` are part of the shared shape
@@ -434,6 +591,53 @@ pub(crate) async fn run_flat_steps(
                     .await;
                     (passed, error, None, duration, false)
                 }
+                "testCase" => {
+                    // A workflow-embedded testCase step carries its referenced
+                    // case as `testCase: { id, name, steps }` (webview embed).
+                    let embedded = ws
+                        .get("testCase")
+                        .and_then(|v| v.get("steps"))
+                        .and_then(|v| v.as_array())
+                        .cloned()
+                        .unwrap_or_default();
+                    if embedded.is_empty() {
+                        (
+                            false,
+                            Some(
+                                "Test case not available (missing id, deleted, or reference cycle)"
+                                    .to_string(),
+                            ),
+                            None,
+                            0,
+                            false,
+                        )
+                    } else {
+                        let overrides: Option<HashMap<String, String>> = ws
+                            .get("testCaseVariables")
+                            .and_then(|v| v.as_object())
+                            .map(|o| {
+                                o.iter()
+                                    .filter_map(|(k, v)| {
+                                        v.as_str().map(|s| (k.clone(), s.to_string()))
+                                    })
+                                    .collect()
+                            });
+                        let r = run_test_case_steps(
+                            &embedded,
+                            overrides.as_ref(),
+                            None,
+                            context,
+                            emitter_ref(&mut emit),
+                            parent_step_id,
+                            depth + 1,
+                        )
+                        .await;
+                        for (k, v) in &r.extracted_variables {
+                            step_extracted.insert(k.clone(), v.clone());
+                        }
+                        (r.passed, r.error, None, r.duration_ms, false)
+                    }
+                }
                 other => {
                     // script (and other non-executed types): surfaced as
                     // skipped, not failed.
@@ -501,7 +705,7 @@ pub(crate) async fn run_flat_steps(
 /// run the `loopSteps` body once per iteration, setting the iterator variable.
 /// `list` splits the substituted variable on commas (legacy engine parity);
 /// `while` re-evaluates its condition each pass. All bounded by maxIterations.
-async fn execute_loop_body(
+pub(crate) async fn execute_loop_body(
     ws: &Value,
     context: &mut HashMap<String, Value>,
     mut emit: Option<&mut (dyn FnMut(Value) + Send)>,
@@ -1420,5 +1624,44 @@ mod tests {
         let r = run_step(&s, None, &mut ctx, None, 0).await.expect("run");
         assert!(r.passed);
         assert!(!ctx.contains_key("_index"), "body never ran");
+    }
+
+    #[tokio::test]
+    async fn test_case_step_runs_embedded_steps_and_scopes_variables() {
+        let mut ctx: HashMap<String, Value> = HashMap::new();
+        ctx.insert("outer".to_string(), Value::String("keep".into()));
+        let s = step("testCase", "inner", serde_json::json!({
+            "testCaseId": "tc-x",
+            "testCaseVariables": { "innerVar": "iv" },
+            "testCaseSteps": [
+                { "id": "i1", "name": "d", "type": "delay", "delayMs": 1, "config": {} }
+            ]
+        }));
+        let r = run_step(&s, None, &mut ctx, None, 0).await.expect("run");
+        assert!(r.passed);
+        // The case's own variable was visible inside but must not leak outward.
+        assert!(!ctx.contains_key("innerVar"));
+        assert_eq!(ctx.get("outer"), Some(&Value::String("keep".into())));
+    }
+
+    #[tokio::test]
+    async fn test_case_step_without_embedding_fails_clearly() {
+        let mut ctx: HashMap<String, Value> = HashMap::new();
+        let s = step("testCase", "ghost", serde_json::json!({ "testCaseId": "gone" }));
+        let r = run_step(&s, None, &mut ctx, None, 0).await.expect("run");
+        assert!(!r.passed);
+        assert!(r.error.unwrap().contains("not available"));
+    }
+
+    #[tokio::test]
+    async fn test_case_step_depth_exceeded_fails() {
+        let mut ctx: HashMap<String, Value> = HashMap::new();
+        let s = step("testCase", "deep", serde_json::json!({
+            "testCaseId": "tc",
+            "testCaseSteps": [ { "id": "i1", "name": "d", "type": "delay", "delayMs": 1, "config": {} } ]
+        }));
+        let r = run_step(&s, None, &mut ctx, None, MAX_REFERENCE_DEPTH).await.expect("run");
+        assert!(!r.passed);
+        assert!(r.error.unwrap().contains("depth exceeded"));
     }
 }
