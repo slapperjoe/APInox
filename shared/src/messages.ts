@@ -35,12 +35,6 @@ export enum FrontendCommand {
     GetTestRunUpdates = 'getTestRunUpdates',
     PickOperationForTestCase = 'pickOperationForTestCase',
 
-    // Workflow
-    ExecuteWorkflow = 'executeWorkflow',
-    SaveWorkflow = 'saveWorkflow',
-    DeleteWorkflow = 'deleteWorkflow',
-    GetWorkflows = 'getWorkflows',
-
     // Performance
     AddPerformanceSuite = 'addPerformanceSuite',
     UpdatePerformanceSuite = 'updatePerformanceSuite',

@@ -16,7 +16,7 @@
  */
 
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
-import { ApiInterface, ApiOperation, ApiRequest, TestCase, TestStep, TestSuite, Workflow, WorkflowStep } from '@shared/models';
+import { ApiInterface, ApiOperation, ApiRequest, TestCase, TestStep, TestSuite } from '@shared/models';
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -52,9 +52,6 @@ interface SelectionContextValue {
     /** Currently selected performance suite ID */
     selectedPerformanceSuiteId: string | null;
 
-    /** Currently selected workflow step (for workflow editor) */
-    selectedWorkflowStep: { workflow: Workflow; step: WorkflowStep } | null;
-
     // -------------------------------------------------------------------------
     // REQUEST/RESPONSE STATE
     // -------------------------------------------------------------------------
@@ -76,7 +73,6 @@ interface SelectionContextValue {
     setSelectedTestSuite: React.Dispatch<React.SetStateAction<TestSuite | null>>;
     setSelectedTestCase: React.Dispatch<React.SetStateAction<TestCase | null>>;
     setSelectedPerformanceSuiteId: React.Dispatch<React.SetStateAction<string | null>>;
-    setSelectedWorkflowStep: React.Dispatch<React.SetStateAction<{ workflow: Workflow; step: WorkflowStep } | null>>;
     setResponse: React.Dispatch<React.SetStateAction<any>>;
     setLoading: React.Dispatch<React.SetStateAction<boolean>>;
 
@@ -132,14 +128,7 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
     const [selectedTestSuite, setSelectedTestSuite] = useState<TestSuite | null>(null);
     const [selectedTestCase, setSelectedTestCase] = useState<TestCase | null>(null);
     const [selectedPerformanceSuiteId, setSelectedPerformanceSuiteId] = useState<string | null>(null);
-    const [selectedWorkflowStep, setSelectedWorkflowStepInternal] = useState<{ workflow: Workflow; step: WorkflowStep } | null>(null);
     const [response, setResponseState] = useState<any>(null);
-    
-    // Wrapper to add logging for workflow step changes
-    const setSelectedWorkflowStep = useCallback((value: React.SetStateAction<{ workflow: Workflow; step: WorkflowStep } | null>) => {
-        const resolvedValue = typeof value === 'function' ? value(selectedWorkflowStep) : value;
-        setSelectedWorkflowStepInternal(resolvedValue);
-    }, [selectedWorkflowStep]);
     const [responseCache, setResponseCache] = useState<Record<string, any>>({});
     const [loading, setLoading] = useState(false);
 
@@ -227,7 +216,6 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
         setSelectedTestSuite(null);
         setSelectedTestCase(null);
         setSelectedPerformanceSuiteId(null);
-        setSelectedWorkflowStep(null);
         setResponseState(null);
         setResponseCache({});
     }, []);
@@ -257,7 +245,6 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
         selectedTestSuite,
         selectedTestCase,
         selectedPerformanceSuiteId,
-        selectedWorkflowStep,
 
         // Request/Response State
         response,
@@ -271,7 +258,6 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
         setSelectedTestSuite,
         setSelectedTestCase,
         setSelectedPerformanceSuiteId,
-        setSelectedWorkflowStep,
         setResponse,
         setLoading,
 

@@ -625,7 +625,8 @@ export enum SidebarView {
     // NavigationContext deep-link key (now mapping to UNIFIED_EXPLORER).
     UNIFIED_EXPLORER = 'unified_explorer', // Merged projects + explorer (primary explorer surface)
     TESTS = 'tests',
-    WORKFLOWS = 'workflows', // NEW: Request chaining workflows
+    // The WORKFLOWS view was removed (workflows were absorbed into test cases:
+    // one suite per former workflow). Test cases are the single flow surface.
     PERFORMANCE = 'performance',
     // Request history was a top-level view; it was folded into the unified
     // explorer as the History sub-window (a sibling of Quick Requests), so
@@ -687,10 +688,6 @@ export interface ApinoxConfig {
     performanceHistory?: PerformanceRun[];
     /** Scheduled performance runs */
     performanceSchedules?: PerformanceSchedule[];
-    /** Workflows for request chaining */
-    workflows?: Workflow[];
-    /** History of workflow executions (newest appended, capped at 50). */
-    workflowRunHistory?: WorkflowExecutionResult[];
 }
 
 // ============================================

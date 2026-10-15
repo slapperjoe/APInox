@@ -20,10 +20,7 @@ import type {
     TestStepType,
     ApinoxConfig,
     SidebarView,
-    PerformanceRun,
-    Workflow,
-    WorkflowStep,
-    WorkflowExecutionResult
+    PerformanceRun
 } from '@shared/models';
 
 /**
@@ -63,12 +60,6 @@ interface WorkspaceContextValue {
     testCases: TestCase[];
     /** Currently selected test step */
     selectedTestStep: TestStep | null;
-
-    // ==================== SELECTION STATE - Workflows ====================
-    /** Currently selected workflow step */
-    selectedWorkflowStep: { workflow: any; step: any } | null;
-    /** Last run result per workflow id (frontend WorkflowExecutionResult). */
-    workflowRunResults: Record<string, any>;
 
     // ==================== SELECTION STATE - Performance ====================
     /** Currently selected performance suite ID */
@@ -146,13 +137,6 @@ interface WorkspaceContextValue {
     /** Select a test step */
     selectTestStep: (step: TestStep | null) => void;
     
-    // ==================== ACTIONS - Workflow ====================
-    /** Select a workflow step */
-    selectWorkflowStep: (step: { workflow: any; step: any } | null) => void;
-    /** Run a workflow (executes its request steps, persists to history). */
-    handleRunWorkflow: (workflow: Workflow) => void;
-    /** History of workflow executions (newest first). */
-    workflowRunHistory: WorkflowExecutionResult[];
     /** Execute an HTTP/SOAP request */
     executeRequest: (xml: string) => void;
     /** Cancel a running request */
@@ -239,11 +223,6 @@ interface WorkspaceContextValue {
     handleAddExistenceAssertion: (data: { xpath: string }) => void;
     /** Open import-from-workspace dialog for a performance suite */
     onImportFromWorkspace: (suiteId: string) => void;
-    // ==================== ACTIONS - Workflow ====================
-    /** Update an entire workflow */
-    updateWorkflow: (workflow: Workflow) => void;
-    /** Update a single step within a workflow */
-    updateWorkflowStep: (workflow: Workflow, step: WorkflowStep) => void;
 }
 
 // Create the context

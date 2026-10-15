@@ -14,7 +14,6 @@ import { ErrorBoundary, formatXml, stripCausalityData, formatContent, formatJson
 import { RequestWorkspace, MonacoRequestEditorWithToolbar as MonacoRequestEditor, MonacoResponseViewer, MonacoSingleLineInput, AssertionsPanel, HeadersPanel, SecurityPanel, AttachmentsPanel, ExtractorsPanel, VariablesPanel, QueryParamsPanel, RestAuthPanel, GraphQLVariablesPanel, ScriptEditor } from '@apinox/request-editor/monaco';
 import type { ApiRequest as PackageApiRequest, ExecutionResponse as PackageExecutionResponse, Variable as PackageVariable, MonacoRequestEditorHandle, MonacoSingleLineInputHandle } from '@apinox/request-editor/monaco';
 import { WelcomePanel, TestCaseView, EmptyTestCase } from './workspace';
-import { WorkflowEditor } from './workspace/WorkflowEditor';
 import { RequestStepEditor } from './workspace/RequestStepEditor';
 import { DelayStepEditor } from './workspace/DelayStepEditor';
 import { ConditionStepEditor } from './workspace/ConditionStepEditor';
@@ -124,7 +123,7 @@ import {
 } from '../styles/WorkspaceLayout.styles';
 
 /**
- * WorkspaceLayout - Main workspace component for editing requests, tests, and workflows
+ * WorkspaceLayout - Main workspace component for editing requests and tests
  * 
  * Uses useWorkspace() hook to access all state instead of receiving props.
  * This eliminates the need for ~140 lines of prop passing from MainContent.
@@ -151,9 +150,6 @@ export const WorkspaceLayout: React.FC = () => {
         selectedTestCase,
         testCases: globalTestCases,
         selectedTestStep: selectedStep,  // Alias for backward compatibility
-        
-        // SELECTION STATE - Workflows
-        selectedWorkflowStep,
         
         // SELECTION STATE - Performance
         selectedPerformanceSuiteId,
@@ -202,8 +198,7 @@ export const WorkspaceLayout: React.FC = () => {
         onSelectInterface: workspace.selectInterface,
         onSelectOperation: workspace.selectOperation,
         onSelectRequest: workspace.selectRequest,
-        onSelectTestCase: workspace.selectTestCase,
-        onSelectWorkflowStep: workspace.selectWorkflowStep
+        onSelectTestCase: workspace.selectTestCase
     };
     
     // Test runner actions
@@ -248,35 +243,8 @@ export const WorkspaceLayout: React.FC = () => {
     // Mobile layout hook
     const { isMobile } = useMobileLayout();
 
-    // For WORKFLOWS view, create a request object from the workflow step
     // We use a single "activeRequest" variable throughout the component
-    let activeRequest = selectedRequest;
-    if (activeView === SidebarView.WORKFLOWS && selectedWorkflowStep && selectedWorkflowStep.step && !activeRequest) {
-        const step = selectedWorkflowStep.step;
-        
-        // Create a complete ApiRequest object from the workflow step with ALL defaults
-        activeRequest = {
-            id: step.id || `workflow-step-${step.name}`,
-            name: step.name || 'Unnamed Step',
-            endpoint: step.endpoint || '',
-            request: step.requestBody || '<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body></soap:Body></soap:Envelope>',
-            headers: step.headers || {},
-            contentType: step.contentType || 'application/soap+xml',
-            // Default to SOAP since APInox is primarily a SOAP tool
-            requestType: step.requestType || 'soap',
-            bodyType: step.bodyType || 'xml',
-            httpMethod: step.httpMethod || 'POST',
-            method: step.method || 'POST',
-            readOnly: false,
-            // REST/GraphQL specific (optional, but prevents null errors)
-            restConfig: {},
-            graphqlConfig: {},
-            // Ensure security and attachments exist
-            security: {},
-            attachments: []
-        } as any;
-        
-    }
+    const activeRequest = selectedRequest;
 
     // For backward compatibility with existing code, we use effectiveRequest as well
     const effectiveRequest = activeRequest;
@@ -631,10 +599,9 @@ export const WorkspaceLayout: React.FC = () => {
             />;
         }
 
-        // TESTS: condition step — reuse the workflow ConditionStepEditor by
-        // shaping a pseudo WorkflowStep from this test step's config (the
-        // editor only reads name + condition; the WORKFLOWS view keeps using
-        // the same component unchanged).
+        // TESTS: condition step — reuse the ConditionStepEditor by shaping a
+        // pseudo WorkflowStep from this test step's config (the editor only
+        // reads name + condition).
         if (selectedStep && selectedStep.type === 'condition' && !isReadOnly && onUpdateStep) {
             const pseudo: WorkflowStep = {
                 id: selectedStep.id,
@@ -887,8 +854,10 @@ export const WorkspaceLayout: React.FC = () => {
         }
 
         if (selectedStep && selectedStep.type === 'workflow' && !isReadOnly && onUpdateStep) {
-            // Load workflows from config
-            const workflows = config?.workflows || [];
+            // Workflows no longer exist in config (they were absorbed into test
+            // cases), so this picker's list is always empty for now. Task 8
+            // removes this screen along with the 'workflow' test step type.
+            const workflows: any[] = [];
             // Resolved workflow referenced by this test step — its steps show on
             // this screen read-only (edit them in the WORKFLOWS view).
             const referencedWorkflow = workflows.find(w => w.id === selectedStep.config?.workflowId);
@@ -1104,7 +1073,6 @@ export const WorkspaceLayout: React.FC = () => {
                     onDeleteStep={onDeleteStep}
                     onOpenStepRequest={onOpenStepRequest}
                     onUpdateVariables={(vars) => updateTestCaseVariables(selectedTestCase.id, vars)}
-                    workflows={config?.workflows}
                     testCases={globalTestCases}
                     projects={projects}
                 />
@@ -1114,82 +1082,6 @@ export const WorkspaceLayout: React.FC = () => {
         if (!selectedTestCase) {
             return <EmptyTestCase />;
         }
-    }
-
-    // WORKFLOWS VIEW
-    if (activeView === SidebarView.WORKFLOWS) {
-        if (!selectedWorkflowStep) {
-            return <WelcomePanel />;
-        }
-        
-        // Check if a workflow is selected (but not a step within it)
-        // This happens when the user clicks the workflow itself, not a step
-        const { workflow, step } = selectedWorkflowStep;
-        
-        // If step is actually the first step or we're showing the workflow summary
-        // We need to check if we're showing a step or the workflow itself
-        // For now, let's check if step type exists - if not, show workflow editor
-        if (!step || !step.type) {
-                    return (
-                        <WorkflowEditor
-                            workflow={workflow}
-                            runResult={workspace.workflowRunResults?.[workflow.id]}
-                            onRun={() => workspace.handleRunWorkflow(workflow)}
-                            runHistory={(workspace.workflowRunHistory || []).filter(r => r.workflowId === workflow.id)}
-                            onUpdate={(updatedWorkflow) => {
-                                workspace.updateWorkflow(updatedWorkflow);
-                            }}
-                        />
-                    );
-                }
-        
-        // Check if this is a non-request step type (delay, condition, loop, script)
-        if (step.type !== 'request') {
-            const updateHandler = (updatedStep: WorkflowStep) => {
-                workspace.updateWorkflowStep(workflow, updatedStep);
-            };
-            
-            // Show appropriate editor for each step type
-            switch (step.type) {
-                case 'delay':
-                    return <DelayStepEditor step={step} onUpdate={updateHandler} />;
-                case 'condition':
-                    return <ConditionStepEditor step={step} onUpdate={updateHandler} />;
-                case 'loop':
-                    return <LoopStepEditor step={step} onUpdate={updateHandler} />;
-                case 'testCase':
-                    return (
-                        <TestCaseStepEditor
-                            step={step}
-                            testCases={globalTestCases || []}
-                            onUpdate={updateHandler}
-                        />
-                    );
-                case 'script':
-                    return <ScriptStepEditor step={step} onUpdate={updateHandler} />;
-                default:
-                    return (
-                        <EmptyState
-                            icon={GitBranch}
-                            title="Unknown Step Type"
-                            description="This step type is not supported."
-                        />
-                    );
-            }
-        }
-
-        // Request step: render with the dedicated RequestStepEditor (not the
-        // shared Monaco editor) so every workflow step renders the same way
-        // regardless of whether it was selected from the app sidebar or the
-        // workflow editor's list.
-        return (
-            <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                <RequestStepEditor
-                    step={step}
-                    onUpdate={(updatedStep) => workspace.updateWorkflowStep(workflow, updatedStep)}
-                />
-            </div>
-        );
     }
 
     // Phase B (t_86c34d38): the PROJECTS view was deleted. Its dedicated

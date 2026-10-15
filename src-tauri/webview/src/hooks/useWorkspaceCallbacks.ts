@@ -184,7 +184,7 @@ export function useWorkspaceCallbacks({
     const handleUpdateStep = useCallback((updatedStep: TestStep) => {
         if (!selectedTestCase) return;
         // Save-time reference-cycle guard: block persisting a step that would
-        // close a workflow <-> test-case reference loop.
+        // close a test-case <-> test-case reference loop.
         const refChanged =
             (updatedStep.type === 'workflow' && updatedStep.config?.workflowId !== selectedStep?.config?.workflowId) ||
             (updatedStep.type === 'testCase' && updatedStep.config?.testCaseId !== selectedStep?.config?.testCaseId);
@@ -195,7 +195,9 @@ export function useWorkspaceCallbacks({
             };
             const allCases = testSuites.flatMap(s => s.testCases || []).map(c => c.id === updatedCase.id ? updatedCase : c);
             const cycle = findReferenceCycle(updatedCase.id, {
-                workflows: config?.workflows || [],
+                // Workflows no longer exist (absorbed into test cases), so the
+                // reference graph is case-to-case only. Task 8 drops this field.
+                workflows: [],
                 cases: allCases,
             });
             if (cycle) {
@@ -209,7 +211,7 @@ export function useWorkspaceCallbacks({
             steps: tc.steps.map(s => (s.id === updatedStep.id ? updatedStep : s))
         }));
         setSelectedStep(updatedStep);
-    }, [selectedTestCase, selectedStep, updateTestCase, setSelectedStep, testSuites, config?.workflows]);
+    }, [selectedTestCase, selectedStep, updateTestCase, setSelectedStep, testSuites]);
 
     const handleBackToCase = useCallback(() => {
         setSelectedRequest(null);

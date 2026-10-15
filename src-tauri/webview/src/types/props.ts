@@ -11,8 +11,6 @@ import {
     // MockRule, // Removed - mock features moved to APIprox
     // MockEvent, // Removed - mock features moved to APIprox
     PerformanceSuite,
-    Workflow,
-    WorkflowStep,
     UnifiedProject,
     // SidebarView
 } from '@shared/models';
@@ -28,9 +26,6 @@ export interface SidebarTestsProps {
     // TESTS rail (the global store). When omitted, the rail falls back to
     // `projects[].testSuites`.
     testSuites?: import('@shared/models').TestSuite[];
-    // Workflows referenced by 'workflow' test steps — lets the rail expand a
-    // workflow step and show the steps inside the referenced workflow.
-    workflows?: Workflow[];
     /** Live execution status (caseId → stepId), from TestRunnerContext —
         mirrors the TestCaseView step status icons onto the rail's step rows. */
     testExecution?: Record<string, Record<string, import('../components/workspace/TestCaseView').TestExecutionStatus>>;
@@ -61,21 +56,6 @@ export interface SidebarTestsProps {
     onToggleSuiteExpand: (suiteId: string) => void;
     onToggleCaseExpand: (caseId: string) => void;
     deleteConfirm: string | null;
-}
-
-export interface SidebarWorkflowsProps {
-    workflows: Workflow[];
-    onAdd: () => void;
-    onEdit: (workflow: Workflow) => void;
-    onRun: (workflow: Workflow) => void;
-    onDelete: (workflow: Workflow) => void;
-    onDuplicate: (workflow: Workflow) => void;
-    onSelect?: (workflow: Workflow) => void;
-    onSelectStep: (workflow: Workflow, step: WorkflowStep) => void;
-    /** The step currently open in the workflow editor — its sidebar row is highlighted.
-        `step` may be null: "workflow open, no step" (workflow row clicked / Run)
-        still highlights the workflow row. */
-    selectedWorkflowStep?: { workflow: Workflow; step: WorkflowStep | null } | null;
 }
 
 export interface SidebarPerformanceProps {
@@ -165,7 +145,6 @@ export interface WorkspaceSelectionState {
     testCase?: TestCase | null;
     testStep?: TestStep | null;
     performanceSuite?: PerformanceSuite | null;
-    workflowStep?: { workflow: import('@shared/models').Workflow; step: import('@shared/models').WorkflowStep } | null;
 }
 
 export interface WorkspaceRequestActions {
@@ -256,11 +235,6 @@ export interface NavigationActions {
     onSelectOperation: (operation: import('@shared/models').ApiOperation) => void;
     onSelectRequest: (request: ApiRequest) => void;
     onSelectTestCase: (testCase: TestCase) => void;
-    onSelectWorkflowStep?: (workflow: Workflow, step: WorkflowStep) => void;
-    onUpdateWorkflowStep?: (workflow: Workflow, step: WorkflowStep) => void;
-    onUpdateWorkflow?: (workflow: Workflow) => void;
-    onRunWorkflow?: (workflow: Workflow) => void;
-    onEditWorkflow?: (workflow: Workflow) => void;
 }
 
 // Explorer state for the main view is now owned by the unified explorer (F-31)

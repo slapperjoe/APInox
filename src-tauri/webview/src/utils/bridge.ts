@@ -8,7 +8,7 @@
  * This bridge serves two purposes:
  * 
  * 1. **Event-Driven Commands** (Keep using bridge):
- *    - Async operations that emit events (WSDL parsing, test execution, workflows)
+ *    - Async operations that emit events (WSDL parsing, test execution)
  *    - Commands that need progress updates or streaming results
  *    - Examples: loadWsdl, executeRequest, runTestCase, runTestSuite
  * 
@@ -88,34 +88,6 @@ export async function invokeTauriCommand<T = any>(command: string, args?: Record
         console.error(`[Bridge] Tauri command '${command}' failed:`, error);
         throw error;
     }
-}
-
-/**
- * Merge a resolved environment map under the workflow's own variables, for
- * `{{var}}` substitution in workflow request steps.
- *
- * The Rust runner (run_workflow → substitute_variables) resolves placeholders
- * in BOTH the step endpoint (URL) and the XML body against this merged map.
- * Precedence (highest wins on name clash):
- *   1. Workflow variables — manual wizard variables + extractor values from
- *      prior steps, so chained values keep winning.
- *   2. The `{{url}}` / `{{env}}` shortcuts — always the environment's
- *      `endpoint_url` when defined (mirrors the single-request path's
- *      WildcardProcessor, which overrides the environment's own `env` label
- *      key with the endpoint URL).
- *   3. Environment variables (Settings → Environments, active selection).
- */
-export function mergeWorkflowEnvironmentVariables(
-    environmentVariables: Record<string, string>,
-    workflowVariables: Record<string, string> | null | undefined,
-): Record<string, string> {
-    const envBase = { ...environmentVariables };
-    const endpointUrl = environmentVariables?.endpoint_url;
-    if (typeof endpointUrl === "string" && endpointUrl) {
-        envBase.url = endpointUrl;
-        envBase.env = endpointUrl;
-    }
-    return { ...envBase, ...(workflowVariables || {}) };
 }
 
 /** Merge the resolved environment with the suite- and case-level variable
@@ -690,30 +662,7 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
             return response;
         }
 
-        // Route ExecuteWorkflow to Rust run_workflow command. The webview sends
-                // the flat Workflow model; Rust's run_workflow expects { id, name,
-                // steps, variables } and executes each self-contained request step.
-                // The invoke resolves DIRECTLY with the WorkflowExecutionResult (no
-                // { success, error, result } envelope) — a Rust Err rejects the invoke.
-                if (message.command === FrontendCommand.ExecuteWorkflow) {
-                    const wf: any = message.workflow || {};
-                    // Resolve the active environment's variables (secrets
-                    // included, via get_resolved_environment — same source as
-                    // the single-request path) so {{var}} placeholders in
-                    // step URLs and XML bodies resolve at run time.
-                    const envVariables = await resolveRunEnvironmentVariables(message.environment);
-                    const result = await tauriInvoke('run_workflow', {
-                        request: {
-                            id: wf.id || '',
-                            name: wf.name || '',
-                            steps: wf.steps || [],
-                            variables: mergeWorkflowEnvironmentVariables(envVariables, wf.variables),
-                        }
-                    });
-                    return result || {};
-                }
-
-                if (message.command === 'saveUiState') {
+        if (message.command === 'saveUiState') {
             // Save UI state via Rust
             try {
                 await tauriInvoke('update_ui_settings', { ui: message.ui });
@@ -975,45 +924,6 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
             }
         }
 
-        // Route workflow commands to Rust
-        if (message.command === FrontendCommand.SaveWorkflow) {
-            debugLog('[Bridge] Routing SaveWorkflow to Rust backend');
-            try {
-                const response = await tauriInvoke('save_workflow', {
-                    workflow: message.workflow
-                });
-                
-                return response;
-            } catch (error: any) {
-                console.error('[Bridge] Save workflow failed:', error);
-                throw new Error(`Failed to save workflow: ${error.message || error}`);
-            }
-        }
-
-        if (message.command === FrontendCommand.DeleteWorkflow) {
-            debugLog('[Bridge] Routing DeleteWorkflow to Rust backend');
-            try {
-                const response = await tauriInvoke('delete_workflow', {
-                    workflowId: message.workflowId
-                });
-                
-                return response;
-            } catch (error: any) {
-                console.error('[Bridge] Delete workflow failed:', error);
-                throw new Error(`Failed to delete workflow: ${error.message || error}`);
-            }
-        }
-
-        if (message.command === FrontendCommand.GetWorkflows) {
-            try {
-                const response = await tauriInvoke('get_workflows', {});
-                return response;
-            } catch (error: any) {
-                console.error('[Bridge] Get workflows failed:', error);
-                throw new Error(`Failed to get workflows: ${error.message || error}`);
-            }
-        }
-
         if (message.command === FrontendCommand.StartCoordinator) {
             return await tauriInvoke('start_coordinator', {
                 port: message.port,
@@ -1271,14 +1181,12 @@ function mapResponseToBackendEvent(command: string, data: any): BackendMessage |
 // Commands Suitable for Direct Migration (simple CRUD):
 // - SaveProject, LoadProject, DeleteProject
 // - SaveSettings, GetSettings, SaveUiState
-// - GetWorkflows, SaveWorkflow, DeleteWorkflow
 // - GetHistory, AddHistoryEntry, ClearHistory
 // - GetScrapbook, AddScrapbookRequest, UpdateScrapbookRequest
 // 
 // Commands That Should Stay in Bridge (async/events):
 // - ExecuteRequest (emits Response + HistoryUpdate events)
 // - RunTestCase, RunTestSuite (emit TestRunnerUpdate events)
-// - ExecuteWorkflow (emits progress events)
 // - RefreshWsdl (async operation)
 //
 

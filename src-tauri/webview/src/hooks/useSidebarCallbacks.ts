@@ -167,10 +167,9 @@ export function useSidebarCallbacks({
     }, [config]);
 
     // ── File import/export (right-click menu) ───────────────────────────────
-    // Mirrors the workflow file IO split (useWorkflowHandlers'
-    // handleSaveWorkflowToDisk / handleLoadWorkflowFromFile): this hook owns
-    // the native save/open dialogs, Rust does the file IO, and the global
-    // suite store persists the result. Exports re-source the object from the
+    // Mirrors the test-suite test-case file IO split: this hook owns the
+    // native save/open dialogs, Rust does the file IO, and the global suite
+    // store persists the result. Exports re-source the object from the
     // store by id; imports are ALWAYS adds — rekeyTestSuite/rekeyTestCase
     // reassign every id, so importing a file (even a re-import of one you
     // exported) never silently replaces an existing suite or case.

@@ -1,20 +1,9 @@
-import type { Workflow, WorkflowStep, WorkflowExtractor } from "@shared/models";
 import type { TrafficLog } from "../components/proxy/TrafficViewer";
-import { formatXml } from "@shared/utils/xmlFormatter";
 
 export interface BuildOpts {
-    /** Log ids to exclude (user unchecked in the wizard). */
-    disabledIds?: Set<string>;
-    /** Per-log-id extractors to attach to that step. */
-    extractors?: Record<string, WorkflowExtractor[]>;
-    /** Explicit per-step names (keyed by log id). */
-    stepNames?: Record<string, string>;
     /** Value → variable substitutions applied to request bodies/headers so a
      *  tagged captured value is emitted as `{{variable}}` (runtime-extracted). */
     valueSubstitutions?: Array<{ value: string; variable: string }>;
-    /** Final per-log request headers (keyed by log id) — the wizard's edited
-     *  header rows. Wins over `log.requestHeaders` when present for a log. */
-    headersByLog?: Record<string, Record<string, string>>;
 }
 
 export function lastPathSegment(url: string): string {
@@ -79,44 +68,6 @@ export function applyValueSubstitutions(text: string, subs: BuildOpts["valueSubs
         out = out.split(s.value).join(`{{${s.variable}}}`);
     }
     return out;
-}
-
-/** Pretty-print an XML body with the app's formatter (inline element values). */
-function formatRequestXml(body: string | undefined): string {
-    if (!body) return "";
-    return formatXml(body, false, true);
-}
-
-/** Convert captured traffic into ordered, self-contained request steps (chronological). */
-export function buildWorkflowStepsFromLogs(logs: TrafficLog[], opts: BuildOpts = {}): WorkflowStep[] {
-    const { disabledIds, extractors = {}, stepNames = {}, valueSubstitutions, headersByLog } = opts;
-    const included = logs.filter(l => !disabledIds?.has(l.id));
-    return included.map((log, idx) => {
-        const rawBody = log.requestBody || "";
-        const substitutedBody = applyValueSubstitutions(rawBody, valueSubstitutions);
-        // All captured request headers flow into the step. The wizard's
-        // edited rows (headersByLog) win over the raw capture for that log;
-        // untouched logs keep the captured headers verbatim.
-        const captured = headersByLog?.[log.id] ?? log.requestHeaders ?? {};
-        const headers: Record<string, string> = {};
-        for (const key of Object.keys(captured)) {
-            if (!key.trim()) continue; // drop rows with a blank name
-            headers[key] = applyValueSubstitutions(String(captured[key] ?? ""), valueSubstitutions);
-        }
-        return {
-            id: log.id,
-            name: stepNames[log.id] || trafficStepName(log),
-            type: "request",
-            order: idx,
-            endpoint: applyValueSubstitutions(log.url, valueSubstitutions),
-            method: log.method,
-            httpMethod: log.method as WorkflowStep["httpMethod"],
-            requestBody: formatRequestXml(substitutedBody),
-            headers,
-            contentType: headers["Content-Type"] || headers["content-type"],
-            extractors: extractors[log.id]?.length ? extractors[log.id] : undefined,
-        };
-    });
 }
 
 export interface ChainedValue {
@@ -359,32 +310,4 @@ export function detectChainedValues(logs: TrafficLog[]): ChainedValue[] {
         }
     }
     return Array.from(seen.values());
-}
-
-export interface AssembleInput {
-    name: string;
-    description?: string;
-    logs: TrafficLog[];
-    disabledIds?: Set<string>;
-    initialVariables?: Record<string, string>;
-    extractors?: Record<string, WorkflowExtractor[]>;
-    stepNames?: Record<string, string>;
-    /** Value → variable substitutions applied to generated step bodies/headers. */
-    valueSubstitutions?: Array<{ value: string; variable: string }>;
-    /** Wizard-edited per-log request headers (win over the raw capture). */
-    headersByLog?: Record<string, Record<string, string>>;
-}
-
-/** Turn the wizard's final state into the `Workflow` object the save path expects. */
-export function assembleWorkflow(input: AssembleInput): Workflow {
-    const { name, description, logs, disabledIds, initialVariables = {}, extractors, stepNames, valueSubstitutions, headersByLog } = input;
-    return {
-        id: crypto.randomUUID(),
-        name,
-        description,
-        steps: buildWorkflowStepsFromLogs(logs, { disabledIds, extractors, stepNames, valueSubstitutions, headersByLog }),
-        variables: Object.keys(initialVariables).length ? initialVariables : undefined,
-        createdAt: Date.now(),
-        modifiedAt: Date.now(),
-    };
 }

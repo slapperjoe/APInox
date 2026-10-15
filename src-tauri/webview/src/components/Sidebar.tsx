@@ -4,7 +4,6 @@ import { SidebarView } from '@shared/models';
 
 // Components
 import { TestsUi } from './sidebar/TestsUi';
-import { WorkflowsUi } from './sidebar/WorkflowsUi';
 import { PerformanceUi } from './sidebar/PerformanceUi';
 import { ScrapbookPanel } from './sidebar/ScrapbookPanel';
 import { NotesList } from './sidebar/NotesList';
@@ -56,7 +55,7 @@ const SidebarContainer = styled.div<{ $collapsed: boolean; $width?: number; $loc
     border-right: 1px solid var(--apinox-sideBarSectionHeader-border);
     background: var(--apinox-sideBar-background);
 
-    /* While the traffic→workflow wizard is open the sidebar is disabled: it
+    /* While the traffic→test-case wizard is open the sidebar is disabled: it
        dims, ignores all pointer input (rail, tree, resize handle) and shows
        the disabled affordance, so the only way out of the wizard is its own
        Cancel. */
@@ -159,7 +158,6 @@ export const Sidebar: React.FC = () => {
     };
     const {
         testsProps,
-        workflowsProps,
         performanceProps,
         unifiedProps,
         onOpenSettings,
@@ -182,8 +180,8 @@ export const Sidebar: React.FC = () => {
     // it. Request history followed the same path: its top-level rail view
     // (SidebarView.HISTORY) was folded into the unified explorer as the
     // History sub-window, so no HistorySidebar branch remains here. The
-    // remaining sidebar children (Tests/Workflows/Performance/Unified) use
-    // their own prop groups below.
+    // remaining sidebar children (Tests/Performance/Unified) use their own
+    // prop groups below.
 
     const fullPanelView = activeView === SidebarView.PROXY || activeView === SidebarView.MOCK || activeView === SidebarView.SETTINGS;
     const hideContent = !sidebarExpanded || fullPanelView;
@@ -196,7 +194,7 @@ export const Sidebar: React.FC = () => {
             aria-disabled={sidebarLocked || undefined}
             data-locked={sidebarLocked || undefined}
             title={sidebarLocked
-                ? 'Sidebar is disabled while the workflow wizard is open — use Cancel to return.'
+                ? 'Sidebar is disabled while the traffic wizard is open — use Cancel to return.'
                 : undefined}
             className={`sidebar-drawer${isMobileOpen ? ' sidebar-open' : ''}`}
         >
@@ -220,7 +218,6 @@ export const Sidebar: React.FC = () => {
                     <TestsUi
                         projects={testsProps.projects}
                         testSuites={testsProps.testSuites}
-                        workflows={testsProps.workflows}
                         selectedTestSuite={testsProps.selectedTestSuite}
                         selectedTestCase={testsProps.selectedTestCase}
                         onAddSuite={testsProps.onAddSuite}
@@ -244,12 +241,6 @@ export const Sidebar: React.FC = () => {
                         onExportTestCase={testsProps.onExportTestCase}
                         testExecution={testsProps.testExecution}
                         deleteConfirm={testsProps.deleteConfirm}
-                    />
-                )}
-
-                {activeView === SidebarView.WORKFLOWS && workflowsProps && (
-                    <WorkflowsUi
-                        {...workflowsProps}
                     />
                 )}
 

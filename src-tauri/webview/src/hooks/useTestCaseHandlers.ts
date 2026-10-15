@@ -43,8 +43,8 @@ interface UseTestCaseHandlersParams {
     closeContextMenu: () => void;
     selectedTestSuite: TestSuite | null;
     setSelectedTestSuite: React.Dispatch<React.SetStateAction<TestSuite | null>>;
-    /** App config — workflow definitions are embedded into run payloads so the
-        backend executes a self-contained copy (no config save-race). */
+    /** App config — referenced test cases are embedded into run payloads so
+        the backend executes a self-contained copy (no config save-race). */
     config: ApinoxConfig | null;
 }
 
@@ -82,7 +82,7 @@ export function useTestCaseHandlers({
     const { ensureProjectFull } = useUnifiedProjectsSafe();
 
     /** Flat list of every global test case — the lookup table for recursive
-        reference embedding (workflow/testCase steps → self-contained steps). */
+        reference embedding (testCase steps → self-contained steps). */
     const allCases = testSuites.flatMap(s => s.testCases || []);
 
     /** Compute the next step object for an in-place step mutation (no-op if
@@ -354,8 +354,8 @@ export function useTestCaseHandlers({
                     const start = await bridge.sendMessageAsync<{ runId: string }>({
                         command: FrontendCommand.RunTestCase,
                         caseId,
-                        // Embed referenced workflow/testCase steps (self-contained run)
-                        testCase: embedTestRun([testCase], config?.workflows || [], allCases)[0],
+                        // Embed referenced testCase steps (self-contained run)
+                        testCase: embedTestRun([testCase], [], allCases)[0],
                         // Suite-level variables — the bridge layers these over
                         // the resolved environment; the case's own variables are
                         // applied by Rust (case wins).
@@ -403,12 +403,12 @@ export function useTestCaseHandlers({
                     const start = await bridge.sendMessageAsync<{ runId: string }>({
                         command: FrontendCommand.RunTestSuite,
                         suiteId,
-                        // Embed referenced workflow/testCase steps in EVERY
-                        // case so the backend executes a self-contained copy
-                        // (no config save-race), same as single-case runs.
+                        // Embed referenced testCase steps in EVERY case so the
+                        // backend executes a self-contained copy (no config
+                        // save-race), same as single-case runs.
                         testSuite: {
                             ...suite,
-                            testCases: embedTestRun(suite.testCases || [], config?.workflows || [], allCases)
+                            testCases: embedTestRun(suite.testCases || [], [], allCases)
                         },
                         stream: true
                     });

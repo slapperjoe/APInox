@@ -4,7 +4,6 @@ import {
   HelpCircle,
   Compass,
   FlaskConical,
-  Workflow,
   Server,
   Activity,
   FileText,
@@ -131,12 +130,6 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
         active={activeView === SidebarView.TESTS}
         onClick={() => onChangeView(SidebarView.TESTS)}
         title="Tests"
-      />
-      <NavItem
-        icon={Workflow}
-        active={activeView === SidebarView.WORKFLOWS}
-        onClick={() => onChangeView(SidebarView.WORKFLOWS)}
-        title="Workflows"
       />
       <NavItem
         icon={Activity}

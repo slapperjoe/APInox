@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { SPACING_MD, SPACING_SM, SPACING_XL } from "../../styles/spacing";
-import { SidebarContextMenu, CtxMenuSection, CtxMenuItem, VenetianMask, Pencil, Pause, Download, Copy, FileText, RefreshCw, Globe, Link, Code, File, Workflow } from '../sidebar/shared/SidebarContextMenu';
+import { SidebarContextMenu, CtxMenuSection, CtxMenuItem, VenetianMask, Pencil, Pause, Download, Copy, FileText, RefreshCw, Globe, Link, Code, File } from '../sidebar/shared/SidebarContextMenu';
 import { TestTube } from 'lucide-react';
 import { tokens } from './tokens';
 import { methodBg, statusStyle } from './trafficStyles';
@@ -243,8 +243,6 @@ interface TrafficViewerProps {
   onCreateBreakpoint?: (log: TrafficLog) => void;
   /** Called when user right-clicks → "Add to APInox Project..." */
   onAddToApinoxProject?: (log: TrafficLog) => void;
-  /** Called when user right-clicks → "Create Workflow from Traffic" (opens the wizard with the full capture). */
-  onCreateWorkflowFromTraffic?: () => void;
   /** Called when user right-clicks → "Create Test Case from Traffic". */
   onCreateTestCaseFromTraffic?: (log: TrafficLog) => void;
   /** Called when user right-clicks → "Replay Request" (re-send identically) */
@@ -253,7 +251,7 @@ interface TrafficViewerProps {
   onClearTraffic?: () => void;
 }
 
-export function TrafficViewer({ logs, onSelectLog, ignoreRules = EMPTY_RULES, onAddIgnoreRule, onCreateMockRule, onCreateReplaceRule, onCreateBreakpoint, onAddToApinoxProject, onCreateWorkflowFromTraffic, onCreateTestCaseFromTraffic, onReplayRequest, onClearTraffic }: TrafficViewerProps) {
+export function TrafficViewer({ logs, onSelectLog, ignoreRules = EMPTY_RULES, onAddIgnoreRule, onCreateMockRule, onCreateReplaceRule, onCreateBreakpoint, onAddToApinoxProject, onCreateTestCaseFromTraffic, onReplayRequest, onClearTraffic }: TrafficViewerProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [urlFilter, setUrlFilter] = useState('');
   const [methodFilter, setMethodFilter] = useState('ALL');
@@ -460,15 +458,6 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = EMPTY_RULES, on
           sections.push({
             title: 'APInox',
             items: [{ icon: Download, label: 'Add to APInox Project...', sub: 'Save request to project workspace', onClick: () => { onAddToApinoxProject!(log); setCtxMenu(null); } }],
-          });
-        }
-
-        // Create Workflow — turn this capture into a workflow (the wizard lets
-        // you select which requests to include; fire order = step order).
-        if (onCreateWorkflowFromTraffic) {
-          sections.push({
-            title: 'Workflow',
-            items: [{ icon: Workflow, label: 'Create Workflow from Traffic', sub: 'Build a workflow from this capture', onClick: () => { onCreateWorkflowFromTraffic!(); setCtxMenu(null); } }],
           });
         }
 

@@ -12,7 +12,6 @@ import { createContext, useContext } from 'react';
 import type { SidebarView } from '@shared/models';
 import type {
     SidebarTestsProps,
-    SidebarWorkflowsProps,
     SidebarPerformanceProps,
     SidebarUnifiedProps,
 } from '../types/props';
@@ -20,10 +19,10 @@ import type {
 export interface SidebarContextValue {
     // ==================== PROP GROUPS (passed to sub-components) ====================
     // Phase B (t_86c34d38): SidebarProjectProps / SidebarSelectionProps (projectProps,
-    // selectionProps) were deleted with the PROJECTS view (ProjectList). The remaining
-    // sidebar children (tests/workflows/performance/history/unified) use their own groups.
+    // selectionProps) were deleted with the PROJECTS view (ProjectList). The WORKFLOWS
+    // group went with the WORKFLOWS view (workflows were absorbed into test cases); the
+    // remaining sidebar children (tests/performance/history/unified) use their own groups.
     testsProps: SidebarTestsProps;
-    workflowsProps?: SidebarWorkflowsProps;
     performanceProps?: SidebarPerformanceProps;
     unifiedProps?: SidebarUnifiedProps;
 
@@ -44,7 +43,7 @@ export interface SidebarContextValue {
     hasUpdate?: boolean;
     /** True while the proxy is actively capturing traffic — drives the live dot on the rail's traffic entry. */
     trafficCapturing?: boolean;
-    /** True while the full-screen traffic→workflow wizard is open. Disables
+    /** True while the full-screen traffic→test-case wizard is open. Disables
         the whole sidebar (dimmed, pointer-events off, navigation ignored) so
         the only way out of the wizard is its own "Cancel". */
     sidebarLocked?: boolean;

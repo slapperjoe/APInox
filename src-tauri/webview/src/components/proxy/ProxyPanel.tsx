@@ -18,13 +18,11 @@ type ProxyTab = 'traffic' | 'breakpoints';
 interface ProxyPanelProps {
   onNavigateTo?: (view: string) => void;
   onAddToApinoxProject?: (log: TrafficLog) => void;
-  /** Opens the full-screen "Create workflow from traffic" wizard with the current logs. */
-  onCreateWorkflowFromTraffic?: (logs: TrafficLog[]) => void;
   /** Opens the "Create Test Case from Traffic" dialog for the current capture. */
   onCreateTestCaseFromTraffic?: (anchorLog: TrafficLog, allLogs: TrafficLog[]) => void;
 }
 
-export function ProxyPanel({ onNavigateTo, onAddToApinoxProject, onCreateWorkflowFromTraffic, onCreateTestCaseFromTraffic }: ProxyPanelProps) {
+export function ProxyPanel({ onNavigateTo, onAddToApinoxProject, onCreateTestCaseFromTraffic }: ProxyPanelProps) {
   const [activeTab, setActiveTab] = useState<ProxyTab>('traffic');
   const [logs, setLogs] = useState<TrafficLog[]>([]);
   const [selectedLog, setSelectedLog] = useState<TrafficLog | null>(null);
@@ -177,7 +175,6 @@ export function ProxyPanel({ onNavigateTo, onAddToApinoxProject, onCreateWorkflo
                 onClearTraffic={handleClearTraffic}
                 onAddToApinoxProject={onAddToApinoxProject}
                 onReplayRequest={handleReplayRequest}
-                onCreateWorkflowFromTraffic={() => { if (logs.length > 0) onCreateWorkflowFromTraffic?.(logs); }}
                 onCreateTestCaseFromTraffic={(log) => { if (logs.length > 0) onCreateTestCaseFromTraffic?.(log, logs); }}
               />
             </div>

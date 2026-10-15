@@ -69,20 +69,6 @@ const DEFERRED_INVOKE_LITERALS = new Set<string>([
   'get_coordinator_status',
 ]);
 
-/**
- * Transitional allowlist for the workflow absorption: the four workflow
- * commands were deleted from the Rust backend in this change, but `bridge.ts`
- * still `tauriInvoke`s them until the WORKFLOWS view/route removal deletes
- * those calls. Remove this set (and its use below) once bridge.ts no longer
- * invokes them — until then Test A would flag them as unregistered.
- */
-const REMOVED_WORKFLOW_INVOKES = new Set<string>([
-  'run_workflow',
-  'get_workflows',
-  'save_workflow',
-  'delete_workflow',
-]);
-
 function walk(dir: string, out: string[] = []): string[] {
   const entries = readdirSafe(dir);
   for (const name of entries) {
@@ -148,8 +134,7 @@ describe('M20 bridge↔Rust parity', () => {
     const missing = [...invokeLiterals].filter(
       (lit) =>
         !registered.has(lit) &&
-        !DEFERRED_INVOKE_LITERALS.has(lit) &&
-        !REMOVED_WORKFLOW_INVOKES.has(lit),
+        !DEFERRED_INVOKE_LITERALS.has(lit),
     );
     expect(missing).toEqual([]);
   });

@@ -12,7 +12,7 @@
  * the same chain capture the workflow wizard offers.
  *
  * This is NOT a modal — it fills the proxy work area in place of
- * `ProxyPanel`, the same hosting pattern as `TrafficWorkflowWizard`. It
+ * `ProxyPanel` (full-page, not a modal). It
  * receives a chronological snapshot of `logs` and emits the user's choices
  * through `onCreate` (the parent builds the case + saves).
  */
@@ -62,7 +62,7 @@ interface CreateTestCaseFromTrafficWizardProps {
     onCreate: (result: CreateTestCaseFromTrafficResult) => void;
 }
 
-// ── styles (inline, token palette — consistent with TrafficWorkflowWizard) ─
+// ── styles (inline, token palette — consistent with the proxy panels) ──────
 const root: React.CSSProperties = {
     flex: 1, display: 'flex', flexDirection: 'column',
     background: tokens.surface.base, minHeight: 0, overflow: 'hidden',

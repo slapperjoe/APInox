@@ -13,7 +13,7 @@ import type { AddToProjectDestination } from './proxy/AddToProjectDialog';
 import type { TrafficLog } from './proxy/TrafficViewer';
 import type { PickRequestItem } from './modals/PickRequestModal';
 import type { BulkImportResult } from './modals/BulkImportModal';
-import { ApiRequest, TestCase, TestStep, TestSuite, SidebarView, RequestHistoryEntry, WsdlDiff, ApiInterface, ApiOperation, Workflow, WorkflowStep, ApinoxProject, UnifiedProject, ScrapbookRequest } from '@shared/models';
+import { ApiRequest, TestCase, TestStep, TestSuite, SidebarView, RequestHistoryEntry, WsdlDiff, ApiInterface, ApiOperation, ApinoxProject, UnifiedProject, ScrapbookRequest } from '@shared/models';
 import { buildTrafficTestSteps } from '../utils/trafficTestCase';
 import { BackendCommand, FrontendCommand } from '@shared/messages';
 import { PERF_REQUEST_ID_PREFIX } from '../constants';
@@ -32,7 +32,6 @@ import { useWorkspaceCallbacks } from '../hooks/useWorkspaceCallbacks';
 import { useAppLifecycle } from '../hooks/useAppLifecycle';
 import { useLayoutHandler } from '../hooks/useLayoutHandler';
 import { useMobileLayout } from '../hooks/useMobileLayout';
-import { useWorkflowHandlers } from '../hooks/useWorkflowHandlers';
 import { useTestsAutoSelect } from '../hooks/useTestsAutoSelect';
 import { NotesProvider } from '../notes/NotesContext';
 
@@ -51,9 +50,6 @@ const WorkspaceLayout = React.lazy(() =>
 );
 const ProxyPanel = React.lazy(() =>
     import('./proxy/ProxyPanel').then(module => ({ default: module.ProxyPanel }))
-);
-const TrafficWorkflowWizard = React.lazy(() =>
-    import('./proxy/TrafficWorkflowWizard').then(module => ({ default: module.TrafficWorkflowWizard }))
 );
 const RulesAndMockPage = React.lazy(() =>
     import('./proxy/RulesAndMockPage').then(module => ({ default: module.RulesAndMockPage }))
@@ -94,9 +90,6 @@ const PickRequestModal = React.lazy(() =>
 );
 const ExportWorkspaceModal = React.lazy(() =>
     import('./modals/ExportWorkspaceModal').then(module => ({ default: module.ExportWorkspaceModal }))
-);
-const WorkflowBuilderModal = React.lazy(() =>
-    import('./modals/WorkflowBuilderModal').then(module => ({ default: module.WorkflowBuilderModal }))
 );
 const BulkImportModal = React.lazy(() =>
     import('./modals/BulkImportModal').then(module => ({ default: module.BulkImportModal }))
@@ -165,8 +158,6 @@ const MainContent: React.FC = () => {
         setSelectedStep,
         selectedTestCase,
         setSelectedTestCase,
-        selectedWorkflowStep,
-        setSelectedWorkflowStep,
         selectedPerformanceSuiteId,
         setSelectedPerformanceSuiteId,
         response,
@@ -648,8 +639,8 @@ const MainContent: React.FC = () => {
     // Unified import pipeline (t_b2eae8b0): parse a workspace/project export
     // file into nested projects via the `importWorkspace` command, persist
     // each to the canonical UNIFIED store (save_imported_project_as_unified),
-    // publish the nested values for in-session legacy readers (PROXY /
-    // WORKFLOWS), and reload the unified list. Shared by the sidebar
+    // publish the nested values for in-session legacy readers (PROXY), and
+    // reload the unified list. Shared by the sidebar
     // context menu's "Import SoapUI Workspace" and "Import Workspace"
     // (APInox .apinox / .json / .xml exports).
     const handleUnifiedImportFile = useCallback(async (opts: {
@@ -676,13 +667,12 @@ const MainContent: React.FC = () => {
                 : [];
         if (imported.length > 0) {
             // Persist each imported project to the canonical unified store
-            // (idempotent merge; additive nested write for PROXY/WORKFLOWS).
+            // (idempotent merge; additive nested write for PROXY).
             await saveImportedProjectsAsUnified(imported);
-            // In-session legacy list: PROXY (AddToProjectDialog) and
-            // WORKFLOWS (request-picker) read the nested model from
-            // useProject().projects IN THIS SESSION (they do not re-load from
-            // disk on demand), so publish each nested value now to keep it
-            // visible without a restart.
+            // In-session legacy list: PROXY (AddToProjectDialog) reads the
+            // nested model from useProject().projects IN THIS SESSION (it does
+            // not re-load from disk on demand), so publish each nested value
+            // now to keep it visible without a restart.
             for (const project of imported) {
                 if (!project?.name) continue;
                 (project as any).fileName = targetPath;
@@ -1398,8 +1388,7 @@ const MainContent: React.FC = () => {
     const [addToTestCaseModal, setAddToTestCaseModal] = React.useState<{ open: boolean, request: ApiRequest | null }>({ open: false, request: null });
     // Create Test Case from Traffic: the full capture (capture order) plus the
     // right-clicked log as the pre-selected anchor. Full-page wizard rendered
-    // in place of ProxyPanel (the same hosting as the traffic→workflow
-    // wizard) — not a modal.
+    // in place of ProxyPanel — not a modal.
     const [testCaseWizard, setTestCaseWizard] = useState<{ logs: TrafficLog[]; anchorLogId: string | null } | null>(null);
 
     const handleCreateTestCaseFromTraffic = React.useCallback((anchorLog: TrafficLog, allLogs: TrafficLog[]) => {
@@ -1450,71 +1439,6 @@ const MainContent: React.FC = () => {
         }
         setExportWorkspaceModal(false);
     }, []);
-
-    // ==========================================================================
-    // WORKFLOW HANDLERS - extracted to useWorkflowHandlers hook
-    // ==========================================================================
-    const {
-        workflowBuilderModal,
-        setWorkflowBuilderModal,
-        workflowRunResults,
-        handleAddWorkflow,
-        handleEditWorkflow,
-        handleSaveWorkflow,
-        handleRunWorkflow,
-        handleDeleteWorkflow,
-        handleDuplicateWorkflow,
-        handleSaveWorkflowToDisk,
-        handleSelectWorkflow,
-        handleSelectWorkflowStep,
-        handleUpdateWorkflowStep,
-        handleUpdateWorkflow,
-        handleLoadWorkflowFromFile,
-        handleAddWorkflowStep,
-        handleAddWorkflowTestCaseStep,
-        handleDeleteWorkflowStep,
-        handleMoveWorkflowStep,
-    } = useWorkflowHandlers({
-        config,
-        testSuites: globalTestSuites,
-        setConfig,
-        setRawConfig,
-        setWorkspaceDirty,
-        selectedWorkflowStep,
-        setSelectedWorkflowStep: setSelectedWorkflowStep as (step: { workflow: Workflow; step: WorkflowStep | null } | null) => void,
-        setSelectedRequest,
-        setActiveView,
-        setLoading,
-    });
-
-    // Traffic→workflow wizard: full-screen page rendered over ProxyPanel, which
-    // stays mounted underneath so the captured-traffic history survives it.
-    const [trafficWizard, setTrafficWizard] = useState<{ logs: TrafficLog[] } | null>(null);
-
-    const handleCreateWorkflowFromTraffic = useCallback((logs: TrafficLog[]) => {
-        setTrafficWizard({ logs });
-    }, []);
-
-    // Save the wizard's workflow, then select it so the app lands on the new
-    // workflow (handleSaveWorkflow closes its own modal and does NOT select).
-    // Refresh BOTH `config` and `rawConfig` from the GetSettings response so
-    // the Settings editor (which snapshots + whole-config-persits `rawConfig`)
-    // can't later clobber this workflow with a stale snapshot.
-    const handleSaveWorkflowThenSelect = useCallback(async (wf: Workflow) => {
-        try {
-            await bridge.sendMessageAsync({ command: FrontendCommand.SaveWorkflow, workflow: wf });
-            const response = await bridge.sendMessageAsync({ command: FrontendCommand.GetSettings });
-            if (response) {
-                setConfig(response as any);
-                setRawConfig(JSON.stringify(response, null, 2));
-            }
-            setWorkspaceDirty(true);
-            const updated = (response as any)?.workflows?.find((w: Workflow) => w.id === wf.id) ?? wf;
-            handleSelectWorkflow(updated);
-        } catch (e) {
-            console.error('[Workflows] Failed to save traffic workflow:', e);
-        }
-    }, [setConfig, setRawConfig, setWorkspaceDirty, handleSelectWorkflow]);
 
     const pickRequestItems = useMemo<PickRequestItem[]>(() => {
         const items: PickRequestItem[] = [];
@@ -1655,14 +1579,13 @@ const MainContent: React.FC = () => {
     });
 
     // ── Traffic-wizard sidebar lock ─────────────────────────────────────────
-    // The traffic→workflow and traffic→test-case wizards are full-page flows
-    // the user must exit with their own "Cancel". While either is open the
-    // sidebar is disabled (Sidebar renders dimmed + pointer-events off via
-    // `sidebarLocked`) AND every navigation surface is blocked here at the
-    // state level, so no rail / settings / help click — pointer or keyboard —
-    // can walk away from the wizard mid-flow (which would unmount it and
-    // lose the in-progress work).
-    const sidebarLocked = !!trafficWizard || !!testCaseWizard;
+    // The traffic→test-case wizard is a full-page flow the user must exit with
+    // its own "Cancel". While it is open the sidebar is disabled (Sidebar
+    // renders dimmed + pointer-events off via `sidebarLocked`) AND every
+    // navigation surface is blocked here at the state level, so no rail /
+    // settings / help click — pointer or keyboard — can walk away from the
+    // wizard mid-flow (which would unmount it and lose the in-progress work).
+    const sidebarLocked = !!testCaseWizard;
     const guardedChangeView = useCallback((view: SidebarView) => {
         if (sidebarLocked) return;
         handleSetActiveViewWrapper(view);
@@ -1808,10 +1731,6 @@ const MainContent: React.FC = () => {
         selectedTestCase,
         testCases: globalTestSuites.flatMap(s => s.testCases || []),
         selectedTestStep: selectedStep,
-        selectedWorkflowStep,
-        workflowRunResults,
-        handleRunWorkflow,
-        workflowRunHistory: config?.workflowRunHistory || [],
         selectedPerformanceSuiteId,
         performanceHistory: config?.performanceHistory || [],
         performanceProgress,
@@ -1852,7 +1771,6 @@ const MainContent: React.FC = () => {
         selectTestSuite: setSelectedTestSuite,
         selectTestCase: setSelectedTestCase,
         selectTestStep: handleSelectStep,
-        selectWorkflowStep: (ws: any) => setSelectedWorkflowStep(ws),
         // REQUEST ACTIONS
         executeRequest,
         cancelRequest,
@@ -1906,12 +1824,9 @@ const MainContent: React.FC = () => {
         handleAddExistenceAssertion,
         // PERFORMANCE - import from workspace
         onImportFromWorkspace: (suiteId: string) => setImportToPerformanceModal({ open: true, suiteId }),
-        // WORKFLOW UPDATE
-        updateWorkflow: handleUpdateWorkflow,
-        updateWorkflowStep: handleUpdateWorkflowStep,
     }), [
         projects, selectedProjectName, selectedInterface, selectedOperation, selectedRequest,
-        selectedTestSuite, selectedTestCase, selectedStep, selectedWorkflowStep, globalTestSuites,
+        selectedTestSuite, selectedTestCase, selectedStep, globalTestSuites,
         selectedPerformanceSuiteId, config, performanceProgress, coordinatorStatus,
         activeView,
         response, loading, layoutMode, showLineNumbers, splitRatio, isResizing,
@@ -1927,11 +1842,10 @@ const MainContent: React.FC = () => {
         handleSelectPerformanceRequest, handleStartCoordinator, handleStopCoordinator,
         executeRequest, cancelRequest, handleRequestUpdate, handleResetRequest,
         setSelectedInterface, setSelectedOperation, setSelectedRequest, setSelectedTestSuite,
-        setSelectedTestCase, setSelectedWorkflowStep, setLayoutMode, setShowLineNumbers,
+        setSelectedTestCase, setLayoutMode, setShowLineNumbers,
         setSplitRatio, startResizing, setInlineElementValues, setHideCausalityData,
         addProject, saveProject, setProjects, setSelectedStep, setActiveView,
-        handleAddExtractor, handleAddExistenceAssertion,
-        handleUpdateWorkflow, handleUpdateWorkflowStep, setImportToPerformanceModal,
+        handleAddExtractor, handleAddExistenceAssertion, setImportToPerformanceModal,
     ]);
 
     // ==========================================================================
@@ -1944,9 +1858,6 @@ const MainContent: React.FC = () => {
             // C (global suites): the TESTS suite tree renders from the GLOBAL
             // suite store (the single source of truth).
             testSuites: globalTestSuites,
-            // Feeds the TESTS rail's expandable 'workflow' test steps (the
-            // steps inside a referenced workflow render as nested rows).
-            workflows: config?.workflows || [],
             projects: unifiedProjects,
             selectedTestSuite,
             selectedTestCase,
@@ -1979,23 +1890,6 @@ const MainContent: React.FC = () => {
             testExecution,
             deleteConfirm,
         },
-        workflowsProps: {
-            workflows: config?.workflows || [],
-            onAdd: handleAddWorkflow,
-            onEdit: handleEditWorkflow,
-            onRun: handleRunWorkflow,
-            onDelete: handleDeleteWorkflow,
-            onDuplicate: handleDuplicateWorkflow,
-            onSaveToDisk: handleSaveWorkflowToDisk,
-            onLoadFromFile: handleLoadWorkflowFromFile,
-            onSelect: handleSelectWorkflow,
-            onSelectStep: handleSelectWorkflowStep,
-            onAddStep: handleAddWorkflowStep,
-            onAddTestCaseStep: handleAddWorkflowTestCaseStep,
-            onDeleteStep: handleDeleteWorkflowStep,
-            onMoveStep: handleMoveWorkflowStep,
-            selectedWorkflowStep,
-        },
         performanceProps: {
             suites: config?.performanceSuites || [],
             onAddSuite: handleAddPerformanceSuite,
@@ -2007,8 +1901,6 @@ const MainContent: React.FC = () => {
             activeRunId,
             selectedSuiteId: selectedPerformanceSuiteId ?? undefined,
             onAddRequest: handleAddPerformanceRequestForUi,
-            // Lets a workflow-backed suite expand in the sidebar to show its steps.
-            workflows: config?.workflows || [],
             // Expand/collapse state for the suite rows.
             onToggleSuiteExpand: handleTogglePerformanceSuiteExpand,
             expandedSuiteIds: expandedPerformanceSuiteIds,
@@ -2081,8 +1973,8 @@ const MainContent: React.FC = () => {
     }), [
         // Phase B (t_86c34d38): the projectProps / selectionProps entries above
         // were removed with the deleted PROJECTS view; the remaining deps cover
-        // testsProps / workflowsProps / performanceProps / unifiedProps
-        // (incl. its scrapbook + history sub-window entries) and the view-state fields.
+        // testsProps / performanceProps / unifiedProps (incl. its scrapbook +
+        // history sub-window entries) and the view-state fields.
         // t_b2eae8b0: import handlers (SoapUI + APInox workspace) write the
         // unified store directly and depend on refreshUnifiedProjects.
         saveProject, refreshUnifiedProjects,
@@ -2097,9 +1989,6 @@ const MainContent: React.FC = () => {
         handleExportSuite, handleExportTestCase, handleImportSuite, handleImportTestCase,
         selectedTestSuite, selectedTestCase,
         config, activeRunId, selectedPerformanceSuiteId,
-        handleAddWorkflow, handleEditWorkflow, handleRunWorkflow,
-        handleDeleteWorkflow, handleDuplicateWorkflow, handleSaveWorkflowToDisk, handleLoadWorkflowFromFile, handleSelectWorkflow, handleSelectWorkflowStep,
-        selectedWorkflowStep,
         handleAddPerformanceSuite, handleDeletePerformanceSuite, handleRunPerformanceSuite,
         handleSelectPerformanceSuite, handleStopPerformanceRun, handleAddPerformanceRequestForUi,
         expandedPerformanceSuiteIds, handleTogglePerformanceSuiteExpand,
@@ -2117,7 +2006,7 @@ const MainContent: React.FC = () => {
         registerUnifiedExecute,
         activeView, handleSetActiveViewWrapper, sidebarExpanded, backendConnected,
         workspaceDirty, handleSaveUiState, setShowHelp,
-        trafficWizard, sidebarLocked, guardedChangeView, guardedOpenSettings, guardedOpenHelp,
+        sidebarLocked, guardedChangeView, guardedOpenSettings, guardedOpenHelp,
         isMobileDrawerOpen, isMobile, setIsMobileDrawerOpen, hasUpdate,
         trafficCapturing,
     ]);
@@ -2163,21 +2052,13 @@ const MainContent: React.FC = () => {
                             state, so unmounting it to render the wizard "in
                             place" would wipe the traffic list on the way back.
                             The wizard fills the same work area on top instead. */}
-                        <div style={{ display: trafficWizard || testCaseWizard ? 'none' : 'flex', flex: 1, overflow: 'hidden', flexDirection: 'column', minHeight: 0 }}>
+                        <div style={{ display: testCaseWizard ? 'none' : 'flex', flex: 1, overflow: 'hidden', flexDirection: 'column', minHeight: 0 }}>
                             <ProxyPanel
                                 onNavigateTo={(view) => handleSetActiveViewWrapper(view as SidebarView)}
                                 onAddToApinoxProject={handleAddTrafficToProject}
-                                onCreateWorkflowFromTraffic={handleCreateWorkflowFromTraffic}
                                 onCreateTestCaseFromTraffic={handleCreateTestCaseFromTraffic}
                             />
                         </div>
-                        {trafficWizard && (
-                            <TrafficWorkflowWizard
-                                logs={trafficWizard.logs}
-                                onCancel={() => setTrafficWizard(null)}
-                                onDone={(wf) => { setTrafficWizard(null); void handleSaveWorkflowThenSelect(wf); }}
-                            />
-                        )}
                         {testCaseWizard && (
                             <CreateTestCaseFromTrafficWizard
                                 logs={testCaseWizard.logs}
@@ -2335,20 +2216,6 @@ const MainContent: React.FC = () => {
                         />
                     )
                 */}
-                {
-                    workflowBuilderModal.open && (
-                        <WorkflowBuilderModal
-                            isOpen={workflowBuilderModal.open}
-                            onClose={() => {
-                                console.log('[Workflows] Closing modal');
-                                setWorkflowBuilderModal({ open: false, workflow: null, projectPath: null });
-                            }}
-                            workflow={workflowBuilderModal.workflow || undefined}
-                            onSave={handleSaveWorkflow}
-                            projects={unifiedProjects}
-                        />
-                    )
-                }
             </Suspense>
             {/* Phase B (t_86c34d38): the legacy shared context menu (ContextMenu/
                 ContextMenuItem) and its RenameModal were deleted with the
@@ -2495,8 +2362,8 @@ const MainContent: React.FC = () => {
                             // which flattens them into operations[] (reusing the
                             // migration's transform) and merges idempotently
                             // into the unified store. The additive nested write
-                            // keeps PROXY/WORKFLOWS (nested-model readers)
-                            // working on the imported project. Awaited FIRST so
+                            // keeps PROXY (nested-model reader) working on the
+                            // imported project. Awaited FIRST so
                             // the canonical unified dir exists before any legacy
                             // in-session write (which would otherwise race and
                             // create a legacy dir, triggering an unwanted rename).
@@ -2510,8 +2377,8 @@ const MainContent: React.FC = () => {
                             const finalName = saved?.name ? String(saved.name) : projectName;
 
                             // In-session legacy list: PROXY (AddToProjectDialog)
-                            // and WORKFLOWS (request-picker) read the nested
-                            // model from useProject().projects IN THIS SESSION
+                            // reads the nested model from
+                            // useProject().projects IN THIS SESSION
                             // (they do not re-load from disk on demand), so add
                             // the interfaces there too. `isNew && i === 0`
                             // mirrors the original: only the first interface
