@@ -616,7 +616,6 @@ export const WorkspaceLayout: React.FC = () => {
                     coordinatorStatus={coordinatorStatus}
                     onStartCoordinator={onStartCoordinator}
                     onStopCoordinator={onStopCoordinator}
-                    workflows={config?.workflows || []}
                 />
             );
         }

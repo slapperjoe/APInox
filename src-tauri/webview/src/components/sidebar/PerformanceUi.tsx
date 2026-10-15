@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from '../common/EmptyState';
-import { Play, Square, Plus, ChevronRight, ChevronDown, GitBranch } from 'lucide-react';
+import { Play, Square, Plus, ChevronRight, ChevronDown } from 'lucide-react';
 import { SidebarPerformanceProps } from '../../types/props';
 import { SidebarContextMenu, CtxMenuSection, CtxMenuItem, Pencil, Trash2 } from './shared/SidebarContextMenu';
 import { SidebarContainer, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle, RowActions } from './shared/SidebarStyles';
@@ -95,8 +95,7 @@ export const PerformanceUi: React.FC<SidebarPerformanceProps> = ({
     onSelectRequest,
     onUpdateRequest,
     onToggleSuiteExpand,
-    expandedSuiteIds = [],
-    workflows = []
+    expandedSuiteIds = []
 }) => {
     const [isAdding, setIsAdding] = useState(false);
     const [newSuiteName, setNewSuiteName] = useState('');
@@ -206,23 +205,14 @@ export const PerformanceUi: React.FC<SidebarPerformanceProps> = ({
                                 </SuiteIcon>
                                 <SuiteLabel>
                                     {suite.name}
-                                    {suite.workflow && (
-                                        <GitBranch
-                                            size={12}
-                                            style={{ marginLeft: 6, verticalAlign: 'middle', opacity: 0.7 }}
-                                            aria-label="load-tests a workflow"
-                                        />
-                                    )}
                                 </SuiteLabel>
                                 <Actions $parent={SuiteItem}>
-                                    {!suite.workflow && (
-                                        <IconButton
-                                            onClick={(e) => { e.stopPropagation(); onAddRequest?.(suite.id); }}
-                                            title="Add Request"
-                                        >
-                                            <Plus size={14} />
-                                        </IconButton>
-                                    )}
+                                    <IconButton
+                                        onClick={(e) => { e.stopPropagation(); onAddRequest?.(suite.id); }}
+                                        title="Add Request"
+                                    >
+                                        <Plus size={14} />
+                                    </IconButton>
                                     <RunButton
                                         onClick={(e) => { e.stopPropagation(); onRunSuite(suite.id); }}
                                         title="Run Suite"
@@ -232,33 +222,8 @@ export const PerformanceUi: React.FC<SidebarPerformanceProps> = ({
                                 </Actions>
                             </SuiteItem>
 
-                            {/* Render workflow steps when the suite is workflow-backed */}
-                            {expanded && suite.workflow && (() => {
-                                const wf = workflows.find(w => w.id === suite.workflow?.workflowId);
-                                if (!wf) {
-                                    return (
-                                        <RequestItem active={false} data-active={false} style={{ opacity: 0.6, fontStyle: 'italic' }}>
-                                            <RequestIndent />
-                                            <RequestLabel>workflow "{suite.workflow.workflowName}" not found</RequestLabel>
-                                        </RequestItem>
-                                    );
-                                }
-                                return wf.steps.filter(s => s.type === 'request').map((s, i) => (
-                                    <RequestItem
-                                        key={s.id || i}
-                                        active={false}
-                                        data-active={false}
-                                        title={s.endpoint}
-                                        style={{ cursor: 'default' }}
-                                    >
-                                        <RequestIndent />
-                                        <RequestLabel>{i + 1}. {s.name}</RequestLabel>
-                                    </RequestItem>
-                                ));
-                            })()}
-
                             {/* Render Requests (request-backed suite) */}
-                            {expanded && !suite.workflow && suite.requests?.map(req => (
+                            {expanded && suite.requests?.map(req => (
                                 <RequestItem
                                     key={req.id}
                                     active={false} // Currently we don't track selected request ID in sidebar explicitly? Or reuse selection context? using standard 'active' styling might be misleading if not synced

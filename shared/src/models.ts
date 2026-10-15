@@ -721,18 +721,6 @@ export interface PerformanceSuite {
         suiteId: string;
         suiteName: string;
     };
-    /**
-     * When set, the suite load-tests this workflow's request steps INSTEAD OF
-     * its own `requests` collection — the two are alternatives in the UI. The
-     * workflow is referenced by id (single source of truth in the Workflows
-     * rail); the runner resolves its steps at run time. Steps are executed
-     * sequentially per iteration (a workflow is an ordered, variable-sharing
-     * flow, so per-step concurrency doesn't apply).
-     */
-    workflow?: {
-        workflowId: string;
-        workflowName: string;
-    };
     /** Collapsed sections state for UI persistence */
     collapsedSections?: string[];
 }

@@ -95,8 +95,6 @@ export interface SidebarPerformanceProps {
     onUpdateRequest?: (suiteId: string, requestId: string, updates: Partial<import('@shared/models').PerformanceRequest>) => void;
     onToggleSuiteExpand?: (suiteId: string) => void;
     expandedSuiteIds?: string[];
-    /** All workflows — lets the sidebar expand a workflow-backed suite to show its steps. */
-    workflows?: import('@shared/models').Workflow[];
 }
 
 export interface SidebarUnifiedProps {
