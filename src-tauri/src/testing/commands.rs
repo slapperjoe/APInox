@@ -644,4 +644,141 @@ mod tests {
             .collect();
         assert_eq!(completes, vec![true, true]);
     }
+
+    fn condition_step(id: &str, expression: &str, expected: &str) -> FrontendTestStep {
+        FrontendTestStep {
+            id: id.to_string(),
+            name: format!("step {id}"),
+            step_type: "condition".to_string(),
+            config: FrontendStepConfig {
+                condition: Some(serde_json::json!({
+                    "id": format!("cond-{id}"),
+                    "expression": expression,
+                    "operator": "equals",
+                    "expectedValue": expected,
+                })),
+                ..Default::default()
+            },
+        }
+    }
+
+    /// The user's core requirement, end to end through the streaming path the
+    /// webview actually consumes: a FALSE condition FAILS at that step, the run
+    /// stops there, later steps never execute, and the case is reported failed.
+    #[tokio::test]
+    async fn run_test_case_stops_and_fails_on_false_condition() {
+        let case = FrontendTestCase {
+            id: "case-cond".to_string(),
+            name: "Case Cond".to_string(),
+            steps: vec![
+                delay_step("s1", 1),
+                condition_step("s2", "{{flag}}", "yes"),
+                delay_step("s3", 1),
+            ],
+            variables: None,
+        };
+
+        let response = run_test_case(RunTestCaseRequest {
+            test_case: case,
+            variables: None,
+            stream: true,
+            fallback_endpoint: None,
+        })
+        .await
+        .expect("case run");
+
+        let run_id = response.run_id.expect("streaming run id");
+        let (updates, drained) = collect_run_updates(run_id).await;
+        assert!(drained, "run did not complete");
+
+        let types: Vec<&str> = updates
+            .iter()
+            .map(|u| u["type"].as_str().unwrap_or_default())
+            .collect();
+        // NOTE: the single-case stream emits no `testCaseComplete` (that event is
+        // suite-level, per case) — `done` on the poll response ends the run.
+        assert_eq!(
+            types,
+            vec![
+                "testCaseStart",
+                "stepStart",
+                "stepPass",
+                "stepStart",
+                "stepFail"
+            ],
+            "the run must stop at the failed condition — step s3 must never start"
+        );
+
+        let failure = updates
+            .iter()
+            .find(|u| u["type"] == "stepFail")
+            .expect("stepFail event");
+        assert_eq!(failure["stepId"], "s2");
+        assert!(failure["error"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("condition failed"));
+        // No event may carry the third step's id: it never ran.
+        assert!(
+            !updates
+                .iter()
+                .any(|u| u["stepId"].as_str() == Some("s3")),
+            "step s3 must not be executed after a failed condition"
+        );
+    }
+
+    /// A TRUE condition passes and the run continues (guards against
+    /// over-eager stopping).
+    #[tokio::test]
+    async fn run_test_case_continues_on_true_condition() {
+        let case = FrontendTestCase {
+            id: "case-ok".to_string(),
+            name: "Case Cond OK".to_string(),
+            steps: vec![
+                delay_step("s1", 1),
+                condition_step("s2", "{{flag}}", "yes"),
+                delay_step("s3", 1),
+            ],
+            variables: Some(
+                [("flag".to_string(), "yes".to_string())]
+                    .into_iter()
+                    .collect(),
+            ),
+        };
+
+        let response = run_test_case(RunTestCaseRequest {
+            test_case: case,
+            variables: None,
+            stream: true,
+            fallback_endpoint: None,
+        })
+        .await
+        .expect("case run");
+
+        let run_id = response.run_id.expect("streaming run id");
+        let (updates, drained) = collect_run_updates(run_id).await;
+        assert!(drained, "run did not complete");
+
+        let types: Vec<&str> = updates
+            .iter()
+            .map(|u| u["type"].as_str().unwrap_or_default())
+            .collect();
+        assert_eq!(
+            types,
+            vec![
+                "testCaseStart",
+                "stepStart",
+                "stepPass",
+                "stepStart",
+                "stepPass",
+                "stepStart",
+                "stepPass"
+            ],
+            "a true condition passes and the run continues to the last step"
+        );
+        assert!(
+            updates.iter().any(|u| u["stepId"].as_str() == Some("s3")),
+            "step s3 must run after a passing condition"
+        );
+    }
 }
