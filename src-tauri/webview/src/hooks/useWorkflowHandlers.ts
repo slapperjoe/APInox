@@ -3,6 +3,7 @@ import { bridge } from '../utils/bridge';
 import { FrontendCommand } from '@shared/messages';
 import { SidebarView, type Workflow, type WorkflowStep, type ApinoxConfig, type TestSuite } from '@shared/models';
 import { findReferenceCycle } from '../utils/referenceCycle';
+import { embedWorkflowRun } from '../utils/runEmbedding';
 
 interface WorkflowBuilderModalState {
     open: boolean;
@@ -99,9 +100,12 @@ export function useWorkflowHandlers({
             // Open the workflow in the main area so the run results are visible.
             setActiveView(SidebarView.WORKFLOWS);
             setSelectedWorkflowStep({ workflow, step: null });
+            // Embed referenced test cases (recursively) so the backend
+            // executes a self-contained copy of each 'testCase' step.
+            const allCases = testSuites.flatMap(s => s.testCases || []);
             const result: any = await bridge.sendMessageAsync({
                 command: FrontendCommand.ExecuteWorkflow,
-                workflow,
+                workflow: embedWorkflowRun(workflow, config?.workflows || [], allCases),
                 environment: config?.activeEnvironment
             });
             setWorkflowRunResults(prev => ({ ...prev, [workflow.id]: result || {} }));
@@ -121,7 +125,7 @@ export function useWorkflowHandlers({
         } finally {
             setLoading(false);
         }
-    }, [config?.activeEnvironment, setLoading, setActiveView, setSelectedWorkflowStep, applyConfigResponse]);
+    }, [config?.activeEnvironment, config?.workflows, testSuites, setLoading, setActiveView, setSelectedWorkflowStep, applyConfigResponse]);
 
     const handleDeleteWorkflow = useCallback(async (workflow: Workflow) => {
         try {

@@ -17,12 +17,12 @@ import {
     Assertion,
     RequestExtractor,
     SidebarView,
-    ApinoxConfig,
-    Workflow
+    ApinoxConfig
 } from '@shared/models';
 import { bridge, isTauri } from '../utils/bridge';
 import { BackendCommand, FrontendCommand } from '@shared/messages';
 import { getInitialXml } from '@shared/utils/xmlUtils';
+import { embedTestRun } from '../utils/runEmbedding';
 import { useTestSuites } from '../contexts/TestSuiteContext';
 import { useUnifiedProjectsSafe } from '../contexts/UnifiedProjectContext';
 
@@ -81,26 +81,10 @@ export function useTestCaseHandlers({
     const { testSuites, addSuite, updateTestCase, findSuiteById, findCaseById } = useTestSuites();
     const { ensureProjectFull } = useUnifiedProjectsSafe();
 
-    /** Embed each 'workflow' test step's referenced workflow steps into the
-        run payload so the Rust runner executes a self-contained copy (no
-        config save-race / dangling id) and can stream per-sub-step results. */
-    const withEmbeddedWorkflows = useCallback((tc: TestCase, workflows: Workflow[]): TestCase => {
-        return {
-            ...tc,
-            steps: tc.steps.map(s => {
-                if (s.type !== 'workflow' || !s.config?.workflowId) return s;
-                const wf = workflows.find(w => w.id === s.config.workflowId);
-                if (!wf) return s;
-                return {
-                    ...s,
-                    config: {
-                        ...s.config,
-                        workflowSteps: wf.steps || []
-                    }
-                };
-            })
-        };
-    }, []);
+    /** Flat list of every global test case — the lookup table for recursive
+        reference embedding (workflow/testCase steps → self-contained steps). */
+    const allCases = testSuites.flatMap(s => s.testCases || []);
+
     /** Compute the next step object for an in-place step mutation (no-op if
         the step isn't a request step), then persist it through the global
         suite store and refresh the selection state. Replaces the old
@@ -370,8 +354,8 @@ export function useTestCaseHandlers({
                     const start = await bridge.sendMessageAsync<{ runId: string }>({
                         command: FrontendCommand.RunTestCase,
                         caseId,
-                        // Embed referenced workflow steps (self-contained run)
-                        testCase: withEmbeddedWorkflows(testCase, config?.workflows || []),
+                        // Embed referenced workflow/testCase steps (self-contained run)
+                        testCase: embedTestRun([testCase], config?.workflows || [], allCases)[0],
                         // Suite-level variables — the bridge layers these over
                         // the resolved environment; the case's own variables are
                         // applied by Rust (case wins).
@@ -396,7 +380,7 @@ export function useTestCaseHandlers({
             testCase,
             fallbackEndpoint: testCase.steps[0]?.config?.request?.endpoint || ''
         });
-    }, [findCaseById, withEmbeddedWorkflows, config, pollTestRunUpdates]);
+    }, [findCaseById, allCases, config, pollTestRunUpdates]);
 
     const handleRunTestSuiteWrapper = useCallback((suiteId: string) => {
         console.log('[handleRunTestSuiteWrapper] CALLED with suiteId:', suiteId);
@@ -419,13 +403,12 @@ export function useTestCaseHandlers({
                     const start = await bridge.sendMessageAsync<{ runId: string }>({
                         command: FrontendCommand.RunTestSuite,
                         suiteId,
-                        // Embed referenced workflow steps in EVERY case so the
-                        // backend executes a self-contained copy (no config
-                        // save-race), same as single-case runs.
+                        // Embed referenced workflow/testCase steps in EVERY
+                        // case so the backend executes a self-contained copy
+                        // (no config save-race), same as single-case runs.
                         testSuite: {
                             ...suite,
-                            testCases: (suite.testCases || []).map(tc =>
-                                withEmbeddedWorkflows(tc, config?.workflows || []))
+                            testCases: embedTestRun(suite.testCases || [], config?.workflows || [], allCases)
                         },
                         stream: true
                     });
@@ -445,7 +428,7 @@ export function useTestCaseHandlers({
             suiteId,
             testSuite: suite
         });
-    }, [findSuiteById, withEmbeddedWorkflows, config, pollTestRunUpdates]);
+    }, [findSuiteById, allCases, config, pollTestRunUpdates]);
 
     const handleSaveExtractor = useCallback((data: { xpath: string, value: string, source: 'body' | 'header', variableName: string, defaultValue?: string, editingId?: string, type?: 'XPath' | 'JSONPath' | 'Regex' | 'Header' }) => {
         if (!selectedTestCase || !selectedStep) {
