@@ -114,6 +114,9 @@ const StepActionBtn = styled.button`
 `;
 
 const AddStepRow = styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: ${SPACING_XS};
     padding: ${SPACING_SM} 12px ${SPACING_SM} 40px;
 `;
 
@@ -148,6 +151,8 @@ interface WorkflowsUiProps {
     onSelect?: (workflow: Workflow) => void;
     onSelectStep?: (workflow: Workflow, step: WorkflowStep) => void;
     onAddStep?: (workflow: Workflow) => void;
+    /** Add a 'testCase' step (references a global test case) to the workflow. */
+    onAddTestCaseStep?: (workflow: Workflow) => void;
     onDeleteStep?: (workflow: Workflow, stepId: string) => void;
     onMoveStep?: (workflow: Workflow, stepId: string, direction: -1 | 1) => void;
     /** The step currently open in the workflow editor — its row is highlighted.
@@ -169,6 +174,7 @@ export const WorkflowsUi: React.FC<WorkflowsUiProps> = ({
     onSelect,
     onSelectStep,
     onAddStep,
+    onAddTestCaseStep,
     onDeleteStep,
     onMoveStep,
     selectedWorkflowStep,
@@ -378,6 +384,11 @@ export const WorkflowsUi: React.FC<WorkflowsUiProps> = ({
                                         <AddStepButton onClick={() => onAddStep(workflow)}>
                                             <Plus size={12} /> Add Step
                                         </AddStepButton>
+                                        {onAddTestCaseStep && (
+                                            <AddStepButton onClick={() => onAddTestCaseStep(workflow)}>
+                                                <Plus size={12} /> Add Test Case
+                                            </AddStepButton>
+                                        )}
                                     </AddStepRow>
                                 )}
                             </div>

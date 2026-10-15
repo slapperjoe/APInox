@@ -7,6 +7,7 @@ export { WorkflowEditor } from './WorkflowEditor';
 export { WorkflowPropertiesPanel } from './WorkflowPropertiesPanel';
 export { DelayStepEditor } from './DelayStepEditor';
 export { ConditionStepEditor } from './ConditionStepEditor';
+export { TestCaseStepEditor } from './TestCaseStepEditor';
 export { LoopStepEditor } from './LoopStepEditor';
 export { ScriptStepEditor } from './ScriptStepEditor';
 export { RequestStepEditor } from './RequestStepEditor';

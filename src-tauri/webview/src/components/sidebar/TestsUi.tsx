@@ -336,7 +336,7 @@ export const TestsUi: React.FC<TestsUiProps> = ({
         }
         if (status?.status === 'skipped') {
             return (
-                <StepStatusSkipped data-testid="substep-status-slot" title="Skipped (not executed in test runs)">
+                <StepStatusSkipped data-testid="substep-status-slot" title="Skipped">
                     <Minus size={13} />
                 </StepStatusSkipped>
             );

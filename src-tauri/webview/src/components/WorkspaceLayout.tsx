@@ -18,6 +18,7 @@ import { WorkflowEditor } from './workspace/WorkflowEditor';
 import { RequestStepEditor } from './workspace/RequestStepEditor';
 import { DelayStepEditor } from './workspace/DelayStepEditor';
 import { ConditionStepEditor } from './workspace/ConditionStepEditor';
+import { TestCaseStepEditor } from './workspace/TestCaseStepEditor';
 import { LoopStepEditor } from './workspace/LoopStepEditor';
 import { ScriptStepEditor } from './workspace/ScriptStepEditor';
 import { EmptyState } from './common/EmptyState';
@@ -1157,6 +1158,14 @@ export const WorkspaceLayout: React.FC = () => {
                     return <ConditionStepEditor step={step} onUpdate={updateHandler} />;
                 case 'loop':
                     return <LoopStepEditor step={step} onUpdate={updateHandler} />;
+                case 'testCase':
+                    return (
+                        <TestCaseStepEditor
+                            step={step}
+                            testCases={globalTestCases || []}
+                            onUpdate={updateHandler}
+                        />
+                    );
                 case 'script':
                     return <ScriptStepEditor step={step} onUpdate={updateHandler} />;
                 default:

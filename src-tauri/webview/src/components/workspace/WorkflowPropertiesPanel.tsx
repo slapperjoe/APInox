@@ -329,6 +329,7 @@ export const WorkflowPropertiesPanel: React.FC<WorkflowPropertiesPanelProps> = (
     const requestCount = workflow.steps.filter(s => s.type === 'request').length;
     const loopCount = workflow.steps.filter(s => s.type === 'loop').length;
     const conditionCount = workflow.steps.filter(s => s.type === 'condition').length;
+    const testCaseCount = workflow.steps.filter(s => s.type === 'testCase').length;
 
     return (
         <Container>
@@ -383,6 +384,10 @@ export const WorkflowPropertiesPanel: React.FC<WorkflowPropertiesPanelProps> = (
                     <StatBox>
                         <StatLabel>Conditions</StatLabel>
                         <StatValue>{conditionCount}</StatValue>
+                    </StatBox>
+                    <StatBox>
+                        <StatLabel>Test Cases</StatLabel>
+                        <StatValue>{testCaseCount}</StatValue>
                     </StatBox>
                 </StatsGrid>
             </Section>

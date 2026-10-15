@@ -1471,6 +1471,7 @@ const MainContent: React.FC = () => {
         handleUpdateWorkflow,
         handleLoadWorkflowFromFile,
         handleAddWorkflowStep,
+        handleAddWorkflowTestCaseStep,
         handleDeleteWorkflowStep,
         handleMoveWorkflowStep,
     } = useWorkflowHandlers({
@@ -1990,6 +1991,7 @@ const MainContent: React.FC = () => {
             onSelect: handleSelectWorkflow,
             onSelectStep: handleSelectWorkflowStep,
             onAddStep: handleAddWorkflowStep,
+            onAddTestCaseStep: handleAddWorkflowTestCaseStep,
             onDeleteStep: handleDeleteWorkflowStep,
             onMoveStep: handleMoveWorkflowStep,
             selectedWorkflowStep,

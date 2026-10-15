@@ -245,6 +245,24 @@ export function useWorkflowHandlers({
         await handleUpdateWorkflow({ ...workflow, steps: [...(workflow.steps || []), newStep] });
     }, [handleUpdateWorkflow]);
 
+    /** Add a 'testCase' step (references a global test case) and select it so
+     *  its editor opens. Mirrors handleAddWorkflowStep's save path. */
+    const handleAddWorkflowTestCaseStep = useCallback(async (workflow: Workflow) => {
+        const newStep: WorkflowStep = {
+            id: crypto.randomUUID(),
+            name: 'New Test Case Step',
+            type: 'testCase',
+            order: workflow.steps?.length || 0,
+            extractors: [],
+            testCaseId: '',
+        };
+        const updated: Workflow = { ...workflow, steps: [...(workflow.steps || []), newStep] };
+        await handleUpdateWorkflow(updated);
+        // Select with the UPDATED workflow (not the stale pre-add object) so a
+        // later step edit maps over a steps array that contains the new step.
+        handleSelectWorkflowStep(updated, newStep);
+    }, [handleUpdateWorkflow, handleSelectWorkflowStep]);
+
     const handleDeleteWorkflowStep = useCallback(async (workflow: Workflow, stepId: string) => {
         await handleUpdateWorkflow({
             ...workflow,
@@ -281,6 +299,7 @@ export function useWorkflowHandlers({
         handleUpdateWorkflow,
         handleLoadWorkflowFromFile,
         handleAddWorkflowStep,
+        handleAddWorkflowTestCaseStep,
         handleDeleteWorkflowStep,
         handleMoveWorkflowStep,
     };

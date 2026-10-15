@@ -379,6 +379,8 @@ export const WorkflowBuilderModal: React.FC<WorkflowBuilderModalProps> = ({
             newStep.loopSteps = [];
         } else if (type === 'script') {
             newStep.script = '// Your JavaScript code here\n// Available: variables, console.log\n';
+        } else if (type === 'testCase') {
+            newStep.testCaseId = '';
         }
 
         setSteps([...steps, newStep]);
@@ -761,6 +763,10 @@ export const WorkflowBuilderModal: React.FC<WorkflowBuilderModalProps> = ({
                                         <Plus size={12} />
                                         Script
                                     </DropdownItem>
+                                    <DropdownItem onClick={() => { addStep('testCase'); setMainAddStepDropdownOpen(false); }}>
+                                        <Plus size={12} />
+                                        Test Case
+                                    </DropdownItem>
                                 </DropdownMenu>
                             )}
                         </AddNestedStepDropdown>
@@ -893,7 +899,7 @@ export const WorkflowBuilderModal: React.FC<WorkflowBuilderModalProps> = ({
                                             />
                                         </div>
                                         <div style={{ fontSize: '11px', opacity: 0.6, marginTop: '4px', padding: SPACING_SM, background: 'var(--apinox-textCodeBlock-background)', borderRadius: '4px' }}>
-                                            Note: Branching to specific steps not yet implemented. Condition will skip remaining steps if false.
+                                            Note: Branching to specific steps not yet implemented. If the condition is false the step fails and the workflow stops.
                                         </div>
                                     </div>
                                 )}
