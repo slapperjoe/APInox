@@ -79,6 +79,27 @@ fn save_store(path: &PathBuf, data: &TestSuiteStore) -> Result<(), String> {
     Ok(())
 }
 
+/// Read the global test-suite store as the raw `{ "suites": [...] }` document
+/// the file actually holds, for the startup workflow migration (no per-suite
+/// deserialization — the store is an opaque blob).
+pub(crate) fn load_suites_document() -> Result<serde_json::Value, String> {
+    let path = get_test_suites_path()?;
+    let store = load_store(&path);
+    Ok(serde_json::json!({ "suites": store.suites }))
+}
+
+/// Write a raw `{ "suites": [...] }` document back through the store's own
+/// save path so the on-disk shape is unchanged (straight replacement).
+pub(crate) fn save_suites_document(document: &serde_json::Value) -> Result<(), String> {
+    let path = get_test_suites_path()?;
+    let suites = document
+        .get("suites")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+    save_store(&path, &TestSuiteStore { suites })
+}
+
 /// Get all global test suites.
 #[tauri::command]
 pub async fn get_test_suites() -> Result<Vec<serde_json::Value>, String> {

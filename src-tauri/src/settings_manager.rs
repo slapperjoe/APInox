@@ -212,6 +212,37 @@ fn save_config(config: &ApinoxConfig) -> Result<(), String> {
     Ok(())
 }
 
+/// Read `config.jsonc` as an opaque JSON document (JSONC via json5), without
+/// deserializing into the typed [`ApinoxConfig`].
+///
+/// The startup workflow migration must see every key on disk verbatim — the
+/// typed struct drops unknown fields and (after Phase 2) the very
+/// `workflows`/`workflowRunHistory` keys being migrated. A missing file reads
+/// as an empty object (mirrors `load_config`'s default).
+pub(crate) fn load_config_document() -> Result<Value, String> {
+    let config_path = get_config_path()?;
+    if !config_path.exists() {
+        return Ok(Value::Object(serde_json::Map::new()));
+    }
+    let content = fs::read_to_string(&config_path)
+        .map_err(|e| format!("Failed to read config file: {}", e))?;
+    let value: Value = json5::from_str(&content)
+        .map_err(|e| format!("Failed to parse config document: {}", e))?;
+    Ok(value)
+}
+
+/// Write a raw config document back as plain JSON (the same format
+/// `save_config` produces — `config.jsonc` already loses its comments on any
+/// typed save). Writes the whole document verbatim so unrelated keys survive.
+pub(crate) fn save_config_document(document: &Value) -> Result<(), String> {
+    let config_path = get_config_path()?;
+    let content = serde_json::to_string_pretty(document)
+        .map_err(|e| format!("Failed to serialize config document: {}", e))?;
+    fs::write(&config_path, content)
+        .map_err(|e| format!("Failed to write config file: {}", e))?;
+    Ok(())
+}
+
 /// Get full config
 #[tauri::command]
 pub async fn get_settings() -> Result<ApinoxConfig, String> {

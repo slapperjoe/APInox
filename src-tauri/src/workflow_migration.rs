@@ -342,18 +342,29 @@ pub fn migrate_workflow(workflow: &Value, existing_suites: &[Value]) -> (Value, 
 /// Rewrite the `workflow` step type inside a case (and inside nested loop
 /// bodies) into a `testCase` step pointing at the migrated case id.
 pub fn rewrite_case_workflow_steps(case: &Value) -> Value {
+    rewrite_case_workflow_steps_counted(case).0
+}
+
+/// Same as [`rewrite_case_workflow_steps`] but also returns how many steps
+/// were actually rewritten, so the document driver can fill
+/// `MigrationReport::case_steps_rewritten`.
+fn rewrite_case_workflow_steps_counted(case: &Value) -> (Value, usize) {
     let mut out = case.clone();
+    let mut rewritten = 0usize;
     if let Some(map) = out.as_object_mut() {
         if let Some(steps) = map.get_mut("steps").and_then(|v| v.as_array_mut()) {
             for step in steps.iter_mut() {
-                rewrite_step_in_place(step);
+                rewritten += rewrite_step_in_place(step);
             }
         }
     }
-    out
+    (out, rewritten)
 }
 
-fn rewrite_step_in_place(step: &mut Value) {
+/// Rewrite one step in place; returns the number of `workflow` steps rewritten
+/// (0 or 1 for this step, plus any nested ones).
+fn rewrite_step_in_place(step: &mut Value) -> usize {
+    let mut rewritten = 0usize;
     let is_workflow = step.get("type").and_then(|v| v.as_str()) == Some("workflow");
 
     if is_workflow {
@@ -386,6 +397,7 @@ fn rewrite_step_in_place(step: &mut Value) {
             );
             cfg.insert("testCaseVariables".to_string(), vars);
         }
+        rewritten += 1;
     }
 
     // Recurse into loop bodies (WorkflowStep shape) — a loop step may itself
@@ -396,9 +408,10 @@ fn rewrite_step_in_place(step: &mut Value) {
         .and_then(|v| v.as_array_mut())
     {
         for ls in loop_steps.iter_mut() {
-            rewrite_step_in_place(ls);
+            rewritten += rewrite_step_in_place(ls);
         }
     }
+    rewritten
 }
 
 /// Materialize a performance suite's workflow reference into ordinary
@@ -525,6 +538,215 @@ fn perf_request_from_step(step: &Value, idx: u64) -> Value {
     req.insert("extractors".to_string(), Value::Array(extractors));
     req.insert("order".to_string(), Value::from(order));
     Value::Object(req)
+}
+
+/// Summary of a document-level migration run.
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct MigrationReport {
+    pub workflows_migrated: usize,
+    pub case_steps_rewritten: usize,
+    pub perf_suites_migrated: usize,
+}
+
+/// Return a perf workflow ref guaranteed to carry embedded `steps`.
+///
+/// A ref may be a *bare* `{ workflowId }` with no `steps` (the perf UI stored
+/// only the id). `migrate_perf_suite` only reads `workflow.steps`, so the
+/// driver resolves the referenced workflow from the config's `workflows` array
+/// and synthesizes the embedded `steps` value here. `None` means the workflow
+/// id is unknown — the caller then drops the dead ref and leaves `requests`
+/// as-is.
+fn resolve_perf_ref(wf_ref: &Value, workflows: &[Value]) -> Option<Value> {
+    // A ref that already carries embedded steps needs no lookup.
+    if wf_ref.get("steps").and_then(|v| v.as_array()).is_some() {
+        return Some(wf_ref.clone());
+    }
+    // Bare ref (`{ workflowId }`): look the workflow up by id.
+    let wf_id = wf_ref.get("workflowId").and_then(|v| v.as_str())?;
+    let workflow = workflows
+        .iter()
+        .find(|w| w.get("id").and_then(|v| v.as_str()) == Some(wf_id))?;
+    let mut resolved = wf_ref.clone();
+    if let Some(map) = resolved.as_object_mut() {
+        map.insert(
+            "steps".to_string(),
+            workflow
+                .get("steps")
+                .cloned()
+                .unwrap_or_else(|| Value::Array(Vec::new())),
+        );
+    }
+    Some(resolved)
+}
+
+/// Document-level driver: absorb every workflow in `config` into the global
+/// test-suite store (`suites`), rewrite in-store `workflow` steps, materialize
+/// performance-suite workflow refs, and strip the retired config keys.
+///
+/// Pure: both inputs are cloned; the returned documents keep every unrelated
+/// key verbatim. `suites` is the real store shape (`{ "suites": [...] }`) and
+/// the output keeps it. Migrated suites are upserted by their deterministic id
+/// (`suite-wf-<workflowId>`), never duplicated.
+pub fn migrate_documents(config: &Value, suites: &Value) -> (Value, Value, MigrationReport) {
+    let mut report = MigrationReport::default();
+
+    // The workflows to absorb, read before the config keys are stripped.
+    let workflows: Vec<Value> = config
+        .get("workflows")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+
+    // --- 1. Rewrite in-store `workflow` steps in every case of every suite. ---
+    let mut suite_list: Vec<Value> = suites
+        .get("suites")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+
+    for suite in suite_list.iter_mut() {
+        if let Some(cases) = suite.get_mut("testCases").and_then(|v| v.as_array_mut()) {
+            for case in cases.iter_mut() {
+                let (rewritten, count) = rewrite_case_workflow_steps_counted(case);
+                *case = rewritten;
+                report.case_steps_rewritten += count;
+            }
+        }
+    }
+
+    // --- 2. Absorb each workflow into one (suite, case); upsert by id. ---
+    for wf in &workflows {
+        let wf_id = wf.get("id").and_then(|v| v.as_str()).unwrap_or("");
+        let target_id = migrated_suite_id(wf_id);
+
+        // The collision check must not see the suite we are about to replace:
+        // its own name would otherwise trigger the " (migrated)" suffix on
+        // every re-run, breaking idempotency.
+        let others: Vec<Value> = suite_list
+            .iter()
+            .filter(|s| s.get("id").and_then(|v| v.as_str()) != Some(target_id.as_str()))
+            .cloned()
+            .collect();
+
+        let (mut suite, case) = migrate_workflow(wf, &others);
+        if let Some(map) = suite.as_object_mut() {
+            map.insert("testCases".to_string(), Value::Array(vec![case]));
+        }
+
+        match suite_list
+            .iter_mut()
+            .find(|s| s.get("id").and_then(|v| v.as_str()) == Some(target_id.as_str()))
+        {
+            Some(existing) => *existing = suite,
+            None => suite_list.push(suite),
+        }
+        report.workflows_migrated += 1;
+    }
+
+    // --- 3. Materialize performance-suite workflow refs (incl. bare refs). ---
+    let mut new_config = config.clone();
+    if let Some(perf) = new_config
+        .get_mut("performanceSuites")
+        .and_then(|v| v.as_array_mut())
+    {
+        for suite in perf.iter_mut() {
+            if suite.get("workflow").map_or(true, |w| w.is_null()) {
+                continue;
+            }
+            let wf_ref = suite["workflow"].clone();
+            match resolve_perf_ref(&wf_ref, &workflows) {
+                Some(ref_with_steps) => {
+                    // Inject the (possibly synthesized) steps-carrying ref back
+                    // onto the suite, then let `migrate_perf_suite` materialize
+                    // its requests and drop the ref.
+                    if let Some(map) = suite.as_object_mut() {
+                        map.insert("workflow".to_string(), ref_with_steps);
+                    }
+                    let migrated = migrate_perf_suite(suite);
+                    *suite = migrated;
+                }
+                None => {
+                    // The referenced workflow no longer exists: drop the dead
+                    // ref and leave `requests` as-is (the run then reports its
+                    // existing "no resolvable steps" path).
+                    log::warn!(
+                        "workflow_migration: performance suite references unknown workflow '{}'; dropping the ref",
+                        wf_ref
+                            .get("workflowId")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                    );
+                    if let Some(map) = suite.as_object_mut() {
+                        map.remove("workflow");
+                    }
+                }
+            }
+            report.perf_suites_migrated += 1;
+        }
+    }
+
+    // --- 4. Strip the retired config keys (they must not survive). ---
+    if let Some(map) = new_config.as_object_mut() {
+        map.remove("workflows");
+        map.remove("workflowRunHistory");
+    }
+
+    // Keep the store's real on-disk shape: `{ "suites": [...] }` (plus any
+    // other top-level keys the file happened to carry).
+    let mut new_suites = suites.clone();
+    if let Some(map) = new_suites.as_object_mut() {
+        map.insert("suites".to_string(), Value::Array(suite_list));
+    } else {
+        new_suites = serde_json::json!({ "suites": suite_list });
+    }
+
+    (new_config, new_suites, report)
+}
+
+/// One-shot startup migration: read the raw config + suite documents, migrate
+/// every workflow into the global test-case store, strip the retired config
+/// keys, and write both files back.
+///
+/// Idempotent: when nothing changes, neither file is written (a config with no
+/// `workflows` key and clean suites is a pure no-op). Every failure is logged
+/// and swallowed — it must never block app startup, and the raw files are left
+/// untouched on any error (both reads and the whole transform must succeed
+/// before either write happens).
+pub fn run_startup_migration() {
+    match migrate_startup_documents() {
+        Ok(report) => {
+            if report != MigrationReport::default() {
+                log::info!(
+                    "workflow_migration: startup absorption complete — workflows={}, case_steps_rewritten={}, perf_suites={}",
+                    report.workflows_migrated,
+                    report.case_steps_rewritten,
+                    report.perf_suites_migrated
+                );
+            }
+        }
+        Err(e) => log::error!(
+            "workflow_migration: startup absorption failed (continuing untouched): {}",
+            e
+        ),
+    }
+}
+
+/// Inner half of [`run_startup_migration`]: returns the report or an error so
+/// the caller can swallow/log it. Suites are written before config so a crash
+/// between the two writes still leaves a re-runnable state.
+fn migrate_startup_documents() -> Result<MigrationReport, String> {
+    let config = crate::settings_manager::load_config_document()?;
+    let suites = crate::test_suite_storage::load_suites_document()?;
+
+    let (new_config, new_suites, report) = migrate_documents(&config, &suites);
+
+    if new_suites != suites {
+        crate::test_suite_storage::save_suites_document(&new_suites)?;
+    }
+    if new_config != config {
+        crate::settings_manager::save_config_document(&new_config)?;
+    }
+    Ok(report)
 }
 
 #[cfg(test)]
@@ -740,5 +962,216 @@ mod tests {
         let suite = json!({ "id": "p3", "name": "Perf3", "requests": [] });
         let out = migrate_perf_suite(&suite);
         assert_eq!(out, suite);
+    }
+
+    // ------------------------------------------------------------------
+    // Document-level driver (Task 2).
+    // ------------------------------------------------------------------
+
+    #[test]
+    fn migrates_documents_end_to_end_and_strips_the_old_keys() {
+        let config = json!({
+            "workflows": [
+                { "id": "wf-1", "name": "Nightly", "variables": { "env": "sit01" },
+                  "steps": [ wf_step_request("s1") ] }
+            ],
+            "workflowRunHistory": [ { "runId": "r1" } ],
+            "performanceSuites": [
+                { "id": "p1", "name": "Perf", "requests": [],
+                  "workflow": { "workflowId": "wf-1", "steps": [ wf_step_request("s1") ] } }
+            ],
+            "ui": { "theme": "dark" }
+        });
+        let suites = json!({
+            "suites": [
+                { "id": "s1", "name": "TestSuite 1", "testCases": [
+                    { "id": "c1", "name": "C1", "steps": [
+                        { "id": "w", "name": "call wf", "type": "workflow",
+                          "config": { "workflowId": "wf-1" } }
+                    ] }
+                ] }
+            ]
+        });
+
+        let (new_config, new_suites, report) = migrate_documents(&config, &suites);
+
+        assert!(new_config.get("workflows").is_none(), "workflows stripped");
+        assert!(
+            new_config.get("workflowRunHistory").is_none(),
+            "history stripped"
+        );
+        assert_eq!(
+            new_config["ui"]["theme"], "dark",
+            "unrelated keys preserved"
+        );
+        assert!(new_config["performanceSuites"][0].get("workflow").is_none());
+        assert_eq!(
+            new_config["performanceSuites"][0]["requests"]
+                .as_array()
+                .unwrap()
+                .len(),
+            1
+        );
+
+        let all_suites = new_suites["suites"].as_array().unwrap();
+        assert_eq!(all_suites.len(), 2, "original suite + migrated suite");
+        let migrated = all_suites
+            .iter()
+            .find(|s| s["id"] == "suite-wf-wf-1")
+            .expect("migrated suite");
+        assert_eq!(migrated["name"], "Nightly");
+        assert_eq!(migrated["testCases"][0]["id"], "case-wf-wf-1");
+        // Existing case's workflow step now points at the migrated case.
+        let c1 = all_suites.iter().find(|s| s["id"] == "s1").unwrap();
+        assert_eq!(c1["testCases"][0]["steps"][0]["type"], "testCase");
+        assert_eq!(
+            c1["testCases"][0]["steps"][0]["config"]["testCaseId"],
+            "case-wf-wf-1"
+        );
+        assert_eq!(report.workflows_migrated, 1);
+        assert_eq!(report.case_steps_rewritten, 1);
+        assert_eq!(report.perf_suites_migrated, 1);
+    }
+
+    #[test]
+    fn is_idempotent_when_there_is_nothing_to_migrate() {
+        let config = json!({ "ui": {} });
+        let suites = json!({ "suites": [] });
+        let (c1, s1, report) = migrate_documents(&config, &suites);
+        assert_eq!(report.workflows_migrated, 0);
+        let (c2, s2, report2) = migrate_documents(&c1, &s1);
+        assert_eq!(report2.workflows_migrated, 0);
+        assert_eq!(c1, c2);
+        assert_eq!(s1, s2);
+    }
+
+    #[test]
+    fn does_not_duplicate_an_already_migrated_suite() {
+        // A re-run (or a crash between the two writes) must upsert by id.
+        let config = json!({ "workflows": [ { "id": "wf-1", "name": "Nightly", "steps": [] } ] });
+        let suites = json!({ "suites": [ { "id": "suite-wf-wf-1", "name": "Nightly", "testCases": [ { "id": "case-wf-wf-1", "name": "Nightly", "steps": [] } ] } ] });
+        let (_c, s, _r) = migrate_documents(&config, &suites);
+        assert_eq!(
+            s["suites"].as_array().unwrap().len(),
+            1,
+            "no duplicate suite"
+        );
+    }
+
+    #[test]
+    fn resolves_a_bare_perf_workflow_ref_against_the_config_workflows() {
+        // The perf ref carries ONLY a workflowId (no embedded steps) — the
+        // driver must resolve it against config.workflows so its requests
+        // still materialize. (migrate_perf_suite alone would leave `requests`
+        // untouched for a bare ref.)
+        let config = json!({
+            "workflows": [
+                { "id": "wf-1", "name": "Nightly", "steps": [ wf_step_request("s1") ] }
+            ],
+            "performanceSuites": [
+                { "id": "p1", "name": "Perf", "requests": [],
+                  "workflow": { "workflowId": "wf-1", "workflowName": "Nightly" } }
+            ]
+        });
+        let suites = json!({ "suites": [] });
+        let (new_config, _new_suites, report) = migrate_documents(&config, &suites);
+
+        let perf = &new_config["performanceSuites"][0];
+        assert!(perf.get("workflow").is_none(), "bare ref dropped");
+        let reqs = perf["requests"].as_array().unwrap();
+        assert_eq!(reqs.len(), 1, "bare ref still materialized its requests");
+        assert_eq!(reqs[0]["endpoint"], "http://api/token");
+        assert_eq!(reqs[0]["requestBody"], "<Req/>");
+        assert_eq!(reqs[0]["extractors"][0]["variable"], "token");
+        assert_eq!(report.perf_suites_migrated, 1);
+    }
+
+    #[test]
+    fn drops_a_perf_ref_to_an_unknown_workflow_and_leaves_requests() {
+        let config = json!({
+            "performanceSuites": [
+                { "id": "p1", "name": "Perf",
+                  "requests": [{ "id": "r0", "name": "Existing", "endpoint": "http://x",
+                                 "method": "GET", "requestBody": "", "headers": {},
+                                 "extractors": [], "order": 0 }],
+                  "workflow": { "workflowId": "gone" } }
+            ]
+        });
+        let suites = json!({ "suites": [] });
+        let (new_config, _new_suites, _report) = migrate_documents(&config, &suites);
+
+        let perf = &new_config["performanceSuites"][0];
+        assert!(perf.get("workflow").is_none(), "dead ref dropped");
+        let reqs = perf["requests"].as_array().unwrap();
+        assert_eq!(reqs.len(), 1, "existing requests left as-is");
+        assert_eq!(reqs[0]["id"], "r0");
+    }
+
+    #[test]
+    fn startup_migration_writes_both_documents_once_and_is_idempotent() {
+        use crate::utils::config::CONFIG_DIR_TEST_LOCK;
+
+        let _guard = CONFIG_DIR_TEST_LOCK
+            .lock()
+            .unwrap_or_else(|p| p.into_inner());
+        let tmp = tempfile::tempdir().expect("create temp config dir");
+        std::env::set_var("APINOX_CONFIG_DIR", tmp.path());
+
+        std::fs::write(
+            tmp.path().join("config.jsonc"),
+            serde_json::to_string_pretty(&json!({
+                "workflows": [ { "id": "wf-1", "name": "Nightly", "steps": [ wf_step_request("s1") ] } ],
+                "workflowRunHistory": [],
+                "ui": { "theme": "dark" }
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        std::fs::write(
+            tmp.path().join("test-suites.json"),
+            serde_json::to_string_pretty(&json!({
+                "suites": [ { "id": "s1", "name": "TestSuite 1", "testCases": [
+                    { "id": "c1", "name": "C1", "steps": [
+                        { "id": "w", "name": "call wf", "type": "workflow",
+                          "config": { "workflowId": "wf-1" } }
+                    ] }
+                ] } ]
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+
+        run_startup_migration();
+
+        let config: Value = serde_json::from_str(
+            &std::fs::read_to_string(tmp.path().join("config.jsonc")).unwrap(),
+        )
+        .unwrap();
+        assert!(config.get("workflows").is_none());
+        assert!(config.get("workflowRunHistory").is_none());
+        assert_eq!(config["ui"]["theme"], "dark", "unrelated keys preserved");
+
+        let suites: Value = serde_json::from_str(
+            &std::fs::read_to_string(tmp.path().join("test-suites.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(suites["suites"].as_array().unwrap().len(), 2);
+
+        // Second run: nothing to migrate → no writes, byte-identical files.
+        let before_config = std::fs::read_to_string(tmp.path().join("config.jsonc")).unwrap();
+        let before_suites = std::fs::read_to_string(tmp.path().join("test-suites.json")).unwrap();
+        run_startup_migration();
+        assert_eq!(
+            std::fs::read_to_string(tmp.path().join("config.jsonc")).unwrap(),
+            before_config,
+            "idempotent run must not rewrite the config"
+        );
+        assert_eq!(
+            std::fs::read_to_string(tmp.path().join("test-suites.json")).unwrap(),
+            before_suites,
+            "idempotent run must not rewrite the suites"
+        );
+
+        std::env::remove_var("APINOX_CONFIG_DIR");
     }
 }

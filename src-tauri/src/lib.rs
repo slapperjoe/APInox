@@ -617,6 +617,11 @@ pub fn run() {
         .setup(|app| {
             init_logging(app)?;
             init_window(app);
+            // Phase 1 workflow absorption: migrate every workflow on disk into
+            // the global test-case store and strip the retired config keys,
+            // before any struct-based save can drop them. Idempotent and
+            // failure-tolerant (never blocks startup).
+            crate::workflow_migration::run_startup_migration();
             app.manage(LazyProxyAppState::new());
             Ok(())
         })
