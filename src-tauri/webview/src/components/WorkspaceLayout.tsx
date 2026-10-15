@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { Play, ChevronLeft, GitBranch, Clock, FileCode, FileText, RefreshCw } from 'lucide-react';
+import { Play, ChevronLeft, GitBranch, Clock, FileCode, FileText, RefreshCw, ListChecks } from 'lucide-react';
 // Models imported via props.ts indirections, specific enums kept if needed locally (TestStepType is used in code?)
 // Checking code: TestStepType is used in props interface but not local var?
 // Actually TestStepType is used in onAddStep signature but onAddStep comes from props.
@@ -148,6 +148,7 @@ export const WorkspaceLayout: React.FC = () => {
         // SELECTION STATE - Test Cases
         selectedTestSuite,
         selectedTestCase,
+        testCases: globalTestCases,
         selectedTestStep: selectedStep,  // Alias for backward compatibility
         
         // SELECTION STATE - Workflows
@@ -630,6 +631,261 @@ export const WorkspaceLayout: React.FC = () => {
             />;
         }
 
+        // TESTS: condition step — reuse the workflow ConditionStepEditor by
+        // shaping a pseudo WorkflowStep from this test step's config (the
+        // editor only reads name + condition; the WORKFLOWS view keeps using
+        // the same component unchanged).
+        if (selectedStep && selectedStep.type === 'condition' && !isReadOnly && onUpdateStep) {
+            const pseudo: WorkflowStep = {
+                id: selectedStep.id,
+                name: selectedStep.name,
+                type: 'condition',
+                order: 0,
+                condition: selectedStep.config?.condition,
+            };
+            return (
+                <Content>
+                    <Toolbar>
+                        {onBackToCase && (
+                            <ToolbarButton onClick={onBackToCase} title="Back to Test Case">
+                                <ChevronLeft size={14} /> Back
+                            </ToolbarButton>
+                        )}
+                        <DelayTitle>Condition Configuration</DelayTitle>
+                    </Toolbar>
+                    <DelayContent>
+                        <ConditionStepEditor
+                            step={pseudo}
+                            onUpdate={(updated) => onUpdateStep({
+                                ...selectedStep,
+                                name: updated.name,
+                                config: { ...selectedStep.config, condition: updated.condition },
+                            })}
+                        />
+                    </DelayContent>
+                </Content>
+            );
+        }
+
+        // TESTS: loop step — same adapter, reusing the workflow LoopStepEditor
+        // (it only reads/writes name + loop + loopSteps).
+        if (selectedStep && selectedStep.type === 'loop' && !isReadOnly && onUpdateStep) {
+            const pseudo: WorkflowStep = {
+                id: selectedStep.id,
+                name: selectedStep.name,
+                type: 'loop',
+                order: 0,
+                loop: selectedStep.config?.loop,
+                loopSteps: selectedStep.config?.loopSteps,
+            };
+            return (
+                <Content>
+                    <Toolbar>
+                        {onBackToCase && (
+                            <ToolbarButton onClick={onBackToCase} title="Back to Test Case">
+                                <ChevronLeft size={14} /> Back
+                            </ToolbarButton>
+                        )}
+                        <DelayTitle>Loop Configuration</DelayTitle>
+                    </Toolbar>
+                    <DelayContent>
+                        <LoopStepEditor
+                            step={pseudo}
+                            onUpdate={(updated) => onUpdateStep({
+                                ...selectedStep,
+                                name: updated.name,
+                                config: {
+                                    ...selectedStep.config,
+                                    loop: updated.loop,
+                                    loopSteps: updated.loopSteps,
+                                },
+                            })}
+                        />
+                    </DelayContent>
+                </Content>
+            );
+        }
+
+        // TESTS: testCase step — mirror the 'workflow' config screen with the
+        // global case list (select the referenced case, preview its steps,
+        // override its variables). Save-time cycle guard lives in
+        // handleUpdateStep (see useWorkspaceCallbacks).
+        if (selectedStep && selectedStep.type === 'testCase' && !isReadOnly && onUpdateStep) {
+            const cases = globalTestCases || [];
+            const referencedCase = cases.find(c => c.id === selectedStep.config?.testCaseId);
+            const tcSteps = referencedCase?.steps || [];
+            const tcStepIcon = (type: string) => {
+                switch (type) {
+                    case 'delay': return <Clock size={13} />;
+                    case 'script': return <FileCode size={13} />;
+                    case 'condition': return <GitBranch size={13} />;
+                    case 'loop': return <RefreshCw size={13} />;
+                    case 'testCase': return <FileText size={13} />;
+                    case 'request':
+                    default: return <FileText size={13} />;
+                }
+            };
+            const tcStepMeta = (s: TestStep) => {
+                switch (s.type) {
+                    case 'delay':
+                        return `${s.config?.delayMs ?? 0} ms`;
+                    case 'condition':
+                        return s.config?.condition?.expression || '';
+                    case 'loop':
+                        return s.config?.loop
+                            ? `${s.config.loop.type === 'count' ? (s.config.loop.count ?? 0) + 'x' : s.config.loop.type} · ${s.config.loopSteps?.length || 0} steps`
+                            : '';
+                    case 'testCase':
+                        return s.config?.testCaseId || '';
+                    case 'workflow':
+                        return s.config?.workflowId || '';
+                    case 'request':
+                    default: {
+                        const method = s.config?.request?.method || 'POST';
+                        const target = s.config?.request?.name || '';
+                        return target ? `${method} ${target}` : method;
+                    }
+                }
+            };
+
+            return (
+                <Content>
+                    <Toolbar>
+                        {onBackToCase && (
+                            <ToolbarButton onClick={onBackToCase} title="Back to Test Case">
+                                <ChevronLeft size={14} /> Back
+                            </ToolbarButton>
+                        )}
+                        <DelayTitle>Test Case Configuration</DelayTitle>
+                    </Toolbar>
+                    <DelayContent>
+                        <h2>Step: {selectedStep.name}</h2>
+                        <DelayField>
+                            <DelayLabel>Test Case:</DelayLabel>
+                            {/* Themed CustomSelect — a native <select>'s dropdown
+                                list is OS-rendered and ignores the app skin. */}
+                            <CustomSelect
+                                value={selectedStep.config?.testCaseId || ''}
+                                placeholder="Select a test case..."
+                                onChange={(value) => {
+                                    onUpdateStep({
+                                        ...selectedStep,
+                                        config: { ...selectedStep.config, testCaseId: value }
+                                    });
+                                }}
+                                options={[
+                                    { value: '', label: 'Select a test case...' },
+                                    ...cases.map((c) => ({ value: c.id, label: c.name }))
+                                ]}
+                            />
+                        </DelayField>
+                        <DelayField>
+                            <DelayLabel>Test Case steps{referencedCase ? ` (${tcSteps.length})` : ''}:</DelayLabel>
+                            {referencedCase && tcSteps.length > 0 ? (
+                                <div style={{ border: '1px solid var(--apinox-panel-border)', borderRadius: '2px', overflow: 'hidden' }}>
+                                    {tcSteps.map((s: TestStep, i: number) => (
+                                        <div
+                                            key={s.id}
+                                            title={s.name}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 8,
+                                                padding: '6px 10px',
+                                                fontSize: '13px',
+                                                borderTop: i ? '1px solid var(--apinox-panel-border)' : 'none'
+                                            }}
+                                        >
+                                            <span style={{ opacity: 0.6, display: 'inline-flex', flexShrink: 0 }}>
+                                                {tcStepIcon(s.type)}
+                                            </span>
+                                            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {s.name}
+                                            </span>
+                                            {tcStepMeta(s) && (
+                                                <span style={{ fontSize: '11px', opacity: 0.6, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                                    {tcStepMeta(s)}
+                                                </span>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div style={{
+                                    fontSize: '12px',
+                                    opacity: 0.6,
+                                    padding: '8px 10px',
+                                    border: '1px dashed var(--apinox-panel-border)',
+                                    borderRadius: '2px'
+                                }}>
+                                    {referencedCase
+                                        ? 'This test case has no steps yet.'
+                                        : 'Select a test case to see its steps here.'}
+                                </div>
+                            )}
+                            {referencedCase && tcSteps.length > 0 && (
+                                <div style={{ fontSize: '11px', color: 'var(--apinox-descriptionForeground)', marginTop: '8px' }}>
+                                    Read-only — edit these steps in the TESTS view.
+                                </div>
+                            )}
+                        </DelayField>
+                        <DelayField>
+                            <DelayLabel>Override Variables (JSON):</DelayLabel>
+                            {/* Shows the referenced case's variables with their
+                                default values (plus any saved overrides) so the
+                                user can see what's available and change values.
+                                Only values that differ from the defaults are
+                                persisted as overrides. */}
+                            <textarea
+                                value={JSON.stringify({
+                                    ...(referencedCase?.variables || {}),
+                                    ...(selectedStep.config.testCaseVariables || {})
+                                }, null, 2)}
+                                onChange={(e) => {
+                                    try {
+                                        const edited = JSON.parse(e.target.value) as Record<string, unknown>;
+                                        const defaults = (referencedCase?.variables || {}) as Record<string, string>;
+                                        const overrides: Record<string, string> = {};
+                                        for (const [k, v] of Object.entries(edited)) {
+                                            if (!(k in defaults) || defaults[k] !== v) {
+                                                overrides[k] = String(v);
+                                            }
+                                        }
+                                        onUpdateStep({
+                                            ...selectedStep,
+                                            config: { ...selectedStep.config, testCaseVariables: overrides }
+                                        });
+                                    } catch (err) {
+                                        // Invalid JSON - don't update
+                                        console.error('Invalid JSON for test case variables:', err);
+                                    }
+                                }}
+                                rows={8}
+                                placeholder={referencedCase
+                                    ? '{"variable1": "value1"}'
+                                    : 'Select a test case to see its variables'}
+                                style={{
+                                    background: 'var(--apinox-input-background)',
+                                    color: 'var(--apinox-input-foreground)',
+                                    border: '1px solid var(--apinox-input-border)',
+                                    padding: '8px',
+                                    borderRadius: '2px',
+                                    fontFamily: 'monospace',
+                                    fontSize: '12px',
+                                    width: '100%'
+                                }}
+                            />
+                            <div style={{ fontSize: '11px', color: 'var(--apinox-descriptionForeground)', marginTop: '8px' }}>
+                                {referencedCase
+                                    ? "Values override the referenced case's own variables (which override its suite's and the environment). Only changed values are saved as overrides; references are cycle-checked on save."
+                                    : 'Values override the referenced case\'s own variables. References are cycle-checked on save.'}
+                            </div>
+                        </DelayField>
+                    </DelayContent>
+                </Content>
+            );
+        }
+
         if (selectedStep && selectedStep.type === 'workflow' && !isReadOnly && onUpdateStep) {
             // Load workflows from config
             const workflows = config?.workflows || [];
@@ -643,6 +899,7 @@ export const WorkspaceLayout: React.FC = () => {
                     case 'script': return <FileCode size={13} />;
                     case 'condition': return <GitBranch size={13} />;
                     case 'loop': return <RefreshCw size={13} />;
+                    case 'testCase': return <ListChecks size={13} />;
                     case 'request':
                     default: return <FileText size={13} />;
                 }
@@ -848,6 +1105,7 @@ export const WorkspaceLayout: React.FC = () => {
                     onOpenStepRequest={onOpenStepRequest}
                     onUpdateVariables={(vars) => updateTestCaseVariables(selectedTestCase.id, vars)}
                     workflows={config?.workflows}
+                    testCases={globalTestCases}
                     projects={projects}
                 />
             );

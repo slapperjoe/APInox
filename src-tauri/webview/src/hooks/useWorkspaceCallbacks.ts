@@ -227,6 +227,22 @@ export function useWorkspaceCallbacks({
                 config: { scriptContent: "// Script Step\n// Available: context, log(msg), goto(stepName), fail(reason), delay(ms)\n\nlog('Script started');\n" },
             },
             workflow: { id: `step-${Date.now()}`, name: 'Workflow Step', type: 'workflow', config: { workflowId: '', workflowVariables: {} } },
+            condition: {
+                id: `step-${Date.now()}`,
+                name: 'Condition',
+                type: 'condition',
+                config: { condition: { id: crypto.randomUUID(), expression: '', operator: 'equals', expectedValue: '' } },
+            },
+            loop: {
+                id: `step-${Date.now()}`,
+                name: 'Loop',
+                type: 'loop',
+                config: {
+                    loop: { type: 'count', count: 1, maxIterations: 100, iteratorVariable: 'i' },
+                    loopSteps: [],
+                },
+            },
+            testCase: { id: `step-${Date.now()}`, name: 'Test Case Step', type: 'testCase', config: { testCaseId: '', testCaseVariables: {} } },
             request: null,
         };
 

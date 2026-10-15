@@ -1805,6 +1805,7 @@ const MainContent: React.FC = () => {
         selectedRequest,
         selectedTestSuite,
         selectedTestCase,
+        testCases: globalTestSuites.flatMap(s => s.testCases || []),
         selectedTestStep: selectedStep,
         selectedWorkflowStep,
         workflowRunResults,
@@ -1909,7 +1910,7 @@ const MainContent: React.FC = () => {
         updateWorkflowStep: handleUpdateWorkflowStep,
     }), [
         projects, selectedProjectName, selectedInterface, selectedOperation, selectedRequest,
-        selectedTestSuite, selectedTestCase, selectedStep, selectedWorkflowStep,
+        selectedTestSuite, selectedTestCase, selectedStep, selectedWorkflowStep, globalTestSuites,
         selectedPerformanceSuiteId, config, performanceProgress, coordinatorStatus,
         activeView,
         response, loading, layoutMode, showLineNumbers, splitRatio, isResizing,

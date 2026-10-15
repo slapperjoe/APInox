@@ -82,10 +82,10 @@ export const ConditionStepEditor: React.FC<ConditionStepEditorProps> = ({
     };
 
     if (operator === "exists" || operator === "notExists") {
-      return `if (${expression} ${operatorText[operator]}) { continue } else { skip remaining steps }`;
+      return `if (${expression} ${operatorText[operator]}) { continue } else { fail — stop the run }`;
     }
 
-    return `if (${expression} ${operatorText[operator]} "${value}") { continue } else { skip remaining steps }`;
+    return `if (${expression} ${operatorText[operator]} "${value}") { continue } else { fail — stop the run }`;
   };
 
   return (
@@ -147,7 +147,8 @@ export const ConditionStepEditor: React.FC<ConditionStepEditorProps> = ({
         <PreviewBox>{getPreviewText()}</PreviewBox>
         <StepInfoBox>
           Note: Branching to specific steps not yet fully implemented. If
-          condition is false, remaining steps will be skipped.
+          condition is false, the step fails and the test case / workflow stops
+          and is marked FAILED.
         </StepInfoBox>
       </StepSection>
 

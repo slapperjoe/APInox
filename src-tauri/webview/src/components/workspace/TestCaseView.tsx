@@ -267,6 +267,9 @@ export interface TestCaseViewProps {
     // Optional: For displaying workflow/request names + the steps inside each
     // referenced workflow (shown when a 'workflow' step is expanded).
     workflows?: Array<{ id: string; name: string; steps?: WorkflowStep[] }>;
+    /** Global test cases, for resolving a 'testCase' step's referenced case
+        (label + read-only nested steps preview). */
+    testCases?: Array<{ id: string; name: string; steps?: TestStep[] }>;
     projects?: Array<any>;
 }
 
@@ -284,6 +287,7 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
     onOpenStepRequest,
     onUpdateVariables,
     workflows,
+    testCases,
     // projects // Unused
 }) => {
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -299,6 +303,7 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
             case 'script': return <FileCode size={12} />;
             case 'condition': return <GitBranch size={12} />;
             case 'loop': return <RefreshCw size={12} />;
+            case 'testCase': return <ListChecks size={12} />;
             case 'request':
             default: return <FileText size={12} />;
         }
@@ -343,6 +348,15 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
                     <ToolbarButton onClick={() => onAddStep(testCase.id, 'workflow')}>
                         <ListChecks size={14} /> Add Workflow
                     </ToolbarButton>
+                    <ToolbarButton onClick={() => onAddStep(testCase.id, 'condition')}>
+                        <GitBranch size={14} /> Add Condition
+                    </ToolbarButton>
+                    <ToolbarButton onClick={() => onAddStep(testCase.id, 'loop')}>
+                        <RefreshCw size={14} /> Add Loop
+                    </ToolbarButton>
+                    <ToolbarButton onClick={() => onAddStep(testCase.id, 'testCase')}>
+                        <ListChecks size={14} /> Add Test Case
+                    </ToolbarButton>
                 </StepsToolbar>
             )}
 
@@ -367,13 +381,26 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
                         const referencedWorkflow = step.type === 'workflow'
                             ? (workflows || []).find(w => w.id === step.config?.workflowId)
                             : undefined;
-                        const wfSubSteps: WorkflowStep[] = referencedWorkflow?.steps || [];
-                        const hasWfSubSteps = step.type === 'workflow' && wfSubSteps.length > 0;
+                        // 'testCase' step: resolve the referenced global case so
+                        // its steps preview the same way (read-only).
+                        const referencedCase = step.type === 'testCase'
+                            ? (testCases || []).find(c => c.id === step.config?.testCaseId)
+                            : undefined;
+                        const wfSubSteps: WorkflowStep[] = step.type === 'workflow'
+                            ? (referencedWorkflow?.steps || [])
+                            : step.type === 'testCase'
+                                ? (referencedCase?.steps || []).map(ts => ({ id: ts.id, name: ts.name, type: ts.type } as WorkflowStep))
+                                : [];
+                        const hasWfSubSteps = (step.type === 'workflow' || step.type === 'testCase') && wfSubSteps.length > 0;
+                        /** Nested-preview rows are read-only; the owning entity is
+                            edited in its own view. */
+                        const subStepOwnerLabel = step.type === 'testCase' ? 'test case' : 'workflow';
+                        const subStepOwnerView = step.type === 'testCase' ? 'TESTS' : 'WORKFLOWS';
                         const wfExpanded = hasWfSubSteps && isWfExpanded(step.id, !!status);
                         return (
                             <React.Fragment key={step.id}>
                             <StepRow
-                                $clickable={step.type === 'request' || step.type === 'delay' || step.type === 'script' || step.type === 'workflow'}
+                                $clickable={step.type === 'request' || step.type === 'delay' || step.type === 'script' || step.type === 'workflow' || step.type === 'condition' || step.type === 'loop' || step.type === 'testCase'}
                                 onClick={() => {
                                     if (onSelectStep) {
                                         onSelectStep(step);
@@ -384,7 +411,7 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
                             >
                                 <WfStepToggle
                                     $hasChildren={hasWfSubSteps}
-                                    title={hasWfSubSteps ? (wfExpanded ? 'Collapse workflow steps' : 'Expand workflow steps') : undefined}
+                                    title={hasWfSubSteps ? (wfExpanded ? `Collapse ${subStepOwnerLabel} steps` : `Expand ${subStepOwnerLabel} steps`) : undefined}
                                     onClick={(e) => {
                                         if (!hasWfSubSteps) return;
                                         e.stopPropagation();
@@ -426,6 +453,21 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
                                     {step.type === 'workflow' && (
                                         <StepMeta>
                                             Workflow: {workflows?.find(w => w.id === step.config?.workflowId)?.name || step.config?.workflowId || 'Not configured'}
+                                        </StepMeta>
+                                    )}
+                                    {step.type === 'condition' && (
+                                        <StepMeta>{step.config?.condition?.expression || 'No condition configured'}</StepMeta>
+                                    )}
+                                    {step.type === 'loop' && (
+                                        <StepMeta>
+                                            {step.config?.loop
+                                                ? `${step.config.loop.type === 'count' ? (step.config.loop.count ?? 0) + 'x' : step.config.loop.type} · ${step.config?.loopSteps?.length || 0} steps`
+                                                : 'No loop configured'}
+                                        </StepMeta>
+                                    )}
+                                    {step.type === 'testCase' && (
+                                        <StepMeta>
+                                            Test Case: {testCases?.find(c => c.id === step.config?.testCaseId)?.name || step.config?.testCaseId || 'Not configured'}
                                         </StepMeta>
                                     )}
                                     {status?.error && (
@@ -495,7 +537,7 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
                                 return (
                                     <WfSubStepRow
                                         key={ws.id}
-                                        title={`${ws.name} — edit in the WORKFLOWS view`}
+                                        title={`${ws.name} — edit in the ${subStepOwnerView} view`}
                                     >
                                         {wsExec?.status === 'running' && (
                                             <StepStatusRunning title="Running...">
@@ -513,7 +555,7 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
                                             </StepStatusFail>
                                         )}
                                         {wsExec?.status === 'skipped' && (
-                                            <span title="Skipped (not executed in test runs)" style={{ opacity: 0.4, display: 'inline-flex' }}>
+                                            <span title="Skipped" style={{ opacity: 0.4, display: 'inline-flex' }}>
                                                 <Minus size={13} />
                                             </span>
                                         )}

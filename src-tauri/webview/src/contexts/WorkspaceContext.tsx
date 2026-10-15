@@ -58,6 +58,9 @@ interface WorkspaceContextValue {
     selectedTestSuite: TestSuite | null;
     /** Currently selected test case */
     selectedTestCase: TestCase | null;
+    /** Flat list of every global test case (across all suites) — used to
+        resolve a 'testCase' step's referenced case (labels + config screen). */
+    testCases: TestCase[];
     /** Currently selected test step */
     selectedTestStep: TestStep | null;
 
