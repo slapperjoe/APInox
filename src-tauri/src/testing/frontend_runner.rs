@@ -29,9 +29,9 @@ use super::frontend_types::{
 /// Executes a single test step and returns its result.
 ///
 /// `context` holds variables extracted by previous steps (for substitution).
-/// `emit` (streaming mode) receives live sub-update events — for 'workflow'
-/// steps these are the per-workflow-step `workflowStepStart/Pass/Fail/Skip`
-/// events the webview uses to show which inner requests succeeded.
+/// `emit` (streaming mode) receives live sub-update events — for a loop body
+/// these are the per-step `workflowStepStart/Pass/Fail/Skip` events the
+/// webview uses to show which inner steps succeeded.
 /// `depth` is the reference nesting level (0 = top-level run); guarded by
 /// `MAX_REFERENCE_DEPTH` inside the loop/embedded-step executors.
 pub async fn run_step(
@@ -65,7 +65,6 @@ pub async fn run_step(
                 stop_remaining: false,
             })
         }
-        "workflow" => run_workflow_step(step, context, emit, depth).await,
         "condition" => {
             // Assertion semantics (user decision): true -> pass & continue;
             // false -> FAIL this step and STOP the rest of the case/workflow.
@@ -161,126 +160,6 @@ pub async fn run_step(
             })
         }
     }
-}
-
-/// Resolve the referenced workflow's steps + initial variables.
-///
-/// Steps come from the self-contained payload the webview embedded
-/// (`config.workflowSteps`). There is no persisted workflow store to fall back
-/// to any more — workflows were absorbed into test cases (see
-/// `workflow_migration.rs`), so an un-embedded `workflow` step has no steps.
-fn resolve_workflow(
-    step: &FrontendTestStep,
-) -> (Vec<Value>, HashMap<String, String>, Option<String>) {
-    let workflow_id = step
-        .config
-        .workflow_id
-        .as_deref()
-        .filter(|s| !s.is_empty());
-
-    let steps = step
-        .config
-        .workflow_steps
-        .clone()
-        .unwrap_or_default();
-
-    (steps, HashMap::new(), workflow_id.map(String::from))
-}
-
-/// Execute a 'workflow' test step: run the referenced workflow's steps in
-/// order, sharing a variable context seeded from the test-case context, the
-/// workflow's own initial variables, and the step's variable overrides
-/// (highest priority). Emits per-workflow-step events so the webview can show
-/// which inner requests succeeded. Mirrors `run_workflow`'s execution rules
-/// (request/delay/condition/loop executed; script skipped).
-async fn run_workflow_step(
-    step: &FrontendTestStep,
-    context: &mut HashMap<String, Value>,
-    emit: Option<&mut (dyn FnMut(Value) + Send)>,
-    depth: u32,
-) -> Result<StepExecutionResult> {
-    let start = Instant::now();
-    let (wf_steps, wf_vars, workflow_id) = resolve_workflow(step);
-
-    let fail = |message: String| StepExecutionResult {
-        passed: false,
-        request_body: None,
-        response_body: None,
-        status_code: None,
-        duration_ms: start.elapsed().as_millis() as u64,
-        assertion_results: vec![],
-        extracted_variables: HashMap::new(),
-        error: Some(message),
-        stop_remaining: false,
-    };
-
-    if wf_steps.is_empty() {
-        return match &workflow_id {
-            Some(id) => Ok(fail(format!(
-                "Workflow '{}' not found or has no steps",
-                id
-            ))),
-            None => Ok(fail("No workflow selected for this step".to_string())),
-        };
-    }
-
-    // Variable context: test-case context as the base, the workflow's own
-    // initial variables layered on top, then the step's overrides (highest).
-    let mut variables = context.clone();
-    for (k, v) in &wf_vars {
-        variables.insert(k.clone(), Value::String(v.clone()));
-    }
-    if let Some(overrides) = &step.config.workflow_variables {
-        for (k, v) in overrides {
-            variables.insert(k.clone(), Value::String(v.clone()));
-        }
-    }
-
-    // Snapshot of the context before the run, so the result only reports
-    // variables this workflow actually produced.
-    let pre_run: std::collections::HashSet<String> = context.keys().cloned().collect();
-
-    // The shared flat-step executor streams the same `workflowStep*` events
-    // and mutates `variables` in place (request steps' extracted vars land
-    // there). `stopped` is set when a 'condition' step failed inside the
-    // workflow — the outer case must then stop too.
-    let (all_passed, outcomes, stopped) =
-        run_flat_steps(&wf_steps, &mut variables, emit, &step.id, depth + 1).await;
-
-    // Propagate produced variables into the outer test-case context so later
-    // top-level steps can use them.
-    let mut extracted: HashMap<String, String> = HashMap::new();
-    for o in &outcomes {
-        for (k, v) in &o.extracted {
-            extracted.insert(k.clone(), v.clone());
-            context.insert(k.clone(), Value::String(v.clone()));
-        }
-    }
-
-    // Report only variables this workflow produced (new or changed keys).
-    extracted.retain(|k, _| !pre_run.contains(k));
-
-    let mut errors: Vec<String> = Vec::new();
-    for o in &outcomes {
-        if !o.passed {
-            if let Some(e) = &o.error {
-                errors.push(format!("{}: {}", o.name, e));
-            }
-        }
-    }
-
-    let error = if errors.is_empty() { None } else { Some(errors.join("; ")) };
-    Ok(StepExecutionResult {
-        passed: all_passed,
-        request_body: None,
-        response_body: None,
-        status_code: None,
-        duration_ms: start.elapsed().as_millis() as u64,
-        assertion_results: vec![],
-        extracted_variables: extracted,
-        error,
-        stop_remaining: stopped,
-    })
 }
 
 /// Execute a referenced test case's embedded steps against a scoped copy of
@@ -446,9 +325,9 @@ fn emitter_ref<'a>(
 }
 
 /// Execute a list of flat workflow-shaped steps in order, sharing `context`.
-/// Emits the same `workflowStep*` events `run_workflow_step` used to emit
-/// (callers that don't stream pass None). `depth` is the reference nesting
-/// level (0 = top-level run); guarded by MAX_REFERENCE_DEPTH.
+/// Emits per-step `workflowStep*` events (callers that don't stream pass None).
+/// `depth` is the reference nesting level (0 = top-level run); guarded by
+/// MAX_REFERENCE_DEPTH.
 ///
 /// Returns (all_passed, per-step outcomes, stopped_by_condition).
 pub(crate) async fn run_flat_steps(
@@ -564,7 +443,7 @@ pub(crate) async fn run_flat_steps(
                     (passed, error, None, duration, false)
                 }
                 "testCase" => {
-                    // A workflow-embedded testCase step carries its referenced
+                    // A flat (loop-body) testCase step carries its referenced
                     // case as `testCase: { id, name, steps }` (webview embed).
                     let embedded = ws
                         .get("testCase")
@@ -614,7 +493,7 @@ pub(crate) async fn run_flat_steps(
                     // script (and other non-executed types): surfaced as
                     // skipped, not failed.
                     log::warn!(
-                        "[FrontendRunner] workflow step '{}' type '{}' not executed in test run",
+                        "[FrontendRunner] flat step '{}' type '{}' not executed in test run",
                         ws_name,
                         other
                     );
@@ -1006,8 +885,8 @@ pub(crate) fn split_wire_headers(
 
 /// Build a `FrontendRequest` from a flat frontend `WorkflowStep`.
 ///
-/// `pub(crate)` so the performance runner can drive workflow-backed suites
-/// through the same request-execution path as `run_workflow`.
+/// `pub(crate)` so the performance runner drives its materialized suites
+/// through the same request-execution path as the test runner.
 pub(crate) fn build_frontend_request(step: &Value) -> FrontendRequest {
     let get = |k: &str| {
         step.get(k)

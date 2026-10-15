@@ -18,9 +18,9 @@
 import { TestSuite, TestCase } from '@shared/models';
 
 /**
- * Make a string safe for use as a default file name (mirrors the workflow
- * "Save to disk" handler: strip non-alphanumerics/hyphens/underscores,
- * collapse whitespace to hyphens, fall back to `fallback` when empty).
+ * Make a string safe for use as a default file name (mirrors the "Save to
+ * disk" handler: strip non-alphanumerics/hyphens/underscores, collapse
+ * whitespace to hyphens, fall back to `fallback` when empty).
  */
 export function sanitizeFileName(name: string, fallback: string): string {
     return (
@@ -42,8 +42,8 @@ const nextId = (prefix: string): string => {
 /**
  * Deep-copy an imported test case, reassigning the case id and every step id.
  * All other fields (name, steps + configs, variables, expanded) round-trip
- * byte-for-byte — a step's `config.workflowId` still points at the same
- * workflow, so 'workflow' steps keep working after import.
+ * byte-for-byte — a step's `config.testCaseId` still points at the same
+ * referenced case, so 'testCase' steps keep working after import.
  */
 export function rekeyTestCase(raw: unknown): TestCase {
     const src = (raw && typeof raw === 'object' ? raw : {}) as Record<string, any>;

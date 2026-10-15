@@ -513,7 +513,7 @@ export type ExplorerLoadState =
     | { phase: 'error'; message: string };
 
 // Test Runner Types
-export type TestStepType = 'request' | 'delay' | 'transfer' | 'script' | 'workflow' | 'condition' | 'loop' | 'testCase';
+export type TestStepType = 'request' | 'delay' | 'transfer' | 'script' | 'condition' | 'loop' | 'testCase';
 
 export interface TestStep {
     id: string;
@@ -540,14 +540,6 @@ export interface TestStep {
         scriptName?: string;
         scriptContent?: string;
 
-        // For 'workflow' - reusable workflow execution
-        workflowId?: string; // Reference to a workflow in project.workflows
-        workflowVariables?: Record<string, string>; // Override workflow variables
-        /** Self-contained copy of the referenced workflow's steps, embedded by
-         * the webview into the run payload so execution is not subject to a
-         * config save-race (runtime-only, not persisted to step files). */
-        workflowSteps?: WorkflowStep[];
-
         // For 'condition' — assertion step (same shape as workflow conditions).
         // True: continue. False: FAIL — the case/workflow stops at this step.
         condition?: WorkflowCondition;
@@ -562,8 +554,7 @@ export interface TestStep {
         testCaseId?: string; // Reference to a global test case (test-suites store)
         testCaseVariables?: Record<string, string>; // Override the case's variables
         /** Self-contained copy of the referenced case's steps, embedded by the
-         * webview into the run payload (runtime-only, not persisted) — same
-         * pattern as `workflowSteps`. */
+         * webview into the run payload (runtime-only, not persisted). */
         testCaseSteps?: TestStep[];
     };
 }
@@ -1018,62 +1009,6 @@ export interface WorkflowStep {
     response?: any;
     /** Extracted variables from this step (runtime) */
     extractedValues?: Record<string, string>;
-}
-
-/** Complete workflow definition */
-export interface Workflow {
-    id: string;
-    name: string;
-    description?: string;
-    /** Steps in this workflow */
-    steps: WorkflowStep[];
-    /** Workflow-level variables (initial values) */
-    variables?: Record<string, string>;
-    /** Created timestamp */
-    createdAt: number;
-    /** Last modified timestamp */
-    modifiedAt: number;
-    /** Expanded state in UI */
-    expanded?: boolean;
-}
-
-/** Result of a workflow execution */
-export interface WorkflowExecutionResult {
-    workflowId: string;
-    workflowName: string;
-    startTime: number;
-    endTime: number;
-    status: 'completed' | 'failed' | 'aborted';
-    /** Results for each step */
-    stepResults: WorkflowStepResult[];
-    /** Final variable state */
-    variables: Record<string, string>;
-    /** Error message if failed */
-    error?: string;
-}
-
-/** Result of a single workflow step execution */
-export interface WorkflowStepResult {
-    stepId: string;
-    stepName: string;
-    startTime: number;
-    endTime: number;
-    duration: number;
-    status: 'success' | 'failed' | 'skipped';
-    /** Response data */
-    response?: any;
-    /** The request body actually sent (after variable substitution). */
-    request?: string;
-    /** Status code (for request steps) */
-    statusCode?: number;
-    /** Extracted variables */
-    extractedValues?: Record<string, string>;
-    /** Error message if failed */
-    error?: string;
-    /** For loop steps: iteration count */
-    iterations?: number;
-    /** For condition steps: which branch was taken */
-    branchTaken?: 'true' | 'false';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -132,9 +132,9 @@ pub async fn run_test_case(request: RunTestCaseRequest) -> Result<RunTestCaseRes
                 }));
 
                 match run_step(step, fallback_endpoint.as_deref(), &mut context, Some(&mut |update: serde_json::Value| {
-                    // Sub-step events (workflowStep*) emitted from inside
-                    // 'workflow' test steps don't carry the case id — stamp
-                    // it on so the webview can nest them under the right case.
+                    // Sub-step events (workflowStep*) emitted from inside a
+                    // loop body don't carry the case id — stamp it on so the
+                    // webview can nest them under the right case.
                     let mut u = update;
                     if let Some(obj) = u.as_object_mut() {
                         if !obj.contains_key("caseId") {
@@ -336,10 +336,9 @@ pub async fn run_test_suite(request: RunTestSuiteRequest) -> Result<RunTestSuite
                     }));
 
                     match run_step(step, fallback_endpoint.as_deref(), &mut context, Some(&mut |update: serde_json::Value| {
-                        // Sub-step events (workflowStep*) emitted from inside
-                        // 'workflow' test steps don't carry the case id — stamp
-                        // it on so the webview can nest them under the right
-                        // case.
+                        // Sub-step events (workflowStep*) emitted from inside a
+                        // loop body don't carry the case id — stamp it on so
+                        // the webview can nest them under the right case.
                         let mut u = update;
                         if let Some(obj) = u.as_object_mut() {
                             if !obj.contains_key("caseId") {

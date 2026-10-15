@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import styled from 'styled-components';
 import { Play, Plus, Trash2, ChevronDown, ChevronRight, FlaskConical, ListChecks, Clock, FileCode, ArrowRight, FileText, GitBranch, RefreshCw, CheckCircle, XCircle, Minus, Download, FolderOpen } from 'lucide-react';
-import { UnifiedProject, TestSuite, Workflow, WorkflowStep } from '@shared/models';
+import { UnifiedProject, TestSuite, TestStep } from '@shared/models';
 import { SidebarContextMenu, CtxMenuSection, CtxMenuItem, Pencil } from './shared/SidebarContextMenu';
 import { SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle, OperationItem, RequestItem } from './shared/SidebarStyles';
 import { EmptyState } from '../common/EmptyState';
@@ -12,7 +12,7 @@ import { Spinner } from '../common/Spinner';
 import { SPACING_SM, SPACING_XS } from '../../styles/spacing';
 import type { TestExecutionStatus } from '../workspace/TestCaseView';
 
-// One workflow step result inside a 'workflow' test step's live status map.
+// One nested sub-step result inside a step's live status map.
 type WorkflowStepExecution = NonNullable<TestExecutionStatus['workflowSteps']>[string];
 
 const StepItem = styled(RequestItem)`
@@ -129,10 +129,10 @@ const StepStatusSkipped = styled(StepStatusSlot)`
     opacity: 0.4;
 `;
 
-// Chevron slot on a 'workflow' test step that references a workflow with
-// steps — same fixed-width pattern as CaseToggle (empty slot = no dead
-// toggle when the step isn't expandable).
-const WfStepToggle = styled.span<{ $hasChildren?: boolean }>`
+// Chevron slot on a step that references a test case with steps — same
+// fixed-width pattern as CaseToggle (empty slot = no dead toggle when the
+// step isn't expandable).
+const NestedStepToggle = styled.span<{ $hasChildren?: boolean }>`
     cursor: ${props => (props.$hasChildren ? 'pointer' : 'default')};
     display: flex;
     align-items: center;
@@ -141,10 +141,10 @@ const WfStepToggle = styled.span<{ $hasChildren?: boolean }>`
     flex-shrink: 0;
 `;
 
-// A step of the workflow referenced by an expanded 'workflow' test step.
-// Read-only (edit them in the WORKFLOWS view); clicking selects the parent
+// A step of the test case referenced by an expanded 'testCase' step.
+// Read-only (edit them in the TESTS view); clicking selects the parent
 // test step for context.
-const WorkflowSubStepItem = styled(RequestItem)`
+const NestedSubStepItem = styled(RequestItem)`
     /* Indentation halved (was 70px): suite 8px → case 18px → step 26px →
        sub-step 35px — a near-uniform ~8px step per tree level. */
     padding-left: 35px !important;
@@ -163,9 +163,9 @@ const StepName = styled.span`
     white-space: nowrap;
 `;
 
-// Dimmed workflow name shown on 'workflow' test steps (which workflow the
+// Dimmed referenced-case name shown on 'testCase' steps (which case the
 // step runs) — kept short so the step name keeps priority on truncation.
-const StepWfName = styled.span`
+const StepRefName = styled.span`
     flex-shrink: 1;
     max-width: 45%;
     overflow: hidden;
@@ -186,9 +186,6 @@ export interface TestsUiProps {
     // tests that render without a provider).
     testSuites?: TestSuite[];
     projects: UnifiedProject[];
-    // Workflows referenced by 'workflow' test steps — lets the rail expand a
-    // workflow step and show the steps inside the referenced workflow.
-    workflows?: Workflow[];
     /** Live execution status (caseId → stepId), from TestRunnerContext —
         mirrors the TestCaseView step status icons onto the rail's step rows. */
     testExecution?: Record<string, Record<string, TestExecutionStatus>>;
@@ -227,7 +224,6 @@ interface FlatSuite {
 export const TestsUi: React.FC<TestsUiProps> = ({
     testSuites,
     projects,
-    workflows,
     testExecution,
     selectedTestSuite,
     selectedTestCase,
@@ -254,14 +250,14 @@ export const TestsUi: React.FC<TestsUiProps> = ({
 }) => {
     const addSuiteBtnRef = useRef<HTMLButtonElement>(null);
     const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
-    // 'workflow' test steps that reference a workflow with steps are expandable
-    // in the rail (nested rows = the referenced workflow's steps; read-only,
-    // edit them in the WORKFLOWS view). Expansion is UI-only state — not
-    // persisted to the step config.
-    const [expandedWfStepIds, setExpandedWfStepIds] = useState<Set<string>>(new Set());
+    // 'testCase' steps that reference a case with steps are expandable in the
+    // rail (nested rows = the referenced case's steps; read-only, edit them in
+    // the TESTS view). Expansion is UI-only state — not persisted to the step
+    // config.
+    const [expandedNestedIds, setExpandedNestedIds] = useState<Set<string>>(new Set());
 
-    const toggleWfStepExpand = (stepId: string) => {
-        setExpandedWfStepIds(prev => {
+    const toggleNestedExpand = (stepId: string) => {
+        setExpandedNestedIds(prev => {
             const next = new Set(prev);
             if (next.has(stepId)) {
                 next.delete(stepId);
@@ -272,7 +268,7 @@ export const TestsUi: React.FC<TestsUiProps> = ({
         });
     };
 
-    const workflowSubStepIcon = (type: WorkflowStep["type"]) => {
+    const nestedStepIcon = (type: TestStep['type']) => {
         switch (type) {
             case 'delay': return <Clock size={11} />;
             case 'script': return <FileCode size={11} />;
@@ -430,6 +426,11 @@ export const TestsUi: React.FC<TestsUiProps> = ({
     const effectiveSuites: TestSuite[] = testSuites
         ?? Array.from(new Map(projects.flatMap(p => (p.testSuites || []).map(s => [s.id, s]))).values());
     const allSuites: FlatSuite[] = effectiveSuites.map(suite => ({ suite, projectName: '' }));
+
+    // referenced-case lookup for a 'testCase' step's nested-steps preview.
+    const caseById = new Map(
+        effectiveSuites.flatMap(s => s.testCases || []).map(c => [c.id, c] as const)
+    );
 
     // Two-click confirm for the RIGHT-CLICK menu (the only delete entry point):
     // the first click arms `deleteConfirm` and the menu stays open
@@ -614,15 +615,15 @@ export const TestsUi: React.FC<TestsUiProps> = ({
 
                                             {/* Test Steps */}
                                             {tc.expanded !== false && (tc.steps || []).map(step => {
-                                                // 'workflow' steps can reference a workflow — when it exists and has
-                                                // steps, the row gets a chevron and the referenced workflow's steps
+                                                // 'testCase' steps can reference a case — when it exists and has
+                                                // steps, the row gets a chevron and the referenced case's steps
                                                 // render nested below (read-only).
-                                                const referencedWorkflow = step.type === 'workflow'
-                                                    ? (workflows || []).find(w => w.id === step.config?.workflowId)
+                                                const referencedCase = step.type === 'testCase'
+                                                    ? caseById.get(step.config?.testCaseId || '')
                                                     : undefined;
-                                                const wfSubSteps = referencedWorkflow?.steps || [];
-                                                const hasWfSubSteps = step.type === 'workflow' && wfSubSteps.length > 0;
-                                                const isWfExpanded = expandedWfStepIds.has(step.id);
+                                                const nestedSteps = referencedCase?.steps || [];
+                                                const hasNestedSteps = step.type === 'testCase' && nestedSteps.length > 0;
+                                                const isNestedExpanded = expandedNestedIds.has(step.id);
                                                 return (
                                                     <React.Fragment key={step.id}>
                                                         <StepItem
@@ -655,13 +656,13 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                                                             ) : (
                                                                 <>
                                                                     {stepStatusSlot(testExecution?.[tc.id]?.[step.id])}
-                                                                    <WfStepToggle
-                                                                        $hasChildren={hasWfSubSteps}
-                                                                        title={hasWfSubSteps ? (isWfExpanded ? 'Collapse workflow steps' : 'Expand workflow steps') : undefined}
-                                                                        onClick={hasWfSubSteps ? (e) => { e.stopPropagation(); toggleWfStepExpand(step.id); } : undefined}
+                                                                    <NestedStepToggle
+                                                                        $hasChildren={hasNestedSteps}
+                                                                        title={hasNestedSteps ? (isNestedExpanded ? 'Collapse test case steps' : 'Expand test case steps') : undefined}
+                                                                        onClick={hasNestedSteps ? (e) => { e.stopPropagation(); toggleNestedExpand(step.id); } : undefined}
                                                                     >
-                                                                        {hasWfSubSteps && (isWfExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />)}
-                                                                    </WfStepToggle>
+                                                                        {hasNestedSteps && (isNestedExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />)}
+                                                                    </NestedStepToggle>
                                                                     <StepTypeIcon>
                                                                         {(() => {
                                                                             switch (step.type) {
@@ -676,23 +677,23 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                                                                     <StepName title="Right-click to rename">
                                                                         {step.name}
                                                                     </StepName>
-                                                                    {step.type === 'workflow' && referencedWorkflow && (
-                                                                        <StepWfName title={`Runs workflow: ${referencedWorkflow.name}`}>
-                                                                            {referencedWorkflow.name}
-                                                                        </StepWfName>
+                                                                    {step.type === 'testCase' && referencedCase && (
+                                                                        <StepRefName title={`Runs test case: ${referencedCase.name}`}>
+                                                                            {referencedCase.name}
+                                                                        </StepRefName>
                                                                     )}
                                                                 </>
                                                             )}
                                                         </StepItem>
 
-                                                        {/* Nested workflow steps (read-only preview of the
-                                                            referenced workflow; edit in the WORKFLOWS view).
-                                                            Clicking one selects the parent workflow step. */}
-                                                        {isWfExpanded && referencedWorkflow && wfSubSteps.map(ws => (
-                                                            <WorkflowSubStepItem
+                                                        {/* Nested test-case steps (read-only preview of the
+                                                            referenced case; edit in the TESTS view).
+                                                            Clicking one selects the parent test step. */}
+                                                        {isNestedExpanded && referencedCase && nestedSteps.map(ws => (
+                                                            <NestedSubStepItem
                                                                 key={ws.id}
                                                                 $active={selectedStepId === step.id}
-                                                                title={`${ws.name} — edit in the WORKFLOWS view`}
+                                                                title={`${ws.name} — edit in the TESTS view`}
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     setSelectedStepId(step.id);
@@ -701,10 +702,10 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                                                             >
                                                                 {subStepStatusSlot(testExecution?.[tc.id]?.[step.id]?.workflowSteps?.[ws.id])}
                                                                 <StepTypeIcon>
-                                                                    {workflowSubStepIcon(ws.type)}
+                                                                    {nestedStepIcon(ws.type)}
                                                                 </StepTypeIcon>
                                                                 <StepName>{ws.name}</StepName>
-                                                            </WorkflowSubStepItem>
+                                                            </NestedSubStepItem>
                                                         ))}
                                                     </React.Fragment>
                                                 );

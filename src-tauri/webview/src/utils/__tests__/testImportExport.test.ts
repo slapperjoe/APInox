@@ -47,7 +47,7 @@ describe('rekeyTestCase', () => {
         const raw = {
             id: 'tc-orig',
             name: 'Case 1',
-            steps: [{ id: 'step-1', name: 'A', type: 'workflow', config: { workflowId: 'wf-123' } }],
+            steps: [{ id: 'step-1', name: 'A', type: 'testCase', config: { testCaseId: 'tc-123' } }],
             variables: { token: 'abc' },
             expanded: false,
         };
@@ -55,9 +55,9 @@ describe('rekeyTestCase', () => {
 
         expect(rekeyed.name).toBe('Case 1');
         expect(rekeyed.steps[0].name).toBe('A');
-        expect(rekeyed.steps[0].type).toBe('workflow');
-        // The workflow reference survives re-keying (only step/case ids change).
-        expect(rekeyed.steps[0].config.workflowId).toBe('wf-123');
+        expect(rekeyed.steps[0].type).toBe('testCase');
+        // The case reference survives re-keying (only step/case ids change).
+        expect(rekeyed.steps[0].config.testCaseId).toBe('tc-123');
         expect(rekeyed.variables).toEqual({ token: 'abc' });
         expect(rekeyed.expanded).toBe(false);
     });

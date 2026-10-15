@@ -386,96 +386,117 @@ describe('TestsUi', () => {
         expect(screen.getAllByTestId('icon-chevron-down')).toHaveLength(1);
     });
 
-    describe('workflow test steps (expandable to the referenced workflow)', () => {
-        const workflowProject: ApinoxProject = {
-            name: 'Project WF',
-            fileName: 'wf.json',
+    describe('testCase steps (expandable to the referenced case)', () => {
+        // The host case's step references a case that lives in a COLLAPSED
+        // sibling suite, so its steps only appear when the step is expanded.
+        const projectWithHostStep = (config: any): ApinoxProject => ({
+            name: 'Project TC',
+            fileName: 'tc.json',
             readOnly: false,
             interfaces: [],
             testSuites: [
                 {
-                    id: 'suite-wf',
-                    name: 'Suite WF',
+                    id: 'suite-host',
+                    name: 'Suite Host',
                     testCases: [
                         {
-                            id: 'case-wf',
-                            name: 'Case WF',
+                            id: 'case-host',
+                            name: 'Case Host',
                             steps: [
-                                { id: 'step-wf', name: 'Run WF', type: 'workflow', config: { workflowId: 'wf-1' } }
+                                { id: 'step-tc', name: 'Run TC', type: 'testCase', config }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    id: 'suite-target',
+                    name: 'Suite Target',
+                    expanded: false,
+                    testCases: [
+                        {
+                            id: 'case-target',
+                            name: 'Target Case',
+                            steps: [
+                                { id: 'ts-1', name: 'Login Request', type: 'request', config: {} },
+                                { id: 'ts-2', name: 'Wait', type: 'delay', config: {} }
                             ]
                         }
                     ]
                 }
             ]
-        };
+        });
 
-        const sampleWorkflow = {
-            id: 'wf-1',
-            name: 'Login Flow',
-            steps: [
-                { id: 'wf-step-1', name: 'Login Request', type: 'request', order: 0 },
-                { id: 'wf-step-2', name: 'Wait', type: 'delay', order: 1 }
-            ]
-        };
+        it('a testCase step referencing a case with steps is expandable and shows the nested steps', () => {
+            render(<TestsUi {...defaultProps} projects={[projectWithHostStep({ testCaseId: 'case-target' })]} />);
 
-        it('a workflow step referencing a workflow with steps is expandable and shows the nested steps', () => {
-            const { rerender } = render(
-                <TestsUi {...defaultProps} projects={[workflowProject]} workflows={[sampleWorkflow]} />
-            );
-
-            // Collapsed by default: chevron present, sub-steps hidden.
-            expect(screen.getByText('Run WF')).toBeInTheDocument();
+            // Collapsed by default: chevron present, sub-steps hidden (the
+            // referenced case lives in a collapsed suite).
+            expect(screen.getByText('Run TC')).toBeInTheDocument();
             expect(screen.queryByText('Login Request')).not.toBeInTheDocument();
-            // Exactly one RIGHT-pointing chevron: the workflow step's own
-            // (the expanded suite and case rows point down).
-            expect(screen.getAllByTestId('icon-chevron-right')).toHaveLength(1);
+            expect(screen.getByTitle('Expand test case steps')).toBeInTheDocument();
 
             // Click the step's chevron (title attribute gates it).
-            fireEvent.click(screen.getByTitle('Expand workflow steps'));
+            fireEvent.click(screen.getByTitle('Expand test case steps'));
             expect(screen.getByText('Login Request')).toBeInTheDocument();
             expect(screen.getByText('Wait')).toBeInTheDocument();
-            expect(screen.queryByTitle('Expand workflow steps')).not.toBeInTheDocument();
+            expect(screen.queryByTitle('Expand test case steps')).not.toBeInTheDocument();
 
             // Collapse again.
-            fireEvent.click(screen.getByTitle('Collapse workflow steps'));
+            fireEvent.click(screen.getByTitle('Collapse test case steps'));
             expect(screen.queryByText('Login Request')).not.toBeInTheDocument();
 
-            // Clicking a nested step selects the PARENT workflow step.
-            fireEvent.click(screen.getByTitle('Expand workflow steps'));
+            // Clicking a nested step selects the PARENT test step.
+            fireEvent.click(screen.getByTitle('Expand test case steps'));
             fireEvent.click(screen.getByText('Login Request'));
-            expect(defaultProps.onSelectTestStep).toHaveBeenCalledWith('case-wf', 'step-wf');
+            expect(defaultProps.onSelectTestStep).toHaveBeenCalledWith('case-host', 'step-tc');
         });
 
-        it('a workflow step with no matching workflow shows no chevron', () => {
-            render(<TestsUi {...defaultProps} projects={[workflowProject]} workflows={[]} />);
+        it('a testCase step with no matching case shows no chevron', () => {
+            render(<TestsUi {...defaultProps} projects={[projectWithHostStep({ testCaseId: 'missing' })]} />);
 
-            expect(screen.getByText('Run WF')).toBeInTheDocument();
-            // No right-pointing chevron anywhere: the dangling workflow step
-            // isn't expandable (the expanded suite/case rows point down).
-            expect(screen.queryAllByTestId('icon-chevron-right')).toHaveLength(0);
-            expect(screen.queryByTitle('Expand workflow steps')).not.toBeInTheDocument();
+            expect(screen.getByText('Run TC')).toBeInTheDocument();
+            // No step-level expand toggle: the dangling reference isn't
+            // expandable, and its (absent) steps never render.
+            expect(screen.queryByTitle('Expand test case steps')).not.toBeInTheDocument();
+            expect(screen.queryByText('Login Request')).not.toBeInTheDocument();
         });
 
-        it('a workflow step referencing an empty workflow shows no chevron', () => {
-            render(
-                <TestsUi
-                    {...defaultProps}
-                    projects={[workflowProject]}
-                    workflows={[{ ...sampleWorkflow, steps: [] }]}
-                />
-            );
+        it('a testCase step referencing an empty case shows no chevron', () => {
+            const project: ApinoxProject = {
+                ...projectWithHostStep({ testCaseId: 'case-empty' }),
+                testSuites: [
+                    {
+                        id: 'suite-host',
+                        name: 'Suite Host',
+                        testCases: [
+                            {
+                                id: 'case-host',
+                                name: 'Case Host',
+                                steps: [{ id: 'step-tc', name: 'Run TC', type: 'testCase', config: { testCaseId: 'case-empty' } }]
+                            }
+                        ]
+                    },
+                    {
+                        id: 'suite-target',
+                        name: 'Suite Target',
+                        expanded: false,
+                        testCases: [{ id: 'case-empty', name: 'Empty Case', steps: [] }]
+                    }
+                ]
+            };
+            render(<TestsUi {...defaultProps} projects={[project]} />);
 
-            expect(screen.getByText('Run WF')).toBeInTheDocument();
-            expect(screen.queryByTitle('Expand workflow steps')).not.toBeInTheDocument();
+            expect(screen.getByText('Run TC')).toBeInTheDocument();
+            expect(screen.queryByTitle('Expand test case steps')).not.toBeInTheDocument();
         });
 
-        it('non-workflow steps show no chevron even when workflows are present', () => {
-            render(<TestsUi {...defaultProps} workflows={[sampleWorkflow]} />);
+        it('non-testCase steps show no chevron even when test cases are present', () => {
+            render(<TestsUi {...defaultProps} />);
 
-            // The default project has a plain request step: no workflow-step
+            // The default project has a plain request step: no step-level
             // chevrons (no right-pointing chevron; no expand toggle title).
             expect(screen.queryAllByTestId('icon-chevron-right')).toHaveLength(0);
-            expect(screen.queryByTitle('Expand workflow steps')).not.toBeInTheDocument();
+            expect(screen.queryByTitle('Expand test case steps')).not.toBeInTheDocument();
         });
     });
 
@@ -504,34 +525,42 @@ describe('TestsUi', () => {
             ]
         };
 
-        const workflowStepProject: ApinoxProject = {
-            name: 'Project WF2',
-            fileName: 'wf2.json',
+        // A host case whose testCase step references 'case-target-n' (a case
+        // in a collapsed sibling suite) — its steps render under the step.
+        const hostStepProject: ApinoxProject = {
+            name: 'Project N',
+            fileName: 'n.json',
             readOnly: false,
             interfaces: [],
             testSuites: [
                 {
-                    id: 'suite-wf2',
-                    name: 'Suite WF2',
+                    id: 'suite-n',
+                    name: 'Suite N',
                     testCases: [
                         {
-                            id: 'case-wf2',
-                            name: 'Case WF2',
+                            id: 'case-n',
+                            name: 'Case N',
                             steps: [
-                                { id: 'step-wf2', name: 'Run WF', type: 'workflow', config: { workflowId: 'wf-2' } }
+                                { id: 'step-n', name: 'Run TC', type: 'testCase', config: { testCaseId: 'case-target-n' } }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    id: 'suite-target-n',
+                    name: 'Suite Target N',
+                    expanded: false,
+                    testCases: [
+                        {
+                            id: 'case-target-n',
+                            name: 'Target N',
+                            steps: [
+                                { id: 'ts-a', name: 'Create Order', type: 'request', config: {} },
+                                { id: 'ts-b', name: 'Pause', type: 'delay', config: {} }
                             ]
                         }
                     ]
                 }
-            ]
-        };
-
-        const sampleWorkflow2 = {
-            id: 'wf-2',
-            name: 'Order Flow',
-            steps: [
-                { id: 'wf-step-a', name: 'Create Order', type: 'request', order: 0 },
-                { id: 'wf-step-b', name: 'Pause', type: 'delay', order: 1 }
             ]
         };
 
@@ -583,19 +612,18 @@ describe('TestsUi', () => {
             expect(screen.queryByTestId('icon-loader')).not.toBeInTheDocument();
         });
 
-        it('mirrors per-workflow-step results (running/skipped) onto the expanded sub-step rows', () => {
+        it('mirrors per-nested-step results (running/skipped) onto the expanded sub-step rows', () => {
             const view = render(
                 <TestsUi
                     {...defaultProps}
-                    projects={[workflowStepProject]}
-                    workflows={[sampleWorkflow2]}
+                    projects={[hostStepProject]}
                     testExecution={{
-                        'case-wf2': {
-                            'step-wf2': {
+                        'case-n': {
+                            'step-n': {
                                 status: 'pass',
                                 workflowSteps: {
-                                    'wf-step-a': { status: 'running' },
-                                    'wf-step-b': { status: 'skipped' }
+                                    'ts-a': { status: 'running' },
+                                    'ts-b': { status: 'skipped' }
                                 }
                             }
                         }
@@ -603,7 +631,7 @@ describe('TestsUi', () => {
                 />
             );
 
-            // The workflow step row shows its own pass icon; the (collapsed)
+            // The testCase step row shows its own pass icon; the (collapsed)
             // sub-steps do not render yet.
             expect(view.getAllByTestId('icon-check-circle')).toHaveLength(1);
             expect(view.queryByTestId('icon-loader')).not.toBeInTheDocument();
@@ -611,7 +639,7 @@ describe('TestsUi', () => {
 
             // Expanded: the sub-step rows mirror the per-step results —
             // running → spinner, skipped → Minus.
-            fireEvent.click(view.getByTitle('Expand workflow steps'));
+            fireEvent.click(view.getByTitle('Expand test case steps'));
             expect(view.getAllByTestId('icon-loader')).toHaveLength(1);
             expect(view.getAllByTestId('icon-minus')).toHaveLength(1);
         });
@@ -620,11 +648,10 @@ describe('TestsUi', () => {
             const view = render(
                 <TestsUi
                     {...defaultProps}
-                    projects={[workflowStepProject]}
-                    workflows={[sampleWorkflow2]}
+                    projects={[hostStepProject]}
                 />
             );
-            fireEvent.click(view.getByTitle('Expand workflow steps'));
+            fireEvent.click(view.getByTitle('Expand test case steps'));
 
             const paddingLeft = (label: string) =>
                 window.getComputedStyle(
@@ -633,9 +660,9 @@ describe('TestsUi', () => {
 
             // The halved indentation ladder: 8px base, ~8-9px per level —
             // the former 8 / 35 / 52 / 70px values cut in half.
-            expect(paddingLeft('Suite WF2')).toBe('8px');
-            expect(paddingLeft('Case WF2')).toBe('18px');
-            expect(paddingLeft('Run WF')).toBe('26px');
+            expect(paddingLeft('Suite N')).toBe('8px');
+            expect(paddingLeft('Case N')).toBe('18px');
+            expect(paddingLeft('Run TC')).toBe('26px');
             expect(paddingLeft('Create Order')).toBe('35px');
         });
     });

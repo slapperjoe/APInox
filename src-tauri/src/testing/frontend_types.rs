@@ -36,7 +36,7 @@ pub struct FrontendTestSuite {
 pub struct FrontendTestStep {
     pub id: String,
     pub name: String,
-    /// "request" | "delay" | "transfer" | "script" | "workflow"
+    /// "request" | "delay" | "transfer" | "script" | "condition" | "loop" | "testCase"
     #[serde(rename = "type")]
     pub step_type: String,
     pub config: FrontendStepConfig,
@@ -52,13 +52,6 @@ pub struct FrontendStepConfig {
     pub delay_ms: Option<u64>,
     /// For 'script' steps
     pub script_content: Option<String>,
-    /// For 'workflow' steps: id of the referenced workflow
-    pub workflow_id: Option<String>,
-    /// For 'workflow' steps: variable overrides (beat workflow defaults)
-    pub workflow_variables: Option<std::collections::HashMap<String, String>>,
-    /// For 'workflow' steps: self-contained steps embedded by the webview
-    /// (avoids a config lookup / save-race; falls back to config by id)
-    pub workflow_steps: Option<Vec<serde_json::Value>>,
     /// For 'condition' steps: the flat WorkflowCondition JSON
     /// ({ expression, operator, expectedValue }).
     #[serde(default)]

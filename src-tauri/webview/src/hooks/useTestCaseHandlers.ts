@@ -355,7 +355,7 @@ export function useTestCaseHandlers({
                         command: FrontendCommand.RunTestCase,
                         caseId,
                         // Embed referenced testCase steps (self-contained run)
-                        testCase: embedTestRun([testCase], [], allCases)[0],
+                        testCase: embedTestRun([testCase], allCases)[0],
                         // Suite-level variables — the bridge layers these over
                         // the resolved environment; the case's own variables are
                         // applied by Rust (case wins).
@@ -408,7 +408,7 @@ export function useTestCaseHandlers({
                         // save-race), same as single-case runs.
                         testSuite: {
                             ...suite,
-                            testCases: embedTestRun(suite.testCases || [], [], allCases)
+                            testCases: embedTestRun(suite.testCases || [], allCases)
                         },
                         stream: true
                     });

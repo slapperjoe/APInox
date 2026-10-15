@@ -16,7 +16,7 @@ interface TestExecutionState {
     error?: string;
     assertionResults?: any[];
     response?: any;
-    /** Per-workflow-step results for 'workflow' test steps (live as they run). */
+    /** Per-nested-step results (loop-body sub-steps), live as they run. */
     workflowSteps?: Record<string, WorkflowStepExecution>;
 }
 
@@ -152,8 +152,8 @@ export const TestRunnerProvider = ({ children }: { children: ReactNode }) => {
                             status: 'pass',
                             response: update.response,
                             assertionResults: update.assertionResults,
-                            // Keep the per-workflow-step results collected while
-                            // the step ran (workflow test steps).
+                            // Keep the nested-step results collected while the
+                            // step ran.
                             workflowSteps: prev[caseId]?.[stepId]?.workflowSteps
                         }
                     }
@@ -173,17 +173,17 @@ export const TestRunnerProvider = ({ children }: { children: ReactNode }) => {
                             error: update.error,
                             response: update.response,
                             assertionResults: update.assertionResults,
-                            // Keep the per-workflow-step results collected while
-                            // the step ran (workflow test steps).
+                            // Keep the nested-step results collected while the
+                            // step ran.
                             workflowSteps: prev[caseId]?.[stepId]?.workflowSteps
                         }
                     }
                 };
             }
 
-            // Live per-workflow-step events from 'workflow' test steps:
-            // workflowStepStart / Pass / Fail / Skip. Nested under the parent
-            // test step so the test case view can show which inner requests
+            // Live nested sub-step events (workflowStepStart / Pass / Fail /
+            // Skip), emitted by a loop body's flat-step executor. Nested under
+            // the parent step so the test case view can show which inner steps
             // succeeded or failed.
             if (type === 'workflowStepStart' || type === 'workflowStepPass' || type === 'workflowStepFail' || type === 'workflowStepSkip') {
                 const caseId = update.caseId;

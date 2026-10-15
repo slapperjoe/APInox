@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { Play, ChevronLeft, GitBranch, Clock, FileCode, FileText, RefreshCw, ListChecks } from 'lucide-react';
+import { Play, ChevronLeft, GitBranch, Clock, FileCode, FileText, RefreshCw } from 'lucide-react';
 // Models imported via props.ts indirections, specific enums kept if needed locally (TestStepType is used in code?)
 // Checking code: TestStepType is used in props interface but not local var?
 // Actually TestStepType is used in onAddStep signature but onAddStep comes from props.
@@ -673,7 +673,7 @@ export const WorkspaceLayout: React.FC = () => {
             );
         }
 
-        // TESTS: testCase step — mirror the 'workflow' config screen with the
+        // TESTS: testCase step — mirror the referenced-case screen with the
         // global case list (select the referenced case, preview its steps,
         // override its variables). Save-time cycle guard lives in
         // handleUpdateStep (see useWorkspaceCallbacks).
@@ -704,8 +704,6 @@ export const WorkspaceLayout: React.FC = () => {
                             : '';
                     case 'testCase':
                         return s.config?.testCaseId || '';
-                    case 'workflow':
-                        return s.config?.workflowId || '';
                     case 'request':
                     default: {
                         const method = s.config?.request?.method || 'POST';
@@ -846,185 +844,6 @@ export const WorkspaceLayout: React.FC = () => {
                                 {referencedCase
                                     ? "Values override the referenced case's own variables (which override its suite's and the environment). Only changed values are saved as overrides; references are cycle-checked on save."
                                     : 'Values override the referenced case\'s own variables. References are cycle-checked on save.'}
-                            </div>
-                        </DelayField>
-                    </DelayContent>
-                </Content>
-            );
-        }
-
-        if (selectedStep && selectedStep.type === 'workflow' && !isReadOnly && onUpdateStep) {
-            // Workflows no longer exist in config (they were absorbed into test
-            // cases), so this picker's list is always empty for now. Task 8
-            // removes this screen along with the 'workflow' test step type.
-            const workflows: any[] = [];
-            // Resolved workflow referenced by this test step — its steps show on
-            // this screen read-only (edit them in the WORKFLOWS view).
-            const referencedWorkflow = workflows.find(w => w.id === selectedStep.config?.workflowId);
-            const wfSteps = referencedWorkflow?.steps || [];
-            const wfStepIcon = (type: WorkflowStep["type"]) => {
-                switch (type) {
-                    case 'delay': return <Clock size={13} />;
-                    case 'script': return <FileCode size={13} />;
-                    case 'condition': return <GitBranch size={13} />;
-                    case 'loop': return <RefreshCw size={13} />;
-                    case 'testCase': return <ListChecks size={13} />;
-                    case 'request':
-                    default: return <FileText size={13} />;
-                }
-            };
-            const wfStepMeta = (s: WorkflowStep) => {
-                switch (s.type) {
-                    case 'delay':
-                        return `${s.delayMs ?? 0} ms`;
-                    case 'condition':
-                        return s.condition?.expression || '';
-                    case 'loop':
-                        return s.loop
-                            ? `${s.loop.type === 'count' ? (s.loop.count ?? 0) + 'x' : s.loop.type} · ${s.loopSteps?.length || 0} steps`
-                            : '';
-                    case 'script':
-                        return 'JavaScript';
-                    case 'request':
-                    default: {
-                        const method = s.httpMethod || s.method || 'POST';
-                        const target = s.operationName || s.interfaceName || '';
-                        return target ? `${method} ${target}` : method;
-                    }
-                }
-            };
-
-            return (
-                <Content>
-                    <Toolbar>
-                        {onBackToCase && (
-                            <ToolbarButton onClick={onBackToCase} title="Back to Test Case">
-                                <ChevronLeft size={14} /> Back
-                            </ToolbarButton>
-                        )}
-                        <DelayTitle>Workflow Configuration</DelayTitle>
-                    </Toolbar>
-                    <DelayContent>
-                        <h2>Step: {selectedStep.name}</h2>
-                        <DelayField>
-                            <DelayLabel>Workflow:</DelayLabel>
-                            {/* Themed CustomSelect — a native <select>'s dropdown
-                                list is OS-rendered and ignores the app skin. */}
-                            <CustomSelect
-                                value={selectedStep.config?.workflowId || ''}
-                                placeholder="Select a workflow..."
-                                onChange={(value) => {
-                                    onUpdateStep({
-                                        ...selectedStep,
-                                        config: { ...selectedStep.config, workflowId: value }
-                                    });
-                                }}
-                                options={[
-                                    { value: '', label: 'Select a workflow...' },
-                                    ...workflows.map((wf: any) => ({ value: wf.id, label: wf.name }))
-                                ]}
-                            />
-                        </DelayField>
-                        <DelayField>
-                            <DelayLabel>Workflow steps{referencedWorkflow ? ` (${wfSteps.length})` : ''}:</DelayLabel>
-                            {referencedWorkflow && wfSteps.length > 0 ? (
-                                <div style={{ border: '1px solid var(--apinox-panel-border)', borderRadius: '2px', overflow: 'hidden' }}>
-                                    {wfSteps.map((s: WorkflowStep, i: number) => (
-                                        <div
-                                            key={s.id}
-                                            title={s.name}
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: 8,
-                                                padding: '6px 10px',
-                                                fontSize: '13px',
-                                                borderTop: i ? '1px solid var(--apinox-panel-border)' : 'none'
-                                            }}
-                                        >
-                                            <span style={{ opacity: 0.6, display: 'inline-flex', flexShrink: 0 }}>
-                                                {wfStepIcon(s.type)}
-                                            </span>
-                                            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                {s.name}
-                                            </span>
-                                            {wfStepMeta(s) && (
-                                                <span style={{ fontSize: '11px', opacity: 0.6, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                                                    {wfStepMeta(s)}
-                                                </span>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div style={{
-                                    fontSize: '12px',
-                                    opacity: 0.6,
-                                    padding: '8px 10px',
-                                    border: '1px dashed var(--apinox-panel-border)',
-                                    borderRadius: '2px'
-                                }}>
-                                    {referencedWorkflow
-                                        ? 'This workflow has no steps yet.'
-                                        : 'Select a workflow to see its steps here.'}
-                                </div>
-                            )}
-                            {referencedWorkflow && wfSteps.length > 0 && (
-                                <div style={{ fontSize: '11px', color: 'var(--apinox-descriptionForeground)', marginTop: '8px' }}>
-                                    Read-only — edit these steps in the WORKFLOWS view.
-                                </div>
-                            )}
-                        </DelayField>
-                        <DelayField>
-                            <DelayLabel>Override Variables (JSON):</DelayLabel>
-                            {/* Shows the workflow's variables with their default
-                                values (plus any saved overrides) so the user can
-                                see what's available and change values. Only values
-                                that differ from the defaults are persisted as
-                                overrides, so later default changes still apply. */}
-                            <textarea
-                                value={JSON.stringify({
-                                    ...(referencedWorkflow?.variables || {}),
-                                    ...(selectedStep.config.workflowVariables || {})
-                                }, null, 2)}
-                                onChange={(e) => {
-                                    try {
-                                        const edited = JSON.parse(e.target.value) as Record<string, unknown>;
-                                        const defaults = (referencedWorkflow?.variables || {}) as Record<string, string>;
-                                        const overrides: Record<string, string> = {};
-                                        for (const [k, v] of Object.entries(edited)) {
-                                            if (!(k in defaults) || defaults[k] !== v) {
-                                                overrides[k] = String(v);
-                                            }
-                                        }
-                                        onUpdateStep({
-                                            ...selectedStep,
-                                            config: { ...selectedStep.config, workflowVariables: overrides }
-                                        });
-                                    } catch (err) {
-                                        // Invalid JSON - don't update
-                                        console.error('Invalid JSON for workflow variables:', err);
-                                    }
-                                }}
-                                rows={8}
-                                placeholder={referencedWorkflow
-                                    ? '{"variable1": "value1"}'
-                                    : 'Select a workflow to see its variables'}
-                                style={{
-                                    background: 'var(--apinox-input-background)',
-                                    color: 'var(--apinox-input-foreground)',
-                                    border: '1px solid var(--apinox-input-border)',
-                                    padding: '8px',
-                                    borderRadius: '2px',
-                                    fontFamily: 'monospace',
-                                    fontSize: '12px',
-                                    width: '100%'
-                                }}
-                            />
-                            <div style={{ fontSize: '11px', color: 'var(--apinox-descriptionForeground)', marginTop: '8px' }}>
-                                {referencedWorkflow
-                                    ? 'Workflow variables with their defaults — change any value to override it. Only changed values are saved as overrides; test case context variables are also available.'
-                                    : 'Variables defined here will override workflow defaults. Test case context variables are also available.'}
                             </div>
                         </DelayField>
                     </DelayContent>
