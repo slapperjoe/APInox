@@ -6,7 +6,7 @@
  * inputs and an `aria-label`ed remove button, and a `+ Add variable` button
  * appends a blank row. Reads/writes a plain `Record<string, string>`.
  */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
 import { SPACING_XS, SPACING_SM } from '../../styles/spacing';
 
@@ -14,6 +14,27 @@ interface VariableRow {
     name: string;
     value: string;
 }
+
+/** Rows for a committed map (undefined/empty → no rows). */
+const rowsFromVariables = (variables?: Record<string, string>): VariableRow[] =>
+    Object.entries(variables || {}).map(([name, value]) => ({ name, value: String(value) }));
+
+/** The map rows commit to (empty names dropped). */
+const mapFromRows = (rows: VariableRow[]): Record<string, string> => {
+    const map: Record<string, string> = {};
+    for (const r of rows) {
+        if (r.name.trim()) map[r.name.trim()] = r.value;
+    }
+    return map;
+};
+
+/** Content-equal variable maps (order-independent). */
+const sameVariables = (a: Record<string, string>, b: Record<string, string>): boolean => {
+    const ka = Object.keys(a);
+    const kb = Object.keys(b);
+    if (ka.length !== kb.length) return false;
+    return ka.every(k => a[k] === b[k]);
+};
 
 const Section = styled.div`
     display: flex;
@@ -124,18 +145,34 @@ export const VariablesEditor: React.FC<VariablesEditorProps> = ({
     showHeader = true,
     hint,
 }) => {
-    const [rows, setRows] = useState<VariableRow[]>(() =>
-        Object.entries(variables || {}).map(([name, value]) => ({ name, value: String(value) })));
+    const [rows, setRows] = useState<VariableRow[]>(() => rowsFromVariables(variables));
+
+    /** The last map committed via onChange. The `variables` prop reflects our
+     *  own commits back with a NEW object identity (the global-store
+     *  round-trip re-hydrates the case/suite); resetting local rows from such
+     *  an echo would wipe the transient blank row that "+ Add variable" just
+     *  created — the blank row is never committed (empty names are dropped),
+     *  so it can't survive a prop-driven reset. Only reset on a genuinely
+     *  external change: incoming content that differs from the last commit. */
+    const lastCommittedRef = useRef<Record<string, string> | null>(null);
+    const mountedRef = useRef(false);
 
     useEffect(() => {
-        setRows(Object.entries(variables || {}).map(([name, value]) => ({ name, value: String(value) })));
+        if (!mountedRef.current) {
+            // Initial rows were already built in the useState initializer.
+            mountedRef.current = true;
+            return;
+        }
+        const last = lastCommittedRef.current;
+        if (last !== null && sameVariables(variables ?? {}, last)) {
+            return; // own commit reflected back — local rows are authoritative
+        }
+        setRows(rowsFromVariables(variables));
     }, [variables]);
 
     const commit = (next: VariableRow[]) => {
-        const map: Record<string, string> = {};
-        for (const r of next) {
-            if (r.name.trim()) map[r.name.trim()] = r.value;
-        }
+        const map = mapFromRows(next);
+        lastCommittedRef.current = map;
         onChange(map);
     };
 
