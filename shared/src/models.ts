@@ -513,7 +513,7 @@ export type ExplorerLoadState =
     | { phase: 'error'; message: string };
 
 // Test Runner Types
-export type TestStepType = 'request' | 'delay' | 'transfer' | 'script' | 'workflow';
+export type TestStepType = 'request' | 'delay' | 'transfer' | 'script' | 'workflow' | 'condition' | 'loop' | 'testCase';
 
 export interface TestStep {
     id: string;
@@ -547,6 +547,24 @@ export interface TestStep {
          * the webview into the run payload so execution is not subject to a
          * config save-race (runtime-only, not persisted to step files). */
         workflowSteps?: WorkflowStep[];
+
+        // For 'condition' — assertion step (same shape as workflow conditions).
+        // True: continue. False: FAIL — the case/workflow stops at this step.
+        condition?: WorkflowCondition;
+
+        // For 'loop' — repeat/delay/while over `loopSteps`.
+        loop?: WorkflowLoop;
+        /** Body of a 'loop' test step. Reuses the flat workflow step shape so
+         * request/delay/condition/loop nest identically to workflows. */
+        loopSteps?: WorkflowStep[];
+
+        // For 'testCase' - reusable test case execution
+        testCaseId?: string; // Reference to a global test case (test-suites store)
+        testCaseVariables?: Record<string, string>; // Override the case's variables
+        /** Self-contained copy of the referenced case's steps, embedded by the
+         * webview into the run payload (runtime-only, not persisted) — same
+         * pattern as `workflowSteps`. */
+        testCaseSteps?: TestStep[];
     };
 }
 
@@ -957,7 +975,7 @@ export interface WorkflowStep {
     id: string;
     name: string;
     /** Step type */
-    type: 'request' | 'delay' | 'condition' | 'loop' | 'script';
+    type: 'request' | 'delay' | 'condition' | 'loop' | 'script' | 'testCase';
     /** Order in workflow */
     order: number;
     
@@ -998,6 +1016,14 @@ export interface WorkflowStep {
     
     /** Variable extractors for this step */
     extractors?: WorkflowExtractor[];
+
+    /** For 'testCase' type: id of the referenced global test case */
+    testCaseId?: string;
+    /** Variable overrides layered over the referenced case's own variables */
+    testCaseVariables?: Record<string, string>;
+    /** Self-contained copy of the referenced case (id/name/steps), embedded by
+     * the webview into the run payload (runtime-only, not persisted). */
+    testCase?: { id: string; name: string; steps: TestStep[] };
     
     /** Whether step execution failed */
     failed?: boolean;
