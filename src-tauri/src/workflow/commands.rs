@@ -5,9 +5,8 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use crate::settings_manager;
 use crate::testing::frontend_runner::{
-    evaluate_condition, execute_loop_body, run_request_step, run_test_case_steps,
+    build_frontend_request, evaluate_condition, execute_loop_body, run_request_step, run_test_case_steps,
 };
-use crate::testing::frontend_types::{FrontendExtractor, FrontendRequest};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
@@ -74,91 +73,6 @@ fn now_ms() -> u64 {
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_millis() as u64)
         .unwrap_or(0)
-}
-
-/// Build a `FrontendRequest` from a flat frontend `WorkflowStep`.
-///
-/// `pub(crate)` so the performance runner can drive workflow-backed suites
-/// through the same request-execution path as `run_workflow`.
-pub(crate) fn build_frontend_request(step: &Value) -> FrontendRequest {
-    let get = |k: &str| {
-        step.get(k)
-            .and_then(|v| v.as_str())
-            .filter(|s| !s.is_empty())
-            .map(|s| s.to_string())
-    };
-
-    let method = get("httpMethod").or_else(|| get("method"));
-
-    let extractors: Vec<FrontendExtractor> = step
-        .get("extractors")
-        .and_then(|v| v.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|e| {
-                    let variable = e.get("variable").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                    if variable.is_empty() {
-                        return None;
-                    }
-                    let raw = e
-                        .get("type")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("xpath")
-                        .to_lowercase();
-                    let extractor_type = match raw.as_str() {
-                        "jsonpath" => "JSONPath",
-                        "regex" => "Regex",
-                        "header" => "Header",
-                        _ => "XPath",
-                    }
-                    .to_string();
-                    let source = e.get("source").and_then(|v| v.as_str()).map(|s| s.to_string());
-                    let pattern = e.get("pattern").and_then(|v| v.as_str()).map(|s| s.to_string());
-                    let header_name = e
-                        .get("headerName")
-                        .and_then(|v| v.as_str())
-                        .map(|s| s.to_string());
-                    // For header extractors the lookup name is headerName, else the pattern.
-                    let path = if extractor_type == "Header" {
-                        header_name.or(pattern)
-                    } else {
-                        pattern
-                    };
-                    let default_value = e
-                        .get("defaultValue")
-                        .and_then(|v| v.as_str())
-                        .map(|s| s.to_string());
-                    Some(FrontendExtractor {
-                        id: e.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-                        variable,
-                        extractor_type: Some(extractor_type),
-                        source,
-                        path,
-                        default_value,
-                    })
-                })
-                .collect()
-        })
-        .unwrap_or_default();
-
-    FrontendRequest {
-        name: get("name"),
-        request: get("requestBody"),
-        endpoint: get("endpoint"),
-        method,
-        content_type: get("contentType"),
-        headers: step.get("headers").and_then(|v| v.as_object()).map(|obj| {
-            obj.iter()
-                .filter_map(|(k, v)| v.as_str().map(|s| (k.clone(), s.to_string())))
-                .collect()
-        }),
-        assertions: None,
-        extractors: if extractors.is_empty() {
-            None
-        } else {
-            Some(extractors)
-        },
-    }
 }
 
 /// Execute a workflow (flat frontend `Workflow` model).
@@ -437,68 +351,6 @@ pub async fn run_workflow(request: RunWorkflowRequest) -> Result<WorkflowRunResu
     }
 
     Ok(result)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn json(v: serde_json::Value) -> serde_json::Value {
-        v
-    }
-
-    #[test]
-    fn build_frontend_request_maps_self_contained_request_step() {
-        let step = json(serde_json::json!({
-            "id": "s1",
-            "name": "GetUser",
-            "type": "request",
-            "requestBody": "<GetUser/>",
-            "endpoint": "http://svc/endpoint",
-            "httpMethod": "POST",
-            "contentType": "text/xml",
-            "headers": { "SOAPAction": "getUser" },
-            "extractors": [
-                { "id": "e1", "variable": "userId", "type": "xpath", "source": "body", "pattern": "//Id" },
-                { "id": "e2", "variable": "session", "type": "header", "source": "header", "headerName": "Set-Cookie" }
-            ]
-        }));
-
-        let req = build_frontend_request(&step);
-
-        assert_eq!(req.name.as_deref(), Some("GetUser"));
-        assert_eq!(req.request.as_deref(), Some("<GetUser/>"));
-        assert_eq!(req.endpoint.as_deref(), Some("http://svc/endpoint"));
-        assert_eq!(req.method.as_deref(), Some("POST"));
-        assert_eq!(req.content_type.as_deref(), Some("text/xml"));
-        let headers = req.headers.as_ref().unwrap();
-        assert_eq!(headers.get("SOAPAction").map(|s| s.as_str()), Some("getUser"));
-
-        let ex = req.extractors.as_ref().unwrap();
-        assert_eq!(ex.len(), 2);
-        // XPath extractor: pattern feeds `path`.
-        assert_eq!(ex[0].extractor_type.as_deref(), Some("XPath"));
-        assert_eq!(ex[0].path.as_deref(), Some("//Id"));
-        // Header extractor: headerName feeds `path`.
-        assert_eq!(ex[1].extractor_type.as_deref(), Some("Header"));
-        assert_eq!(ex[1].path.as_deref(), Some("Set-Cookie"));
-    }
-
-    #[test]
-    fn build_frontend_request_skips_methodless_named_steps_safely() {
-        // A step with neither httpMethod nor method falls back to POST (None method).
-        let step = json(serde_json::json!({
-            "id": "s2",
-            "name": "NoMethod",
-            "type": "request",
-            "requestBody": "<X/>",
-            "endpoint": "http://svc/x",
-            "extractors": []
-        }));
-        let req = build_frontend_request(&step);
-        assert_eq!(req.method.as_deref(), None);
-        assert_eq!(req.extractors.as_ref().map(|e| e.len()), None);
-    }
 }
 
 /// Get all workflows from global config

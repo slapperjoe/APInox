@@ -10,8 +10,7 @@ use crate::http::client::CancelToken;
 use crate::performance::runner::execute_request;
 use crate::performance::types::{PerformanceResult, PerformanceRun, PerformanceStats, PerformanceSuite};
 use crate::settings_manager;
-use crate::testing::frontend_runner::run_request_step;
-use crate::workflow::commands::build_frontend_request;
+use crate::testing::frontend_runner::{build_frontend_request, run_request_step};
 use std::time::Instant;
 
 #[derive(Debug, Clone)]
