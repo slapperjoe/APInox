@@ -92,8 +92,7 @@ export function useSidebarCallbacks({
 
     const handleToggleSuiteExpand = useCallback((suiteId: string) => {
         updateSuiteLocal(suiteId, s => ({ ...s, expanded: s.expanded === false ? true : false }));
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [updateSuite]);
+    }, [updateSuiteLocal]);
 
     const handleToggleCaseExpand = useCallback((caseId: string) => {
         void updateTestCase(caseId, tc => ({ ...tc, expanded: tc.expanded === false ? true : false }));

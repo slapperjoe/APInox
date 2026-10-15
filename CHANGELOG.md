@@ -5,6 +5,9 @@
 ### Removed
 - **Workflows removed**: the WORKFLOWS view, the workflow entity, workflow run history, the workflow import/export commands and the `workflow` test-step type are gone. Existing workflows were migrated at startup into the global test-case store as one suite per workflow (named after it), and pre-existing `workflow` steps now reference the migrated test case. Test cases are the single flow surface. Legacy `*.workflow.json` files can no longer be imported.
 
+### Fixed
+- **Test sidebar chevrons**: the expand/collapse chevron on a test suite row did nothing when clicked. `handleToggleSuiteExpand` was memoised on the stable `updateSuite` alone, so it kept the first-render `updateSuiteLocal` closure over the empty pre-load suite list and returned before updating anything. The callback now depends on `updateSuiteLocal`, so suite rows collapse and re-expand as the test-case chevrons already did.
+
 ## [0.19.1] - 2026-04-09
 ### Changes
 - No commit messages found.

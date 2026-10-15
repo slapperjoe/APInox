@@ -362,6 +362,37 @@ describe('TestsUi', () => {
         expect(screen.queryByTestId('icon-chevron-down')).not.toBeInTheDocument();
     });
 
+    it('the suite chevron toggles the suite — the handler is called and a collapsed suite hides its cases', () => {
+        const { unmount } = render(<TestsUi {...defaultProps} />);
+
+        // Expanded by default, so the case rows render.
+        expect(screen.getByText('Case 1')).toBeInTheDocument();
+
+        // DOM order: the suite chevron is the first, the case's is the second.
+        fireEvent.click(screen.getAllByTestId('icon-chevron-down')[0]);
+        expect(defaultProps.onToggleSuiteExpand).toHaveBeenCalledWith('suite-1');
+
+        // The handler owns the state; re-rendering collapsed must hide the
+        // cases and flip the chevron to the right-pointing (collapsed) icon.
+        unmount();
+        render(<TestsUi {...defaultProps} projects={[{ ...mockProject, testSuites: [{ ...mockProject.testSuites[0], expanded: false }] }]} />);
+        expect(screen.queryByText('Case 1')).not.toBeInTheDocument();
+        expect(screen.getByTestId('icon-chevron-right')).toBeInTheDocument();
+    });
+
+    it('the test case chevron toggles the case — the handler is called and a collapsed case hides its steps', () => {
+        const { unmount } = render(<TestsUi {...defaultProps} />);
+
+        expect(screen.getByText('Step 1')).toBeInTheDocument();
+
+        fireEvent.click(screen.getAllByTestId('icon-chevron-down')[1]);
+        expect(defaultProps.onToggleCaseExpand).toHaveBeenCalledWith('case-1');
+
+        unmount();
+        render(<TestsUi {...defaultProps} projects={[{ ...mockProject, testSuites: [{ ...mockProject.testSuites[0], testCases: [{ ...mockProject.testSuites[0].testCases[0], expanded: false }] }] }]} />);
+        expect(screen.queryByText('Step 1')).not.toBeInTheDocument();
+    });
+
     it('renders no chevron for a test case with no steps', () => {
         const projectWithSteplessCase: ApinoxProject = {
             name: 'Project B',
