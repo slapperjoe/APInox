@@ -14,6 +14,11 @@ use std::time::Instant;
 /// connection pool (and background threads) per step.
 static TEST_CLIENT: Lazy<Client> = Lazy::new(Client::new);
 
+/// Max workflow<->testCase reference nesting during a run. The webview
+/// already bounds embedding (MAX_EMBED_DEPTH); this is the defense-in-depth
+/// cap for payloads that bypass it (sync mode, hand-built requests).
+pub(crate) const MAX_REFERENCE_DEPTH: u32 = 10;
+
 use crate::settings_manager;
 use crate::utils::{RegexExtractor, XPathEvaluator, WildcardProcessor, substitute_variables, CONTENT_TYPE_XML};
 use crate::workflow::commands::build_frontend_request;
@@ -29,11 +34,14 @@ use super::frontend_types::{
 /// `emit` (streaming mode) receives live sub-update events — for 'workflow'
 /// steps these are the per-workflow-step `workflowStepStart/Pass/Fail/Skip`
 /// events the webview uses to show which inner requests succeeded.
+/// `depth` is the reference nesting level (0 = top-level run); guarded by
+/// `MAX_REFERENCE_DEPTH` inside the loop/embedded-step executors.
 pub async fn run_step(
     step: &FrontendTestStep,
     fallback_endpoint: Option<&str>,
     context: &mut HashMap<String, Value>,
     emit: Option<&mut (dyn FnMut(Value) + Send)>,
+    depth: u32,
 ) -> Result<StepExecutionResult> {
     let start = Instant::now();
 
@@ -59,7 +67,56 @@ pub async fn run_step(
                 stop_remaining: false,
             })
         }
-        "workflow" => run_workflow_step(step, context, emit).await,
+        "workflow" => run_workflow_step(step, context, emit, depth).await,
+        "condition" => {
+            // Assertion semantics (user decision): true -> pass & continue;
+            // false -> FAIL this step and STOP the rest of the case/workflow.
+            let met = step
+                .config
+                .condition
+                .as_ref()
+                .map(|c| evaluate_condition(c, context))
+                .unwrap_or(false);
+            Ok(StepExecutionResult {
+                passed: met,
+                request_body: None,
+                response_body: None,
+                status_code: None,
+                duration_ms: start.elapsed().as_millis() as u64,
+                assertion_results: vec![],
+                extracted_variables: HashMap::new(),
+                error: if met {
+                    None
+                } else {
+                    Some("condition failed — stopping run".to_string())
+                },
+                stop_remaining: !met,
+            })
+        }
+        "loop" => {
+            // Rebuild the flat 'loop' WorkflowStep shape the shared executor
+            // expects, then run its body N / while times.
+            let ws = serde_json::json!({
+                "id": step.id,
+                "name": step.name,
+                "type": "loop",
+                "loop": step.config.loop_config.clone().unwrap_or(Value::Null),
+                "loopSteps": step.config.loop_steps.clone().unwrap_or_default()
+            });
+            let (passed, error, duration) =
+                execute_loop_body(&ws, context, emit, &step.id, depth).await;
+            Ok(StepExecutionResult {
+                passed,
+                request_body: None,
+                response_body: None,
+                status_code: None,
+                duration_ms: duration,
+                assertion_results: vec![],
+                extracted_variables: HashMap::new(),
+                error,
+                stop_remaining: false,
+            })
+        }
         other => {
             // script, transfer — not yet implemented in Rust, skip with pass
             log::warn!("[FrontendRunner] Step type '{}' not yet implemented, skipping", other);
@@ -133,11 +190,12 @@ fn resolve_workflow(
 /// workflow's own initial variables, and the step's variable overrides
 /// (highest priority). Emits per-workflow-step events so the webview can show
 /// which inner requests succeeded. Mirrors `run_workflow`'s execution rules
-/// (request/delay executed; condition/loop/script skipped, not failures).
+/// (request/delay/condition/loop executed; script skipped).
 async fn run_workflow_step(
     step: &FrontendTestStep,
     context: &mut HashMap<String, Value>,
     emit: Option<&mut (dyn FnMut(Value) + Send)>,
+    depth: u32,
 ) -> Result<StepExecutionResult> {
     let start = Instant::now();
     let (wf_steps, wf_vars, workflow_id) = resolve_workflow(step);
@@ -176,15 +234,124 @@ async fn run_workflow_step(
         }
     }
 
-    let mut all_passed = true;
-    let mut errors: Vec<String> = Vec::new();
-    let mut extracted: HashMap<String, String> = HashMap::new();
     // Snapshot of the context before the run, so the result only reports
     // variables this workflow actually produced.
     let pre_run: std::collections::HashSet<String> = context.keys().cloned().collect();
 
-    let mut emit = emit;
-    for ws in &wf_steps {
+    // The shared flat-step executor streams the same `workflowStep*` events
+    // and mutates `variables` in place (request steps' extracted vars land
+    // there). `stopped` is set when a 'condition' step failed inside the
+    // workflow — the outer case must then stop too.
+    let (all_passed, outcomes, stopped) =
+        run_flat_steps(&wf_steps, &mut variables, emit, &step.id, depth + 1).await;
+
+    // Propagate produced variables into the outer test-case context so later
+    // top-level steps can use them.
+    let mut extracted: HashMap<String, String> = HashMap::new();
+    for o in &outcomes {
+        for (k, v) in &o.extracted {
+            extracted.insert(k.clone(), v.clone());
+            context.insert(k.clone(), Value::String(v.clone()));
+        }
+    }
+
+    // Report only variables this workflow produced (new or changed keys).
+    extracted.retain(|k, _| !pre_run.contains(k));
+
+    let mut errors: Vec<String> = Vec::new();
+    for o in &outcomes {
+        if !o.passed {
+            if let Some(e) = &o.error {
+                errors.push(format!("{}: {}", o.name, e));
+            }
+        }
+    }
+
+    let error = if errors.is_empty() { None } else { Some(errors.join("; ")) };
+    Ok(StepExecutionResult {
+        passed: all_passed,
+        request_body: None,
+        response_body: None,
+        status_code: None,
+        duration_ms: start.elapsed().as_millis() as u64,
+        assertion_results: vec![],
+        extracted_variables: extracted,
+        error,
+        stop_remaining: stopped,
+    })
+}
+
+/// Outcome of executing one flat (workflow-shaped) step.
+///
+/// `id`/`r#type`/`response`/`duration_ms`/`stop` are part of the shared shape
+/// used by the embedded testCase executor; not all are read on every path yet.
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
+pub(crate) struct FlatStepOutcome {
+    pub id: String,
+    pub name: String,
+    pub r#type: String,
+    pub passed: bool,
+    pub error: Option<String>,
+    /// (status, duration_ms, body) for request steps.
+    pub response: Option<(Option<u16>, u64, Option<String>)>,
+    pub duration_ms: u64,
+    pub extracted: HashMap<String, String>,
+    /// True when a 'condition' step FAILED: the caller must stop the list
+    /// (the whole case/workflow is already marked failed via `passed`).
+    pub stop: bool,
+}
+
+/// Reborrow a streaming emitter so it can be handed down to a nested
+/// executor repeatedly. A `&mut dyn FnMut` is invariant, so the compiler will
+/// not accept a second `as_deref_mut()` while a nested call holds the first;
+/// an explicit `&mut **e` reborrow hands out a fresh, shorter-lived borrow
+/// each time.
+fn emitter_ref<'a>(
+    emit: &'a mut Option<&mut (dyn FnMut(Value) + Send)>,
+) -> Option<&'a mut (dyn FnMut(Value) + Send)> {
+    match emit {
+        Some(e) => Some(&mut **e),
+        None => None,
+    }
+}
+
+/// Execute a list of flat workflow-shaped steps in order, sharing `context`.
+/// Emits the same `workflowStep*` events `run_workflow_step` used to emit
+/// (callers that don't stream pass None). `depth` is the reference nesting
+/// level (0 = top-level run); guarded by MAX_REFERENCE_DEPTH.
+///
+/// Returns (all_passed, per-step outcomes, stopped_by_condition).
+pub(crate) async fn run_flat_steps(
+    steps: &[Value],
+    context: &mut HashMap<String, Value>,
+    mut emit: Option<&mut (dyn FnMut(Value) + Send)>,
+    parent_step_id: &str,
+    depth: u32,
+) -> (bool, Vec<FlatStepOutcome>, bool) {
+    if depth >= MAX_REFERENCE_DEPTH {
+        return (
+            false,
+            vec![FlatStepOutcome {
+                id: String::new(),
+                name: String::new(),
+                r#type: String::new(),
+                passed: false,
+                error: Some("reference depth exceeded (possible cycle)".to_string()),
+                response: None,
+                duration_ms: 0,
+                extracted: HashMap::new(),
+                stop: false,
+            }],
+            false,
+        );
+    }
+
+    let mut all_passed = true;
+    let mut outcomes: Vec<FlatStepOutcome> = Vec::new();
+    let mut stopped = false;
+
+    for ws in steps {
         let ws_id = ws.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
         let ws_name = ws.get("name").and_then(|v| v.as_str()).unwrap_or("step").to_string();
         let ws_type = ws
@@ -197,65 +364,105 @@ async fn run_workflow_step(
         if let Some(emitter) = emit.as_deref_mut() {
             emitter(serde_json::json!({
                 "type": "workflowStepStart",
-                "stepId": step.id,
+                "stepId": parent_step_id,
                 "workflowStepId": ws_id,
                 "name": ws_name
             }));
         }
 
-        let (sub_passed, sub_error, sub_response, sub_duration) = match ws_type.as_str() {
-            "delay" => {
-                let ms = ws.get("delayMs").and_then(|v| v.as_u64()).unwrap_or(0);
-                tokio::time::sleep(tokio::time::Duration::from_millis(ms)).await;
-                (true, None, None, ws_start.elapsed().as_millis() as u64)
-            }
-            "request" => {
-                let req = build_frontend_request(ws);
-                match run_request_step(&req, None, &variables, ws_start).await {
-                    Ok(r) => {
-                        for (k, v) in &r.extracted_variables {
-                            variables.insert(k.clone(), Value::String(v.clone()));
-                            extracted.insert(k.clone(), v.clone());
-                        }
-                        (
-                            r.passed,
-                            r.error,
-                            Some((r.status_code, r.duration_ms, r.response_body)),
-                            r.duration_ms,
-                        )
-                    }
-                    Err(e) => (false, Some(e.to_string()), None, ws_start.elapsed().as_millis() as u64),
+        let mut step_extracted: HashMap<String, String> = HashMap::new();
+
+        let (sub_passed, sub_error, sub_response, sub_duration, step_stop) =
+            match ws_type.as_str() {
+                "delay" => {
+                    let ms = ws.get("delayMs").and_then(|v| v.as_u64()).unwrap_or(0);
+                    tokio::time::sleep(tokio::time::Duration::from_millis(ms)).await;
+                    (true, None, None, ws_start.elapsed().as_millis() as u64, false)
                 }
-            }
-            other => {
-                // condition / loop / script: not executed by the backend
-                // (mirrors run_workflow) — surfaced as skipped, not failed.
-                log::warn!(
-                    "[FrontendRunner] workflow step '{}' type '{}' not executed in test run",
-                    ws_name,
-                    other
-                );
-                (true, None, None, 0)
-            }
-        };
+                "request" => {
+                    let req = build_frontend_request(ws);
+                    match run_request_step(&req, None, &*context, ws_start).await {
+                        Ok(r) => {
+                            for (k, v) in &r.extracted_variables {
+                                context.insert(k.clone(), Value::String(v.clone()));
+                                step_extracted.insert(k.clone(), v.clone());
+                            }
+                            (
+                                r.passed,
+                                r.error,
+                                Some((r.status_code, r.duration_ms, r.response_body)),
+                                r.duration_ms,
+                                false,
+                            )
+                        }
+                        Err(e) => (
+                            false,
+                            Some(e.to_string()),
+                            None,
+                            ws_start.elapsed().as_millis() as u64,
+                            false,
+                        ),
+                    }
+                }
+                "condition" => {
+                    let met = ws
+                        .get("condition")
+                        .map(|c| evaluate_condition(c, context))
+                        .unwrap_or(false);
+                    // Assertion semantics (user decision): true -> pass &
+                    // continue; false -> FAIL this step and stop the list.
+                    (
+                        met,
+                        if met {
+                            None
+                        } else {
+                            Some("condition failed — stopping run".to_string())
+                        },
+                        None,
+                        ws_start.elapsed().as_millis() as u64,
+                        !met,
+                    )
+                }
+                "loop" => {
+                    let (passed, error, duration) = execute_loop_body(
+                        ws,
+                        context,
+                        emitter_ref(&mut emit),
+                        parent_step_id,
+                        depth + 1,
+                    )
+                    .await;
+                    (passed, error, None, duration, false)
+                }
+                other => {
+                    // script (and other non-executed types): surfaced as
+                    // skipped, not failed.
+                    log::warn!(
+                        "[FrontendRunner] workflow step '{}' type '{}' not executed in test run",
+                        ws_name,
+                        other
+                    );
+                    (true, None, None, 0, false)
+                }
+            };
 
         if let Some(emitter) = emit.as_deref_mut() {
             let event_type = if !sub_passed {
                 "workflowStepFail"
             } else {
                 match ws_type.as_str() {
-                    "condition" | "loop" | "script" => "workflowStepSkip",
+                    "script" => "workflowStepSkip",
                     _ => "workflowStepPass",
                 }
             };
             emitter(serde_json::json!({
                 "type": event_type,
-                "stepId": step.id,
+                "stepId": parent_step_id,
                 "workflowStepId": ws_id,
                 "name": ws_name,
                 "durationMs": sub_duration,
-                "error": sub_error,
-                "response": sub_response.map(|(status_code, duration_ms, body)| {
+                "error": sub_error.clone(),
+                "response": sub_response.clone().map(|(status_code, duration_ms, body)| {
                     serde_json::json!({
                         "rawResponse": body,
                         "duration": duration_ms as f64 / 1000.0,
@@ -265,35 +472,192 @@ async fn run_workflow_step(
             }));
         }
 
-        // Propagate produced variables into the outer test-case context so
-        // later top-level steps can use them.
-        for (k, v) in &extracted {
-            context.insert(k.clone(), Value::String(v.clone()));
-        }
-
         if !sub_passed {
             all_passed = false;
-            if let Some(e) = sub_error {
-                errors.push(format!("{}: {}", ws_name, e));
+        }
+
+        outcomes.push(FlatStepOutcome {
+            id: ws_id,
+            name: ws_name,
+            r#type: ws_type,
+            passed: sub_passed,
+            error: sub_error,
+            response: sub_response,
+            duration_ms: sub_duration,
+            extracted: step_extracted,
+            stop: step_stop,
+        });
+
+        if step_stop {
+            stopped = true;
+            break;
+        }
+    }
+
+    (all_passed, outcomes, stopped)
+}
+
+/// Execute a 'loop' flat step: resolve iterations from its `loop` config and
+/// run the `loopSteps` body once per iteration, setting the iterator variable.
+/// `list` splits the substituted variable on commas (legacy engine parity);
+/// `while` re-evaluates its condition each pass. All bounded by maxIterations.
+async fn execute_loop_body(
+    ws: &Value,
+    context: &mut HashMap<String, Value>,
+    mut emit: Option<&mut (dyn FnMut(Value) + Send)>,
+    parent_step_id: &str,
+    depth: u32,
+) -> (bool, Option<String>, u64) {
+    let start = Instant::now();
+    if depth >= MAX_REFERENCE_DEPTH {
+        return (
+            false,
+            Some("reference depth exceeded (possible cycle)".to_string()),
+            0,
+        );
+    }
+    let loop_cfg = ws.get("loop").cloned().unwrap_or(Value::Null);
+    let ltype = loop_cfg
+        .get("type")
+        .and_then(|v| v.as_str())
+        .unwrap_or("count")
+        .to_string();
+    let max_iter = loop_cfg
+        .get("maxIterations")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(100);
+    let iter_var = loop_cfg
+        .get("iteratorVariable")
+        .and_then(|v| v.as_str())
+        .unwrap_or("i")
+        .to_string();
+    let body = ws
+        .get("loopSteps")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+
+    let mut all_passed = true;
+    let mut errors: Vec<String> = Vec::new();
+    let mut iteration: u64 = 0;
+
+    if ltype == "while" {
+        let cond = loop_cfg.get("condition").cloned();
+        while iteration < max_iter {
+            let met = cond
+                .as_ref()
+                .map(|c| evaluate_condition(c, context))
+                .unwrap_or(false);
+            if !met {
+                break;
+            }
+            let (passed, stopped) = run_loop_iteration(
+                &body,
+                context,
+                emitter_ref(&mut emit),
+                parent_step_id,
+                depth,
+                &iter_var,
+                None,
+                iteration,
+            )
+            .await;
+            iteration += 1;
+            if stopped {
+                // A condition FAILED inside the body (assertion semantics):
+                // the body failed — abort the whole loop and report failure.
+                errors.push(format!(
+                    "iteration {}: condition failed inside loop body",
+                    iteration
+                ));
+                all_passed = false;
+                break;
+            }
+            if !passed {
+                errors.push(format!("iteration {}: body failed", iteration));
+                all_passed = false;
+                break;
+            }
+        }
+    } else {
+        let items: Vec<Option<String>> = match ltype.as_str() {
+            "count" => {
+                let n = loop_cfg
+                    .get("count")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(1)
+                    .min(max_iter);
+                (0..n).map(|_| None).collect()
+            }
+            "list" => {
+                let var = loop_cfg
+                    .get("listVariable")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let raw = substitute_step_template(var, &context_to_strings(context));
+                raw.split(',')
+                    .map(|s| Some(s.trim().to_string()))
+                    .filter(|s| s.as_deref().map_or(false, |t| !t.is_empty()))
+                    .take(max_iter as usize)
+                    .collect()
+            }
+            _ => vec![],
+        };
+        for item in items {
+            let (passed, stopped) = run_loop_iteration(
+                &body,
+                context,
+                emitter_ref(&mut emit),
+                parent_step_id,
+                depth,
+                &iter_var,
+                item,
+                iteration,
+            )
+            .await;
+            iteration += 1;
+            if stopped {
+                errors.push(format!(
+                    "iteration {}: condition failed inside loop body",
+                    iteration
+                ));
+                all_passed = false;
+                break;
+            }
+            if !passed {
+                errors.push(format!("iteration {}: body failed", iteration));
+                all_passed = false;
+                break;
             }
         }
     }
 
-    // Report only variables this workflow produced (new or changed keys).
-    extracted.retain(|k, _| !pre_run.contains(k));
-
     let error = if errors.is_empty() { None } else { Some(errors.join("; ")) };
-    Ok(StepExecutionResult {
-        passed: all_passed,
-        request_body: None,
-        response_body: None,
-        status_code: None,
-        duration_ms: start.elapsed().as_millis() as u64,
-        assertion_results: vec![],
-        extracted_variables: extracted,
-        error,
-        stop_remaining: false,
-    })
+    (all_passed, error, start.elapsed().as_millis() as u64)
+}
+
+/// One loop pass: write the iterator variable + `_index` into the shared
+/// context, then run the body through `run_flat_steps`.
+/// Returns (body_passed, stopped_by_condition).
+async fn run_loop_iteration(
+    body: &[Value],
+    context: &mut HashMap<String, Value>,
+    emit: Option<&mut (dyn FnMut(Value) + Send)>,
+    parent_step_id: &str,
+    depth: u32,
+    iter_var: &str,
+    item: Option<String>,
+    index: u64,
+) -> (bool, bool) {
+    if let Some(v) = item {
+        context.insert(iter_var.to_string(), Value::String(v));
+    }
+    context.insert("_index".to_string(), Value::String(index.to_string()));
+    // `run_flat_steps` <-> `execute_loop_body` are mutually recursive async
+    // fns; box the recursive link so the future has a finite size.
+    let (passed, _outcomes, stopped) =
+        Box::pin(run_flat_steps(body, context, emit, parent_step_id, depth + 1)).await;
+    (passed, stopped)
 }
 
 /// Apply template substitution to a step endpoint/body.
@@ -994,5 +1358,67 @@ mod tests {
     fn condition_unknown_operator_is_false() {
         let ctx: HashMap<String, Value> = HashMap::new();
         assert!(!evaluate_condition(&cond("{{x}}", "startsWith", "a"), &ctx));
+    }
+
+    fn step(type_: &str, name: &str, config: serde_json::Value) -> FrontendTestStep {
+        FrontendTestStep {
+            id: format!("stp-{name}"),
+            name: name.to_string(),
+            step_type: type_.to_string(),
+            config: serde_json::from_value(config).expect("config"),
+        }
+    }
+
+    #[tokio::test]
+    async fn condition_false_fails_and_stops() {
+        let mut ctx: HashMap<String, Value> = HashMap::new();
+        let s = step("condition", "guard", serde_json::json!({
+            "condition": { "id": "c", "expression": "{{flag}}", "operator": "equals", "expectedValue": "yes" }
+        }));
+        let r = run_step(&s, None, &mut ctx, None, 0).await.expect("run");
+        assert!(!r.passed, "a false condition FAILS the case (assertion semantics)");
+        assert!(r.error.as_ref().unwrap().contains("condition failed"));
+        assert!(r.stop_remaining, "failed condition must stop the run");
+    }
+
+    #[tokio::test]
+    async fn condition_true_continues() {
+        let mut ctx: HashMap<String, Value> = HashMap::new();
+        ctx.insert("flag".to_string(), Value::String("yes".into()));
+        let s = step("condition", "guard", serde_json::json!({
+            "condition": { "id": "c", "expression": "{{flag}}", "operator": "equals", "expectedValue": "yes" }
+        }));
+        let r = run_step(&s, None, &mut ctx, None, 0).await.expect("run");
+        assert!(r.passed && !r.stop_remaining);
+    }
+
+    #[tokio::test]
+    async fn loop_count_runs_body_with_iterator_variable() {
+        let mut ctx: HashMap<String, Value> = HashMap::new();
+        let s = step("loop", "twice", serde_json::json!({
+            "loop": { "type": "count", "count": 2, "maxIterations": 100, "iteratorVariable": "i" },
+            "loopSteps": [
+                { "id": "b1", "name": "d1", "type": "delay", "delayMs": 1 }
+            ]
+        }));
+        let r = run_step(&s, None, &mut ctx, None, 0).await.expect("run");
+        assert!(r.passed);
+        assert_eq!(ctx.get("_index"), Some(&Value::String("1".into()))); // last index written
+    }
+
+    #[tokio::test]
+    async fn loop_while_false_condition_runs_zero_iterations() {
+        let mut ctx: HashMap<String, Value> = HashMap::new();
+        let s = step("loop", "never", serde_json::json!({
+            "loop": {
+                "type": "while",
+                "maxIterations": 100,
+                "condition": { "id": "c", "expression": "{{go}}", "operator": "equals", "expectedValue": "yes" }
+            },
+            "loopSteps": [ { "id": "b1", "name": "d1", "type": "delay", "delayMs": 1 } ]
+        }));
+        let r = run_step(&s, None, &mut ctx, None, 0).await.expect("run");
+        assert!(r.passed);
+        assert!(!ctx.contains_key("_index"), "body never ran");
     }
 }

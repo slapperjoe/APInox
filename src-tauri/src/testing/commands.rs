@@ -142,7 +142,7 @@ pub async fn run_test_case(request: RunTestCaseRequest) -> Result<RunTestCaseRes
                         }
                     }
                     push_update(&run_id_clone, u);
-                })).await {
+                }), 0).await {
                     Ok(result) => {
                         // Merge extracted variables into context for next steps
                         for (k, v) in &result.extracted_variables {
@@ -220,7 +220,7 @@ pub async fn run_test_case(request: RunTestCaseRequest) -> Result<RunTestCaseRes
         let mut all_passed = true;
         for step in &request.test_case.steps {
             // Sync mode has no run id to stream into — no emitter.
-            match run_step(step, request.fallback_endpoint.as_deref(), &mut context, None).await {
+            match run_step(step, request.fallback_endpoint.as_deref(), &mut context, None, 0).await {
                 Ok(result) => {
                     for (k, v) in &result.extracted_variables {
                         context.insert(k.clone(), serde_json::Value::String(v.clone()));
@@ -347,7 +347,7 @@ pub async fn run_test_suite(request: RunTestSuiteRequest) -> Result<RunTestSuite
                             }
                         }
                         push_update(&run_id_clone, u);
-                    })).await {
+                    }), 0).await {
                         Ok(result) => {
                             // Merge extracted variables into this case's
                             // context for the remaining steps.
@@ -436,7 +436,7 @@ pub async fn run_test_suite(request: RunTestSuiteRequest) -> Result<RunTestSuite
             let mut case_error: Option<String> = None;
 
             for step in &test_case.steps {
-                match run_step(step, fallback_endpoint.as_deref(), &mut context, None).await {
+                match run_step(step, fallback_endpoint.as_deref(), &mut context, None, 0).await {
                     Ok(result) => {
                         for (k, v) in &result.extracted_variables {
                             context.insert(k.clone(), serde_json::Value::String(v.clone()));
