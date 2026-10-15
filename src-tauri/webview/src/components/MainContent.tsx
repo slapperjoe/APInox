@@ -33,6 +33,7 @@ import { useAppLifecycle } from '../hooks/useAppLifecycle';
 import { useLayoutHandler } from '../hooks/useLayoutHandler';
 import { useMobileLayout } from '../hooks/useMobileLayout';
 import { useWorkflowHandlers } from '../hooks/useWorkflowHandlers';
+import { useTestsAutoSelect } from '../hooks/useTestsAutoSelect';
 import { NotesProvider } from '../notes/NotesContext';
 
 const NotesEditorLazy = React.lazy(() =>
@@ -1124,16 +1125,15 @@ const MainContent: React.FC = () => {
     // Performance Handlers
     // ==========================================================================
 
-    // Auto-select first test case when none is selected but test cases exist
-    // ONLY in Tests view to avoid re-selecting after user clears selection for navigation
-    useEffect(() => {
-        if (activeView !== SidebarView.TESTS) return;
-        // Flatten all test cases from the global suite store (C)
-        const allCases = globalTestSuites.flatMap(s => s.testCases || []);
-        if (allCases.length > 0 && !selectedTestCase) {
-            setSelectedTestCase(allCases[0]);
-        }
-    }, [globalTestSuites, selectedTestCase, setSelectedTestCase, activeView]);
+    // Auto-select the first test case when the Tests view opens with no
+    // selection (suite-page guard lives in the hook — see useTestsAutoSelect).
+    useTestsAutoSelect({
+        activeView,
+        selectedTestCase,
+        selectedTestSuite,
+        globalTestSuites,
+        setSelectedTestCase
+    });
 
     // Sync selectedTestCase with authoritative global suite store.
     // This fixes stale data (e.g. scriptContent) after a suite update lands.
