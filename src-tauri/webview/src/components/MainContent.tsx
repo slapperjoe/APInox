@@ -1475,6 +1475,7 @@ const MainContent: React.FC = () => {
         handleMoveWorkflowStep,
     } = useWorkflowHandlers({
         config,
+        testSuites: globalTestSuites,
         setConfig,
         setRawConfig,
         setWorkspaceDirty,

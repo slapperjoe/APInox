@@ -1,7 +1,8 @@
 import { useCallback, useState } from 'react';
 import { bridge } from '../utils/bridge';
 import { FrontendCommand } from '@shared/messages';
-import { SidebarView, type Workflow, type WorkflowStep, type ApinoxConfig } from '@shared/models';
+import { SidebarView, type Workflow, type WorkflowStep, type ApinoxConfig, type TestSuite } from '@shared/models';
+import { findReferenceCycle } from '../utils/referenceCycle';
 
 interface WorkflowBuilderModalState {
     open: boolean;
@@ -11,6 +12,8 @@ interface WorkflowBuilderModalState {
 
 interface UseWorkflowHandlersProps {
     config: ApinoxConfig | null;
+    /** Global test suites (flat case list is derived for the save-time cycle guard). */
+    testSuites: TestSuite[];
     setConfig: (config: ApinoxConfig | null) => void;
     /** Keep the raw config string in lockstep with `config` after a save so
      *  whole-config surfaces (e.g. the Settings editor) never persist a stale
@@ -26,6 +29,7 @@ interface UseWorkflowHandlersProps {
 
 export function useWorkflowHandlers({
     config,
+    testSuites,
     setConfig,
     setRawConfig,
     setWorkspaceDirty,
@@ -68,6 +72,17 @@ export function useWorkflowHandlers({
 
     const handleSaveWorkflow = useCallback(async (workflow: Workflow) => {
         try {
+            // Cycle guard: upsert the incoming workflow into the graph, then walk from it.
+            const allCases = testSuites.flatMap(s => s.testCases || []);
+            const others = (config?.workflows || []).filter(w => w.id !== workflow.id);
+            const cycle = findReferenceCycle(workflow.id, {
+                workflows: [...others, workflow],
+                cases: allCases,
+            });
+            if (cycle) {
+                alert(`Cannot save workflow: reference cycle detected (${cycle.join(' → ')}). Remove one of the references.`);
+                return;
+            }
             await bridge.sendMessageAsync({ command: FrontendCommand.SaveWorkflow, workflow });
             const response = await bridge.sendMessageAsync({ command: FrontendCommand.GetSettings });
             applyConfigResponse(response);
@@ -76,7 +91,7 @@ export function useWorkflowHandlers({
         } catch (error) {
             console.error('[useWorkflowHandlers] Failed to save workflow:', error);
         }
-    }, [applyConfigResponse, setWorkspaceDirty]);
+    }, [applyConfigResponse, setWorkspaceDirty, testSuites, config?.workflows]);
 
     const handleRunWorkflow = useCallback(async (workflow: Workflow) => {
         try {
