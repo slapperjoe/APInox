@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import styled from 'styled-components';
-import { Play, Plus, Trash2, ChevronDown, ChevronRight, FlaskConical, ListChecks, Clock, FileCode, ArrowRight, FileText, GitBranch, RefreshCw, CheckCircle, XCircle, Minus } from 'lucide-react';
+import { Play, Plus, Trash2, ChevronDown, ChevronRight, FlaskConical, ListChecks, Clock, FileCode, ArrowRight, FileText, GitBranch, RefreshCw, CheckCircle, XCircle, Minus, Download, FolderOpen } from 'lucide-react';
 import { UnifiedProject, TestSuite, Workflow, WorkflowStep } from '@shared/models';
 import { SidebarContextMenu, CtxMenuSection, CtxMenuItem, Pencil } from './shared/SidebarContextMenu';
 import { SidebarContainer, SidebarContent, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle, OperationItem, RequestItem } from './shared/SidebarStyles';
@@ -209,6 +209,13 @@ export interface TestsUiProps {
     onSelectTestStep?: (caseId: string, stepId: string) => void;
     onRenameTestStep?: (caseId: string, stepId: string, newName: string) => void;
     onDeleteTestStep?: (caseId: string, stepId: string) => void;
+    /** Right-click import/export — the handlers own the native save/open
+        dialogs + global store round-trip (useSidebarCallbacks). Omitted in
+        isolated component tests: the menu items then simply don't render. */
+    onExportSuite?: (suiteId: string) => void;
+    onImportSuite?: () => void;
+    onImportTestCase?: (suiteId: string) => void;
+    onExportTestCase?: (caseId: string) => void;
     deleteConfirm: string | null;
 }
 
@@ -239,6 +246,10 @@ export const TestsUi: React.FC<TestsUiProps> = ({
     onSelectTestStep,
     onRenameTestStep,
     onDeleteTestStep,
+    onExportSuite,
+    onImportSuite,
+    onImportTestCase,
+    onExportTestCase,
     deleteConfirm
 }) => {
     const addSuiteBtnRef = useRef<HTMLButtonElement>(null);
@@ -436,6 +447,23 @@ export const TestsUi: React.FC<TestsUiProps> = ({
     const menuSuite = contextMenu?.type === 'suite'
         ? effectiveSuites.find(s => s.id === contextMenu.suiteId)
         : undefined;
+
+    // Right-click import/export items (suite: Export Suite / Import Suite /
+    // Import Test Case; case: Export Test Case). Each item renders only when
+    // its handler is wired (isolated component tests omit the handlers), and
+    // an empty section is never rendered.
+    const suiteFileItems: CtxMenuItem[] = contextMenu?.type === 'suite' && contextMenu.suiteId
+        ? [
+            ...(onExportSuite ? [{ icon: Download, label: 'Export Suite', onClick: () => { onExportSuite(contextMenu.suiteId!); closeContextMenu(); } }] : []),
+            ...(onImportSuite ? [{ icon: FolderOpen, label: 'Import Suite', onClick: () => { onImportSuite(); closeContextMenu(); } }] : []),
+            ...(onImportTestCase ? [{ icon: FileText, label: 'Import Test Case', onClick: () => { onImportTestCase(contextMenu.suiteId!); closeContextMenu(); } }] : []),
+        ]
+        : [];
+    const caseFileItems: CtxMenuItem[] = contextMenu?.type === 'case' && contextMenu.caseId
+        ? [
+            ...(onExportTestCase ? [{ icon: Download, label: 'Export Test Case', onClick: () => { onExportTestCase(contextMenu.caseId!); closeContextMenu(); } }] : []),
+        ]
+        : [];
 
 
     return (
@@ -690,9 +718,10 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                 </TestsContent>
             </TestsContainer>
 
-            {/* Context Menu — suites: run/rename/add-case/delete; cases:
-                run/rename/delete; steps: rename. Menu deletes are deliberate
-                (force) — the 2-click confirm is reserved for the inline buttons. */}
+            {/* Context Menu — suites: run/rename/add-case/delete + import/export;
+                cases: run/rename/delete + export; steps: rename. Menu deletes
+                are deliberate (force) — the 2-click confirm is reserved for the
+                inline buttons. */}
             {contextMenu && (
                 <SidebarContextMenu
                     x={contextMenu.x}
@@ -709,7 +738,8 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                                     { icon: Plus, label: 'Add Test Case', onClick: () => { onAddTestCase(contextMenu.suiteId!); closeContextMenu(); } },
                                     { icon: Trash2, label: deleteConfirm === contextMenu.suiteId ? 'Click again to delete' : 'Delete', danger: deleteConfirm === contextMenu.suiteId, onClick: () => menuDelete(contextMenu.suiteId!, onDeleteSuite) }
                                 ]
-                            }
+                            },
+                            ...(suiteFileItems.length > 0 ? [{ title: 'Import / Export', items: suiteFileItems }] : [])
                         ]
                         : contextMenu.type === 'case' && contextMenu.caseId ? [
                             {
@@ -719,7 +749,8 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                                     { icon: Pencil, label: 'Rename', onClick: handleRenameFromMenu },
                                     { icon: Trash2, label: deleteConfirm === contextMenu.caseId ? 'Click again to delete' : 'Delete', danger: deleteConfirm === contextMenu.caseId, onClick: () => menuDelete(contextMenu.caseId!, onDeleteTestCase) }
                                 ]
-                            }
+                            },
+                            ...(caseFileItems.length > 0 ? [{ title: 'Import / Export', items: caseFileItems }] : [])
                         ]
                         : contextMenu.type === 'step' && contextMenu.caseId && contextMenu.stepId ? [
                             {

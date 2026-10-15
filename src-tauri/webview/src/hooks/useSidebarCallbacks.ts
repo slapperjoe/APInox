@@ -10,6 +10,7 @@ import { UnifiedProject, TestCase, TestSuite } from '@shared/models';
 import { BackendCommand } from '@shared/messages';
 import { bridge } from '../utils/bridge';
 import { debugLog } from '../utils/logger';
+import { rekeyTestSuite, rekeyTestCase, sanitizeFileName } from '../utils/testImportExport';
 import { useTestSuites } from '../contexts/TestSuiteContext';
 
 interface UseSidebarCallbacksParams {
@@ -37,6 +38,10 @@ interface UseSidebarCallbacksReturn {
     handleRenameSuite: (suiteId: string, newName: string) => void;
     handleRenameTestStep: (caseId: string, stepId: string, newName: string) => void;
     handleDeleteTestStep: (caseId: string, stepId: string) => void;
+    handleExportSuite: (suiteId: string) => void;
+    handleExportTestCase: (caseId: string) => void;
+    handleImportSuite: () => void;
+    handleImportTestCase: (suiteId: string) => void;
     handleSaveUiState: () => void;
 }
 
@@ -161,6 +166,95 @@ export function useSidebarCallbacks({
         }
     }, [config]);
 
+    // ── File import/export (right-click menu) ───────────────────────────────
+    // Mirrors the workflow file IO split (useWorkflowHandlers'
+    // handleSaveWorkflowToDisk / handleLoadWorkflowFromFile): this hook owns
+    // the native save/open dialogs, Rust does the file IO, and the global
+    // suite store persists the result. Exports re-source the object from the
+    // store by id; imports are ALWAYS adds — rekeyTestSuite/rekeyTestCase
+    // reassign every id, so importing a file (even a re-import of one you
+    // exported) never silently replaces an existing suite or case.
+    const handleExportSuite = useCallback(async (suiteId: string) => {
+        const suite = testSuites.find(s => s.id === suiteId);
+        if (!suite) return;
+        try {
+            const { save } = await import('@tauri-apps/plugin-dialog');
+            const filePath = await save({
+                defaultPath: `${sanitizeFileName(suite.name, suite.id)}.test-suite.json`,
+                filters: [{ name: 'APInox Test Suite', extensions: ['json'] }],
+            });
+            if (!filePath) return; // user cancelled the dialog
+            await bridge.invokeTauriCommand('export_test_suite_to_file', { suiteId, filePath });
+        } catch (error) {
+            console.error('[useSidebarCallbacks] Failed to export test suite:', error);
+            alert(`Failed to export test suite: ${(error as any)?.message || error}`);
+        }
+    }, [testSuites]);
+
+    const handleExportTestCase = useCallback(async (caseId: string) => {
+        const found = findCaseById(caseId);
+        if (!found) return;
+        try {
+            const { save } = await import('@tauri-apps/plugin-dialog');
+            const filePath = await save({
+                defaultPath: `${sanitizeFileName(found.testCase.name, caseId)}.test-case.json`,
+                filters: [{ name: 'APInox Test Case', extensions: ['json'] }],
+            });
+            if (!filePath) return; // user cancelled the dialog
+            await bridge.invokeTauriCommand('export_test_case_to_file', { caseId, filePath });
+        } catch (error) {
+            console.error('[useSidebarCallbacks] Failed to export test case:', error);
+            alert(`Failed to export test case: ${(error as any)?.message || error}`);
+        }
+    }, [findCaseById]);
+
+    const handleImportSuite = useCallback(async () => {
+        if (config?.isReadOnly) {
+            bridge.emit({ command: BackendCommand.Error, error: 'Cannot import test suites in a read-only workspace.', message: 'Cannot import test suites in a read-only workspace.' });
+            return;
+        }
+        try {
+            const { open } = await import('@tauri-apps/plugin-dialog');
+            const res = await open({
+                multiple: false,
+                directory: false,
+                filters: [{ name: 'APInox Test Suite', extensions: ['json'] }],
+            });
+            const filePath = Array.isArray(res) ? res[0] : res;
+            if (!filePath) return; // user cancelled the dialog
+            const raw = await bridge.invokeTauriCommand('import_test_suite_from_file', { filePath });
+            void addSuite(rekeyTestSuite(raw));
+        } catch (error) {
+            console.error('[useSidebarCallbacks] Failed to import test suite:', error);
+            alert(`Failed to import test suite: ${(error as any)?.message || error}`);
+        }
+    }, [addSuite, config]);
+
+    const handleImportTestCase = useCallback(async (suiteId: string) => {
+        if (config?.isReadOnly) {
+            bridge.emit({ command: BackendCommand.Error, error: 'Cannot import test cases in a read-only workspace.', message: 'Cannot import test cases in a read-only workspace.' });
+            return;
+        }
+        const suite = testSuites.find(s => s.id === suiteId);
+        if (!suite) return;
+        try {
+            const { open } = await import('@tauri-apps/plugin-dialog');
+            const res = await open({
+                multiple: false,
+                directory: false,
+                filters: [{ name: 'APInox Test Case', extensions: ['json'] }],
+            });
+            const filePath = Array.isArray(res) ? res[0] : res;
+            if (!filePath) return; // user cancelled the dialog
+            const raw = await bridge.invokeTauriCommand('import_test_case_from_file', { filePath });
+            const imported = rekeyTestCase(raw);
+            void updateSuite({ ...suite, testCases: [...(suite.testCases || []), imported] });
+        } catch (error) {
+            console.error('[useSidebarCallbacks] Failed to import test case:', error);
+            alert(`Failed to import test case: ${(error as any)?.message || error}`);
+        }
+    }, [config, testSuites, updateSuite]);
+
     return {
         handleAddSuite,
         handleDeleteSuite,
@@ -172,6 +266,10 @@ export function useSidebarCallbacks({
         handleRenameSuite,
         handleRenameTestStep,
         handleDeleteTestStep,
+        handleExportSuite,
+        handleExportTestCase,
+        handleImportSuite,
+        handleImportTestCase,
         handleSaveUiState
     };
 }

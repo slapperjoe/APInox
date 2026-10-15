@@ -50,6 +50,14 @@ export interface SidebarTestsProps {
     onSelectTestStep?: (caseId: string, stepId: string) => void;
     onRenameTestStep?: (caseId: string, stepId: string, newName: string) => void;
     onDeleteTestStep?: (caseId: string, stepId: string) => void;
+    // Right-click import/export (suite: export/import suite + import case;
+    // case: export). The handlers own the native save/open dialogs and the
+    // global store round-trip; undefined when the rail renders without the
+    // full app wiring (isolated component tests).
+    onExportSuite?: (suiteId: string) => void;
+    onImportSuite?: () => void;
+    onImportTestCase?: (suiteId: string) => void;
+    onExportTestCase?: (caseId: string) => void;
     onToggleSuiteExpand: (suiteId: string) => void;
     onToggleCaseExpand: (caseId: string) => void;
     deleteConfirm: string | null;

@@ -1073,6 +1073,10 @@ const MainContent: React.FC = () => {
         handleRenameSuite,
         handleRenameTestStep,
         handleDeleteTestStep,
+        handleExportSuite,
+        handleExportTestCase,
+        handleImportSuite,
+        handleImportTestCase,
         handleSaveUiState
     } = useSidebarCallbacks({
         // Phase B (t_86c34d38): TESTS suite CRUD (add/delete/toggle/rename)
@@ -1961,6 +1965,10 @@ const MainContent: React.FC = () => {
             },
             onRenameTestStep: handleRenameTestStep,
             onDeleteTestStep: handleDeleteStepFromMenu,
+            onExportSuite: handleExportSuite,
+            onImportSuite: handleImportSuite,
+            onImportTestCase: handleImportTestCase,
+            onExportTestCase: handleExportTestCase,
             onToggleSuiteExpand: handleToggleSuiteExpand,
             onToggleCaseExpand: handleToggleCaseExpand,
             // Live per-step execution status — mirrors the TestCaseView status
@@ -2082,6 +2090,7 @@ const MainContent: React.FC = () => {
         handleRunTestCaseWrapper, handleSelectTestSuite, handleSelectTestCase,
         handleToggleSuiteExpand, handleToggleCaseExpand, handleSelectStep, handleRenameTestStep,
         handleDeleteStepFromMenu,
+        handleExportSuite, handleExportTestCase, handleImportSuite, handleImportTestCase,
         selectedTestSuite, selectedTestCase,
         config, activeRunId, selectedPerformanceSuiteId,
         handleAddWorkflow, handleEditWorkflow, handleRunWorkflow,

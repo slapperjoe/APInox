@@ -100,6 +100,180 @@ pub async fn save_test_suites(suites: Vec<serde_json::Value>) -> Result<Vec<serd
     Ok(data.suites)
 }
 
+// ============================================================================
+// File import/export (right-click menu: "Export Suite" / "Export Test Case" /
+// "Import Suite" / "Import Test Case").
+//
+// Mirrors the workflow file IO split (workflow/commands.rs): the webview owns
+// the native save/open dialogs and the in-app store; Rust only reads/writes
+// the standalone JSON file. Exports re-source the object from the global
+// store by id (canonical persisted blob, same as export_workflow_to_file);
+// imports parse + shape-check only — the webview re-keys ids and adds to the
+// store (so an import is always an ADD, never a silent replace).
+// ============================================================================
+
+/// Export a single test suite to a file.
+///
+/// Looks the suite up by id in the global store and writes its JSON to the
+/// target path as a standalone `.json` (for version control / sharing)
+/// without touching the in-app store.
+#[tauri::command]
+pub async fn export_test_suite_to_file(suite_id: String, file_path: String) -> Result<(), String> {
+    log::info!(
+        "export_test_suite_to_file: Exporting suite '{}' to {}",
+        suite_id,
+        file_path
+    );
+
+    if suite_id.is_empty() {
+        return Err("Suite ID required".to_string());
+    }
+
+    let path = get_test_suites_path()?;
+    let data = load_store(&path);
+
+    let suite = data
+        .suites
+        .iter()
+        .find(|s| s.get("id").and_then(|v| v.as_str()) == Some(suite_id.as_str()))
+        .ok_or_else(|| format!("Test suite '{}' not found", suite_id))?;
+
+    let json_content = serde_json::to_string_pretty(suite)
+        .map_err(|e| format!("Failed to serialize test suite: {}", e))?;
+
+    std::fs::write(&file_path, json_content)
+        .map_err(|e| format!("Failed to write test suite file: {}", e))?;
+
+    log::info!(
+        "export_test_suite_to_file: Wrote suite '{}' to {}",
+        suite_id,
+        file_path
+    );
+    Ok(())
+}
+
+/// Export a single test case to a file.
+///
+/// Finds the case by id across the global store's suites (cases are unique
+/// by id) and writes the case object (steps included) to the target path.
+#[tauri::command]
+pub async fn export_test_case_to_file(case_id: String, file_path: String) -> Result<(), String> {
+    log::info!(
+        "export_test_case_to_file: Exporting case '{}' to {}",
+        case_id,
+        file_path
+    );
+
+    if case_id.is_empty() {
+        return Err("Case ID required".to_string());
+    }
+
+    let path = get_test_suites_path()?;
+    let data = load_store(&path);
+
+    let case = data
+        .suites
+        .iter()
+        .find_map(|suite| {
+            suite
+                .get("testCases")
+                .and_then(|v| v.as_array())
+                .and_then(|cases| {
+                    cases
+                        .iter()
+                        .find(|c| c.get("id").and_then(|v| v.as_str()) == Some(case_id.as_str()))
+                })
+        })
+        .ok_or_else(|| format!("Test case '{}' not found", case_id))?;
+
+    let json_content = serde_json::to_string_pretty(case)
+        .map_err(|e| format!("Failed to serialize test case: {}", e))?;
+
+    std::fs::write(&file_path, json_content)
+        .map_err(|e| format!("Failed to write test case file: {}", e))?;
+
+    log::info!(
+        "export_test_case_to_file: Wrote case '{}' to {}",
+        case_id,
+        file_path
+    );
+    Ok(())
+}
+
+/// Read a test-suite JSON file from disk, shape-check it and return it so the
+/// webview can import it into the global store (right-click "Import Suite").
+///
+/// Thin by design (parse + shape check only, mirrors import_workflow_from_file):
+/// the webview re-keys every id and adds the suite to the store. `name` must
+/// be a string; a missing/non-array `testCases` is normalized to `[]` and a
+/// missing `variables` stays absent (the webview treats it as `Record<string,string>`).
+#[tauri::command]
+pub async fn import_test_suite_from_file(file_path: String) -> Result<serde_json::Value, String> {
+    log::info!("import_test_suite_from_file: Loading suite from {}", file_path);
+
+    let json_content = std::fs::read_to_string(&file_path)
+        .map_err(|e| format!("Failed to read test suite file: {}", e))?;
+
+    let mut suite: serde_json::Value = serde_json::from_str(&json_content)
+        .map_err(|e| format!("Failed to parse test suite JSON: {}", e))?;
+
+    if !suite.is_object() {
+        return Err("Test suite file must contain a JSON object".to_string());
+    }
+    let name = suite
+        .get("name")
+        .and_then(|v| v.as_str())
+        .map(str::to_string)
+        .ok_or_else(|| "Test suite file must have a string 'name' field".to_string())?;
+
+    // Normalize `testCases` to an array (a hand-edited file may omit it).
+    if suite.get("testCases").map_or(true, |v| !v.is_array()) {
+        suite["testCases"] = serde_json::Value::Array(Vec::new());
+    }
+
+    log::info!(
+        "import_test_suite_from_file: Loaded suite '{}' with {} case(s)",
+        name,
+        suite.get("testCases").and_then(|v| v.as_array()).map_or(0, |a| a.len())
+    );
+    Ok(suite)
+}
+
+/// Read a test-case JSON file from disk, shape-check it and return it so the
+/// webview can add it to a suite (right-click "Import Test Case"). Same thin
+/// contract as `import_test_suite_from_file` — the webview re-keys ids.
+#[tauri::command]
+pub async fn import_test_case_from_file(file_path: String) -> Result<serde_json::Value, String> {
+    log::info!("import_test_case_from_file: Loading case from {}", file_path);
+
+    let json_content = std::fs::read_to_string(&file_path)
+        .map_err(|e| format!("Failed to read test case file: {}", e))?;
+
+    let mut case: serde_json::Value = serde_json::from_str(&json_content)
+        .map_err(|e| format!("Failed to parse test case JSON: {}", e))?;
+
+    if !case.is_object() {
+        return Err("Test case file must contain a JSON object".to_string());
+    }
+    let name = case
+        .get("name")
+        .and_then(|v| v.as_str())
+        .map(str::to_string)
+        .ok_or_else(|| "Test case file must have a string 'name' field".to_string())?;
+
+    // Normalize `steps` to an array (a hand-edited file may omit it).
+    if case.get("steps").map_or(true, |v| !v.is_array()) {
+        case["steps"] = serde_json::Value::Array(Vec::new());
+    }
+
+    log::info!(
+        "import_test_case_from_file: Loaded case '{}' with {} step(s)",
+        name,
+        case.get("steps").and_then(|v| v.as_array()).map_or(0, |a| a.len())
+    );
+    Ok(case)
+}
+
 /// Read one project's suites from its `tests/` subdir (the historical layout):
 /// `tests/{suite}/suite.json` plus per-case `case.json` bodies, merged into the
 /// same `TestSuite` shape the webview used to receive.
@@ -467,5 +641,138 @@ mod tests {
             "migrated project's tests/ dir must be removed"
         );
         let _ = env; // hold the config lock for the test's lifetime
+    }
+
+    /// File round-trip: a stored suite exports to disk and imports back with
+    /// every field intact (the webview re-keys ids, so the exported id is
+    /// preserved in the file and returned verbatim on import).
+    #[tokio::test]
+    async fn test_suite_export_import_round_trip() {
+        let env = SuiteTestEnv::new("suite-file-rt", None);
+        let a = fixture_suite("s-a", "Suite A");
+        save_test_suites(vec![a.clone()]).await.expect("save");
+
+        let out = env.dir.join("exported-suite.json");
+        export_test_suite_to_file("s-a".into(), out.to_string_lossy().into())
+            .await
+            .expect("export suite");
+
+        let on_disk: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(&out).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(on_disk, a, "exported file must equal the stored blob");
+
+        let imported = import_test_suite_from_file(out.to_string_lossy().into())
+            .await
+            .expect("import suite");
+        assert_eq!(imported, a, "imported suite must round-trip unchanged");
+
+        // Exporting an unknown id is an error (not a silent empty write).
+        let missing = env.dir.join("missing.json");
+        let err = export_test_suite_to_file("nope".into(), missing.to_string_lossy().into())
+            .await
+            .unwrap_err();
+        assert!(err.contains("not found"), "unexpected error: {}", err);
+        assert!(!missing.exists(), "failed export must not leave a file behind");
+    }
+
+    /// File round-trip for a single case: exported from its suite, imported
+    /// back with steps + config intact; a case id in another suite is found
+    /// by searching all suites.
+    #[tokio::test]
+    async fn test_case_export_import_round_trip() {
+        let env = SuiteTestEnv::new("case-file-rt", None);
+        let a = fixture_suite("s-a", "Suite A");
+        let b = fixture_suite("s-b", "Suite B");
+        save_test_suites(vec![a, b]).await.expect("save");
+
+        let out = env.dir.join("exported-case.json");
+        // case-s-b lives in the SECOND suite — the search must span suites.
+        export_test_case_to_file("case-s-b".into(), out.to_string_lossy().into())
+            .await
+            .expect("export case");
+
+        let on_disk: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(&out).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(on_disk["id"], "case-s-b");
+        assert_eq!(on_disk["name"], "Case 1");
+        assert_eq!(
+            on_disk["steps"][0]["config"]["request"]["endpoint"],
+            "http://example.com/svc"
+        );
+
+        let imported = import_test_case_from_file(out.to_string_lossy().into())
+            .await
+            .expect("import case");
+        assert_eq!(imported, on_disk, "imported case must round-trip unchanged");
+
+        let err = export_test_case_to_file("nope".into(), env.dir.join("missing.json").to_string_lossy().into())
+            .await
+            .unwrap_err();
+        assert!(err.contains("not found"), "unexpected error: {}", err);
+    }
+
+    /// Import validation: a file must hold a JSON object with a string
+    /// `name`; missing `testCases`/`steps` are normalized to `[]` (a
+    /// hand-edited file is still importable).
+    #[tokio::test]
+    async fn test_import_file_shape_checks() {
+        let env = SuiteTestEnv::new("import-shape", None);
+
+        let ok_suite = env.dir.join("suite-ok.json");
+        std::fs::write(
+            &ok_suite,
+            r#"{ "id": "s-x", "name": "Hand Suite" }"#,
+        )
+        .unwrap();
+        let imported = import_test_suite_from_file(ok_suite.to_string_lossy().into())
+            .await
+            .expect("import");
+        assert_eq!(imported["name"], "Hand Suite");
+        assert_eq!(
+            imported["testCases"],
+            serde_json::json!([]),
+            "missing testCases must normalize to []"
+        );
+
+        let ok_case = env.dir.join("case-ok.json");
+        std::fs::write(&ok_case, r#"{ "id": "c-x", "name": "Hand Case" }"#).unwrap();
+        let imported = import_test_case_from_file(ok_case.to_string_lossy().into())
+            .await
+            .expect("import");
+        assert_eq!(
+            imported["steps"],
+            serde_json::json!([]),
+            "missing steps must normalize to []"
+        );
+
+        // No `name` → clear error.
+        let no_name = env.dir.join("suite-noname.json");
+        std::fs::write(&no_name, r#"{ "id": "s-y" }"#).unwrap();
+        let err = import_test_suite_from_file(no_name.to_string_lossy().into())
+            .await
+            .unwrap_err();
+        assert!(err.contains("'name'"), "unexpected error: {}", err);
+
+        // Non-object → clear error.
+        let not_object = env.dir.join("case-array.json");
+        std::fs::write(&not_object, r#"[1, 2]"#).unwrap();
+        let err = import_test_case_from_file(not_object.to_string_lossy().into())
+            .await
+            .unwrap_err();
+        assert!(err.contains("JSON object"), "unexpected error: {}", err);
+
+        // Unparseable JSON → clear error.
+        let bad_json = env.dir.join("case-bad.json");
+        std::fs::write(&bad_json, "{ not json ]").unwrap();
+        let err = import_test_case_from_file(bad_json.to_string_lossy().into())
+            .await
+            .unwrap_err();
+        assert!(err.contains("parse"), "unexpected error: {}", err);
+
+        let _ = env;
     }
 }

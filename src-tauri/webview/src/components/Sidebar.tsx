@@ -238,6 +238,10 @@ export const Sidebar: React.FC = () => {
                         onSelectTestStep={testsProps.onSelectTestStep}
                         onRenameTestStep={testsProps.onRenameTestStep}
                         onDeleteTestStep={testsProps.onDeleteTestStep}
+                        onExportSuite={testsProps.onExportSuite}
+                        onImportSuite={testsProps.onImportSuite}
+                        onImportTestCase={testsProps.onImportTestCase}
+                        onExportTestCase={testsProps.onExportTestCase}
                         testExecution={testsProps.testExecution}
                         deleteConfirm={testsProps.deleteConfirm}
                     />
