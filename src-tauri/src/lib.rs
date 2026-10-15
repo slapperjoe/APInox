@@ -29,6 +29,7 @@ pub mod soap;
 pub mod parsers;
 pub mod testing;
 pub mod workflow;
+pub mod workflow_migration;
 
 // Proxy/mock/cert modules (from APIprox integration)
 pub mod performance;
