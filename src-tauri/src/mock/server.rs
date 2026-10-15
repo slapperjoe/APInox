@@ -195,10 +195,29 @@ async fn passthrough(
     let pq = url.trim_start_matches(|c| c != '/');
     let forward_url = format!("{}{}", target_url.trim_end_matches('/'), pq);
 
-    let client = reqwest::Client::builder()
+    // Self-proxy loop guard: when the auto-discovered proxy (env vars / OS
+    // store) points at APInox's own listener, dial the target directly -
+    // routing through it would re-enter the mock server and loop forever.
+    let scheme = if forward_url.starts_with("https://") {
+        "https"
+    } else {
+        "http"
+    };
+    let builder = reqwest::Client::builder()
         .danger_accept_invalid_certs(true)
-        .build()
-        .unwrap();
+        .connect_timeout(std::time::Duration::from_secs(15))
+        .read_timeout(std::time::Duration::from_secs(60));
+    let builder = match crate::utils::proxy_guard::effective_proxy(scheme) {
+        Some(p) if crate::utils::proxy_guard::is_self_proxy(&p) => {
+            log::info!(
+                "[Mock] Auto-discovered proxy '{p}' points at an APInox listener; \
+                 passing through directly (self-proxy loop guard)"
+            );
+            builder.no_proxy()
+        }
+        _ => builder,
+    };
+    let client = builder.build().unwrap();
 
     let req_method = match reqwest::Method::from_bytes(method.as_bytes()) {
         Ok(m) => m,

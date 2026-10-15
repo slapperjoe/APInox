@@ -122,6 +122,11 @@ windows = { version = "0.58", features = ["Win32_Graphics_Dwm", "Win32_Foundatio
 # System proxy detection (reads Internet Settings registry + WPAD via .NET)
 winreg = "0.52"
 
+[target.'cfg(target_os = "macos")'.dependencies]
+# System-configuration reads for the self-proxy loop guard (mirrors
+# hyper-util's `client-proxy-system` macOS detection).
+system-configuration = "0.7"
+
 [dev-dependencies]
 rustls-pemfile = "2"
 

@@ -8,6 +8,7 @@ pub mod body_reader;
 pub mod config;
 pub mod error_detail;
 pub mod http;
+pub mod proxy_guard;
 pub mod template;
 
 pub use regex_extractor::RegexExtractor;

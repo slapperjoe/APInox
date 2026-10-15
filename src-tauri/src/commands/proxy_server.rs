@@ -137,13 +137,33 @@ pub async fn replay_traffic_request(
     let event_id = Uuid::new_v4().to_string();
 
     // reqwest must not route this request back through APInox's own proxy
-    // listener (set as the OS system proxy while the proxy runs) — it would
-    // loop back into the MITM path. A direct connection to the real upstream.
-    let client = reqwest::Client::builder()
+    // listener (set as the OS system proxy while the proxy runs) - it would
+    // loop back into the MITM path. When the auto-discovered proxy is one of
+    // APInox's own listeners, dial the real upstream directly; otherwise
+    // honour the discovered proxy.
+    let scheme = if request.url.trim().starts_with("https://") {
+        "https"
+    } else {
+        "http"
+    };
+    let builder = reqwest::Client::builder()
         .danger_accept_invalid_certs(true)
         .redirect(reqwest::redirect::Policy::none())
+        .connect_timeout(std::time::Duration::from_secs(15))
+        .read_timeout(std::time::Duration::from_secs(60));
+    let builder = match crate::utils::proxy_guard::effective_proxy(scheme) {
+        Some(p) if crate::utils::proxy_guard::is_self_proxy(&p) => {
+            log::info!(
+                "[Proxy] Replay: auto-discovered proxy '{p}' points at an APInox listener; \
+                 replaying directly (self-proxy loop guard)"
+            );
+            builder.no_proxy()
+        }
+        _ => builder,
+    };
+    let client = builder
         .build()
-        .map_err(|e| format!("Failed to build replay client: {}", e))?;
+        .map_err(|e| format!("Failed to build replay client: {e}"))?;
 
     let method = request.method.trim().to_uppercase();
     let url = request.url.trim().to_string();

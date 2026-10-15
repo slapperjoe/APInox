@@ -132,60 +132,12 @@ fn is_newer(latest: &str, current: &str) -> bool {
 //   3. Bound every attempt with connect/read timeouts and report which route
 //      was used (and why it failed) in the user-visible error.
 
-/// Parses a proxy URL (`http://host:port`) into its host and port components.
-fn parse_proxy_target(url: &str) -> Option<(&str, u16)> {
-    let rest = url
-        .trim()
-        .strip_prefix("socks5://")
-        .or_else(|| url.trim().strip_prefix("socks5h://"))
-        .or_else(|| url.trim().strip_prefix("https://"))
-        .or_else(|| url.trim().strip_prefix("http://"))
-        .unwrap_or(url.trim());
-    // Drop any path component (e.g. "http://proxy:3128/" from PAC scripts)
-    // so only the host[:port] authority is parsed.
-    let authority = rest.split('/').next().unwrap_or("");
-    let (host, port_part) = authority.rsplit_once(':')?;
-    let port = port_part.parse().ok()?;
-    // Normalise IPv6 hosts ("[::1]" → "::1") so the loopback check below works.
-    let host = host.trim_start_matches('[').trim_end_matches(']');
-    Some((host, port))
-}
-
-/// True when a proxy URL points at a loopback/wildcard address that is a
-/// candidate for one of APInox's own listeners.
-///
-/// Keying on loopback *addresses* (not on the port alone) keeps a legit
-/// `127.0.0.1:3128` Squid/Clash working: only its *port* is then checked
-/// against the in-app listener ports below.
-#[allow(dead_code)] // used on all platforms; host check is informational
-fn proxy_host_is_loopback_like(host: &str) -> bool {
-    matches!(host, "localhost" | "127.0.0.1" | "::1" | "0.0.0.0")
-}
-
-/// In-app listener ports that update traffic must never be routed *through*.
-///
-/// The forward proxy and the mock server are the two listeners that MITM or
-/// terminate traffic; the defaults match `proxy_models` (`8888` / `9001`).
-#[allow(dead_code)] // used on all platforms; mock port is read where it exists
-pub fn in_app_listener_ports() -> Vec<u16> {
-    vec![
-        crate::proxy_models::ProxyConfig::default().port,
-        crate::proxy_models::MockConfig::default().port,
-    ]
-}
-
-/// True when `proxy_url` is an auto-discovered proxy that collides with an
-/// APInox in-app listener (the "self-proxy loop" — e.g. the OS proxy pointing
-/// at APInox's own proxy while it reads calls, *and* the port matching).
-#[allow(dead_code)] // used by tests and the self-proxy guard
-pub fn is_self_proxy(proxy_url: &str) -> bool {
-    match parse_proxy_target(proxy_url) {
-        Some((host, port)) => {
-            proxy_host_is_loopback_like(host) && in_app_listener_ports().contains(&port)
-        }
-        None => false,
-    }
-}
+// Self-proxy detection is shared with the proxy/mock forward clients - the
+// single implementation lives in `utils::proxy_guard` (the logic from this
+// module's original copy, moved there so every outbound path agrees).
+pub use crate::utils::proxy_guard::{in_app_listener_ports, is_self_proxy};
+#[cfg(test)]
+use crate::utils::proxy_guard::parse_proxy_target;
 
 /// Loads the APInox Root CA PEM from the config dir.
 ///

@@ -1,7 +1,9 @@
 use std::collections::{HashMap, HashSet};
 use std::convert::Infallible;
 use std::net::SocketAddr;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::{Context, Result};
 use bytes::Bytes;
@@ -27,13 +29,78 @@ use crate::utils::{emit_traffic_event, match_pattern, read_body, CONTENT_TYPE_PL
 use crate::replacer::service::SharedReplacerService;
 use once_cell::sync::Lazy;
 
+/// Connect-phase timeout for forwarded traffic: a dead upstream must surface
+/// as a 502, never hang the client indefinitely.
+const FORWARD_CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
+/// Per-read timeout (resets on each successful read): catches a stalled
+/// upstream without capping the total duration of a large response.
+const FORWARD_READ_TIMEOUT: Duration = Duration::from_secs(60);
+
+/// Forward client that honours auto-discovered proxies (reqwest's default
+/// "system" matcher: env vars + OS store). Used when the discovered proxy is
+/// NOT an APInox listener.
 static PROXY_CLIENT: Lazy<reqwest::Client> = Lazy::new(|| {
     reqwest::Client::builder()
         .danger_accept_invalid_certs(true)
         .redirect(reqwest::redirect::Policy::none())
+        .connect_timeout(FORWARD_CONNECT_TIMEOUT)
+        .read_timeout(FORWARD_READ_TIMEOUT)
         .build()
         .expect("Failed to build proxy HTTP client")
 });
+
+/// Direct-dial forward client for the self-proxy case: the auto-discovered
+/// proxy points at APInox's own listener, so routing through it would loop
+/// the request back into this very proxy (CONNECT -> MITM -> forward ->
+/// CONNECT -> ...) until the caller times out and the traffic list never
+/// records a response. See `utils::proxy_guard`.
+static DIRECT_PROXY_CLIENT: Lazy<reqwest::Client> = Lazy::new(|| {
+    reqwest::Client::builder()
+        .danger_accept_invalid_certs(true)
+        .redirect(reqwest::redirect::Policy::none())
+        .no_proxy()
+        .connect_timeout(FORWARD_CONNECT_TIMEOUT)
+        .read_timeout(FORWARD_READ_TIMEOUT)
+        .build()
+        .expect("Failed to build direct proxy HTTP client")
+});
+
+/// True while the self-proxy bypass is active (toggle-only logging).
+static SELF_PROXY_BYPASS: AtomicBool = AtomicBool::new(false);
+
+/// Pick the forward client for a URL: direct when the auto-discovered proxy
+/// is one of APInox's own listeners (the self-proxy loop), otherwise the
+/// system-matcher client (unchanged behaviour). Logs only when the decision
+/// toggles, so the per-request hot path stays quiet.
+fn forward_client_for(url: &str) -> &'static reqwest::Client {
+    let scheme = if url.starts_with("https://") {
+        "https"
+    } else {
+        "http"
+    };
+    let bypass = match crate::utils::proxy_guard::effective_proxy(scheme) {
+        Some(ref p) if crate::utils::proxy_guard::is_self_proxy(p) => {
+            if SELF_PROXY_BYPASS.swap(true, Ordering::Relaxed) {
+                log::info!(
+                    "[Proxy] Auto-discovered proxy '{p}' points at an APInox listener; \
+                     forwarding directly (self-proxy loop guard)"
+                );
+            }
+            true
+        }
+        _ => {
+            if SELF_PROXY_BYPASS.swap(false, Ordering::Relaxed) {
+                log::info!("[Proxy] No self-proxy collision; forwarding via the auto-discovered system proxy");
+            }
+            false
+        }
+    };
+    if bypass {
+        &DIRECT_PROXY_CLIENT
+    } else {
+        &PROXY_CLIENT
+    }
+}
 
 /// Hop-by-hop and proxy-specific headers stripped before forwarding. Kept in a
 /// HashSet for O(1) membership on the per-request/per-response hot path.
@@ -406,8 +473,10 @@ async fn handle_http(
         }
     };
 
-    // Build and send the forwarded request
-    let client = &*PROXY_CLIENT;
+    // Build and send the forwarded request. Self-proxy loop guard: when the
+    // auto-discovered system proxy points at an APInox listener, dial the
+    // upstream directly instead of re-entering this very proxy.
+    let client = forward_client_for(&forward_url);
 
     let req_method = match reqwest::Method::from_bytes(method.as_bytes()) {
         Ok(m) => m,
