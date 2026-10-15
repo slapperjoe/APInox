@@ -19,7 +19,6 @@ static TEST_CLIENT: Lazy<Client> = Lazy::new(Client::new);
 /// cap for payloads that bypass it (sync mode, hand-built requests).
 pub(crate) const MAX_REFERENCE_DEPTH: u32 = 10;
 
-use crate::settings_manager;
 use crate::utils::{RegexExtractor, XPathEvaluator, WildcardProcessor, substitute_variables, CONTENT_TYPE_XML};
 
 use super::frontend_types::{
@@ -166,9 +165,10 @@ pub async fn run_step(
 
 /// Resolve the referenced workflow's steps + initial variables.
 ///
-/// Steps prefer the self-contained payload the webview embedded
-/// (`config.workflowSteps`); variables and (when un-embedded) steps fall back
-/// to the persisted config by `workflowId`.
+/// Steps come from the self-contained payload the webview embedded
+/// (`config.workflowSteps`). There is no persisted workflow store to fall back
+/// to any more — workflows were absorbed into test cases (see
+/// `workflow_migration.rs`), so an un-embedded `workflow` step has no steps.
 fn resolve_workflow(
     step: &FrontendTestStep,
 ) -> (Vec<Value>, HashMap<String, String>, Option<String>) {
@@ -178,40 +178,13 @@ fn resolve_workflow(
         .as_deref()
         .filter(|s| !s.is_empty());
 
-    let mut steps = step
+    let steps = step
         .config
         .workflow_steps
         .clone()
         .unwrap_or_default();
-    let mut wf_vars: HashMap<String, String> = HashMap::new();
 
-    if let Some(id) = workflow_id {
-        if let Ok(cfg) = settings_manager::load_config_internal() {
-            if let Some(w) = cfg
-                .workflows
-                .unwrap_or_default()
-                .into_iter()
-                .find(|w| w.get("id").and_then(|v| v.as_str()) == Some(id))
-            {
-                if steps.is_empty() {
-                    steps = w
-                        .get("steps")
-                        .and_then(|v| v.as_array())
-                        .cloned()
-                        .unwrap_or_default();
-                }
-                if let Some(vars) = w.get("variables").and_then(|v| v.as_object()) {
-                    for (k, v) in vars {
-                        if let Some(s) = v.as_str() {
-                            wf_vars.insert(k.clone(), s.to_string());
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    (steps, wf_vars, workflow_id.map(String::from))
+    (steps, HashMap::new(), workflow_id.map(String::from))
 }
 
 /// Execute a 'workflow' test step: run the referenced workflow's steps in

@@ -125,12 +125,11 @@ pub async fn save_test_suites(suites: Vec<serde_json::Value>) -> Result<Vec<serd
 // File import/export (right-click menu: "Export Suite" / "Export Test Case" /
 // "Import Suite" / "Import Test Case").
 //
-// Mirrors the workflow file IO split (workflow/commands.rs): the webview owns
-// the native save/open dialogs and the in-app store; Rust only reads/writes
-// the standalone JSON file. Exports re-source the object from the global
-// store by id (canonical persisted blob, same as export_workflow_to_file);
-// imports parse + shape-check only — the webview re-keys ids and adds to the
-// store (so an import is always an ADD, never a silent replace).
+// Rust owns file IO only: the webview owns the native save/open dialogs and
+// the in-app store. Exports re-source the object from the global store by id
+// (canonical persisted blob); imports parse + shape-check only — the webview
+// re-keys ids and adds to the store (so an import is always an ADD, never a
+// silent replace).
 // ============================================================================
 
 /// Export a single test suite to a file.
@@ -224,8 +223,8 @@ pub async fn export_test_case_to_file(case_id: String, file_path: String) -> Res
 /// Read a test-suite JSON file from disk, shape-check it and return it so the
 /// webview can import it into the global store (right-click "Import Suite").
 ///
-/// Thin by design (parse + shape check only, mirrors import_workflow_from_file):
-/// the webview re-keys every id and adds the suite to the store. `name` must
+/// Thin by design (parse + shape check only): the webview re-keys every id and
+/// adds the suite to the store. `name` must
 /// be a string; a missing/non-array `testCases` is normalized to `[]` and a
 /// missing `variables` stays absent (the webview treats it as `Record<string,string>`).
 #[tauri::command]

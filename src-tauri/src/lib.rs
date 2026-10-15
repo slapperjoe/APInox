@@ -28,7 +28,6 @@ pub mod http;
 pub mod soap;
 pub mod parsers;
 pub mod testing;
-pub mod workflow;
 pub mod workflow_migration;
 
 // Proxy/mock/cert modules (from APIprox integration)
@@ -569,12 +568,6 @@ pub fn run() {
             performance::commands::run_performance_suite,
             performance::commands::get_performance_run_updates,
             performance::commands::abort_performance_suite,
-            workflow::commands::run_workflow,
-            workflow::commands::get_workflows,
-            workflow::commands::save_workflow,
-            workflow::commands::delete_workflow,
-            workflow::commands::export_workflow_to_file,
-            workflow::commands::import_workflow_from_file,
             workspace_export::export_workspace,
             workspace_export::import_workspace,
             workspace_export::export_unified_project,

@@ -34,10 +34,6 @@ pub struct ApinoxConfig {
     pub performance_history: Option<Vec<Value>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub performance_schedules: Option<Vec<Value>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub workflows: Option<Vec<Value>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub workflow_run_history: Option<Vec<Value>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -113,8 +109,6 @@ impl Default for ApinoxConfig {
             performance_suites: None,
             performance_history: None,
             performance_schedules: None,
-            workflows: None,
-            workflow_run_history: None,
         }
     }
 }
@@ -250,21 +244,8 @@ pub async fn get_settings() -> Result<ApinoxConfig, String> {
 }
 
 /// Save full config.
-///
-/// `workflows` is owned by the dedicated `save_workflow` / `delete_workflow`
-/// commands, which do a read-modify-write on the config file. A whole-config
-/// save from the frontend can carry a stale `workflows` snapshot — or omit the
-/// field entirely — and writing it back verbatim would clobber workflows that
-/// were added/removed in the meantime. When the incoming config does NOT carry
-/// a `workflows` value (absent or null), preserve the on-disk `workflows`
-/// instead of dropping them. An intentional clear arrives as an empty array
-/// (`Some([])`), which is still honored.
 #[tauri::command]
 pub async fn save_settings(config: ApinoxConfig) -> Result<(), String> {
-    let mut config = config;
-    if config.workflows.is_none() {
-        config.workflows = load_config()?.workflows;
-    }
     save_config(&config)
 }
 
@@ -293,47 +274,6 @@ pub async fn update_ui_settings(ui: UiConfig) -> Result<(), String> {
         config.ui = Some(ui);
     }
     
-    save_config(&config)
-}
-
-/// Internal function to get workflows (callable from other modules)
-pub(crate) fn get_workflows_internal() -> Result<Vec<Value>, String> {
-    let config = load_config()?;
-    Ok(config.workflows.unwrap_or_default())
-}
-
-/// Internal function to save a workflow (callable from other modules)
-pub(crate) fn save_workflow_internal(workflow: Value) -> Result<(), String> {
-    let mut workflows = get_workflows_internal()?;
-    
-    let workflow_id = workflow.get("id")
-        .and_then(|v| v.as_str())
-        .ok_or("Workflow must have an id")?;
-    
-    // Find and update existing, or append new
-    if let Some(index) = workflows.iter().position(|w| {
-        w.get("id").and_then(|v| v.as_str()) == Some(workflow_id)
-    }) {
-        workflows[index] = workflow;
-    } else {
-        workflows.push(workflow);
-    }
-    
-    let mut config = load_config()?;
-    config.workflows = Some(workflows);
-    save_config(&config)
-}
-
-/// Internal function to delete a workflow (callable from other modules)
-pub(crate) fn delete_workflow_internal(workflow_id: &str) -> Result<(), String> {
-    let mut workflows = get_workflows_internal()?;
-    
-    workflows.retain(|w| {
-        w.get("id").and_then(|v| v.as_str()) != Some(workflow_id)
-    });
-    
-    let mut config = load_config()?;
-    config.workflows = Some(workflows);
     save_config(&config)
 }
 
@@ -384,123 +324,4 @@ pub fn load_config_internal() -> Result<ApinoxConfig, String> {
 
 pub fn save_config_internal(config: &ApinoxConfig) -> Result<(), String> {
     save_config(config)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::utils::config::CONFIG_DIR_TEST_LOCK;
-
-    /// Hold the process-wide config-dir lock and redirect `APINOX_CONFIG_DIR`
-    /// to a fresh temp dir (auto-cleaned on drop). The guard must outlive the
-    /// test — keep the returned handle in a binding that lives to the end.
-    struct TestConfigEnv {
-        _guard: std::sync::MutexGuard<'static, ()>,
-        _tmp: tempfile::TempDir,
-    }
-
-    impl TestConfigEnv {
-        fn new() -> Self {
-            let guard = CONFIG_DIR_TEST_LOCK
-                .lock()
-                .unwrap_or_else(|p| p.into_inner());
-            let tmp = tempfile::tempdir().expect("create temp config dir");
-            std::env::set_var("APINOX_CONFIG_DIR", tmp.path());
-            Self { _guard: guard, _tmp: tmp }
-        }
-    }
-
-    /// A wizard-shaped workflow payload — the same fields
-    /// `assembleWorkflow` emits (id/name/steps/createdAt/modifiedAt).
-    fn wizard_workflow() -> serde_json::Value {
-        serde_json::json!({
-            "id": "wf-1",
-            "name": "wizard workflow",
-            "steps": [
-                {
-                    "id": "step-1",
-                    "name": "Login",
-                    "type": "request",
-                    "order": 0,
-                    "endpoint": "http://127.0.0.1:9092/login",
-                    "method": "POST",
-                    "httpMethod": "POST",
-                    "requestBody": "<Login/>",
-                    "headers": { "content-type": "text/xml" }
-                }
-            ],
-            "createdAt": 1,
-            "modifiedAt": 1
-        })
-    }
-
-    /// The wizard's workflow survives the save → read round-trip (the
-    /// "does it persist" half of the bug report).
-    #[tokio::test]
-    async fn save_workflow_round_trips_through_disk() {
-        let _env = TestConfigEnv::new();
-        save_workflow_internal(wizard_workflow())
-            .expect("save_workflow_internal should not error");
-
-        let loaded = get_workflows_internal().expect("get_workflows_internal should not error");
-        assert_eq!(loaded.len(), 1, "one workflow persisted");
-        assert_eq!(
-            loaded[0].get("name").and_then(|v| v.as_str()),
-            Some("wizard workflow"),
-            "workflow name round-trips"
-        );
-        assert_eq!(
-            loaded[0]["steps"][0]["endpoint"].as_str(),
-            Some("http://127.0.0.1:9092/login"),
-            "step endpoint round-trips"
-        );
-    }
-
-    /// A whole-config save that OMITS `workflows` (a stale frontend snapshot
-    /// predating the workflow, or one that dropped the field) must NOT clobber
-    /// the on-disk workflows — the "vanish on next boot" clobber.
-    #[tokio::test]
-    async fn save_settings_preserves_workflows_when_omitted() {
-        let _env = TestConfigEnv::new();
-        save_workflow_internal(wizard_workflow()).expect("seed workflow");
-        assert_eq!(get_workflows_internal().unwrap().len(), 1);
-
-        let stale: ApinoxConfig = serde_json::from_value(serde_json::json!({
-            "version": 1,
-            "network": { "defaultTimeout": 30 }
-        }))
-        .expect("parse a stale config without a workflows field");
-        save_settings(stale).await.expect("save_settings should not error");
-
-        let after = get_workflows_internal().expect("reload");
-        assert_eq!(
-            after.len(),
-            1,
-            "workflows must survive a whole-config save that omits the field"
-        );
-        assert_eq!(
-            after[0].get("name").and_then(|v| v.as_str()),
-            Some("wizard workflow")
-        );
-    }
-
-    /// An INTENTIONAL clear arrives as an empty array (`Some([])`) and is
-    /// honored — the preserve-on-None guard must not block it.
-    #[tokio::test]
-    async fn save_settings_honors_explicit_empty_workflows() {
-        let _env = TestConfigEnv::new();
-        save_workflow_internal(wizard_workflow()).expect("seed workflow");
-        assert_eq!(get_workflows_internal().unwrap().len(), 1);
-
-        let mut cleared: ApinoxConfig =
-            serde_json::from_value(serde_json::json!({ "version": 1 })).expect("parse");
-        cleared.workflows = Some(vec![]);
-        save_settings(cleared).await.expect("save_settings should not error");
-
-        assert_eq!(
-            get_workflows_internal().unwrap().len(),
-            0,
-            "explicit empty workflows array must be honored (not preserved)"
-        );
-    }
 }
