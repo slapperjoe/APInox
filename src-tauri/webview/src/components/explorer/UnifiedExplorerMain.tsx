@@ -83,6 +83,177 @@ interface UrlInputState {
     error: string | null;
 }
 
+/**
+ * Project-level Content-Type override picker (project overview card).
+ *
+ * The trigger is intentionally narrow: a stored override can be a long
+ * Content-Type string — a cloned SOAP 1.2 request carries
+ * `action="urn:..."` — and the previous full-width native <select> stretched
+ * across the whole overview card to display it. The trigger shows the current
+ * value with ellipsis (full value in a title tooltip); the open list sizes
+ * itself to its content (at least the trigger width, capped at a window-safe
+ * max) so long options stay readable. A non-standard current value is added
+ * to the option list so it is always representable and re-selectable (a
+ * native <select> cannot display a value that matches no <option>).
+ */
+const CONTENT_TYPE_STANDARD_OPTIONS: string[] = ['text/xml', 'application/soap+xml', 'application/xml'];
+
+interface ProjectContentTypeSelectProps {
+    value: string;
+    soapVersion?: string;
+    disabled?: boolean;
+    onChange: (value: string) => void;
+}
+
+export const ProjectContentTypeSelect: React.FC<ProjectContentTypeSelectProps> = ({ value, soapVersion, disabled, onChange }) => {
+    const [open, setOpen] = useState(false);
+    const rootRef = useRef<HTMLDivElement>(null);
+
+    const currentValue = value || '';
+    const defaultLabel = `SOAP default (${soapDefault(soapVersion)})`;
+    const isStandard = currentValue === '' || CONTENT_TYPE_STANDARD_OPTIONS.includes(currentValue);
+    const options: { value: string; label: string }[] = [
+        { value: '', label: defaultLabel },
+        ...CONTENT_TYPE_STANDARD_OPTIONS.map(v => ({ value: v, label: v })),
+        ...(!isStandard && currentValue ? [{ value: currentValue, label: currentValue }] : []),
+    ];
+
+    useEffect(() => {
+        if (!open) return;
+        const onDown = (e: MouseEvent) => {
+            if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+        };
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+        document.addEventListener('mousedown', onDown);
+        document.addEventListener('keydown', onKey);
+        return () => {
+            document.removeEventListener('mousedown', onDown);
+            document.removeEventListener('keydown', onKey);
+        };
+    }, [open]);
+
+    const selectedLabel = options.find(o => o.value === currentValue)?.label ?? currentValue;
+
+    return (
+        <div ref={rootRef} style={{ position: 'relative', width: 160, marginTop: 4 }}>
+            <button
+                type="button"
+                disabled={disabled}
+                aria-haspopup="listbox"
+                aria-expanded={open}
+                aria-label="Content-Type override"
+                title={currentValue || defaultLabel}
+                onClick={() => !disabled && setOpen(prev => !prev)}
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    padding: '4px 22px 4px 8px',
+                    backgroundColor: 'var(--apinox-input-background)',
+                    color: disabled
+                        ? 'var(--apinox-disabledForeground, var(--apinox-input-foreground))'
+                        : 'var(--apinox-input-foreground)',
+                    border: '1px solid var(--apinox-input-border)',
+                    borderRadius: 4,
+                    fontSize: 'var(--apinox-fs-base)',
+                    fontFamily: 'inherit',
+                    cursor: disabled ? 'not-allowed' : 'pointer',
+                    opacity: disabled ? 0.6 : 1,
+                    textAlign: 'left',
+                }}
+            >
+                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {selectedLabel}
+                </span>
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="10"
+                    height="6"
+                    viewBox="0 0 10 6"
+                    style={{
+                        position: 'absolute',
+                        right: 8,
+                        top: '50%',
+                        transform: `translateY(-50%) rotate(${open ? '180deg' : '0deg'})`,
+                        transition: 'transform 0.15s ease',
+                        flexShrink: 0,
+                        fill: 'var(--apinox-input-foreground)',
+                        opacity: 0.7,
+                    }}
+                >
+                    <path d="M0 0L5 6L10 0" />
+                </svg>
+            </button>
+            {open && (
+                <div
+                    role="listbox"
+                    aria-label="Content-Type override options"
+                    style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 2px)',
+                        left: 0,
+                        minWidth: '100%',
+                        // "As wide as required": the list sizes to its
+                        // content (shrink-to-fit), at least the trigger width,
+                        // capped only by the window (the 160px offset keeps
+                        // the right edge inside even on narrow windows).
+                        maxWidth: 'calc(90vw - 160px)',
+                        background: 'var(--apinox-dropdown-listBackground, var(--apinox-dropdown-background))',
+                        border: '1px solid var(--apinox-dropdown-border)',
+                        boxShadow: '0 4px 12px var(--apinox-widget-shadow, rgba(0, 0, 0, 0.36))',
+                        zIndex: 1000,
+                    }}
+                >
+                    {options.map(option => {
+                        const isSelected = option.value === currentValue;
+                        return (
+                            <div
+                                key={option.value || 'soap-default'}
+                                role="option"
+                                aria-selected={isSelected}
+                                title={option.label}
+                                onMouseDown={() => {
+                                    onChange(option.value);
+                                    setOpen(false);
+                                }}
+                                style={{
+                                    padding: '8px 12px',
+                                    cursor: 'pointer',
+                                    background: isSelected
+                                        ? 'var(--apinox-list-activeSelectionBackground)'
+                                        : 'transparent',
+                                    color: isSelected
+                                        ? 'var(--apinox-list-activeSelectionForeground)'
+                                        : 'var(--apinox-dropdown-foreground)',
+                                    fontSize: 'var(--apinox-fs-base)',
+                                    fontFamily: 'var(--apinox-font-family)',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                }}
+                                onMouseEnter={e => {
+                                    if (!isSelected) {
+                                        (e.currentTarget as HTMLDivElement).style.background = 'var(--apinox-list-hoverBackground)';
+                                    }
+                                }}
+                                onMouseLeave={e => {
+                                    if (!isSelected) {
+                                        (e.currentTarget as HTMLDivElement).style.background = 'transparent';
+                                    }
+                                }}
+                            >
+                                {option.label}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+};
+
 interface ExecuteSoapResponse {
     success: boolean;
     statusCode: number;
@@ -1297,27 +1468,12 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                             </div>
                             <div style={{ padding: '12px', background: 'var(--apinox-panel-background)', borderRadius: 6, border: '1px solid var(--apinox-panel-border)' }}>
                                 <div style={{ fontSize: 'var(--apinox-fs-md)', opacity: 0.7 }}>Content-Type {selected.project.contentType ? '(override)' : `— SOAP ${selected.project.soapVersion || '1.1'} default: ${soapDefault(selected.project.soapVersion)}`}</div>
-                                <select
+                                <ProjectContentTypeSelect
                                     value={selected.project.contentType || ''}
-                                    onChange={(e) => onProjectContentTypeChange?.(selected.project.name, e.target.value)}
+                                    soapVersion={selected.project.soapVersion}
                                     disabled={!onProjectContentTypeChange}
-                                    style={{
-                                        marginTop: 4,
-                                        width: '100%',
-                                        padding: '4px 8px',
-                                        backgroundColor: 'var(--apinox-input-background)',
-                                        color: 'var(--apinox-input-foreground)',
-                                        border: '1px solid var(--apinox-input-border)',
-                                        borderRadius: 4,
-                                        fontSize: 'var(--apinox-fs-base)',
-                                        cursor: onProjectContentTypeChange ? 'pointer' : 'not-allowed',
-                                    }}
-                                >
-                                    <option value="">SOAP default ({soapDefault(selected.project.soapVersion)})</option>
-                                    <option value="text/xml">text/xml</option>
-                                    <option value="application/soap+xml">application/soap+xml</option>
-                                    <option value="application/xml">application/xml</option>
-                                </select>
+                                    onChange={(v) => onProjectContentTypeChange?.(selected.project.name, v)}
+                                />
                             </div>
                         </div>
 
