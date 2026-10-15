@@ -161,7 +161,7 @@ pub struct StepExecutionResult {
     pub error: Option<String>,
     /// Set by a FAILED 'condition' step: the caller must stop executing the
     /// remaining steps of its step list. Assertion semantics (user decision):
-    /// a false condition fails the case/workflow — see Task 5.
+    /// a false condition fails the case/workflow (assertion semantics).
     #[serde(default)]
     pub stop_remaining: bool,
 }
