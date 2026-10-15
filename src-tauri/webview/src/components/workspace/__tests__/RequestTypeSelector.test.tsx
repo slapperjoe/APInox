@@ -25,8 +25,8 @@ describe('RequestTypeSelector', () => {
         expect(methodSelect).toBeInTheDocument();
         expect(methodSelect.children).toHaveLength(2); // GET, POST
 
-        // Content Type Selector (SOAP specific)
-        expect(screen.getByTitle('Content Type')).toBeInTheDocument();
+        // Content Type Selector (SOAP specific) — compact trigger button
+        expect(screen.getByRole('button', { name: 'Content Type' })).toBeInTheDocument();
 
         // Body Type should NOT be present for SOAP
         expect(screen.queryByTitle('Body Type')).not.toBeInTheDocument();
@@ -45,7 +45,7 @@ describe('RequestTypeSelector', () => {
         expect(screen.getByTitle('Body Type')).toBeInTheDocument();
 
         // Content Type should NOT be present for REST
-        expect(screen.queryByTitle('Content Type')).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Content Type' })).not.toBeInTheDocument();
     });
 
     it('should render GraphQL options correctly', () => {
@@ -59,7 +59,7 @@ describe('RequestTypeSelector', () => {
 
         // Body Type and Content Type check
         expect(screen.queryByTitle('Body Type')).not.toBeInTheDocument();
-        expect(screen.queryByTitle('Content Type')).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Content Type' })).not.toBeInTheDocument();
     });
 
     it('should trigger handlers on change', () => {
@@ -73,8 +73,9 @@ describe('RequestTypeSelector', () => {
         fireEvent.change(screen.getByTitle('HTTP Method'), { target: { value: 'GET' } });
         expect(defaultProps.onMethodChange).toHaveBeenCalledWith('GET');
 
-        // Change Content Type
-        fireEvent.change(screen.getByTitle('Content Type'), { target: { value: 'text/xml' } });
+        // Change Content Type — the custom dropdown: open the trigger, pick the option
+        fireEvent.click(screen.getByRole('button', { name: 'Content Type' }));
+        fireEvent.click(screen.getByRole('option', { name: 'text/xml' }));
         expect(defaultProps.onContentTypeChange).toHaveBeenCalledWith('text/xml');
     });
 
