@@ -2,6 +2,10 @@
 
 
 ## [Unreleased] - 2026-10-15
+### Added
+- **Test Case Wizard — bulk variable controls**: the "Captured & reused values" section now shows an accepted/total count and **Add all** / **Remove all** controls, matching the "Select all" affordance the requests section already had.
+- **Test Case Wizard — defaults**: every captured request is now selected when the wizard opens (the right-clicked capture is highlighted instead of being the only selection), and no reused value is accepted until you add it — previously every suggestion was accepted by default. Variable names stay editable before a pick is accepted and survive bulk add/remove.
+
 ### Removed
 - **Workflows removed**: the WORKFLOWS view, the workflow entity, workflow run history, the workflow import/export commands and the `workflow` test-step type are gone. Existing workflows were migrated at startup into the global test-case store as one suite per workflow (named after it), and pre-existing `workflow` steps now reference the migrated test case. Test cases are the single flow surface. Legacy `*.workflow.json` files can no longer be imported.
 

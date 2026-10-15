@@ -3,13 +3,15 @@
  *
  * Full-page wizard (rendered in place of `ProxyPanel`) that turns captured
  * proxy traffic into a runnable Test Case: pick the test suite the new case
- * belongs to (or create a new one), pick which captured requests to include,
- * and name the case. Each selected log becomes a standalone `request` step
+ * belongs to (or create a new one), pick which captured requests to include
+ * (every capture is selected by default — the user prunes), and name the case.
+ * Each selected log becomes a standalone `request` step
  * holding a raw, identical copy of the captured call (method, URL, headers
  * and body verbatim) — unless a detected response value the capture reused in
- * a later request is tagged as a captured variable: the source step then gets
- * an extractor and the consuming step emits `{{variable}}` (runtime-extracted),
- * the same chain capture the workflow wizard offers.
+ * a later request is tagged as a captured variable (none are accepted by
+ * default; the user adds them individually or in bulk): the source step then
+ * gets an extractor and the consuming step emits `{{variable}}`
+ * (runtime-extracted), the same chain capture the workflow wizard offers.
  *
  * This is NOT a modal — it fills the proxy work area in place of
  * `ProxyPanel` (full-page, not a modal). It
@@ -22,6 +24,7 @@ import { FlaskConical, Plus } from 'lucide-react';
 import type { TrafficLog } from './TrafficViewer';
 import { tokens } from './tokens';
 import { lastPathSegment, trafficStepName, detectChainedValues, chainSourceLine } from '../../utils/trafficWorkflow';
+import type { ChainedValue } from '../../utils/trafficWorkflow';
 import { newId } from '../../utils/trafficTestCase';
 
 /** What the wizard resolves to when the user confirms. */
@@ -38,7 +41,7 @@ export interface CreateTestCaseFromTrafficResult {
     valueSubstitutions?: Array<{ value: string; variable: string }>;
 }
 
-/** A "captured & reused value" the user accepted (ported from the workflow wizard). */
+/** A "captured & reused value" the user has accepted (or can accept). */
 interface ChainPick {
     /** The raw captured value (stable key). */
     value: string;
@@ -48,12 +51,16 @@ interface ChainPick {
     header?: string;
     xpath?: string;
     sourceLogId: string;
+    /** Accepted picks are the ones emitted at create time. None are accepted
+     *  by default — the user adds them individually or with "Add all". A name
+     *  the user types survives being un-accepted and re-accepted. */
+    accepted: boolean;
 }
 
 interface CreateTestCaseFromTrafficWizardProps {
     /** All captured traffic, in capture order (oldest first). */
     logs: TrafficLog[];
-    /** The right-clicked log — pre-selected. */
+    /** The right-clicked log — highlighted (every request is selected by default). */
     anchorLogId: string | null;
     testSuites: TestSuite[];
     /** Close without creating (the wizard's own "Cancel"). */
@@ -124,6 +131,15 @@ const logRow: React.CSSProperties = {
     cursor: 'pointer', userSelect: 'none',
 };
 
+/** The capture the user right-clicked to open the wizard. Every request is
+ *  selected by default, so the anchor is marked by colour rather than by
+ *  being the only selection. */
+const anchorRow: React.CSSProperties = {
+    ...logRow,
+    background: tokens.surface.hover,
+    border: `1px solid ${tokens.status.accent}`,
+};
+
 const footer: React.CSSProperties = {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
     padding: '12px 20px', borderTop: `1px solid ${tokens.border.default}`,
@@ -131,6 +147,17 @@ const footer: React.CSSProperties = {
 };
 
 const footerRight: React.CSSProperties = { display: 'flex', gap: 8, marginLeft: 'auto' };
+
+/** Small controls on a section header row (Add all / Remove all). */
+const headerAction: React.CSSProperties = {
+    padding: '3px 8px',
+    fontSize: 'var(--apinox-fs-sm)',
+    color: tokens.text.secondary,
+    background: tokens.surface.elevated,
+    border: `1px solid ${tokens.border.default}`,
+    borderRadius: tokens.radius.sm,
+    cursor: 'pointer',
+};
 
 const emptyState: React.CSSProperties = {
     flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
@@ -173,43 +200,41 @@ export const CreateTestCaseFromTrafficWizard: React.FC<CreateTestCaseFromTraffic
     // edits the field (caseNameEdited) — after that their text wins.
     const [caseName, setCaseName] = useState('TestCase 1');
     const caseNameEdited = useRef(false);
+    // Every captured request is included by default (fire order = capture
+    // order); the user prunes from there. The right-clicked capture is
+    // highlighted so its row is still identifiable.
     const [selected, setSelected] = useState<Set<string>>(
-        () => new Set(anchorLogId ? [anchorLogId] : []),
+        () => new Set(logs.map(l => l.id)),
     );
     const selectAllRef = useRef<HTMLInputElement | null>(null);
 
     // ── chain capture (ported from the workflow wizard) ────────────────────
     // Response values the detector found being reused in a later request —
-    // accepted by default, each editable and removable per value.
+    // none accepted by default: the user adds the ones they want, individually
+    // or with "Add all". Every suggestion keeps its editable name whether or not
+    // it is accepted, so a name typed before accepting is not lost.
     const chained = useMemo(() => detectChainedValues(logs), [logs]);
-    const [chainPicks, setChainPicks] = useState<ChainPick[]>(() =>
-        chained.map(c => ({
-            value: c.value,
-            variable: c.variable,
-            source: c.source,
-            header: c.sourceHeaderName,
-            xpath: c.sourceXPath,
-            sourceLogId: c.sourceLogId,
-        })),
-    );
+    const pickFor = (c: ChainedValue): ChainPick => ({
+        value: c.value,
+        variable: c.variable,
+        source: c.source,
+        header: c.sourceHeaderName,
+        xpath: c.sourceXPath,
+        sourceLogId: c.sourceLogId,
+        accepted: false,
+    });
+    const [chainPicks, setChainPicks] = useState<ChainPick[]>(() => chained.map(pickFor));
     const setVarName = (value: string, name: string) =>
         setChainPicks(ps => ps.map(p => p.value === value ? { ...p, variable: name } : p));
-    function toggleChainPick(value: string) {
-        setChainPicks(ps => {
-            const existing = ps.find(p => p.value === value);
-            if (existing) return ps.filter(p => p.value !== value);
-            const c = chained.find(x => x.value === value);
-            if (!c) return ps;
-            return [...ps, {
-                value: c.value,
-                variable: c.variable,
-                source: c.source,
-                header: c.sourceHeaderName,
-                xpath: c.sourceXPath,
-                sourceLogId: c.sourceLogId,
-            }];
-        });
-    }
+    const toggleChainPick = (value: string) =>
+        setChainPicks(ps => ps.map(p => p.value === value ? { ...p, accepted: !p.accepted } : p));
+
+    // Bulk add/remove for the variable picks — the same affordance the requests
+    // section has. Both keep the names the user has typed.
+    const acceptedPicks = chainPicks.filter(p => p.accepted);
+    const allVarsAccepted = chained.length > 0 && acceptedPicks.length === chained.length;
+    const handleAddAllVars = () => setChainPicks(ps => ps.map(p => ({ ...p, accepted: true })));
+    const handleRemoveAllVars = () => setChainPicks(ps => ps.map(p => ({ ...p, accepted: false })));
 
     const toggleSelected = (id: string) => {
         setSelected(prev => {
@@ -258,11 +283,13 @@ export const CreateTestCaseFromTrafficWizard: React.FC<CreateTestCaseFromTraffic
             ? { kind: 'existing' as const, suiteId: suiteSel.suiteId }
             : { kind: 'new' as const, name: newSuiteName.trim() };
         // Chain picks: an extractor on the source step + {{variable}} in the
-        // consuming steps. A pick is only useful when its SOURCE step is in
-        // the case (otherwise nothing re-captures the value) — skip those.
+        // consuming steps. Only ACCEPTED picks are emitted, and a pick is only
+        // useful when its SOURCE step is in the case (otherwise nothing
+        // re-captures the value) — skip those.
         const extractors: Record<string, RequestExtractor[]> = {};
         const valueSubstitutions: Array<{ value: string; variable: string }> = [];
         for (const pick of chainPicks) {
+            if (!pick.accepted) continue;
             const variable = pick.variable.trim();
             if (!pick.value.trim() || !variable) continue;
             if (!pick.sourceLogId || !selected.has(pick.sourceLogId)) continue;
@@ -309,7 +336,7 @@ export const CreateTestCaseFromTrafficWizard: React.FC<CreateTestCaseFromTraffic
                 <div>
                     <div style={sectionLabel}>Test Suite</div>
                     <div style={{ ...hint, marginBottom: 10 }}>
-                        Choose the Test Suite this case belongs to, then pick which captured requests to include. Each is added as a raw, identical call; response values the capture reused in a later request are offered below as captured variables.
+                        Choose the Test Suite this case belongs to, then pick which captured requests to include — every capture is included by default, so you prune from there. Each is added as a raw, identical call; response values the capture reused in a later request are offered below as captured variables, none accepted until you add them.
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {testSuites.length === 0 && (
@@ -370,8 +397,13 @@ export const CreateTestCaseFromTrafficWizard: React.FC<CreateTestCaseFromTraffic
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {logs.map((log, i) => {
                             const label = trafficStepName(log);
+                            const isAnchor = log.id === anchorLogId;
                             return (
-                                <label key={log.id} style={logRow} title={log.url}>
+                                <label
+                                    key={log.id}
+                                    style={isAnchor ? anchorRow : logRow}
+                                    title={isAnchor ? `${log.url} — right-clicked capture` : log.url}
+                                >
                                     <input
                                         aria-label={label}
                                         type="checkbox"
@@ -394,9 +426,34 @@ export const CreateTestCaseFromTrafficWizard: React.FC<CreateTestCaseFromTraffic
                 </div>
 
                 <div>
-                    <div style={sectionLabel}>Captured &amp; reused values</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                        <span style={{ ...sectionLabel, marginBottom: 0 }}>Captured &amp; reused values ({acceptedPicks.length}/{chained.length})</span>
+                        {chained.length > 0 && (
+                            <div style={footerRight}>
+                                <button
+                                    data-testid="variables-add-all"
+                                    onClick={handleAddAllVars}
+                                    disabled={allVarsAccepted}
+                                    title="Accept every detected value"
+                                    style={{ ...headerAction, opacity: allVarsAccepted ? 0.5 : 1, cursor: allVarsAccepted ? 'not-allowed' : 'pointer' }}
+                                >
+                                    Add all
+                                </button>
+                                <button
+                                    data-testid="variables-remove-all"
+                                    onClick={handleRemoveAllVars}
+                                    disabled={acceptedPicks.length === 0}
+                                    title="Remove every accepted value"
+                                    style={{ ...headerAction, opacity: acceptedPicks.length === 0 ? 0.5 : 1, cursor: acceptedPicks.length === 0 ? 'not-allowed' : 'pointer' }}
+                                >
+                                    Remove all
+                                </button>
+                            </div>
+                        )}
+                    </div>
                     <div style={{ ...hint, marginBottom: 10 }}>
                         Accepted values are captured from the source step's response at run time and available as <span style={mono}>{'{{variable}}'}</span> in the step that reuses them.
+                        Nothing is accepted by default — tick a row (or use Add all) to include it.
                         The raw source line each value would be captured from is shown so you can verify the suggestion.
                         Names default to the element tag and are editable.
                     </div>
@@ -406,6 +463,7 @@ export const CreateTestCaseFromTrafficWizard: React.FC<CreateTestCaseFromTraffic
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                             {chained.map((c, i) => {
                                 const pick = chainPicks.find(p => p.value === c.value);
+                                const accepted = !!pick?.accepted;
                                 const srcLog = logs.find(l => l.id === c.sourceLogId);
                                 const srcName = srcLog ? trafficStepName(srcLog) : '';
                                 const useName = trafficStepName(logs.find(l => l.id === c.consumedByLogId) ?? { method: '', url: '' } as TrafficLog);
@@ -421,7 +479,7 @@ export const CreateTestCaseFromTrafficWizard: React.FC<CreateTestCaseFromTraffic
                                 // Skipped at create time when the source step is
                                 // not part of the case — flag it on the row.
                                 const sourceIncluded = selected.has(c.sourceLogId);
-                                const rowTitle = pick && !sourceIncluded
+                                const rowTitle = accepted && !sourceIncluded
                                     ? 'The source step is not selected — this pick is skipped when the case is created'
                                     : undefined;
                                 return (
@@ -433,12 +491,12 @@ export const CreateTestCaseFromTrafficWizard: React.FC<CreateTestCaseFromTraffic
                                             padding: '8px 10px', borderRadius: tokens.radius.md,
                                             background: tokens.surface.deep,
                                             border: `1px solid ${tokens.border.default}`, userSelect: 'none',
-                                            opacity: pick && sourceIncluded ? 1 : 0.5,
+                                            opacity: accepted ? (sourceIncluded ? 1 : 0.5) : 0.65,
                                         }}
                                     >
                                         <input
                                             type="checkbox"
-                                            checked={!!pick}
+                                            checked={accepted}
                                             onChange={() => toggleChainPick(c.value)}
                                             style={{ cursor: 'pointer', accentColor: tokens.status.accentDark, flexShrink: 0 }}
                                             data-testid={'tc-chain-' + i}

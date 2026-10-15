@@ -45,20 +45,28 @@ const renderWizard = (props: Partial<Parameters<typeof CreateTestCaseFromTraffic
 };
 
 describe('CreateTestCaseFromTrafficWizard', () => {
-    it('renders the title, all suites, and all captured requests with the anchor pre-selected', () => {
+    const createBtn = () => screen.getByText('Create Test Case').closest('button') as HTMLButtonElement;
+
+    it('renders the title, all suites, and every captured request selected by default', () => {
         renderWizard();
         expect(screen.getByText('Create Test Case from Traffic')).toBeInTheDocument();
         expect(screen.getByText('Smoke Suite')).toBeInTheDocument();
         expect(screen.getByRole('checkbox', { name: 'POST /login' })).toBeChecked();
-        expect(screen.getByRole('checkbox', { name: 'GET /users/profile' })).not.toBeChecked();
+        expect(screen.getByRole('checkbox', { name: 'GET /users/profile' })).toBeChecked();
+    });
+
+    it('highlights the right-clicked capture — it is selected like the others, so it is marked by colour', () => {
+        renderWizard();
+        const anchor = screen.getByRole('checkbox', { name: 'POST /login' }).closest('label') as HTMLElement;
+        expect(anchor.title).toContain('right-clicked capture');
+        expect(anchor.style.border).toContain('var(--apinox-focusBorder');
     });
 
     it('disables Create until a suite is selected, then submits with the default case name', () => {
         const { onCreate } = renderWizard();
         const createBtn = screen.getByText('Create Test Case').closest('button') as HTMLButtonElement;
 
-        // No suite selected yet — the right-clicked log is pre-checked but that
-        // alone is not enough.
+        // Requests are already selected — the suite is the only missing piece.
         expect(createBtn.disabled).toBe(true);
 
         fireEvent.click(screen.getByText('Smoke Suite'));
@@ -72,22 +80,19 @@ describe('CreateTestCaseFromTrafficWizard', () => {
         expect(onCreate).toHaveBeenCalledWith({
             suite: { kind: 'existing', suiteId: 'suite-1' },
             caseName: 'TestCase 2',
-            selectedLogs: [logs[0]], // only the anchor, in capture order
+            selectedLogs: [logs[0], logs[1]], // the full default set, in capture order
         });
     });
 
-    it('includes every checked request, in capture order', () => {
+    it('prunes an unwanted capture from the default all-selected set', () => {
         const { onCreate } = renderWizard();
         fireEvent.click(screen.getByText('Smoke Suite'));
 
-        // Check the second log.
         fireEvent.click(screen.getByRole('checkbox', { name: 'GET /users/profile' }));
 
-        fireEvent.click(screen.getByText('Create Test Case').closest('button') as HTMLButtonElement);
+        fireEvent.click(createBtn());
         expect(onCreate).toHaveBeenCalledWith(
-            expect.objectContaining({
-                selectedLogs: [logs[0], logs[1]],
-            })
+            expect.objectContaining({ selectedLogs: [logs[0]] })
         );
     });
 
@@ -95,16 +100,20 @@ describe('CreateTestCaseFromTrafficWizard', () => {
         const { onCreate } = renderWizard();
         fireEvent.click(screen.getByText('Smoke Suite'));
 
-        // Currently one of two selected → check select-all to include both.
-        fireEvent.click(screen.getByRole('checkbox', { name: 'Select all requests' }));
-        expect(screen.getByRole('checkbox', { name: 'POST /login' })).toBeChecked();
-        expect(screen.getByRole('checkbox', { name: 'GET /users/profile' })).toBeChecked();
-
-        // Now all selected → unchecking clears everything and disables Create.
-        fireEvent.click(screen.getByRole('checkbox', { name: 'Select all requests' }));
+        // All selected by default → unchecking the header clears everything and
+        // disables Create.
+        const selectAll = screen.getByRole('checkbox', { name: 'Select all requests' });
+        expect(selectAll).toBeChecked();
+        fireEvent.click(selectAll);
+        expect(screen.getByRole('checkbox', { name: 'POST /login' })).not.toBeChecked();
         const createBtn = screen.getByText('Create Test Case').closest('button') as HTMLButtonElement;
         expect(createBtn.disabled).toBe(true);
         expect(onCreate).not.toHaveBeenCalled();
+
+        // Re-checking restores the full set.
+        fireEvent.click(selectAll);
+        expect(screen.getByRole('checkbox', { name: 'POST /login' })).toBeChecked();
+        expect(screen.getByRole('checkbox', { name: 'GET /users/profile' })).toBeChecked();
     });
 
     it('can create a new suite: name required before Create is enabled', () => {
@@ -122,7 +131,7 @@ describe('CreateTestCaseFromTrafficWizard', () => {
         expect(onCreate).toHaveBeenCalledWith({
             suite: { kind: 'new', name: 'Regression' },
             caseName: 'TestCase 1',
-            selectedLogs: [logs[0]],
+            selectedLogs: [logs[0], logs[1]],
         });
     });
 
@@ -148,6 +157,7 @@ describe('CreateTestCaseFromTrafficWizard', () => {
         fireEvent.click(screen.getByText('Smoke Suite'));
 
         fireEvent.click(screen.getByRole('checkbox', { name: 'POST /login' }));
+        fireEvent.click(screen.getByRole('checkbox', { name: 'GET /users/profile' }));
         const createBtn = screen.getByText('Create Test Case').closest('button') as HTMLButtonElement;
         expect(createBtn.disabled).toBe(true);
         expect(onCreate).not.toHaveBeenCalled();
@@ -191,27 +201,30 @@ const renderChainedWizard = (props: Partial<Parameters<typeof CreateTestCaseFrom
     return { ...utils, onCreate };
 };
 
+const btn = (text: string) => screen.getByText(text).closest('button') as HTMLButtonElement;
+const pickCheckbox = (id: string) => document.querySelector(`[data-testid="${id}"]`) as HTMLInputElement;
+const bulkControl = (id: string) => document.querySelector(`[data-testid="${id}"]`) as HTMLButtonElement;
+
 describe('CreateTestCaseFromTrafficWizard chain capture', () => {
-    it('offers the detected reused value, accepted by default with the element tag as variable name', () => {
-        const { container } = renderChainedWizard();
-        expect(screen.getByText('Captured & reused values')).toBeInTheDocument();
+    it('offers the detected reused value NOT accepted by default, with the element tag as variable name', () => {
+        renderChainedWizard();
+        expect(screen.getByText(/Captured & reused values \(0\/1\)/)).toBeInTheDocument();
         // The suggestion row: value + raw source line + from/used-in labels.
         expect(screen.getByText('TKN-999')).toBeInTheDocument();
         expect(screen.getByText('<Token>TKN-999</Token>')).toBeInTheDocument();
         expect(screen.getByText('from POST /login (<Token>)')).toBeInTheDocument();
         expect(screen.getByText('used in GET /users/profile?token=TKN-999 (url)')).toBeInTheDocument();
-        // Accepted by default, variable name defaults to the element tag.
-        const pick = container.querySelector('[data-testid="tc-chain-0"]') as HTMLInputElement;
-        expect(pick.checked).toBe(true);
+        // Not accepted by default; the name shown is the detector's default.
+        expect(pickCheckbox('tc-chain-0')).not.toBeChecked();
         expect(screen.getByLabelText('Variable name for TKN-999')).toHaveValue('token');
     });
 
-    it('emits an extractor on the source step and a substitution for the consumed value', () => {
+    it('emits an extractor on the source step and a substitution once the value is accepted', () => {
         const { onCreate } = renderChainedWizard();
         fireEvent.click(screen.getByText('Smoke Suite'));
-        // Include the consuming step too.
-        fireEvent.click(screen.getByRole('checkbox', { name: 'GET /users/profile?token=TKN-999' }));
-        fireEvent.click(screen.getByText('Create Test Case').closest('button') as HTMLButtonElement);
+
+        fireEvent.click(pickCheckbox('tc-chain-0'));
+        fireEvent.click(btn('Create Test Case'));
 
         expect(onCreate).toHaveBeenCalledTimes(1);
         const arg = onCreate.mock.calls[0][0];
@@ -229,8 +242,9 @@ describe('CreateTestCaseFromTrafficWizard chain capture', () => {
     it('honours a renamed variable', () => {
         const { onCreate } = renderChainedWizard();
         fireEvent.click(screen.getByText('Smoke Suite'));
+        fireEvent.click(pickCheckbox('tc-chain-0'));
         fireEvent.change(screen.getByLabelText('Variable name for TKN-999'), { target: { value: 'sess' } });
-        fireEvent.click(screen.getByText('Create Test Case').closest('button') as HTMLButtonElement);
+        fireEvent.click(btn('Create Test Case'));
 
         const arg = onCreate.mock.calls[0][0];
         expect(arg.valueSubstitutions).toEqual([{ value: 'TKN-999', variable: 'sess' }]);
@@ -239,11 +253,12 @@ describe('CreateTestCaseFromTrafficWizard chain capture', () => {
         });
     });
 
-    it('drops the pick when the user unchecks it', () => {
-        const { onCreate, container } = renderChainedWizard();
+    it('drops the pick when the user unchecks it again', () => {
+        const { onCreate } = renderChainedWizard();
         fireEvent.click(screen.getByText('Smoke Suite'));
-        fireEvent.click(container.querySelector('[data-testid="tc-chain-0"]') as HTMLInputElement);
-        fireEvent.click(screen.getByText('Create Test Case').closest('button') as HTMLButtonElement);
+        fireEvent.click(pickCheckbox('tc-chain-0'));
+        fireEvent.click(pickCheckbox('tc-chain-0'));
+        fireEvent.click(btn('Create Test Case'));
 
         const arg = onCreate.mock.calls[0][0];
         expect(arg.valueSubstitutions).toBeUndefined();
@@ -253,10 +268,10 @@ describe('CreateTestCaseFromTrafficWizard chain capture', () => {
     it('skips the pick when its source step is excluded from the case', () => {
         const { onCreate } = renderChainedWizard();
         fireEvent.click(screen.getByText('Smoke Suite'));
-        // Include only the CONSUMING step (log-b); the source (log-a) stays out.
-        fireEvent.click(screen.getByRole('checkbox', { name: 'POST /login' })); // uncheck the anchor
-        fireEvent.click(screen.getByRole('checkbox', { name: 'GET /users/profile?token=TKN-999' }));
-        fireEvent.click(screen.getByText('Create Test Case').closest('button') as HTMLButtonElement);
+        fireEvent.click(pickCheckbox('tc-chain-0'));
+        // Requests are all selected by default — drop the SOURCE step.
+        fireEvent.click(screen.getByRole('checkbox', { name: 'POST /login' }));
+        fireEvent.click(btn('Create Test Case'));
 
         const arg = onCreate.mock.calls[0][0];
         expect(arg.selectedLogs).toEqual([chainedLogs[1]]);
@@ -270,5 +285,53 @@ describe('CreateTestCaseFromTrafficWizard chain capture', () => {
         // The default fixture has no responses → nothing detected.
         renderWizard();
         expect(screen.getByText('No response values were detected being reused in later requests.')).toBeInTheDocument();
+    });
+
+    it('Remove all clears every accepted value, Add all restores the defaults', () => {
+        const { onCreate } = renderChainedWizard();
+        fireEvent.click(screen.getByText('Smoke Suite'));
+
+        const addAll = bulkControl('variables-add-all');
+        const removeAll = bulkControl('variables-remove-all');
+
+        // Nothing accepted by default → Remove all is a no-op, Add all works.
+        expect(addAll.disabled).toBe(false);
+        expect(removeAll.disabled).toBe(true);
+
+        fireEvent.click(addAll);
+        expect(pickCheckbox('tc-chain-0')).toBeChecked();
+        expect(screen.getByText(/Captured & reused values \(1\/1\)/)).toBeInTheDocument();
+        expect(addAll.disabled).toBe(true);
+        expect(removeAll.disabled).toBe(false);
+
+        fireEvent.click(removeAll);
+        expect(pickCheckbox('tc-chain-0')).not.toBeChecked();
+
+        fireEvent.click(btn('Create Test Case'));
+        const arg = onCreate.mock.calls[0][0];
+        expect(arg.valueSubstitutions).toBeUndefined();
+    });
+
+    it('keeps a typed variable name across Remove all / Add all', () => {
+        const { onCreate } = renderChainedWizard();
+        fireEvent.click(screen.getByText('Smoke Suite'));
+
+        // The name is editable before the pick is accepted, and it survives
+        // being un-accepted and re-accepted.
+        fireEvent.change(screen.getByLabelText('Variable name for TKN-999'), { target: { value: 'sess' } });
+        fireEvent.click(bulkControl('variables-add-all'));
+        fireEvent.click(bulkControl('variables-remove-all'));
+        expect(pickCheckbox('tc-chain-0')).not.toBeChecked();
+        expect(screen.getByLabelText('Variable name for TKN-999')).toHaveValue('sess');
+
+        fireEvent.click(bulkControl('variables-add-all'));
+        fireEvent.click(btn('Create Test Case'));
+        expect(onCreate.mock.calls[0][0].valueSubstitutions).toEqual([{ value: 'TKN-999', variable: 'sess' }]);
+    });
+
+    it('renders no bulk controls when nothing was detected', () => {
+        renderWizard();
+        expect(bulkControl('variables-add-all')).not.toBeInTheDocument();
+        expect(bulkControl('variables-remove-all')).not.toBeInTheDocument();
     });
 });
