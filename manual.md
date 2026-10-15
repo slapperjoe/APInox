@@ -208,7 +208,7 @@ Forward unmatched requests to real backend:
 - **Error Scenarios**: Simulate timeouts, errors, edge cases
 - **Latency Testing**: Add delays to test slow connections
 
-### 8. Request Chaining & Workflows
+### 8. Request Chaining in Test Cases
 
 APInox supports powerful request chaining for complex test scenarios where one request depends on data from previous requests.
 
@@ -216,11 +216,11 @@ APInox supports powerful request chaining for complex test scenarios where one r
 
 **Two types of variables with distinct syntaxes:**
 - `{{variableName}}` - Environment/global variables and dynamic functions
-- `${variableName}` - Workflow variables (extracted from previous test steps)
+- `${variableName}` - Chain variables (extracted by earlier steps and reused later)
 
 **Important:** Each syntax has its specific purpose:
 - Use `{{...}}` for environment config, global variables, and wildcards (uuid, now, etc.)
-- Use `${...}}` exclusively for workflow variables extracted during test execution
+- Use `${...}}` exclusively for chain variables extracted during test execution
 - Mixing syntaxes helps distinguish between static configuration and dynamic test data
 
 #### Extracting Variables from Responses
@@ -382,7 +382,7 @@ In subsequent steps, reference extracted variables with `${variableName}`:
 ```xml
 <soap:Envelope>
   <soap:Header>
-    <AuthToken>${authToken}</AuthToken>  <!-- Workflow variable syntax -->
+    <AuthToken>${authToken}</AuthToken>  <!-- Extracted variable syntax -->
   </soap:Header>
   <soap:Body>
     <GetUserData>
@@ -394,7 +394,7 @@ In subsequent steps, reference extracted variables with `${variableName}`:
 ```
 
 **Syntax Comparison:**
-- `${authToken}` - Workflow variable (extracted from Step 1)
+- `${authToken}` - Extracted variable (reused from Step 1)
 - `{{uuid}}` - Dynamic function (generates new UUID each request)
 
 #### Conditional Execution
@@ -479,9 +479,9 @@ log(`Processing user ${userId} at ${timestamp}`);
 2. **Use Default Values**: Provide fallbacks for extractors to prevent test failures
 3. **Validate Extractions**: Add assertions to verify variables were extracted
 4. **Keep Steps Focused**: One responsibility per step
-5. **Document Workflows**: Use meaningful step names
+5. **Document Cases**: Use meaningful step names
 
-#### Example: Complete Workflow
+#### Example: Complete Test Case
 
 **Test Case: User Registration and Verification**
 

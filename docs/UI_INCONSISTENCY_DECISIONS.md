@@ -90,7 +90,7 @@ for empty-state art).
 
 ### 16+17. Buttons
 **Migrate all ad-hoc `styled.button` definitions to the shared Button family:** TitleBar (3),
-WorkflowBuilderModal (3), ContextHelpButton, HelpModal, TrafficDetails, EnvironmentsTab,
+ContextHelpButton, HelpModal, TrafficDetails, EnvironmentsTab,
 NotesContextToolbar, proxy `btnStyle` consts → PrimaryButton/SecondaryButton/IconButton/
 HeaderButton (parameterize the shared component where they add a distinct style, e.g.
 full-width). Also fix the zero-usage `DangerButton`/`ToggleButton` exports (either wire

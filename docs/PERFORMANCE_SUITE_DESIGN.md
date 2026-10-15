@@ -42,7 +42,7 @@ The execution engine (`PerformanceService`) is optimized for loops:
     - Executes the full request sequence for each "virtual user".
 
 ### Variable Handling
-Variables extracted via `XPath` from one request are stored in a run-scoped context map and injected into subsequent request bodies using `${variableName}` syntax. This allows for dynamic workflows (e.g., Login -> GetToken -> QueryData).
+Variables extracted via `XPath` from one request are stored in a run-scoped context map and injected into subsequent request bodies using `${variableName}` syntax. This allows for dynamic request chains (e.g., Login -> GetToken -> QueryData).
 
 ## System Components
 

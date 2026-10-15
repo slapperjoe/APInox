@@ -13,7 +13,7 @@ import React, { useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from './common/EmptyState';
 import { SearchResult } from '../utils/workspaceSearch';
-import { FileText, Folder, Box, Layers, TestTube, Workflow, Clock } from 'lucide-react';
+import { FileText, Folder, Box, Layers, TestTube, Clock } from 'lucide-react';
 
 // =============================================================================
 // STYLED COMPONENTS
@@ -186,8 +186,6 @@ function getResultIcon(type: string): React.ReactNode {
         case 'test-suite':
         case 'test-case':
             return <TestTube />;
-        case 'workflow':
-            return <Workflow />;
         default:
             return <FileText />;
     }
@@ -202,8 +200,6 @@ function getViewDisplayName(view: string): string {
             return 'Projects';
         case 'tests':
             return 'Tests';
-        case 'workflows':
-            return 'Workflows';
         case 'history':
             return 'History';
         default:

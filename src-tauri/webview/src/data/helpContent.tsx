@@ -66,7 +66,7 @@ const HELP_SECTIONS_RAW = [
 
     Use \`{{variable}}\` syntax in the body or headers to inject values at send time. Switch environments from the sidebar ENV selector. Manage environments in **Settings → Environments**.
 
-    Workflow request steps use the same substitution in both the step endpoint (URL) and the XML body — including built-in functions like \`{{uuid}}\` and \`{{now}}\`: the active environment is resolved at run time, and the workflow's own variables (manual + extractors) win on a name clash.
+    Test-case request steps use the same substitution in both the step endpoint (URL) and the XML body — including built-in functions like \`{{uuid}}\` and \`{{now}}\`: the active environment is resolved at run time, and the case's own variables (manual + extractors) win on a name clash.
 
     ### Environment & Custom Variables
 

@@ -1,6 +1,10 @@
 # Changelog
 
 
+## [Unreleased] - 2026-10-15
+### Removed
+- **Workflows removed**: the WORKFLOWS view, the workflow entity, workflow run history, the workflow import/export commands and the `workflow` test-step type are gone. Existing workflows were migrated at startup into the global test-case store as one suite per workflow (named after it), and pre-existing `workflow` steps now reference the migrated test case. Test cases are the single flow surface. Legacy `*.workflow.json` files can no longer be imported.
+
 ## [0.19.1] - 2026-04-09
 ### Changes
 - No commit messages found.

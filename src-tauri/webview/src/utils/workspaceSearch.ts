@@ -2,7 +2,7 @@
  * workspaceSearch.ts
  * 
  * Workspace search utility for finding requests, operations, interfaces, folders,
- * tests, workflows, and other workspace items across multiple views.
+ * tests, and other workspace items across multiple views.
  * 
  * Features:
  * - Fuzzy matching with configurable thresholds
@@ -17,8 +17,8 @@ import { ApinoxProject, ApiInterface, ApiOperation, ApiRequest, ApinoxFolder, Te
 // TYPE DEFINITIONS
 // =============================================================================
 
-export type SearchResultType = 'project' | 'request' | 'operation' | 'interface' | 'folder' | 'test-suite' | 'test-case' | 'workflow';
-export type SearchResultView = 'projects' | 'tests' | 'workflows' | 'history';
+export type SearchResultType = 'project' | 'request' | 'operation' | 'interface' | 'folder' | 'test-suite' | 'test-case';
+export type SearchResultView = 'projects' | 'tests' | 'history';
 
 export interface SearchResult {
     /** Unique identifier for this result */
@@ -87,7 +87,6 @@ const TYPE_PRIORITY: Record<SearchResultType, number> = {
     'folder': 1.5,
     'test-case': 3.5,
     'test-suite': 2.5,
-    'workflow': 3.0,
 };
 
 /** Scoring weights for different match types */
