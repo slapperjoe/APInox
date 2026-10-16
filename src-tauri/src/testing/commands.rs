@@ -80,9 +80,9 @@ pub async fn run_test_case(request: RunTestCaseRequest) -> Result<RunTestCaseRes
             "tc-{}-{}",
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_millis(),
-            uuid::Uuid::new_v4().to_string().split('-').next().unwrap()
+            uuid::Uuid::new_v4().to_string().split('-').next().unwrap_or("")
         );
 
         TEST_RUN_STORE.lock().unwrap().insert(
@@ -280,9 +280,9 @@ pub async fn run_test_suite(request: RunTestSuiteRequest) -> Result<RunTestSuite
         let run_id = format!("run-{}-{}", 
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_millis(),
-            uuid::Uuid::new_v4().to_string().split('-').next().unwrap()
+            uuid::Uuid::new_v4().to_string().split('-').next().unwrap_or("")
         );
         
         let run_data = TestRunData {

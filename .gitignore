@@ -69,6 +69,11 @@ lerna-debug.log*
 pnpm-debug.log*
 dirty-soap-diagnostics-*.jsonl
 
+# Build output and scratch captures — these are run results, not source
+build_log.txt
+tsc_output.txt
+*.js.map
+
 # Testing
 coverage/
 playwright-report/

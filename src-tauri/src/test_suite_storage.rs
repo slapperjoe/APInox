@@ -14,6 +14,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::utils::resolve_config_dir;
+
 /// Global test-suite file — stores suites as raw JSON to preserve all
 /// frontend fields (testCases/steps/config round-trip byte-for-byte).
 #[derive(Debug, serde::Serialize, serde::Deserialize, Default)]
@@ -23,23 +25,7 @@ struct TestSuiteStore {
 
 /// Get path to test-suites.json (same config-dir resolution as scrapbook).
 fn get_test_suites_path() -> Result<PathBuf, String> {
-    let home_dir = std::env::var("HOME")
-        .or_else(|_| std::env::var("USERPROFILE"))
-        .map_err(|_| "Could not determine home directory")?;
-
-    // Test override: honor APINOX_CONFIG_DIR if set (mirrors resolve_config_dir).
-    if let Ok(dir) = std::env::var("APINOX_CONFIG_DIR") {
-        let trimmed = dir.trim().to_string();
-        if !trimmed.is_empty() {
-            let p = PathBuf::from(trimmed);
-            if !p.exists() {
-                fs::create_dir_all(&p).map_err(|e| format!("Failed to create config directory: {}", e))?;
-            }
-            return Ok(p.join("test-suites.json"));
-        }
-    }
-
-    let config_dir = PathBuf::from(&home_dir).join(".apinox");
+    let config_dir = resolve_config_dir()?;
 
     if !config_dir.exists() {
         fs::create_dir_all(&config_dir)

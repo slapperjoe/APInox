@@ -9,6 +9,7 @@
   "license": "MIT",
   "version": "0.62.862",
   "scripts": {
+    "lint": "eslint src-tauri/webview/src packages shared",
     "clean": "node scripts/clean.js",
     "clean:rust": "cargo clean --manifest-path src-tauri/Cargo.toml",
     "distrobox:make": "bash scripts/distrobox-make.sh",
@@ -23,7 +24,6 @@
     "version-bump-major": "node scripts/version.js bump major",
     "version-bump-minor": "node scripts/version.js bump minor",
     "sync-version": "node scripts/version.js sync",
-    "prepare": "npx simple-git-hooks",
     "tauri:test": "npm run build:packages && cd src-tauri/webview && node ../../scripts/run-npm-install.js && cd ../.. && npx tauri dev",
     "tauri:run": "npx tauri dev",
     "tauri:dev": "node scripts/version.js sync && npm run build:packages && cd src-tauri/webview && node ../../scripts/run-npm-install.js && cd ../.. && npx tauri dev",
@@ -32,9 +32,6 @@
     "tauri:build": "node scripts/version.js build",
     "tauri": "tauri",
     "package:arch": "mkdir -p target/release/bundle/arch && PKGDEST=$(pwd)/target/release/bundle/arch makepkg -f --nodeps --nocheck --noconfirm && node scripts/gen-arch-install.js"
-  },
-  "simple-git-hooks": {
-    "pre-commit": ""
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.10.1",
@@ -53,8 +50,6 @@
     "eslint": "^8.41.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "jsdom": "^29.0.2",
-    "react-dom": "^19.2.5",
-    "simple-git-hooks": "^2.13.1",
     "typescript": "^5.1.3",
     "vite": "^8.0.16",
     "vitest": "^4.1.4"

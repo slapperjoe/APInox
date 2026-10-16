@@ -1358,9 +1358,8 @@ const MainContent: React.FC = () => {
     } = useWorkspaceCallbacks({
         selectedTestCase,
         selectedStep,
-        // Phase B (t_86c34d38): test-step CRUD persists to the UNIFIED store
-        // (suites relocated to UnifiedProject.testSuites); the pure
-        // projectUpdateHelpers are model-agnostic.
+        // Phase B: test-step CRUD persists to the UNIFIED store
+        // (suites relocated to UnifiedProject.testSuites).
         projects: unifiedProjects,
         testExecution,
         setSelectedStep,
@@ -1455,12 +1454,12 @@ const MainContent: React.FC = () => {
                 const itemKey = `${project.id || project.name}-op-${op.name}`;
                 if (seen.has(itemKey)) return;
                 seen.add(itemKey);
-                const ifaceLabel = interfaceName || (op as any).displayName || project.name;
+                const ifaceLabel = interfaceName || op.displayName || project.name;
                 if (op.requests && op.requests.length > 0) {
                     op.requests.forEach((req: any, idx: number) => {
                         items.push({
                             id: `${project.id || project.name}-op-${op.name}-req-${idx}`,
-                            label: op.requests.length > 1 ? `${(op as any).displayName || op.name} [${idx + 1}/${op.requests.length}]` : ((op as any).displayName || op.name),
+                            label: op.requests.length > 1 ? `${op.displayName || op.name} [${idx + 1}/${op.requests.length}]` : (op.displayName || op.name),
                             description: `${project.name} > ${ifaceLabel} > ${req.name}`,
                             detail: req.endpoint || op.originalEndpoint || 'WSDL Operation',
                             type: 'request',
@@ -1471,7 +1470,7 @@ const MainContent: React.FC = () => {
                     // No requests - add operation for SOAP XML generation
                     items.push({
                         id: `${project.id || project.name}-op-${op.name}`,
-                        label: (op as any).displayName || op.name,
+                        label: op.displayName || op.name,
                         description: `${project.name} > ${ifaceLabel}`,
                         detail: op.originalEndpoint || 'WSDL Operation',
                         type: 'operation',

@@ -145,7 +145,7 @@ impl PerformanceStats {
         }
 
         let mut durations: Vec<f64> = results.iter().map(|r| r.duration).collect();
-        durations.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        durations.sort_by(|a, b| a.total_cmp(b));
 
         let success_count = results.iter().filter(|r| r.success).count();
         let sla_breach_count = results.iter().filter(|r| r.sla_breached).count();

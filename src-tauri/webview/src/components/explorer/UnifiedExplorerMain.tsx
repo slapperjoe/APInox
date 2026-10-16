@@ -346,7 +346,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                         const reqId = req.id || req.name;
                         // Only hydrate from disk if we don't already have a response for this request
                         if (next[reqId]) continue;
-                        const lr = (req as any).lastResponse;
+                        const lr = req.lastResponse;
                         if (lr && (lr.rawResponse || lr.status !== undefined)) {
                             next[reqId] = {
                                 rawResponse: lr.rawResponse || '',

@@ -6,7 +6,7 @@ export default defineConfig({
         globals: true,
         environment: 'node',
         passWithNoTests: true,
-        include: ['**/*.{test,spec}.{ts,js}', '**/test-*.ts'],
+        include: ['**/*.{test,spec}.{ts,js}'],
         // Kanban agent worktrees (git worktree checkouts) live under
         // .worktrees/ and contain full duplicate copies of the source tree —
         // without this exclude, root discovery sweeps every worktree's test

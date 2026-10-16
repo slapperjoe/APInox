@@ -2,19 +2,12 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 
+use crate::utils::resolve_config_dir;
+
 // ── Directory helpers ────────────────────────────────────────────────────────
 
 fn get_notes_dir() -> Result<PathBuf, String> {
-    let config_dir = std::env::var("APINOX_CONFIG_DIR")
-        .ok()
-        .and_then(|d| if d.trim().is_empty() { None } else { Some(PathBuf::from(d)) })
-        .or_else(|| {
-            let home = std::env::var("HOME")
-                .or_else(|_| std::env::var("USERPROFILE"))
-                .ok()?;
-            Some(PathBuf::from(home).join(".apinox"))
-        })
-        .ok_or("Could not determine config directory")?;
+    let config_dir = resolve_config_dir()?;
 
     let notes_dir = config_dir.join("notes");
     if !notes_dir.exists() {
