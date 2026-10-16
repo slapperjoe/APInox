@@ -143,7 +143,7 @@ export const EnvironmentsTab: React.FC<EnvironmentsTabProps> = ({
         
         setCustomFields(prev => ({ ...prev, [selectedEnvKey]: fields }));
         setConfirmDelete(false);
-    }, [selectedEnvKey]);
+    }, [selectedEnvKey, environments]);
 
     const loadSecretValue = async (envName: string, fieldName: string) => {
         return new Promise<void>((resolve) => {

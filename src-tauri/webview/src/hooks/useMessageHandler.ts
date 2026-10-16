@@ -80,7 +80,7 @@ export function useMessageHandler(state: MessageHandlerState) {
         setSelectedProjectName,
         setWorkspaceDirty,
         setSaveErrors,
-        _setActiveView,
+        setActiveView: _setActiveView,
         setRequestHistory,
         projects,
         config,
@@ -88,7 +88,7 @@ export function useMessageHandler(state: MessageHandlerState) {
         selectedRequest,
         startTimeRef,
         requestIdRef,
-        _saveProject,
+        saveProject: _saveProject,
         onAttachmentSelected
     } = state;
 

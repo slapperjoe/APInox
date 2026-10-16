@@ -1671,7 +1671,7 @@ const MainContent: React.FC = () => {
                 setSelectedTestSuite(null);
             }
         }
-    }, [globalTestSuites, selectedTestSuite]);
+    }, [globalTestSuites, selectedTestSuite, findGlobalSuite]);
 
     // Auto-save projects when workspace becomes dirty
     useEffect(() => {
@@ -1986,7 +1986,7 @@ const MainContent: React.FC = () => {
         handleToggleSuiteExpand, handleToggleCaseExpand, handleSelectStep, handleRenameTestStep,
         handleDeleteStepFromMenu,
         handleExportSuite, handleExportTestCase, handleImportSuite, handleImportTestCase,
-        selectedTestSuite, selectedTestCase,
+        selectedTestSuite, selectedTestCase, globalTestSuites, findGlobalCase,
         config, activeRunId, selectedPerformanceSuiteId,
         handleAddPerformanceSuite, handleDeletePerformanceSuite, handleRunPerformanceSuite,
         handleSelectPerformanceSuite, handleStopPerformanceRun, handleAddPerformanceRequestForUi,

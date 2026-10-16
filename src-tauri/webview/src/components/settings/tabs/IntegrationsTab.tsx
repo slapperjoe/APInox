@@ -4,7 +4,7 @@
  * Azure DevOps integration settings for the Settings modal.
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { ExternalLink, Check, AlertCircle } from "lucide-react";
 import { Spinner } from "../../common/Spinner";
 import styled from "styled-components";
@@ -74,6 +74,13 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
   const azureDevOps = config.azureDevOps || {};
   const tauriMode = isTauri();
 
+  const fetchProjects = useCallback(() => {
+    if (!azureDevOps.orgUrl) return;
+    setLoading(true);
+    setTestResult(null);
+    sendMessage({ command: "adoListProjects", orgUrl: azureDevOps.orgUrl });
+  }, [azureDevOps.orgUrl, sendMessage]);
+
   // Check if PAT exists on mount
   useEffect(() => {
     sendMessage({ command: "adoHasPat" });
@@ -113,7 +120,7 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, []);
+  }, [sendMessage, fetchProjects, azureDevOps.orgUrl]);
 
   const handleStorePat = () => {
     if (pat.trim()) {
@@ -124,13 +131,6 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
   const handleDeletePat = () => {
     sendMessage({ command: "adoDeletePat" });
     onConfigChange("azureDevOps", { ...azureDevOps, project: undefined });
-  };
-
-  const fetchProjects = () => {
-    if (!azureDevOps.orgUrl) return;
-    setLoading(true);
-    setTestResult(null);
-    sendMessage({ command: "adoListProjects", orgUrl: azureDevOps.orgUrl });
   };
 
   const handleTestConnection = () => {

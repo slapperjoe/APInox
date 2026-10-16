@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { SPACING_SM } from "../../styles/spacing";
 import { invokeTauriCommand } from '../../utils/bridge';
 import { tokens } from './tokens';
@@ -46,21 +46,7 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
 
   const isSniffer = mode === 'sniffer' || mode === 'sniffer-mock';
 
-  useEffect(() => {
-    loadStatus();
-    const interval = setInterval(loadStatus, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    if (!isSniffer) return;
-    loadSysProxyStatus();
-    loadCertStatus();
-    const interval = setInterval(loadSysProxyStatus, 5000);
-    return () => clearInterval(interval);
-  }, [isSniffer]);
-
-  async function loadStatus() {
+  const loadStatus = useCallback(async () => {
     if (operationInProgress.current) return;
     try {
       const s = await invokeTauriCommand<any>('get_proxy_status');
@@ -72,7 +58,21 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
     } catch (err: any) {
       console.error('Failed to load proxy status:', err);
     }
-  }
+  }, [onStatusChange, proxyPort, mode]);
+
+  useEffect(() => {
+    loadStatus();
+    const interval = setInterval(loadStatus, 5000);
+    return () => clearInterval(interval);
+  }, [loadStatus]);
+
+  useEffect(() => {
+    if (!isSniffer) return;
+    loadSysProxyStatus();
+    loadCertStatus();
+    const interval = setInterval(loadSysProxyStatus, 5000);
+    return () => clearInterval(interval);
+  }, [isSniffer]);
 
   async function loadSysProxyStatus() {
     try {

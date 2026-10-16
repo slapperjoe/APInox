@@ -921,7 +921,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
             setIsExecuting(false);
             activeRequestIdRef.current = null;
         }
-    }, [envVariables, persistRequestUpdate, projects, selectedNode, onAfterExecute]);
+    }, [envVariables, persistRequestUpdate, projects, selectedNode, onAfterExecute, editingRequest, editingXml]);
 
     /**
      * R-11 (F-11): cancel the in-flight request from the Cancel button.
