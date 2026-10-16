@@ -1,0 +1,22 @@
+{
+  "@typescript-eslint/no-non-null-assertion": 153,
+  "@typescript-eslint/no-unused-vars": 207,
+  "react-hooks/refs": 8,
+  "no-unused-vars": 5,
+  "no-empty": 3,
+  "@typescript-eslint/no-empty-function": 85,
+  "react-hooks/exhaustive-deps": 53,
+  "no-redeclare": 1,
+  "react-hooks/set-state-in-effect": 42,
+  "prefer-const": 7,
+  "@typescript-eslint/no-require-imports": 4,
+  "@typescript-eslint/ban-ts-comment": 2,
+  "react-hooks/purity": 1,
+  "react-hooks/preserve-manual-memoization": 2,
+  "react-hooks/immutability": 6,
+  "@typescript-eslint/no-unused-expressions": 1,
+  "unassigned": 2,
+  "no-prototype-builtins": 1,
+  "no-constant-condition": 1,
+  "no-useless-escape": 5
+}
