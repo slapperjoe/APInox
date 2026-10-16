@@ -1,29 +1,20 @@
 import React, { Suspense } from 'react';
 import { Play, ChevronLeft, GitBranch, Clock, FileCode, FileText, RefreshCw } from 'lucide-react';
-// Models imported via props.ts indirections, specific enums kept if needed locally (TestStepType is used in code?)
-// Checking code: TestStepType is used in props interface but not local var?
-// Actually TestStepType is used in onAddStep signature but onAddStep comes from props.
-// Let's remove them and add back if needed.
-import { SidebarView, RequestType, BodyType, HttpMethod, WorkflowStep, ApiRequest, TestStep } from '@shared/models';
+import { SidebarView, WorkflowStep, TestStep } from '@shared/models';
 import { bridge } from '../utils/bridge';
 import { CustomXPathEvaluator } from '../utils/xpathEvaluator';
 import { useMobileLayout } from '../hooks/useMobileLayout';
 
-import { ErrorBoundary, formatXml, stripCausalityData, formatContent, formatJson, validateUrl, validateJson, validateXml } from '@apinox/request-editor/core';
-import { RequestWorkspace, MonacoRequestEditorWithToolbar as MonacoRequestEditor, MonacoResponseViewer, MonacoSingleLineInput, AssertionsPanel, HeadersPanel, SecurityPanel, AttachmentsPanel, ExtractorsPanel, VariablesPanel, QueryParamsPanel, RestAuthPanel, GraphQLVariablesPanel, ScriptEditor } from '@apinox/request-editor/monaco';
-import type { ApiRequest as PackageApiRequest, ExecutionResponse as PackageExecutionResponse, Variable as PackageVariable, MonacoRequestEditorHandle, MonacoSingleLineInputHandle } from '@apinox/request-editor/monaco';
+import { ErrorBoundary, formatXml, validateUrl, validateJson, validateXml } from '@apinox/request-editor/core';
+import { RequestWorkspace, ScriptEditor } from '@apinox/request-editor/monaco';
+import type { ApiRequest as PackageApiRequest, ExecutionResponse as PackageExecutionResponse, Variable as PackageVariable } from '@apinox/request-editor/monaco';
 import { WelcomePanel, TestCaseView, EmptyTestCase } from './workspace';
-import { RequestStepEditor } from './workspace/RequestStepEditor';
-import { DelayStepEditor } from './workspace/DelayStepEditor';
 import { ConditionStepEditor } from './workspace/ConditionStepEditor';
-import { TestCaseStepEditor } from './workspace/TestCaseStepEditor';
 import { LoopStepEditor } from './workspace/LoopStepEditor';
-import { ScriptStepEditor } from './workspace/ScriptStepEditor';
 import { EmptyState } from './common/EmptyState';
 import { CustomSelect } from './common/CustomSelect';
 import { TestSuiteSummary } from './workspace/TestSuiteSummary';
 import { PerformanceSuiteEditor } from './workspace/PerformanceSuiteEditor';
-import { findPathToRequest } from '../utils/projectUtils';
 import { useWorkspace } from '../contexts/WorkspaceContext';
 
 const ProxyPanel = React.lazy(() =>
@@ -33,92 +24,9 @@ const RulesAndMockPage = React.lazy(() =>
     import('./proxy/RulesAndMockPage').then(module => ({ default: module.RulesAndMockPage }))
 );
 
-/**
- * Get Content-Type header based on body type
- * Mirrors backend logic in HttpClient.ts
- */
-function getContentTypeForBodyType(bodyType: BodyType): string {
-    switch (bodyType) {
-        case 'json':
-            return 'application/json';
-        case 'xml':
-            return 'application/xml';
-        case 'graphql':
-            return 'application/json';
-        case 'text':
-            return 'text/plain';
-        case 'form-data':
-            return 'multipart/form-data';
-        case 'none':
-            return '';
-        default:
-            return 'application/json';
-    }
-}
-
 import {
-    Toolbar, InfoBarMethod,
-    ToolbarButton, MainFooter, IconButton, ToolbarSeparator,
-    Content,
-    DelayTitle,
-    DelayContent,
-    DelayField,
-    DelayLabel,
-    DelayInput,
-    WorkspaceBody,
-    ToolbarInfo,
-    InfoBarUrlPrimary,
-    UrlInputWrapper,
-    CancelButton,
-    RunButton,
-    VariablesWrapper,
-    VariablesLabel,
-    VariablesDropdown,
-    VariablesDropdownHeader,
-    VariablesDropdownEmpty,
-    VariablesDropdownItem,
-    VariablesDropdownName,
-    VariablesDropdownSource,
-    EditorSplitContainer,
-    RequestPane,
-    BreadcrumbBar,
-    BreadcrumbActive,
-    TabsHeader,
-    TabButton,
-    TabMeta,
-    TabsRight,
-    CompactIconButton,
-    CompactIconButtonWarning,
-    Divider,
-    StatText,
-    RequestEditorWrapper,
-    PanelColumn,
-    PanelBody,
-    HeadersViewer,
-    HeadersTitle,
-    HeadersRow,
-    HeadersKey,
-    HeadersValue,
-    HeadersEmpty,
-    ResponseHeadersContainer,
-    SplitResizer,
-    ResponseSection,
-    ResponseHeader,
-    ResponseHeaderLeft,
-    ResponseHeaderActions,
-    ResponseStats,
-    ResponseContentType,
-    ResponseStatus,
-    MiniToolbarButton,
-    MiniButtonIcon,
-    EditorSettingsMenu,
-    MenuSection,
-    MenuRow,
-    MenuLabel,
-    MenuControls,
-    FontSizeDisplay,
-    MenuIconButton,
-    SettingsMenuWrapper
+    Toolbar, ToolbarButton, ToolbarSeparator, Content,
+    DelayTitle, DelayContent, DelayField, DelayLabel, DelayInput
 } from '../styles/WorkspaceLayout.styles';
 
 /**
@@ -135,42 +43,31 @@ export const WorkspaceLayout: React.FC = () => {
     const {
         // PROJECT STATE
         projects,
-        dirtyProjects,
         selectedProjectName,
-        setProjects,
-        
+
         // SELECTION STATE - Interface/Operation/Request
-        selectedInterface,
-        selectedOperation,
         selectedRequest,
-        
+
         // SELECTION STATE - Test Cases
         selectedTestSuite,
         selectedTestCase,
         testCases: globalTestCases,
         selectedTestStep: selectedStep,  // Alias for backward compatibility
-        
+
         // SELECTION STATE - Performance
         selectedPerformanceSuiteId,
         performanceHistory,
         performanceProgress,
         coordinatorStatus,
-        
+
         // REQUEST/RESPONSE STATE
         response,
         loading,
-        
-        // UI STATE - Layout & Editor
-        layoutMode,
-        showLineNumbers,
-        splitRatio,
-        isResizing,
-        
+
         // CONFIG STATE
         config,
         defaultEndpoint,
-        isReadOnly: isHistoryMode,
-        backendConnected
+        isReadOnly: isHistoryMode
     } = workspace;
 
     // Get selected project from projects array
@@ -183,15 +80,9 @@ export const WorkspaceLayout: React.FC = () => {
     const onCancel = workspace.cancelRequest;
     const rawOnUpdateRequest = workspace.updateRequest;
     const onReset = workspace.resetRequest;
-    const onToggleLayout = workspace.toggleLayout;
-    const onToggleLineNumbers = workspace.toggleLineNumbers;
-    const onStartResizing = workspace.setIsResizing;
     const activeView = workspace.activeView;
     const inlineElementValues = workspace.inlineElementValues;
-    const onToggleInlineElementValues = workspace.setInlineElementValues;
-    const hideCausalityData = workspace.hideCausalityData;
-    const onToggleHideCausalityData = workspace.setHideCausalityData;
-    
+
     // Navigation actions (for backward compatibility)
     const navigationActions = {
         onSelectInterface: workspace.selectInterface,
@@ -204,7 +95,6 @@ export const WorkspaceLayout: React.FC = () => {
     const testExecution = workspace.testExecution;
     const onAddAssertion = workspace.handleAddAssertion;
     const onRunTestCase = workspace.handleRunTestCase;
-    const onRunTestSuite = workspace.handleRunTestSuite;
     const updateTestSuiteVariables = workspace.updateTestSuiteVariables;
     const updateTestCaseVariables = workspace.updateTestCaseVariables;
     const onAddExtractor = workspace.handleAddExtractor;
@@ -219,15 +109,10 @@ export const WorkspaceLayout: React.FC = () => {
     const onOpenStepRequest = workspace.openStepRequest;
     
     // Performance actions
-    const onAddPerformanceSuite = workspace.handleAddPerformanceSuite;
-    const onDeletePerformanceSuite = workspace.handleDeletePerformanceSuite;
     const onAddPerformanceRequest = workspace.handleAddPerformanceRequest;
     const onDeletePerformanceRequest = workspace.handleDeletePerformanceRequest;
     const onUpdatePerformanceRequest = workspace.handleUpdatePerformanceRequest;
     const onSelectPerformanceRequest = workspace.handleSelectPerformanceRequest;
-    const onRunPerformanceSuite = workspace.handleRunPerformanceSuite;
-    const onStopPerformanceRun = workspace.handleStopPerformanceRun;
-    const onSelectPerformanceSuite = workspace.handleSelectPerformanceSuite;
     const onUpdateSuite = workspace.handleUpdatePerformanceSuite;
     const onStartCoordinator = workspace.handleStartCoordinator;
     const onStopCoordinator = workspace.handleStopCoordinator;
@@ -332,21 +217,15 @@ export const WorkspaceLayout: React.FC = () => {
 
 
     const [alignAttributes, setAlignAttributes] = React.useState(false);
-    const [showVariables, setShowVariables] = React.useState(false);
     const [showCodeSnippet, setShowCodeSnippet] = React.useState(false);
 
     // ... imports
 
 
-    // Editor Refs for insertion
-    const urlEditorRef = React.useRef<MonacoSingleLineInputHandle>(null);
-    const bodyEditorRef = React.useRef<MonacoRequestEditorHandle>(null);
-    const lastFocusedRef = React.useRef<MonacoSingleLineInputHandle | MonacoRequestEditorHandle | null>(null);
     const [editorForceUpdateKey, setEditorForceUpdateKey] = React.useState<number>(0);
     const prevAlignAttributesRef = React.useRef<boolean>(alignAttributes);
     const lastAlignedRequestIdRef = React.useRef<string | null>(null);
     const lastFormattedRequestIdRef = React.useRef<string | null>(null);
-    const settingsMenuRef = React.useRef<HTMLDivElement>(null);
     
     // Validation state
     const [urlValidationError, setUrlValidationError] = React.useState<string | null>(null);
@@ -494,34 +373,6 @@ export const WorkspaceLayout: React.FC = () => {
             onExecute(activeRequest.request);
         }
     }, [activeRequest, onExecute]);
-
-    const handleCreateReplaceRule = (_target: 'request' | 'response') => {
-        // Replace rule and mock rule features removed - moved to APIprox
-        /*
-        if (!selection || !currentXPath || !onAddReplaceRule) return;
-
-        onAddReplaceRule({ xpath: currentXPath, matchText: selection.text, target });
-        */
-    };
-
-    const handleCreateMockRule = () => {
-        // Mock rule features removed - moved to APIprox
-        /*
-        if (!activeRequest || !response || !onAddMockRule) {
-            console.warn('[WorkspaceLayout] handleCreateMockRule aborted: missing data or callback');
-            return;
-        }
-
-        const newRule = createMockRuleFromSource({
-            url: activeRequest.endpoint || '',
-            statusCode: response.status || 200,
-            responseBody: response.rawResponse || '',
-            responseHeaders: response.headers || {},
-        });
-
-        onAddMockRule(newRule);
-        */
-    };
 
     // PERFORMANCE VIEW - REMOVED: Moved to APIprox
     // Performance testing is now available in the APIprox project

@@ -46,21 +46,7 @@ export const DelayInput = styled.input`
     width: 100px;
 `;
 
-export const WorkspaceBody = styled.div`
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-`;
 
-export const ToolbarInfo = styled.div`
-    display: flex;
-    align-items: center;
-    flex: 1;
-    padding-left: 12px;
-    overflow: hidden;
-`;
 
 export const UrlInputWrapper = styled.div`
     flex: 1;
@@ -189,39 +175,13 @@ export const TabsRight = styled.div`
     font-size: 0.9em;
 `;
 
-export const Divider = styled.div`
-    width: 1px;
-    height: 16px;
-    background: var(--apinox-panel-border);
-    margin: 0 5px;
-`;
 
 export const StatText = styled.span`
     opacity: 0.8;
 `;
 
-export const RequestEditorWrapper = styled.div`
-    position: relative;
-    flex: 1;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-`;
 
-export const PanelColumn = styled.div`
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-`;
 
-export const PanelBody = styled.div<{ $padded?: boolean }>`
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-    padding: ${props => props.$padded ? '10px' : '0'};
-`;
 
 export const HeadersViewer = styled.div`
     overflow: auto;
@@ -253,19 +213,7 @@ export const HeadersValue = styled.div`
     font-family: monospace;
 `;
 
-export const HeadersEmpty = styled.div`
-    font-style: italic;
-    opacity: 0.7;
-`;
 
-export const ResponseHeadersContainer = styled.div`
-    flex: 1;
-    min-height: 0;
-    border-top: 1px solid var(--apinox-panel-border);
-    padding: 12px;
-    overflow: auto;
-    background-color: var(--apinox-editor-background);
-`;
 
 export const SplitResizer = styled.div<{ $layoutMode: 'vertical' | 'horizontal'; $isResizing: boolean }>`
     width: ${props => props.$layoutMode === 'vertical' ? '5px' : '100%'};
@@ -286,50 +234,16 @@ export const ResponseSection = styled.div<{ $layoutMode: 'vertical' | 'horizonta
     border-top: ${props => props.$layoutMode === 'horizontal' ? '1px solid var(--apinox-panel-border)' : 'none'};
 `;
 
-export const ResponseHeader = styled.div`
-    padding: 5px 12px;
-    background-color: var(--apinox-editor-background);
-    border-bottom: 1px solid var(--apinox-panel-border);
-    font-weight: var(--fw-bold);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-shrink: 0;
-`;
 
-export const ResponseHeaderLeft = styled.div`
-    display: flex;
-    align-items: center;
-    gap: 12px;
-`;
 
-export const ResponseHeaderActions = styled.div`
-    display: flex;
-    gap: 5px;
-`;
 
-export const ResponseStats = styled.div`
-    margin-left: auto;
-    display: flex;
-    gap: 16px;
-    align-items: center;
-`;
 
-export const ResponseContentType = styled.span`
-    opacity: 0.8;
-    border-left: 1px solid var(--apinox-panel-border);
-    padding-left: 12px;
-`;
 
 export const ResponseStatus = styled.span<{ $success: boolean }>`
     color: ${props => props.$success ? 'var(--apinox-testing-iconPassed)' : 'var(--apinox-testing-iconFailed)'};
     margin-left: 12px;
 `;
 
-export const MiniButtonIcon = styled.span`
-    display: inline-flex;
-    margin-right: 4px;
-`;
 
 export const Toolbar = styled.div`
     display: flex;
@@ -341,22 +255,7 @@ export const Toolbar = styled.div`
     height: 40px;
 `;
 
-export const InfoBarMethod = styled.span`
-    font-weight: var(--fw-semibold);
-    color: var(--apinox-badge-foreground);
-    background: var(--apinox-badge-background);
-    padding: 2px 8px;
-    border-radius: 4px;
-`;
 
-export const InfoBarUrlPrimary = styled.span`
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    margin-left: 12px;
-    font-size: 1em;
-`;
 
 export const ToolbarButton = styled.button`
     background: var(--apinox-button-background);
@@ -421,14 +320,6 @@ export const ToolbarSeparator = styled.div`
     flex-shrink: 0;
 `;
 
-export const MainFooter = styled.div`
-    padding: 5px 12px;
-    border-top: 1px solid var(--apinox-panel-border);
-    display: flex;
-    gap: 12px;
-    justify-content: flex-end;
-    background-color: var(--apinox-editor-background);
-`;
 
 export const IconButton = styled.button<{ active?: boolean; shake?: boolean }>`
     background: ${props => props.active ? 'var(--apinox-button-background)' : 'transparent'};
@@ -460,9 +351,6 @@ export const CompactIconButton = styled(IconButton)`
     padding: 2px;
 `;
 
-export const CompactIconButtonWarning = styled(CompactIconButton)`
-    color: var(--apinox-charts-orange);
-`;
 
 
 export const ProjectContainer = styled.div`
@@ -484,11 +372,6 @@ export const ProjectName = styled.h1`
     margin: 0;
 `;
 
-export const ProjectDescription = styled.p`
-    font-size: 1.1em;
-    opacity: 0.8;
-    margin: 8px 0 0 0;
-`;
 
 export const StatsGrid = styled.div`
     display: grid;
@@ -520,39 +403,13 @@ export const InterfacesHeading = styled.h2`
     padding-bottom: 12px;
 `;
 
-export const InterfaceTitle = styled.h1`
-    margin: 0;
-`;
-
 export const SectionHeading = styled(InterfacesHeading)`
     margin-top: 40px;
 `;
 
-export const InterfacesList = styled.div`
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin-top: 16px;
-`;
 
-export const InterfaceItem = styled.div`
-    padding: 16px;
-    background: var(--apinox-list-hoverBackground);
-    border-radius: 4px;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-`;
 
-export const InterfaceInfo = styled.div`
-    flex: 1;
-`;
 
-export const InterfaceName = styled.span`
-    font-weight: var(--fw-bold);
-    font-size: 1.1em;
-`;
 
 // Editor Settings Menu
 export const EditorSettingsMenu = styled.div`
@@ -639,44 +496,12 @@ export const SettingsMenuWrapper = styled.div`
     position: relative;
 `;
 
-export const InterfaceOps = styled.div`
-    font-size: 0.8em;
-    opacity: 0.7;
-    margin-top: 4px;
-`;
 
-export const InterfaceDef = styled.div`
-    font-size: 0.75em;
-    opacity: 0.5;
-    margin-top: 4px;
-    font-family: monospace;
-`;
 
-export const InterfaceContainer = styled(ProjectContainer)``;
 
-export const InfoCard = styled.div`
-    margin-top: 20px;
-    padding: 20px;
-    background: var(--apinox-editor-inactiveSelectionBackground);
-    border-radius: 4px;
-`;
 
-export const InfoGrid = styled.div`
-    display: grid;
-    gap: 12px;
-`;
 
-export const EndpointText = styled.span`
-    font-family: monospace;
-    font-size: 0.9em;
-    word-break: break-all;
-`;
 
-export const OperationsHeading = styled.h2`
-    margin-top: 30px;
-    border-bottom: 1px solid var(--apinox-panel-border);
-    padding-bottom: 12px;
-`;
 
 export const OperationsList = styled.div`
     display: flex;
@@ -710,16 +535,8 @@ export const StatsGridSpaced = styled(StatsGrid)`
     margin-top: 30px;
 `;
 
-export const OperationContainer = styled(ProjectContainer)``;
 
-export const LinkText = styled.a`
-    color: var(--apinox-textLink-foreground);
-`;
 
-export const ChevronIcon = styled(ChevronLeft)`
-    transform: rotate(180deg);
-    opacity: 0.5;
-`;
 
 export const ChevronIconFaint = styled(ChevronLeft)`
     transform: rotate(180deg);
