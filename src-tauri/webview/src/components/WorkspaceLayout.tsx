@@ -138,10 +138,6 @@ export const WorkspaceLayout: React.FC = () => {
     }, [rawOnUpdateRequest]);
 
 
-    const forceEditorUpdate = React.useCallback(() => {
-        setEditorForceUpdateKey(prev => prev + 1);
-    }, []);
-
     // Derived read-only state
     const isStructureLocked = (activeView === SidebarView.PERFORMANCE || activeView === SidebarView.TESTS);
     const isContentLocked = (activeRequest?.readOnly === true) ||
@@ -186,6 +182,10 @@ export const WorkspaceLayout: React.FC = () => {
                                             value = ext.defaultValue;
                                         }
                                     } catch (e) {
+                                        // The fallback is intentional, but the failure itself
+                                        // was invisible — a malformed XPath and an empty result
+                                        // produced the same outcome with no signal.
+                                        console.warn('[WorkspaceLayout] XPath evaluation failed, using default value', { path: ext.path, error: e });
                                         if (ext.defaultValue) {
                                             value = ext.defaultValue;
                                         }
@@ -222,14 +222,12 @@ export const WorkspaceLayout: React.FC = () => {
     // ... imports
 
 
-    const [editorForceUpdateKey, setEditorForceUpdateKey] = React.useState<number>(0);
     const prevAlignAttributesRef = React.useRef<boolean>(alignAttributes);
     const lastAlignedRequestIdRef = React.useRef<string | null>(null);
     const lastFormattedRequestIdRef = React.useRef<string | null>(null);
     
-    // Validation state
-    const [urlValidationError, setUrlValidationError] = React.useState<string | null>(null);
-    const [bodyValidationError, setBodyValidationError] = React.useState<string | null>(null);
+    // Validation errors are surfaced through alert() in handleValidatedExecute;
+    // the state that held them for the removed inline-error UI is gone.
 
     React.useEffect(() => {
         if (config?.ui?.alignAttributes !== undefined) {
@@ -254,7 +252,6 @@ export const WorkspaceLayout: React.FC = () => {
             ...activeRequest,
             request: formatXml(activeRequest.request, alignAttributes, inlineElementValues)
         });
-        forceEditorUpdate();
     }, [alignAttributes, preventEditing, activeRequest, inlineElementValues, onUpdateRequest]);
 
     React.useEffect(() => {
@@ -278,7 +275,6 @@ export const WorkspaceLayout: React.FC = () => {
             ...effectiveRequest,
             request: formatXml(effectiveRequest.request, alignAttributes, inlineElementValues)
         });
-        forceEditorUpdate();
 
         if (requestId) {
             lastAlignedRequestIdRef.current = requestId;
@@ -302,7 +298,6 @@ export const WorkspaceLayout: React.FC = () => {
             ...effectiveRequest,
             request: formatXml(effectiveRequest.request, alignAttributes, inlineElementValues)
         });
-        forceEditorUpdate();
 
         if (requestId) {
             lastFormattedRequestIdRef.current = requestId;
@@ -339,20 +334,17 @@ export const WorkspaceLayout: React.FC = () => {
         // Validate URL
         const urlResult = validateUrl(activeRequest.endpoint || '');
         if (!urlResult.valid) {
-            setUrlValidationError(urlResult.error || 'Invalid URL');
             console.error('❌ URL validation failed:', urlResult.error);
             // Show user-friendly error via alert (could be replaced with toast notification)
             alert(`Cannot execute request:\n\n${urlResult.error || 'Invalid URL'}`);
             return;
         }
-        setUrlValidationError(null);
-        
+
         // Validate body based on type
         const bodyType = activeRequest.bodyType || 'xml';
         if (bodyType === 'json') {
             const jsonResult = validateJson(activeRequest.request);
             if (!jsonResult.valid) {
-                setBodyValidationError(jsonResult.details || jsonResult.error || 'Invalid JSON');
                 console.error('❌ JSON validation failed:', jsonResult.details);
                 alert(`Cannot execute request:\n\nInvalid JSON body:\n${jsonResult.details || jsonResult.error}`);
                 return;
@@ -360,14 +352,12 @@ export const WorkspaceLayout: React.FC = () => {
         } else if (bodyType === 'xml') {
             const xmlResult = validateXml(activeRequest.request);
             if (!xmlResult.valid) {
-                setBodyValidationError(xmlResult.error || 'Invalid XML');
                 console.error('❌ XML validation failed:', xmlResult.error);
                 alert(`Cannot execute request:\n\nInvalid XML body:\n${xmlResult.error}`);
                 return;
             }
         }
-        setBodyValidationError(null);
-        
+
         // All validations passed - execute
         if (onExecute) {
             onExecute(activeRequest.request);

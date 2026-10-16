@@ -1,6 +1,6 @@
 {
   "@typescript-eslint/no-non-null-assertion": 153,
-  "@typescript-eslint/no-unused-vars": 94,
+  "@typescript-eslint/no-unused-vars": 90,
   "react-hooks/refs": 8,
   "no-unused-vars": 5,
   "no-empty": 3,
@@ -13,8 +13,8 @@
   "@typescript-eslint/ban-ts-comment": 2,
   "react-hooks/purity": 1,
   "react-hooks/preserve-manual-memoization": 2,
-  "react-hooks/immutability": 6,
   "@typescript-eslint/no-unused-expressions": 1,
+  "react-hooks/immutability": 5,
   "unassigned": 2,
   "no-prototype-builtins": 1,
   "no-constant-condition": 1,
