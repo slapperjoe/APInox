@@ -7,7 +7,6 @@ import { Play, ChevronLeft, GitBranch, Clock, FileCode, FileText, RefreshCw } fr
 import { SidebarView, RequestType, BodyType, HttpMethod, WorkflowStep, ApiRequest, TestStep } from '@shared/models';
 import { bridge } from '../utils/bridge';
 import { CustomXPathEvaluator } from '../utils/xpathEvaluator';
-import { XPathGenerator } from '../utils/xpathGenerator';
 import { useMobileLayout } from '../hooks/useMobileLayout';
 
 import { ErrorBoundary, formatXml, stripCausalityData, formatContent, formatJson, validateUrl, validateJson, validateXml } from '@apinox/request-editor/core';
@@ -343,8 +342,6 @@ export const WorkspaceLayout: React.FC = () => {
     const urlEditorRef = React.useRef<MonacoSingleLineInputHandle>(null);
     const bodyEditorRef = React.useRef<MonacoRequestEditorHandle>(null);
     const lastFocusedRef = React.useRef<MonacoSingleLineInputHandle | MonacoRequestEditorHandle | null>(null);
-    const [selection, setSelection] = React.useState<{ text: string, offset: number } | null>(null);
-    const [currentXPath, setCurrentXPath] = React.useState<string | null>(null);
     const [editorForceUpdateKey, setEditorForceUpdateKey] = React.useState<number>(0);
     const prevAlignAttributesRef = React.useRef<boolean>(alignAttributes);
     const lastAlignedRequestIdRef = React.useRef<string | null>(null);
@@ -433,53 +430,27 @@ export const WorkspaceLayout: React.FC = () => {
         }
     }, [alignAttributes, preventEditing, activeRequest, inlineElementValues, onUpdateRequest]);
 
-    React.useEffect(() => {
-        if (selection && response?.rawResponse) {
-            // Calculate XPath on selection change to determine button visibility
-            const path = XPathGenerator.getPath(response.rawResponse, selection.offset);
-            setCurrentXPath(path);
-        } else {
-            setCurrentXPath(null);
-        }
-    }, [selection, response]);
+    // Response selection and XPath generation live in RequestWorkspace now;
+    // this component receives the resolved XPath through the onCreate* callbacks.
 
-    // Reset selection when step changes or re-runs
-    React.useEffect(() => {
-        setSelection(null);
-        setCurrentXPath(null);
-    }, [selectedStep?.id, response, selectedStep?.config.request?.assertions]);
-
-    const handleCreateExtractor = () => {
-        if (!selection || !response || !onAddExtractor) return;
-
-        let path: string | null = null;
-        const source = 'body';
-
-        if (response.rawResponse) {
-            path = XPathGenerator.getPath(response.rawResponse, selection.offset);
-        }
-
-        if (path) {
-            onAddExtractor({ xpath: path, value: selection.text, source });
-        } else {
-            console.warn("Could not determine XPath for selection");
-        }
+    // The package owns the response selection and computes the XPath for it,
+    // then hands both to these callbacks. Previously this component kept its
+    // own selection/currentXPath state and read them from closure — but nothing
+    // ever populated them, so these handlers could never fire and the
+    // Extract/Match/Exists buttons in RequestWorkspace rendered disabled.
+    const handleCreateExtractor = (xpath: string, value: string) => {
+        if (!onAddExtractor) return;
+        onAddExtractor({ xpath, value, source: 'body' });
     };
 
-    const handleCreateAssertion = () => {
-        console.log("WorkspaceLayout: Match Clicked. XPath:", currentXPath, "Selection:", selection?.text);
-        if (!selection || !response || !onAddAssertion || !currentXPath) {
-            console.warn("WorkspaceLayout: Match aborted. Missing deps:", { hasSelection: !!selection, hasResponse: !!response, hasHandler: !!onAddAssertion, hasPath: !!currentXPath });
-            return;
-        }
-
-        onAddAssertion({ xpath: currentXPath, expectedContent: selection.text });
+    const handleCreateAssertion = (xpath: string, value: string) => {
+        if (!onAddAssertion) return;
+        onAddAssertion({ xpath, expectedContent: value });
     };
 
-    const handleCreateExistenceAssertion = () => {
-        if (!selection || !response || !onAddExistenceAssertion || !currentXPath) return;
-
-        onAddExistenceAssertion({ xpath: currentXPath });
+    const handleCreateExistenceAssertion = (xpath: string) => {
+        if (!onAddExistenceAssertion) return;
+        onAddExistenceAssertion({ xpath });
     };
 
     // Validated execute handler - MUST be defined before any conditional returns
@@ -1119,6 +1090,9 @@ export const WorkspaceLayout: React.FC = () => {
                         }
                     });
                 }}
+                onCreateExtractor={handleCreateExtractor}
+                onCreateAssertion={handleCreateAssertion}
+                onCreateExistenceAssertion={handleCreateExistenceAssertion}
                 onPickFile={handlePickFile}
             />
             </ErrorBoundary>
