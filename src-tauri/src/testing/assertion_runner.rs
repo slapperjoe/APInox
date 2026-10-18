@@ -37,10 +37,12 @@ pub enum AssertionType {
         expected: String,
     },
     /// Status code assertion
+    #[serde(rename = "status-code")]
     StatusCode {
         code: u16,
     },
     /// Response time assertion (milliseconds)
+    #[serde(rename = "response-time")]
     ResponseTime {
         max_ms: u64,
     },
@@ -318,6 +320,41 @@ fn run_response_time_assertion(actual_ms: Option<u64>, max_ms: u64) -> Result<As
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn assertion_type_serializes_to_the_names_the_frontend_declares() {
+        // packages/request-editor/src/types.ts AssertionType lists these exact
+        // strings. rename_all = "lowercase" lowercases the variant name without
+        // inserting word boundaries, so multi-word variants drift.
+        let cases = [
+            (AssertionType::XPath { xpath: "/a".into(), expected: "b".into() }, "xpath"),
+            (AssertionType::JsonPath { path: "$.a".into(), expected: "b".into() }, "jsonpath"),
+            (AssertionType::Regex { pattern: "x".into(), expected: None }, "regex"),
+            (AssertionType::Contains { value: "x".into() }, "contains"),
+            (AssertionType::Equals { expected: "x".into() }, "equals"),
+            (AssertionType::StatusCode { code: 200 }, "status-code"),
+            (AssertionType::ResponseTime { max_ms: 100 }, "response-time"),
+        ];
+
+        let mismatched: Vec<String> = cases
+            .iter()
+            .map(|(a, want)| {
+                let json = serde_json::to_string(a).expect("serialize");
+                let got = serde_json::from_str::<serde_json::Value>(&json)
+                    .ok()
+                    .and_then(|v| v.get("type").and_then(|t| t.as_str().map(String::from)))
+                    .unwrap_or_default();
+                if got == *want {
+                    String::new()
+                } else {
+                    format!("{want} -> got {got}")
+                }
+            })
+            .filter(|s| !s.is_empty())
+            .collect();
+
+        assert!(mismatched.is_empty(), "serde tag names disagree with AssertionType: {}", mismatched.join(", "));
+    }
     
     #[test]
     fn test_xpath_assertion() {
