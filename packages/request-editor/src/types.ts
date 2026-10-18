@@ -144,29 +144,6 @@ export interface MonacoSingleLineInputProps {
 }
 
 // ============================================================================
-// Headers Panel
-// ============================================================================
-
-export interface HttpHeader {
-  key: string;
-  value: string;
-  enabled: boolean;
-}
-
-export interface HeadersPanelProps {
-  /** Current headers */
-  headers: HttpHeader[];
-  /** Callback when headers change */
-  onChange: (headers: HttpHeader[]) => void;
-  /** Read-only mode */
-  readOnly?: boolean;
-  /** Available variables for autocomplete */
-  availableVariables?: EditorVariable[];
-  /** Theme configuration */
-  theme?: EditorTheme;
-}
-
-// ============================================================================
 // Assertions Panel
 // ============================================================================
 
@@ -274,29 +251,6 @@ export interface BinaryBodyPanelProps {
   readOnly?: boolean;
   /** Callback to trigger file picker */
   onPickFile?: () => Promise<{ name: string; content: string; contentType: string; size: number } | null>;
-}
-
-// ============================================================================
-// Query Params Panel
-// ============================================================================
-
-export interface QueryParam {
-  key: string;
-  value: string;
-  enabled: boolean;
-}
-
-export interface QueryParamsPanelProps {
-  /** Current query parameters */
-  params: QueryParam[];
-  /** Callback when params change */
-  onChange: (params: QueryParam[]) => void;
-  /** Read-only mode */
-  readOnly?: boolean;
-  /** Available variables for autocomplete */
-  availableVariables?: EditorVariable[];
-  /** Theme configuration */
-  theme?: EditorTheme;
 }
 
 // ============================================================================
@@ -424,17 +378,6 @@ export interface GraphQLVariablesPanelProps {
 export interface VariablesPanelProps {
   /** Variables to display */
   variables: EditorVariable[];
-  /** Theme configuration */
-  theme?: EditorTheme;
-}
-
-// ============================================================================
-// Schema Viewer
-// ============================================================================
-
-export interface SchemaViewerProps {
-  /** Schema tree to display */
-  schema: import('../../../shared/src/models').SchemaNode;
   /** Theme configuration */
   theme?: EditorTheme;
 }
