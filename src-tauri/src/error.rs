@@ -156,6 +156,15 @@ impl From<&serde_json::Error> for CommandError {
     }
 }
 
+/// A plain `String` error has no kind to recover, so it lands as `Internal`.
+/// This exists so `utils::blocking()` works for both migrated and unmigrated
+/// modules during the transition.
+impl From<String> for CommandError {
+    fn from(message: String) -> Self {
+        Self::new(ErrorKind::Internal, message)
+    }
+}
+
 impl From<serde_json::Error> for CommandError {
     fn from(e: serde_json::Error) -> Self {
         Self::new(ErrorKind::Serialization, e.to_string())

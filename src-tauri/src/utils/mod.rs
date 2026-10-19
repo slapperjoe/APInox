@@ -13,13 +13,14 @@
 /// Non-async `#[tauri::command]` functions are worse: Tauri runs them on the
 /// main thread, so blocking I/O there freezes the UI. Those commands should be
 /// async wrappers around this.
-pub async fn blocking<T>(f: impl FnOnce() -> Result<T, String> + Send + 'static) -> Result<T, String>
+pub async fn blocking<T, E>(f: impl FnOnce() -> Result<T, E> + Send + 'static) -> Result<T, E>
 where
     T: Send + 'static,
+    E: From<String> + Send + 'static,
 {
     tokio::task::spawn_blocking(f)
         .await
-        .map_err(|e| format!("Blocking task failed: {}", e))?
+        .map_err(|e| E::from(format!("Blocking task failed: {}", e)))?
 }
 
 pub mod regex_extractor;
