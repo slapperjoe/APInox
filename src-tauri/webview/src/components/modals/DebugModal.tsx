@@ -8,7 +8,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Modal } from './Modal';
-import { bridge } from '../../utils/bridge';
+import { bridge, commandErrorText } from '../../utils/bridge';
 import { DiagnosticsTab } from './DiagnosticsTab';
 import { frontendLogs, captureLog } from '../../utils/logger';
 
@@ -143,7 +143,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
 
                 setFetchError(null);
             } catch (error: any) {
-                setFetchError(error.message || 'Failed to load debug information');
+                setFetchError(commandErrorText(error) || 'Failed to load debug information');
                 console.error('[DebugModal] Failed to load debug info:', error);
             } finally {
                 setIsLoadingLogs(false);

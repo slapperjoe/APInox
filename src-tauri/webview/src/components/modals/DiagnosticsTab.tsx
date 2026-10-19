@@ -6,7 +6,7 @@
 
 import React, { useState } from 'react';
 import { Shield, Network, CheckCircle, XCircle, AlertTriangle, RefreshCw } from 'lucide-react';
-import { bridge, isTauri } from '../../utils/bridge';
+import { bridge, commandErrorText, isTauri } from '../../utils/bridge';
 
 interface DiagnosticsTabProps {
     serverConfig?: any;
@@ -135,7 +135,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
             results.push({
                 status: 'error',
                 message: 'Diagnostic check failed',
-                details: error.message
+                details: commandErrorText(error)
             });
         }
         
@@ -210,7 +210,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
             results.push({
                 status: 'error',
                 message: 'Proxy diagnostic check failed',
-                details: error.message
+                details: commandErrorText(error)
             });
         }
         
@@ -230,7 +230,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
                 setActionMessage({ type: 'error', text: `Failed to install certificate: ${result.error}` });
             }
         } catch (error: any) {
-            setActionMessage({ type: 'error', text: `Error: ${error.message}` });
+            setActionMessage({ type: 'error', text: `Error: ${commandErrorText(error)}` });
         }
     };
 
@@ -253,7 +253,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
                 setActionMessage({ type: 'error', text: `Failed to move certificate: ${result.error}` });
             }
         } catch (error: any) {
-            setActionMessage({ type: 'error', text: `Error: ${error.message}` });
+            setActionMessage({ type: 'error', text: `Error: ${commandErrorText(error)}` });
         }
     };
 
@@ -268,7 +268,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
                 setActionMessage({ type: 'error', text: `Failed to regenerate certificate: ${result.error}` });
             }
         } catch (error: any) {
-            setActionMessage({ type: 'error', text: `Error: ${error.message}` });
+            setActionMessage({ type: 'error', text: `Error: ${commandErrorText(error)}` });
         }
         setShowRegenerateConfirm(false);
     };
@@ -287,7 +287,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
                 setActionMessage({ type: 'error', text: `Failed to reset certificates: ${result.error}` });
             }
         } catch (error: any) {
-            setActionMessage({ type: 'error', text: `Error: ${error.message}` });
+            setActionMessage({ type: 'error', text: `Error: ${commandErrorText(error)}` });
         }
         setShowResetConfirm(false);
     };

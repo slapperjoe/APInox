@@ -19,7 +19,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo, ReactNode } from 'react';
 import { ApinoxProject } from '@shared/models';
 import { BackendCommand } from '@shared/messages';
-import { bridge } from '../utils/bridge';
+import { bridge, commandErrorText } from '../utils/bridge';
 import { debugLog as _debugLog } from '../utils/logger';
 
 // =============================================================================
@@ -329,7 +329,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
                     debugLog(`Deleted project files via Rust`, projectPath);
                 } catch (error: any) {
                     console.error('[ProjectContext] Failed to delete project files:', error);
-                    alert(`Failed to delete project files: ${error.message || 'Unknown error'}`);
+                    alert(`Failed to delete project files: ${commandErrorText(error) || 'Unknown error'}`);
                 }
             }
 
@@ -446,7 +446,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
                 }
             } catch (error: any) {
                 console.error('[ProjectContext] Failed to import workspace:', error);
-                alert(`Failed to import workspace: ${error.message || error}`);
+                alert(`Failed to import workspace: ${commandErrorText(error)}`);
             }
         } else {
             // Load single project folder - use Rust command
@@ -494,7 +494,7 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
             debugLog('Project saved', { name: project.name, path: savedPath });
         } catch (error: any) {
             console.error('[ProjectContext] save_project failed:', error);
-            alert(`Failed to save project: ${error.message || 'Unknown error'}`);
+            alert(`Failed to save project: ${commandErrorText(error) || 'Unknown error'}`);
         }
     }, [debugLog, setProjects]);
     // -------------------------------------------------------------------------

@@ -90,6 +90,33 @@ export async function invokeTauriCommand<T = any>(command: string, args?: Record
     }
 }
 
+/**
+ * Read the message out of a rejected Tauri command.
+ *
+ * Commands that return `Result<T, String>` reject with a plain string, so
+ * `error.message` is undefined and callers that read it show a generic fallback
+ * instead of the actual cause. Commands migrated to `CommandError` reject with
+ * `{ kind, message }`. This handles both, so modules can be migrated
+ * independently of the frontend.
+ */
+export function commandErrorText(error: unknown): string {
+    if (typeof error === 'string') return error;
+    if (error && typeof error === 'object') {
+        const message = (error as { message?: unknown }).message;
+        if (typeof message === 'string' && message.length > 0) return message;
+    }
+    return String(error);
+}
+
+/** The `ErrorKind` wire name, or null when the error carries no kind. */
+export function commandErrorKind(error: unknown): string | null {
+    if (error && typeof error === 'object') {
+        const kind = (error as { kind?: unknown }).kind;
+        if (typeof kind === 'string') return kind;
+    }
+    return null;
+}
+
 /** Merge the resolved environment with the suite- and case-level variable
     maps for a test run. Precedence: environment < suite < case (a case's own
     variables win over its suite's and over the active environment). Returns
@@ -681,7 +708,7 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                 return response;
             } catch (error: any) {
                 console.error('[Bridge] Get settings failed:', error);
-                throw new Error(`Failed to get settings: ${error.message || error}`, { cause: error });
+                throw new Error(`Failed to get settings: ${commandErrorText(error)}`, { cause: error });
             }
         }
 
@@ -701,7 +728,7 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                 return response;
             } catch (error: any) {
                 console.error('[Bridge] Save settings failed:', error);
-                throw new Error(`Failed to save settings: ${error.message || error}`, { cause: error });
+                throw new Error(`Failed to save settings: ${commandErrorText(error)}`, { cause: error });
             }
         }
 
@@ -717,7 +744,7 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                 return { success: true };
             } catch (error: any) {
                 console.error('[Bridge] Save project failed:', error);
-                throw new Error(`Failed to save project: ${error.message || error}`, { cause: error });
+                throw new Error(`Failed to save project: ${commandErrorText(error)}`, { cause: error });
             }
         }
 
@@ -746,7 +773,7 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                 return response;
             } catch (error: any) {
                 console.error('[Bridge] Export workspace failed:', error);
-                throw new Error(`Failed to export workspace: ${error.message || error}`, { cause: error });
+                throw new Error(`Failed to export workspace: ${commandErrorText(error)}`, { cause: error });
             }
         }
 
@@ -761,7 +788,7 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                 return response;
             } catch (error: any) {
                 console.error('[Bridge] Import workspace failed:', error);
-                throw new Error(`Failed to import workspace: ${error.message || error}`, { cause: error });
+                throw new Error(`Failed to import workspace: ${commandErrorText(error)}`, { cause: error });
             }
         }
 
@@ -782,7 +809,7 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                 return response;
             } catch (error: any) {
                 console.error('[Bridge] Run test suite failed:', error);
-                throw new Error(`Failed to run test suite: ${error.message || error}`, { cause: error });
+                throw new Error(`Failed to run test suite: ${commandErrorText(error)}`, { cause: error });
             }
         }
 
@@ -797,7 +824,7 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                 return response;
             } catch (error: any) {
                 console.error('[Bridge] Get test run updates failed:', error);
-                throw new Error(`Failed to get test run updates: ${error.message || error}`, { cause: error });
+                throw new Error(`Failed to get test run updates: ${commandErrorText(error)}`, { cause: error });
             }
         }
 
@@ -815,7 +842,7 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                 return response;
             } catch (error: any) {
                 console.error('[Bridge] Run performance suite failed:', error);
-                throw new Error(`Failed to run performance suite: ${error.message || error}`, { cause: error });
+                throw new Error(`Failed to run performance suite: ${commandErrorText(error)}`, { cause: error });
             }
         }
 
@@ -828,7 +855,7 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                 return response;
             } catch (error: any) {
                 console.error('[Bridge] Get performance run updates failed:', error);
-                throw new Error(`Failed to get performance run updates: ${error.message || error}`, { cause: error });
+                throw new Error(`Failed to get performance run updates: ${commandErrorText(error)}`, { cause: error });
             }
         }
 
@@ -953,7 +980,7 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                 return response;
             } catch (error: any) {
                 console.error('[Bridge] Refresh WSDL failed:', error);
-                throw new Error(`Failed to refresh WSDL: ${error.message || error}`, { cause: error });
+                throw new Error(`Failed to refresh WSDL: ${commandErrorText(error)}`, { cause: error });
             }
         }
 
@@ -970,7 +997,7 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                 return response;
             } catch (error: any) {
                 console.error('[Bridge] Apply WSDL sync failed:', error);
-                throw new Error(`Failed to apply WSDL sync: ${error.message || error}`, { cause: error });
+                throw new Error(`Failed to apply WSDL sync: ${commandErrorText(error)}`, { cause: error });
             }
         }
 
@@ -985,7 +1012,7 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                 return response;
             } catch (error: any) {
                 console.error('[Bridge] Close project failed:', error);
-                throw new Error(`Failed to close project: ${error.message || error}`, { cause: error });
+                throw new Error(`Failed to close project: ${commandErrorText(error)}`, { cause: error });
             }
         }
 
@@ -1001,7 +1028,7 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                 return response;
             } catch (error: any) {
                 console.error('[Bridge] Cancel request failed:', error);
-                throw new Error(`Failed to cancel request: ${error.message || error}`, { cause: error });
+                throw new Error(`Failed to cancel request: ${commandErrorText(error)}`, { cause: error });
             }
         }
 
@@ -1013,7 +1040,7 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                 return response;
             } catch (error: any) {
                 console.error('[Bridge] Cancel all requests failed:', error);
-                throw new Error(`Failed to cancel all requests: ${error.message || error}`, { cause: error });
+                throw new Error(`Failed to cancel all requests: ${commandErrorText(error)}`, { cause: error });
             }
         }
 
@@ -1323,7 +1350,7 @@ export const bridge = {
                     console.error('[Bridge] Rust backend error:', e);
                     listeners.forEach(cb => cb({
                         command: BackendCommand.Error,
-                        error: e.message,
+                        error: commandErrorText(e),
                         originalCommand: message.command,
                         // Include project info for save errors
                         projectName: message.command === FrontendCommand.SaveProject ? message.project?.name : undefined
