@@ -987,7 +987,16 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
         // Utilities
         updateProject,
         findProjectByName
-    }), [projects, selectedProjectName, workspaceDirty, savedProjects, saveErrors, deleteConfirm]);
+    }), [
+        projects, selectedProjectName, workspaceDirty, savedProjects, saveErrors, deleteConfirm,
+        // The value exposes these callbacks, so they must be deps: when one of
+        // their own dependencies changes they get a new identity, and without
+        // being listed here the memo keeps serving the stale version.
+        addProject, closeProject, loadProject, saveProject, updateProject, findProjectByName,
+        expandAll, collapseAll, ensureProjectExpanded, ensureInterfaceExpanded,
+        ensureOperationExpanded, toggleProjectExpand, toggleInterfaceExpand,
+        toggleOperationExpand, reorderItems, reorderOperations, reorderRequests
+    ]);
 
     return (
         <ProjectContext.Provider value={value}>

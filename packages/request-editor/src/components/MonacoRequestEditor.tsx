@@ -5,6 +5,7 @@ import React, {
   useEffect,
   useMemo,
   useState,
+  useCallback,
 } from "react";
 import { MonacoEditorWrapper, Monaco } from "../monaco";
 import styled from "styled-components";
@@ -347,9 +348,9 @@ const MonacoRequestEditorBase = forwardRef<
       // We do NOT want to react to value prop changes unless it is a new request or forced.
     }, [requestId, forceUpdateKey]);
 
-    const applyEditorTheme = (monacoInstance: Monaco) => {
+    const applyEditorTheme = useCallback((monacoInstance: Monaco) => {
       setEditorTheme(applyMonacoTheme(monacoInstance, theme));
-    };
+    }, [theme]);
 
     const handleEditorDidMount = (editor: any, monaco: Monaco) => {
       editorRef.current = editor;
@@ -501,7 +502,7 @@ const MonacoRequestEditorBase = forwardRef<
       if (monacoRef.current) {
         applyEditorTheme(monacoRef.current);
       }
-    }, [theme]);
+    }, [applyEditorTheme]);
 
     // R5 (MONACO_LAG_ROOT_CAUSE.md): drop this editor's published variables
     // on unmount so shared providers never resolve a disposed model's URI.

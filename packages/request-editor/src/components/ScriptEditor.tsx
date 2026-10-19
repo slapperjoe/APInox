@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import styled from "styled-components";
 import { MonacoEditorWrapper, Monaco } from "../monaco";
 import { ChevronLeft } from "lucide-react";
@@ -145,9 +145,9 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
     };
   }, [scriptContent]); // Trigger on every keystroke (for debounce reset)
 
-  const applyEditorTheme = (monacoInstance: Monaco) => {
+  const applyEditorTheme = useCallback((monacoInstance: Monaco) => {
     setEditorTheme(applyMonacoTheme(monacoInstance, theme));
-  };
+  }, [theme]);
 
   const handleEditorDidMount = (editor: any, monaco: Monaco) => {
     editorRef.current = editor;
@@ -202,7 +202,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
     if (monacoRef.current) {
       applyEditorTheme(monacoRef.current);
     }
-  }, [theme]);
+  }, [applyEditorTheme]);
 
   const handleChange = (value: string | undefined) => {
     if (value !== undefined) {

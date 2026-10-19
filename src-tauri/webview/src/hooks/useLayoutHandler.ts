@@ -10,11 +10,8 @@ interface UseLayoutHandlerProps {
     sidebarExpanded: boolean;
     setSidebarExpanded: (expanded: boolean) => void;
     selectedRequest: any;
-    setSelectedInterface: (iface: any) => void;
-    setSelectedOperation: (op: any) => void;
     setSelectedRequest: (req: any) => void;
     setSelectedTestCase: (tc: any) => void;
-    selectedPerformanceSuiteId: string | null;
     setSelectedPerformanceSuiteId: (id: string | null) => void;
 }
 
@@ -28,11 +25,8 @@ export const useLayoutHandler = ({
     sidebarExpanded,
     setSidebarExpanded,
     selectedRequest,
-    setSelectedInterface,
-    setSelectedOperation,
     setSelectedRequest,
     setSelectedTestCase,
-    selectedPerformanceSuiteId,
     setSelectedPerformanceSuiteId
 }: UseLayoutHandlerProps) => {
     const [isResizing, setIsResizing] = useState(false);
@@ -121,12 +115,9 @@ export const useLayoutHandler = ({
         setActiveView,
         selectedRequest,
         setSidebarExpanded,
-        setSelectedInterface,
-        setSelectedOperation,
         setSelectedRequest,
         setSelectedTestCase,
-        setSelectedPerformanceSuiteId,
-        selectedPerformanceSuiteId
+        setSelectedPerformanceSuiteId
     ]);
 
     return {

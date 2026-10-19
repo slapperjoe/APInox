@@ -176,6 +176,9 @@ function PerfHarnessApp() {
   // reproduces the per-render listener teardown/re-subscribe churn found in
   // the callback audit (P2) so the baseline reflects shipping usage.
   const handlesRef = useRef<Record<string, unknown>>({});
+  // The JSX below cannot read handlesRef during render (refs do not trigger a
+  // re-render, so the label would stay "loading…" forever). Mirror it in state.
+  const [handlesReady, setHandlesReady] = useState(false);
   useEffect(() => {
     (window as unknown as { __editorHandles: Record<string, unknown> }).__editorHandles =
       handlesRef.current;
@@ -200,6 +203,7 @@ function PerfHarnessApp() {
       }
       (window as unknown as { __editorHandles: Record<string, unknown> }).__editorHandles =
         handlesRef.current;
+      setHandlesReady(Object.keys(handlesRef.current).length > 0);
       console.log("[perf-harness] model handles:", Object.keys(handlesRef.current));
     }, 3000);
     return () => clearTimeout(t);
@@ -212,7 +216,7 @@ function PerfHarnessApp() {
         <Toolbar>
           <strong>PERF HARNESS (t_12cc8444)</strong>
           <span>
-            {Object.keys(handlesRef.current).length > 0
+            {handlesReady
               ? "ready — drive via window.__perf / window.__editorHandles"
               : "loading…"}
           </span>

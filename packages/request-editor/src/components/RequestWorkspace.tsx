@@ -370,7 +370,7 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
     onUpdateRequest({ ...request, request: formatted });
     setEditorForceUpdateKey(prev => prev + 1);
     setShowEditorSettings(false);
-  }, [editorSettings.settings, request, onUpdateRequest]);
+  }, [editorSettings.settings, request, onUpdateRequest, setShowEditorSettings]);
 
   const handleTogglePrettyPrint = useCallback(() => {
     editorSettings.togglePrettyPrint();
