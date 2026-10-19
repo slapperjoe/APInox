@@ -92,6 +92,18 @@ type OsProxyCacheEntry = (Instant, Option<String>, Option<String>);
 static OS_PROXY_CACHE: Lazy<Mutex<OsProxyCacheEntry>> =
     Lazy::new(|| Mutex::new((Instant::now(), None, None)));
 
+/// Serialize tests that mutate the proxy env vars (`HTTP_PROXY` /
+/// `HTTPS_PROXY` / `ALL_PROXY` / `NO_PROXY`), which are process-global.
+///
+/// This lives here, in the module that owns those variables, so every test
+/// that touches them takes the same lock. `updater`'s tests read them through
+/// `describe_update_route()`, and a lock defined in one module does not exclude
+/// a test in another — with per-module locks, a `proxy_guard` test could set
+/// `HTTPS_PROXY` while an `updater` test was mid-await, so the second read saw
+/// a different proxy and the reported route lost its self-proxy reason.
+#[cfg(test)]
+pub static PROXY_ENV_TEST_LOCK: Mutex<()> = Mutex::new(());
+
 /// The proxy reqwest's default system matcher would pick for a URL with the
 /// given scheme (`"http"` / `"https"`), or `None` when it would connect
 /// directly.
@@ -239,11 +251,8 @@ mod tests {
     use super::*;
     use std::sync::MutexGuard;
 
-    /// Tests that touch process-wide env vars must serialize.
-    static ENV_TEST_LOCK: Mutex<()> = Mutex::new(());
-
     fn env_lock() -> MutexGuard<'static, ()> {
-        ENV_TEST_LOCK.lock().unwrap_or_else(|p| p.into_inner())
+        PROXY_ENV_TEST_LOCK.lock().unwrap_or_else(|p| p.into_inner())
     }
 
     fn clear_proxy_env() {

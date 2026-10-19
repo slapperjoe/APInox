@@ -1676,7 +1676,6 @@ mod tests {
     use super::*;
     use std::convert::Infallible;
     use std::sync::atomic::{AtomicUsize, Ordering};
-    use std::sync::Mutex;
     use std::sync::Arc;
     // In-process MITM proxy integration-test dependencies (mirrors
     // examples/repro_proxy_server.rs): hyper HTTP/1 + rustls TlsAcceptor.
@@ -1693,8 +1692,9 @@ mod tests {
     /// a per-module lock here would race with env mutations in other modules.
     use crate::utils::config::CONFIG_DIR_TEST_LOCK;
 
-    /// Serialize tests that mutate proxy env vars (process-global).
-    static PROXY_ENV_TEST_LOCK: Mutex<()> = Mutex::new(());
+    /// Serialize tests that mutate proxy env vars (process-global). Shared with
+    /// `utils::proxy_guard`, which owns those variables — see the note there.
+    use crate::utils::proxy_guard::PROXY_ENV_TEST_LOCK;
 
     /// RAII guard: points `APINOX_CONFIG_DIR` at `dir` and restores the
     /// previous value on drop, even on panic.
