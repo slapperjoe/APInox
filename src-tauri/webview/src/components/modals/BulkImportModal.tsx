@@ -350,14 +350,7 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
     setViewState("complete");
   }, [urls, isValid, onParseUrl]);
 
-  // Finish and add to project
-  const handleFinish = useCallback(() => {
-    onImportComplete(results, projectName, importMode === "new");
-    handleReset();
-    onClose();
-  }, [results, projectName, importMode, onImportComplete, onClose]);
-
-  // Reset state
+  // Reset state — declared before handleFinish so it can appear in its deps.
   const handleReset = useCallback(() => {
     setUrlsText("");
     setNewProjectName("");
@@ -365,6 +358,13 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
     setResults([]);
     setCurrentIndex(0);
   }, []);
+
+  // Finish and add to project
+  const handleFinish = useCallback(() => {
+    onImportComplete(results, projectName, importMode === "new");
+    handleReset();
+    onClose();
+  }, [results, projectName, importMode, onImportComplete, onClose, handleReset]);
 
   // Handle close
   const handleClose = useCallback(() => {

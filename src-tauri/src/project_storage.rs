@@ -125,12 +125,21 @@ struct TestCaseMeta {
 
 /// Sanitize a name for use as a folder/file name
 fn sanitize_name(name: &str) -> String {
-    name.chars()
+    let sanitized: String = name.chars()
         .map(|c| match c {
             '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => '_',
             _ => c,
         })
-        .collect()
+        .collect();
+
+    // A name that sanitizes to "." or ".." is not a valid directory name: joined
+    // onto the projects directory it resolves outside it, and delete_project would
+    // remove that directory. Dots inside a name (e.g. "My.API") are still allowed.
+    if sanitized.is_empty() || sanitized == "." || sanitized == ".." {
+        return "_".to_string();
+    }
+
+    sanitized
 }
 
 /// Remove any subdirectories under `parent` whose names are not in `keep`.
@@ -781,11 +790,8 @@ pub fn delete_project(params: serde_json::Value) -> Result<(), String> {
         .ok_or_else(|| "Missing project name".to_string())?;
     
     let projects_base = projects_dir().map_err(|e| format!("Failed to get projects dir: {}", e))?;
-    // Sanitize name for use as directory name
-    let sanitized: String = project_name.chars().map(|c| match c {
-        '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => '_',
-        _ => c,
-    }).collect();
+    // Use the shared sanitizer so the traversal guard applies here too.
+    let sanitized: String = sanitize_name(project_name);
     let dir = projects_base.join(&sanitized);
     
     if !dir.exists() {
@@ -1293,9 +1299,8 @@ pub fn save_unified_project(dir_path: String, project: serde_json::Value) -> Res
     if tests_dir.exists() {
         let _ = fs::remove_dir_all(&tests_dir);
     }
-    if let Some(folders) = project.get("folders").and_then(|v| v.as_array()) {
+    if project.get("folders").and_then(|v| v.as_array()).is_some() {
         save_folders(&dir, &project)?;
-        let _ = folders;
     }
 
     Ok(())
@@ -1768,6 +1773,21 @@ mod tests {
 
         assert!(resolved.ends_with("CountryInfoServiceSoap"));
         assert!(resolved.is_absolute());
+    }
+
+    #[test]
+    fn sanitize_name_never_produces_a_traversal_component() {
+        // A name that sanitizes to "." or ".." would resolve outside the projects
+        // directory when joined onto it, so delete_project could remove it.
+        assert_eq!(sanitize_name(".."), "_");
+        assert_eq!(sanitize_name("."), "_");
+        assert_eq!(sanitize_name(""), "_");
+        assert_eq!(sanitize_name("../../etc"), ".._.._etc");
+
+        // Ordinary dots inside a name are still allowed — existing project
+        // directories on disk must keep resolving to the same name.
+        assert_eq!(sanitize_name("My.API"), "My.API");
+        assert_eq!(sanitize_name("a/b:c"), "a_b_c");
     }
 
     #[test]

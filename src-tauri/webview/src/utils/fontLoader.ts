@@ -16,7 +16,7 @@ export type UIFontValue = typeof UI_FONTS[number]['value'];
 
 const loadedFonts = new Set<string>();
 
-export function loadUIFont(fontValue: UIFontValue): void {
+function loadUIFont(fontValue: UIFontValue): void {
     const font = UI_FONTS.find(f => f.value === fontValue);
     if (!font || !font.googleFamily || loadedFonts.has(fontValue)) return;
 

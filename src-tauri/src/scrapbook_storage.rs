@@ -1,6 +1,8 @@
 use std::fs;
 use std::path::PathBuf;
 
+use crate::utils::resolve_config_dir;
+
 /// Scrapbook state — stores requests as raw JSON to preserve all frontend fields
 #[derive(Debug, serde::Serialize, serde::Deserialize, Default)]
 struct ScrapbookState {
@@ -9,16 +11,7 @@ struct ScrapbookState {
 
 /// Get path to scrapbook.json file
 fn get_scrapbook_path() -> Result<PathBuf, String> {
-    let config_dir = std::env::var("APINOX_CONFIG_DIR")
-        .ok()
-        .and_then(|dir| if dir.trim().is_empty() { None } else { Some(PathBuf::from(dir)) })
-        .or_else(|| {
-            let home = std::env::var("HOME")
-                .or_else(|_| std::env::var("USERPROFILE"))
-                .ok()?;
-            Some(PathBuf::from(home).join(".apinox"))
-        })
-        .ok_or("Could not determine config directory")?;
+    let config_dir = resolve_config_dir()?;
 
     // Ensure directory exists
     if !config_dir.exists() {

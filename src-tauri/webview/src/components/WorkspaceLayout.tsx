@@ -1,30 +1,20 @@
 import React, { Suspense } from 'react';
 import { Play, ChevronLeft, GitBranch, Clock, FileCode, FileText, RefreshCw } from 'lucide-react';
-// Models imported via props.ts indirections, specific enums kept if needed locally (TestStepType is used in code?)
-// Checking code: TestStepType is used in props interface but not local var?
-// Actually TestStepType is used in onAddStep signature but onAddStep comes from props.
-// Let's remove them and add back if needed.
-import { SidebarView, RequestType, BodyType, HttpMethod, WorkflowStep, ApiRequest, TestStep } from '@shared/models';
+import { SidebarView, WorkflowStep, TestStep } from '@shared/models';
 import { bridge } from '../utils/bridge';
 import { CustomXPathEvaluator } from '../utils/xpathEvaluator';
-import { XPathGenerator } from '../utils/xpathGenerator';
 import { useMobileLayout } from '../hooks/useMobileLayout';
 
-import { ErrorBoundary, formatXml, stripCausalityData, formatContent, formatJson, validateUrl, validateJson, validateXml } from '@apinox/request-editor/core';
-import { RequestWorkspace, MonacoRequestEditorWithToolbar as MonacoRequestEditor, MonacoResponseViewer, MonacoSingleLineInput, AssertionsPanel, HeadersPanel, SecurityPanel, AttachmentsPanel, ExtractorsPanel, VariablesPanel, QueryParamsPanel, RestAuthPanel, GraphQLVariablesPanel, ScriptEditor } from '@apinox/request-editor/monaco';
-import type { ApiRequest as PackageApiRequest, ExecutionResponse as PackageExecutionResponse, Variable as PackageVariable, MonacoRequestEditorHandle, MonacoSingleLineInputHandle } from '@apinox/request-editor/monaco';
+import { ErrorBoundary, formatXml, validateUrl, validateJson, validateXml } from '@apinox/request-editor/core';
+import { RequestWorkspace, ScriptEditor } from '@apinox/request-editor/monaco';
+import type { ApiRequest as PackageApiRequest, ExecutionResponse as PackageExecutionResponse, Variable as PackageVariable } from '@apinox/request-editor/monaco';
 import { WelcomePanel, TestCaseView, EmptyTestCase } from './workspace';
-import { RequestStepEditor } from './workspace/RequestStepEditor';
-import { DelayStepEditor } from './workspace/DelayStepEditor';
 import { ConditionStepEditor } from './workspace/ConditionStepEditor';
-import { TestCaseStepEditor } from './workspace/TestCaseStepEditor';
 import { LoopStepEditor } from './workspace/LoopStepEditor';
-import { ScriptStepEditor } from './workspace/ScriptStepEditor';
 import { EmptyState } from './common/EmptyState';
 import { CustomSelect } from './common/CustomSelect';
 import { TestSuiteSummary } from './workspace/TestSuiteSummary';
 import { PerformanceSuiteEditor } from './workspace/PerformanceSuiteEditor';
-import { findPathToRequest } from '../utils/projectUtils';
 import { useWorkspace } from '../contexts/WorkspaceContext';
 
 const ProxyPanel = React.lazy(() =>
@@ -34,92 +24,9 @@ const RulesAndMockPage = React.lazy(() =>
     import('./proxy/RulesAndMockPage').then(module => ({ default: module.RulesAndMockPage }))
 );
 
-/**
- * Get Content-Type header based on body type
- * Mirrors backend logic in HttpClient.ts
- */
-function getContentTypeForBodyType(bodyType: BodyType): string {
-    switch (bodyType) {
-        case 'json':
-            return 'application/json';
-        case 'xml':
-            return 'application/xml';
-        case 'graphql':
-            return 'application/json';
-        case 'text':
-            return 'text/plain';
-        case 'form-data':
-            return 'multipart/form-data';
-        case 'none':
-            return '';
-        default:
-            return 'application/json';
-    }
-}
-
 import {
-    Toolbar, InfoBarMethod,
-    ToolbarButton, MainFooter, IconButton, ToolbarSeparator,
-    Content,
-    DelayTitle,
-    DelayContent,
-    DelayField,
-    DelayLabel,
-    DelayInput,
-    WorkspaceBody,
-    ToolbarInfo,
-    InfoBarUrlPrimary,
-    UrlInputWrapper,
-    CancelButton,
-    RunButton,
-    VariablesWrapper,
-    VariablesLabel,
-    VariablesDropdown,
-    VariablesDropdownHeader,
-    VariablesDropdownEmpty,
-    VariablesDropdownItem,
-    VariablesDropdownName,
-    VariablesDropdownSource,
-    EditorSplitContainer,
-    RequestPane,
-    BreadcrumbBar,
-    BreadcrumbActive,
-    TabsHeader,
-    TabButton,
-    TabMeta,
-    TabsRight,
-    CompactIconButton,
-    CompactIconButtonWarning,
-    Divider,
-    StatText,
-    RequestEditorWrapper,
-    PanelColumn,
-    PanelBody,
-    HeadersViewer,
-    HeadersTitle,
-    HeadersRow,
-    HeadersKey,
-    HeadersValue,
-    HeadersEmpty,
-    ResponseHeadersContainer,
-    SplitResizer,
-    ResponseSection,
-    ResponseHeader,
-    ResponseHeaderLeft,
-    ResponseHeaderActions,
-    ResponseStats,
-    ResponseContentType,
-    ResponseStatus,
-    MiniToolbarButton,
-    MiniButtonIcon,
-    EditorSettingsMenu,
-    MenuSection,
-    MenuRow,
-    MenuLabel,
-    MenuControls,
-    FontSizeDisplay,
-    MenuIconButton,
-    SettingsMenuWrapper
+    Toolbar, ToolbarButton, ToolbarSeparator, Content,
+    DelayTitle, DelayContent, DelayField, DelayLabel, DelayInput
 } from '../styles/WorkspaceLayout.styles';
 
 /**
@@ -136,42 +43,31 @@ export const WorkspaceLayout: React.FC = () => {
     const {
         // PROJECT STATE
         projects,
-        dirtyProjects,
         selectedProjectName,
-        setProjects,
-        
+
         // SELECTION STATE - Interface/Operation/Request
-        selectedInterface,
-        selectedOperation,
         selectedRequest,
-        
+
         // SELECTION STATE - Test Cases
         selectedTestSuite,
         selectedTestCase,
         testCases: globalTestCases,
         selectedTestStep: selectedStep,  // Alias for backward compatibility
-        
+
         // SELECTION STATE - Performance
         selectedPerformanceSuiteId,
         performanceHistory,
         performanceProgress,
         coordinatorStatus,
-        
+
         // REQUEST/RESPONSE STATE
         response,
         loading,
-        
-        // UI STATE - Layout & Editor
-        layoutMode,
-        showLineNumbers,
-        splitRatio,
-        isResizing,
-        
+
         // CONFIG STATE
         config,
         defaultEndpoint,
-        isReadOnly: isHistoryMode,
-        backendConnected
+        isReadOnly: isHistoryMode
     } = workspace;
 
     // Get selected project from projects array
@@ -184,15 +80,9 @@ export const WorkspaceLayout: React.FC = () => {
     const onCancel = workspace.cancelRequest;
     const rawOnUpdateRequest = workspace.updateRequest;
     const onReset = workspace.resetRequest;
-    const onToggleLayout = workspace.toggleLayout;
-    const onToggleLineNumbers = workspace.toggleLineNumbers;
-    const onStartResizing = workspace.setIsResizing;
     const activeView = workspace.activeView;
     const inlineElementValues = workspace.inlineElementValues;
-    const onToggleInlineElementValues = workspace.setInlineElementValues;
-    const hideCausalityData = workspace.hideCausalityData;
-    const onToggleHideCausalityData = workspace.setHideCausalityData;
-    
+
     // Navigation actions (for backward compatibility)
     const navigationActions = {
         onSelectInterface: workspace.selectInterface,
@@ -205,7 +95,6 @@ export const WorkspaceLayout: React.FC = () => {
     const testExecution = workspace.testExecution;
     const onAddAssertion = workspace.handleAddAssertion;
     const onRunTestCase = workspace.handleRunTestCase;
-    const onRunTestSuite = workspace.handleRunTestSuite;
     const updateTestSuiteVariables = workspace.updateTestSuiteVariables;
     const updateTestCaseVariables = workspace.updateTestCaseVariables;
     const onAddExtractor = workspace.handleAddExtractor;
@@ -220,16 +109,11 @@ export const WorkspaceLayout: React.FC = () => {
     const onOpenStepRequest = workspace.openStepRequest;
     
     // Performance actions
-    const onAddPerformanceSuite = workspace.handleAddPerformanceSuite;
-    const onDeletePerformanceSuite = workspace.handleDeletePerformanceSuite;
     const onAddPerformanceRequest = workspace.handleAddPerformanceRequest;
     const onAddPerformanceTestCase = workspace.handleAddPerformanceTestCase;
     const onDeletePerformanceRequest = workspace.handleDeletePerformanceRequest;
     const onUpdatePerformanceRequest = workspace.handleUpdatePerformanceRequest;
     const onSelectPerformanceRequest = workspace.handleSelectPerformanceRequest;
-    const onRunPerformanceSuite = workspace.handleRunPerformanceSuite;
-    const onStopPerformanceRun = workspace.handleStopPerformanceRun;
-    const onSelectPerformanceSuite = workspace.handleSelectPerformanceSuite;
     const onUpdateSuite = workspace.handleUpdatePerformanceSuite;
     const onStartCoordinator = workspace.handleStartCoordinator;
     const onStopCoordinator = workspace.handleStopCoordinator;
@@ -254,10 +138,6 @@ export const WorkspaceLayout: React.FC = () => {
         rawOnUpdateRequest(updated);
     }, [rawOnUpdateRequest]);
 
-
-    const forceEditorUpdate = React.useCallback(() => {
-        setEditorForceUpdateKey(prev => prev + 1);
-    }, []);
 
     // Derived read-only state
     const isStructureLocked = (activeView === SidebarView.PERFORMANCE || activeView === SidebarView.TESTS);
@@ -303,6 +183,10 @@ export const WorkspaceLayout: React.FC = () => {
                                             value = ext.defaultValue;
                                         }
                                     } catch (e) {
+                                        // The fallback is intentional, but the failure itself
+                                        // was invisible — a malformed XPath and an empty result
+                                        // produced the same outcome with no signal.
+                                        console.warn('[WorkspaceLayout] XPath evaluation failed, using default value', { path: ext.path, error: e });
                                         if (ext.defaultValue) {
                                             value = ext.defaultValue;
                                         }
@@ -347,27 +231,17 @@ export const WorkspaceLayout: React.FC = () => {
 
 
     const [alignAttributes, setAlignAttributes] = React.useState(false);
-    const [showVariables, setShowVariables] = React.useState(false);
     const [showCodeSnippet, setShowCodeSnippet] = React.useState(false);
 
     // ... imports
 
 
-    // Editor Refs for insertion
-    const urlEditorRef = React.useRef<MonacoSingleLineInputHandle>(null);
-    const bodyEditorRef = React.useRef<MonacoRequestEditorHandle>(null);
-    const lastFocusedRef = React.useRef<MonacoSingleLineInputHandle | MonacoRequestEditorHandle | null>(null);
-    const [selection, setSelection] = React.useState<{ text: string, offset: number } | null>(null);
-    const [currentXPath, setCurrentXPath] = React.useState<string | null>(null);
-    const [editorForceUpdateKey, setEditorForceUpdateKey] = React.useState<number>(0);
     const prevAlignAttributesRef = React.useRef<boolean>(alignAttributes);
     const lastAlignedRequestIdRef = React.useRef<string | null>(null);
     const lastFormattedRequestIdRef = React.useRef<string | null>(null);
-    const settingsMenuRef = React.useRef<HTMLDivElement>(null);
     
-    // Validation state
-    const [urlValidationError, setUrlValidationError] = React.useState<string | null>(null);
-    const [bodyValidationError, setBodyValidationError] = React.useState<string | null>(null);
+    // Validation errors are surfaced through alert() in handleValidatedExecute;
+    // the state that held them for the removed inline-error UI is gone.
 
     React.useEffect(() => {
         if (config?.ui?.alignAttributes !== undefined) {
@@ -392,7 +266,6 @@ export const WorkspaceLayout: React.FC = () => {
             ...activeRequest,
             request: formatXml(activeRequest.request, alignAttributes, inlineElementValues)
         });
-        forceEditorUpdate();
     }, [alignAttributes, preventEditing, activeRequest, inlineElementValues, onUpdateRequest]);
 
     React.useEffect(() => {
@@ -416,7 +289,6 @@ export const WorkspaceLayout: React.FC = () => {
             ...effectiveRequest,
             request: formatXml(effectiveRequest.request, alignAttributes, inlineElementValues)
         });
-        forceEditorUpdate();
 
         if (requestId) {
             lastAlignedRequestIdRef.current = requestId;
@@ -440,60 +312,33 @@ export const WorkspaceLayout: React.FC = () => {
             ...effectiveRequest,
             request: formatXml(effectiveRequest.request, alignAttributes, inlineElementValues)
         });
-        forceEditorUpdate();
 
         if (requestId) {
             lastFormattedRequestIdRef.current = requestId;
         }
     }, [alignAttributes, preventEditing, activeRequest, inlineElementValues, onUpdateRequest]);
 
-    React.useEffect(() => {
-        if (selection && response?.rawResponse) {
-            // Calculate XPath on selection change to determine button visibility
-            const path = XPathGenerator.getPath(response.rawResponse, selection.offset);
-            setCurrentXPath(path);
-        } else {
-            setCurrentXPath(null);
-        }
-    }, [selection, response]);
+    // Response selection and XPath generation live in RequestWorkspace now;
+    // this component receives the resolved XPath through the onCreate* callbacks.
 
-    // Reset selection when step changes or re-runs
-    React.useEffect(() => {
-        setSelection(null);
-        setCurrentXPath(null);
-    }, [selectedStep?.id, response, selectedStep?.config.request?.assertions]);
-
-    const handleCreateExtractor = () => {
-        if (!selection || !response || !onAddExtractor) return;
-
-        let path: string | null = null;
-        const source = 'body';
-
-        if (response.rawResponse) {
-            path = XPathGenerator.getPath(response.rawResponse, selection.offset);
-        }
-
-        if (path) {
-            onAddExtractor({ xpath: path, value: selection.text, source });
-        } else {
-            console.warn("Could not determine XPath for selection");
-        }
+    // The package owns the response selection and computes the XPath for it,
+    // then hands both to these callbacks. Previously this component kept its
+    // own selection/currentXPath state and read them from closure — but nothing
+    // ever populated them, so these handlers could never fire and the
+    // Extract/Match/Exists buttons in RequestWorkspace rendered disabled.
+    const handleCreateExtractor = (xpath: string, value: string) => {
+        if (!onAddExtractor) return;
+        onAddExtractor({ xpath, value, source: 'body' });
     };
 
-    const handleCreateAssertion = () => {
-        console.log("WorkspaceLayout: Match Clicked. XPath:", currentXPath, "Selection:", selection?.text);
-        if (!selection || !response || !onAddAssertion || !currentXPath) {
-            console.warn("WorkspaceLayout: Match aborted. Missing deps:", { hasSelection: !!selection, hasResponse: !!response, hasHandler: !!onAddAssertion, hasPath: !!currentXPath });
-            return;
-        }
-
-        onAddAssertion({ xpath: currentXPath, expectedContent: selection.text });
+    const handleCreateAssertion = (xpath: string, value: string) => {
+        if (!onAddAssertion) return;
+        onAddAssertion({ xpath, expectedContent: value });
     };
 
-    const handleCreateExistenceAssertion = () => {
-        if (!selection || !response || !onAddExistenceAssertion || !currentXPath) return;
-
-        onAddExistenceAssertion({ xpath: currentXPath });
+    const handleCreateExistenceAssertion = (xpath: string) => {
+        if (!onAddExistenceAssertion) return;
+        onAddExistenceAssertion({ xpath });
     };
 
     // Validated execute handler - MUST be defined before any conditional returns
@@ -503,20 +348,17 @@ export const WorkspaceLayout: React.FC = () => {
         // Validate URL
         const urlResult = validateUrl(activeRequest.endpoint || '');
         if (!urlResult.valid) {
-            setUrlValidationError(urlResult.error || 'Invalid URL');
             console.error('❌ URL validation failed:', urlResult.error);
             // Show user-friendly error via alert (could be replaced with toast notification)
             alert(`Cannot execute request:\n\n${urlResult.error || 'Invalid URL'}`);
             return;
         }
-        setUrlValidationError(null);
-        
+
         // Validate body based on type
         const bodyType = activeRequest.bodyType || 'xml';
         if (bodyType === 'json') {
             const jsonResult = validateJson(activeRequest.request);
             if (!jsonResult.valid) {
-                setBodyValidationError(jsonResult.details || jsonResult.error || 'Invalid JSON');
                 console.error('❌ JSON validation failed:', jsonResult.details);
                 alert(`Cannot execute request:\n\nInvalid JSON body:\n${jsonResult.details || jsonResult.error}`);
                 return;
@@ -524,47 +366,17 @@ export const WorkspaceLayout: React.FC = () => {
         } else if (bodyType === 'xml') {
             const xmlResult = validateXml(activeRequest.request);
             if (!xmlResult.valid) {
-                setBodyValidationError(xmlResult.error || 'Invalid XML');
                 console.error('❌ XML validation failed:', xmlResult.error);
                 alert(`Cannot execute request:\n\nInvalid XML body:\n${xmlResult.error}`);
                 return;
             }
         }
-        setBodyValidationError(null);
-        
+
         // All validations passed - execute
         if (onExecute) {
             onExecute(activeRequest.request);
         }
     }, [activeRequest, onExecute]);
-
-    const handleCreateReplaceRule = (_target: 'request' | 'response') => {
-        // Replace rule and mock rule features removed - moved to APIprox
-        /*
-        if (!selection || !currentXPath || !onAddReplaceRule) return;
-
-        onAddReplaceRule({ xpath: currentXPath, matchText: selection.text, target });
-        */
-    };
-
-    const handleCreateMockRule = () => {
-        // Mock rule features removed - moved to APIprox
-        /*
-        if (!activeRequest || !response || !onAddMockRule) {
-            console.warn('[WorkspaceLayout] handleCreateMockRule aborted: missing data or callback');
-            return;
-        }
-
-        const newRule = createMockRuleFromSource({
-            url: activeRequest.endpoint || '',
-            statusCode: response.status || 200,
-            responseBody: response.rawResponse || '',
-            responseHeaders: response.headers || {},
-        });
-
-        onAddMockRule(newRule);
-        */
-    };
 
     // PERFORMANCE VIEW - REMOVED: Moved to APIprox
     // Performance testing is now available in the APIprox project
@@ -1136,6 +948,9 @@ export const WorkspaceLayout: React.FC = () => {
                         }
                     });
                 }}
+                onCreateExtractor={handleCreateExtractor}
+                onCreateAssertion={handleCreateAssertion}
+                onCreateExistenceAssertion={handleCreateExistenceAssertion}
                 onPickFile={handlePickFile}
             />
             </ErrorBoundary>

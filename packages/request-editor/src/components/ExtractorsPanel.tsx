@@ -125,13 +125,10 @@ const ExtractorsPanelBase: React.FC<ExtractorsPanelProps> = ({
   const handleAdd = () => {
     const newExtractor: RequestExtractor = {
       id: `ext-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-      name: "",
       type: "XPath",
-      enabled: true,
-      query: "",
-      path: "",
       variable: "",
       source: "body",
+      path: "",
     };
     onChange([...extractors, newExtractor]);
   };
@@ -151,7 +148,7 @@ const ExtractorsPanelBase: React.FC<ExtractorsPanelProps> = ({
             // Regex extraction is handled by the backend; show the pattern note.
             return "(Regex extraction - run step to see result)";
           }
-          const pathValue = ex.path || ex.query;
+          const pathValue = ex.path;
           if (pathValue) {
             return CustomXPathEvaluator.evaluate(rawResponse, pathValue);
           }
@@ -201,7 +198,7 @@ const ExtractorsPanelBase: React.FC<ExtractorsPanelProps> = ({
                   )}
                   <InfoRow>
                     <Label>{ex.type === "Regex" ? "Pattern:" : "Path:"}</Label>
-                    <Value>{ex.path || ex.query}</Value>
+                    <Value>{ex.path}</Value>
                   </InfoRow>
                   {ex.defaultValue && (
                     <InfoRow>

@@ -303,7 +303,7 @@ export function useRequestExecution({
             console.error('[App] executeRequest aborted: No selectedOperation or selectedRequest');
             setLoading(false);
         }
-    }, [selectedOperation, selectedRequest, selectedInterface, selectedTestCase, selectedStep, wsdlUrl, testExecution, setLoading, setResponse, onScrapbookAutoSave, selectedProjectName]);
+    }, [selectedOperation, selectedRequest, selectedInterface, selectedTestCase, selectedStep, wsdlUrl, testExecution, setLoading, setResponse, onScrapbookAutoSave, selectedProjectName, config]);
 
     const cancelRequest = useCallback(() => {
         // H1: cancel exactly the in-flight request (id echoed back by the backend
@@ -478,7 +478,7 @@ export function useRequestExecution({
             }
         }, DEBOUNCE_MS);
 
-    }, [selectedProjectName, selectedTestCase, selectedInterface, selectedOperation, selectedRequest, setProjects, setSelectedRequest, setWorkspaceDirty, updateTestCase, selectedPerformanceSuiteId, config, setConfig]);
+    }, [selectedProjectName, selectedTestCase, selectedInterface, selectedOperation, selectedRequest, setProjects, setSelectedRequest, setWorkspaceDirty, updateTestCase, selectedPerformanceSuiteId, config, setConfig, onScrapbookAutoSave]);
 
     const handleResetRequest = useCallback(() => {
         if (selectedRequest && selectedOperation) {

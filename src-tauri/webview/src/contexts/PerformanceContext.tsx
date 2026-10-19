@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { bridge, isTauri } from '../utils/bridge';
 import { PerformanceSuite, PerformanceRequest, ApiRequest, TestCase } from '@shared/models';
 import { BackendCommand, FrontendCommand } from '@shared/messages';
@@ -77,6 +77,10 @@ export const PerformanceProvider = ({ children }: { children: ReactNode }) => {
 
     // Dependencies
     const { config, setConfig } = useUI();
+    // Kept in sync so the message listener can read the current config without
+    // re-binding on every config change (same pattern as useMessageHandler).
+    const configRef = useRef(config);
+    useEffect(() => { configRef.current = config; }, [config]);
     const { setActiveView } = useNavigation();
     const {
         selectedPerformanceSuiteId,
@@ -365,75 +369,12 @@ export const PerformanceProvider = ({ children }: { children: ReactNode }) => {
     // MESSAGE HANDLING
     // -------------------------------------------------------------------------
 
-    React.useEffect(() => {
-        const handleMessage = (message: any) => {
-            switch (message.command) {
-                case BackendCommand.PerformanceRunStarted:
-                    debugLog('performanceRunStarted', { runId: message.runId });
-                    setActiveRunId(message.runId);
-                    setPerformanceProgress(() => {
-                        const suiteId = message.suiteId;
-                        const suite = suiteId ? config?.performanceSuites?.find(s => s.id === suiteId) : undefined;
-                        const total = suite ? (suite.iterations || 0) + (suite.warmupRuns || 0) : 0;
-                        return { iteration: 0, total };
-                    });
-                    break;
-
-                case BackendCommand.PerformanceRunComplete:
-                    debugLog('performanceRunComplete', { runId: message.runId });
-                    setActiveRunId(undefined); // undefined matches state type
-                    setPerformanceProgress(null);
-                    break;
-
-                case BackendCommand.PerformanceIterationComplete:
-                    // debugLog('performanceIterationComplete', { runId: message.runId, iteration: message.iteration });
-                    setPerformanceProgress((prev: { iteration: number; total: number } | null) => ({
-                        iteration: message.iteration !== undefined ? message.iteration + 1 : (prev?.iteration || 0) + 1,
-                        total: message.total ?? prev?.total ?? 0
-                    }));
-                    break;
-
-                case BackendCommand.CoordinatorStatus:
-                    if (message.status) {
-                        setCoordinatorStatus(message.status);
-                    }
-                    if (message.error) {
-                        debugLog('Coordinator Error', { error: message.error });
-                        // Ideally show a toast or error
-                    }
-                    break;
-
-                case BackendCommand.AddOperationToPerformance:
-                    handleBackendAddOperation(message);
-                    break;
-            }
-        };
-
-        const unsubscribe = bridge.onMessage(handleMessage);
-        return () => unsubscribe();
-    }, [setConfig]); // Only stable deps needed if debugLog is constant
-
-    // Helper for complex AddOperation logic
-    const handleBackendAddOperation = async (message: any) => {
+    // Helper for complex AddOperation logic. Declared before the listener effect
+    // so it can appear in that effect's deps. It reads config only through the
+    // functional setConfig update, so it stays stable across config changes and
+    // the listener is not re-bound on every keystroke.
+    const handleBackendAddOperation = useCallback(async (message: any) => {
         debugLog('addOperationToPerformance', { suiteId: message.suiteId, operation: message.operation?.name });
-        // We need current config. Since this is inside useEffect/event listener, 
-        // we might have stale state if we just use 'config'. 
-        // However, 'setProperty' style updates are safe. 
-        // For reading 'config.performanceSuites', we should probably use a Ref or Functional State update if possible.
-        // But here we need to READ to find the index.
-
-        // Ideally, we move this logic to a separate function that we can call with fresh state?
-        // Or we use a ref for config which is kept in sync.
-
-        // For now, let's implement the logic using the functional update pattern where possible,
-        // or accept that we might need `config` in dependency array (which re-binds listener).
-        // Re-binding listener on config change is expensive? Config changes often?
-        // Yes, config changes on every keystroke in some editors.
-
-        // Better approach: Use the ref pattern for config like useMessageHandler did, OR
-        // Use the `setConfig` functional update heavily.
-
-        // Let's rely on `setConfig` functional update to find and update.
 
         setConfig((prevConfig: any) => {
             const currentSuites = prevConfig.performanceSuites || [];
@@ -520,7 +461,56 @@ export const PerformanceProvider = ({ children }: { children: ReactNode }) => {
 
             return prevConfig;
         });
-    };
+    }, [setConfig]);
+
+    React.useEffect(() => {
+        const handleMessage = (message: any) => {
+            switch (message.command) {
+                case BackendCommand.PerformanceRunStarted:
+                    debugLog('performanceRunStarted', { runId: message.runId });
+                    setActiveRunId(message.runId);
+                    setPerformanceProgress(() => {
+                        const suiteId = message.suiteId;
+                        const suite = suiteId ? configRef.current?.performanceSuites?.find(s => s.id === suiteId) : undefined;
+                        const total = suite ? (suite.iterations || 0) + (suite.warmupRuns || 0) : 0;
+                        return { iteration: 0, total };
+                    });
+                    break;
+
+                case BackendCommand.PerformanceRunComplete:
+                    debugLog('performanceRunComplete', { runId: message.runId });
+                    setActiveRunId(undefined); // undefined matches state type
+                    setPerformanceProgress(null);
+                    break;
+
+                case BackendCommand.PerformanceIterationComplete:
+                    // debugLog('performanceIterationComplete', { runId: message.runId, iteration: message.iteration });
+                    setPerformanceProgress((prev: { iteration: number; total: number } | null) => ({
+                        iteration: message.iteration !== undefined ? message.iteration + 1 : (prev?.iteration || 0) + 1,
+                        total: message.total ?? prev?.total ?? 0
+                    }));
+                    break;
+
+                case BackendCommand.CoordinatorStatus:
+                    if (message.status) {
+                        setCoordinatorStatus(message.status);
+                    }
+                    if (message.error) {
+                        debugLog('Coordinator Error', { error: message.error });
+                        // Ideally show a toast or error
+                    }
+                    break;
+
+                case BackendCommand.AddOperationToPerformance:
+                    handleBackendAddOperation(message);
+                    break;
+            }
+        };
+
+        const unsubscribe = bridge.onMessage(handleMessage);
+        return () => unsubscribe();
+    }, [setConfig, configRef, handleBackendAddOperation]);
+
 
     // -------------------------------------------------------------------------
     // CONTEXT VALUE

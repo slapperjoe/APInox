@@ -69,7 +69,7 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
       setEditingRule(initialRule);
       onInitialRuleConsumed?.();
     }
-  }, [initialRule]);
+  }, [initialRule, onInitialRuleConsumed]);
 
   useEffect(() => {
     loadRules();

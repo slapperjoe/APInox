@@ -209,7 +209,6 @@ export const AssertionsPanel: React.FC<AssertionsPanelProps> = ({ assertions, on
             id: generateId(),
             type,
             name: type,
-            enabled: true,
             configuration: {}
         };
         // Set defaults

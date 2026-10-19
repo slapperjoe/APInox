@@ -5,14 +5,9 @@
 // Request Types
 // ============================================================================
 
-/** Type of API request */
-export type RequestType = 'soap' | 'rest' | 'graphql';
-
-/** HTTP methods supported */
-export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
-
-/** Body content type */
-export type BodyType = 'xml' | 'json' | 'graphql' | 'text' | 'form-data' | 'binary' | 'none';
+// These four are canonical in @shared/models. Re-exported rather than
+// re-declared so the package and the app cannot drift.
+export type { RequestType, HttpMethod, BodyType } from '@shared/models';
 
 // ============================================================================
 // Theme System
@@ -149,51 +144,17 @@ export interface MonacoSingleLineInputProps {
 }
 
 // ============================================================================
-// Headers Panel
-// ============================================================================
-
-export interface HttpHeader {
-  key: string;
-  value: string;
-  enabled: boolean;
-}
-
-export interface HeadersPanelProps {
-  /** Current headers */
-  headers: HttpHeader[];
-  /** Callback when headers change */
-  onChange: (headers: HttpHeader[]) => void;
-  /** Read-only mode */
-  readOnly?: boolean;
-  /** Available variables for autocomplete */
-  availableVariables?: EditorVariable[];
-  /** Theme configuration */
-  theme?: EditorTheme;
-}
-
-// ============================================================================
 // Assertions Panel
 // ============================================================================
 
-export type AssertionType = 'contains' | 'not-contains' | 'equals' | 'not-equals' | 
-  'xpath' | 'jsonpath' | 'regex' | 'status-code' | 'header-exists' | 'response-time' |
-  'Simple Contains' | 'Simple Not Contains' | 'Response SLA' | 'XPath Match' | 
-  'SOAP Fault' | 'HTTP Status' | 'Script';
+export type { AssertionType } from '@shared/models';
+import type { AssertionType } from '@shared/models';
 
 export interface Assertion {
   id: string;
   type: AssertionType;
-  enabled?: boolean;
   name?: string;
   configuration?: Record<string, any>;
-  /** For contains/equals assertions */
-  expected?: string;
-  /** For xpath/jsonpath/regex assertions */
-  query?: string;
-  /** For header-exists assertions */
-  headerName?: string;
-  /** For response-time assertions (milliseconds) */
-  maxTime?: number;
 }
 
 export interface AssertionsPanelProps {
@@ -213,26 +174,8 @@ export interface AssertionsPanelProps {
 // Extractors Panel
 // ============================================================================
 
-export type ExtractorType = 'XPath' | 'JSONPath' | 'Regex' | 'Header';
-
-export interface RequestExtractor {
-  id: string;
-  name: string;
-  type: ExtractorType;
-  enabled: boolean;
-  /** XPath, JSONPath, or regex pattern */
-  query: string;
-  /** XPath/regex path (backward compat) */
-  path?: string;
-  /** Variable name to store extracted value */
-  variable?: string;
-  /** Source of extraction (body/header) */
-  source?: string;
-  /** For header extractor */
-  headerName?: string;
-  /** Default value if extraction fails */
-  defaultValue?: string;
-}
+export type { RequestExtractorType, RequestExtractor } from '@shared/models';
+import type { RequestExtractor } from '@shared/models';
 
 export interface ExtractorsPanelProps {
   /** Current extractors */
@@ -251,7 +194,8 @@ export interface ExtractorsPanelProps {
 // Form Data Panel
 // ============================================================================
 
-export type FormFieldType = 'text' | 'file';
+import type { FormFieldType } from '@shared/models';
+export type { FormFieldType };
 
 export interface FormField {
   key: string;
@@ -307,29 +251,6 @@ export interface BinaryBodyPanelProps {
   readOnly?: boolean;
   /** Callback to trigger file picker */
   onPickFile?: () => Promise<{ name: string; content: string; contentType: string; size: number } | null>;
-}
-
-// ============================================================================
-// Query Params Panel
-// ============================================================================
-
-export interface QueryParam {
-  key: string;
-  value: string;
-  enabled: boolean;
-}
-
-export interface QueryParamsPanelProps {
-  /** Current query parameters */
-  params: QueryParam[];
-  /** Callback when params change */
-  onChange: (params: QueryParam[]) => void;
-  /** Read-only mode */
-  readOnly?: boolean;
-  /** Available variables for autocomplete */
-  availableVariables?: EditorVariable[];
-  /** Theme configuration */
-  theme?: EditorTheme;
 }
 
 // ============================================================================
@@ -457,17 +378,6 @@ export interface GraphQLVariablesPanelProps {
 export interface VariablesPanelProps {
   /** Variables to display */
   variables: EditorVariable[];
-  /** Theme configuration */
-  theme?: EditorTheme;
-}
-
-// ============================================================================
-// Schema Viewer
-// ============================================================================
-
-export interface SchemaViewerProps {
-  /** Schema tree to display */
-  schema: import('../../../shared/src/models').SchemaNode;
   /** Theme configuration */
   theme?: EditorTheme;
 }

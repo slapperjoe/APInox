@@ -84,11 +84,3 @@ export function rekeyTestSuite(raw: unknown): TestSuite {
     if (src.expanded !== undefined) suiteCopy.expanded = src.expanded;
     return suiteCopy;
 }
-
-/**
- * Every id minted by a single rekey pass is unique (suite ≠ case ≠ step,
- * and no duplicates within a level) — the invariant the store relies on.
- */
-export function collectedIds<T extends { id: string }>(items: T[]): string[] {
-    return items.map(i => i.id);
-}
