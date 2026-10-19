@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, memo } from 'react';
+import React, { useCallback, useRef, useEffect, memo } from 'react';
 import * as S from './RequestWorkspace.styles';
 import { EmptyState } from './common/EmptyState';
 import { MonacoRequestEditor } from './MonacoRequestEditor';
@@ -80,10 +80,12 @@ const RequestTabContentBase: React.FC<RequestTabContentProps> = ({
   // Stable handlers (review item 3): read the latest request through a ref so
   // the callback identity does not change on every keystroke. Combined with the
   // memoized panels, this lets unchanged panels skip re-render.
+  // Synced in an effect rather than during render — writing refs in the render
+  // phase is unsafe under concurrent rendering and StrictMode double-invocation.
   const requestRef = useRef(request);
-  requestRef.current = request;
   const onUpdateRef = useRef(onUpdateRequest);
-  onUpdateRef.current = onUpdateRequest;
+  useEffect(() => { requestRef.current = request; }, [request]);
+  useEffect(() => { onUpdateRef.current = onUpdateRequest; }, [onUpdateRequest]);
 
   const handleBodyChange = useCallback((value: string) => {
     onUpdateRef.current({ ...requestRef.current, request: value });

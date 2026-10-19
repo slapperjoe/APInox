@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, memo } from "react";
+import React, { useState, useCallback, useRef, useEffect, memo } from "react";
 import styled from "styled-components";
 import { EmptyState } from "./common/EmptyState";
 import { PanelContainer, PanelIconButton, PanelFlexColumn } from "./common/PanelShell";
@@ -238,10 +238,13 @@ const FormDataPanelBase: React.FC<FormDataPanelProps> = ({
 }) => {
   const [isPickingFile, setIsPickingFile] = useState<string | null>(null);
 
+  // Synced in an effect rather than during render — writing refs in the render
+  // phase is unsafe under concurrent rendering and StrictMode double-invocation.
+  // Same pattern as useMessageHandler.ts:104-107.
   const fieldsRef = useRef(fields);
-  fieldsRef.current = fields;
   const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
+  useEffect(() => { fieldsRef.current = fields; }, [fields]);
+  useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
 
   const addField = () => {
     const newField: FormField = {

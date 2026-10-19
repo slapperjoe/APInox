@@ -3,7 +3,7 @@
  * Similar to HeadersPanel but for URL query strings
  */
 
-import React, { useCallback, useRef, memo } from 'react';
+import React, { useCallback, useRef, useEffect, memo } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from './common/EmptyState';
 import { PanelContainer, PanelIconButton } from './common/PanelShell';
@@ -142,10 +142,12 @@ const QueryParamsPanelBase: React.FC<QueryParamsPanelProps> = ({
 }) => {
     const entries = Object.entries(params || {});
 
+    // Synced in an effect rather than during render — writing refs in the render
+    // phase is unsafe under concurrent rendering and StrictMode double-invocation.
     const paramsRef = useRef(params);
-    paramsRef.current = params;
     const onChangeRef = useRef(onChange);
-    onChangeRef.current = onChange;
+    useEffect(() => { paramsRef.current = params; }, [params]);
+    useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
 
     const updateParam = useCallback((oldKey: string, newKey: string, newValue: string) => {
         if (readOnly) return;

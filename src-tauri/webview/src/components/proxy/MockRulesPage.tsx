@@ -395,6 +395,28 @@ function normalizeConditions(conditions: MockCondition[]): string {
   );
 }
 
+// Re-indents an XML DOM tree. Hoisted to module scope — it was declared inside
+// an if-block, which is what no-inner-declarations flags.
+function indentXml(node: Node, depth: number): string {
+  const indent = '  '.repeat(depth);
+  if (node.nodeType === Node.TEXT_NODE) {
+    const t = node.textContent?.trim() ?? '';
+    return t ? indent + t + '\n' : '';
+  }
+  if (node.nodeType !== Node.ELEMENT_NODE) return '';
+  const el = node as Element;
+  const tag = el.tagName;
+  const attrs = Array.from(el.attributes)
+    .map(a => ` ${a.name}="${a.value}"`).join('');
+  const children = Array.from(el.childNodes);
+  const inner = children.map(c => indentXml(c, depth + 1)).join('');
+  if (!inner.trim()) return `${indent}<${tag}${attrs} />\n`;
+  if (children.length === 1 && children[0].nodeType === Node.TEXT_NODE) {
+    return `${indent}<${tag}${attrs}>${children[0].textContent?.trim()}</${tag}>\n`;
+  }
+  return `${indent}<${tag}${attrs}>\n${inner}${indent}</${tag}>\n`;
+}
+
 export interface MockRulesPageHandle {
   addRule: () => void;
   openImport: () => void;
@@ -935,25 +957,6 @@ export const MockRulesPage = forwardRef<MockRulesPageHandle, {
                         const parser = new DOMParser();
                         const doc = parser.parseFromString(formatted, 'application/xml');
                         if (!doc.querySelector('parsererror')) {
-                          function indentXml(node: Node, depth: number): string {
-                            const indent = '  '.repeat(depth);
-                            if (node.nodeType === Node.TEXT_NODE) {
-                              const t = node.textContent?.trim() ?? '';
-                              return t ? indent + t + '\n' : '';
-                            }
-                            if (node.nodeType !== Node.ELEMENT_NODE) return '';
-                            const el = node as Element;
-                            const tag = el.tagName;
-                            const attrs = Array.from(el.attributes)
-                              .map(a => ` ${a.name}="${a.value}"`).join('');
-                            const children = Array.from(el.childNodes);
-                            const inner = children.map(c => indentXml(c, depth + 1)).join('');
-                            if (!inner.trim()) return `${indent}<${tag}${attrs} />\n`;
-                            if (children.length === 1 && children[0].nodeType === Node.TEXT_NODE) {
-                              return `${indent}<${tag}${attrs}>${children[0].textContent?.trim()}</${tag}>\n`;
-                            }
-                            return `${indent}<${tag}${attrs}>\n${inner}${indent}</${tag}>\n`;
-                          }
                           const decl = formatted.trimStart().startsWith('<?xml') ? '<?xml version="1.0" encoding="UTF-8"?>\n' : '';
                           formatted = decl + indentXml(doc.documentElement, 0);
                         }

@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, memo } from 'react';
+import React, { useCallback, useRef, useEffect, memo } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from './common/EmptyState';
 import { PanelContainer, PanelIconButton, PanelFlexColumn } from './common/PanelShell';
@@ -153,10 +153,12 @@ const HeadersPanelBase: React.FC<HeadersPanelProps> = ({
 
     // Refs + stable handlers: the row callbacks keep a constant identity so
     // memoized rows skip re-render when a different row changes.
+    // Synced in an effect rather than during render — writing refs in the render
+    // phase is unsafe under concurrent rendering and StrictMode double-invocation.
     const headersRef = useRef(headers);
-    headersRef.current = headers;
     const onChangeRef = useRef(onChange);
-    onChangeRef.current = onChange;
+    useEffect(() => { headersRef.current = headers; }, [headers]);
+    useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
 
     const updateHeader = useCallback((oldKey: string, newKey: string, newValue: string) => {
         // Prevent adding Content-Type via this panel

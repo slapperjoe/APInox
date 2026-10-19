@@ -216,17 +216,19 @@ export const WorkspaceLayout: React.FC = () => {
     }, [activeView, selectedTestCase, selectedStep, testExecution]);
 
     // Environment/global variables for {{...}} tooltips in the single-line inputs.
+    // Deps are plain bindings rather than `config?.x` expressions — a memo cannot
+    // depend on a computed expression and still be preserved.
+    const envConfig = config?.environments;
+    const activeEnvName = config?.activeEnvironment;
     const availableEnvVariables = React.useMemo(() => {
-        const env = config?.environments && config?.activeEnvironment
-            ? config.environments[config.activeEnvironment]
-            : undefined;
+        const env = envConfig && activeEnvName ? envConfig[activeEnvName] : undefined;
         if (!env) return [];
         return Object.entries(env).map(([name, value]) => ({
             name,
             value: value ?? null,
             source: 'environment',
         }));
-    }, [config?.environments, config?.activeEnvironment]);
+    }, [envConfig, activeEnvName]);
 
 
 
