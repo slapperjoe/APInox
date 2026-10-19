@@ -7,7 +7,7 @@
   "@typescript-eslint/no-empty-function": 53,
   "no-redeclare": 1,
   "react-hooks/set-state-in-effect": 40,
-  "prefer-const": 7,
+  "prefer-const": 6,
   "@typescript-eslint/no-require-imports": 4,
   "@typescript-eslint/ban-ts-comment": 2,
   "react-hooks/preserve-manual-memoization": 2,
