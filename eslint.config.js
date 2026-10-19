@@ -13,7 +13,9 @@ module.exports = [
     {
         ignores: [
             'out',
-            'dist',
+            // 'dist' alone only matches a root-level dist; nested build output
+            // such as packages/request-editor/dist was being linted.
+            '**/dist/**',
             '**/node_modules/**',
             '**/*.d.ts',
             // git worktree checkouts contain full duplicate copies of the tree
