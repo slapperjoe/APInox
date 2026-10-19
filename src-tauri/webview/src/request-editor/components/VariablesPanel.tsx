@@ -43,7 +43,7 @@ const Header = styled.div`
     align-items: center;
     gap: 8px;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: var(--fw-semibold);
     color: var(--apinox-foreground);
 `;
 
@@ -92,7 +92,7 @@ const VariableInfo = styled.div`
 const VariableName = styled.div`
     font-family: var(--apinox-editor-font-family);
     font-size: 13px;
-    font-weight: 500;
+    font-weight: var(--fw-medium);
     color: var(--apinox-textLink-foreground);
 `;
 

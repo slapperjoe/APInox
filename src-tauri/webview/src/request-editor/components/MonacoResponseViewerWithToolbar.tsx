@@ -41,7 +41,7 @@ const HeadersContainer = styled.div`
 `;
 
 const HeadersTitle = styled.div`
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   font-size: 0.95em;
   color: var(--apinox-foreground);
   margin-bottom: ${SPACING_XS};
@@ -67,7 +67,7 @@ const HeaderCell = styled.div`
 
 const HeaderKey = styled(HeaderCell)`
   color: var(--apinox-foreground);
-  font-weight: 500;
+  font-weight: var(--fw-medium);
 `;
 
 

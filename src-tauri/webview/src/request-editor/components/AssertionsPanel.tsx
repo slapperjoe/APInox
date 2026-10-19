@@ -16,7 +16,7 @@ const Toolbar = styled.div`
 `;
 
 const ToolbarTitle = styled.div`
-    font-weight: 600;
+    font-weight: var(--fw-semibold);
     font-size: 0.95em;
     display: flex;
     align-items: center;
@@ -238,7 +238,6 @@ export const AssertionsPanel: React.FC<AssertionsPanelProps> = ({ assertions, on
 
     const getStatus = (id: string) => {
         if (!lastResult) return null;
-        // console.log('Checking status for', id, 'in', lastResult);
         const res = lastResult.find(r => r.id === id);
         return res ? res.status : null;
     };

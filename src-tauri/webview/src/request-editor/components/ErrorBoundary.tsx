@@ -49,7 +49,7 @@ const ErrorContent = styled.div`
 const ErrorTitle = styled.h2`
   margin: 0;
   font-size: 18px;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   color: var(--vscode-editor-foreground, #d4d4d4);
 `;
 
@@ -71,7 +71,7 @@ const ErrorDetails = styled.details`
 
   summary {
     font-size: 13px;
-    font-weight: 500;
+    font-weight: var(--fw-medium);
     color: var(--vscode-foreground, #cccccc);
     user-select: none;
     outline: none;
@@ -121,7 +121,7 @@ const CopyButton = styled.button`
   border: 1px solid var(--vscode-button-border, #3a3d41);
   border-radius: 4px;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: var(--fw-medium);
   cursor: pointer;
   transition: background 0.2s;
 
@@ -145,7 +145,7 @@ const ResetButton = styled.button`
   border: none;
   border-radius: 4px;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: var(--fw-medium);
   cursor: pointer;
   transition: background 0.2s;
 

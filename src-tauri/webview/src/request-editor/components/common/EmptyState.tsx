@@ -27,7 +27,7 @@ const IconWrapper = styled.div`
 const Title = styled.h2`
     margin: 0 0 var(--space-sm) 0;
     color: var(--apinox-foreground);
-    font-weight: 600;
+    font-weight: var(--fw-semibold);
     font-size: 1.1em;
 `;
 
@@ -56,7 +56,7 @@ const ActionButton = styled.button`
     border: 1px solid transparent;
     padding: 6px 14px;
     border-radius: 2px;
-    font-weight: 500;
+    font-weight: var(--fw-medium);
 
     &:hover:not(:disabled) {
         background-color: var(--apinox-button-hoverBackground);

@@ -72,7 +72,7 @@ const FileInfo = styled.div`
 
 const FileName = styled.div`
   font-size: 13px;
-  font-weight: 500;
+  font-weight: var(--fw-medium);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

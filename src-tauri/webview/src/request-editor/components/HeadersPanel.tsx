@@ -20,7 +20,7 @@ const HeaderTitle = styled.div`
     align-items: center;
     margin-bottom: ${SPACING_XS};
     gap: ${SPACING_SM};
-    font-weight: 600;
+    font-weight: var(--fw-semibold);
     font-size: 0.95em;
     color: var(--apinox-foreground);
 `;

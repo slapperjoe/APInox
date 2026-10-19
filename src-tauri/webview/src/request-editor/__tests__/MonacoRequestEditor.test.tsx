@@ -20,12 +20,6 @@ vi.mock('monaco-editor', () => ({
     KeyCode: { Enter: 13 },
     KeyMod: { CtrlCmd: 2048, KeyC: 33, KeyV: 50, KeyX: 52 }
 }));
-vi.mock('../../utils/bridge', () => ({
-    bridge: {
-        sendMessage: vi.fn()
-    },
-    isVsCode: () => true
-}));
 
 // Mock useWildcardDecorations hook
 vi.mock('../hooks/useWildcardDecorations', () => ({

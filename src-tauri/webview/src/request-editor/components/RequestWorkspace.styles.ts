@@ -47,7 +47,7 @@ export const ToolbarButton = styled.button<{ $variant?: 'primary' | 'danger' | '
   border-radius: 4px;
   cursor: pointer;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: var(--fw-medium);
   transition: all 0.15s;
   white-space: nowrap;
 
@@ -131,7 +131,7 @@ export const VariablesDropdown = styled.div`
 export const VariablesDropdownHeader = styled.div`
   padding: 12px;
   border-bottom: 1px solid var(--apinox-panel-border, #333);
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   font-size: 13px;
   color: var(--apinox-foreground, #cccccc);
 `;
@@ -203,7 +203,7 @@ export const TabButton = styled.button<{ $active?: boolean }>`
   border-bottom: 2px solid ${props => props.$active ? 'var(--apinox-focusBorder, #0078d4)' : 'transparent'};
   cursor: pointer;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: var(--fw-medium);
   white-space: nowrap;
   transition: all 0.15s;
 
@@ -344,7 +344,7 @@ export const StatText = styled.span`
 
 export const ResponseStatus = styled.span<{ $status?: number }>`
   font-size: 12px;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   color: ${props => {
     if (!props.$status) return 'var(--apinox-descriptionForeground, #999)';
     if (props.$status >= 200 && props.$status < 300) return 'var(--apinox-charts-green, #4caf50)';
@@ -413,7 +413,7 @@ export const MenuSection = styled.div`
 
 export const MenuSectionTitle = styled.div`
   font-size: 12px;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   color: var(--apinox-descriptionForeground, #999);
   text-transform: uppercase;
   margin-bottom: 8px;
@@ -533,7 +533,7 @@ export const HeadersKey = styled.div`
   font-family: 'Consolas', monospace;
   font-size: 12px;
   color: var(--apinox-foreground, #cccccc);
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   min-width: 150px;
 `;
 
@@ -559,6 +559,6 @@ export const BreadcrumbBar = styled.div`
 
 export const BreadcrumbActive = styled.span`
   color: var(--apinox-foreground, #cccccc);
-  font-weight: 500;
+  font-weight: var(--fw-medium);
 `;
 

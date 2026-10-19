@@ -32,7 +32,7 @@ const Label = styled.span`
     font-size: 10px;
     color: var(--apinox-descriptionForeground);
     text-transform: uppercase;
-    font-weight: 500;
+    font-weight: var(--fw-medium);
 `;
 
 const MethodSelect = styled.select<{ $method: string }>`
@@ -63,7 +63,7 @@ const MethodSelect = styled.select<{ $method: string }>`
     padding: 4px 10px;
     border-radius: 4px;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: var(--fw-semibold);
     cursor: pointer;
     min-width: 70px;
     text-align: center;

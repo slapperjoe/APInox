@@ -27,7 +27,7 @@ const Title = styled.div`
   display: flex;
   align-items: center;
   gap: ${SPACING_SM};
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   font-size: 0.95em;
 `;
 
@@ -83,7 +83,7 @@ const FileInfo = styled.div`
 `;
 
 const FileName = styled.div`
-  font-weight: 500;
+  font-weight: var(--fw-medium);
   font-size: 0.9em;
   white-space: nowrap;
   overflow: hidden;

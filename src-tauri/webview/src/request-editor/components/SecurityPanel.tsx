@@ -14,7 +14,7 @@ const SectionHeader = styled.div`
     display: flex;
     align-items: center;
     gap: ${SPACING_SM};
-    font-weight: 600;
+    font-weight: var(--fw-semibold);
     font-size: 0.95em;
     color: var(--apinox-foreground);
     margin-bottom: ${SPACING_XS};

@@ -68,7 +68,7 @@ const ButtonGroup = styled.div`
 `;
 
 const ToolbarTitle = styled.div`
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   font-size: 0.95em;
   display: flex;
   align-items: center;

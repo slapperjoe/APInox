@@ -16,7 +16,7 @@ const HeaderRow = styled.div`
 `;
 
 const Title = styled.div`
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   font-size: 13px;
 `;
 
