@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { bridge, isTauri } from '../utils/bridge';
-import { PerformanceSuite, PerformanceRequest, ApiRequest, TestCase } from '@shared/models';
+import { PerformanceSuite, PerformanceRequest, ApiRequest } from '@shared/models';
 import { BackendCommand, FrontendCommand } from '@shared/messages';
 import { getInitialXml } from '@shared/utils/soapUtils';
 import { useUI } from './UIContext';

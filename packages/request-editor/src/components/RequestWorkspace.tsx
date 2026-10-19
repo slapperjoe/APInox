@@ -421,7 +421,7 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
     const raw = response?.rawResponse || '';
     if (!raw) return '';
     return formatContent(raw, viewerLanguage, editorSettings.settings, editorSettings.settings.prettyPrint);
-  }, [response?.rawResponse, response?.contentType, editorSettings.settings]);
+  }, [response?.rawResponse, viewerLanguage, editorSettings.settings]);
 
   return (
     <S.RequestWorkspaceContainer>

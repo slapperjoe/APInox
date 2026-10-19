@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
-import React, { memo, useCallback, useRef, useState, useMemo, createContext } from 'react';
+import React, { memo, useCallback, useState, useMemo, createContext } from 'react';
 
 /**
  * Render-count benchmark for the performance review items.
@@ -95,7 +95,7 @@ describe('Item 2: response format compute counts', () => {
     }
     function MemoParent() {
         const [tick, setTick] = useState(0);
-        const formatted = useMemo(() => { memoCalls++; return fakeFormat(response); }, [response]);
+        const formatted = useMemo(() => { memoCalls++; return fakeFormat(response); }, []); // `response` is a module constant, not a reactive dep
         return <div><span>{tick}</span><div>{formatted}</div><button onClick={() => setTick(t => t + 1)}>go</button></div>;
     }
 
@@ -131,7 +131,7 @@ describe('Item 4: extractor evaluation counts', () => {
     }
     function MemoPanel() {
         const [tick, setTick] = useState(0);
-        useMemo(() => { extractors.forEach((ex) => { memoEvals++; fakeEval(raw, ex.path); }); }, [extractors, raw]);
+        useMemo(() => { extractors.forEach((ex) => { memoEvals++; fakeEval(raw, ex.path); }); }, []); // `extractors`/`raw` are module constants, not reactive deps
         return <div><span>{tick}</span><button onClick={() => setTick(t => t + 1)}>go</button></div>;
     }
 
@@ -187,7 +187,7 @@ describe('Item 5: context consumer render counts', () => {
 
     function MemoProvider() {
         const [settings] = useState({ a: 1 });
-        const [other, setOther] = useState(0);
+        const [, setOther] = useState(0);
         const value = useMemo(() => ({ settings }), [settings]); // stable across unrelated re-renders
         return (
             <MemoCtx.Provider value={value}>

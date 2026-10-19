@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { PerformanceSuiteEditor } from '../PerformanceSuiteEditor';
-import { PerformanceSuite, PerformanceRun, TestCase, TestStep } from '@shared/models';
+import { PerformanceSuite, PerformanceRun, TestCase } from '@shared/models';
 
 const suite: PerformanceSuite = {
     id: 'perf-1',
