@@ -19,7 +19,7 @@
     <h1>Smart Pointers &amp; Interior Mutability</h1>
     <div class="lesson-meta">
       <span>⏱ ~30 min</span>
-      <span>📁 <code>workflow/engine.rs</code>, <code>lib.rs</code></span>
+      <span>📁 <code>performance/commands.rs</code>, <code>lib.rs</code></span>
     </div>
   </div>
 
@@ -148,16 +148,16 @@ tokio::spawn(async move {
     // guard dropped here → lock released automatically
 });
 
-// From workflow/engine.rs — shared results accumulator:
-let results = Arc::new(Mutex::new(Vec::new()));
-let r = Arc::clone(&amp;results);
-tokio::spawn(async move {
-    let mut vec = r.lock().await;
-    vec.push(step_result);
-});
+// From performance/commands.rs — shared state via Arc&lt;Mutex&gt;:
+static PERF_RUN_STORE: Lazy&lt;Arc&lt;Mutex&lt;HashMap&lt;String, PerfRunData&gt;&gt;&gt;&gt; =
+    Lazy::new(|| Arc::new(Mutex::new(HashMap::new())));
+
+// Mutate the shared store from a command:
+let mut store = PERF_RUN_STORE.lock().await;
+store.insert(run_id, run_data);
 
 // Read the accumulated results:
-let final_results = results.lock().await.clone();</code></pre>
+let snapshot = PERF_RUN_STORE.lock().await.clone();</code></pre>
 
     <div class="callout"><strong>Deadlock prevention:</strong> Keep locks as short-lived as possible. Never hold two locks at once. Tokio's async <code>Mutex</code> (<code>tokio::sync::Mutex</code>) doesn't block the thread — it yields to other tasks instead.</div>
 

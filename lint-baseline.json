@@ -1,6 +1,6 @@
 {
   "@typescript-eslint/no-non-null-assertion": 53,
-  "@typescript-eslint/no-unused-vars": 87,
+  "@typescript-eslint/no-unused-vars": 86,
   "no-unused-vars": 5,
   "no-empty": 3,
   "react-hooks/exhaustive-deps": 8,

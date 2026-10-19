@@ -194,6 +194,8 @@ interface WorkspaceContextValue {
     handleDeletePerformanceSuite: (id: string) => void;
     /** Add a request to performance suite (opens picker UI in Tauri mode) */
     handleAddPerformanceRequest: (suiteId: string) => void;
+    /** Add a whole test case as one step of a performance suite */
+    handleAddPerformanceTestCase: (suiteId: string, caseId: string) => void;
     /** Delete a request from performance suite */
     handleDeletePerformanceRequest: (suiteId: string, requestId: string) => void;
     /** Update a performance request */

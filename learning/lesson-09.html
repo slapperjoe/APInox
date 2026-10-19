@@ -38,7 +38,7 @@ pub mod settings_manager; // public — external code can access
 
 pub mod soap;            // exposes the entire soap/ subdirectory
 pub mod testing;
-pub mod workflow;
+pub mod workflow_migration;
 pub mod parsers;</code></pre>
 
     <p>Each <code>mod foo;</code> declaration tells the compiler to look for either:</p>
@@ -177,8 +177,8 @@ use crate::settings_manager;    // from the crate root</code></pre>
 ├── pub mod testing          → src/testing/mod.rs
 │   ├── pub mod test_runner  → src/testing/test_runner.rs
 │   └── pub mod assertion_runner → src/testing/assertion_runner.rs
-└── pub mod workflow         → src/workflow/mod.rs
-    └── pub mod engine       → src/workflow/engine.rs</code></pre>
+└── pub mod performance      → src/performance/mod.rs
+    └── pub mod runner       → src/performance/runner.rs</code></pre>
 
     <p>Accessing items across modules:</p>
     <pre class="language-rust"><code>// In soap/commands.rs, access the testing module:

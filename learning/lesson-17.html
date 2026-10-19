@@ -94,7 +94,6 @@ pub struct ProxyAppState {
     pub mock: mock::state::SharedMockState,
     pub replacer: replacer::service::SharedReplacerService,
     pub breakpoint: breakpoint::service::SharedBreakpointService,
-    pub filewatcher: filewatcher::service::SharedFileWatcherService,
     pub storage: Arc&lt;storage::rules::RulesStorage&gt;,
     pub cert_manager: Arc&lt;certificates::manager::CertManager&gt;,
 }</code></pre>
@@ -188,7 +187,7 @@ pub fn run() {
 
     <pre class="language-json"><code>{
   "productName": "APInox",
-  "version": "0.19.146",
+  "version": "0.62.862",
   "identifier": "app.apinox.dev1",
   "build": {
     "frontendDist": "webview/dist",

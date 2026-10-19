@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
 
 export interface EditorSettings {
     /** Format elements with simple text content inline (e.g., <Name>John</Name>) */
@@ -59,49 +59,49 @@ export function EditorSettingsProvider({
         ...initialSettings
     });
 
-    const updateSettings = (updates: Partial<EditorSettings>) => {
+    const updateSettings = useCallback((updates: Partial<EditorSettings>) => {
         setSettings(prev => {
             const newSettings = { ...prev, ...updates };
             onSettingsChange?.(newSettings);
             return newSettings;
         });
-    };
+    }, [onSettingsChange]);
 
-    const toggleInlineValues = () => {
-        updateSettings({ inlineValues: !settings.inlineValues });
-    };
+    // Toggle callbacks are memoized so the context value below stays stable
+    // across renders; consumers only re-render when `settings` actually changes.
+    const toggleInlineValues = useCallback(() => updateSettings({ inlineValues: !settings.inlineValues }), [updateSettings, settings]);
+    const toggleAlignAttributes = useCallback(() => updateSettings({ alignAttributes: !settings.alignAttributes }), [updateSettings, settings]);
+    const toggleHideCausality = useCallback(() => updateSettings({ hideCausality: !settings.hideCausality }), [updateSettings, settings]);
+    const toggleLineNumbers = useCallback(() => updateSettings({ showLineNumbers: !settings.showLineNumbers }), [updateSettings, settings]);
+    const toggleMinimap = useCallback(() => updateSettings({ showMinimap: !settings.showMinimap }), [updateSettings, settings]);
+    const togglePrettyPrint = useCallback(() => updateSettings({ prettyPrint: !settings.prettyPrint }), [updateSettings, settings]);
 
-    const toggleAlignAttributes = () => {
-        updateSettings({ alignAttributes: !settings.alignAttributes });
-    };
-
-    const toggleHideCausality = () => {
-        updateSettings({ hideCausality: !settings.hideCausality });
-    };
-
-    const toggleLineNumbers = () => {
-        updateSettings({ showLineNumbers: !settings.showLineNumbers });
-    };
-
-    const toggleMinimap = () => {
-        updateSettings({ showMinimap: !settings.showMinimap });
-    };
-
-    const togglePrettyPrint = () => {
-        updateSettings({ prettyPrint: !settings.prettyPrint });
-    };
+    // Perf: memoize the context value. Previously a fresh object literal was
+    // created on every render, so every consumer (both editors, the panels,
+    // the status bar) re-rendered whenever any setting changed. With a stable
+    // value, consumers only re-render when `settings` actually changes.
+    const contextValue = useMemo<EditorSettingsContextValue>(() => ({
+        settings,
+        updateSettings,
+        toggleInlineValues,
+        toggleAlignAttributes,
+        toggleHideCausality,
+        toggleLineNumbers,
+        toggleMinimap,
+        togglePrettyPrint
+    }), [
+        settings,
+        updateSettings,
+        toggleInlineValues,
+        toggleAlignAttributes,
+        toggleHideCausality,
+        toggleLineNumbers,
+        toggleMinimap,
+        togglePrettyPrint
+    ]);
 
     return (
-        <EditorSettingsContext.Provider value={{
-            settings,
-            updateSettings,
-            toggleInlineValues,
-            toggleAlignAttributes,
-            toggleHideCausality,
-            toggleLineNumbers,
-            toggleMinimap,
-            togglePrettyPrint
-        }}>
+        <EditorSettingsContext.Provider value={contextValue}>
             {children}
         </EditorSettingsContext.Provider>
     );

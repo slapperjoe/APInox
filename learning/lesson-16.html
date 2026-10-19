@@ -99,7 +99,8 @@ cargo test -- --test-threads=1      # run serially (no parallelism)</code></pre>
   <section>
     <h2>2. Integration Tests and Doc Tests</h2>
     <pre class="language-rust"><code">// Integration tests — in tests/ at crate root, test public API:
-// tests/soap_integration.rs
+// tests/soap_integration.rs (general Rust convention; APInox itself uses
+// inline #[cfg(test)] modules, e.g. src/testing/test_runner.rs)
 use my_crate::SoapClient;
 
 #[test]

@@ -1,11 +1,11 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { Play, X, Variable, Settings, Braces, Minus } from 'lucide-react';
 import * as S from './RequestWorkspace.styles';
 import { MonacoResponseViewer } from './MonacoResponseViewer';
 import { MonacoSingleLineInput } from './MonacoSingleLineInput';
 import type { MonacoSingleLineInputHandle } from './MonacoSingleLineInput';
 import type { MonacoRequestEditorHandle } from './MonacoRequestEditor';
-import type { FormField, BinaryFile } from '../types';
+import type { FormField, BinaryFile, EditorVariable } from '../types';
 import { XPathGenerator } from '../utils/xpathGenerator';
 import { useEditorSettings, EditorSettingsProvider } from '../contexts/EditorSettingsContext';
 import { formatXml } from '../utils/xmlFormatter';
@@ -79,6 +79,8 @@ export interface RequestWorkspaceProps {
   readOnly?: boolean;
   defaultEndpoint?: string;
   availableVariables?: Variable[];
+  /** Environment/global variables, forwarded to the panels/inputs for {{...}} tooltips. */
+  availableEnvVariables?: EditorVariable[];
   /** Whether the Content-Type header row is locked (default `true`). */
   contentTypeLocked?: boolean;
 
@@ -140,6 +142,7 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
   readOnly = false,
   defaultEndpoint,
   availableVariables = [],
+  availableEnvVariables = [],
   contentTypeLocked = true,
   showBreadcrumb = false,
   breadcrumbPath = [],
@@ -407,6 +410,19 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editorSettings.settings.alignAttributes, editorSettings.settings.inlineValues, editorSettings.settings.hideCausality]);
 
+  // Perf: memoize the formatted response so it is not re-parsed on every parent
+  // re-render (e.g. a keystroke in the request editor propagates here through
+  // onUpdateRequest). Previously the inline IIFE ran formatContent over the
+  // whole response — 100 KB+ responses are routine — on every keystroke. The
+  // response viewer is React.memo, so a stable memoized string lets it
+  // short-circuit entirely when the response itself has not changed.
+  const viewerLanguage = response?.contentType?.includes('json') ? 'json' : 'xml';
+  const formattedResponse = useMemo(() => {
+    const raw = response?.rawResponse || '';
+    if (!raw) return '';
+    return formatContent(raw, viewerLanguage, editorSettings.settings, editorSettings.settings.prettyPrint);
+  }, [response?.rawResponse, viewerLanguage, editorSettings.settings]);
+
   return (
     <S.RequestWorkspaceContainer>
       {/* Breadcrumb */}
@@ -464,6 +480,8 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
             onChange={(value) => onUpdateRequest({ ...request, endpoint: value })}
             placeholder="Enter endpoint URL..."
             readOnly={readOnly}
+            availableVariables={availableVariables}
+            availableEnvVariables={availableEnvVariables}
           />
         </S.UrlInputWrapper>
 
@@ -598,6 +616,7 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
                 readOnly={readOnly}
                 contentTypeLocked={contentTypeLocked}
                 availableVariables={availableVariables}
+                availableEnvVariables={availableEnvVariables}
                 requestEditorRef={requestEditorRef}
                 editorForceUpdateKey={editorForceUpdateKey}
                 onLog={onLog}
@@ -643,21 +662,8 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
                 {/* Response Editor - Full height */}
                 <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
                   <MonacoResponseViewer
-                    value={(() => {
-                      const raw = response.rawResponse || '';
-                      if (!raw) return '';
-                      
-                      const viewerLanguage = response.contentType?.includes('json') ? 'json' : 'xml';
-                      
-                      // Use formatContent to respect prettyPrint setting
-                      return formatContent(
-                        raw,
-                        viewerLanguage,
-                        editorSettings.settings,
-                        editorSettings.settings.prettyPrint
-                      );
-                    })()}
-                    language={response.contentType?.includes('json') ? 'json' : 'xml'}
+                    value={formattedResponse}
+                    language={viewerLanguage}
                     onSelectionChange={setSelection}
                     fontSize={editorSettings.settings.fontSize}
                     fontFamily={editorSettings.settings.fontFamily}

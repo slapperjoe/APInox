@@ -49,6 +49,22 @@ fn default_concurrency() -> u32 {
 pub struct PerformanceRequest {
     pub id: String,
     pub name: String,
+    /// Step discriminator: "request" (default) or "testCase". Suites saved
+    /// before step types existed deserialize to "request".
+    #[serde(rename = "type", default = "default_step_type")]
+    pub step_type: String,
+    /// For 'testCase' steps: id of the referenced global test case.
+    #[serde(default)]
+    pub test_case_id: Option<String>,
+    /// For 'testCase' steps: variable layer (case vars folded under the step's
+    /// overrides by the webview at embed time).
+    #[serde(default)]
+    pub test_case_variables: Option<HashMap<String, String>>,
+    /// For 'testCase' steps: self-contained steps embedded by the webview into
+    /// the run payload (the same flat TestStep JSON the test runner receives).
+    /// Runtime-only — never persisted.
+    #[serde(default, deserialize_with = "null_as_empty_vec")]
+    pub test_case_steps: Vec<serde_json::Value>,
     pub endpoint: String,
     #[serde(default = "default_method")]
     pub method: String,
@@ -68,6 +84,10 @@ fn default_method() -> String {
     "POST".to_string()
 }
 
+fn default_step_type() -> String {
+    "request".to_string()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RequestExtractor {
@@ -82,6 +102,11 @@ pub struct RequestExtractor {
 pub struct PerformanceResult {
     pub request_id: String,
     pub request_name: String,
+    /// Set when this row came from an inner step of a 'testCase' perf step.
+    #[serde(default)]
+    pub parent_step_id: Option<String>,
+    #[serde(default)]
+    pub parent_step_name: Option<String>,
     pub interface_name: Option<String>,
     pub operation_name: Option<String>,
     pub iteration: u32,

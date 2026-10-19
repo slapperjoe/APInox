@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useMemo, memo } from "react";
 import styled from "styled-components";
-import { EmptyState } from "./common/EmptyState";
-import { PanelContainer, PanelIconButton } from "./common/PanelShell";
+import { EmptyState } from './common/EmptyState';
+import { PanelContainer, PanelIconButton } from './common/PanelShell';
 import { Trash2, Pencil, Variable, Plus } from "lucide-react";
 import { CustomXPathEvaluator } from "../utils/xpathEvaluator";
 import { RequestExtractor } from "../types";
@@ -110,7 +110,7 @@ interface ExtractorsPanelProps {
   rawResponse?: string;
 }
 
-export const ExtractorsPanel: React.FC<ExtractorsPanelProps> = ({
+const ExtractorsPanelBase: React.FC<ExtractorsPanelProps> = ({
   extractors,
   onChange,
   onEdit,
@@ -135,6 +135,32 @@ export const ExtractorsPanel: React.FC<ExtractorsPanelProps> = ({
 
   debugLog("[ExtractorsPanel] Rendering. Extractors:", extractors.length);
 
+  // Perf (review item 4): evaluate each extractor once per (extractors,
+  // rawResponse) change instead of on every render. Previously CustomXPathEvaluator
+  // ran over the whole response for every extractor on every parent re-render
+  // (O(extractors x response) per keystroke elsewhere). The memoized previews
+  // recompute only when the extractors or the response actually change.
+  const previews = useMemo(() => {
+    return extractors.map((ex) => {
+      if (rawResponse && ex.source === "body") {
+        try {
+          if (ex.type === "Regex") {
+            // Regex extraction is handled by the backend; show the pattern note.
+            return "(Regex extraction - run step to see result)";
+          }
+          const pathValue = ex.path;
+          if (pathValue) {
+            return CustomXPathEvaluator.evaluate(rawResponse, pathValue);
+          }
+        } catch (e) {
+          debugError("[ExtractorsPanel] Evaluation Error", e);
+          return "Error evaluating expression";
+        }
+      }
+      return null;
+    });
+  }, [extractors, rawResponse]);
+
   return (
     <PanelContainer>
       <Toolbar>
@@ -151,31 +177,7 @@ export const ExtractorsPanel: React.FC<ExtractorsPanelProps> = ({
           <EmptyState title="No extractors defined" description="Click + to add one, or select text in the Response panel." />
         ) : (
           extractors.map((ex, index) => {
-            let currentValue: string | null = null;
-            if (rawResponse && ex.source === "body") {
-              try {
-                if (ex.type === "Regex") {
-                  // Use regex extraction (will be handled by backend)
-                  // For now, show pattern
-                  currentValue = `(Regex extraction - run step to see result)`;
-                } else {
-                  // Default to XPath for backward compatibility
-                  const pathValue = ex.path;
-                  if (pathValue) {
-                    currentValue = CustomXPathEvaluator.evaluate(
-                      rawResponse,
-                      pathValue,
-                    );
-                  }
-                }
-                debugLog(
-                  `[ExtractorsPanel] Type: ${ex.type || "XPath"}, Expr: ${ex.path}, Val: ${currentValue}`,
-                );
-              } catch (e) {
-                debugError("[ExtractorsPanel] Evaluation Error", e);
-                currentValue = "Error evaluating expression";
-              }
-            }
+            const currentValue = previews[index];
 
             return (
               <ExtractorItem key={ex.id || index}>
@@ -237,3 +239,7 @@ export const ExtractorsPanel: React.FC<ExtractorsPanelProps> = ({
     </PanelContainer>
   );
 };
+
+// Perf (review item 3/4): memoize the panel so parent re-renders that do not
+// change its props skip the subtree (and the memoized previews above).
+export const ExtractorsPanel = memo(ExtractorsPanelBase);

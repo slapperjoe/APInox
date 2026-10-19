@@ -123,6 +123,8 @@ Every request automatically tracks response time. View historical data in the Pe
 #### Load Testing
 Test your service under load:
 
+- **Steps**: a suite's sequence is made of request steps and whole test-case steps. `Add Test Case` adds one test case as a single step — it runs the referenced case as one unit of the sequence, and every call inside it is measured separately, so the percentiles and SLA stats reflect the real calls rather than one opaque number for the case. The step is a live reference: it runs the case as it currently is, and case-level variables are layered over the run's variables.
+
 1. **Open Performance Tab**: Click the graph icon in the sidebar
 2. **Configure Test**:
    - **Concurrent Users**: Number of simultaneous requests (1-100)

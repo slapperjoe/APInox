@@ -42,9 +42,9 @@ npm run tauri:build
 npx tauri build
 
 # Output (from tauri.conf.json bundle.targets):
-# macOS:   src-tauri/target/release/bundle/dmg/APInox_0.19.146_x64.dmg
-# Windows: src-tauri/target/release/bundle/nsis/APInox_0.19.146_x64-setup.exe
-# Linux:   src-tauri/target/release/bundle/deb/apinox_0.19.146_amd64.deb</code></pre>
+# macOS:   src-tauri/target/release/bundle/dmg/APInox_0.62.862_x64.dmg
+# Windows: src-tauri/target/release/bundle/nsis/APInox_0.62.862_x64-setup.exe
+# Linux:   src-tauri/target/release/bundle/deb/apinox_0.62.862_amd64.deb</code></pre>
 
     <p>APInox also has a <code>beforeBuildCommand</code> in <code>tauri.conf.json</code> that runs the webview build automatically before Tauri bundles:</p>
     <pre class="language-json"><code>{
@@ -65,7 +65,7 @@ npx tauri build
 {
   "bundle": {
     "active": true,
-    "targets": ["nsis", "dmg"],    // Windows NSIS + macOS DMG
+    "targets": ["nsis", "dmg", "appimage", "deb", "rpm"],   // Win + macOS + Linux
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -73,8 +73,12 @@ npx tauri build
       "icons/icon.icns",           // macOS app icon
       "icons/icon.ico"             // Windows icon
     ],
-    "resources": {
-      "../CHANGELOG.md": "CHANGELOG.md"   // bundle changelog with app
+    "linux": {
+      "appimage": {
+        "files": {
+          "apinox.png": "icons/icon.png"   // bundle the icon into the AppImage
+        }
+      }
     },
     "windows": {
       "nsis": {

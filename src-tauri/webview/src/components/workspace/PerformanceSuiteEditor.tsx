@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { Play, Plus, Trash2, Settings, Clock, Repeat, Flame, Zap, GripVertical, Square, Calendar, ToggleLeft, ToggleRight, Import, Download, ChevronDown, ChevronRight, CheckCircle, XCircle, AlertTriangle, Users, Server, FileJson, BarChart3 } from 'lucide-react';
+import { Play, Plus, Trash2, Settings, Clock, Repeat, Flame, Zap, GripVertical, Square, Calendar, ToggleLeft, ToggleRight, Import, Download, ChevronDown, ChevronRight, CheckCircle, XCircle, AlertTriangle, Users, Server, FileJson, BarChart3, FlaskConical } from 'lucide-react';
 import { Spinner } from '../common/Spinner';
 import { EmptyState } from '../common/EmptyState';
-import { PerformanceSuite, PerformanceRun, PerformanceSchedule, PerformanceRequest, CoordinatorStatus } from '@shared/models';
+import { PerformanceSuite, PerformanceRun, PerformanceSchedule, PerformanceRequest, TestCase, CoordinatorStatus } from '@shared/models';
 import { WorkerStatusPanel } from './WorkerStatusPanel';
 
 import {
@@ -259,6 +259,10 @@ interface PerformanceSuiteEditorProps {
     onDeleteRequest?: (suiteId: string, requestId: string) => void;
     onUpdateRequest?: (suiteId: string, requestId: string, updates: Partial<PerformanceRequest>) => void;
     onSelectRequest?: (request: PerformanceRequest) => void;
+    /** Flat list of every global test case — the source for 'testCase' steps. */
+    testCases?: TestCase[];
+    /** Add a whole test case as one step of the sequence. */
+    onAddTestCase?: (suiteId: string, caseId: string) => void;
     onImportFromWorkspace?: (suiteId: string) => void;
     progress?: { iteration: number; total: number } | null;
     history?: PerformanceRun[];
@@ -282,6 +286,8 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
     onDeleteRequest,
     onUpdateRequest,
     onSelectRequest,
+    testCases = [],
+    onAddTestCase,
     onImportFromWorkspace,
     schedules = [],
     onAddSchedule,
@@ -295,6 +301,8 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
 }) => {
     const [draggedId, setDraggedId] = useState<string | null>(null);
     const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+    // Inline picker for adding a whole test case as one step.
+    const [showCasePicker, setShowCasePicker] = useState(false);
     const [newCron, setNewCron] = useState('0 3 * * *'); // Default: daily at 3am
     const [showScheduleInput, setShowScheduleInput] = useState(false);
     const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
@@ -593,18 +601,62 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                     </SectionContent>
                 </Section>
 
-                {/* Test Requests Section */}
+                {/* Steps Section — request steps and whole test-case steps */}
                 <Section $collapsed={isCollapsed('requests')}>
                     <SectionHeader $clickable onClick={() => toggleSection('requests')}>
                         {isCollapsed('requests') ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
-                        <SectionTitle><Play size={16} /> Test Requests ({suite.requests.length})</SectionTitle>
-                        {onAddRequest && !isCollapsed('requests') && (
-                            <ToolbarButton onClick={(e) => { e.stopPropagation(); onAddRequest(suite.id); }}>
-                                <Plus size={14} /> Add Request
-                            </ToolbarButton>
+                        <SectionTitle><Play size={16} /> Steps ({suite.requests.length})</SectionTitle>
+                        {!isCollapsed('requests') && (
+                            <>
+                                {onAddRequest && (
+                                    <ToolbarButton onClick={(e) => { e.stopPropagation(); onAddRequest(suite.id); }}>
+                                        <Plus size={14} /> Add Request
+                                    </ToolbarButton>
+                                )}
+                                {onAddTestCase && (
+                                    <ToolbarButton
+                                        onClick={(e) => { e.stopPropagation(); setShowCasePicker(v => !v); }}
+                                        title="Add a whole test case as one step"
+                                    >
+                                        <FlaskConical size={14} /> Add Test Case
+                                    </ToolbarButton>
+                                )}
+                            </>
                         )}
                     </SectionHeader>
                     <SectionContent $collapsed={isCollapsed('requests')}>
+                        {showCasePicker && onAddTestCase && (
+                            <div style={{ marginBottom: SPACING_MD }}>
+                                <div style={{ fontSize: '0.85em', opacity: 0.7, marginBottom: 6 }}>
+                                    Pick a test case — the step runs it as one unit of the sequence, and each call inside it is measured separately.
+                                </div>
+                                {testCases.length === 0 ? (
+                                    <div style={{ fontSize: '0.85em', opacity: 0.6, fontStyle: 'italic' }}>
+                                        No test cases yet — create one in the TESTS view first.
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                        {testCases.map(tc => (
+                                            <div
+                                                key={tc.id}
+                                                role="button"
+                                                style={{
+                                                    display: 'flex', alignItems: 'center', gap: 8,
+                                                    padding: '6px 10px', borderRadius: 4, cursor: 'pointer',
+                                                    background: 'var(--apinox-list-hoverBackground)',
+                                                    border: '1px solid var(--apinox-panel-border)',
+                                                }}
+                                                onClick={() => onAddTestCase(suite.id, tc.id)}
+                                            >
+                                                <FlaskConical size={14} style={{ opacity: 0.7, flexShrink: 0 }} />
+                                                <span style={{ flex: 1 }}>{tc.name}</span>
+                                                <span style={{ fontSize: '0.8em', opacity: 0.6 }}>{tc.steps?.length || 0} steps</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         <RequestList>
                             {sortedRequests.map((req, index) => (
                                 <RequestItem
@@ -627,7 +679,11 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                                     <div style={{ fontWeight: 'var(--fw-bold)', width: 25, opacity: 0.6 }}>{index + 1}.</div>
                                     <div style={{ flex: 1 }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                            <MethodBadge>{req.method}</MethodBadge>
+                                            {req.type === 'testCase' ? (
+                                                <FlaskConical size={14} style={{ color: 'var(--apinox-testing-iconQueued)', flexShrink: 0 }} />
+                                            ) : (
+                                                <MethodBadge>{req.method}</MethodBadge>
+                                            )}
                                             {renameId === req.id ? (
                                                 <Input
                                                     value={renameValue}
@@ -646,9 +702,22 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                                                 <span style={{ fontWeight: 'var(--fw-medium)' }}>{req.name}</span>
                                             )}
                                         </div>
-                                        <div style={{ fontSize: '0.85em', opacity: 0.7, marginTop: 4 }}>
-                                            {req.endpoint}
-                                        </div>
+                                        {req.type === 'testCase' ? (
+                                            // Live reference: the case name and its current step
+                                            // count, resolved from the global store.
+                                            <div style={{ fontSize: '0.85em', opacity: 0.7, marginTop: 4 }}>
+                                                {(() => {
+                                                    const tc = testCases.find(c => c.id === req.testCaseId);
+                                                    return tc
+                                                        ? `${tc.steps?.length || 0} steps • runs "${tc.name}"`
+                                                        : 'Test case not found — the reference is broken';
+                                                })()}
+                                            </div>
+                                        ) : (
+                                            <div style={{ fontSize: '0.85em', opacity: 0.7, marginTop: 4 }}>
+                                                {req.endpoint}
+                                            </div>
+                                        )}
                                         {(req.interfaceName || req.operationName) && (
                                             <div style={{ fontSize: '0.8em', opacity: 0.6, marginTop: 2, fontStyle: 'italic' }}>
                                                 {req.interfaceName} {req.operationName && ` • ${req.operationName}`}
@@ -699,7 +768,7 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                             )}
                             {sortedRequests.length === 0 && (
                                 <div style={{ padding: 20, textAlign: 'center', opacity: 0.6, fontStyle: 'italic' }}>
-                                    No requests in suite. Add a request to begin.
+                                    No steps in this suite. Add a request or a test case to begin.
                                 </div>
                             )}
                         </RequestList>
@@ -1012,7 +1081,11 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                                                             ) : (
                                                                 <XCircle size={12} style={{ color: 'var(--apinox-testing-iconFailed)' }} />
                                                             )}
-                                                            <span style={{ flex: 1 }}>{result.requestName}</span>
+                                                            <span style={{ flex: 1 }}>
+                                                                {result.parentStepName
+                                                                    ? `${result.parentStepName} › ${result.requestName}`
+                                                                    : result.requestName}
+                                                            </span>
                                                             <span style={{ opacity: 0.7 }}>#{result.iteration + 1}</span>
                                                             <span style={{ fontWeight: 'var(--fw-medium)' }}>{result.duration.toFixed(0)}ms</span>
                                                             {result.slaBreached && (

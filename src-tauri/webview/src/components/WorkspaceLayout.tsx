@@ -110,6 +110,7 @@ export const WorkspaceLayout: React.FC = () => {
     
     // Performance actions
     const onAddPerformanceRequest = workspace.handleAddPerformanceRequest;
+    const onAddPerformanceTestCase = workspace.handleAddPerformanceTestCase;
     const onDeletePerformanceRequest = workspace.handleDeletePerformanceRequest;
     const onUpdatePerformanceRequest = workspace.handleUpdatePerformanceRequest;
     const onSelectPerformanceRequest = workspace.handleSelectPerformanceRequest;
@@ -210,6 +211,21 @@ export const WorkspaceLayout: React.FC = () => {
             return [];
         }
     }, [activeView, selectedTestCase, selectedStep, testExecution]);
+
+    // Environment/global variables for {{...}} tooltips in the single-line inputs.
+    // Deps are plain bindings rather than `config?.x` expressions — a memo cannot
+    // depend on a computed expression and still be preserved.
+    const envConfig = config?.environments;
+    const activeEnvName = config?.activeEnvironment;
+    const availableEnvVariables = React.useMemo(() => {
+        const env = envConfig && activeEnvName ? envConfig[activeEnvName] : undefined;
+        if (!env) return [];
+        return Object.entries(env).map(([name, value]) => ({
+            name,
+            value: value ?? null,
+            source: 'environment',
+        }));
+    }, [envConfig, activeEnvName]);
 
 
 
@@ -386,6 +402,8 @@ export const WorkspaceLayout: React.FC = () => {
                     onDeleteRequest={onDeletePerformanceRequest}
                     onUpdateRequest={onUpdatePerformanceRequest}
                     onSelectRequest={onSelectPerformanceRequest}
+                    testCases={globalTestCases}
+                    onAddTestCase={onAddPerformanceTestCase}
                     onImportFromWorkspace={onImportFromWorkspace}
                     progress={performanceProgress || null}
                     history={suiteHistory}
@@ -891,6 +909,7 @@ export const WorkspaceLayout: React.FC = () => {
                     value: v.value,
                     source: v.source
                 }) as PackageVariable)}
+                availableEnvVariables={availableEnvVariables as any}
                 showBreadcrumb={false}
                 breadcrumbPath={[]}
                 onLog={(message, level = 'info') => {

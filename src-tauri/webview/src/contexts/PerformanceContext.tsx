@@ -9,6 +9,8 @@ import { useNavigation } from './NavigationContext';
 import { SidebarView } from '@shared/models';
 import { PERF_REQUEST_ID_PREFIX, PERF_SUITE_ID_PREFIX } from '../constants';
 import { debugLog } from '../utils/logger';
+import { embedPerfRun } from '../utils/runEmbedding';
+import { useTestSuitesOptional } from './TestSuiteContext';
 
 interface CoordinatorStatus {
     running: boolean;
@@ -32,6 +34,8 @@ interface PerformanceContextType {
     handleSelectPerformanceSuite: (id: string) => void;
     handleUpdatePerformanceSuite: (suite: PerformanceSuite) => void;
     handleAddPerformanceRequest: (suiteId: string) => void;
+    /** Add a whole test case as one step of the suite's sequence. */
+    handleAddPerformanceTestCase: (suiteId: string, caseId: string) => void;
     handleDeletePerformanceRequest: (suiteId: string, requestId: string) => void;
     handleUpdatePerformanceRequest: (suiteId: string, requestId: string, updates: Partial<PerformanceRequest>) => void;
     handleSelectPerformanceRequest: (request: PerformanceRequest) => void;
@@ -56,6 +60,10 @@ export const usePerformance = () => {
 };
 
 export const PerformanceProvider = ({ children }: { children: ReactNode }) => {
+    // Global test-case store — a perf 'testCase' step is a live reference into
+    // it, resolved at run time when the payload is embedded.
+    const { testSuites: globalTestSuites } = useTestSuitesOptional();
+
     // State
     const [activeRunId, setActiveRunId] = useState<string | undefined>(undefined);
     const [performanceProgress, setPerformanceProgress] = useState<{ iteration: number; total: number } | null>(null);
@@ -132,10 +140,15 @@ export const PerformanceProvider = ({ children }: { children: ReactNode }) => {
             (async () => {
                 try {
                     // Pass the full suite as fallback in case disk config is stale or not yet saved.
-                    // Normalize requests to [] to guard against null values from stale config state.
+                    // Normalize requests to [] to guard against null values from stale config state,
+                    // then expand every 'testCase' step into its referenced case's steps so the
+                    // backend runs a self-contained payload.
                     const rawSuite = (config?.performanceSuites || []).find((s: PerformanceSuite) => s.id === id);
                     const currentSuite = rawSuite
-                        ? { ...rawSuite, requests: Array.isArray(rawSuite.requests) ? rawSuite.requests : [] }
+                        ? embedPerfRun(
+                            { ...rawSuite, requests: Array.isArray(rawSuite.requests) ? rawSuite.requests : [] },
+                            globalTestSuites.flatMap(s => s.testCases || [])
+                        )
                         : null;
 
                     const start = await bridge.sendMessageAsync<{ runId: string }>({
@@ -199,7 +212,7 @@ export const PerformanceProvider = ({ children }: { children: ReactNode }) => {
         }
 
         bridge.sendMessage({ command: FrontendCommand.RunPerformanceSuite, suiteId: id });
-    }, [setConfig, config]);
+    }, [setConfig, config, globalTestSuites]);
 
     const handleStopPerformanceRun = useCallback(() => {
         bridge.sendMessage({ command: 'abortPerformanceSuite' });
@@ -243,6 +256,50 @@ export const PerformanceProvider = ({ children }: { children: ReactNode }) => {
         );
         bridge.sendMessage({ command: 'pickOperationForPerformance', suiteId });
     }, []);
+
+    // Add a whole test case as one step of the suite's sequence. The step is a
+    // live reference: it stores only the case id, and the run payload embeds
+    // the case's current steps (see embedPerfRun).
+    const handleAddPerformanceTestCase = useCallback((suiteId: string, caseId: string) => {
+        const allCases = globalTestSuites.flatMap(s => s.testCases || []);
+        const testCase = allCases.find(c => c.id === caseId);
+        if (!testCase) return;
+
+        const suite = config?.performanceSuites?.find(s => s.id === suiteId);
+        if (!suite) return;
+
+        const step: PerformanceRequest = {
+            id: `${PERF_REQUEST_ID_PREFIX}${Date.now()}`,
+            name: testCase.name,
+            type: 'testCase',
+            testCaseId: testCase.id,
+            endpoint: '',
+            requestBody: '',
+            headers: {},
+            extractors: [],
+            order: (suite.requests || []).length,
+        };
+
+        setExpandedPerformanceSuiteIds(prev =>
+            prev.includes(suiteId) ? prev : [...prev, suiteId]
+        );
+
+        // Optimistic UI state, then the persisted round-trip (same pattern as
+        // the delete handler).
+        setConfig(prev => {
+            if (!prev || !prev.performanceSuites) return prev;
+            return {
+                ...prev,
+                performanceSuites: prev.performanceSuites.map(s =>
+                    s.id === suiteId
+                        ? { ...s, requests: [...(s.requests || []), step] }
+                        : s
+                )
+            };
+        });
+
+        bridge.sendMessage({ command: FrontendCommand.AddPerformanceRequest, suiteId, request: step });
+    }, [config, globalTestSuites, setConfig]);
 
     const handleDeletePerformanceRequest = useCallback((suiteId: string, requestId: string) => {
         // Optimistically update UI state
@@ -478,6 +535,7 @@ export const PerformanceProvider = ({ children }: { children: ReactNode }) => {
             handleSelectPerformanceSuite,
             handleUpdatePerformanceSuite,
             handleAddPerformanceRequest,
+            handleAddPerformanceTestCase,
             handleDeletePerformanceRequest,
             handleUpdatePerformanceRequest,
             handleSelectPerformanceRequest,

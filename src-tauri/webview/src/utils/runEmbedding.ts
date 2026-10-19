@@ -1,4 +1,4 @@
-import { TestCase, TestStep } from '@shared/models';
+import { PerformanceSuite, TestCase, TestStep } from '@shared/models';
 
 /** Hard cap on how deep testCase references are expanded.
  * Beyond this (or on a visited-set hit) the reference is left unembedded and
@@ -60,4 +60,35 @@ export function embedTestRun(
         };
         return { ...tc, steps: embedSteps(tc.steps, ctx) };
     });
+}
+
+/** Build the run payload for a performance suite: every `testCase` step is
+ * expanded into its referenced case's steps exactly like a test run, so the
+ * backend executes a self-contained copy. Plain request steps pass through
+ * untouched, and the same depth cap / cycle cut applies. */
+export function embedPerfRun(
+    suite: PerformanceSuite,
+    allCases: TestCase[],
+): PerformanceSuite {
+    const casesById = new Map(allCases.map(c => [c.id, c]));
+    return {
+        ...suite,
+        requests: (suite.requests || []).map(step => {
+            if (step.type !== 'testCase' || !step.testCaseId) return step;
+            const tc = casesById.get(step.testCaseId);
+            if (!tc) return step;
+            const ctx: EmbedCtx = {
+                cases: casesById,
+                depth: 0,
+                path: new Set([tc.id]),
+            };
+            return {
+                ...step,
+                testCaseSteps: embedSteps(tc.steps, ctx),
+                // One already-ordered map: the case's variables under the
+                // step's overrides — the same contract the test runner uses.
+                testCaseVariables: { ...(tc.variables || {}), ...(step.testCaseVariables || {}) },
+            };
+        }),
+    };
 }

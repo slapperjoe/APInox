@@ -19,7 +19,7 @@
     <h1>Serde &amp; Serialization</h1>
     <div class="lesson-meta">
       <span>⏱ ~25 min</span>
-      <span>📁 <code>parsers/wsdl/types.rs</code>, <code>testing/assertion_runner.rs</code>, <code>workflow/engine.rs</code></span>
+      <span>📁 <code>packages/wsdl-parser/src/types.rs</code>, <code>testing/assertion_runner.rs</code>, <code>testing/test_runner.rs</code></span>
     </div>
   </div>
 
@@ -90,7 +90,7 @@ var node = JsonSerializer.Deserialize&lt;SchemaNode&gt;(json);
   <!-- ================================================ -->
   <section>
     <h2>2. Essential Serde Attributes — Real Examples from the Codebase</h2>
-    <p>From <code>parsers/wsdl/types.rs</code>:</p>
+    <p>From <code>packages/wsdl-parser/src/types.rs</code>:</p>
 
     <pre class="language-rust"><code>#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SchemaNode {
@@ -266,12 +266,12 @@ struct User {
 // NOT:
 // { "name": "Alice", "meta": { "created_at": "..." } }
 
-// Also seen in workflow/engine.rs for WorkflowStep:
+// Conceptual example — serde(flatten) merges a nested struct's fields into the parent:
 #[derive(Serialize, Deserialize)]
-pub struct WorkflowStep {
+pub struct Step {
     pub name: String,
     #[serde(flatten)]
-    pub node: WorkflowNode,   // WorkflowNode's fields merged in
+    pub config: StepConfig,   // StepConfig's fields merged in
 }</code></pre>
 
     <!-- QUIZ 5 -->
