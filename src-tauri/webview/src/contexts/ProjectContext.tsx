@@ -19,7 +19,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo, ReactNode } from 'react';
 import { ApinoxProject } from '@shared/models';
 import { BackendCommand } from '@shared/messages';
-import { bridge, commandErrorText } from '../utils/bridge';
+import { bridge, commandErrorKind, commandErrorText } from '../utils/bridge';
 import { debugLog as _debugLog } from '../utils/logger';
 
 // =============================================================================
@@ -323,13 +323,22 @@ export function ProjectProvider({ children, initialProjects = [] }: ProjectProvi
             // Delete files if requested
             if (deleteFiles && projectPath) {
                 try {
-                    await bridge.invokeTauriCommand('delete_project', {
-                        dirPath: projectPath  // Tauri converts to dir_path
-                    });
+                    // Tauri resolves command arguments by name, so this must be
+                    // `name` — the Rust command previously took a `params` blob,
+                    // which this call never supplied, so it failed at the IPC
+                    // layer before the body ran.
+                    await bridge.invokeTauriCommand('delete_project', { name });
                     debugLog(`Deleted project files via Rust`, projectPath);
                 } catch (error: any) {
                     console.error('[ProjectContext] Failed to delete project files:', error);
-                    alert(`Failed to delete project files: ${commandErrorText(error) || 'Unknown error'}`);
+                    if (commandErrorKind(error) === 'not-found') {
+                        // The folder was already gone. The workspace entry was
+                        // removed above, so there is nothing left for the user
+                        // to act on — an alert here would be noise.
+                        debugLog('[ProjectContext] Project folder already gone, nothing to delete', projectPath);
+                    } else {
+                        alert(`Failed to delete project files: ${commandErrorText(error) || 'Unknown error'}`);
+                    }
                 }
             }
 

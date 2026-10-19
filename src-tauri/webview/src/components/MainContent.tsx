@@ -369,10 +369,10 @@ const MainContent: React.FC = () => {
         const project = unifiedProjects.find(p => p.name === projectName);
         if (!project?.sourceUrl) return;
         try {
-            const existingRequests = project.operations?.flatMap(op => op.requests || []) || [];
+            // `existingRequests` was sent here but never read by the Rust
+            // command, which only looks up the project by sourceUrl.
             const refreshed: UnifiedProject = await bridge.invokeTauriCommand('refresh_project_wsdl', {
                 sourceUrl: project.sourceUrl,
-                existingRequests,
             });
             // Enrich refreshed project: add XML bodies for any sample requests missing them
             const enrichedProject: UnifiedProject = {

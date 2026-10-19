@@ -4,6 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 #[cfg(test)]
 use uuid::Uuid;
+use crate::error::CommandError;
 use crate::utils::{blocking, resolve_config_dir};
 
 /// Returns the ~/.apinox/projects/ directory, creating it if needed.
@@ -797,31 +798,42 @@ fn load_test_case(case_dir: &Path) -> Result<JsonValue, String> {
     Ok(meta_val)
 }
 
-/// Delete a project by name
+/// Delete a project by name.
+///
+/// The argument is a plain `name`, not a `params` blob. Tauri resolves each
+/// command argument by name from the invoke payload, so a `params` argument
+/// required the frontend to send `{ params: { name } }` — it sent `{ dirPath }`
+/// instead, so the command was rejected at the IPC layer before the body could
+/// run. Taking `name` matches what the caller actually sends.
 #[tauri::command]
-pub async fn delete_project(params: serde_json::Value) -> Result<(), String> {
-    blocking(move || delete_project_sync(&params)).await
+pub async fn delete_project(name: String) -> Result<(), CommandError> {
+    blocking(move || delete_project_sync(&name)).await
 }
 
-fn delete_project_sync(params: &serde_json::Value) -> Result<(), String> {
-    let project_name = params.get("name")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| "Missing project name".to_string())?;
-    
-    let projects_base = projects_dir().map_err(|e| format!("Failed to get projects dir: {}", e))?;
+fn delete_project_sync(project_name: &str) -> Result<(), CommandError> {
+    if project_name.trim().is_empty() {
+        return Err(CommandError::invalid_input("Missing project name"));
+    }
+
+    // projects_dir() still returns a plain String error; the kind is recovered
+    // from the io error itself, which is what actually matters here.
+    let projects_base = projects_dir().map_err(CommandError::from)?;
     // Use the shared sanitizer so the traversal guard applies here too.
     let sanitized: String = sanitize_name(project_name);
     let dir = projects_base.join(&sanitized);
-    
+
     if !dir.exists() {
-        return Err(format!("Project directory does not exist: {}", sanitized));
+        return Err(CommandError::not_found(format!(
+            "Project directory does not exist: {}",
+            sanitized
+        )));
     }
-    
+
     fs::remove_dir_all(&dir)
-        .map_err(|e| format!("Failed to delete project: {}", e))?;
-    
+        .map_err(|e| CommandError::from(e).with_prefix("Failed to delete project"))?;
+
     log::info!("Deleted project: {}", project_name);
-    
+
     Ok(())
 }
 
@@ -1837,6 +1849,30 @@ mod tests {
         // directories on disk must keep resolving to the same name.
         assert_eq!(sanitize_name("My.API"), "My.API");
         assert_eq!(sanitize_name("a/b:c"), "a_b_c");
+    }
+
+    #[test]
+    fn delete_project_reports_not_found_as_a_kind_not_just_prose() {
+        use crate::utils::config::CONFIG_DIR_TEST_LOCK;
+        let _guard = CONFIG_DIR_TEST_LOCK.lock().unwrap_or_else(|p| p.into_inner());
+
+        let tmp = std::env::temp_dir().join(format!("apinox-delete-kind-{}", Uuid::new_v4()));
+        std::fs::create_dir_all(&tmp).expect("create temp config dir");
+        std::env::set_var("APINOX_CONFIG_DIR", &tmp);
+
+        let err = delete_project_sync("NeverSaved").expect_err("should not find the project");
+        assert_eq!(err.kind, crate::error::ErrorKind::NotFound);
+        // The message the user already saw is unchanged — only the kind is added.
+        assert!(err.message.contains("Project directory does not exist"));
+
+        std::env::remove_var("APINOX_CONFIG_DIR");
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn delete_project_rejects_an_empty_name_as_invalid_input() {
+        let err = delete_project_sync("   ").expect_err("empty name should be rejected");
+        assert_eq!(err.kind, crate::error::ErrorKind::InvalidInput);
     }
 
     #[test]

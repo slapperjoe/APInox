@@ -389,13 +389,18 @@ async fn refresh_unified_project_with_opts(
     Ok(updated)
 }
 
-/// Refresh a project's WSDL by sourceUrl (called from frontend)
+/// Refresh a project's WSDL by sourceUrl (called from frontend).
+///
+/// Takes `source_url` directly rather than a `params` blob: Tauri resolves
+/// command arguments by name from the invoke payload, so a `params` argument
+/// required `{ params: { sourceUrl } }` while the caller sent `{ sourceUrl,
+/// existingRequests }` — the command was rejected at the IPC layer before the
+/// body ran. `existingRequests` was never read by the body either.
 #[tauri::command]
-pub async fn refresh_project_wsdl(params: serde_json::Value) -> Result<serde_json::Value, String> {
-    let source_url = params
-        .get("sourceUrl")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| "Missing sourceUrl".to_string())?;
+pub async fn refresh_project_wsdl(source_url: String) -> Result<serde_json::Value, String> {
+    if source_url.trim().is_empty() {
+        return Err("Missing sourceUrl".to_string());
+    }
 
     // Find the project with this sourceUrl
     let projects = project_storage::list_unified_projects()
@@ -404,7 +409,7 @@ pub async fn refresh_project_wsdl(params: serde_json::Value) -> Result<serde_jso
 
     let existing_project = projects
         .iter()
-        .find(|p| p.get("sourceUrl").and_then(|v| v.as_str()) == Some(source_url))
+        .find(|p| p.get("sourceUrl").and_then(|v| v.as_str()) == Some(source_url.as_str()))
         .ok_or_else(|| format!("No project found with sourceUrl: {}", source_url))?;
 
     let service_name = existing_project
