@@ -17,7 +17,7 @@
     "tauri:init": "node scripts/tauri-init.js",
     "build:packages": "cd packages/request-editor && node ../../scripts/run-npm-install.js && npm run build",
     "compile-webview": "npm run build:packages && cd src-tauri/webview && node ../../scripts/run-npm-install.js && npm run build:skip-check",
-    "test": "vitest run",
+    "test": "node scripts/test-all.js",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "dev:webview": "npm run build:packages && cd src-tauri/webview && npm run dev",
