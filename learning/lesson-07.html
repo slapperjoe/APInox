@@ -282,7 +282,7 @@ format!("{:x}", 255)       // "ff" — hex
 format!("{:b}", 7)         // "111" — binary
 
 // From secret_storage.rs — building error messages:
-return Err(format!("Could not determine config directory for platform: {}", std::env::consts::OS));</code></pre>
+return Err(format!("Invalid encryption key in environment: {}", e));</code></pre>
 
     <!-- QUIZ 5 -->
     <div class="quiz predict" id="q7-5">

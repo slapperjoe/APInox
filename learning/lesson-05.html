@@ -19,7 +19,7 @@
     <h1>Async, Generics &amp; Tauri Commands</h1>
     <div class="lesson-meta">
       <span>⏱ ~30 min</span>
-      <span>📁 <code>lib.rs</code>, <code>soap/commands.rs</code>, <code>testing/test_runner.rs</code>, <code>workflow/engine.rs</code></span>
+      <span>📁 <code>lib.rs</code>, <code>soap/commands.rs</code>, <code>testing/test_runner.rs</code>, <code>testing/frontend_runner.rs</code></span>
     </div>
   </div>
 
@@ -114,13 +114,13 @@ async fn main() {
   <!-- ================================================ -->
   <section>
     <h2>3. Generics — Parameterising Over Types</h2>
-    <p>Rust generics look like C# generics but with more expressive constraints. From <code>testing/test_runner.rs</code>:</p>
+    <p>Rust generics look like C# generics but with more expressive constraints. From <code>storage/rules.rs</code>:</p>
 
-    <pre class="language-rust"><code>// T must implement the Serialize trait
-async fn send_request&lt;T: Serialize&gt;(body: T) -&gt; Result&lt;Response&gt; { ... }
+    <pre class="language-rust"><code>// T must implement DeserializeOwned — generic JSON loader
+fn load_json&lt;T: serde::de::DeserializeOwned&gt;(&amp;self, filename: &amp;str) -&gt; Result&lt;T&gt; { ... }
 
-// Multiple bounds with +
-async fn process&lt;T: Serialize + Debug + Clone&gt;(item: T) { ... }
+// Multiple bounds with + — generic JSON saver
+fn save_json&lt;T: serde::Serialize + ?Sized&gt;(&amp;self, filename: &amp;str, data: &amp;T) -&gt; Result&lt;()&gt; { ... }
 
 // Where clause — same thing, cleaner syntax for complex bounds
 async fn process&lt;T&gt;(item: T) -&gt; Result&lt;()&gt;

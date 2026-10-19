@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { RestAuthType } from '../types';
 import { MonacoSingleLineInput } from './MonacoSingleLineInput';
 import { SPACING_XS, SPACING_SM, SPACING_LG } from "../styles/spacing";
+import type { EditorVariable } from '../types';
 
 // Extended RestAuthConfig with all fields needed
 interface RestAuthConfig {
@@ -87,12 +88,18 @@ interface RestAuthPanelProps {
     auth?: RestAuthConfig;
     onChange: (auth: RestAuthConfig) => void;
     readOnly?: boolean;
+    /** Chain/workflow variables, forwarded to the single-line inputs for ${...} tooltips. */
+    availableVariables?: EditorVariable[];
+    /** Environment/global variables, forwarded to the single-line inputs for {{...}} tooltips. */
+    availableEnvVariables?: EditorVariable[];
 }
 
-export const RestAuthPanel: React.FC<RestAuthPanelProps> = ({
+const RestAuthPanelBase: React.FC<RestAuthPanelProps> = ({
     auth,
     onChange,
-    readOnly = false
+    readOnly = false,
+    availableVariables,
+    availableEnvVariables
 }) => {
     const currentAuth: RestAuthConfig = auth || { type: 'none' };
 
@@ -135,6 +142,8 @@ export const RestAuthPanel: React.FC<RestAuthPanelProps> = ({
                                 value={currentAuth.username || ''}
                                 onChange={(val) => updateAuth({ username: val })}
                                 placeholder="username"
+                                availableVariables={availableVariables}
+                                availableEnvVariables={availableEnvVariables}
                             />
                         </InputGroup>
                         <InputGroup>
@@ -143,6 +152,8 @@ export const RestAuthPanel: React.FC<RestAuthPanelProps> = ({
                                 value={currentAuth.password || ''}
                                 onChange={(val) => updateAuth({ password: val })}
                                 placeholder="password"
+                                availableVariables={availableVariables}
+                                availableEnvVariables={availableEnvVariables}
                             />
                         </InputGroup>
                     </InputRow>
@@ -161,6 +172,8 @@ export const RestAuthPanel: React.FC<RestAuthPanelProps> = ({
                             value={currentAuth.token || ''}
                             onChange={(val) => updateAuth({ token: val })}
                             placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                            availableVariables={availableVariables}
+                            availableEnvVariables={availableEnvVariables}
                         />
                     </div>
                     <Hint>
@@ -179,6 +192,8 @@ export const RestAuthPanel: React.FC<RestAuthPanelProps> = ({
                                 value={currentAuth.apiKeyName || ''}
                                 onChange={(val) => updateAuth({ apiKeyName: val })}
                                 placeholder="X-API-Key"
+                                availableVariables={availableVariables}
+                                availableEnvVariables={availableEnvVariables}
                             />
                         </InputGroup>
                         <InputGroup>
@@ -187,6 +202,8 @@ export const RestAuthPanel: React.FC<RestAuthPanelProps> = ({
                                 value={currentAuth.token || ''}
                                 onChange={(val) => updateAuth({ token: val })}
                                 placeholder="your-api-key-here"
+                                availableVariables={availableVariables}
+                                availableEnvVariables={availableEnvVariables}
                             />
                         </InputGroup>
                     </InputRow>
@@ -218,3 +235,6 @@ export const RestAuthPanel: React.FC<RestAuthPanelProps> = ({
         </Container>
     );
 };
+
+// Perf (review item 3): memoize the panel.
+export const RestAuthPanel = React.memo(RestAuthPanelBase);

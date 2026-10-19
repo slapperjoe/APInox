@@ -120,21 +120,19 @@ fs::create_dir_all(&amp;dir)
 //                                                      ↑ if Err, return early</code></pre>
 
     <p>From <code>project_storage.rs</code> — notice how <code>?</code> chains through the whole function:</p>
-    <pre class="language-rust"><code>pub async fn save_project(project: serde_json::Value, dir_path: String)
-    -&gt; Result&lt;(), String&gt;
+    <pre class="language-rust"><code>pub async fn save_project(project: serde_json::Value)
+    -&gt; Result&lt;String, String&gt;
 {
-    let dir = PathBuf::from(&amp;dir_path);
+    let name = project["name"].as_str().ok_or("Missing project name")?;
+    let dir = projects_dir()?.join(sanitize_name(name));
 
     fs::create_dir_all(&amp;dir)
-        .map_err(|e| format!("Failed to create directory: {}", e))?;
+        .map_err(|e| format!("Failed to create project directory: {}", e))?;
 
-    let props_json = serde_json::to_string_pretty(&amp;props)
-        .map_err(|e| format!("Failed to serialize: {}", e))?;
+    save_properties(&amp;dir, &amp;project)?;
+    save_interfaces(&amp;dir, &amp;project)?;
 
-    fs::write(&amp;props_path, props_json)
-        .map_err(|e| format!("Failed to write: {}", e))?;
-
-    Ok(())   // ← explicit success return
+    Ok(dir.to_string_lossy().to_string())   // ← explicit success return
 }</code></pre>
 
     <div class="callout-maui">.NET MAUI has a global unhandled exception handler: <code>MauiExceptions.UnhandledException</code>. On Android it catches most things. On iOS it catches some things. On Windows it catches different things. On Mac Catalyst it logs to nowhere and your app silently terminates. The documentation says this is "platform-specific behaviour." Platform-specific behaviour is MAUI's way of saying "we didn't finish this."</div>

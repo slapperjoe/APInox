@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useCallback, useRef, memo } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from './common/EmptyState';
 import { PanelContainer, PanelIconButton, PanelFlexColumn } from './common/PanelShell';
 import { Plus, Trash2, List } from 'lucide-react';
 import { MonacoSingleLineInput } from './MonacoSingleLineInput';
 import { SPACING_XS, SPACING_SM } from '../styles/spacing';
+import type { EditorVariable } from '../types';
 
 const HeaderRow = styled.div<{ $dimmed?: boolean }>`
     display: flex;
@@ -48,7 +49,6 @@ const HintText = styled.div`
     color: var(--apinox-descriptionForeground);
 `;
 
-
 interface HeadersPanelProps {
     headers: Record<string, string>;
     onChange: (headers: Record<string, string>) => void;
@@ -75,14 +75,67 @@ interface HeadersPanelProps {
      * read-only even when unlocked (matches the `readOnly` editor mode).
      */
     onContentTypeChange?: (headers: Record<string, string>) => void;
+    /** Chain/workflow variables, forwarded to the single-line inputs for ${...} tooltips. */
+    availableVariables?: EditorVariable[];
+    /** Environment/global variables, forwarded to the single-line inputs for {{...}} tooltips. */
+    availableEnvVariables?: EditorVariable[];
 }
 
-export const HeadersPanel: React.FC<HeadersPanelProps> = ({
+// Memoized row: stable handler identities (the panel's useCallback handlers read
+// refs, so they do not change when a sibling row edits) let unchanged rows skip
+// re-render when one row changes.
+interface HeaderRowItemProps {
+    headerKey: string;
+    value: string;
+    availableVariables?: EditorVariable[];
+    availableEnvVariables?: EditorVariable[];
+    updateHeader: (oldKey: string, newKey: string, newValue: string) => void;
+    removeHeader: (key: string) => void;
+}
+
+const HeaderRowItem = memo(function HeaderRowItem({
+    headerKey,
+    value,
+    availableVariables,
+    availableEnvVariables,
+    updateHeader,
+    removeHeader,
+}: HeaderRowItemProps) {
+    return (
+        <HeaderRow>
+            <PanelFlexColumn>
+                <MonacoSingleLineInput
+                    value={headerKey}
+                    onChange={(newKey: string) => updateHeader(headerKey, newKey, value)}
+                    placeholder="Header Name"
+                    availableVariables={availableVariables}
+                    availableEnvVariables={availableEnvVariables}
+                />
+            </PanelFlexColumn>
+            <PanelFlexColumn>
+                <MonacoSingleLineInput
+                    value={value}
+                    onChange={(newValue: string) => updateHeader(headerKey, headerKey, newValue)}
+                    placeholder="Value"
+                    availableVariables={availableVariables}
+                    availableEnvVariables={availableEnvVariables}
+                />
+            </PanelFlexColumn>
+            <PanelIconButton onClick={() => removeHeader(headerKey)} title="Delete Header">
+                <Trash2 size={14} />
+            </PanelIconButton>
+        </HeaderRow>
+    );
+});
+
+const HeadersPanelBase: React.FC<HeadersPanelProps> = ({
     headers,
     onChange,
     contentType,
     contentTypeLocked = true,
     onContentTypeChange,
+    availableVariables,
+    availableEnvVariables,
 }) => {
     const effectiveContentType = contentType || 'application/soap+xml';
     const hasContentTypeOverride =
@@ -98,37 +151,44 @@ export const HeadersPanel: React.FC<HeadersPanelProps> = ({
         ? Object.entries(headers!).find(([key]) => key.toLowerCase() === 'content-type')![1]
         : effectiveContentType;
 
-    const updateHeader = (oldKey: string, newKey: string, newValue: string) => {
+    // Refs + stable handlers: the row callbacks keep a constant identity so
+    // memoized rows skip re-render when a different row changes.
+    const headersRef = useRef(headers);
+    headersRef.current = headers;
+    const onChangeRef = useRef(onChange);
+    onChangeRef.current = onChange;
+
+    const updateHeader = useCallback((oldKey: string, newKey: string, newValue: string) => {
         // Prevent adding Content-Type via this panel
         if (newKey.toLowerCase() === 'content-type') {
             return; // Silently ignore - Content-Type is managed by toolbar
         }
-        const newHeaders = { ...headers };
+        const newHeaders = { ...headersRef.current };
         if (oldKey !== newKey) {
             delete newHeaders[oldKey];
         }
         newHeaders[newKey] = newValue;
-        onChange(newHeaders);
-    }
+        onChangeRef.current(newHeaders);
+    }, []);
 
-    const removeHeader = (key: string) => {
-        const newHeaders = { ...headers };
+    const removeHeader = useCallback((key: string) => {
+        const newHeaders = { ...headersRef.current };
         delete newHeaders[key];
-        onChange(newHeaders);
-    }
+        onChangeRef.current(newHeaders);
+    }, []);
 
     const addHeader = () => {
-        const newHeaders = { ...headers };
+        const newHeaders = { ...headersRef.current };
         // Find unique key
         let count = 1;
         while (newHeaders[`Header${count}`]) count++;
         newHeaders[`Header${count}`] = '';
-        onChange(newHeaders);
-    }
+        onChangeRef.current(newHeaders);
+    };
 
     const setContentTypeOverride = (value: string) => {
         if (!onContentTypeChange) return;
-        const newHeaders = { ...headers };
+        const newHeaders = { ...headersRef.current };
         // Drop any existing case-variant of the header before writing the
         // canonical `Content-Type` key.
         for (const key of Object.keys(newHeaders)) {
@@ -142,11 +202,11 @@ export const HeadersPanel: React.FC<HeadersPanelProps> = ({
     };
 
     const clearContentTypeOverride = () => {
-        const newHeaders = { ...headers };
+        const newHeaders = { ...headersRef.current };
         for (const key of Object.keys(newHeaders)) {
             if (key.toLowerCase() === 'content-type') delete newHeaders[key];
         }
-        if (Object.keys(newHeaders).length !== Object.keys(headers).length) {
+        if (Object.keys(newHeaders).length !== Object.keys(headersRef.current).length) {
             onContentTypeChange?.(newHeaders);
         }
     };
@@ -184,6 +244,8 @@ export const HeadersPanel: React.FC<HeadersPanelProps> = ({
                                 value={displayContentType}
                                 onChange={(v: string) => setContentTypeOverride(v)}
                                 placeholder={hasContentTypeOverride ? 'Content-Type' : effectiveContentType}
+                                availableVariables={availableVariables}
+                                availableEnvVariables={availableEnvVariables}
                             />
                             {hasContentTypeOverride && (
                                 <PanelIconButton
@@ -219,26 +281,20 @@ export const HeadersPanel: React.FC<HeadersPanelProps> = ({
             )}
 
             {entries.map(([key, value], index) => (
-                <HeaderRow key={index}>
-                    <PanelFlexColumn>
-                        <MonacoSingleLineInput
-                            value={key}
-                            onChange={(newKey: string) => updateHeader(key, newKey, value)}
-                            placeholder="Header Name"
-                        />
-                    </PanelFlexColumn>
-                    <PanelFlexColumn>
-                        <MonacoSingleLineInput
-                            value={value}
-                            onChange={(newValue: string) => updateHeader(key, key, newValue)}
-                            placeholder="Value"
-                        />
-                    </PanelFlexColumn>
-                    <PanelIconButton onClick={() => removeHeader(key)} title="Delete Header">
-                        <Trash2 size={14} />
-                    </PanelIconButton>
-                </HeaderRow>
+                <HeaderRowItem
+                    key={index}
+                    headerKey={key}
+                    value={value}
+                    availableVariables={availableVariables}
+                    availableEnvVariables={availableEnvVariables}
+                    updateHeader={updateHeader}
+                    removeHeader={removeHeader}
+                />
             ))}
         </PanelContainer>
     );
 };
+
+// Perf (review item 3): memoize the panel so parent re-renders that do not
+// change its props skip the subtree.
+export const HeadersPanel = memo(HeadersPanelBase);

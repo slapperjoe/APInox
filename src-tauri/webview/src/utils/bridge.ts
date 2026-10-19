@@ -873,21 +873,32 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                 } else if (message.command === 'addPerformanceRequest' || message.command === FrontendCommand.AddPerformanceRequest) {
                     const suiteIdx = suites.findIndex((s: any) => s.id === message.suiteId);
                     if (suiteIdx !== -1) {
-                        const newReq = {
-                            id: `${PERF_REQUEST_ID_PREFIX}${Date.now()}`,
-                            name: message.name || 'New Request',
-                            endpoint: message.endpoint || '',
-                            method: message.method || 'POST',
-                            soapAction: message.soapAction,
-                            requestBody: message.requestBody || '',
-                            headers: message.headers || {},
-                            extractors: message.extractors || [],
-                            order: (suites[suiteIdx].requests || []).length,
-                            requestType: message.requestType,
-                            bodyType: message.bodyType,
-                            restConfig: message.restConfig,
-                            graphqlConfig: message.graphqlConfig,
-                        };
+                        // A caller that sends the whole step (e.g. a 'testCase'
+                        // step built by PerformanceContext) wins; otherwise the
+                        // fields are assembled from the message as before.
+                        const newReq = message.request
+                            ? { order: (suites[suiteIdx].requests || []).length, ...message.request }
+                            : {
+                                id: `${PERF_REQUEST_ID_PREFIX}${Date.now()}`,
+                                name: message.name || 'New Request',
+                                // Step type + test-case reference (a 'testCase' step
+                                // stores only the id; the run payload embeds the
+                                // case's steps, so nothing here is a copy of them).
+                                type: message.type || 'request',
+                                testCaseId: message.testCaseId,
+                                testCaseVariables: message.testCaseVariables,
+                                endpoint: message.endpoint || '',
+                                method: message.method || 'POST',
+                                soapAction: message.soapAction,
+                                requestBody: message.requestBody || '',
+                                headers: message.headers || {},
+                                extractors: message.extractors || [],
+                                order: (suites[suiteIdx].requests || []).length,
+                                requestType: message.requestType,
+                                bodyType: message.bodyType,
+                                restConfig: message.restConfig,
+                                graphqlConfig: message.graphqlConfig,
+                            };
                         suites[suiteIdx] = { ...suites[suiteIdx], requests: [...(suites[suiteIdx].requests || []), newReq] };
                     }
                 } else if (message.command === 'updatePerformanceRequest' || message.command === FrontendCommand.UpdatePerformanceRequest) {

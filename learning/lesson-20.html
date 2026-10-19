@@ -252,13 +252,19 @@ pub fn get_config_dir(app: tauri::AppHandle) -&gt; Result&lt;String, String&gt; 
 // app.path().home_dir()         → /Users/mark/
 // app.path().download_dir()     → /Users/mark/Downloads/</code></pre>
 
-    <p>APInox stores its config in <code>~/.apinox/</code> — a custom path, not the standard app config dir. In <code>lib.rs</code>:</p>
-    <pre class="language-rust"><code>// lib.rs — APInox uses its own ~/.apinox/ folder:
-static CONFIG_DIR: Mutex&lt;Option&lt;String&gt;&gt; = Mutex::new(None);
-
-fn get_apinox_config_dir() -&gt; PathBuf {
-    let home = dirs::home_dir().unwrap_or_default();
-    home.join(".apinox")
+    <p>APInox stores its config in <code>~/.apinox/</code> — a custom path, not the standard app config dir. In <code>utils/config.rs</code>:</p>
+    <pre class="language-rust"><code>// utils/config.rs — APInox uses its own ~/.apinox/ folder:
+pub fn resolve_config_dir() -&gt; Result&lt;PathBuf, String&gt; {
+    std::env::var("APINOX_CONFIG_DIR")            // 1. env var wins
+        .ok()
+        .and_then(|dir| if dir.trim().is_empty() { None } else { Some(PathBuf::from(dir)) })
+        .or_else(|| {
+            let home = std::env::var("HOME")
+                .or_else(|_| std::env::var("USERPROFILE"))
+                .ok()?;
+            Some(PathBuf::from(home).join(".apinox"))   // 2. ~/.apinox
+        })
+        .ok_or_else(|| "Cannot determine config directory".to_string())
 }</code></pre>
 
     <!-- QUIZ 4 -->

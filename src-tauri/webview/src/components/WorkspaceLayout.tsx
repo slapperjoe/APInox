@@ -223,6 +223,7 @@ export const WorkspaceLayout: React.FC = () => {
     const onAddPerformanceSuite = workspace.handleAddPerformanceSuite;
     const onDeletePerformanceSuite = workspace.handleDeletePerformanceSuite;
     const onAddPerformanceRequest = workspace.handleAddPerformanceRequest;
+    const onAddPerformanceTestCase = workspace.handleAddPerformanceTestCase;
     const onDeletePerformanceRequest = workspace.handleDeletePerformanceRequest;
     const onUpdatePerformanceRequest = workspace.handleUpdatePerformanceRequest;
     const onSelectPerformanceRequest = workspace.handleSelectPerformanceRequest;
@@ -329,6 +330,19 @@ export const WorkspaceLayout: React.FC = () => {
             return [];
         }
     }, [activeView, selectedTestCase, selectedStep, testExecution]);
+
+    // Environment/global variables for {{...}} tooltips in the single-line inputs.
+    const availableEnvVariables = React.useMemo(() => {
+        const env = config?.environments && config?.activeEnvironment
+            ? config.environments[config.activeEnvironment]
+            : undefined;
+        if (!env) return [];
+        return Object.entries(env).map(([name, value]) => ({
+            name,
+            value: value ?? null,
+            source: 'environment',
+        }));
+    }, [config?.environments, config?.activeEnvironment]);
 
 
 
@@ -577,6 +591,8 @@ export const WorkspaceLayout: React.FC = () => {
                     onDeleteRequest={onDeletePerformanceRequest}
                     onUpdateRequest={onUpdatePerformanceRequest}
                     onSelectRequest={onSelectPerformanceRequest}
+                    testCases={globalTestCases}
+                    onAddTestCase={onAddPerformanceTestCase}
                     onImportFromWorkspace={onImportFromWorkspace}
                     progress={performanceProgress || null}
                     history={suiteHistory}
@@ -1082,6 +1098,7 @@ export const WorkspaceLayout: React.FC = () => {
                     value: v.value,
                     source: v.source
                 }) as PackageVariable)}
+                availableEnvVariables={availableEnvVariables as any}
                 showBreadcrumb={false}
                 breadcrumbPath={[]}
                 onLog={(message, level = 'info') => {

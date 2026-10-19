@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useRef, memo } from "react";
 import styled from "styled-components";
 import { EmptyState } from "./common/EmptyState";
 import { PanelContainer, PanelIconButton, PanelFlexColumn } from "./common/PanelShell";
@@ -103,6 +103,8 @@ interface FormDataPanelProps {
   enctype?: "application/x-www-form-urlencoded" | "multipart/form-data";
   readOnly?: boolean;
   availableVariables?: EditorVariable[];
+  /** Environment/global variables, forwarded to the single-line inputs for {{...}} tooltips. */
+  availableEnvVariables?: EditorVariable[];
   onPickFile?: () => Promise<{
     name: string;
     content: string;
@@ -111,20 +113,135 @@ interface FormDataPanelProps {
   } | null>;
 }
 
-export const FormDataPanel: React.FC<FormDataPanelProps> = ({
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+// Memoized row: stable handler identities let unchanged rows skip re-render
+// when a different row changes (review item 3).
+interface FieldRowItemProps {
+  field: FormField;
+  index: number;
+  readOnly: boolean;
+  supportsFiles: boolean;
+  isPicking: boolean;
+  availableVariables?: EditorVariable[];
+  availableEnvVariables?: EditorVariable[];
+  updateField: (index: number, updates: Partial<FormField>) => void;
+  removeField: (index: number) => void;
+  handlePickFile: (index: number) => void;
+  clearFile: (index: number) => void;
+}
+
+const FieldRowItem = memo(function FieldRowItem({
+  field,
+  index,
+  readOnly,
+  supportsFiles,
+  isPicking,
+  availableVariables,
+  availableEnvVariables,
+  updateField,
+  removeField,
+  handlePickFile,
+  clearFile,
+}: FieldRowItemProps) {
+  return (
+    <FieldRow $dimmed={!field.enabled}>
+      <Checkbox
+        type="checkbox"
+        checked={field.enabled}
+        onChange={(e) => updateField(index, { enabled: e.target.checked })}
+        disabled={readOnly}
+      />
+
+      <PanelFlexColumn>
+        <MonacoSingleLineInput
+          value={field.key}
+          onChange={(value) => updateField(index, { key: value })}
+          placeholder="Key"
+          readOnly={readOnly}
+          availableVariables={availableVariables}
+          availableEnvVariables={availableEnvVariables}
+        />
+      </PanelFlexColumn>
+
+      {supportsFiles && (
+        <TypeSelector
+          value={field.type}
+          onChange={(e) => updateField(index, { type: e.target.value as FormFieldType })}
+          disabled={readOnly}
+        >
+          <option value="text">Text</option>
+          <option value="file">File</option>
+        </TypeSelector>
+      )}
+
+      <PanelFlexColumn>
+        {field.type === "file" ? (
+          field.fileName ? (
+            <FilePreview>
+              <File size={14} />
+              <FileName title={field.fileName}>{field.fileName}</FileName>
+              {field.fileSize && <FileSize>{formatFileSize(field.fileSize)}</FileSize>}
+              {!readOnly && (
+                <PanelIconButton onClick={() => clearFile(index)} title="Remove file">
+                  <X size={14} />
+                </PanelIconButton>
+              )}
+            </FilePreview>
+          ) : (
+            <PanelIconButton
+              onClick={() => handlePickFile(index)}
+              disabled={readOnly || isPicking}
+              title="Pick file"
+              style={{
+                border: "1px dashed var(--apinox-input-border)",
+                padding: "6px 12px",
+                justifyContent: "center",
+                gap: "6px",
+              }}
+            >
+              <Upload size={14} />
+              {isPicking ? "Picking..." : "Choose File"}
+            </PanelIconButton>
+          )
+        ) : (
+          <MonacoSingleLineInput
+            value={field.value}
+            onChange={(value) => updateField(index, { value })}
+            placeholder="Value"
+            readOnly={readOnly}
+            availableVariables={availableVariables}
+            availableEnvVariables={availableEnvVariables}
+          />
+        )}
+      </PanelFlexColumn>
+
+      <PanelIconButton onClick={() => removeField(index)} disabled={readOnly} title="Remove">
+        <Trash2 size={16} />
+      </PanelIconButton>
+    </FieldRow>
+  );
+});
+
+const FormDataPanelBase: React.FC<FormDataPanelProps> = ({
   fields,
   onChange,
   enctype = "application/x-www-form-urlencoded",
   readOnly = false,
+  availableVariables,
+  availableEnvVariables,
   onPickFile,
 }) => {
   const [isPickingFile, setIsPickingFile] = useState<string | null>(null);
 
-  const formatFileSize = (bytes: number): string => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
+  const fieldsRef = useRef(fields);
+  fieldsRef.current = fields;
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
 
   const addField = () => {
     const newField: FormField = {
@@ -133,11 +250,11 @@ export const FormDataPanel: React.FC<FormDataPanelProps> = ({
       type: "text",
       enabled: true,
     };
-    onChange([...fields, newField]);
+    onChangeRef.current([...fieldsRef.current, newField]);
   };
 
-  const updateField = (index: number, updates: Partial<FormField>) => {
-    const newFields = [...fields];
+  const updateField = useCallback((index: number, updates: Partial<FormField>) => {
+    const newFields = [...fieldsRef.current];
     newFields[index] = { ...newFields[index], ...updates };
 
     // If switching from file to text, clear file metadata
@@ -148,17 +265,17 @@ export const FormDataPanel: React.FC<FormDataPanelProps> = ({
       newFields[index].value = "";
     }
 
-    onChange(newFields);
-  };
+    onChangeRef.current(newFields);
+  }, []);
 
-  const removeField = (index: number) => {
-    onChange(fields.filter((_, i) => i !== index));
-  };
+  const removeField = useCallback((index: number) => {
+    onChangeRef.current(fieldsRef.current.filter((_, i) => i !== index));
+  }, []);
 
-  const handlePickFile = async (index: number) => {
+  const handlePickFile = useCallback(async (index: number) => {
     if (!onPickFile || isPickingFile) return;
 
-    setIsPickingFile(fields[index].key);
+    setIsPickingFile(fieldsRef.current[index].key);
     try {
       const file = await onPickFile();
       if (file) {
@@ -174,16 +291,16 @@ export const FormDataPanel: React.FC<FormDataPanelProps> = ({
     } finally {
       setIsPickingFile(null);
     }
-  };
+  }, [onPickFile, isPickingFile, updateField]);
 
-  const clearFile = (index: number) => {
+  const clearFile = useCallback((index: number) => {
     updateField(index, {
       value: "",
       fileName: undefined,
       contentType: undefined,
       fileSize: undefined,
     });
-  };
+  }, [updateField]);
 
   const supportsFiles = enctype === "multipart/form-data";
 
@@ -207,90 +324,20 @@ export const FormDataPanel: React.FC<FormDataPanelProps> = ({
         <EmptyState title="No form fields" description="Click + to add a field." />
       ) : (
         fields.map((field, index) => (
-          <FieldRow key={index} $dimmed={!field.enabled}>
-            <Checkbox
-              type="checkbox"
-              checked={field.enabled}
-              onChange={(e) =>
-                updateField(index, { enabled: e.target.checked })
-              }
-              disabled={readOnly}
-            />
-
-            <PanelFlexColumn>
-              <MonacoSingleLineInput
-                value={field.key}
-                onChange={(value) => updateField(index, { key: value })}
-                placeholder="Key"
-                readOnly={readOnly}
-              />
-            </PanelFlexColumn>
-
-            {supportsFiles && (
-              <TypeSelector
-                value={field.type}
-                onChange={(e) =>
-                  updateField(index, { type: e.target.value as FormFieldType })
-                }
-                disabled={readOnly}
-              >
-                <option value="text">Text</option>
-                <option value="file">File</option>
-              </TypeSelector>
-            )}
-
-            <PanelFlexColumn>
-              {field.type === "file" ? (
-                field.fileName ? (
-                  <FilePreview>
-                    <File size={14} />
-                    <FileName title={field.fileName}>{field.fileName}</FileName>
-                    {field.fileSize && (
-                      <FileSize>{formatFileSize(field.fileSize)}</FileSize>
-                    )}
-                    {!readOnly && (
-                      <PanelIconButton
-                        onClick={() => clearFile(index)}
-                        title="Remove file"
-                      >
-                        <X size={14} />
-                      </PanelIconButton>
-                    )}
-                  </FilePreview>
-                ) : (
-                  <PanelIconButton
-                    onClick={() => handlePickFile(index)}
-                    disabled={readOnly || isPickingFile === field.key}
-                    title="Pick file"
-                    style={{
-                      border: "1px dashed var(--apinox-input-border)",
-                      padding: "6px 12px",
-                      justifyContent: "center",
-                      gap: "6px",
-                    }}
-                  >
-                    <Upload size={14} />
-                    {isPickingFile === field.key ? "Picking..." : "Choose File"}
-                  </PanelIconButton>
-                )
-              ) : (
-                <MonacoSingleLineInput
-                  value={field.value}
-                  onChange={(value) => updateField(index, { value })}
-                  placeholder="Value"
-                  readOnly={readOnly}
-                />
-              )}
-            </PanelFlexColumn>
-
-            <PanelIconButton
-              onClick={() => removeField(index)}
-              disabled={readOnly}
-              title="Remove"
-            >
-              <Trash2 size={16} />
-            </PanelIconButton>
-          </FieldRow>
+          <FieldRowItem
+            key={index}
+            field={field}
+            index={index}
+            readOnly={readOnly}
+            supportsFiles={supportsFiles}
+            isPicking={isPickingFile === field.key}
+            availableVariables={availableVariables}
+            availableEnvVariables={availableEnvVariables}
+            updateField={updateField}
+            removeField={removeField}
+            handlePickFile={handlePickFile}
+            clearFile={clearFile}
+          />
         ))
       )}
 
@@ -302,3 +349,6 @@ export const FormDataPanel: React.FC<FormDataPanelProps> = ({
     </PanelContainer>
   );
 };
+
+// Perf (review item 3): memoize the panel.
+export const FormDataPanel = memo(FormDataPanelBase);

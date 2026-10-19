@@ -19,7 +19,7 @@
     <h1>Structs, Enums &amp; Derive Attributes</h1>
     <div class="lesson-meta">
       <span>⏱ ~25 min</span>
-      <span>📁 <code>parsers/wsdl/types.rs</code>, <code>settings_manager.rs</code>, <code>testing/test_runner.rs</code></span>
+      <span>📁 <code>packages/wsdl-parser/src/types.rs</code>, <code>settings_manager.rs</code>, <code>testing/test_runner.rs</code></span>
     </div>
   </div>
 
@@ -31,7 +31,7 @@
     <h2>1. Structs — Data Without Behaviour</h2>
     <p>In C#, a class holds both data AND methods. In Rust, they're <em>separated</em>: <strong><code>struct</code></strong> holds data, <strong><code>impl</code></strong> adds behaviour (covered in Lesson 3).</p>
 
-    <p>Open <code>parsers/wsdl/types.rs</code>:</p>
+    <p>Open <code>packages/wsdl-parser/src/types.rs</code>:</p>
     <pre class="language-rust"><code>pub struct SchemaNode {
     pub name: String,
     #[serde(rename = "type")]
@@ -180,10 +180,11 @@ pub node_type: String,</code></pre>
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum TestStepType {
     Soap {
-        operation: ServiceOperation,
+        operation: Box&lt;ServiceOperation&gt;,
         soap_version: String,
         values: HashMap&lt;String, String&gt;,
         endpoint: Option&lt;String&gt;,
+        security: Option&lt;SecurityConfig&gt;,
     },
     Http {
         method: String,

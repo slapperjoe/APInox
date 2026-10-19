@@ -19,7 +19,7 @@
     <h1>Concurrency &amp; Async Patterns</h1>
     <div class="lesson-meta">
       <span>⏱ ~30 min</span>
-      <span>📁 <code>workflow/engine.rs</code>, <code>testing/test_runner.rs</code></span>
+      <span>📁 <code>performance/runner.rs</code>, <code>testing/test_runner.rs</code></span>
     </div>
   </div>
 
@@ -51,7 +51,7 @@ tokio::spawn(async {
     // result ignored — task runs until done
 });
 
-// From workflow/engine.rs — running steps in parallel:
+// Conceptual — running steps in parallel with JoinSet:
 use tokio::task::JoinSet;
 
 let mut set = JoinSet::new();
@@ -171,7 +171,7 @@ while let Some(msg) = rx.recv().await {
         <button data-correct="false" onclick="mc('q14-3', this, false)">Message-passing synchronisation construct</button>
       </div>
       <div class="quiz-exp" id="q14-3-exp">
-        <strong>✓ Multi-producer, single-consumer!</strong> Many tasks can clone the <code>tx</code> sender and send messages. Only one task owns the <code>rx</code> receiver. This maps to a classic pattern: a pool of worker tasks producing results, funnelled into one aggregator task that collects them. APInox's workflow engine uses this to collect results from parallel step execution.
+        <strong>✓ Multi-producer, single-consumer!</strong> Many tasks can clone the <code>tx</code> sender and send messages. Only one task owns the <code>rx</code> receiver. This maps to a classic pattern: a pool of worker tasks producing results, funnelled into one aggregator task that collects them. APInox's performance runner collects results from concurrent execution.
       </div>
     </div>
   </section>

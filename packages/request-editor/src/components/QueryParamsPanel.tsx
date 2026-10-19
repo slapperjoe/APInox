@@ -3,13 +3,14 @@
  * Similar to HeadersPanel but for URL query strings
  */
 
-import React from 'react';
+import React, { useCallback, useRef, memo } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from './common/EmptyState';
 import { PanelContainer, PanelIconButton } from './common/PanelShell';
 import { Plus, Trash2, Code } from 'lucide-react';
 import { MonacoSingleLineInput } from './MonacoSingleLineInput';
 import { SPACING_XS, SPACING_SM } from '../styles/spacing';
+import type { EditorVariable } from '../types';
 
 const Header = styled.div`
     display: flex;
@@ -70,41 +71,106 @@ interface QueryParamsPanelProps {
     title?: string;
     paramLabel?: string;
     readOnly?: boolean;
+    /** Chain/workflow variables, forwarded to the single-line inputs for ${...} tooltips. */
+    availableVariables?: EditorVariable[];
+    /** Environment/global variables, forwarded to the single-line inputs for {{...}} tooltips. */
+    availableEnvVariables?: EditorVariable[];
 }
 
-export const QueryParamsPanel: React.FC<QueryParamsPanelProps> = ({
+// Memoized row: stable handler identities let unchanged rows skip re-render
+// when a different row changes (review item 3).
+interface ParamRowItemProps {
+    paramKey: string;
+    value: string;
+    readOnly: boolean;
+    paramLabel: string;
+    availableVariables?: EditorVariable[];
+    availableEnvVariables?: EditorVariable[];
+    updateParam: (oldKey: string, newKey: string, newValue: string) => void;
+    removeParam: (key: string) => void;
+}
+
+const ParamRowItem = memo(function ParamRowItem({
+    paramKey,
+    value,
+    readOnly,
+    paramLabel,
+    availableVariables,
+    availableEnvVariables,
+    updateParam,
+    removeParam,
+}: ParamRowItemProps) {
+    return (
+        <ParamRow>
+            <InputWrapper>
+                <MonacoSingleLineInput
+                    value={paramKey}
+                    onChange={(newKey: string) => updateParam(paramKey, newKey, value)}
+                    placeholder="parameter_name"
+                    readOnly={readOnly}
+                    availableVariables={availableVariables}
+                    availableEnvVariables={availableEnvVariables}
+                />
+            </InputWrapper>
+            <InputWrapper>
+                <MonacoSingleLineInput
+                    value={value}
+                    onChange={(newValue: string) => updateParam(paramKey, paramKey, newValue)}
+                    placeholder="value"
+                    readOnly={readOnly}
+                    availableVariables={availableVariables}
+                    availableEnvVariables={availableEnvVariables}
+                />
+            </InputWrapper>
+            {!readOnly && (
+                <PanelIconButton onClick={() => removeParam(paramKey)} title={`Delete ${paramLabel}`}>
+                    <Trash2 size={14} />
+                </PanelIconButton>
+            )}
+        </ParamRow>
+    );
+});
+
+const QueryParamsPanelBase: React.FC<QueryParamsPanelProps> = ({
     params,
     onChange,
     title = 'Query Parameters',
     paramLabel = 'Param',
-    readOnly = false
+    readOnly = false,
+    availableVariables,
+    availableEnvVariables
 }) => {
     const entries = Object.entries(params || {});
 
-    const updateParam = (oldKey: string, newKey: string, newValue: string) => {
+    const paramsRef = useRef(params);
+    paramsRef.current = params;
+    const onChangeRef = useRef(onChange);
+    onChangeRef.current = onChange;
+
+    const updateParam = useCallback((oldKey: string, newKey: string, newValue: string) => {
         if (readOnly) return;
-        const newParams = { ...params };
+        const newParams = { ...paramsRef.current };
         if (oldKey !== newKey) {
             delete newParams[oldKey];
         }
         newParams[newKey] = newValue;
-        onChange(newParams);
-    };
+        onChangeRef.current(newParams);
+    }, [readOnly]);
 
-    const removeParam = (key: string) => {
+    const removeParam = useCallback((key: string) => {
         if (readOnly) return;
-        const newParams = { ...params };
+        const newParams = { ...paramsRef.current };
         delete newParams[key];
-        onChange(newParams);
-    };
+        onChangeRef.current(newParams);
+    }, [readOnly]);
 
     const addParam = () => {
         if (readOnly) return;
-        const newParams = { ...params };
+        const newParams = { ...paramsRef.current };
         let count = 1;
         while (newParams[`${paramLabel.toLowerCase()}${count}`]) count++;
         newParams[`${paramLabel.toLowerCase()}${count}`] = '';
-        onChange(newParams);
+        onChangeRef.current(newParams);
     };
 
     return (
@@ -133,29 +199,17 @@ export const QueryParamsPanel: React.FC<QueryParamsPanelProps> = ({
             )}
 
             {entries.map(([key, value], index) => (
-                <ParamRow key={index}>
-                    <InputWrapper>
-                        <MonacoSingleLineInput
-                            value={key}
-                            onChange={(newKey: string) => updateParam(key, newKey, value)}
-                            placeholder="parameter_name"
-                            readOnly={readOnly}
-                        />
-                    </InputWrapper>
-                    <InputWrapper>
-                        <MonacoSingleLineInput
-                            value={value}
-                            onChange={(newValue: string) => updateParam(key, key, newValue)}
-                            placeholder="value"
-                            readOnly={readOnly}
-                        />
-                    </InputWrapper>
-                    {!readOnly && (
-                        <PanelIconButton onClick={() => removeParam(key)} title={`Delete ${paramLabel}`}>
-                            <Trash2 size={14} />
-                        </PanelIconButton>
-                    )}
-                </ParamRow>
+                <ParamRowItem
+                    key={index}
+                    paramKey={key}
+                    value={value}
+                    readOnly={readOnly}
+                    paramLabel={paramLabel}
+                    availableVariables={availableVariables}
+                    availableEnvVariables={availableEnvVariables}
+                    updateParam={updateParam}
+                    removeParam={removeParam}
+                />
             ))}
 
             {entries.length > 0 && (
@@ -167,3 +221,6 @@ export const QueryParamsPanel: React.FC<QueryParamsPanelProps> = ({
         </PanelContainer>
     );
 };
+
+// Perf (review item 3): memoize the panel.
+export const QueryParamsPanel = memo(QueryParamsPanelBase);

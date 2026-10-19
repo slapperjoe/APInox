@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { embedTestRun, MAX_EMBED_DEPTH } from '../runEmbedding';
-import { TestCase, TestStep } from '@shared/models';
+import { embedTestRun, embedPerfRun, MAX_EMBED_DEPTH } from '../runEmbedding';
+import { PerformanceSuite, TestCase, TestStep } from '@shared/models';
 
 const tc = (id: string, steps: TestStep[]): TestCase => ({ id, name: id, steps });
 const req = (id: string): TestStep =>
@@ -60,5 +60,70 @@ describe('embedTestRun', () => {
         const c = tc('c1', [{ id: 's1', type: 'testCase', config: { testCaseId: 'gone' } }] as TestStep[]);
         const out = embedTestRun([c], [c]);
         expect(out[0].steps[0].config.testCaseSteps).toBeUndefined();
+    });
+});
+
+describe('embedPerfRun', () => {
+    const perfSuite = (requests: PerformanceSuite['requests']): PerformanceSuite => ({
+        id: 'perf-suite-1',
+        name: 'Perf',
+        requests,
+        iterations: 1,
+        delayBetweenRequests: 0,
+        warmupRuns: 0,
+        concurrency: 1,
+        createdAt: 0,
+        modifiedAt: 0,
+    });
+    const perfRequestStep = (id: string) => ({
+        id,
+        name: id,
+        type: 'request' as const,
+        endpoint: 'http://x',
+        requestBody: '<X/>',
+        extractors: [],
+        order: 0,
+    });
+    const perfCaseStep = (id: string, testCaseId: string) => ({
+        id,
+        name: id,
+        type: 'testCase' as const,
+        testCaseId,
+        endpoint: '',
+        requestBody: '',
+        extractors: [],
+        order: 1,
+    });
+
+    it('embeds the referenced case into a testCase perf step', () => {
+        const target = tc('c2', [req('r1')]);
+        const out = embedPerfRun(perfSuite([perfCaseStep('p1', 'c2')]), [target]);
+        expect(out.requests[0].testCaseSteps).toHaveLength(1);
+        expect(out.requests[0].testCaseSteps![0].id).toBe('r1');
+    });
+
+    it('leaves plain request steps untouched', () => {
+        const out = embedPerfRun(perfSuite([perfRequestStep('p1')]), [tc('c2', [req('r1')])]);
+        expect(out.requests[0].testCaseSteps).toBeUndefined();
+        expect(out.requests[0].endpoint).toBe('http://x');
+    });
+
+    it('folds the case variables under the step overrides', () => {
+        const target: TestCase = { ...tc('c2', [req('r1')]), variables: { a: 'case' } };
+        const out = embedPerfRun(
+            perfSuite([{ ...perfCaseStep('p1', 'c2'), testCaseVariables: { b: 'step' } }]),
+            [target]
+        );
+        expect(out.requests[0].testCaseVariables).toEqual({ a: 'case', b: 'step' });
+    });
+
+    it('cuts a cycle back to the referenced case', () => {
+        const c = tc('c1', [{ id: 's1', name: 's1', type: 'testCase', config: { testCaseId: 'c1' } }] as TestStep[]);
+        const out = embedPerfRun(perfSuite([perfCaseStep('p1', 'c1')]), [c]);
+        // The perf step embeds the case once; the back-reference inside it is
+        // cut (the root case is seeded on the path), so expansion terminates.
+        const nested = out.requests[0].testCaseSteps!;
+        expect(nested).toHaveLength(1);
+        expect(nested[0].config.testCaseSteps).toBeUndefined();
     });
 });

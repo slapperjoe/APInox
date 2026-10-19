@@ -713,10 +713,25 @@ export interface PerformanceSuite {
     collapsedSections?: string[];
 }
 
-/** Single request within a performance suite */
+/** Single step within a performance suite.
+ *
+ * A step is either a standalone call (`type: 'request'`, the default — the
+ * field is absent on suites saved before step types existed) or a reference to
+ * a whole global test case (`type: 'testCase'`), which runs that case's steps as
+ * one unit of the measured sequence.
+ */
 export interface PerformanceRequest {
     id: string;
     name: string;
+    /** Step discriminator. Absent or 'request' = standalone call. */
+    type?: 'request' | 'testCase';
+    /** For 'testCase' steps: id of the referenced global test case. */
+    testCaseId?: string;
+    /** For 'testCase' steps: variable overrides for the referenced case. */
+    testCaseVariables?: Record<string, string>;
+    /** For 'testCase' steps: self-contained copy of the referenced case's steps,
+     * embedded by the webview into the run payload (runtime-only, not persisted). */
+    testCaseSteps?: TestStep[];
     endpoint: string;
     method?: string;
     soapAction?: string;
@@ -754,10 +769,18 @@ export interface PerformanceRun {
     environment?: string;
 }
 
-/** Result for a single request execution */
+/** Result for a single executed step.
+ *
+ * Rows produced inside a `testCase` perf step carry the parent step so the
+ * results view can group them under the case they came from; rows from a plain
+ * request step have no parent.
+ */
 export interface PerformanceResult {
     requestId: string;
     requestName: string;
+    /** Set when this row came from an inner step of a 'testCase' perf step. */
+    parentStepId?: string;
+    parentStepName?: string;
     interfaceName?: string;
     operationName?: string;
     iteration: number;

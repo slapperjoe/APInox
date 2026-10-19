@@ -29,11 +29,16 @@
   <!-- ================================================ -->
   <section>
     <h2>1. The Entry Point</h2>
-    <p>Open <code>src-tauri/src/main.rs</code> — it's just 4 lines:</p>
+    <p>Open <code>src-tauri/src/main.rs</code> — it's tiny: a crate-level attribute and a <code>main</code> that runs the update helper, then the app:</p>
     <pre class="language-rust"><code>// Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
+    // Run the post-update helper first (so the helper never opens a window),
+    // then start the app.
+    if apinox_lib::updater::run_update_helper_if_requested() {
+        return;
+    }
     apinox_lib::run();
 }</code></pre>
 

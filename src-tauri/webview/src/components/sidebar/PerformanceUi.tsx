@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from '../common/EmptyState';
-import { Play, Square, Plus, ChevronRight, ChevronDown } from 'lucide-react';
+import { Play, Square, Plus, ChevronRight, ChevronDown, FlaskConical } from 'lucide-react';
 import { SidebarPerformanceProps } from '../../types/props';
 import { SidebarContextMenu, CtxMenuSection, CtxMenuItem, Pencil, Trash2 } from './shared/SidebarContextMenu';
 import { SidebarContainer, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle, RowActions } from './shared/SidebarStyles';
@@ -19,8 +19,14 @@ const AddSuiteRow = styled.div`
     padding: ${SPACING_SM};
 `;
 
-const RequestIndent = styled.div`
+// Fixed-width icon slot on every step row so plain request rows and test-case
+// rows line up — the same fixed-slot pattern as the TESTS rail.
+const StepTypeIcon = styled.div`
     width: 14px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    opacity: 0.7;
 `;
 
 
@@ -231,7 +237,9 @@ export const PerformanceUi: React.FC<SidebarPerformanceProps> = ({
                                     onClick={() => onSelectRequest?.(req)}
                                     onContextMenu={(e) => handleContextMenu(e, 'request', req.id, req.name, suite.id)}
                                 >
-                                    <RequestIndent />
+                                    <StepTypeIcon>
+                                        {req.type === 'testCase' ? <FlaskConical size={12} /> : null}
+                                    </StepTypeIcon>
                                     {renameId === req.id ? (
                                         <InlineFormInput
                                             value={renameValue}

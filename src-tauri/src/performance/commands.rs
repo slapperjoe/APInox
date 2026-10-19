@@ -7,7 +7,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use once_cell::sync::Lazy;
 
 use crate::http::client::CancelToken;
-use crate::performance::runner::execute_request;
+use crate::performance::runner::execute_step;
 use crate::performance::types::{PerformanceRun, PerformanceStats, PerformanceSuite};
 use crate::settings_manager;
 
@@ -206,16 +206,22 @@ pub async fn run_performance_suite(
                         break 'outer;
                     }
 
-                    let result = execute_request(req, iteration, &variables, run_token.clone()).await;
+                    // A 'testCase' step yields one row per inner HTTP call (plus
+                    // failures); a 'request' step yields exactly one.
+                    let aborted = || is_aborted(&run_id_clone);
+                    let rows =
+                        execute_step(req, iteration, &mut variables, run_token.clone(), &aborted).await;
 
-                    if let Some(ref extracted) = result.extracted_values {
-                        for (k, v) in extracted {
-                            variables.insert(k.clone(), v.clone());
+                    for result in rows {
+                        if let Some(ref extracted) = result.extracted_values {
+                            for (k, v) in extracted {
+                                variables.insert(k.clone(), v.clone());
+                            }
                         }
-                    }
 
-                    if !is_warmup {
-                        all_results.push(result);
+                        if !is_warmup {
+                            all_results.push(result);
+                        }
                     }
 
                     if suite.delay_between_requests > 0 {
@@ -239,24 +245,33 @@ pub async fn run_performance_suite(
                         let req = req.clone();
                         let vars = Arc::clone(&vars_arc);
                         let token = run_token.clone();
+                        let run_id = run_id_clone.clone();
                         handles.push(tokio::spawn(async move {
-                            let snapshot = vars.read().await.clone();
-                            let result = execute_request(&req, iteration, &snapshot, token).await;
-                            if let Some(ref extracted) = result.extracted_values {
+                            // Each step runs against its own snapshot of the
+                            // shared map; a 'testCase' step is one unit of the
+                            // chunk — its inner steps stay sequential.
+                            let mut local = vars.read().await.clone();
+                            let aborted = move || is_aborted(&run_id);
+                            let rows = execute_step(&req, iteration, &mut local, token, &aborted).await;
+
+                            {
                                 let mut shared = vars.write().await;
-                                for (k, v) in extracted {
+                                for (k, v) in &local {
                                     shared.entry(k.clone()).or_insert_with(|| v.clone());
                                 }
                             }
-                            result
+
+                            rows
                         }));
                     }
 
                     for handle in handles {
                         match handle.await {
-                            Ok(result) => {
+                            Ok(rows) => {
                                 if !is_warmup {
-                                    all_results.push(result);
+                                    for result in rows {
+                                        all_results.push(result);
+                                    }
                                 }
                             }
                             Err(e) => {

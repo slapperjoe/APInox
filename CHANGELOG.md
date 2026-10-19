@@ -3,6 +3,7 @@
 
 ## [Unreleased] - 2026-10-15
 ### Added
+- **Performance suites — test case steps**: a performance suite step can now be a whole test case (`Add Test Case` in the Steps section). The step is a live reference to a global test case: at run time the webview embeds the case's steps and the perf runner executes them through the test runner, so every inner step type works (request, delay, condition, loop, script, transfer, nested references). Each inner HTTP call produces its own result row — grouped under the case in the results view — so percentiles and SLA reflect the real calls rather than one number for the whole case; a case-level SLA threshold is checked against the case total and reported when breached. Case variables are layered over the run variables and do not leak back out.
 - **Test Case Wizard — bulk variable controls**: the "Captured & reused values" section now shows an accepted/total count and **Add all** / **Remove all** controls, matching the "Select all" affordance the requests section already had.
 - **Test Case Wizard — defaults**: every captured request is now selected when the wizard opens (the right-clicked capture is highlighted instead of being the only selection), and no reused value is accepted until you add it — previously every suggestion was accepted by default. Variable names stay editable before a pick is accepted and survive bulk add/remove.
 

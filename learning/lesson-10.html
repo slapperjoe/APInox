@@ -19,7 +19,7 @@
     <h1>Closures &amp; Iterators</h1>
     <div class="lesson-meta">
       <span>⏱ ~35 min</span>
-      <span>📁 <code>testing/test_runner.rs</code>, <code>workflow/engine.rs</code></span>
+      <span>📁 <code>testing/test_runner.rs</code>, <code>testing/frontend_runner.rs</code></span>
     </div>
   </div>
 
@@ -130,7 +130,7 @@ let result: Vec&lt;i32&gt; = numbers.iter()
 
 // result = [4, 16, 36]
 
-// From test_runner.rs — finding failing assertions:
+// Conceptual — finding failing assertions (AssertionResult has a `passed` field):
 let failures: Vec&lt;&amp;AssertionResult&gt; = results.iter()
     .filter(|r| !r.passed)
     .collect();</code></pre>
@@ -176,15 +176,15 @@ let failures: Vec&lt;&amp;AssertionResult&gt; = results.iter()
   <section>
     <h2>4. Chaining &amp; Real-World Examples</h2>
 
-    <pre class="language-rust"><code>// From workflow/engine.rs — processing workflow steps:
-let step_names: Vec&lt;String&gt; = workflow.steps
+    <pre class="language-rust"><code>// From testing/test_runner.rs — processing test steps:
+let step_names: Vec&lt;String&gt; = test_case.steps
     .iter()
-    .filter(|s| s.enabled)
+    .filter(|s| s.step_type == TestStepType::Http)
     .map(|s| s.name.clone())
     .collect();
 
 // Enumerate — getting index + value:
-for (i, step) in workflow.steps.iter().enumerate() {
+for (i, step) in test_case.steps.iter().enumerate() {
     log::info!("Running step {}/{}: {}", i + 1, total, step.name);
 }
 

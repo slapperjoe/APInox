@@ -19,7 +19,7 @@
     <h1>Pattern Matching Deep Dive</h1>
     <div class="lesson-meta">
       <span>⏱ ~30 min</span>
-      <span>📁 <code>testing/assertion_runner.rs</code>, <code>workflow/engine.rs</code></span>
+      <span>📁 <code>testing/assertion_runner.rs</code>, <code>performance/commands.rs</code></span>
     </div>
   </div>
 
@@ -177,7 +177,8 @@ while let Some(item) = queue.pop() {
     process(item);
 }
 
-// From workflow/engine.rs pattern:
+// Conceptual pattern (channel receiver) — APInox's shared state now uses
+// Arc<Mutex> in performance/commands.rs rather than a channel:
 while let Ok(update) = rx.try_recv() {
     results.push(update);
 }</code></pre>

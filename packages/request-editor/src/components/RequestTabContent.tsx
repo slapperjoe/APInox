@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useRef, memo } from 'react';
 import * as S from './RequestWorkspace.styles';
 import { EmptyState } from './common/EmptyState';
 import { MonacoRequestEditor } from './MonacoRequestEditor';
@@ -10,7 +10,7 @@ import { SecurityPanel } from './SecurityPanel';
 import { AttachmentsPanel } from './AttachmentsPanel';
 import { FormDataPanel } from './FormDataPanel';
 import { BinaryBodyPanel } from './BinaryBodyPanel';
-import type { FormField, BinaryFile } from '../types';
+import type { FormField, BinaryFile, EditorVariable } from '../types';
 import { useEditorSettings } from '../contexts/EditorSettingsContext';
 import type { MonacoRequestEditorHandle } from './MonacoRequestEditor';
 import type { ExtraTab } from './MonacoRequestEditorWithToolbar';
@@ -52,6 +52,8 @@ export interface RequestTabContentProps {
   /** Whether the Content-Type header row is locked (default `true`). */
   contentTypeLocked?: boolean;
   availableVariables: Variable[];
+  /** Environment/global variables, forwarded to the panels for {{...}} tooltips. */
+  availableEnvVariables?: EditorVariable[];
   requestEditorRef: React.RefObject<MonacoRequestEditorHandle>;
   editorForceUpdateKey: number;
   onLog?: (message: string, level?: 'info' | 'warn' | 'error' | 'debug') => void;
@@ -59,13 +61,14 @@ export interface RequestTabContentProps {
   extraTabs: ExtraTab[];
 }
 
-export const RequestTabContent: React.FC<RequestTabContentProps> = ({
+const RequestTabContentBase: React.FC<RequestTabContentProps> = ({
   activeTab,
   request,
   onUpdateRequest,
   readOnly,
   contentTypeLocked = true,
   availableVariables,
+  availableEnvVariables,
   requestEditorRef,
   editorForceUpdateKey,
   onLog,
@@ -74,19 +77,61 @@ export const RequestTabContent: React.FC<RequestTabContentProps> = ({
 }) => {
   const editorSettings = useEditorSettings();
 
+  // Stable handlers (review item 3): read the latest request through a ref so
+  // the callback identity does not change on every keystroke. Combined with the
+  // memoized panels, this lets unchanged panels skip re-render.
+  const requestRef = useRef(request);
+  requestRef.current = request;
+  const onUpdateRef = useRef(onUpdateRequest);
+  onUpdateRef.current = onUpdateRequest;
+
+  const handleBodyChange = useCallback((value: string) => {
+    onUpdateRef.current({ ...requestRef.current, request: value });
+  }, []);
+  const handleFormFieldsChange = useCallback((fields: FormField[]) => {
+    onUpdateRef.current({ ...requestRef.current, formFields: fields });
+  }, []);
+  const handleBinaryChange = useCallback((file: BinaryFile | null) => {
+    onUpdateRef.current({ ...requestRef.current, binaryFile: file ?? undefined });
+  }, []);
+  const handleGraphqlVarsChange = useCallback((vars: Record<string, string>) => {
+    const req = requestRef.current;
+    onUpdateRef.current({ ...req, graphqlConfig: { ...req.graphqlConfig, variables: vars } });
+  }, []);
+  const handleHeadersChange = useCallback((headers: Record<string, string>) => {
+    onUpdateRef.current({ ...requestRef.current, headers });
+  }, []);
+  const handleParamsChange = useCallback((params: Record<string, string>) => {
+    onUpdateRef.current({ ...requestRef.current, queryParams: params });
+  }, []);
+  const handleAssertionsChange = useCallback((assertions: any[]) => {
+    onUpdateRef.current({ ...requestRef.current, assertions });
+  }, []);
+  const handleExtractorsChange = useCallback((extractors: any[]) => {
+    onUpdateRef.current({ ...requestRef.current, extractors });
+  }, []);
+  const handleAuthChange = useCallback((security: any) => {
+    onUpdateRef.current({ ...requestRef.current, wsSecurity: security });
+  }, []);
+  const handleAttachmentsChange = useCallback((attachments: any[]) => {
+    onUpdateRef.current({ ...requestRef.current, attachments });
+  }, []);
+
   switch (activeTab) {
     case 'request': {
       if (request.bodyType === 'form-data') {
         return (
           <FormDataPanel
             fields={request.formFields || []}
-            onChange={(fields) => onUpdateRequest({ ...request, formFields: fields })}
+            onChange={handleFormFieldsChange}
             enctype={
               (request.contentType === 'application/x-www-form-urlencoded' ||
                 request.contentType === 'multipart/form-data')
                 ? request.contentType
                 : 'multipart/form-data'
             }
+            availableVariables={availableVariables}
+            availableEnvVariables={availableEnvVariables}
             onPickFile={onPickFile}
           />
         );
@@ -96,7 +141,7 @@ export const RequestTabContent: React.FC<RequestTabContentProps> = ({
         return (
           <BinaryBodyPanel
             file={request.binaryFile ?? null}
-            onChange={(file) => onUpdateRequest({ ...request, binaryFile: file ?? undefined })}
+            onChange={handleBinaryChange}
             onPickFile={onPickFile}
           />
         );
@@ -126,7 +171,7 @@ export const RequestTabContent: React.FC<RequestTabContentProps> = ({
               <MonacoRequestEditor
                 ref={requestEditorRef}
                 value={request.request || ''}
-                onChange={(value) => onUpdateRequest({ ...request, request: value })}
+                onChange={handleBodyChange}
                 language="graphql"
                 readOnly={readOnly}
                 availableVariables={availableVariables}
@@ -142,13 +187,12 @@ export const RequestTabContent: React.FC<RequestTabContentProps> = ({
             <div style={{ flex: '0 0 33%', minWidth: 0, overflow: 'hidden' }}>
               <QueryParamsPanel
                 params={graphqlVars}
-                onChange={(vars) => onUpdateRequest({
-                  ...request,
-                  graphqlConfig: { ...request.graphqlConfig, variables: vars },
-                })}
+                onChange={handleGraphqlVarsChange}
                 title="Variables"
                 paramLabel="Variable"
                 readOnly={readOnly}
+                availableVariables={availableVariables}
+                availableEnvVariables={availableEnvVariables}
               />
             </div>
           </div>
@@ -159,7 +203,7 @@ export const RequestTabContent: React.FC<RequestTabContentProps> = ({
         <MonacoRequestEditor
           ref={requestEditorRef}
           value={request.request || ''}
-          onChange={(value) => onUpdateRequest({ ...request, request: value })}
+          onChange={handleBodyChange}
           language={editorLanguage}
           readOnly={readOnly}
           availableVariables={availableVariables}
@@ -187,10 +231,12 @@ export const RequestTabContent: React.FC<RequestTabContentProps> = ({
       ) : (
         <HeadersPanel
           headers={request.headers || {}}
-          onChange={(headers) => onUpdateRequest({ ...request, headers })}
+          onChange={handleHeadersChange}
           contentType={request.contentType}
           contentTypeLocked={contentTypeLocked}
-          onContentTypeChange={(headers) => onUpdateRequest({ ...request, headers })}
+          onContentTypeChange={handleHeadersChange}
+          availableVariables={availableVariables}
+          availableEnvVariables={availableEnvVariables}
         />
       );
 
@@ -198,7 +244,9 @@ export const RequestTabContent: React.FC<RequestTabContentProps> = ({
       return (
         <QueryParamsPanel
           params={request.queryParams || {}}
-          onChange={(params) => onUpdateRequest({ ...request, queryParams: params })}
+          onChange={handleParamsChange}
+          availableVariables={availableVariables}
+          availableEnvVariables={availableEnvVariables}
         />
       );
 
@@ -206,7 +254,7 @@ export const RequestTabContent: React.FC<RequestTabContentProps> = ({
       return (
         <AssertionsPanel
           assertions={request.assertions || []}
-          onChange={(assertions) => onUpdateRequest({ ...request, assertions })}
+          onChange={handleAssertionsChange}
         />
       );
 
@@ -214,7 +262,7 @@ export const RequestTabContent: React.FC<RequestTabContentProps> = ({
       return (
         <ExtractorsPanel
           extractors={request.extractors || []}
-          onChange={(extractors) => onUpdateRequest({ ...request, extractors })}
+          onChange={handleExtractorsChange}
         />
       );
 
@@ -222,7 +270,7 @@ export const RequestTabContent: React.FC<RequestTabContentProps> = ({
       return (
         <SecurityPanel
           security={request.wsSecurity}
-          onChange={(security) => onUpdateRequest({ ...request, wsSecurity: security })}
+          onChange={handleAuthChange}
         />
       );
 
@@ -230,7 +278,7 @@ export const RequestTabContent: React.FC<RequestTabContentProps> = ({
       return (
         <AttachmentsPanel
           attachments={request.attachments || []}
-          onChange={(attachments) => onUpdateRequest({ ...request, attachments })}
+          onChange={handleAttachmentsChange}
         />
       );
 
@@ -256,3 +304,7 @@ export const RequestTabContent: React.FC<RequestTabContentProps> = ({
     }
   }
 };
+
+// Perf (review item 3): memoize so parent re-renders that do not change the
+// active tab or request skip the panel subtree.
+export const RequestTabContent = memo(RequestTabContentBase);
