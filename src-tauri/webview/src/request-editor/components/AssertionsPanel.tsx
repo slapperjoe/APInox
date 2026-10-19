@@ -5,7 +5,6 @@ import { Trash2, CheckCircle2, XCircle, Clock, ListChecks } from 'lucide-react';
 import { Assertion } from '../types';
 import { StatusCodePicker } from './StatusCodePicker';
 import { MonacoEditorWrapper } from '../monaco';
-// import { ScriptPlaygroundModal } from './modals/ScriptPlaygroundModal'; // TODO: Add ScriptPlaygroundModal
 import { SPACING_XS, SPACING_SM, SPACING_LG } from "../styles/spacing";
 import { PanelContainer } from "./common/PanelShell";
 const Toolbar = styled.div`
@@ -180,13 +179,6 @@ const TransparentButton = styled(Button)`
     color: var(--apinox-descriptionForeground);
 `;
 
-// TODO: Restore when ScriptPlaygroundModal is added
-// const TestButton = styled(Button)`
-//     font-size: 11px;
-//     padding: 2px 6px;
-//     height: 20px;
-// `;
-
 function generateId() {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
         var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
@@ -201,8 +193,6 @@ interface AssertionsPanelProps {
 }
 
 export const AssertionsPanel: React.FC<AssertionsPanelProps> = ({ assertions, onChange, lastResult }) => {
-    // const [playgroundScript] = React.useState<string | null>(null);
-    // const [playgroundAssertionId] = React.useState<string | null>(null);
 
     const handleAdd = (type: Assertion['type']) => {
         const newAssertion: Assertion = {
@@ -360,7 +350,6 @@ export const AssertionsPanel: React.FC<AssertionsPanelProps> = ({ assertions, on
                                                     Return <Code>true</Code> to pass, <Code>false</Code> to fail.
                                                     Available: <Code>response</Code>, <Code>statusCode</Code>
                                                 </span>
-                                                {/* TODO: Restore ScriptPlaygroundModal button */}
                                             </ScriptHeader>
                                             <ScriptEditorWrapper>
                                                 <MonacoEditorWrapper
@@ -409,23 +398,6 @@ export const AssertionsPanel: React.FC<AssertionsPanelProps> = ({ assertions, on
                 })}
             </AssertionList>
 
-            {/* TODO: Add ScriptPlaygroundModal component
-            {playgroundScript !== null && (
-                <ScriptPlaygroundModal
-                    scriptType="assertion"
-                    initialScript={playgroundScript}
-                    onClose={() => {
-                        setPlaygroundScript(null);
-                        setPlaygroundAssertionId(null);
-                    }}
-                    onApplyScript={(newScript) => {
-                        if (playgroundAssertionId) {
-                            updateConfig(playgroundAssertionId, 'script', newScript);
-                        }
-                    }}
-                />
-            )}
-            */}
         </PanelContainer>
     );
 };

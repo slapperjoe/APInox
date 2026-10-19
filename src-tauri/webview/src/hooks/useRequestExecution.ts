@@ -112,7 +112,6 @@ interface UseRequestExecutionParams {
     selectedTestCase: TestCase | null;
     selectedStep: TestStep | null;
     selectedProjectName: string | null;
-    wsdlUrl: string;
 
     // State setters
     setLoading: React.Dispatch<React.SetStateAction<boolean>>;
@@ -156,7 +155,6 @@ export function useRequestExecution({
     selectedTestCase,
     selectedStep,
     selectedProjectName,
-    wsdlUrl,
     setLoading,
     setResponse,
     setSelectedRequest,
@@ -198,7 +196,7 @@ export function useRequestExecution({
 
         // Allow execution if we have a request context, even if not fully in an Operation content (e.g. Test Step)
         if (selectedOperation || selectedRequest) {
-            const url = selectedRequest?.endpoint || selectedInterface?.definition || wsdlUrl;
+            const url = selectedRequest?.endpoint || selectedInterface?.definition;
             const opName = selectedOperation?.name || selectedRequest?.name || 'Unknown Operation';
             debugLog('[App] Sending executeRequest message', { url, opName });
 
@@ -300,7 +298,7 @@ export function useRequestExecution({
             console.error('[App] executeRequest aborted: No selectedOperation or selectedRequest');
             setLoading(false);
         }
-    }, [selectedOperation, selectedRequest, selectedInterface, selectedTestCase, selectedStep, wsdlUrl, testExecution, setLoading, setResponse, onScrapbookAutoSave, selectedProjectName, config]);
+    }, [selectedOperation, selectedRequest, selectedInterface, selectedTestCase, selectedStep, testExecution, setLoading, setResponse, onScrapbookAutoSave, selectedProjectName, config]);
 
     const cancelRequest = useCallback(() => {
         // H1: cancel exactly the in-flight request (id echoed back by the backend

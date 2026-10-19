@@ -829,7 +829,6 @@ export const WorkspaceLayout: React.FC = () => {
             // TEMPORARY: Return placeholder until Tauri command is implemented
             // This allows the UI to work but files won't be uploaded yet
             console.warn('⚠️ File selected:', selected, 'but binary reading not yet implemented');
-            console.warn('⚠️ See TODO comment above for implementation details');
             return {
                 name,
                 content: '', // FIXME: Empty for now - needs Tauri command to read binary

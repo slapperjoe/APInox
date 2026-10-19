@@ -300,7 +300,6 @@ export const TestRunnerProvider = ({ children }: { children: ReactNode }) => {
         selectedTestCase,
         selectedStep,
         selectedProjectName,
-        wsdlUrl: '', // TODO: This was local state in App.tsx. Needed?
         setLoading,
         setResponse,
         setSelectedRequest,

@@ -5,7 +5,6 @@ import { ChevronLeft } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
 import { applyMonacoTheme } from "../utils/monacoTheme";
 import { debugLog } from "../utils/logger";
-// import { ScriptPlaygroundModal } from './modals/ScriptPlaygroundModal'; // TODO: Add ScriptPlaygroundModal
 
 // Stub types
 interface TestStep {
@@ -69,7 +68,6 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
   const [scriptContent, setScriptContent] = useState(
     step.config.scriptContent || "",
   );
-  // const showPlayground = false; // TODO: Enable when ScriptPlaygroundModal is added
   const { theme } = useTheme();
   const [editorTheme, setEditorTheme] = useState<string>("vs-dark");
 
@@ -241,11 +239,6 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
           </span>
         </div>
 
-        {/* TODO: Restore when ScriptPlaygroundModal is added
-                <ToolbarButton onClick={() => setShowPlayground(true)} title="Run in Playground">
-                    <Play size={14} /> Playground
-                </ToolbarButton>
-                */}
       </Toolbar>
 
       <div
@@ -284,18 +277,6 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
         />
       </div>
 
-      {/* TODO: Add ScriptPlaygroundModal component
-            {showPlayground && (
-                <ScriptPlaygroundModal
-                    scriptType="step"
-                    initialScript={scriptContent}
-                    onClose={() => setShowPlayground(false)}
-                    onApplyScript={(newScript) => {
-                        setScriptContent(newScript);
-                    }}
-                />
-            )}
-            */}
     </div>
   );
 };
