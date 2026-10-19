@@ -4,7 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 #[cfg(test)]
 use uuid::Uuid;
-use crate::utils::resolve_config_dir;
+use crate::utils::{blocking, resolve_config_dir};
 
 /// Returns the ~/.apinox/projects/ directory, creating it if needed.
 pub fn projects_dir() -> Result<PathBuf, String> {
@@ -124,7 +124,7 @@ struct TestCaseMeta {
 }
 
 /// Sanitize a name for use as a folder/file name
-fn sanitize_name(name: &str) -> String {
+pub fn sanitize_name(name: &str) -> String {
     let sanitized: String = name.chars()
         .map(|c| match c {
             '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => '_',
@@ -191,6 +191,10 @@ fn resolve_unified_project_dir(dir_path: &str, project_name: Option<&str>) -> Re
 /// Returns the absolute path to the project directory.
 #[tauri::command]
 pub async fn save_project(project: serde_json::Value) -> Result<String, String> {
+    blocking(move || save_project_sync(&project)).await
+}
+
+fn save_project_sync(project: &serde_json::Value) -> Result<String, String> {
     let name = project["name"]
         .as_str()
         .ok_or("Missing project name")?;
@@ -311,6 +315,10 @@ fn save_folders(dir: &Path, project: &serde_json::Value) -> Result<(), String> {
 /// Returns a sorted list of absolute directory paths.
 #[tauri::command]
 pub async fn list_projects() -> Result<Vec<String>, String> {
+    blocking(list_projects_sync).await
+}
+
+fn list_projects_sync() -> Result<Vec<String>, String> {
     let dir = projects_dir()?;
     let mut paths = Vec::new();
 
@@ -535,11 +543,18 @@ fn save_test_case(tc: &JsonValue, suite_dir: &Path) -> Result<(), String> {
 /// Load a project from disk
 #[tauri::command]
 pub async fn load_project(dir_path: String) -> Result<serde_json::Value, String> {
-    load_project_internal(&dir_path).await
+    blocking(move || load_project_sync(&dir_path)).await
 }
 
-/// Internal function to load a project (callable from other modules)
-pub(crate) async fn load_project_internal(dir_path: &str) -> Result<serde_json::Value, String> {
+fn load_project_sync(dir_path: &str) -> Result<serde_json::Value, String> {
+    load_project_internal(dir_path)
+}
+
+/// Internal function to load a project (callable from other modules).
+///
+/// Was `async` but contained no awaits — every operation is blocking `std::fs`,
+/// so the async signature only made callers think the work was non-blocking.
+pub(crate) fn load_project_internal(dir_path: &str) -> Result<serde_json::Value, String> {
     let dir = PathBuf::from(dir_path);
     
     if !dir.exists() || !dir.is_dir() {
@@ -784,7 +799,11 @@ fn load_test_case(case_dir: &Path) -> Result<JsonValue, String> {
 
 /// Delete a project by name
 #[tauri::command]
-pub fn delete_project(params: serde_json::Value) -> Result<(), String> {
+pub async fn delete_project(params: serde_json::Value) -> Result<(), String> {
+    blocking(move || delete_project_sync(&params)).await
+}
+
+fn delete_project_sync(params: &serde_json::Value) -> Result<(), String> {
     let project_name = params.get("name")
         .and_then(|v| v.as_str())
         .ok_or_else(|| "Missing project name".to_string())?;
@@ -924,13 +943,13 @@ pub(crate) fn nested_project_to_unified(legacy: &serde_json::Value) -> Result<se
 
 /// Migrate one legacy project dir to the unified layout, in place.
 /// Returns true if a migration happened, false if the dir was already unified.
-pub(crate) async fn migrate_legacy_project_dir(dir: &Path) -> Result<bool, String> {
+pub(crate) fn migrate_legacy_project_dir(dir: &Path) -> Result<bool, String> {
     if is_unified_format_path(dir) {
         return Ok(false);
     }
 
     // Full legacy project value (interfaces[], testSuites[], folders[]).
-    let legacy = load_project_internal(&dir.to_string_lossy()).await?;
+    let legacy = load_project_internal(&dir.to_string_lossy())?;
     let name = legacy["name"]
         .as_str()
         .ok_or_else(|| format!("Legacy project in {} has no name", dir.display()))?;
@@ -938,7 +957,7 @@ pub(crate) async fn migrate_legacy_project_dir(dir: &Path) -> Result<bool, Strin
     let unified = nested_project_to_unified(&legacy)?;
 
     // Write the unified layout (properties.json + flat operation dirs + tests/ + folders/).
-    save_unified_project(dir.to_string_lossy().into(), unified)?;
+    save_unified_project_sync(dir.to_string_lossy().into(), unified)?;
 
     // NON-DESTRUCTIVE: keep the legacy `interfaces/` tree. The unified and
     // legacy formats co-locate in the same dir and PROXY (AddToProjectDialog /
@@ -962,6 +981,10 @@ pub(crate) async fn migrate_legacy_project_dir(dir: &Path) -> Result<bool, Strin
 /// Returns the names of the projects that were migrated.
 #[tauri::command]
 pub async fn migrate_legacy_projects() -> Result<Vec<String>, String> {
+    blocking(migrate_legacy_projects_sync).await
+}
+
+fn migrate_legacy_projects_sync() -> Result<Vec<String>, String> {
     let base = projects_dir()?;
     let mut migrated: Vec<String> = Vec::new();
 
@@ -974,7 +997,7 @@ pub async fn migrate_legacy_projects() -> Result<Vec<String>, String> {
             if is_unified_format_path(&path) {
                 continue;
             }
-            match migrate_legacy_project_dir(&path).await {
+            match migrate_legacy_project_dir(&path) {
                 Ok(true) => {
                     if let Some(n) = path.file_name().and_then(|f| f.to_str()) {
                         migrated.push(n.to_string());
@@ -1023,6 +1046,10 @@ pub async fn migrate_legacy_projects() -> Result<Vec<String>, String> {
 /// Returns the unified project as persisted on disk (the merged result).
 #[tauri::command]
 pub async fn save_imported_project_as_unified(project: serde_json::Value) -> Result<serde_json::Value, String> {
+    blocking(move || save_imported_project_as_unified_sync(&project)).await
+}
+
+fn save_imported_project_as_unified_sync(project: &serde_json::Value) -> Result<serde_json::Value, String> {
     let base = projects_dir()?;
     let name = project["name"]
         .as_str()
@@ -1044,10 +1071,10 @@ pub async fn save_imported_project_as_unified(project: serde_json::Value) -> Res
             i += 1;
             candidate_name = format!("{} ({})", name, i);
         }
-        let mut renamed = project;
+        let mut renamed = project.clone();
         renamed["name"] = serde_json::Value::String(candidate_name.clone());
         let unified = nested_project_to_unified(&renamed)?;
-        save_unified_project(dir.to_string_lossy().into(), unified)?;
+        save_unified_project_sync(dir.to_string_lossy().into(), unified)?;
         // Additive nested write (fresh dir) so PROXY / WORKFLOWS — which still
         // read the nested legacy model — can see the imported operations too,
         // mirroring the non-destructive migration that keeps interfaces/.
@@ -1057,7 +1084,7 @@ pub async fn save_imported_project_as_unified(project: serde_json::Value) -> Res
             name,
             candidate_name
         );
-        return Ok(load_unified_project(dir.to_string_lossy().into())?);
+        return Ok(load_unified_project_sync(dir.to_string_lossy().into())?);
     }
 
     let unified = nested_project_to_unified(&project)?;
@@ -1067,7 +1094,7 @@ pub async fn save_imported_project_as_unified(project: serde_json::Value) -> Res
     // in that don't exist yet. This keeps re-imports idempotent and never
     // clobbers user edits.
     let existing = if is_unified_format_path(&dir) {
-        load_unified_project(dir.to_string_lossy().into()).ok()
+        load_unified_project_sync(dir.to_string_lossy().into()).ok()
     } else {
         None
     };
@@ -1119,7 +1146,7 @@ pub async fn save_imported_project_as_unified(project: serde_json::Value) -> Res
         None => unified,
     };
 
-    save_unified_project(dir.to_string_lossy().into(), final_project.clone())?;
+    save_unified_project_sync(dir.to_string_lossy().into(), final_project.clone())?;
     // Additive nested write so PROXY / WORKFLOWS — which still read the nested
     // legacy model (out of scope to decouple; see t_86c34d38) — can see the
     // imported operations, mirroring the non-destructive migration that keeps
@@ -1127,7 +1154,7 @@ pub async fn save_imported_project_as_unified(project: serde_json::Value) -> Res
     // existing project never clobbers interfaces PROXY has already added.
     save_nested_interfaces_if_absent(&dir, &project)?;
     log::info!("save_imported_project_as_unified: persisted '{}' to {}", final_project["name"].as_str().unwrap_or(&name), dir.display());
-    Ok(load_unified_project(dir.to_string_lossy().into())?)
+    Ok(load_unified_project_sync(dir.to_string_lossy().into())?)
 }
 
 /// Write the nested legacy `interfaces/` tree for `project` under `dir`, ONLY
@@ -1231,7 +1258,13 @@ struct UnifiedProperties {
 ///       ├── custom.xml
 ///       └── custom.json
 #[tauri::command]
-pub fn save_unified_project(dir_path: String, project: serde_json::Value) -> Result<(), String> {
+pub async fn save_unified_project(dir_path: String, project: serde_json::Value) -> Result<(), String> {
+    blocking(move || save_unified_project_sync(dir_path, project)).await
+}
+
+// pub(crate) so callers inside other modules (and the sync test helpers) can use
+// the implementation directly without going through the async command wrapper.
+pub(crate) fn save_unified_project_sync(dir_path: String, project: serde_json::Value) -> Result<(), String> {
     let dir = resolve_unified_project_dir(&dir_path, project["name"].as_str())?;
     fs::create_dir_all(&dir)
         .map_err(|e| format!("Failed to create project directory: {}", e))?;
@@ -1400,9 +1433,13 @@ fn save_unified_request(req: &serde_json::Value, op_dir: &Path) -> Result<(), St
     Ok(())
 }
 
-/// Load a unified project from disk
-#[tauri::command]
-pub fn load_unified_project(dir_path: String) -> Result<serde_json::Value, String> {
+/// Load a unified project from disk.
+///
+/// Carried a `#[tauri::command]` attribute but is not registered in lib.rs and
+/// the frontend never invokes it — only `load_unified_project_detail` is. So it
+/// is an internal helper, and it stays synchronous: the callers that matter are
+/// already inside a `blocking(...)` wrapper.
+pub(crate) fn load_unified_project_sync(dir_path: String) -> Result<serde_json::Value, String> {
     let dir = resolve_unified_project_dir(&dir_path, None)?;
 
     if !dir.exists() || !dir.is_dir() {
@@ -1585,6 +1622,10 @@ fn load_unified_operation(op_dir: &Path) -> Result<serde_json::Value, String> {
 /// (on demand); this remains the full-load fallback / refresh path.
 #[tauri::command]
 pub async fn list_unified_projects() -> Result<Vec<serde_json::Value>, String> {
+    blocking(list_unified_projects_sync).await
+}
+
+fn list_unified_projects_sync() -> Result<Vec<serde_json::Value>, String> {
     let dir = projects_dir()?;
     let mut projects = Vec::new();
 
@@ -1600,7 +1641,7 @@ pub async fn list_unified_projects() -> Result<Vec<serde_json::Value>, String> {
                 if !is_unified_format_path(&path) {
                     continue;
                 }
-                if let Ok(project) = load_unified_project(path.to_string_lossy().into()) {
+                if let Ok(project) = load_unified_project_sync(path.to_string_lossy().into()) {
                     projects.push(project);
                 }
             }
@@ -1716,6 +1757,10 @@ fn load_unified_project_skeleton(dir: &Path) -> Option<serde_json::Value> {
 /// `load_unified_project_detail`.
 #[tauri::command]
 pub async fn list_unified_projects_skeleton() -> Result<Vec<serde_json::Value>, String> {
+    blocking(list_unified_projects_skeleton_sync).await
+}
+
+fn list_unified_projects_skeleton_sync() -> Result<Vec<serde_json::Value>, String> {
     let dir = projects_dir()?;
     let mut skeletons = Vec::new();
 
@@ -1747,7 +1792,11 @@ pub async fn list_unified_projects_skeleton() -> Result<Vec<serde_json::Value>, 
 /// subsequent opens of the same project never hit disk.
 #[tauri::command]
 pub async fn load_unified_project_detail(dir_path: String) -> Result<serde_json::Value, String> {
-    load_unified_project(dir_path)
+    blocking(move || load_unified_project_detail_sync(&dir_path)).await
+}
+
+fn load_unified_project_detail_sync(dir_path: &str) -> Result<serde_json::Value, String> {
+    load_unified_project_sync(dir_path.to_string())
 }
 
 /// True if `dir/properties.json` declares the unified project format.
@@ -1827,7 +1876,7 @@ mod tests {
             ]),
         });
 
-        save_unified_project(dir.to_string_lossy().to_string(), project).expect("save should succeed");
+        save_unified_project_sync(dir.to_string_lossy().to_string(), project).expect("save should succeed");
 
         // properties.json must carry the snake_case keys
         let props_path = dir.join("properties.json");
@@ -1837,7 +1886,7 @@ mod tests {
         assert_eq!(props["binding_name"], "CtTestSoap12");
         assert_eq!(props["content_type"], "application/soap+xml");
 
-        let loaded = load_unified_project(dir.to_string_lossy().to_string()).expect("load should succeed");
+        let loaded = load_unified_project_sync(dir.to_string_lossy().to_string()).expect("load should succeed");
         assert_eq!(loaded["soapVersion"], "1.2");
         assert_eq!(loaded["bindingName"], "CtTestSoap12");
         assert_eq!(loaded["contentType"], "application/soap+xml");
@@ -1865,7 +1914,7 @@ mod tests {
             ]),
         });
 
-        save_unified_project(dir.to_string_lossy().to_string(), project).expect("save should succeed");
+        save_unified_project_sync(dir.to_string_lossy().to_string(), project).expect("save should succeed");
 
         let props_path = dir.join("properties.json");
         let props: serde_json::Value =
@@ -1873,7 +1922,7 @@ mod tests {
         assert!(props.get("content_type").map(|v| v.is_null()).unwrap_or(true),
             "empty contentType must not be persisted as a value");
 
-        let loaded = load_unified_project(dir.to_string_lossy().to_string()).expect("load should succeed");
+        let loaded = load_unified_project_sync(dir.to_string_lossy().to_string()).expect("load should succeed");
         assert!(loaded["contentType"].is_null());
 
         std::fs::remove_dir_all(&dir).ok();
@@ -1980,7 +2029,7 @@ mod tests {
         assert_eq!(on_disk["portName"], "CountryPort");
 
         // Full unified load (absolute dir path passes through resolve as-is)
-        let project = load_unified_project(dir.to_string_lossy().into())
+        let project = load_unified_project_sync(dir.to_string_lossy().into())
             .expect("load_unified_project");
         let loaded_op = &project["operations"][0];
         let service_op: ServiceOperation =
@@ -2179,7 +2228,7 @@ mod tests {
         );
 
         // Migrate the single dir.
-        assert!(migrate_legacy_project_dir(&dir).await.expect("migrate"));
+        assert!(migrate_legacy_project_dir(&dir).expect("migrate"));
 
         // Postcondition: now unified, and loads back with flat operations.
         assert!(is_unified_format_path(&dir));
@@ -2189,7 +2238,7 @@ mod tests {
         // Flat operation dirs exist at the top level (additive unified layout).
         assert!(dir.join("Ping").join("operation.json").exists(), "op dir created");
 
-        let loaded = load_unified_project(dir.to_string_lossy().into()).expect("load unified");
+        let loaded = load_unified_project_sync(dir.to_string_lossy().into()).expect("load unified");
         assert_eq!(loaded["name"], "LegacySvc");
         assert_eq!(loaded["source"], "wsdl");
         assert_eq!(loaded["sourceUrl"], "http://example.com/s1.wsdl");
@@ -2238,14 +2287,14 @@ mod tests {
         let legacy = sample_legacy_project();
         let dir = write_legacy_project(tmp.path(), "IdemSvc", &legacy);
 
-        assert!(migrate_legacy_project_dir(&dir).await.expect("first migration"));
+        assert!(migrate_legacy_project_dir(&dir).expect("first migration"));
         // Second run is a no-op (already unified).
-        assert!(!migrate_legacy_project_dir(&dir).await.expect("second migration"));
+        assert!(!migrate_legacy_project_dir(&dir).expect("second migration"));
 
         // Data still intact after the no-op: operations/folders on disk, and
         // the suite is in the GLOBAL store exactly once (not duplicated by the
         // second, no-op migration).
-        let loaded = load_unified_project(dir.to_string_lossy().into()).expect("load");
+        let loaded = load_unified_project_sync(dir.to_string_lossy().into()).expect("load");
         assert_eq!(loaded["operations"].as_array().unwrap().len(), 2);
         assert_eq!(loaded["folders"].as_array().unwrap().len(), 1);
         assert!(!dir.join("tests").exists(), "per-project tests/ is gone (global store owns suites)");
@@ -2278,7 +2327,7 @@ mod tests {
             "operations": [],
             "testSuites": [ { "name": "G", "id": "sg", "testCases": [] } ]
         });
-        save_unified_project(base.join("SaveGuard").to_string_lossy().into(), unified)
+        save_unified_project_sync(base.join("SaveGuard").to_string_lossy().into(), unified)
             .expect("save unified");
         assert!(is_unified_format_path(&base.join("SaveGuard")));
 
@@ -2559,14 +2608,14 @@ mod tests {
         // unified store, the canonical writer for migrated projects).
         let dir = base.join("ReimportSvc");
         let with_suite = {
-            let loaded = load_unified_project(dir.to_string_lossy().into()).expect("load");
+            let loaded = load_unified_project_sync(dir.to_string_lossy().into()).expect("load");
             let mut p = loaded;
             p["testSuites"] = serde_json::json!([
                 { "id": "s-1", "name": "UserSuite", "testCases": [] }
             ]);
             p
         };
-        save_unified_project(dir.to_string_lossy().into(), with_suite).expect("save suite");
+        save_unified_project_sync(dir.to_string_lossy().into(), with_suite).expect("save suite");
 
         // C (global suites): `save_unified_project` routed the user's suite
         // into the GLOBAL store. The per-project `tests/` is gone.
@@ -2756,7 +2805,7 @@ mod tests {
         let tmp = tempfile::tempdir().expect("tempdir");
         std::env::set_var("APINOX_CONFIG_DIR", tmp.path());
 
-        save_unified_project(
+        save_unified_project_sync(
             "SkeletonSvc".to_string(),
             fixture_project_with_payloads(),
         )
@@ -2823,7 +2872,7 @@ mod tests {
         let tmp = tempfile::tempdir().expect("tempdir");
         std::env::set_var("APINOX_CONFIG_DIR", tmp.path());
 
-        save_unified_project(
+        save_unified_project_sync(
             "SkeletonSvc".to_string(),
             fixture_project_with_payloads(),
         )
@@ -2832,7 +2881,7 @@ mod tests {
         let detail = load_unified_project_detail("SkeletonSvc".to_string())
             .await
             .expect("detail load");
-        let direct = load_unified_project("SkeletonSvc".to_string()).expect("direct load");
+        let direct = load_unified_project_sync("SkeletonSvc".to_string()).expect("direct load");
 
         assert_eq!(
             serde_json::to_string(&detail).unwrap(),
@@ -2949,7 +2998,7 @@ mod tests {
                 "contentType": "application/soap+xml",
                 "operations": ops
             });
-            save_unified_project(format!("BenchService{p}"), project).expect("save bench project");
+            save_unified_project_sync(format!("BenchService{p}"), project).expect("save bench project");
         }
         // A handful of legacy-format dirs to cost the migration scan (each is
         // a full read/parse of properties.json + interfaces to decide it is

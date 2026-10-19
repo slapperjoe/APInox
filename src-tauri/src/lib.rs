@@ -8,6 +8,7 @@ use std::sync::{
 use std::time::Instant;
 use tauri::Manager;
 use tokio::sync::Mutex;
+use crate::utils::blocking;
 
 mod project_storage;
 mod history_storage;
@@ -421,7 +422,8 @@ async fn build_proxy_state(_app: &tauri::AppHandle) -> Result<ProxyAppState, Str
     let config_dir = dirs_next::home_dir()
         .unwrap_or_else(|| std::path::PathBuf::from("."))
         .join(".apinox");
-    std::fs::create_dir_all(&config_dir).map_err(|e| format!("Failed to create config dir: {}", e))?;
+    let dir_for_blocking = config_dir.clone();
+    blocking(move || std::fs::create_dir_all(&dir_for_blocking).map_err(|e| format!("Failed to create config dir: {}", e))).await?;
 
     let proxy_storage = Arc::new(storage::rules::RulesStorage::new(config_dir.clone()));
 

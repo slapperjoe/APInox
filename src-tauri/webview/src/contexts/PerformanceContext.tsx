@@ -130,7 +130,7 @@ export const PerformanceProvider = ({ children }: { children: ReactNode }) => {
     }, [setConfig, setSelectedPerformanceSuiteId, setSelectedInterface, setSelectedOperation, setSelectedRequest, setSelectedTestCase, setSelectedStep]);
 
     const handleDeletePerformanceSuite = useCallback((id: string) => {
-        bridge.sendMessage({ command: 'deletePerformanceSuite', suiteId: id });
+        bridge.sendMessage({ command: FrontendCommand.DeletePerformanceSuite, suiteId: id });
     }, []);
 
     const handleRunPerformanceSuite = useCallback((id: string) => {

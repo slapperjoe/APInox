@@ -3,7 +3,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use crate::utils::resolve_config_dir;
+use crate::utils::{blocking, resolve_config_dir};
 
 /// APInox configuration structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -240,18 +240,22 @@ pub(crate) fn save_config_document(document: &Value) -> Result<(), String> {
 /// Get full config
 #[tauri::command]
 pub async fn get_settings() -> Result<ApinoxConfig, String> {
-    load_config()
+    blocking(load_config).await
 }
 
 /// Save full config.
 #[tauri::command]
 pub async fn save_settings(config: ApinoxConfig) -> Result<(), String> {
-    save_config(&config)
+    blocking(move || save_config(&config)).await
 }
 
 /// Update UI state only
 #[tauri::command]
 pub async fn update_ui_settings(ui: UiConfig) -> Result<(), String> {
+    blocking(move || update_ui_settings_sync(ui)).await
+}
+
+fn update_ui_settings_sync(ui: UiConfig) -> Result<(), String> {
     let mut config = load_config()?;
     
     // Merge with existing UI settings instead of replacing

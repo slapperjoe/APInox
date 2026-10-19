@@ -1,6 +1,27 @@
 // Utilities module
 // Common utility functions for regex extraction, XPath evaluation, wildcards, etc.
 
+/// Run a blocking operation on tokio's blocking pool instead of an async-runtime
+/// worker thread.
+///
+/// Storage code is synchronous (`std::fs`), but the commands that call it are
+/// async — so a file operation holds one of the runtime's worker threads for its
+/// whole duration. With enough concurrent work (project save + mock server +
+/// performance runner) every worker can be held by file I/O. Handing the work to
+/// the blocking pool keeps the runtime free.
+///
+/// Non-async `#[tauri::command]` functions are worse: Tauri runs them on the
+/// main thread, so blocking I/O there freezes the UI. Those commands should be
+/// async wrappers around this.
+pub async fn blocking<T>(f: impl FnOnce() -> Result<T, String> + Send + 'static) -> Result<T, String>
+where
+    T: Send + 'static,
+{
+    tokio::task::spawn_blocking(f)
+        .await
+        .map_err(|e| format!("Blocking task failed: {}", e))?
+}
+
 pub mod regex_extractor;
 pub mod wildcard_processor;
 pub mod xpath_evaluator;

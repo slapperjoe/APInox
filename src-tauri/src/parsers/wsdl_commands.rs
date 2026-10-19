@@ -5,6 +5,7 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use crate::parsers::wsdl::{WsdlParser, ApiService, LoadContext};
 use crate::project_storage;
+use crate::utils::blocking;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ParseWsdlRequest {
@@ -214,7 +215,7 @@ pub async fn apply_wsdl_sync(
         project_id, diff.interface_id);
     
     // Load the project
-    let mut project = project_storage::load_project_internal(&dir_path).await?;
+    let mut project = blocking(move || project_storage::load_project_internal(&dir_path)).await?;
     
     // Find the interface
     let interfaces = project["interfaces"]

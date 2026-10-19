@@ -849,8 +849,7 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
              FrontendCommand.AddPerformanceSuite,
              FrontendCommand.AddPerformanceRequest, FrontendCommand.UpdatePerformanceRequest,
              FrontendCommand.DeletePerformanceRequest, FrontendCommand.UpdatePerformanceSuite,
-             FrontendCommand.DeletePerformanceSuite,
-             'deletePerfomanceSuite'].includes(message.command)) {
+             FrontendCommand.DeletePerformanceSuite].includes(message.command)) {
             try {
                 const config = await tauriInvoke('get_settings', {});
                 let suites: any[] = (config as any)?.performanceSuites || [];
@@ -913,7 +912,7 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                     if (suiteIdx !== -1) {
                         suites[suiteIdx] = { ...suites[suiteIdx], ...message.updates };
                     }
-                } else if (message.command === 'deletePerformanceSuite' || message.command === 'deletePerfomanceSuite' || message.command === FrontendCommand.DeletePerformanceSuite) {
+                } else if (message.command === FrontendCommand.DeletePerformanceSuite) {
                     suites = suites.filter((s: any) => s.id !== message.suiteId);
                 }
 
