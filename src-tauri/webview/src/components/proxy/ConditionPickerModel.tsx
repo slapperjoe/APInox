@@ -53,7 +53,8 @@ export function suggestConditionsFromSoapXml(
 ): SuggestedCondition[] {
   const suggestions: SuggestedCondition[] = [];
 
-  let doc: Document | null = null;
+  // Both the try and the catch assign, so the initial null was dead.
+  let doc: Document | null;
   try {
     const parser = new DOMParser();
     doc = parser.parseFromString(requestXml, 'application/xml');

@@ -40,7 +40,9 @@ module.exports = [
     {
         files: ['**/*.{ts,tsx}'],
         languageOptions: {
-            ecmaVersion: 2020,
+            // Match the tsconfig target so ES2022 syntax (Error `cause`, top-level
+            // await, class fields) is not reported as a parse error.
+            ecmaVersion: 2022,
             sourceType: 'module',
             parser: tsParser
         },
