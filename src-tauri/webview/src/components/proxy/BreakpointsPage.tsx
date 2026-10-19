@@ -8,7 +8,7 @@ import { tokens } from './tokens';
 import { ProxyModal } from './ProxyModal';
 import { languageFromContentType } from './trafficStyles';
 import { ConditionRow, addCondition as addCond, removeCondition as removeCond, updateCondition as updateCond } from './ConditionRowEditor';
-import { HeadersPanel, MonacoRequestEditorWithToolbar } from '@apinox/request-editor/monaco';
+import { HeadersPanel, MonacoRequestEditorWithToolbar } from '../../request-editor/monaco';
 
 interface BreakpointCondition {
   type: 'url' | 'method' | 'statusCode' | 'header' | 'contains';

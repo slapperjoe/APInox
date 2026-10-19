@@ -54,11 +54,5 @@ jobs:
       - name: Install webview dependencies
         run: cd src-tauri/webview && npm ci
 
-      - name: Install request-editor dependencies
-        run: cd packages/request-editor && npm ci
-
-      - name: Build request-editor package
-        run: cd packages/request-editor && npm run build
-
-      - name: Run tests (shared, webview, request-editor)
+      - name: Run tests (shared, webview)
         run: npm test

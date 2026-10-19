@@ -15,7 +15,7 @@ import {
   SectionHeader,
   CustomSelect,
 } from "./SettingsTypes";
- import { useTheme } from "@apinox/request-editor/core";
+ import { useTheme } from "../../../request-editor/core";
 import { useUI } from "../../../contexts/UIContext";
 import { UI_FONTS, applyUIFont, UIFontValue } from "../../../utils/fontLoader";
 

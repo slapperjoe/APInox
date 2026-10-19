@@ -1,6 +1,10 @@
-# @apinox/request-editor
+# Request editor module
 
-Reusable Monaco-based request/response editor components extracted from APInox.
+Monaco-based request/response editor components — an in-app module of the
+webview (`src-tauri/webview/src/request-editor`), formerly the standalone
+`@apinox/request-editor` workspace package. The import examples below are
+historical: consumers now import via relative paths (e.g.
+`../../request-editor/monaco`).
 
 ## Features
 

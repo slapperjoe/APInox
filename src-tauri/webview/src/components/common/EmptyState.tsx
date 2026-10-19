@@ -1,6 +1,6 @@
 import type { FC } from "react";
-import { EmptyState as PackageEmptyState } from "@apinox/request-editor/core";
-import type { EmptyStateProps } from "@apinox/request-editor/core";
+import { EmptyState as PackageEmptyState } from "../../request-editor/core";
+import type { EmptyStateProps } from "../../request-editor/core";
 
 /**
  * Webview EmptyState — re-export of the request-editor package component.

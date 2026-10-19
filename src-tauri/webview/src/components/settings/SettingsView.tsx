@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import styled from 'styled-components';
-import { MonacoEditorWrapper, Monaco } from '@apinox/request-editor/monaco';
+import { MonacoEditorWrapper, Monaco } from '../../request-editor/monaco';
 import { AlertTriangle, Settings, FileJson, Globe, Cloud, Server, ArrowUpCircle, Info } from 'lucide-react';
 import { GeneralTab, EnvironmentsTab, GlobalsTab, IntegrationsTab, UpdatesTab, AboutTab, ApinoxConfig } from './tabs';
 
-import { useTheme } from '@apinox/request-editor/core'; // Use package ThemeContext
+import { useTheme } from '../../request-editor/core'; // Use package ThemeContext
 import { TAG_COLORS } from '../../styles/colors';
 import { SPACING_SM, SPACING_MD } from '../../styles/spacing';
 import { ProxySettingsPanel } from '../proxy/ProxySettingsPanel';

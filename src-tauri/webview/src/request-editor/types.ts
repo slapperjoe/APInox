@@ -1,4 +1,4 @@
-// Core types for @apinox/request-editor package
+// Core types for ../request-editor package
 // These define the public API surface
 
 // ============================================================================

@@ -31,8 +31,8 @@ import {
     ExecuteRestResponse,
 } from '../../utils/unifiedExecute';
 import { resolveTopBarEndpoint } from '../../utils/unifiedTopBarEndpoint';
-import { MonacoRequestEditorWithToolbar as MonacoRequestEditor, MonacoResponseViewer, HeadersPanel, AssertionsPanel, ExtractorsPanel, ErrorDetailBanner } from '@apinox/request-editor/monaco';
-import { ExecutionResponse } from '@apinox/request-editor/monaco';
+import { MonacoRequestEditorWithToolbar as MonacoRequestEditor, MonacoResponseViewer, HeadersPanel, AssertionsPanel, ExtractorsPanel, ErrorDetailBanner } from '../../request-editor/monaco';
+import { ExecutionResponse } from '../../request-editor/monaco';
 import { EmptyState } from '../common/EmptyState';
 import { SampleRequestPanel } from '../workspace/SampleRequestPanel';
 

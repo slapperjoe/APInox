@@ -20,8 +20,9 @@ const BRIDGE = resolve(WEBVIEW, 'src/utils/bridge.ts');
 const LIBRS = resolve(ROOT, 'src-tauri/src/lib.rs');
 const MESSAGES = resolve(ROOT, 'shared/src/messages.ts');
 const PRODUCT_DIRS = [
+  // The request-editor module (formerly the standalone @apinox/request-editor
+  // package) lives under src/request-editor, so the webview src walk covers it.
   resolve(WEBVIEW, 'src'),
-  resolve(ROOT, 'packages/request-editor/src'),
 ];
 
 /**

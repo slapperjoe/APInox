@@ -5,12 +5,12 @@ import {
   formatXml,
   formatJson,
   useEditorSettings,
-} from '@apinox/request-editor/core';
+} from '../../request-editor/core';
 import {
   MonacoRequestEditorWithToolbar,
   MonacoResponseViewer,
   MonacoResponseViewerWithToolbar,
-} from '@apinox/request-editor/monaco';
+} from '../../request-editor/monaco';
 import type { TrafficLog } from './TrafficViewer';
 import { tokens } from './tokens';
 import { methodBg, statusStyle, languageFromContentType } from './trafficStyles';

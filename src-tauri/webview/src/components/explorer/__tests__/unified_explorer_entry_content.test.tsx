@@ -24,7 +24,7 @@ import { UnifiedProject } from '@shared/models';
  */
 
 // ── hermetic mocks (mirrors unified_sample_cards.test.tsx) ──────────────────
-vi.mock('@apinox/request-editor/monaco', () => ({
+vi.mock('../../../request-editor/monaco', () => ({
     MonacoRequestEditorWithToolbar: ({ value }: { value: string }) => (
         <textarea data-testid="mock-monaco-editor" value={value} readOnly />
     ),

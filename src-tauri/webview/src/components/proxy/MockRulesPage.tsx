@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useImperativeHandle, forwardRef } from 'react';
 import { SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XL } from "../../styles/spacing";
 import { open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog';
-import { MonacoRequestEditor } from '@apinox/request-editor/monaco';
+import { MonacoRequestEditor } from '../../request-editor/monaco';
 import { invokeTauriCommand } from '../../utils/bridge';
 import { tokens } from './tokens';
 import { languageFromContentType } from './trafficStyles';

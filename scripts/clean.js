@@ -30,15 +30,11 @@ const targets = [
 
   // Webview build output
   path.join(root, 'src-tauri', 'webview', 'dist'),
-
-  // Package build output
-  path.join(root, 'packages', 'request-editor', 'dist'),
 ];
 
 if (!keepNodeMods) {
   targets.push(
     path.join(root, 'src-tauri', 'webview', 'node_modules'),
-    path.join(root, 'packages', 'request-editor', 'node_modules'),
     path.join(root, 'packages', 'wsdl-parser', 'node_modules'),
     // Root node_modules (devDependencies like @tauri-apps/cli, vitest etc.)
     path.join(root, 'node_modules'),

@@ -5,9 +5,9 @@ import { bridge } from '../utils/bridge';
 import { CustomXPathEvaluator } from '../utils/xpathEvaluator';
 import { useMobileLayout } from '../hooks/useMobileLayout';
 
-import { ErrorBoundary, formatXml, validateUrl, validateJson, validateXml } from '@apinox/request-editor/core';
-import { RequestWorkspace, ScriptEditor } from '@apinox/request-editor/monaco';
-import type { ApiRequest as PackageApiRequest, ExecutionResponse as PackageExecutionResponse, Variable as PackageVariable } from '@apinox/request-editor/monaco';
+import { ErrorBoundary, formatXml, validateUrl, validateJson, validateXml } from '../request-editor/core';
+import { RequestWorkspace, ScriptEditor } from '../request-editor/monaco';
+import type { ApiRequest as PackageApiRequest, ExecutionResponse as PackageExecutionResponse, Variable as PackageVariable } from '../request-editor/monaco';
 import { WelcomePanel, TestCaseView, EmptyTestCase } from './workspace';
 import { ConditionStepEditor } from './workspace/ConditionStepEditor';
 import { LoopStepEditor } from './workspace/LoopStepEditor';

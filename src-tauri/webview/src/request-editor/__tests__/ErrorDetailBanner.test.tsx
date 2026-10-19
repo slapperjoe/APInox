@@ -12,9 +12,21 @@ const REPORT = [
 
 describe('ErrorDetailBanner', () => {
     beforeEach(() => {
-        Object.assign(navigator, {
-            clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
-        });
+        const writeText = vi.fn().mockResolvedValue(undefined);
+        if (navigator.clipboard) {
+            // jsdom exposes navigator.clipboard as a read-only accessor —
+            // patch the method on the existing object instead of reassigning
+            // navigator itself (Object.assign throws here).
+            Object.defineProperty(navigator.clipboard, 'writeText', {
+                configurable: true,
+                value: writeText,
+            });
+        } else {
+            Object.defineProperty(navigator, 'clipboard', {
+                configurable: true,
+                value: { writeText },
+            });
+        }
     });
 
     it('shows only the summary line until the detail is expanded', () => {

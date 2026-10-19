@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { MonacoEditorWrapper } from '@apinox/request-editor/monaco';
+import { MonacoEditorWrapper } from '../../request-editor/monaco';
 import { Play, HelpCircle } from 'lucide-react';
 import { Spinner } from '../common/Spinner';
 import { bridge, isTauri } from '../../utils/bridge';
 import { PrimaryButton, SecondaryButton, GhostButton } from '../common/Button';
-import { useTheme } from '@apinox/request-editor/core'; // Use package ThemeContext
+import { useTheme } from '../../request-editor/core'; // Use package ThemeContext
 import { Modal } from './Modal';
 import { SPACING_XS, SPACING_SM, SPACING_MD, SPACING_LG } from '../../styles/spacing';
 import { tokens } from '../proxy/tokens';

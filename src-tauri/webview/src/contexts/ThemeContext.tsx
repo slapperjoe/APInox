@@ -10,7 +10,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { themes, ThemeName } from '../styles/themes';
 import { debugLog } from '../utils/logger';
 import { applyUIFont, UIFontValue } from '../utils/fontLoader';
-import { toMonacoColor } from '@apinox/request-editor/monaco';
+import { toMonacoColor } from '../request-editor/monaco';
 
 interface ThemeContextType {
     theme: ThemeName;

@@ -4,7 +4,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ProjectContentTypeSelect } from '../UnifiedExplorerMain';
 
-vi.mock('@apinox/request-editor/monaco', () => ({
+vi.mock('../../../request-editor/monaco', () => ({
     MonacoRequestEditorWithToolbar: () => null,
     MonacoResponseViewer: () => null,
     HeadersPanel: () => null,

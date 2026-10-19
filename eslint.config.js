@@ -14,7 +14,7 @@ module.exports = [
         ignores: [
             'out',
             // 'dist' alone only matches a root-level dist; nested build output
-            // such as packages/request-editor/dist was being linted.
+            // anywhere in the tree was being linted.
             '**/dist/**',
             '**/node_modules/**',
             '**/*.d.ts',

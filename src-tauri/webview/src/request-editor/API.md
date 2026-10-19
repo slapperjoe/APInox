@@ -1,5 +1,9 @@
 # @apinox/request-editor API Documentation
 
+> Historical: this module is now part of the webview source tree
+> (`src-tauri/webview/src/request-editor`), not a standalone package. Import
+> examples below reflect the old package entry points.
+
 ## Installation
 
 ```bash

@@ -22,7 +22,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ThemeProvider } from '@apinox/request-editor/core';
+import { ThemeProvider } from '../../../../request-editor/core';
 import { UIProvider } from '../../../../contexts/UIContext';
 
 // Mock the UI context to a minimal shape GeneralTab reads (configDir).

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
-import { ThemeProvider } from '@apinox/request-editor/core';
+import { ThemeProvider } from '../../../../request-editor/core';
 import { AboutTab } from '../AboutTab';
 
 describe('AboutTab', () => {

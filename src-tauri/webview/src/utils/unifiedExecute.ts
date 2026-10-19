@@ -1,5 +1,5 @@
 import { ApiRequest, ApiOperation, UnifiedProject } from '@shared/models';
-import type { ExecutionResponse } from '@apinox/request-editor/monaco';
+import type { ExecutionResponse } from '../request-editor/monaco';
 
 /**
  * Phase 4 (R-09 / F-06 / F-07): request-type dispatcher for the unified

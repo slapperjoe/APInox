@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
-import { ThemeProvider } from '@apinox/request-editor/core';
+import { ThemeProvider } from '../../../request-editor/core';
 
 /**
  * SettingsView (was SettingsEditorModal) — full work-area settings.
@@ -11,7 +11,7 @@ import { ThemeProvider } from '@apinox/request-editor/core';
  * pending edits (the unmount effect that replaced handleClose).
  */
 
-vi.mock('@apinox/request-editor/monaco', () => ({
+vi.mock('../../../request-editor/monaco', () => ({
     MonacoEditorWrapper: ({ value }: { value?: string }) => (
         <textarea data-testid="mock-monaco-json" value={value} readOnly />
     ),

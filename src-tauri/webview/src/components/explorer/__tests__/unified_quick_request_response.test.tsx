@@ -4,7 +4,7 @@ import { UnifiedExplorerMain, UnifiedExplorerMainProps } from '../UnifiedExplore
 import { UnifiedProject, ScrapbookRequest } from '@shared/models';
 
 // hermetic mocks — same contract as unified_explorer_execute.test.tsx
-vi.mock('@apinox/request-editor/monaco', () => ({
+vi.mock('../../../request-editor/monaco', () => ({
     MonacoRequestEditorWithToolbar: ({ value }: { value: string }) => (
         <textarea data-testid="mock-monaco-editor" value={value} readOnly />
     ),

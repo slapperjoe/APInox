@@ -5,7 +5,7 @@ import { TestTube } from 'lucide-react';
 import { tokens } from './tokens';
 import { methodBg, statusStyle } from './trafficStyles';
 import { formatXml } from '@shared/utils/xmlFormatter';
-import { useEditorSettings } from '@apinox/request-editor/core';
+import { useEditorSettings } from '../../request-editor/core';
 import { IgnoreRule, matchesAnyIgnoreRule, ignorePatternFor } from '../../utils/useIgnoreList';
 import { extractPath, extractSoapAction } from '../../utils/trafficWorkflow';
 

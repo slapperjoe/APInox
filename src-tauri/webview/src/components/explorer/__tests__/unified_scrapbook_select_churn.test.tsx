@@ -17,7 +17,7 @@ import { ScrapbookRequest } from '@shared/models';
  * of churning renders/saves.
  */
 
-vi.mock('@apinox/request-editor/monaco', () => ({
+vi.mock('../../../request-editor/monaco', () => ({
     // Records the value prop at every commit so the test can assert the
     // editor never flashes BLANK between two non-empty entries (the stale
     // useState mirror of the context selection made the sync effect run its

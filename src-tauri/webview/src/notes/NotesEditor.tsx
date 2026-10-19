@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useState, useEffect } from "react";
 import styled from "styled-components";
 import { GhostButton } from "../components/common/Button";
-import { MonacoEditorWrapper, MonacoEditorWrapperProps, useSettingsDropdown } from "@apinox/request-editor/monaco";
+import { MonacoEditorWrapper, MonacoEditorWrapperProps, useSettingsDropdown } from "../request-editor/monaco";
 import {
   Save,
   Eye,
@@ -18,7 +18,7 @@ import { NotesCodeMirrorEditor, NotesCodeMirrorEditorRef } from "./NotesCodeMirr
 import { NotesContextToolbar } from "./NotesContextToolbar";
 import { NotesPreview, DebouncedNotesPreview } from "./NotesPreview";
 import { NotesHexEditor } from "./NotesHexEditor";
-import { useEditorSettings } from "@apinox/request-editor/core";
+import { useEditorSettings } from "../request-editor/core";
 import { EmptyState } from "../components/common/EmptyState";
 import { CustomSelect } from "../components/common/CustomSelect";
 

@@ -13,7 +13,7 @@ import React from 'react';
 import { RequestStepEditor } from '../RequestStepEditor';
 import type { WorkflowStep, WorkflowExtractor } from '@shared/models';
 
-vi.mock('@apinox/request-editor/monaco', () => ({
+vi.mock('../../../request-editor/monaco', () => ({
     MonacoEditorWrapper: ({ value }: { value?: string }) => (
         <textarea data-testid="mock-monaco" value={value || ''} readOnly />
     ),
@@ -27,7 +27,7 @@ vi.mock('monaco-editor', () => ({}));
 // RequestStepEditor reads the active skin's Monaco theme via useTheme —
 // mock the hook (avoids pulling the package ThemeProvider's Tauri/Monaco
 // side effects into jsdom).
-vi.mock('@apinox/request-editor/core', () => ({
+vi.mock('../../../request-editor/core', () => ({
     useTheme: () => ({
         theme: 'dark',
         setTheme: () => {},

@@ -3,9 +3,9 @@ import styled from 'styled-components';
 import { WorkflowStep } from '@shared/models';
 import { Code } from 'lucide-react';
 import { PrimaryButton } from '../common/Button';
-import { MonacoEditorWrapper, applyMonacoTheme } from '@apinox/request-editor/monaco';
+import { MonacoEditorWrapper, applyMonacoTheme } from '../../request-editor/monaco';
 import * as monaco from 'monaco-editor';
-import { useTheme } from '@apinox/request-editor/core'; // package ThemeContext (mounted in the app tree)
+import { useTheme } from '../../request-editor/core'; // package ThemeContext (mounted in the app tree)
 import {
     StepEditorContainer,
     StepHeader,

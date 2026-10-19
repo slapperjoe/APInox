@@ -15,12 +15,6 @@ const steps = [
     cwd: repoRoot,
   },
   {
-    title: 'Installing request-editor npm dependencies',
-    command: npmCommand,
-    args: ['ci'],
-    cwd: path.join(repoRoot, 'packages', 'request-editor'),
-  },
-  {
     title: 'Installing webview npm dependencies',
     command: npmCommand,
     args: ['ci'],

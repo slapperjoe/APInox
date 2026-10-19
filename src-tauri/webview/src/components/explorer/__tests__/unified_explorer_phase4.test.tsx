@@ -21,7 +21,7 @@ import { UnifiedProject, ApiRequest, ScrapbookRequest } from '@shared/models';
 //             same dispatcher (task item 4).
 
 // ── hermetic mocks ───────────────────────────────────────────────────────────
-vi.mock('@apinox/request-editor/monaco', () => ({
+vi.mock('../../../request-editor/monaco', () => ({
     MonacoRequestEditorWithToolbar: ({ value }: { value: string }) => (
         <textarea data-testid="mock-monaco-editor" value={value} readOnly />
     ),

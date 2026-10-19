@@ -15,7 +15,7 @@ import { UnifiedProject, ApiRequest } from '@shared/models';
 // ── hermetic mocks ───────────────────────────────────────────────────────────
 // The monaco sub-panel package: stub the editor/viewer so the load bar and
 // execute flow render without a real Monaco editor.
-vi.mock('@apinox/request-editor/monaco', () => ({
+vi.mock('../../../request-editor/monaco', () => ({
     MonacoRequestEditorWithToolbar: ({ value }: { value: string }) => (
         <textarea data-testid="mock-monaco-editor" value={value} readOnly />
     ),

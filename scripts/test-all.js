@@ -9,7 +9,7 @@
  * covers shared/ only, and this script runs each project's own config.
  *
  * Usage:
- *   node scripts/test-all.js            — run all three
+ *   node scripts/test-all.js            — run both
  *   node scripts/test-all.js webview    — run one
  */
 
@@ -21,7 +21,6 @@ const root = path.join(__dirname, '..');
 const projects = {
     shared: root,
     webview: path.join(root, 'src-tauri', 'webview'),
-    'request-editor': path.join(root, 'packages', 'request-editor'),
 };
 
 const requested = process.argv.slice(2);

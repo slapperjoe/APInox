@@ -21,7 +21,7 @@ import { SAMPLE_API_CARDS } from '../../../utils/sampleApiCards';
 //   the input IS the full card behavior.
 
 // ── hermetic mocks (mirrors unified_explorer_phase4.test.tsx) ────────────────
-vi.mock('@apinox/request-editor/monaco', () => ({
+vi.mock('../../../request-editor/monaco', () => ({
     MonacoRequestEditorWithToolbar: ({ value }: { value: string }) => (
         <textarea data-testid="mock-monaco-editor" value={value} readOnly />
     ),

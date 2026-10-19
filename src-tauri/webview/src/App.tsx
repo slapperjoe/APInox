@@ -1,8 +1,8 @@
 // import React from 'react'; // React 17+ JSX transform doesn't need React in scope
 import { useState, useEffect } from 'react';
 import { debugLog } from './utils/logger';
-import { ThemeProvider, EditorSettingsProvider, ErrorBoundary } from '@apinox/request-editor/core'; // Use package providers
-import type { EditorSettings } from '@apinox/request-editor/core';
+import { ThemeProvider, EditorSettingsProvider, ErrorBoundary } from './request-editor/core'; // Use package providers
+import type { EditorSettings } from './request-editor/core';
 import { applyUIFont, UIFontValue } from './utils/fontLoader';
 import { ProjectProvider } from './contexts/ProjectContext';
 import { SelectionProvider } from './contexts/SelectionContext';
