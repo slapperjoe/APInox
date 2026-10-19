@@ -4,6 +4,8 @@
 /// webview sends.
 use anyhow::Result;
 use once_cell::sync::Lazy;
+use quick_xml::events::Event;
+use quick_xml::Reader;
 use reqwest::Client;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -400,7 +402,7 @@ pub(crate) async fn run_flat_steps(
                                 r.error,
                                 Some((r.status_code, r.duration_ms, r.response_body)),
                                 r.duration_ms,
-                                false,
+                                r.stop_remaining,
                             )
                         }
                         Err(e) => (
@@ -1119,7 +1121,16 @@ pub(crate) async fn run_request_step(
         status_code,
         duration_ms,
     );
-    let has_failures = assertion_results.iter().any(|r| r.status == "FAIL");
+
+    // Content check (user decision): a SOAP Fault in the response is an error
+    // even when no assertion is configured — the step gets a red X instead of
+    // the automatic green tick, and the run halts at that step. A step that
+    // explicitly EXPECTS a fault (a "SOAP Fault" assertion with expect_fault)
+    // is exempt: its assertions govern the outcome.
+    let fault = detect_soap_fault(&response_body);
+    let expects_fault = assertion_expects_fault(req.assertions.as_deref().unwrap_or(&[]));
+    let (passed, error, stop_remaining) =
+        request_step_outcome(fault.as_deref(), expects_fault, &assertion_results);
 
     // Extract variables
     let extracted_variables = run_extractors(
@@ -1127,26 +1138,6 @@ pub(crate) async fn run_request_step(
         &response_body,
         &response_headers,
     );
-
-    let passed = !has_failures;
-    let error = if !passed {
-        Some(
-            assertion_results
-                .iter()
-                .filter(|r| r.status == "FAIL")
-                .map(|r| {
-                    format!(
-                        "{}: {}",
-                        r.name,
-                        r.message.as_deref().unwrap_or("failed")
-                    )
-                })
-                .collect::<Vec<_>>()
-                .join("; "),
-        )
-    } else {
-        None
-    };
 
     Ok(StepExecutionResult {
         passed,
@@ -1157,8 +1148,142 @@ pub(crate) async fn run_request_step(
         assertion_results,
         extracted_variables,
         error,
-        stop_remaining: false,
+        stop_remaining,
     })
+}
+
+/// True when the step's assertions explicitly EXPECT a SOAP fault (a
+/// "SOAP Fault" assertion with `expect_fault`) — such a step is governed by
+/// its assertions, not by the automatic fault-content check.
+fn assertion_expects_fault(assertions: &[FrontendAssertion]) -> bool {
+    assertions.iter().any(|a| {
+        a.assertion_type == "SOAP Fault"
+            && a.configuration.as_ref().and_then(|c| c.expect_fault) == Some(true)
+    })
+}
+
+/// Decide a request step's outcome from the response content check plus its
+/// assertions: (passed, error, stop_remaining).
+///
+/// An unexpected SOAP Fault fails the step AND halts the run at that step
+/// (`stop_remaining`) — the webview renders the fail status as a red X.
+/// Plain assertion failures keep the existing semantics: they fail the step
+/// but only top-level runs stop on them (embedded/loop bodies continue).
+fn request_step_outcome(
+    fault: Option<&str>,
+    expects_fault: bool,
+    assertion_results: &[AssertionResult],
+) -> (bool, Option<String>, bool) {
+    let has_failures = assertion_results.iter().any(|r| r.status == "FAIL");
+    let unexpected_fault = fault.is_some() && !expects_fault;
+    let passed = !has_failures && !unexpected_fault;
+    if passed {
+        return (true, None, false);
+    }
+    let mut parts: Vec<String> = Vec::new();
+    if unexpected_fault {
+        parts.push(format!("SOAP Fault: {}", fault.unwrap_or("fault detected")));
+    }
+    let failed_assertions: Vec<String> = assertion_results
+        .iter()
+        .filter(|r| r.status == "FAIL")
+        .map(|r| format!("{}: {}", r.name, r.message.as_deref().unwrap_or("failed")))
+        .collect();
+    if !failed_assertions.is_empty() {
+        parts.push(failed_assertions.join("; "));
+    }
+    (false, Some(parts.join("; ")), unexpected_fault)
+}
+
+/// Detect a SOAP Fault in a response body and return its human-readable text.
+///
+/// Parses the envelope when the body is well-formed XML: a `Fault` element
+/// inside `Body`, namespace-agnostic (`soap:Fault`, `env:Fault`, bare `Fault`
+/// all count). Captures the SOAP 1.1 `faultcode`/`faultstring` and the SOAP
+/// 1.2 `Code/Value` + `Reason/Text` fields. For bodies that don't parse as an
+/// envelope, falls back to the substring markers the "SOAP Fault" assertion
+/// has always used. Returns None when the body is not a fault.
+pub(crate) fn detect_soap_fault(body: &str) -> Option<String> {
+    let mut reader = Reader::from_str(body);
+    reader.trim_text(true);
+
+    let mut buf = Vec::new();
+    let mut in_body = false;
+    let mut in_fault = false;
+    let mut fault_found = false;
+    let mut fault_depth = 0usize;
+    let mut current_element = String::new();
+    let mut code = String::new();
+    let mut string = String::new();
+
+    loop {
+        match reader.read_event_into(&mut buf) {
+            Ok(Event::Start(e)) => {
+                let name = String::from_utf8_lossy(e.local_name().as_ref()).to_string();
+                if name == "Body" {
+                    in_body = true;
+                } else if in_body {
+                    if !in_fault && name == "Fault" {
+                        in_fault = true;
+                        fault_found = true;
+                        fault_depth = 1;
+                    } else if in_fault {
+                        fault_depth += 1;
+                    }
+                }
+                if in_fault {
+                    current_element = name;
+                }
+            }
+            Ok(Event::End(e)) => {
+                let name = String::from_utf8_lossy(e.local_name().as_ref()).to_string();
+                if in_fault {
+                    fault_depth = fault_depth.saturating_sub(1);
+                    if fault_depth == 0 && name == "Fault" {
+                        in_fault = false;
+                    }
+                } else if name == "Body" {
+                    in_body = false;
+                }
+            }
+            Ok(Event::Text(e)) if in_fault => {
+                let text = match e.unescape() {
+                    Ok(t) => t.trim().to_string(),
+                    Err(_) => continue,
+                };
+                if text.is_empty() {
+                    continue;
+                }
+                // SOAP 1.1: faultcode/faultstring; SOAP 1.2: Code/Value +
+                // Reason/Text. First non-empty value wins per field.
+                match current_element.as_str() {
+                    "faultcode" | "Value" if code.is_empty() => code = text,
+                    "faultstring" | "Reason" | "Text" if string.is_empty() => string = text,
+                    _ => {}
+                }
+            }
+            Ok(Event::Eof) => break,
+            Err(_) => break,
+            _ => {}
+        }
+    }
+
+    if fault_found {
+        let msg = if !string.is_empty() {
+            string
+        } else if !code.is_empty() {
+            code
+        } else {
+            "fault detected".to_string()
+        };
+        return Some(msg);
+    }
+
+    // Malformed / truncated envelopes: the historical substring markers.
+    if body.contains("<faultcode>") || body.contains("<soap:Fault>") || body.contains("<env:Fault>") {
+        return Some("fault detected (unparsable envelope)".to_string());
+    }
+    None
 }
 
 /// Run all assertions against the response.
@@ -1271,8 +1396,7 @@ fn run_assertion(
         }
         "SOAP Fault" => {
             let expect_fault = config.and_then(|c| c.expect_fault).unwrap_or(false);
-            let is_fault = body.contains("<faultcode>") || body.contains("<soap:Fault>")
-                || body.contains("<env:Fault>");
+            let is_fault = detect_soap_fault(body).is_some();
             let ok = is_fault == expect_fault;
             AssertionResult {
                 name,
@@ -1338,6 +1462,7 @@ fn run_extractors(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::testing::frontend_types::AssertionConfiguration;
 
     fn ctx(pairs: &[(&str, &str)]) -> HashMap<String, String> {
         pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect()
@@ -1656,5 +1781,141 @@ mod tests {
         let req = build_frontend_request(&step);
         assert_eq!(req.method.as_deref(), None);
         assert_eq!(req.extractors.as_ref().map(|e| e.len()), None);
+    }
+
+    // --- SOAP fault content check (red X instead of the automatic tick) ---
+
+    #[test]
+    fn detect_soap_fault_reads_soap11_faultstring() {
+        let body = concat!(
+            "<soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\">",
+            "<soap:Body><soap:Fault>",
+            "<faultcode>soap:Server</faultcode>",
+            "<faultstring>Order not found</faultstring>",
+            "</soap:Fault></soap:Body></soap:Envelope>"
+        );
+        assert_eq!(detect_soap_fault(body).as_deref(), Some("Order not found"));
+    }
+
+    #[test]
+    fn detect_soap_fault_reads_soap12_reason_text() {
+        let body = concat!(
+            "<env:Envelope xmlns:env=\"http://www.w3.org/2003/05/soap-envelope\">",
+            "<env:Body><env:Fault>",
+            "<env:Code><env:Value>env:Receiver</env:Value></env:Code>",
+            "<env:Reason><env:Text>Gateway timeout</env:Text></env:Reason>",
+            "</env:Fault></env:Body></env:Envelope>"
+        );
+        assert_eq!(detect_soap_fault(body).as_deref(), Some("Gateway timeout"));
+    }
+
+    #[test]
+    fn detect_soap_fault_is_none_for_a_normal_response() {
+        let body = concat!(
+            "<soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\">",
+            "<soap:Body><GetUserResponse><Id>7</Id></GetUserResponse></soap:Body></soap:Envelope>"
+        );
+        assert_eq!(detect_soap_fault(body), None);
+        // Non-XML bodies (JSON APIs) are never faults.
+        assert_eq!(detect_soap_fault("{\"ok\": true}"), None);
+    }
+
+    #[test]
+    fn detect_soap_fault_falls_back_to_markers_on_malformed_envelopes() {
+        // A truncated envelope the parser can't walk still reads as a fault —
+        // the historical substring markers the "SOAP Fault" assertion used.
+        assert!(detect_soap_fault("<soap:Fault><faultcode>Server").is_some());
+        assert!(detect_soap_fault("<env:Fault></env:Envelope>").is_some());
+    }
+
+    #[test]
+    fn unexpected_fault_fails_and_halts_even_without_assertions() {
+        // The user's core requirement: a fault response gets a red X (fail)
+        // and stops the run at that step, even with no assertion configured.
+        let (passed, error, stop) = request_step_outcome(Some("boom"), false, &[]);
+        assert!(!passed);
+        assert_eq!(error.as_deref(), Some("SOAP Fault: boom"));
+        assert!(stop, "an unexpected fault must halt the run right there");
+    }
+
+    #[test]
+    fn expected_fault_is_governed_by_its_assertion_not_the_auto_check() {
+        let pass = AssertionResult {
+            name: "SOAP Fault".to_string(),
+            status: "PASS".to_string(),
+            message: None,
+        };
+        let (passed, error, stop) = request_step_outcome(Some("boom"), true, &[pass]);
+        assert!(passed && error.is_none() && !stop);
+    }
+
+    #[test]
+    fn assertion_failure_without_fault_fails_but_does_not_force_stop() {
+        let fail = AssertionResult {
+            name: "Contains".to_string(),
+            status: "FAIL".to_string(),
+            message: Some("Response does not contain 'OK'".to_string()),
+        };
+        let (passed, error, stop) = request_step_outcome(None, false, &[fail]);
+        assert!(!passed);
+        assert_eq!(error.as_deref(), Some("Contains: Response does not contain 'OK'"));
+        assert!(!stop, "plain assertion failures keep the existing continue semantics");
+    }
+
+    #[test]
+    fn fault_and_failed_assertion_errors_are_combined() {
+        let fail = AssertionResult {
+            name: "HTTP Status".to_string(),
+            status: "FAIL".to_string(),
+            message: Some("Status 500 not in expected [200]".to_string()),
+        };
+        let (passed, error, stop) = request_step_outcome(Some("boom"), false, &[fail]);
+        assert!(!passed && stop);
+        let e = error.unwrap();
+        assert!(e.starts_with("SOAP Fault: boom"));
+        assert!(e.contains("HTTP Status"));
+    }
+
+    #[test]
+    fn assertion_expects_fault_only_when_configured_true() {
+        let expects = FrontendAssertion {
+            assertion_type: "SOAP Fault".to_string(),
+            name: None,
+            configuration: Some(AssertionConfiguration {
+                expect_fault: Some(true),
+                ..Default::default()
+            }),
+        };
+        let not_expects = FrontendAssertion {
+            assertion_type: "SOAP Fault".to_string(),
+            name: Some("Not SOAP Fault".to_string()),
+            configuration: Some(AssertionConfiguration {
+                expect_fault: Some(false),
+                ..Default::default()
+            }),
+        };
+        assert!(assertion_expects_fault(&[expects]));
+        assert!(!assertion_expects_fault(&[not_expects]));
+        assert!(!assertion_expects_fault(&[]));
+    }
+
+    #[test]
+    fn soap_fault_assertion_shares_the_detector() {
+        // The assertion arm and the automatic content check must agree.
+        let fault_body = concat!(
+            "<soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\">",
+            "<soap:Body><soap:Fault><faultstring>boom</faultstring></soap:Fault></soap:Body></soap:Envelope>"
+        );
+        let expect_absent = FrontendAssertion {
+            assertion_type: "SOAP Fault".to_string(),
+            name: Some("Not SOAP Fault".to_string()),
+            configuration: Some(AssertionConfiguration {
+                expect_fault: Some(false),
+                ..Default::default()
+            }),
+        };
+        let r = run_assertion(&expect_absent, fault_body, 200, 10);
+        assert_eq!(r.status, "FAIL");
+        assert!(r.message.as_deref().unwrap().contains("Unexpected SOAP fault"));
     }
 }
