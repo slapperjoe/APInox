@@ -2,7 +2,7 @@
 import React, { Suspense, useState, useEffect, useCallback, useMemo } from 'react';
 import styled from 'styled-components';
 import { Container } from '../styles/App.styles';
-import { bridge, isTauri } from '../utils/bridge';
+import { bridge, commandErrorText, isTauri } from '../utils/bridge';
 import { saveImportedProjectsAsUnified } from '../utils/importUnifiedStore';
 import { captureLog } from '../utils/logger';
 import { generateInitialXmlForOperation, soapDefault, rewriteRequestsForContentTypeChange } from '../utils/soapUtils';
@@ -1441,7 +1441,7 @@ const MainContent: React.FC = () => {
             alert(`Workspace exported successfully to ${filePath}`);
         } catch (error: any) {
             console.error('[Export] Failed to export workspace:', error);
-            alert(`Failed to export workspace: ${error.message || 'Unknown error'}`);
+            alert(`Failed to export workspace: ${commandErrorText(error) || 'Unknown error'}`);
         }
         setExportWorkspaceModal(false);
     }, []);

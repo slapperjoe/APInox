@@ -8,6 +8,7 @@
 import React, { useState, useCallback } from "react";
 import { CustomSelect } from "../common/CustomSelect";
 import styled from "styled-components";
+import { commandErrorText } from "../../utils/bridge";
 import {
   Upload,
   CheckCircle,
@@ -336,7 +337,7 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
         newResults.push({
           url,
           success: false,
-          error: error?.message || "Failed to parse URL",
+          error: commandErrorText(error) || "Failed to parse URL",
         });
       }
 

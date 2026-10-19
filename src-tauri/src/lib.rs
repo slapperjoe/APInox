@@ -24,6 +24,7 @@ mod workspace_export;
 mod e2e_unified_explorer;
 
 // Rust backend modules (APInox)
+pub mod error;
 pub mod utils;
 pub mod http;
 pub mod soap;

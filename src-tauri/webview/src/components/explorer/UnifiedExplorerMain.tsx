@@ -16,7 +16,7 @@ import { useUnifiedProjectsSafe } from '../../contexts/UnifiedProjectContext';
 import { UnifiedProject, ApiOperation, ApiRequest, ScrapbookRequest } from '@shared/models';
 import { soapDefault, resolveEffectiveContentType, generateSampleWithMetadata } from '../../utils/soapUtils';
 import { parseXmlToTree } from '../../utils/xmlTreeParser';
-import { invokeTauriCommand } from '../../utils/bridge';
+import { commandErrorText, invokeTauriCommand } from '../../utils/bridge';
 import { buildExecuteOperation } from '../../utils/executeOperation';
 import { detectLoadFormat } from '../../utils/loadRouting';
 import { SAMPLE_API_CARDS, SampleApiCard } from '../../utils/sampleApiCards';
@@ -566,7 +566,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
             await onLoadWsdl(loadUrl, { useProxy, loadId });
             setUrlInput({ url: '', loading: false, error: null });
         } catch (e: any) {
-            setUrlInput({ ...urlInput, loading: false, error: e?.message || 'Failed to load WSDL' });
+            setUrlInput({ ...urlInput, loading: false, error: commandErrorText(e) || 'Failed to load WSDL' });
         } finally {
             activeLoadIdRef.current = null;
         }
@@ -611,7 +611,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
             if (!selectedPath) return;
             await loadLocalFilePath(selectedPath);
         } catch (e: any) {
-            setUrlInput(prev => ({ ...prev, loading: false, error: e?.message || 'Failed to load WSDL file' }));
+            setUrlInput(prev => ({ ...prev, loading: false, error: commandErrorText(e) || 'Failed to load WSDL file' }));
         }
     }, [loadLocalFilePath]);
 
@@ -630,7 +630,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
         try {
             await loadLocalFilePath(path);
         } catch (e: any) {
-            setUrlInput(prev => ({ ...prev, loading: false, error: e?.message || 'Failed to load dropped file' }));
+            setUrlInput(prev => ({ ...prev, loading: false, error: commandErrorText(e) || 'Failed to load dropped file' }));
         }
     }, [loadLocalFilePath]);
     const handleDropZoneDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
