@@ -290,8 +290,7 @@ export const TestRunnerProvider = ({ children }: { children: ReactNode }) => {
         closeContextMenu: noOpCloseContextMenu, // Temporary decoupling
         selectedTestSuite,
         setSelectedTestSuite,
-        setSelectedPerformanceSuiteId,
-        config
+        setSelectedPerformanceSuiteId
     });
 
     const requestExecution = useRequestExecution({

@@ -81,7 +81,7 @@ export function useResizableWidth(
     // live values through refs, so the bound listener stays correct without
     // re-binding.
     const onPersistRef = useRef(onPersist);
-    onPersistRef.current = onPersist;
+    useEffect(() => { onPersistRef.current = onPersist; }, [onPersist]);
 
     const resetOnBlur = useCallback(() => {
         if (!isResizing.current) return;

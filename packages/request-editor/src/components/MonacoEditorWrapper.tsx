@@ -206,10 +206,13 @@ export const MonacoEditorWrapper = React.forwardRef<
           };
         }
       }
-    }, [isReady]);
+    }, [isReady, ref]);
 
     // Cleanup on unmount
     useEffect(() => {
+      // Capture the host node at effect time rather than reading the ref inside
+      // the cleanup, so the cleanup acts on the node this effect's render created.
+      const host = editorHostRef.current;
       return () => {
         const editor = editorRef.current;
         if (editor) {
@@ -220,8 +223,8 @@ export const MonacoEditorWrapper = React.forwardRef<
           modelRef.current.dispose();
         }
 
-        if (editorHostRef.current) {
-          editorHostRef.current.replaceChildren();
+        if (host) {
+          host.replaceChildren();
         }
 
         editorRef.current = null;

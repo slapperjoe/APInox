@@ -177,7 +177,7 @@ export function UnifiedProjectProvider({ children }: { children: ReactNode }) {
     /** Latest `projects` for use inside async callbacks after `await`
      *  (closures capture the render-era value; this ref tracks the newest). */
     const projectsRef = useRef<UnifiedProject[]>(projects);
-    projectsRef.current = projects;
+    React.useEffect(() => { projectsRef.current = projects; }, [projects]);
     /** True once a load cycle has reached a terminal phase (ready/error).
      *  Guards the one-shot event listeners against a second mount cycle
      *  (StrictMode double-invoke) firing on a stale subscription. */
@@ -536,12 +536,13 @@ export function UnifiedProjectProvider({ children }: { children: ReactNode }) {
     }, [projects]);
 
     // Memoize the context value so consumers only re-render when a state value
-    // they depend on actually changes. All action callbacks are useCallback-stable
-    // and the setters are useState-stable; only projects/selectedNode/load are volatile.
+    // they depend on actually changes. The action callbacks are useCallback'd, so
+    // they only change identity when their own inputs do — which is exactly when
+    // this memo should recompute, so they belong in the deps.
     const value = useMemo(() => ({
         projects, setProjects, selectedNode, setSelectedNode, load,
         refresh, ensureProjectFull, saveProject, updateProject, findSuiteById, findCaseById,
-    }), [projects, selectedNode, load]);
+    }), [projects, selectedNode, load, refresh, ensureProjectFull, saveProject, updateProject, findSuiteById, findCaseById]);
 
     return (
         <UnifiedProjectContext.Provider value={value}>

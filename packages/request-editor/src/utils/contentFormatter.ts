@@ -51,7 +51,7 @@ export function formatContent(
     content: string,
     language: string,
     settings: EditorSettings,
-    prettyPrint: boolean = true
+    prettyPrint = true
 ): string {
     if (!content) return '';
 

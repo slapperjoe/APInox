@@ -16,8 +16,7 @@ import {
     TestSuite,
     Assertion,
     RequestExtractor,
-    SidebarView,
-    ApinoxConfig
+    SidebarView
 } from '@shared/models';
 import { bridge, isTauri } from '../utils/bridge';
 import { BackendCommand, FrontendCommand } from '@shared/messages';
@@ -43,9 +42,6 @@ interface UseTestCaseHandlersParams {
     closeContextMenu: () => void;
     selectedTestSuite: TestSuite | null;
     setSelectedTestSuite: React.Dispatch<React.SetStateAction<TestSuite | null>>;
-    /** App config — referenced test cases are embedded into run payloads so
-        the backend executes a self-contained copy (no config save-race). */
-    config: ApinoxConfig | null;
 }
 
 interface UseTestCaseHandlersReturn {
@@ -73,9 +69,8 @@ export function useTestCaseHandlers({
     setSelectedPerformanceSuiteId,
     setResponse,
     setActiveView,
-    closeContextMenu,
     setSelectedTestSuite,
-    config
+    closeContextMenu
 }: UseTestCaseHandlersParams): UseTestCaseHandlersReturn {
 
     const { testSuites, addSuite, updateTestCase, findSuiteById, findCaseById } = useTestSuites();
@@ -93,7 +88,6 @@ export function useTestCaseHandlers({
         (fn: (step: TestStep) => TestStep) => {
             if (!selectedTestCase || !selectedStep) return;
             const updatedStep = fn(selectedStep);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const isReq = (updatedStep as any).type === 'request';
             void updateTestCase(selectedTestCase.id, tc => ({
                 ...tc,
@@ -380,7 +374,7 @@ export function useTestCaseHandlers({
             testCase,
             fallbackEndpoint: testCase.steps[0]?.config?.request?.endpoint || ''
         });
-    }, [findCaseById, allCases, config, pollTestRunUpdates]);
+    }, [findCaseById, allCases, pollTestRunUpdates]);
 
     const handleRunTestSuiteWrapper = useCallback((suiteId: string) => {
         console.log('[handleRunTestSuiteWrapper] CALLED with suiteId:', suiteId);
@@ -428,7 +422,7 @@ export function useTestCaseHandlers({
             suiteId,
             testSuite: suite
         });
-    }, [findSuiteById, allCases, config, pollTestRunUpdates]);
+    }, [findSuiteById, allCases, pollTestRunUpdates]);
 
     const handleSaveExtractor = useCallback((data: { xpath: string, value: string, source: 'body' | 'header', variableName: string, defaultValue?: string, editingId?: string, type?: 'XPath' | 'JSONPath' | 'Regex' | 'Header' }) => {
         if (!selectedTestCase || !selectedStep) {

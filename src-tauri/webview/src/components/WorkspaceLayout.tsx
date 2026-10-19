@@ -130,9 +130,6 @@ export const WorkspaceLayout: React.FC = () => {
     // We use a single "activeRequest" variable throughout the component
     const activeRequest = selectedRequest;
 
-    // For backward compatibility with existing code, we use effectiveRequest as well
-    const effectiveRequest = activeRequest;
-
     const onUpdateRequest = React.useCallback((updated: any) => {
         rawOnUpdateRequest(updated);
     }, [rawOnUpdateRequest]);
@@ -239,12 +236,12 @@ export const WorkspaceLayout: React.FC = () => {
         if (prevAlignAttributesRef.current === alignAttributes) return;
         prevAlignAttributesRef.current = alignAttributes;
 
-        if (preventEditing || !effectiveRequest?.request) return;
+        if (preventEditing || !activeRequest?.request) return;
 
-        const isXmlRequest = effectiveRequest.requestType !== 'rest'
-            && effectiveRequest.bodyType !== 'json'
-            && effectiveRequest.bodyType !== 'graphql'
-            && effectiveRequest.bodyType !== 'text';
+        const isXmlRequest = activeRequest.requestType !== 'rest'
+            && activeRequest.bodyType !== 'json'
+            && activeRequest.bodyType !== 'graphql'
+            && activeRequest.bodyType !== 'text';
 
         if (!isXmlRequest || !activeRequest) return;
 
@@ -259,21 +256,21 @@ export const WorkspaceLayout: React.FC = () => {
             lastAlignedRequestIdRef.current = null;
             return;
         }
-        if (preventEditing || !effectiveRequest?.request) return;
+        if (preventEditing || !activeRequest?.request) return;
 
-        const requestId = effectiveRequest.id || effectiveRequest.name || null;
+        const requestId = activeRequest.id || activeRequest.name || null;
         if (requestId && lastAlignedRequestIdRef.current === requestId) return;
 
-        const isXmlRequest = effectiveRequest.requestType !== 'rest'
-            && effectiveRequest.bodyType !== 'json'
-            && effectiveRequest.bodyType !== 'graphql'
-            && effectiveRequest.bodyType !== 'text';
+        const isXmlRequest = activeRequest.requestType !== 'rest'
+            && activeRequest.bodyType !== 'json'
+            && activeRequest.bodyType !== 'graphql'
+            && activeRequest.bodyType !== 'text';
 
         if (!isXmlRequest) return;
 
         onUpdateRequest({
-            ...effectiveRequest,
-            request: formatXml(effectiveRequest.request, alignAttributes, inlineElementValues)
+            ...activeRequest,
+            request: formatXml(activeRequest.request, alignAttributes, inlineElementValues)
         });
 
         if (requestId) {
@@ -282,21 +279,21 @@ export const WorkspaceLayout: React.FC = () => {
     }, [alignAttributes, preventEditing, activeRequest, inlineElementValues, onUpdateRequest]);
 
     React.useEffect(() => {
-        if (preventEditing || !effectiveRequest?.request) return;
+        if (preventEditing || !activeRequest?.request) return;
 
-        const requestId = effectiveRequest.id || effectiveRequest.name || null;
+        const requestId = activeRequest.id || activeRequest.name || null;
         if (requestId && lastFormattedRequestIdRef.current === requestId) return;
 
-        const isXmlRequest = effectiveRequest.requestType !== 'rest'
-            && effectiveRequest.bodyType !== 'json'
-            && effectiveRequest.bodyType !== 'graphql'
-            && effectiveRequest.bodyType !== 'text';
+        const isXmlRequest = activeRequest.requestType !== 'rest'
+            && activeRequest.bodyType !== 'json'
+            && activeRequest.bodyType !== 'graphql'
+            && activeRequest.bodyType !== 'text';
 
         if (!isXmlRequest) return;
 
         onUpdateRequest({
-            ...effectiveRequest,
-            request: formatXml(effectiveRequest.request, alignAttributes, inlineElementValues)
+            ...activeRequest,
+            request: formatXml(activeRequest.request, alignAttributes, inlineElementValues)
         });
 
         if (requestId) {
@@ -744,7 +741,7 @@ export const WorkspaceLayout: React.FC = () => {
     }
 
     // Fallback for other views that usually show Welcome if no request selected
-    if (!effectiveRequest) {
+    if (!activeRequest) {
         if (selectedStep && selectedStep.type === 'script' && onUpdateStep) {
             return (
                 <ScriptEditor
@@ -761,13 +758,13 @@ export const WorkspaceLayout: React.FC = () => {
     // TypeScript flow analysis: After the guard above, activeRequest is guaranteed to be non-null
     // Add a type assertion to help TypeScript understand this
     if (!activeRequest) {
-        throw new Error('[WorkspaceLayout] Invariant violation: activeRequest should not be null after effectiveRequest check');
+        throw new Error('[WorkspaceLayout] Invariant violation: activeRequest should not be null after activeRequest check');
     }
 
 
-    // For the main rendering, use effectiveRequest as the current request
+    // For the main rendering, use activeRequest as the current request
     // This avoids having to change hundreds of references throughout the component
-    const currentRequest = effectiveRequest;
+    const currentRequest = activeRequest;
 
     // File picker callback for form-data and binary uploads
     // TODO: Implement proper binary file reading via Tauri command

@@ -88,11 +88,7 @@ export const SearchProvider: React.FC<SearchProviderProps> = ({
     // -------------------------------------------------------------------------
 
     const { 
-        projects, 
-        ensureProjectExpanded,
-        ensureInterfaceExpanded,
-        ensureOperationExpanded,
-        setSelectedProjectName 
+        projects 
     } = useProject();
 
     // Phase B (t_86c34d38): the PROJECTS view is gone — "projects" search
@@ -111,9 +107,6 @@ export const SearchProvider: React.FC<SearchProviderProps> = ({
     useEffect(() => { globalTestSuitesRef.current = globalTestSuites; }, [globalTestSuites]);
     
     const {
-        setSelectedInterface,
-        setSelectedOperation,
-        setSelectedRequest,
         setSelectedTestSuite,
         setSelectedTestCase,
     } = useSelection();
@@ -293,13 +286,6 @@ export const SearchProvider: React.FC<SearchProviderProps> = ({
         }
     }, [
         setActiveView,
-        setSelectedProjectName,
-        ensureProjectExpanded,
-        ensureInterfaceExpanded,
-        ensureOperationExpanded,
-        setSelectedInterface,
-        setSelectedOperation,
-        setSelectedRequest,
         setSelectedTestSuite,
         setSelectedTestCase,
         setUnifiedNode,

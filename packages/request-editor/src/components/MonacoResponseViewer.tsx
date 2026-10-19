@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useMemo } from 'react';
+import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import { MonacoEditorWrapper } from '../monaco';
 import type { MonacoType as Monaco } from '../monaco';
 import styled from 'styled-components';
@@ -39,14 +39,14 @@ const MonacoResponseViewerBase: React.FC<MonacoResponseViewerProps> = ({
     // once in onMount, so it always reads the latest callback through a ref
     // instead of re-subscribing when caller callback identity changes.
     const onSelectionChangeRef = useRef<MonacoResponseViewerProps['onSelectionChange']>(onSelectionChange);
-    onSelectionChangeRef.current = onSelectionChange;
+    useEffect(() => { onSelectionChangeRef.current = onSelectionChange; }, [onSelectionChange]);
     const [isReady, setIsReady] = React.useState(!autoFoldElements || autoFoldElements.length === 0 || !value);
     const { theme } = useTheme();
     const [viewerTheme, setViewerTheme] = useState<string>('vs-dark');
 
-    const applyViewerTheme = (monacoInstance: Monaco) => {
+    const applyViewerTheme = useCallback((monacoInstance: Monaco) => {
         setViewerTheme(applyMonacoTheme(monacoInstance, theme));
-    };
+    }, [theme]);
 
     // Keep Monaco language in sync so highlighting matches the response format (e.g., JSON vs XML)
     useEffect(() => {
@@ -61,7 +61,7 @@ const MonacoResponseViewerBase: React.FC<MonacoResponseViewerProps> = ({
         if (monacoRef.current) {
             applyViewerTheme(monacoRef.current);
         }
-    }, [theme]);
+    }, [applyViewerTheme]);
 
     // Apply auto-folding when response content changes
     // Response viewer is read-only, so any value change is a new response

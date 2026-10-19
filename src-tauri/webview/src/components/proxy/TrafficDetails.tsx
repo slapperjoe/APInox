@@ -144,7 +144,10 @@ export function TrafficDetails({ log }: TrafficDetailsProps) {
   } = useSplitPaneDrag(bodyHeight);
 
   // Reset split when switching to a different log entry
-  useEffect(() => { setUserRequestPx(null); }, [log.id]);
+  // setUserRequestPx is a useState setter from splitPane, so it is stable in
+  // practice — but it arrives through a hook return object, which the rule
+  // cannot prove. Listing it satisfies the rule without changing behaviour.
+  useEffect(() => { setUserRequestPx(null); }, [log.id, setUserRequestPx]);
 
   // Measure body height; keep live with ResizeObserver
   useEffect(() => {
