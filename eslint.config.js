@@ -66,5 +66,16 @@ module.exports = [
 
             'react-hooks/exhaustive-deps': 'error'
         }
+    },
+
+    {
+        // Test files: empty arrow functions are stub callbacks and non-null
+        // assertions are how you reach into a rendered element. Both are
+        // idiomatic there and produced 155 of the findings.
+        files: ['**/__tests__/**', '**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}'],
+        rules: {
+            '@typescript-eslint/no-empty-function': 'off',
+            '@typescript-eslint/no-non-null-assertion': 'off'
+        }
     }
 ];

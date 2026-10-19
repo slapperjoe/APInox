@@ -1,11 +1,11 @@
 {
-  "@typescript-eslint/no-non-null-assertion": 153,
+  "@typescript-eslint/no-non-null-assertion": 53,
   "@typescript-eslint/no-unused-vars": 90,
   "react-hooks/refs": 8,
   "no-unused-vars": 5,
   "no-empty": 3,
-  "@typescript-eslint/no-empty-function": 85,
   "react-hooks/exhaustive-deps": 53,
+  "@typescript-eslint/no-empty-function": 53,
   "no-redeclare": 1,
   "react-hooks/set-state-in-effect": 40,
   "prefer-const": 7,
