@@ -125,7 +125,8 @@ export const TestCaseStepEditor: React.FC<TestCaseStepEditorProps> = ({
 
   const handleSave = () => {
     const defaults = referenced?.variables || {};
-    let overrides: Record<string, string> = step.testCaseVariables || {};
+    // Both the try and the catch assign, so the initial value was dead.
+    let overrides: Record<string, string>;
     try {
       const edited = JSON.parse(varsJson || "{}") as Record<string, unknown>;
       overrides = {};

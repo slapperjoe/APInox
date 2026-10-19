@@ -97,7 +97,8 @@ export function formatXml(xml: string, alignAttributes = false, inlineElementVal
                     let attrsString = match[2];
                     const closing = match[3];
 
-                    let tagString = '';
+                    // Every branch below assigns, so the empty initialiser was dead.
+                    let tagString: string;
                     if (!attrsString.trim()) {
                         tagString = token;
                     } else {

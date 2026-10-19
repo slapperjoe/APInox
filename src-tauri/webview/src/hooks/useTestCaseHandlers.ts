@@ -123,7 +123,6 @@ export function useTestCaseHandlers({
 
             if (batch?.error) {
                 console.error('[TestRun] Test run error:', batch.error);
-                done = true;
                 break;
             }
 
