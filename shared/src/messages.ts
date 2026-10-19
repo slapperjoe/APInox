@@ -38,7 +38,7 @@ export enum FrontendCommand {
     // Performance
     AddPerformanceSuite = 'addPerformanceSuite',
     UpdatePerformanceSuite = 'updatePerformanceSuite',
-    DeletePerformanceSuite = 'deletePerfomanceSuite',
+    DeletePerformanceSuite = 'deletePerformanceSuite',
     AddPerformanceRequest = 'addPerformanceRequest',
     PickOperationForPerformance = 'pickOperationForPerformance',
     UpdatePerformanceRequest = 'updatePerformanceRequest',
