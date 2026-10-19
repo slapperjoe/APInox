@@ -58,7 +58,8 @@ const panelWidthPct = (container: HTMLElement): number => {
     const panel = panelOf(container);
     const classes = panel.className.split(/\s+/);
     for (const sheet of document.styleSheets) {
-        let rules: CSSRule[] = [];
+        // The catch continues to the next sheet, so the empty initialiser is dead.
+        let rules: CSSRule[];
         try {
             rules = Array.from(sheet.cssRules);
         } catch {

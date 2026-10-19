@@ -265,7 +265,8 @@ export const ScriptPlaygroundModal: React.FC<ScriptPlaygroundModalProps> = ({ on
         setLogs([]);
         setResult(null);
 
-        let parsedVars = {};
+        // The catch returns, so the empty fallback was never read.
+        let parsedVars: unknown;
         try {
             parsedVars = JSON.parse(variables);
         } catch (e) {

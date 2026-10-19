@@ -98,7 +98,8 @@ export const NotesContextToolbar: React.FC<ContextToolbarProps> = ({
   const type = context || "Paragraph";
 
   let title = "Text";
-  let items: { icon: React.ReactNode; label: string; action: string }[] = [];
+  // Every branch below assigns, so the empty initialiser was dead.
+  let items: { icon: React.ReactNode; label: string; action: string }[];
 
   if (type.includes("Header") || type.includes("ATXHeading")) {
     title = "Header";
