@@ -120,7 +120,6 @@ export const ImportTestCaseModal: React.FC<ImportTestCaseModalProps> = ({
                 requestType: req.requestType,
                 bodyType: req.bodyType,
                 restConfig: (req as any).restConfig,
-                graphqlConfig: req.graphqlConfig,
             });
         }
         onClose();

@@ -27,7 +27,6 @@ export { BinaryBodyPanel } from './components/BinaryBodyPanel';
 export { RestAuthPanel } from './components/RestAuthPanel';
 export { SecurityPanel } from './components/SecurityPanel';
 export { AttachmentsPanel } from './components/AttachmentsPanel';
-export { GraphQLVariablesPanel } from './components/GraphQLVariablesPanel';
 export { VariablesPanel } from './components/VariablesPanel';
 export { ScriptEditor } from './components/ScriptEditor';
 

@@ -1,23 +1,20 @@
 import { describe, it, expect } from 'vitest';
 import {
     resolveRequestType,
-    buildRestGraphQlInvokeArgs,
-    normalizeRestGraphQlResponse,
+    buildRestInvokeArgs,
+    normalizeRestResponse,
     editorLanguageForRequest,
     findOwnerRequest,
 } from './unifiedExecute';
 import type { ApiRequest, UnifiedProject } from '@shared/models';
 
 // Phase 4 (R-09 / F-06 / F-07) — unit tests for the request-type dispatcher
-// util. These lock the legacy bridge.ts:433–505 semantics (body rules,
-// GraphQL wrapping) in one testable place, independent of the Tauri bridge.
+// util. These lock the legacy bridge.ts:433–505 semantics (body rules) in
+// one testable place, independent of the Tauri bridge.
 
 describe('resolveRequestType', () => {
     it('returns the declared rest type', () => {
         expect(resolveRequestType({ name: 'r', request: '', requestType: 'rest' })).toBe('rest');
-    });
-    it('returns the declared graphql type', () => {
-        expect(resolveRequestType({ name: 'r', request: '', requestType: 'graphql' })).toBe('graphql');
     });
     it('returns an explicit soap type', () => {
         expect(resolveRequestType({ name: 'r', request: '', requestType: 'soap' })).toBe('soap');
@@ -27,14 +24,13 @@ describe('resolveRequestType', () => {
     });
 });
 
-describe('buildRestGraphQlInvokeArgs (legacy bridge.ts:433–505 parity)', () => {
+describe('buildRestInvokeArgs (legacy bridge.ts:433–505 parity)', () => {
     it('REST GET sends no body', () => {
-        const args = buildRestGraphQlInvokeArgs({
+        const args = buildRestInvokeArgs({
             method: 'get',
             url: 'https://petstore.swagger.io/v2/pet/1',
             headers: { 'Content-Type': 'application/json' },
             body: '{"should":"not":"be":"sent"}',
-            isGraphQL: false,
         });
         expect(args.method).toBe('GET'); // uppercased
         expect(args.url).toBe('https://petstore.swagger.io/v2/pet/1');
@@ -44,104 +40,27 @@ describe('buildRestGraphQlInvokeArgs (legacy bridge.ts:433–505 parity)', () =>
 
     it('REST POST/PUT/PATCH send the body', () => {
         for (const m of ['POST', 'PUT', 'PATCH']) {
-            const args = buildRestGraphQlInvokeArgs({
+            const args = buildRestInvokeArgs({
                 method: m,
                 url: 'https://petstore.swagger.io/v2/pet',
                 headers: {},
                 body: '{"name":"dog"}',
-                isGraphQL: false,
             });
             expect(args.method).toBe(m);
             expect(args.body).toBe('{"name":"dog"}');
         }
     });
 
-    it('GraphQL always sends a body (it is the query) even for a non-body method', () => {
-        const args = buildRestGraphQlInvokeArgs({
-            method: 'POST',
-            url: 'https://spacex-production.up.railway.app/graphql',
-            headers: { 'Content-Type': 'application/json' },
-            body: 'query Missions {\n  missions(limit: 1) { name }\n}',
-            isGraphQL: true,
-        });
-        // Raw query wrapped as {"query": ...} with operationName extracted.
-        const parsed = JSON.parse(args.body!);
-        expect(parsed.query).toBe('query Missions {\n  missions(limit: 1) { name }\n}');
-        expect(parsed.operationName).toBe('Missions');
-        expect(parsed.variables).toBeUndefined();
-    });
-
-    it('an anonymous GraphQL query (no operation name) is wrapped without operationName', () => {
-        // Legacy parity (bridge.ts:448): the name regex only matches
-        // `query <Name>`; `query {` is anonymous → no operationName field.
-        const args = buildRestGraphQlInvokeArgs({
-            method: 'POST',
-            url: 'https://example.com/graphql',
-            headers: {},
-            body: 'query {\n  missions { name }\n}',
-            isGraphQL: true,
-        });
-        const parsed = JSON.parse(args.body!);
-        expect(parsed.query).toBe('query {\n  missions { name }\n}');
-        expect(parsed.operationName).toBeUndefined();
-    });
-
-    it('GraphQL includes variables when present (non-empty)', () => {
-        const args = buildRestGraphQlInvokeArgs({
-            method: 'POST',
-            url: 'https://example.com/graphql',
-            headers: {},
-            body: 'query Launches($limit: Int) { launches(limit: $limit) { name } }',
-            variables: { limit: 3 },
-            isGraphQL: true,
-        });
-        const parsed = JSON.parse(args.body!);
-        expect(parsed.query).toContain('query Launches');
-        expect(parsed.variables).toEqual({ limit: 3 });
-        expect(parsed.operationName).toBe('Launches');
-    });
-
-    it('GraphQL omits variables when empty', () => {
-        const args = buildRestGraphQlInvokeArgs({
-            method: 'POST',
-            url: 'https://example.com/graphql',
-            headers: {},
-            body: 'query { characters { name } }',
-            variables: {},
-            isGraphQL: true,
-        });
-        const parsed = JSON.parse(args.body!);
-        expect(parsed.variables).toBeUndefined();
-    });
-
-    it('an already-JSON GraphQL payload (starts with {) is NOT re-wrapped', () => {
-        const raw = JSON.stringify({ query: 'query { id }', variables: { x: 1 } });
-        const args = buildRestGraphQlInvokeArgs({
-            method: 'POST',
-            url: 'https://example.com/graphql',
-            headers: {},
-            body: raw,
-            isGraphQL: true,
-        });
-        // Passed through untouched.
-        expect(args.body).toBe(raw);
-    });
-
-    it('graphql body of null yields a null body only for non-body REST methods', () => {
-        // REST GET with no body → null.
+    it('no body at all yields null', () => {
         expect(
-            buildRestGraphQlInvokeArgs({ method: 'GET', url: 'u', headers: {}, body: null, isGraphQL: false }).body,
-        ).toBeNull();
-        // GraphQL with no body at all → null (nothing to wrap).
-        expect(
-            buildRestGraphQlInvokeArgs({ method: 'POST', url: 'u', headers: {}, body: null, isGraphQL: true }).body,
+            buildRestInvokeArgs({ method: 'GET', url: 'u', headers: {}, body: null }).body,
         ).toBeNull();
     });
 });
 
-describe('normalizeRestGraphQlResponse', () => {
+describe('normalizeRestResponse', () => {
     it('maps the Rust HttpResponse into the ExecutionResponse shape', () => {
-        const out = normalizeRestGraphQlResponse(
+        const out = normalizeRestResponse(
             {
                 success: true,
                 status: 200,
@@ -160,7 +79,7 @@ describe('normalizeRestGraphQlResponse', () => {
     });
 
     it('falls back to the request content type when the response has none', () => {
-        const out = normalizeRestGraphQlResponse(
+        const out = normalizeRestResponse(
             { success: false, status: 500, headers: {}, body: '' },
             'application/json',
         );
@@ -182,11 +101,6 @@ describe('editorLanguageForRequest (doc §5.3(3), risk R3)', () => {
         expect(
             editorLanguageForRequest({ name: 'r', request: '', requestType: 'rest', contentType: 'text/plain' }),
         ).toBe('plaintext');
-    });
-    it('GraphQL → graphql', () => {
-        expect(
-            editorLanguageForRequest({ name: 'r', request: '', requestType: 'graphql', contentType: 'application/json' }),
-        ).toBe('graphql');
     });
     it('undeclared type (WSDL/quick request default) → xml (backward compatible)', () => {
         expect(editorLanguageForRequest({ name: 'r', request: '', contentType: 'application/soap+xml' })).toBe('xml');

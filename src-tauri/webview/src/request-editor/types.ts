@@ -70,8 +70,8 @@ export interface MonacoRequestEditorProps {
   value: string;
   /** Callback when content changes */
   onChange: (value: string) => void;
-  /** Editor language (xml, json, graphql, text) */
-  language?: 'xml' | 'json' | 'graphql' | 'text';
+  /** Editor language (xml, json, text) */
+  language?: 'xml' | 'json' | 'text';
   /** Read-only mode */
   readOnly?: boolean;
   /** Callback when editor gains focus */
@@ -350,23 +350,6 @@ export interface AttachmentsPanelProps {
   readOnly?: boolean;
   /** Callback to trigger file picker */
   onPickFile?: () => Promise<{ name: string; content: string; contentType: string } | null>;
-  /** Theme configuration */
-  theme?: EditorTheme;
-}
-
-// ============================================================================
-// GraphQL Variables Panel
-// ============================================================================
-
-export interface GraphQLVariablesPanelProps {
-  /** Current variables (JSON string) */
-  value: string;
-  /** Callback when variables change */
-  onChange: (value: string) => void;
-  /** Read-only mode */
-  readOnly?: boolean;
-  /** Available variables for autocomplete */
-  availableVariables?: EditorVariable[];
   /** Theme configuration */
   theme?: EditorTheme;
 }

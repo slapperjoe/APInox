@@ -177,7 +177,6 @@ fn unified_project_to_nested(unified: &serde_json::Value) -> serde_json::Value {
                     "requestType",
                     "bodyType",
                     "restConfig",
-                    "graphqlConfig",
                     "sampleMetadata",
                 ] {
                     if let Some(v) = req.get(k) {

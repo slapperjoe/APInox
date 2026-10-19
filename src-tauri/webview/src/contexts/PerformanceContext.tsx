@@ -337,7 +337,6 @@ export const PerformanceProvider = ({ children }: { children: ReactNode }) => {
             requestType: request.requestType,
             bodyType: request.bodyType,
             restConfig: request.restConfig,
-            graphqlConfig: request.graphqlConfig,
         };
         debugLog('[Performance] Selecting request', request.id);
         setSelectedRequest(soapRequest);
@@ -402,8 +401,7 @@ export const PerformanceProvider = ({ children }: { children: ReactNode }) => {
                     // Explicitly preserve requestType and bodyType to prevent defaulting to soap
                     requestType: newRequest.requestType || 'soap',
                     bodyType: newRequest.bodyType,
-                    restConfig: newRequest.restConfig,
-                    graphqlConfig: newRequest.graphqlConfig
+                    restConfig: newRequest.restConfig
                 };
             } else if (perfOp) {
                 // Check if operation has existing requests (e.g., from OpenAPI)

@@ -13,11 +13,9 @@ import { UnifiedProject, ApiRequest, ScrapbookRequest } from '@shared/models';
 //             remains the second guard.
 //   REST    — `execute_rest_request` with the legacy flat-arg semantics
 //             (bridge.ts:433–505), plus a history write.
-//   GraphQL — `execute_rest_request` with the raw query wrapped as
-//             {"query": …, "operationName": …} (legacy bridge.ts:439–456).
-//   History — REST and GraphQL executions call `add_history_entry` with the
+//   History — REST executions call `add_history_entry` with the
 //             correct fields (single global store, doc §10.4 / Q6).
-//   Quick requests — a REST and a GraphQL quick request execute through the
+//   Quick requests — a REST quick request executes through the
 //             same dispatcher (task item 4).
 
 // ── hermetic mocks ───────────────────────────────────────────────────────────
@@ -127,34 +125,6 @@ const makeRestProject = (): UnifiedProject => ({
     ],
 });
 
-/** GraphQL (SpaceX-shaped) project. */
-const makeGraphqlProject = (): UnifiedProject => ({
-    name: 'SpaceX',
-    source: 'graphql',
-    sourceUrl: 'https://spacex-production.up.railway.app/graphql',
-    parsedAt: new Date(),
-    operations: [
-        {
-            id: 'op-queries-missions',
-            name: 'Query/missions',
-            action: '',
-            originalEndpoint: 'https://spacex-production.up.railway.app/graphql',
-            requests: [
-                {
-                    id: 'req-gql',
-                    name: 'sample_missions',
-                    request: 'query Missions {\n  missions {\n    __typename\n    name\n  }\n}',
-                    endpoint: 'https://spacex-production.up.railway.app/graphql',
-                    method: 'POST',
-                    contentType: 'application/json',
-                    headers: { 'Content-Type': 'application/json' },
-                    requestType: 'graphql',
-                    bodyType: 'graphql',
-                },
-            ],
-        },
-    ],
-});
 
 const baseProps: Omit<UnifiedExplorerMainProps, 'projects' | 'selectedNode'> = {
     onSelectNode: vi.fn(),
@@ -400,74 +370,6 @@ describe('Phase 4 — REST execution (R-09 / F-06)', () => {
     });
 });
 
-// ── GraphQL execution ────────────────────────────────────────────────────────
-
-describe('Phase 4 — GraphQL execution (R-09 / F-07)', () => {
-    it('a SpaceX query wraps the raw query as {"query": …, "operationName": …} and writes history', async () => {
-        setupInvoke();
-        render(
-            <UnifiedExplorerMain
-                {...baseProps}
-                projects={[makeGraphqlProject()]}
-                selectedNode={{ type: 'request', id: 'req-gql' }}
-            />,
-        );
-
-        fireEvent.click(screen.getByRole('button', { name: /run/i }));
-
-        await waitFor(() => {
-            const call = findCall('execute_rest_request');
-            expect(call).toBeDefined();
-            expect(call![1].method).toBe('POST');
-            expect(call![1].url).toBe('https://spacex-production.up.railway.app/graphql');
-            const sentBody = JSON.parse(call![1].body);
-            // The raw query is wrapped verbatim and the operation name is
-            // extracted from the query text (legacy bridge.ts:444–456).
-            expect(sentBody.query).toBe('query Missions {\n  missions {\n    __typename\n    name\n  }\n}');
-            expect(sentBody.operationName).toBe('Missions');
-            expect(sentBody.variables).toBeUndefined();
-        });
-
-        const viewer = await screen.findByTestId('mock-response-viewer');
-        expect(viewer).toHaveTextContent('{"id":1,"name":"dog"}');
-
-        const historyCall = findCall('add_history_entry');
-        expect(historyCall).toBeDefined();
-        const entry = historyCall![1].entry;
-        expect(entry.requestName).toBe('sample_missions');
-        expect(entry.method).toBe('POST');
-        expect(entry.operationName).toBe('Query/missions');
-        // The history records the WRAPPED payload actually sent on the wire.
-        const sentBody = JSON.parse(findCall('execute_rest_request')![1].body);
-        expect(entry.requestBody).toBe(JSON.stringify(sentBody));
-        expect(entry.success).toBe(true);
-    });
-
-    it('a GraphQL body that is already a JSON payload is not re-wrapped', async () => {
-        setupInvoke();
-        const project = makeGraphqlProject();
-        const req = project.operations[0].requests[0];
-        const payload = JSON.stringify({ query: 'query { id }', variables: { x: 1 } });
-        req.request = payload;
-        render(
-            <UnifiedExplorerMain
-                {...baseProps}
-                projects={[project]}
-                selectedNode={{ type: 'request', id: 'req-gql' }}
-            />,
-        );
-
-        fireEvent.click(screen.getByRole('button', { name: /run/i }));
-
-        await waitFor(() => {
-            const call = findCall('execute_rest_request');
-            expect(call).toBeDefined();
-            // Passed through untouched (legacy bridge.ts:446 guard).
-            expect(call![1].body).toBe(payload);
-        });
-    });
-});
-
 // ── Quick requests through the dispatcher ───────────────────────────────────
 
 const makeQuickRequest = (overrides: Partial<ScrapbookRequest>): ScrapbookRequest => ({
@@ -531,40 +433,6 @@ describe('Phase 4 — quick requests via the dispatcher (task item 4)', () => {
         expect(historyCall![1].entry.requestName).toBe('qr-1');
         expect(historyCall![1].entry.endpoint).toBe('https://petstore.swagger.io/v2/pet/1');
         expect(historyCall![1].entry.projectName).toBe('');
-    });
-
-    it('a GraphQL quick request wraps the query and executes', async () => {
-        setupInvoke();
-        const quickGql = makeQuickRequest({
-            endpoint: 'https://spacex-production.up.railway.app/graphql',
-            method: 'POST',
-            requestType: 'graphql',
-            bodyType: 'graphql',
-            contentType: 'application/json',
-            headers: { 'Content-Type': 'application/json' },
-            request: 'query Launches {\n  launches {\n    __typename\n  }\n}',
-        });
-
-        let registered: (req: ApiRequest) => Promise<void> = async () => undefined;
-        render(
-            <UnifiedExplorerMain
-                {...baseProps}
-                projects={[]}
-                selectedNode={{ type: 'scrapbook', id: quickGql.id }}
-                onRegisterExecute={(fn) => { registered = fn; }}
-            />,
-        );
-
-        await registered(quickGql);
-
-        await waitFor(() => {
-            const call = findCall('execute_rest_request');
-            expect(call).toBeDefined();
-            expect(call![1].method).toBe('POST');
-            const sentBody = JSON.parse(call![1].body);
-            expect(sentBody.query).toBe('query Launches {\n  launches {\n    __typename\n  }\n}');
-            expect(sentBody.operationName).toBe('Launches');
-        });
     });
 
     it('a SOAP quick request (undeclared requestType) still takes the SOAP path', async () => {

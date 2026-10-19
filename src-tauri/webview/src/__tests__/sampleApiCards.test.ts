@@ -8,7 +8,7 @@ import { detectLoadFormat } from '../utils/loadRouting';
  * The rendering component lands in Phase 3 (R-07). This test pins the DATA
  * CONTRACT that Phase 3 implements against, so the cards cannot drift from
  * the decision doc:
- *   - exactly 6 cards, grouped OpenAPI ×2 / SOAP ×2 / GraphQL ×2
+ *   - exactly 4 cards, grouped OpenAPI ×2 / SOAP ×2
  *   - exact labels and URLs from doc §5.2 (verbatim, incl. ?WSDL / ?wsdl)
  *   - each card's declared `format` agrees with `detectLoadFormat(url)`, so a
  *     card click pre-fills the URL input AND drives the correct load path
@@ -23,21 +23,19 @@ const DOC_5_2: Array<{ label: string; group: string; url: string }> = [
     { label: 'Petstore YAML', group: 'OpenAPI', url: 'https://petstore.swagger.io/v2/swagger.yaml' },
     { label: 'Country Info', group: 'SOAP', url: 'http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso?WSDL' },
     { label: 'Calculator', group: 'SOAP', url: 'http://www.dneonline.com/calculator.asmx?wsdl' },
-    { label: 'SpaceX', group: 'GraphQL', url: 'https://spacex-production.up.railway.app/graphql' },
-    { label: 'Rick & Morty', group: 'GraphQL', url: 'https://rickandmortyapi.com/graphql' },
 ];
 
 describe('Sample API cards contract (R-03d / doc §5.2)', () => {
-    it('has exactly 6 cards', () => {
-        expect(SAMPLE_API_CARDS).toHaveLength(6);
+    it('has exactly 4 cards', () => {
+        expect(SAMPLE_API_CARDS).toHaveLength(4);
     });
 
-    it('groups: OpenAPI ×2, SOAP ×2, GraphQL ×2', () => {
+    it('groups: OpenAPI ×2, SOAP ×2', () => {
         const groups = SAMPLE_API_CARDS.reduce<Record<string, number>>((acc, c) => {
             acc[c.group] = (acc[c.group] || 0) + 1;
             return acc;
         }, {});
-        expect(groups).toEqual({ OpenAPI: 2, SOAP: 2, GraphQL: 2 });
+        expect(groups).toEqual({ OpenAPI: 2, SOAP: 2 });
     });
 
     it('matches the exact doc §5.2 labels, groups and URLs (order included)', () => {
@@ -65,6 +63,5 @@ describe('Sample API cards contract (R-03d / doc §5.2)', () => {
         expect(prefill(SAMPLE_API_CARDS[2])).toBe(
             'http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso?WSDL',
         );
-        expect(prefill(SAMPLE_API_CARDS[5])).toBe('https://rickandmortyapi.com/graphql');
     });
 });

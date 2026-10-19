@@ -64,13 +64,13 @@ const getCard = (url: string): HTMLElement => {
 };
 
 describe('Phase 3 (R-07 / F-03) — unified sample cards render + pre-fill', () => {
-    it('renders all six sample cards with the exact §5.2 labels in the empty state', () => {
+    it('renders all four sample cards with the exact §5.2 labels in the empty state', () => {
         render(
             <UnifiedExplorerMain {...baseProps} projects={EMPTY_PROJECTS} selectedNode={null} />,
         );
 
         const cards = screen.getAllByTestId('unified-sample-card');
-        expect(cards).toHaveLength(SAMPLE_API_CARDS.length); // 6
+        expect(cards).toHaveLength(SAMPLE_API_CARDS.length); // 4
 
         // Exact labels per the §5.2 contract — pinned again here so the render
         // cannot drift from the data contract.
@@ -82,8 +82,6 @@ describe('Phase 3 (R-07 / F-03) — unified sample cards render + pre-fill', () 
             'Petstore YAML',
             'Country Info',
             'Calculator',
-            'SpaceX',
-            'Rick & Morty',
         ]);
 
         // Every card carries its exact URL for click-pre-fill.
@@ -104,8 +102,8 @@ describe('Phase 3 (R-07 / F-03) — unified sample cards render + pre-fill', () 
             expect(urlInput.value).toBe(card.url);
         }
 
-        // The last click (Rick & Morty) leaves its URL in the input.
-        expect(urlInput.value).toBe('https://rickandmortyapi.com/graphql');
+        // The last click (Calculator) leaves its URL in the input.
+        expect(urlInput.value).toBe('http://www.dneonline.com/calculator.asmx?wsdl');
     });
 
     it('does not render sample cards once a project is selected (empty state only)', () => {

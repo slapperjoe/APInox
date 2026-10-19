@@ -19,7 +19,7 @@ const HELP_SECTIONS_RAW = [
         content: `
     # Core
 
-    APInox supports SOAP, REST, and GraphQL. Load an API definition in the Explorer, add items to a project, then build and run requests in the editor.
+    APInox supports SOAP and REST. Load an API definition in the Explorer, add items to a project, then build and run requests in the editor.
     `,
         children: [
             {
@@ -38,20 +38,11 @@ const HELP_SECTIONS_RAW = [
       - *SOAP*: XML editor with formatting tools.
       - *REST (JSON/XML/text)*: Monaco editor with syntax highlighting.
       - *REST (None)*: Shows "No request body" — GET/DELETE/HEAD auto-switch here.
-      - *GraphQL*: Split layout — query editor (left, 67%) + Variables panel (right, 33%).
     - **Params**: Key-value editor for URL query parameters. Auto-populated from OpenAPI definitions. GET/DELETE/HEAD requests open this tab by default. Shows a count badge when params are present.
     - **Headers**: View/edit request headers. Shows a count badge when headers are set.
     - **Assertions**: Add automated checks to validate responses.
     - **Extractors**: Extract values from responses into variables.
     - **WS-Security**: Configure WS-Security credentials for SOAP requests.
-
-    ## GraphQL Body Tab
-
-    The GraphQL body tab shows a split pane:
-    - **Left (67%)**: Monaco editor in GraphQL syntax mode — write clean query syntax directly.
-    - **Right (33%)**: Variables panel — key-value pairs for \`$variable\` substitutions.
-
-    At send time, APInox automatically wraps the query as \`{"query":"...","variables":{...},"operationName":"..."}\`. The \`operationName\` is extracted from the query text. If you prefer to write the full JSON payload manually, that works too — any body starting with \`{\` is sent as-is.
 
     ## Toolbar Actions (SOAP)
 
@@ -109,14 +100,14 @@ const HELP_SECTIONS_RAW = [
     # Projects & the Unified Explorer
 
     The **Unified Explorer** is the entry point for working with APIs.
-    Load a WSDL, OpenAPI (REST), or GraphQL definition and it becomes a
+    Load a WSDL or OpenAPI (REST) definition and it becomes a
     project directly — browse, edit, and run its operations from the
     unified sidebar.
 
     ## Structure
 
     - **Project**: Top-level container, stored as a folder on disk (git-friendly).
-    - **Interface**: A service/API definition — SOAP port, REST tag group, or GraphQL Query/Mutation.
+    - **Interface**: A service/API definition — SOAP port or REST tag group.
     - **Operation**: A single endpoint or action within an interface.
     - **Request**: A saved, editable instance of an operation.
 
@@ -126,7 +117,6 @@ const HELP_SECTIONS_RAW = [
     |------|-----------------|------|
     | **SOAP** | WSDL | XML |
     | **REST** | OpenAPI JSON/YAML | JSON / XML / form-data / binary / none |
-    | **GraphQL** | GraphQL endpoint introspection | GraphQL query + variables |
 
     ## Context Actions
 
@@ -161,10 +151,6 @@ const HELP_SECTIONS_RAW = [
     - Each operation has a method badge (GET, POST, PUT, etc.).
     - Query parameters are pre-populated from the OpenAPI definition.
 
-    ## GraphQL Interfaces
-
-    - One **Query** interface and one **Mutation** interface per endpoint.
-    - Each field from the schema becomes an operation with a starter query.
     `
             },
             {
@@ -177,7 +163,7 @@ const HELP_SECTIONS_RAW = [
 
     An **Operation** is a single action or endpoint. Each operation can have multiple saved requests. Use context menu actions in the sidebar to clone, rename, or delete requests.
 
-    For REST operations, the HTTP method is shown inline. For SOAP, the SOAP action is used. For GraphQL, each schema field is its own operation.
+    For REST operations, the HTTP method is shown inline. For SOAP, the SOAP action is used.
     `
             }
         ]
@@ -190,7 +176,7 @@ const HELP_SECTIONS_RAW = [
         content: `
     # API Explorer
 
-    Load any API definition — SOAP WSDL, OpenAPI (REST), or a GraphQL endpoint — and browse its operations before importing into a project.
+    Load any API definition — SOAP WSDL or OpenAPI (REST) — and browse its operations before importing into a project.
     `,
         children: [
             {
@@ -210,7 +196,6 @@ const HELP_SECTIONS_RAW = [
     | **SOAP WSDL** | \`.wsdl\`, \`.xml\`, or any other URL | Parsed via WSDL parser |
     | **OpenAPI JSON** | URL ends in \`.json\` | Swagger 2.0 and OAS3 |
     | **OpenAPI YAML** | URL ends in \`.yaml\` or \`.yml\` | Swagger 2.0 and OAS3 |
-    | **GraphQL** | URL path contains \`graphql\` or \`gql\` | Introspection query sent automatically |
 
     ## Loading Methods
 
@@ -219,7 +204,7 @@ const HELP_SECTIONS_RAW = [
 
     ## Sample APIs
 
-    The six sample cards are shown in the **unified explorer's** empty state.
+    The four sample cards are shown in the **unified explorer's** empty state.
     Click any card to pre-fill the URL input and load it (the unified explorer
     is the primary explorer surface; loading a definition creates a project
     directly — no separate "add to project" step):
@@ -230,12 +215,6 @@ const HELP_SECTIONS_RAW = [
     | Petstore YAML | OpenAPI 2.0 (YAML) | REST operations (grouped by tag) |
     | Country Info | SOAP WSDL | SOAP operations |
     | Calculator | SOAP WSDL | SOAP operations |
-    | SpaceX | GraphQL | Query/Mutation operations |
-    | Rick & Morty | GraphQL | Query/Mutation operations |
-
-    ## GraphQL Introspection
-
-    For GraphQL URLs, APInox sends an introspection query and builds a **Query** interface and a **Mutation** interface from the schema. Each field becomes an operation with a starter query body (using \`__typename\` for object types).
 
     ## After Loading
 
@@ -277,49 +256,6 @@ const HELP_SECTIONS_RAW = [
     - The result appears in the Response panel with status code and timing.
     `
             },
-            {
-                id: 'explorer-graphql',
-                label: 'GraphQL',
-                icon: Network,
-                order: 3,
-                content: `
-    # GraphQL Explorer
-
-    Paste any GraphQL endpoint URL (containing \`/graphql\` or \`/gql\`) and click **Load API**.
-
-    APInox sends an introspection query to discover the schema, then builds:
-
-    - A **Query** interface with one operation per query field.
-    - A **Mutation** interface with one operation per mutation field (if mutations exist).
-
-    ## Starter Queries
-
-    Each generated sample query uses this pattern:
-
-    \`\`\`graphql
-    query {
-      fieldName {
-        __typename
-      }
-    }
-    \`\`\`
-
-    Object/interface/union return types get \`{ __typename }\` as a minimal valid subfield selection. Scalar and enum return types are queried directly.
-
-    ## Writing Queries
-
-    Edit the query in the **Body** tab (left pane). Add variable values in the **Variables** panel (right pane). Variables use the GraphQL \`$name: Type\` syntax in the query definition.
-
-    At send time, APInox builds the HTTP payload:
-    \`\`\`json
-    {
-      "query": "...",
-      "variables": { "name": "value" },
-      "operationName": "OperationName"
-    }
-    \`\`\`
-    `
-            }
         ]
     },
     {
@@ -629,7 +565,7 @@ const HELP_SECTIONS_RAW = [
                 content: `
     # Request History
 
-    History stores recent manual executions (SOAP, REST, and GraphQL) so you can replay or inspect them.
+    History stores recent manual executions (SOAP and REST) so you can replay or inspect them.
 
     ## Actions
 

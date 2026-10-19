@@ -17,13 +17,12 @@ const BaseBadge = styled.span`
   min-width: 60px;
 `;
 
-// Request Type Badge (SOAP/REST/GraphQL)
+// Request Type Badge (SOAP/REST)
 const TypeBadgeStyled = styled(BaseBadge)<{ $type: string }>`
   background: ${props => {
     switch (props.$type) {
       case 'soap': return 'var(--apinox-charts-blue)';
       case 'rest': return 'var(--apinox-charts-green)';
-      case 'graphql': return 'var(--apinox-charts-purple)';
       default: return 'var(--apinox-badge-background)';
     }
   }};
@@ -79,7 +78,7 @@ export const BadgeGroup = styled.div`
 
 // Component interfaces
 interface RequestTypeBadgeProps {
-  type: 'soap' | 'rest' | 'graphql';
+  type: 'soap' | 'rest';
 }
 
 interface MethodBadgeProps {

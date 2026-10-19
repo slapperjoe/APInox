@@ -195,7 +195,6 @@ export const RequestTypeSelector: React.FC<RequestTypeSelectorProps> = ({
     const bodyTypes: { value: BodyType; label: string }[] = [
         { value: 'json', label: 'JSON' },
         { value: 'xml', label: 'XML' },
-        { value: 'graphql', label: 'GraphQL' },
         { value: 'text', label: 'Text' },
         { value: 'form-data', label: 'Form' },
         { value: 'none', label: 'None' }
@@ -221,9 +220,8 @@ export const RequestTypeSelector: React.FC<RequestTypeSelectorProps> = ({
 
     // Default body type based on request type
     const effectiveBodyType = bodyType || (
-        requestType === 'graphql' ? 'graphql' :
-            requestType === 'rest' ? 'json' :
-                'xml'
+        requestType === 'rest' ? 'json' :
+            'xml'
     );
 
     const effectiveMethod = method || (requestType === 'soap' ? 'POST' : 'GET');
@@ -291,23 +289,20 @@ export const RequestTypeSelector: React.FC<RequestTypeSelectorProps> = ({
             >
                 <option value="soap">SOAP</option>
                 <option value="rest">REST</option>
-                <option value="graphql">GraphQL</option>
             </Select>
 
-            {/* Method - shown for all types except GraphQL (always POST) */}
-            {requestType !== 'graphql' && (
-                <MethodSelect
-                    $method={effectiveMethod}
-                    value={effectiveMethod}
-                    onChange={(e) => onMethodChange(e.target.value as HttpMethod)}
-                    disabled={readOnly}
-                    title="HTTP Method"
-                >
-                    {methodList.map(m => (
-                        <option key={m} value={m}>{m}</option>
-                    ))}
-                </MethodSelect>
-            )}
+            {/* Method */}
+            <MethodSelect
+                $method={effectiveMethod}
+                value={effectiveMethod}
+                onChange={(e) => onMethodChange(e.target.value as HttpMethod)}
+                disabled={readOnly}
+                title="HTTP Method"
+            >
+                {methodList.map(m => (
+                    <option key={m} value={m}>{m}</option>
+                ))}
+        </MethodSelect>
 
             {/* Content Type - for SOAP only. Custom dropdown: fixed narrow
                 trigger (ellipsized long value) + content-sized popup. */}

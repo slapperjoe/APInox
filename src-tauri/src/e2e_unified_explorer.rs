@@ -3,8 +3,8 @@
 //! This module is the automated equivalent of the doc §8 "manual E2E script"
 //! for the branch DoD gate (docs/UNIFIED_EXPLORER_PARITY_DECISION.md §8):
 //!
-//!   fresh app → load one project per type (SOAP WSDL / OpenAPI REST /
-//!   GraphQL) — i.e. one of the six sample cards per type — → run one
+//!   fresh app → load one project per type (SOAP WSDL / OpenAPI REST) —
+//!   i.e. one of the four sample cards — → run one
 //!   operation per type → create a quick request → (simulate an) app restart
 //!   → verify the quick request persisted in `scrapbook.json`.
 //!
@@ -54,8 +54,8 @@ mod e2e {
     type RouteFn = Arc<dyn Fn(&str, &str, &str) -> (String, String) + Send + Sync>;
 
     /// A raw loopback HTTP/1.1 server (no framework) that routes each request
-    /// through a caller-supplied closure. Stands in for the six sample APIs
-    /// (WSDL/SOAP, OpenAPI, GraphQL, REST) with no network egress. The bound
+    /// through a caller-supplied closure. Stands in for the four sample APIs
+    /// (WSDL/SOAP, OpenAPI, REST) with no network egress. The bound
     /// port is published into `port_out` before any request can arrive, so the
     /// route closure can build absolute URLs (the WSDL's `soap:address` and the
     /// OpenAPI `servers[0].url`) that point back at this same mock.
@@ -176,43 +176,6 @@ mod e2e {
         .to_string()
     }
 
-    /// GraphQL introspection response: a `Query` (launches [object],
-    /// latestVersion [scalar]) and a `Mutation` (bookLaunch [object]).
-    /// Object-typed fields get a `__typename` starter query; the scalar field
-    /// does not.
-    fn graphql_introspection_response() -> String {
-        json!({
-            "data": {
-                "__schema": {
-                    "queryType": { "name": "Query" },
-                    "mutationType": { "name": "Mutation" }
-                },
-                "query": {
-                    "fields": [
-                        { "name": "launches", "description": "list",
-                          "type": { "kind": "OBJECT" } },
-                        { "name": "latestVersion", "description": "ver",
-                          "type": { "kind": "SCALAR" } }
-                    ]
-                },
-                "mutation": {
-                    "fields": [
-                        { "name": "bookLaunch", "description": "book",
-                          "type": { "kind": "OBJECT" } }
-                    ]
-                }
-            }
-        })
-        .to_string()
-    }
-
-    /// A plain (non-introspection) GraphQL data response for a `launches`
-    /// query.
-    fn graphql_data_response() -> String {
-        json!({ "data": { "launches": [ { "__typename": "Launch", "id": 1 } ] } })
-            .to_string()
-    }
-
     /// The full doc §8 manual E2E, automated. Drives the real production
     /// commands through: fresh app → load one project per type → execute one
     /// operation per type → quick-request persistence across a simulated
@@ -259,12 +222,6 @@ mod e2e {
                     "application/json".to_string(),
                     r#"{"ok":true,"created":"rex"}"#.to_string(),
                 )
-            } else if path == "/graphql" && method == "POST" {
-                if body.contains("__schema") {
-                    ("application/json".to_string(), graphql_introspection_response())
-                } else {
-                    ("application/json".to_string(), graphql_data_response())
-                }
             } else {
                 ("application/json".to_string(), r#"{"error":"not found"}"#.to_string())
             }
@@ -405,59 +362,6 @@ mod e2e {
             rest_post.body.contains("created"),
             "body: {}",
             rest_post.body
-        );
-
-        // ── Sample card #5: SpaceX (GraphQL) ────────────────────────────────
-        let gql_url = format!("{}/graphql", base);
-        let gql_project = parse_spec_as_project(gql_url.clone())
-            .await
-            .expect("GraphQL load should succeed");
-        assert_eq!(gql_project["source"], "graphql");
-        let gql_op_names: Vec<&str> = gql_project["operations"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|o| o["name"].as_str().unwrap())
-            .collect();
-        assert!(
-            gql_op_names.contains(&"Query/launches"),
-            "ops: {:?}",
-            gql_op_names
-        );
-        assert!(
-            gql_op_names.contains(&"Mutation/bookLaunch"),
-            "ops: {:?}",
-            gql_op_names
-        );
-        let launches = gql_project["operations"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .find(|o| o["name"] == "Query/launches")
-            .unwrap();
-        let gr = &launches["requests"][0];
-        assert_eq!(gr["requestType"], "graphql");
-        let raw_query = gr["request"].as_str().unwrap().to_string();
-        // Object-typed query field → `__typename` starter (doc §5.3).
-        assert!(raw_query.contains("__typename"), "query: {}", raw_query);
-        // Execute it the way the webview does: wrap the raw query as
-        // {"query": …} (legacy bridge / buildRestGraphQlInvokeArgs rule).
-        let wrapped = json!({ "query": raw_query }).to_string();
-        let gql_resp = execute_rest_request(
-            "POST".to_string(),
-            gql_url.clone(),
-            headers.clone(),
-            Some(wrapped),
-            Some(Uuid::new_v4().to_string()),
-        )
-        .await
-        .expect("GraphQL execute should not error");
-        assert!(gql_resp.success, "GraphQL execute should succeed");
-        assert_eq!(gql_resp.status, 200);
-        assert!(
-            gql_resp.body.contains("__typename"),
-            "body: {}",
-            gql_resp.body
         );
 
         // ── Quick request: create → update → restart → persisted ───────────

@@ -13,11 +13,9 @@ use std::fs;
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
-use crate::http::client::{HttpClient, HttpRequest};
 use crate::parsers::commands::parse_openapi_spec;
 use crate::parsers::openapi_parser::{OpenApiParameter, OpenApiPath, OpenApiSpec};
 use once_cell::sync::Lazy;
-use regex::Regex;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::path::Path;
@@ -427,17 +425,15 @@ pub async fn refresh_project_wsdl(source_url: String) -> Result<serde_json::Valu
 enum LoadFormat {
     Wsdl,
     OpenApi,
-    GraphQl,
 }
 
-/// Classify a source URL / inline content as WSDL vs OpenAPI vs GraphQL.
+/// Classify a source URL / inline content as WSDL vs OpenAPI.
 ///
 /// Mirrors `detectLoadFormat` in `src-tauri/webview/src/utils/loadRouting.ts`
 /// (the parity baseline) and the legacy `bridge.ts` `LoadWsdl` routing:
 ///   1. Strip the query string, lowercase.
 ///   2. `.json` / `.yaml` / `.yml` (or inline JSON/YAML) → OpenAPI.
-///   3. URL path containing `graphql` or `/gql` → GraphQL.
-///   4. Everything else → WSDL (the default branch; the WSDL parser errors
+///   3. Everything else → WSDL (the default branch; the WSDL parser errors
 ///      cleanly for non-WSDL input).
 fn detect_load_format(source: &str) -> LoadFormat {
     let lowered = source.to_lowercase();
@@ -448,14 +444,12 @@ fn detect_load_format(source: &str) -> LoadFormat {
         || looks_like_inline_spec(source)
     {
         LoadFormat::OpenApi
-    } else if url_lower.contains("graphql") || url_lower.contains("/gql") {
-        LoadFormat::GraphQl
     } else {
         LoadFormat::Wsdl
     }
 }
 
-/// Parse an OpenAPI/Swagger or GraphQL source and create/save a unified project.
+/// Parse an OpenAPI/Swagger source and create/save a unified project.
 ///
 /// Phase 1 of the unified explorer porting (docs §5.3 / R-06). This is the
 /// non-WSDL half of the unified load path: the WSDL half is
@@ -463,7 +457,6 @@ fn detect_load_format(source: &str) -> LoadFormat {
 /// legacy `bridge.ts` `LoadWsdl` handler does (see `detectLoadFormat` on the
 /// webview side, which is the parity baseline):
 ///   * `.json` / `.yaml` / `.yml` (or inline JSON/YAML) → OpenAPI/Swagger
-///   * URL path containing `graphql` or `/gql` → GraphQL introspection
 ///   * anything else → the legacy WSDL path (this function is NOT called for
 ///     it; the WSDL router keeps owning WSDL URLs).
 ///
@@ -479,7 +472,7 @@ pub async fn parse_spec_as_project(url: String) -> Result<serde_json::Value, Str
     // must error cleanly rather than be mis-parsed as an OpenAPI spec.
     if load_format == LoadFormat::Wsdl {
         return Err(format!(
-            "parse_spec_as_project: '{}' is not an OpenAPI/GraphQL source (use the WSDL load path)",
+            "parse_spec_as_project: '{}' is not an OpenAPI source (use the WSDL load path)",
             url
         ));
     }
@@ -503,17 +496,12 @@ pub async fn parse_spec_as_project(url: String) -> Result<serde_json::Value, Str
             save_spec_project(&project)?;
             Ok(project)
         }
-        LoadFormat::GraphQl => {
-            let project = build_graphql_project(&url).await?;
-            save_spec_project(&project)?;
-            Ok(project)
-        }
         LoadFormat::Wsdl => unreachable!("Wsdl rejected above"),
     }
 }
 
-/// Refresh a non-WSDL (OpenAPI/GraphQL) unified project from its source URL.
-/// Re-parses / re-introspects and merges with the existing project, preserving
+/// Refresh a non-WSDL (OpenAPI) unified project from its source URL.
+/// Re-parses and merges with the existing project, preserving
 /// user-created requests and renaming removed operations to `[Legacy] <name>`
 /// — the same model as [`refresh_unified_project`] for WSDL (doc Q5 confirmed).
 async fn refresh_spec_project(
@@ -529,16 +517,12 @@ async fn refresh_spec_project(
 
     let new_ops = match load_format {
         LoadFormat::OpenApi => parse_openapi_operations(url).await?,
-        LoadFormat::GraphQl => parse_graphql_operations(url).await?,
         LoadFormat::Wsdl => unreachable!("Wsdl refresh uses refresh_unified_project"),
     };
 
     if new_ops.is_empty() {
         return Err(match load_format {
             LoadFormat::OpenApi => "No operations found in OpenAPI spec after re-parse".to_string(),
-            LoadFormat::GraphQl => {
-                "No Query/Mutation operations found after re-introspection".to_string()
-            }
             LoadFormat::Wsdl => unreachable!(),
         });
     }
@@ -589,7 +573,7 @@ fn save_project_value(project_dir: &Path, project: &serde_json::Value) -> Result
     )
 }
 
-/// Save a freshly built spec project (OpenAPI/GraphQL) to disk.
+/// Save a freshly built spec project (OpenAPI) to disk.
 fn save_spec_project(project: &serde_json::Value) -> Result<(), String> {
     let name = project["name"].as_str().unwrap_or("<unknown>");
     let project_dir = project_dir_for_name(name)?;
@@ -845,429 +829,6 @@ fn assemble_openapi_project(
     }))
 }
 
-// ---------------------------------------------------------------------------
-// GraphQL → UnifiedProject
-// ---------------------------------------------------------------------------
-
-/// A single GraphQL field (from `__type(...).fields`) with its type kind.
-#[derive(Debug, Clone)]
-struct GqlField {
-    name: String,
-    description: String,
-    base_kind: String,
-    is_mutation: bool,
-}
-
-/// The result of a successful introspection: the Query/Mutation field lists.
-struct GqlIntrospection {
-    query_type_name: String,
-    mutation_type_name: Option<String>,
-    query_fields: Vec<GqlField>,
-    mutation_fields: Vec<GqlField>,
-}
-
-/// Parse a GraphQL source into operations (shared by create + refresh).
-async fn parse_graphql_operations(url: &str) -> Result<Vec<serde_json::Value>, String> {
-    let introspection = introspect_graphql(url)
-        .await
-        .map_err(|e| format!("GraphQL introspection failed: {}", e))?;
-    Ok(build_graphql_operations(url, &introspection))
-}
-
-/// Assemble a full GraphQL unified project.
-async fn build_graphql_project(url: &str) -> Result<serde_json::Value, String> {
-    let introspection = introspect_graphql(url)
-        .await
-        .map_err(|e| format!("GraphQL introspection failed: {}", e))?;
-
-    let operations = build_graphql_operations(url, &introspection);
-    assemble_graphql_project(url, operations)
-}
-
-/// Pure assembly of a GraphQL unified project (no network). Exposed for unit
-/// tests and for any future offline source.
-fn assemble_graphql_project(
-    url: &str,
-    operations: Vec<serde_json::Value>,
-) -> Result<serde_json::Value, String> {
-    if operations.is_empty() {
-        return Err("No Query/Mutation operations found in GraphQL schema".to_string());
-    }
-    let now = chrono::Utc::now().to_rfc3339();
-    Ok(json!({
-        "name": "GraphQL",
-        "description": format!("GraphQL API at {}", url),
-        "source": "graphql",
-        "sourceUrl": url,
-        "parsedAt": now,
-        "lastRefreshedAt": Value::Null,
-        "id": Uuid::new_v4().to_string(),
-        "operations": operations,
-    }))
-}
-
-/// Build the flat operation list from a GraphQL introspection result.
-///
-/// Mirrors `buildOperationsFromFields` + the Query/Mutation interface build in
-/// `bridge.ts` (`tryRustCommand` LoadWsdl GraphQL branch). Each field becomes a
-/// flat operation named `<QueryType|MutationType>/<field>`; its sample request
-/// is a `query { field { __typename } }` (or `mutation { … }`) body.
-fn build_graphql_operations(url: &str, intro: &GqlIntrospection) -> Vec<serde_json::Value> {
-    let mut operations: Vec<serde_json::Value> = Vec::new();
-
-    if !intro.query_fields.is_empty() {
-        for field in &intro.query_fields {
-            operations.push(build_graphql_operation(url, &intro.query_type_name, field));
-        }
-    }
-    if !intro.mutation_fields.is_empty() {
-        let mutation_name = intro.mutation_type_name.as_deref().unwrap_or("Mutation");
-        for field in &intro.mutation_fields {
-            operations.push(build_graphql_operation(url, mutation_name, field));
-        }
-    }
-
-    operations
-}
-
-/// Build a single flat operation for one GraphQL field.
-fn build_graphql_operation(url: &str, parent_type: &str, field: &GqlField) -> serde_json::Value {
-    let op_name = format!("{}/{}", parent_type, field.name);
-    let sample_query = build_graphql_sample_query(field);
-
-    json!({
-        "name": op_name,
-        "action": field.description,
-        "input": {
-            "parentType": parent_type,
-            "fieldName": field.name,
-            "baseKind": field.base_kind,
-            "isMutation": field.is_mutation,
-        },
-        "fullSchema": Value::Null,
-        "targetNamespace": "",
-        "originalEndpoint": url,
-        "requests": [
-            {
-                "name": format!("sample_{}", sanitize_request_name(&field.name)),
-                "endpoint": url,
-                "method": "POST",
-                "contentType": "application/json",
-                "headers": { "Content-Type": "application/json" },
-                "request": sample_query,
-                "requestType": "graphql",
-                "bodyType": "graphql",
-            }
-        ],
-    })
-}
-
-/// Build the starter GraphQL query for a field, with a `__typename` sub-selection
-/// when the field returns an object type (mirrors the legacy `sampleQuery`
-/// builder in `bridge.ts`).
-fn build_graphql_sample_query(field: &GqlField) -> String {
-    let needs_selection = !["SCALAR", "ENUM", "INPUT_OBJECT"].contains(&field.base_kind.as_str());
-    let field_selection = if needs_selection {
-        format!("{} {{\n    __typename\n  }}", field.name)
-    } else {
-        field.name.clone()
-    };
-    let op_keyword = if field.is_mutation {
-        "mutation"
-    } else {
-        "query"
-    };
-    format!("{} {{\n  {}\n}}", op_keyword, field_selection)
-}
-
-/// Run GraphQL introspection with adaptive depth tiers.
-///
-/// Port of the adaptive-depth logic in `bridge.ts` (`tryRustCommand` GraphQL
-/// branch + `buildIntrospectionQuery` / `parseDepthLimitError` /
-/// `tierForMaxDepth`): try `deep`, `shallow`, then `none`, backing off on
-/// depth-limit errors and jumping straight to the right tier when the server
-/// advertises a max depth.
-async fn introspect_graphql(url: &str) -> Result<GqlIntrospection, String> {
-    const TIERS: [&str; 3] = ["deep", "shallow", "none"];
-    let mut next_idx = 0usize;
-    let mut raw_body: Option<String> = None;
-
-    while next_idx < TIERS.len() {
-        let tier = TIERS[next_idx];
-        let body = build_introspection_query(tier);
-        let resp = execute_graphql_request(url, &body)
-            .await
-            .map_err(|e| format!("introspection request failed: {}", e))?;
-
-        let resp_body = resp.body;
-        if resp_body.is_empty() {
-            return Err(format!(
-                "HTTP {}: {}",
-                resp.status,
-                resp.error.unwrap_or_else(|| "empty response".to_string())
-            ));
-        }
-
-        if let Some(depth_err) = parse_depth_limit_error(&resp_body) {
-            if let Some(max_depth) = depth_err.max_depth {
-                let safe_tier = tier_for_max_depth(max_depth);
-                next_idx = TIERS.iter().position(|t| *t == safe_tier).unwrap_or(0);
-                if safe_tier == tier {
-                    next_idx += 1; // already tried this tier — step past it
-                }
-            } else {
-                next_idx += 1;
-            }
-            continue;
-        }
-
-        raw_body = Some(resp_body);
-        break;
-    }
-
-    let raw_body = raw_body.ok_or_else(|| "server rejected all query depth levels".to_string())?;
-
-    let introspection: serde_json::Value = serde_json::from_str(&raw_body)
-        .map_err(|_| format!("response is not valid JSON: {}", truncate(&raw_body, 200)))?;
-
-    if introspection.get("errors").is_some() && introspection.get("data").is_none() {
-        let first_msg = introspection["errors"]
-            .as_array()
-            .and_then(|arr| arr.first())
-            .and_then(|e| e.get("message"))
-            .and_then(|m| m.as_str())
-            .unwrap_or("unknown introspection error");
-        return Err(format!("introspection error: {}", first_msg));
-    }
-
-    let schema = introspection
-        .get("data")
-        .and_then(|d| d.get("__schema"))
-        .ok_or_else(|| {
-            format!(
-                "invalid introspection response: {}",
-                truncate(&raw_body, 300)
-            )
-        })?;
-
-    let query_type_name = schema
-        .get("queryType")
-        .and_then(|t| t.get("name"))
-        .and_then(|n| n.as_str())
-        .unwrap_or("Query")
-        .to_string();
-    let mutation_type_name = schema
-        .get("mutationType")
-        .and_then(|t| t.get("name"))
-        .and_then(|n| n.as_str())
-        .map(|s| s.to_string());
-
-    let query_fields = parse_gql_fields(
-        introspection
-            .get("data")
-            .and_then(|d| d.get("query"))
-            .cloned(),
-        false,
-    );
-    let mutation_fields = parse_gql_fields(
-        introspection
-            .get("data")
-            .and_then(|d| d.get("mutation"))
-            .cloned(),
-        true,
-    );
-
-    Ok(GqlIntrospection {
-        query_type_name,
-        mutation_type_name,
-        query_fields,
-        mutation_fields,
-    })
-}
-
-/// POST an introspection query to the GraphQL endpoint and return the raw HTTP
-/// response. Uses the shared `HttpClient` with JSON headers (parity with the
-/// legacy bridge `execute_rest_request` call for introspection).
-async fn execute_graphql_request(
-    url: &str,
-    body: &str,
-) -> Result<crate::http::client::HttpResponse, String> {
-    let client = HttpClient::new();
-
-    let mut headers = HashMap::new();
-    headers.insert("Content-Type".to_string(), "application/json".to_string());
-    headers.insert("Accept".to_string(), "application/json".to_string());
-
-    let request = HttpRequest {
-        method: "POST".to_string(),
-        url: url.to_string(),
-        headers,
-        body: Some(body.to_string()),
-        timeout_ms: None,
-        follow_redirects: Some(true),
-        verify_ssl: Some(true),
-        proxy_url: None,
-        proxy_username: None,
-        proxy_password: None,
-    };
-
-    Ok(client.execute(request).await)
-}
-
-/// Parse the `__type(...).fields` array of an introspection `data` value into
-/// [`GqlField`]s, unwrapping NON_NULL/LIST wrappers to get the base kind.
-fn parse_gql_fields(data: Option<serde_json::Value>, is_mutation: bool) -> Vec<GqlField> {
-    let fields = data
-        .as_ref()
-        .and_then(|d| d.get("fields"))
-        .and_then(|f| f.as_array());
-    let Some(fields) = fields else {
-        return Vec::new();
-    };
-
-    fields
-        .iter()
-        .filter_map(|field| {
-            let name = field.get("name")?.as_str()?.to_string();
-            let description = field
-                .get("description")
-                .and_then(|d| d.as_str())
-                .unwrap_or("")
-                .to_string();
-            let base_kind = unwrap_base_kind(field.get("type"));
-            Some(GqlField {
-                name,
-                description,
-                base_kind,
-                is_mutation,
-            })
-        })
-        .collect()
-}
-
-/// Unwrap NON_NULL / LIST wrappers to get the base type kind (mirrors the
-/// `unwrap` IIFE in `bridge.ts`). Unknown/absent types default to `OBJECT`.
-fn unwrap_base_kind(type_ref: Option<&serde_json::Value>) -> String {
-    match type_ref {
-        None => "OBJECT".to_string(),
-        Some(Value::Object(obj)) => match obj.get("kind").and_then(|k| k.as_str()) {
-            Some("NON_NULL") | Some("LIST") => unwrap_base_kind(obj.get("ofType")),
-            Some(kind) => kind.to_string(),
-            None => "OBJECT".to_string(),
-        },
-        _ => "OBJECT".to_string(),
-    }
-}
-
-/// Build the introspection query for a depth tier (port of
-/// `buildIntrospectionQuery` in `bridge.ts`).
-fn build_introspection_query(tier: &str) -> String {
-    let type_fragment = match tier {
-        "deep" => Some("type { kind ofType { kind ofType { kind } } }"),
-        "shallow" => Some("type { kind }"),
-        _ => None,
-    };
-
-    let field_sel: Vec<&str> = ["name", "description"]
-        .iter()
-        .copied()
-        .chain(type_fragment.iter().copied())
-        .collect();
-    let field_sel = field_sel.join(" ");
-
-    let query = format!(
-        r#"{{
-            __schema {{ queryType {{ name }} mutationType {{ name }} }}
-            query: __type(name: "Query") {{ fields(includeDeprecated: false) {{ {field_sel} }} }}
-            mutation: __type(name: "Mutation") {{ fields(includeDeprecated: false) {{ {field_sel} }} }}
-        }}"#
-    );
-    serde_json::to_string(&json!({ "query": query }))
-        .unwrap_or_else(|_| format!("{{\"query\":{}}}", query))
-}
-
-/// Detect a GraphQL depth-limit error and (if advertised) the server's max
-/// depth. Port of `parseDepthLimitError` in `bridge.ts`.
-fn parse_depth_limit_error(body: &str) -> Option<DepthLimitError> {
-    let parsed: serde_json::Value = serde_json::from_str(body).ok()?;
-    let errors = parsed.get("errors")?.as_array()?;
-
-    for e in errors {
-        let ext = e.get("extensions").cloned().unwrap_or(Value::Null);
-        let msg = e.get("message").and_then(|m| m.as_str()).unwrap_or("");
-
-        let is_limit = ext
-            .get("code")
-            .and_then(|c| c.as_str())
-            .map(|c| c == "GCDN_QUERY_DEPTH_LIMIT")
-            .unwrap_or(false)
-            || DEPTH_LIMIT_RE.is_match(msg)
-            || DEPTH_LIMIT_RE_2.is_match(msg)
-            || DEPTH_LIMIT_RE_3.is_match(msg);
-
-        if !is_limit {
-            continue;
-        }
-
-        // Prefer an advertised max depth from extensions, then the message text.
-        let from_ext = ext
-            .get("maxDepth")
-            .or_else(|| ext.get("max_depth"))
-            .or_else(|| ext.get("maximumDepth"))
-            .and_then(|v| v.as_u64());
-
-        if let Some(max) = from_ext {
-            return Some(DepthLimitError {
-                max_depth: Some(max as u64),
-            });
-        }
-
-        if let Some(cap) = DEPTH_NUMBER_RE
-            .captures(msg)
-            .and_then(|c| c.get(1))
-            .map(|m| m.as_str())
-            .and_then(|n| n.parse::<u64>().ok())
-        {
-            return Some(DepthLimitError {
-                max_depth: Some(cap),
-            });
-        }
-        return Some(DepthLimitError { max_depth: None });
-    }
-
-    None
-}
-
-/// Map a server-reported max depth to the deepest usable tier (port of
-/// `tierForMaxDepth` in `bridge.ts`).
-fn tier_for_max_depth(max_depth: u64) -> &'static str {
-    if max_depth >= 6 {
-        "deep"
-    } else if max_depth >= 4 {
-        "shallow"
-    } else {
-        "none"
-    }
-}
-
-#[derive(Debug, Clone)]
-struct DepthLimitError {
-    max_depth: Option<u64>,
-}
-
-/// Truncate a string for error messages (char-boundary safe).
-fn truncate(s: &str, max: usize) -> String {
-    if s.len() <= max {
-        s.to_string()
-    } else {
-        let mut end = max;
-        while !s.is_char_boundary(end) {
-            end -= 1;
-        }
-        format!("{}…", &s[..end])
-    }
-}
-
 /// Sanitize an operation name for use as a `sample_` request name (strip
 /// characters that would break the on-disk request file name).
 fn sanitize_request_name(op_id: &str) -> String {
@@ -1280,13 +841,7 @@ fn sanitize_request_name(op_id: &str) -> String {
         .collect()
 }
 
-static DEPTH_LIMIT_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"(?i)depth.{0,30}limit").expect("valid regex"));
-static DEPTH_LIMIT_RE_2: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"(?i)maximum.{0,30}depth").expect("valid regex"));
-static DEPTH_LIMIT_RE_3: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"(?i)too deep").expect("valid regex"));
-static DEPTH_NUMBER_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b(\d+)\b").expect("valid regex"));
+
 
 /// Resolve the SOAP version from a version string ("1.1" or "1.2").
 /// Unknown/missing values default to SOAP 1.1 (mirrors `soapDefault` in shared/soapUtils.ts).
@@ -2231,7 +1786,7 @@ mod tests {
     }
 
     // =========================================================================
-    // Phase 1 — parse_spec_as_project (OpenAPI / GraphQL → UnifiedProject)
+    // Phase 1 — parse_spec_as_project (OpenAPI → UnifiedProject)
     // =========================================================================
 
     /// OpenAPI fixture: two ops under tag "pets" — a GET (query param, no body)
@@ -2323,73 +1878,9 @@ mod tests {
     }
 
     #[test]
-    fn test_graphql_query_mutation_interfaces_and_typename_bodies() {
-        let intro = GqlIntrospection {
-            query_type_name: "Query".to_string(),
-            mutation_type_name: Some("Mutation".to_string()),
-            query_fields: vec![
-                GqlField {
-                    name: "launches".into(),
-                    description: "list".into(),
-                    base_kind: "OBJECT".into(),
-                    is_mutation: false,
-                },
-                GqlField {
-                    name: "latestVersion".into(),
-                    description: "ver".into(),
-                    base_kind: "SCALAR".into(),
-                    is_mutation: false,
-                },
-            ],
-            mutation_fields: vec![GqlField {
-                name: "bookLaunch".into(),
-                description: "book".into(),
-                base_kind: "OBJECT".into(),
-                is_mutation: true,
-            }],
-        };
-        let url = "https://api.example.com/graphql";
-        let ops = build_graphql_operations(url, &intro);
-        assert_eq!(ops.len(), 3);
-
-        // Query/Mutation "interfaces" become flat ops named <Type>/<field>.
-        assert_eq!(ops[0]["name"], "Query/launches");
-        assert_eq!(ops[1]["name"], "Query/latestVersion");
-        assert_eq!(ops[2]["name"], "Mutation/bookLaunch");
-
-        // Object-typed query field → __typename starter body.
-        let launches_req = &ops[0]["requests"][0];
-        assert_eq!(launches_req["name"], "sample_launches");
-        let launches_body = launches_req["request"].as_str().unwrap();
-        assert!(launches_body.contains("__typename"));
-        assert!(launches_body.starts_with("query {"));
-        assert_eq!(launches_req["requestType"], "graphql");
-        assert_eq!(launches_req["bodyType"], "graphql");
-        assert_eq!(launches_req["method"], "POST");
-
-        // Scalar-typed field → bare field, no sub-selection.
-        let latest_body = ops[1]["requests"][0]["request"].as_str().unwrap();
-        assert_eq!(ops[1]["requests"][0]["name"], "sample_latestVersion");
-        assert!(!latest_body.contains("__typename"));
-        assert!(latest_body.contains("latestVersion"));
-
-        // Mutation → mutation { … } body with __typename for object return.
-        let book_body = ops[2]["requests"][0]["request"].as_str().unwrap();
-        assert_eq!(ops[2]["requests"][0]["name"], "sample_bookLaunch");
-        assert!(book_body.starts_with("mutation {"));
-        assert!(book_body.contains("__typename"));
-
-        // Project assembly carries source: "graphql" (additive union value).
-        let project = assemble_graphql_project(url, ops).unwrap();
-        assert_eq!(project["source"], "graphql");
-        assert_eq!(project["name"], "GraphQL");
-        assert_eq!(project["sourceUrl"], url);
-    }
-
-    #[test]
     fn test_detect_load_format_routes_like_legacy() {
         // WSDL URLs → WSDL path (regression guard: they are NOT parsed as
-        // OpenAPI/GraphQL by parse_spec_as_project).
+        // OpenAPI by parse_spec_as_project).
         assert_eq!(
             detect_load_format("http://example.com/service.wsdl?WSDL"),
             LoadFormat::Wsdl
@@ -2411,12 +1902,6 @@ mod tests {
             detect_load_format("https://x/spec.yml"),
             LoadFormat::OpenApi
         );
-        // graphql / /gql → GraphQL.
-        assert_eq!(
-            detect_load_format("https://spacex-production.up.railway.app/graphql"),
-            LoadFormat::GraphQl
-        );
-        assert_eq!(detect_load_format("https://x/api/gql"), LoadFormat::GraphQl);
     }
 
     #[tokio::test]
@@ -2428,7 +1913,7 @@ mod tests {
             .await
             .expect_err("WSDL URL must be rejected by parse_spec_as_project");
         assert!(
-            err.contains("not an OpenAPI/GraphQL source"),
+            err.contains("not an OpenAPI source"),
             "unexpected error: {}",
             err
         );

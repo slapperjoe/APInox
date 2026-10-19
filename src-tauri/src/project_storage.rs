@@ -98,8 +98,6 @@ struct RequestMeta {
     body_type: Option<String>,
     #[serde(default, skip_serializing_if = "JsonValue::is_null", rename = "restConfig")]
     rest_config: JsonValue,
-    #[serde(default, skip_serializing_if = "JsonValue::is_null", rename = "graphqlConfig")]
-    graphql_config: JsonValue,
     #[serde(default, skip_serializing_if = "JsonValue::is_null")]
     extractors: JsonValue,
     #[serde(default, skip_serializing_if = "JsonValue::is_null", rename = "wsSecurity")]
@@ -462,7 +460,6 @@ fn save_request(req: &JsonValue, op_dir: &Path) -> Result<(), String> {
         request_type: req["requestType"].as_str().map(|s| s.to_string()),
         body_type: req["bodyType"].as_str().map(|s| s.to_string()),
         rest_config: req["restConfig"].clone(),
-        graphql_config: req["graphqlConfig"].clone(),
         extractors: req["extractors"].clone(),
         ws_security: req["wsSecurity"].clone(),
         attachments: req["attachments"].clone(),
@@ -1433,7 +1430,6 @@ fn save_unified_request(req: &serde_json::Value, op_dir: &Path) -> Result<(), St
         "requestType": req["requestType"],
         "bodyType": req["bodyType"],
         "restConfig": req["restConfig"],
-        "graphqlConfig": req["graphqlConfig"],
         "extractors": req["extractors"],
         "wsSecurity": req["wsSecurity"],
         "attachments": req["attachments"],
@@ -2221,7 +2217,6 @@ mod tests {
                         "requestType": serde_json::Value::Null,
                         "bodyType": serde_json::Value::Null,
                         "restConfig": serde_json::Value::Null,
-                        "graphqlConfig": serde_json::Value::Null,
                         "extractors": serde_json::Value::Null,
                         "wsSecurity": serde_json::Value::Null,
                         "attachments": serde_json::Value::Null,

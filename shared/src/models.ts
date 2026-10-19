@@ -52,17 +52,17 @@ export interface SchemaNode {
 }
 
 // ============================================================================
-// REQUEST TYPE DISCRIMINATORS (REST/GraphQL Support)
+// REQUEST TYPE DISCRIMINATORS (REST Support)
 // ============================================================================
 
 /** Type of API request */
-export type RequestType = 'soap' | 'rest' | 'graphql';
+export type RequestType = 'soap' | 'rest';
 
 /** HTTP methods supported */
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
 
 /** Body content type */
-export type BodyType = 'xml' | 'json' | 'graphql' | 'text' | 'form-data' | 'binary' | 'none';
+export type BodyType = 'xml' | 'json' | 'text' | 'form-data' | 'binary' | 'none';
 
 /** REST authentication type */
 export type RestAuthType = 'none' | 'basic' | 'bearer' | 'apiKey' | 'oauth2';
@@ -101,12 +101,6 @@ export interface RestConfig {
     queryParams?: Record<string, string>;
     pathParams?: Record<string, string>;
     auth?: RestAuthConfig;
-}
-
-/** GraphQL-specific request configuration */
-export interface GraphQLConfig {
-    variables?: Record<string, any>;
-    operationName?: string;
 }
 
 // Assertion Types
@@ -234,7 +228,7 @@ export interface ApiRequest {
     name: string;
     /** R-10 (F-17): display-only rename override (context menu). The stable `name` — used for WSDL binding and request lookups — is preserved; an empty/undefined value falls back to `name` in the UI. */
     displayName?: string;
-    request: string; // The body content (XML, JSON, GraphQL query, etc.)
+    request: string; // The body content (XML, JSON, etc.)
     contentType?: string;
     method?: HttpMethod | string;
     endpoint?: string;
@@ -248,7 +242,7 @@ export interface ApiRequest {
     /** Response from the last execution, persisted across restarts */
     lastResponse?: RequestResponse;
 
-    // REST/GraphQL Support (Phase 1)
+    // REST Support (Phase 1)
     /** Request type discriminator - defaults to 'soap' for backward compatibility */
     requestType?: RequestType;
     /** Body content type - defaults based on requestType */
@@ -257,8 +251,6 @@ export interface ApiRequest {
     queryParams?: Record<string, string>;
     /** REST-specific configuration (query params, path params, auth) */
     restConfig?: RestConfig;
-    /** GraphQL-specific configuration (variables, operation name) */
-    graphqlConfig?: GraphQLConfig;
     /** Marks the request as read-only (e.g. within Samples project) */
     readOnly?: boolean;
 
@@ -430,8 +422,8 @@ export interface UnifiedProject {
     name: string;
     description?: string;
     /** Source type that created this project */
-    source: 'wsdl' | 'openapi' | 'graphql' | 'manual';
-    /** URL of the WSDL/OpenAPI/GraphQL source (for refresh/sync) */
+    source: 'wsdl' | 'openapi' | 'manual';
+    /** URL of the WSDL/OpenAPI source (for refresh/sync) */
     sourceUrl?: string;
     /** Timestamp when the WSDL/OpenAPI was first parsed */
     parsedAt: Date;
@@ -765,8 +757,6 @@ export interface PerformanceRequest {
     bodyType?: BodyType;
     /** REST-specific configuration (query params, path params, auth) */
     restConfig?: RestConfig;
-    /** GraphQL-specific configuration (variables, operation name) */
-    graphqlConfig?: GraphQLConfig;
 }
 
 /** Result of a single performance run */
@@ -1008,7 +998,7 @@ export interface WorkflowStep {
     endpoint?: string;     // Override endpoint
     headers?: Record<string, string>; // Custom headers
     contentType?: string;  // Content type for request
-    requestType?: RequestType; // SOAP, REST, GraphQL
+    requestType?: RequestType; // SOAP, REST
     bodyType?: BodyType;   // XML, JSON, Form Data, etc.
     httpMethod?: HttpMethod; // POST, GET, PUT, DELETE, etc.
     method?: string;       // HTTP method (legacy compat)

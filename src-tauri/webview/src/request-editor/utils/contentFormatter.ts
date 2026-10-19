@@ -82,7 +82,7 @@ export function formatContent(
         return formatJson(content);
     }
 
-    // For other languages (text, graphql, etc.), return as-is
+    // For other languages (text, etc.), return as-is
     return content;
 }
 

@@ -38,7 +38,7 @@ vi.mock('../../../utils/bridge', () => ({
 }));
 
 // ── fixtures ─────────────────────────────────────────────────────────────────
-const makeRequest = (id: string, requestType?: 'soap' | 'rest' | 'graphql'): ApiRequest => ({
+const makeRequest = (id: string, requestType?: 'soap' | 'rest'): ApiRequest => ({
     id,
     name: id,
     request: '<foo/>',
@@ -47,7 +47,7 @@ const makeRequest = (id: string, requestType?: 'soap' | 'rest' | 'graphql'): Api
     ...(requestType ? { requestType } : {}),
 });
 
-const makeProject = (requestId: string, requestType?: 'soap' | 'rest' | 'graphql'): UnifiedProject => ({
+const makeProject = (requestId: string, requestType?: 'soap' | 'rest'): UnifiedProject => ({
     name: 'TestService',
     source: 'wsdl',
     sourceUrl: 'http://api.example.com/service?wsdl',

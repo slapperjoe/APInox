@@ -24,15 +24,14 @@ import { ErrorDetailBanner } from './common/ErrorDetailBanner';
 export interface ApiRequest {
   id?: string;
   name: string;
-  requestType: 'soap' | 'rest' | 'graphql';
+  requestType: 'soap' | 'rest';
   method: string;
   endpoint: string;
-  bodyType?: 'xml' | 'json' | 'text' | 'graphql' | 'form-data' | 'binary' | 'none';
+  bodyType?: 'xml' | 'json' | 'text' | 'form-data' | 'binary' | 'none';
   contentType?: string;
   request: string;
   headers?: Record<string, string>;
   queryParams?: Record<string, string>;
-  graphqlConfig?: { variables?: Record<string, any>; operationName?: string };
   assertions?: any[];
   extractors?: any[];
   wsSecurity?: any;
@@ -243,7 +242,6 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
   const handleRequestTypeChange = useCallback((type: RequestType) => {
     // Update request type and set default body type
     const defaultBodyType: BodyType = 
-      type === 'graphql' ? 'graphql' :
       type === 'rest' ? 'json' : 
       'xml';
     
@@ -381,7 +379,6 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
     if (request.request && request.bodyType) {
       const language = request.bodyType === 'json' ? 'json'
         : request.bodyType === 'xml' ? 'xml'
-        : request.bodyType === 'graphql' ? 'graphql'
         : 'text';
       const formatted = formatContent(request.request, language, editorSettings.settings, newPrettyPrint);
       if (formatted !== request.request) {

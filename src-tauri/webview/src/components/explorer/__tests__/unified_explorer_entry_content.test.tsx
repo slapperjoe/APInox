@@ -82,16 +82,15 @@ describe('UnifiedExplorerMain — entry-point content (workspace tab removal)', 
         ).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /Load/ })).toBeInTheDocument();
 
-        // The six sample API cards (the "pick a sample below" affordance) — the
+        // The four sample API cards (the "pick a sample below" affordance) — the
         // exact §5.2 labels, so the entry point cannot silently regress to an
         // empty/legacy surface.
-        expect(screen.getAllByTestId('unified-sample-card')).toHaveLength(6);
+        expect(screen.getAllByTestId('unified-sample-card')).toHaveLength(4);
         for (const label of [
             'Swagger Petstore',
+            'Petstore YAML',
             'Country Info',
             'Calculator',
-            'SpaceX',
-            'Rick & Morty',
         ]) {
             expect(screen.getByText(label)).toBeInTheDocument();
         }

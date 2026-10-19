@@ -34,8 +34,6 @@ function getContentTypeForBodyType(bodyType: BodyType): string {
             return 'application/json';
         case 'xml':
             return 'application/xml';
-        case 'graphql':
-            return 'application/json';
         case 'text':
             return 'text/plain';
         case 'form-data':
@@ -56,8 +54,8 @@ function fixContentType(request: ApiRequest): { contentType: string; headers: Re
     const currentContentType = request.contentType || '';
     const currentHeaderContentType = request.headers?.['Content-Type'] || '';
     
-    // For REST/GraphQL requests with a body type, ensure content type matches
-    if (request.requestType === 'rest' || request.requestType === 'graphql') {
+    // For REST requests with a body type, ensure content type matches
+    if (request.requestType === 'rest') {
         if (request.bodyType) {
             const expectedContentType = getContentTypeForBodyType(request.bodyType);
             
@@ -291,13 +289,12 @@ export function useRequestExecution({
                 wsSecurity: selectedRequest?.wsSecurity,
                 // Attachments
                 attachments: selectedRequest?.attachments,
-                // REST/GraphQL Support
+                // REST Support
                 requestType: selectedRequest?.requestType,
                 method: selectedRequest?.method,
                 bodyType: selectedRequest?.bodyType,
                 queryParams: selectedRequest?.queryParams,
-                restConfig: selectedRequest?.restConfig,
-                graphqlConfig: selectedRequest?.graphqlConfig
+                restConfig: selectedRequest?.restConfig
             });
         } else {
             console.error('[App] executeRequest aborted: No selectedOperation or selectedRequest');

@@ -164,76 +164,6 @@ async function resolveRunEnvironmentVariables(envInput: unknown): Promise<Record
 const BODY_METHODS = new Set(['POST', 'PUT', 'PATCH']);
 const hasRequestBody = (method: string) => BODY_METHODS.has(method.toUpperCase());
 
-/**
- * Per-host GraphQL introspection depth cache.
- * Tracks the maximum query depth each server accepts so we don't keep hitting limits.
- * 3 tiers:
- *   'deep'    → type { kind ofType { kind ofType { kind } } }  (depth 6 — full unwrap)
- *   'shallow' → type { kind }                                   (depth 4 — top kind only)
- *   'none'    → no type info, assume object                     (depth 3 — CDN floor)
- */
-type GqlDepthTier = 'deep' | 'shallow' | 'none';
-const gqlDepthCache = new Map<string, GqlDepthTier>();
-
-function gqlHostKey(url: string): string {
-    try { return new URL(url).hostname; } catch { return url; }
-}
-
-/** Query depths our three tiers actually produce (used to map a server-reported limit to a tier). */
-const TIER_DEPTHS: Record<GqlDepthTier, number> = { deep: 6, shallow: 4, none: 3 };
-
-/**
- * Checks whether a GraphQL response body is a depth-limit error, and if so tries to extract the
- * server's advertised max depth. Common conventions:
- *   - extensions.maxDepth / extensions.max_depth  (graphql-depth-limit, Apollo, WunderGraph)
- *   - extensions.code === 'GCDN_QUERY_DEPTH_LIMIT' (Stellate CDN)
- *   - message text: "exceeds maximum operation depth of N" / "max depth: N" / "depth limit of N"
- * Returns null if it is NOT a depth-limit error, otherwise returns the server's max (or undefined
- * if the server didn't advertise one).
- */
-function parseDepthLimitError(body: string): { isLimit: true; maxDepth?: number } | null {
-    try {
-        const parsed = JSON.parse(body);
-        const errors: any[] = parsed?.errors || [];
-        for (const e of errors) {
-            const ext = e?.extensions || {};
-            const msg: string = e?.message || '';
-            const isLimit =
-                ext.code === 'GCDN_QUERY_DEPTH_LIMIT' ||
-                /depth.{0,30}limit|maximum.{0,30}depth|too deep/i.test(msg);
-            if (!isLimit) continue;
-            // Try to read advertised max depth from extensions first, then message text
-            const fromExt = ext.maxDepth ?? ext.max_depth ?? ext.maximumDepth;
-            if (typeof fromExt === 'number') return { isLimit: true, maxDepth: fromExt };
-            const match = msg.match(/\b(\d+)\b/);
-            if (match) return { isLimit: true, maxDepth: parseInt(match[1], 10) };
-            return { isLimit: true };
-        }
-        return null;
-    } catch { return null; }
-}
-
-/** Maps a server-reported max depth to the deepest tier we can use without exceeding it. */
-function tierForMaxDepth(maxDepth: number): GqlDepthTier {
-    if (maxDepth >= TIER_DEPTHS.deep)    return 'deep';
-    if (maxDepth >= TIER_DEPTHS.shallow) return 'shallow';
-    return 'none';
-}
-
-function buildIntrospectionQuery(tier: GqlDepthTier): string {
-    const typeFragment =
-        tier === 'deep'    ? 'type { kind ofType { kind ofType { kind } } }' :
-        tier === 'shallow' ? 'type { kind }' :
-                             '';
-    const fieldSel = ['name', 'description', typeFragment].filter(Boolean).join(' ');
-    return JSON.stringify({
-        query: `{
-            __schema { queryType { name } mutationType { name } }
-            query: __type(name: "Query") { fields(includeDeprecated: false) { ${fieldSel} } }
-            mutation: __type(name: "Mutation") { fields(includeDeprecated: false) { ${fieldSel} } }
-        }`
-    });
-}
 
 /** Builds a minimal fallback body when Rust sample_body is unavailable (pre-rebuild). */
 function buildFallbackBody(p: any): string {
@@ -331,148 +261,6 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                 return { interfaces, wsdlUrl: url, targetProjectId: message.targetProjectId };
             }
 
-            // GraphQL — detect by URL path containing "graphql"
-            const isGraphQL = urlLower.includes('graphql') || urlLower.includes('/gql');
-            if (isGraphQL) {
-                // Adaptive depth: start from cached tier, back off on depth-limit errors.
-                debugLog('[Bridge] Routing LoadWsdl → GraphQL introspection', url);
-                const hostKey = gqlHostKey(url);
-                const TIERS: GqlDepthTier[] = ['deep', 'shallow', 'none'];
-                const startTier = gqlDepthCache.get(hostKey) ?? 'deep';
-                let nextIdx = TIERS.indexOf(startTier);
-
-                let rawBody = '';
-                while (nextIdx < TIERS.length) {
-                    const tier = TIERS[nextIdx];
-                    const resp = await tauriInvoke('execute_rest_request', {
-                        method: 'POST',
-                        url,
-                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                        body: buildIntrospectionQuery(tier),
-                    });
-                    const body: string = resp.body || '';
-
-                    if (!body) {
-                        throw new Error(`GraphQL introspection failed (HTTP ${resp.status}): ${resp.error || 'empty response'}`);
-                    }
-
-                    const depthErr = parseDepthLimitError(body);
-                    if (depthErr) {
-                        if (depthErr.maxDepth !== undefined) {
-                            // Server told us its limit — jump straight to the right tier
-                            const safeTier = tierForMaxDepth(depthErr.maxDepth);
-                            console.warn(`[Bridge] GraphQL depth limit: server max=${depthErr.maxDepth}, jumping to tier=${safeTier}`);
-                            gqlDepthCache.set(hostKey, safeTier);
-                            nextIdx = TIERS.indexOf(safeTier);
-                            if (safeTier === tier) nextIdx++; // already tried this tier, step past it
-                        } else {
-                            console.warn(`[Bridge] GraphQL depth limit hit at tier=${tier} (no limit advertised), backing off`);
-                            nextIdx++;
-                        }
-                        continue;
-                    }
-
-                    rawBody = body;
-                    gqlDepthCache.set(hostKey, tier); // remember what worked
-                    break;
-                }
-
-                if (!rawBody) {
-                    throw new Error('GraphQL introspection failed: server rejected all query depth levels');
-                }
-
-                let introspection: any;
-                try {
-                    introspection = JSON.parse(rawBody);
-                } catch (e) {
-                    throw new Error(`GraphQL response is not valid JSON: ${rawBody.slice(0, 200)}`, { cause: e });
-                }
-
-                if (introspection.errors && !introspection.data) {
-                    throw new Error(`GraphQL introspection error: ${introspection.errors[0]?.message || JSON.stringify(introspection.errors)}`);
-                }
-
-                const schema = introspection.data?.__schema;
-                if (!schema) throw new Error(`Invalid GraphQL introspection response: ${rawBody.slice(0, 300)}`);
-
-                const queryTypeName: string = schema.queryType?.name || 'Query';
-                const mutationTypeName: string | null = schema.mutationType?.name || null;
-
-                // Fields come from the __type alias queries (not schema.types)
-                const buildOperationsFromFields = (fields: any[], isMutation: boolean) => {
-                    return (fields || []).map((field: any) => {
-                        // Determine whether the field returns an object type (needs subfield selection).
-                        // With 'deep' tier we can fully unwrap NON_NULL/LIST wrappers.
-                        // With 'shallow' we only have the top-level kind.
-                        // With 'none' we have no type info — default to object (safer than bare name).
-                        const baseKind = (function unwrap(t: any): string {
-                            if (!t) return 'OBJECT'; // unknown → assume object
-                            if (t.kind === 'NON_NULL' || t.kind === 'LIST') return unwrap(t.ofType);
-                            return t.kind || 'OBJECT';
-                        })(field.type);
-                        const needsSelection = !['SCALAR', 'ENUM', 'INPUT_OBJECT'].includes(baseKind);
-                        const fieldSelection = needsSelection
-                            ? `${field.name} {\n    __typename\n  }` : field.name;
-                        const sampleQuery = isMutation
-                            ? `mutation {\n  ${fieldSelection}\n}`
-                            : `query {\n  ${fieldSelection}\n}`;
-                        return {
-                            id: crypto.randomUUID(),
-                            name: field.name,
-                            action: field.description || '',
-                            input: {},
-                            fullSchema: null,
-                            targetNamespace: '',
-                            originalEndpoint: url,
-                            expanded: false,
-                            requests: [{
-                                id: crypto.randomUUID(),
-                                name: 'Sample',
-                                endpoint: url,
-                                method: 'POST',
-                                contentType: 'application/json',
-                                headers: { 'Content-Type': 'application/json' },
-                                request: sampleQuery,  // raw GraphQL text; wrapped as {"query":...} at send time
-                                requestType: 'graphql',
-                                bodyType: 'graphql',
-                            }],
-                        };
-                    });
-                };
-
-                const queryFields: any[] = introspection.data?.query?.fields || [];
-                const mutationFields: any[] = introspection.data?.mutation?.fields || [];
-
-                const interfaces: any[] = [];
-                if (queryFields.length > 0) {
-                    interfaces.push({
-                        id: crypto.randomUUID(),
-                        name: queryTypeName,
-                        type: 'graphql',
-                        bindingName: '',
-                        soapVersion: '',
-                        definition: url,
-                        expanded: false,
-                        operations: buildOperationsFromFields(queryFields, false),
-                    });
-                }
-                if (mutationFields.length > 0) {
-                    interfaces.push({
-                        id: crypto.randomUUID(),
-                        name: mutationTypeName || 'Mutation',
-                        type: 'graphql',
-                        bindingName: '',
-                        soapVersion: '',
-                        definition: url,
-                        expanded: false,
-                        operations: buildOperationsFromFields(mutationFields, true),
-                    });
-                }
-                return { interfaces, wsdlUrl: url, targetProjectId: message.targetProjectId };
-            }
-
-            debugLog('[Bridge] GraphQL introspection complete', { count: 0 });
-
             // WSDL / SOAP
             debugLog('[Bridge] Routing LoadWsdl → parse_wsdl (WSDL/SOAP)', url);
             const response = await tauriInvoke('parse_wsdl', {
@@ -491,30 +279,14 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
         }
 
         // Route ExecuteRequest (REST) to Rust execute_rest_request command
-        if (message.command === FrontendCommand.ExecuteRequest && (message.requestType === 'rest' || message.requestType === 'graphql')) {
+        if (message.command === FrontendCommand.ExecuteRequest && message.requestType === 'rest') {
             const method = (message.method || 'GET').toUpperCase();
             const url: string = message.url || '';
 
             const headers: Record<string, string> = { ...(message.headers || {}) };
-            // GraphQL always POSTs JSON body; REST only for body methods
-            const isGraphQL = message.requestType === 'graphql';
-            const hasBody = isGraphQL || ['POST', 'PUT', 'PATCH'].includes(method);
+            // REST carries a body only for the body methods
+            const hasBody = ['POST', 'PUT', 'PATCH'].includes(method);
             let body: string | null = hasBody ? (message.xml || null) : null;
-
-            // If GraphQL, wrap raw query text as {"query": "...", "variables": {...}, "operationName": "..."}
-            if (isGraphQL && body) {
-                const trimmed = body.trim();
-                if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
-                    // Extract operationName from query text: query/mutation/subscription Name
-                    const opMatch = trimmed.match(/^\s*(?:query|mutation|subscription)\s+(\w+)/m);
-                    const operationName = opMatch ? opMatch[1] : undefined;
-                    const variables = message.graphqlConfig?.variables || undefined;
-                    const payload: any = { query: body };
-                    if (variables && Object.keys(variables).length > 0) payload.variables = variables;
-                    if (operationName) payload.operationName = operationName;
-                    body = JSON.stringify(payload);
-                }
-            }
 
             const startTime = Date.now();
             const response = await tauriInvoke('execute_rest_request', {
@@ -915,7 +687,6 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
                                 requestType: message.requestType,
                                 bodyType: message.bodyType,
                                 restConfig: message.restConfig,
-                                graphqlConfig: message.graphqlConfig,
                             };
                         suites[suiteIdx] = { ...suites[suiteIdx], requests: [...(suites[suiteIdx].requests || []), newReq] };
                     }

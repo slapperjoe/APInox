@@ -5,7 +5,7 @@ import { debugLog } from "./logger";
 
 /**
  * Unified-explorer history write (F-13 / R-08 — phase 2, SOAP path;
- * REST/GraphQL extension lands in phase 4).
+ * REST extension lands in phase 4).
  *
  * The unified execute path previously never wrote request history, so a
  * request run from the unified explorer vanished from the global History

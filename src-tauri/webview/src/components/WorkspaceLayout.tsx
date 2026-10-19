@@ -256,7 +256,6 @@ export const WorkspaceLayout: React.FC = () => {
 
         const isXmlRequest = activeRequest.requestType !== 'rest'
             && activeRequest.bodyType !== 'json'
-            && activeRequest.bodyType !== 'graphql'
             && activeRequest.bodyType !== 'text';
 
         if (!isXmlRequest || !activeRequest) return;
@@ -279,7 +278,6 @@ export const WorkspaceLayout: React.FC = () => {
 
         const isXmlRequest = activeRequest.requestType !== 'rest'
             && activeRequest.bodyType !== 'json'
-            && activeRequest.bodyType !== 'graphql'
             && activeRequest.bodyType !== 'text';
 
         if (!isXmlRequest) return;
@@ -302,7 +300,6 @@ export const WorkspaceLayout: React.FC = () => {
 
         const isXmlRequest = activeRequest.requestType !== 'rest'
             && activeRequest.bodyType !== 'json'
-            && activeRequest.bodyType !== 'graphql'
             && activeRequest.bodyType !== 'text';
 
         if (!isXmlRequest) return;

@@ -21,15 +21,14 @@ export type TabType = BuiltinTabType | string;
 interface ApiRequest {
   id?: string;
   name: string;
-  requestType: 'soap' | 'rest' | 'graphql';
+  requestType: 'soap' | 'rest';
   method: string;
   endpoint: string;
-  bodyType?: 'xml' | 'json' | 'text' | 'graphql' | 'form-data' | 'binary' | 'none';
+  bodyType?: 'xml' | 'json' | 'text' | 'form-data' | 'binary' | 'none';
   contentType?: string;
   request: string;
   headers?: Record<string, string>;
   queryParams?: Record<string, string>;
-  graphqlConfig?: { variables?: Record<string, any>; operationName?: string };
   assertions?: any[];
   extractors?: any[];
   wsSecurity?: any;
@@ -96,10 +95,6 @@ const RequestTabContentBase: React.FC<RequestTabContentProps> = ({
   const handleBinaryChange = useCallback((file: BinaryFile | null) => {
     onUpdateRef.current({ ...requestRef.current, binaryFile: file ?? undefined });
   }, []);
-  const handleGraphqlVarsChange = useCallback((vars: Record<string, string>) => {
-    const req = requestRef.current;
-    onUpdateRef.current({ ...req, graphqlConfig: { ...req.graphqlConfig, variables: vars } });
-  }, []);
   const handleHeadersChange = useCallback((headers: Record<string, string>) => {
     onUpdateRef.current({ ...requestRef.current, headers });
   }, []);
@@ -157,50 +152,7 @@ const RequestTabContentBase: React.FC<RequestTabContentProps> = ({
 
       const editorLanguage =
         request.bodyType === 'json' ? 'json' :
-        request.bodyType === 'graphql' ? 'graphql' :
         'xml';
-
-      if (request.bodyType === 'graphql') {
-        const graphqlVars: Record<string, string> = (() => {
-          const raw = request.graphqlConfig?.variables;
-          if (!raw) return {};
-          return Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, String(v ?? '')]));
-        })();
-
-        return (
-          <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
-            <div style={{ flex: '0 0 67%', minWidth: 0, borderRight: '1px solid var(--apinox-widget-border)', overflow: 'hidden' }}>
-              <MonacoRequestEditor
-                ref={requestEditorRef}
-                value={request.request || ''}
-                onChange={handleBodyChange}
-                language="graphql"
-                readOnly={readOnly}
-                availableVariables={availableVariables}
-                availableEnvVariables={availableEnvVariables}
-                requestId={request.id || request.name}
-                fontSize={editorSettings.settings.fontSize}
-                fontFamily={editorSettings.settings.fontFamily}
-                showLineNumbers={editorSettings.settings.showLineNumbers}
-                showMinimap={editorSettings.settings.showMinimap}
-                forceUpdateKey={editorForceUpdateKey}
-                onLog={onLog}
-              />
-            </div>
-            <div style={{ flex: '0 0 33%', minWidth: 0, overflow: 'hidden' }}>
-              <QueryParamsPanel
-                params={graphqlVars}
-                onChange={handleGraphqlVarsChange}
-                title="Variables"
-                paramLabel="Variable"
-                readOnly={readOnly}
-                availableVariables={availableVariables}
-                availableEnvVariables={availableEnvVariables}
-              />
-            </div>
-          </div>
-        );
-      }
 
       return (
         <MonacoRequestEditor

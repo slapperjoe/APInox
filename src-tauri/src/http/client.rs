@@ -432,7 +432,7 @@ fn build_reqwest_client(
 }
 
 /// Classify a failed HTTP request. Delegates to the shared chain classifier in
-/// `utils::error_detail` so the REST/GraphQL and SOAP paths agree, and so the
+/// `utils::error_detail` so the REST and SOAP paths agree, and so the
 /// `error` message and `error_kind` are always derived from the same walk.
 fn classify_reqwest_error(e: &anyhow::Error) -> HttpErrorKind {
     crate::utils::error_detail::classify_anyhow_error(e)

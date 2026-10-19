@@ -12,25 +12,21 @@ import type { ExecutionResponse } from '../request-editor/monaco';
  * stays byte-identical to the R-02 baseline (doc §9 R3: "keep SOAP path
  * byte-identical; regression test (SOAP Country Info) as gate").
  *
- * REST/GraphQL semantics mirror the legacy bridge execute path
+ * REST semantics mirror the legacy bridge execute path
  * (`utils/bridge.ts` `ExecuteRequest` handler, baseline `3f7bc2f` lines
  * 433–505):
  *   - `execute_rest_request` is invoked with FLAT args
  *     `{ method, url, headers, body }` (the Rust command at
  *     `src-tauri/src/http/commands.rs` takes them positionally by name).
- *   - The body is sent only for GraphQL (always — it is the query) and for
- *     REST methods POST/PUT/PATCH; GET/DELETE/etc. send no body.
- *   - A raw GraphQL query (one that does not already start with `{` or `[`,
- *     i.e. is not an already-executable JSON payload) is wrapped as
- *     `{"query": …, "variables": …?, "operationName": …?}` (legacy
- *     `bridge.ts` lines 444–456).
+ *   - The body is sent only for REST methods POST/PUT/PATCH;
+ *     GET/DELETE/etc. send no body.
  *
  * The legacy bridge itself is untouched (hard constraint 3: the legacy
  * EXPLORER view stays fully functional until Phase 6).
  */
 
 /** Request-type discriminator used by the unified execute path. */
-export type UnifiedRequestType = 'soap' | 'rest' | 'graphql';
+export type UnifiedRequestType = 'soap' | 'rest';
 
 /** `execute_rest_request` response — Rust `HttpResponse` (http/client.rs). */
 export interface ExecuteRestResponse {
@@ -44,32 +40,26 @@ export interface ExecuteRestResponse {
     truncated?: boolean;
 }
 
-export interface RestGraphQlDispatchInput {
+export interface RestDispatchInput {
     /** `execute_rest_request` is flat-arg — `method` is required. */
     method: string;
     url: string;
     /** Request headers (already resolved; the dispatcher only passes them through). */
     headers: Record<string, string>;
-    /** Raw body: JSON text for REST, raw GraphQL query for GraphQL. */
+    /** Raw body: JSON text for REST. */
     body: string | null;
-    /** GraphQL variables (from `req.graphqlConfig.variables`) — legacy parity. */
-    variables?: Record<string, any>;
-    /** `true` for the GraphQL branch (forces a body + enables query wrapping). */
-    isGraphQL: boolean;
 }
 
 /**
  * Resolve the effective request type for a unified request.
  *
  * `ApiRequest.requestType` is the Phase-1 discriminator (Rust builders emit
- * `'rest'` for OpenAPI operations, `'graphql'` for introspected GraphQL
- * fields). Unset values default to SOAP — backward-compatible with WSDL
+ * `'rest'` for OpenAPI operations). Unset values default to SOAP — backward-compatible with WSDL
  * projects and with requests created before Phase 4 (doc §5.3(3), risk R3).
  */
 export function resolveRequestType(req: ApiRequest): UnifiedRequestType {
     switch (req.requestType) {
         case 'rest':
-        case 'graphql':
             return req.requestType;
         case 'soap':
         default:
@@ -78,13 +68,13 @@ export function resolveRequestType(req: ApiRequest): UnifiedRequestType {
 }
 
 /**
- * Build the flat `execute_rest_request` argument object for a REST or
- * GraphQL request, applying the legacy body/GraphQL-wrap rules.
+ * Build the flat `execute_rest_request` argument object for a REST request,
+ * applying the legacy body rule (body only for POST/PUT/PATCH).
  *
  * Returned object is the EXACT argument record passed to the Tauri command
  * (the component spreads nothing into it) — tests assert on it verbatim.
  */
-export function buildRestGraphQlInvokeArgs(input: RestGraphQlDispatchInput): {
+export function buildRestInvokeArgs(input: RestDispatchInput): {
     method: string;
     url: string;
     headers: Record<string, string>;
@@ -93,30 +83,11 @@ export function buildRestGraphQlInvokeArgs(input: RestGraphQlDispatchInput): {
     const method = (input.method || 'GET').toUpperCase();
     const headers = { ...(input.headers || {}) };
 
-    // Legacy rule (bridge.ts:440): GraphQL always carries a JSON body;
-    // REST carries one only for the body methods.
-    const hasBody = input.isGraphQL || ['POST', 'PUT', 'PATCH'].includes(method);
-    let body: string | null = hasBody ? (input.body || null) : null;
+    // Legacy rule (bridge.ts:440): REST carries a body only for the body methods.
+    const hasBody = ['POST', 'PUT', 'PATCH'].includes(method);
+    const body: string | null = hasBody ? (input.body || null) : null;
 
-    // Legacy GraphQL wrapping (bridge.ts:444–456): a raw query (not an
-    // already-JSON payload) becomes {"query": …} plus optional
-    // variables/operationName extracted from the query text.
-    if (input.isGraphQL && body) {
-        const trimmed = body.trim();
-        if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
-            const opMatch = trimmed.match(/^\s*(?:query|mutation|subscription)\s+(\w+)/m);
-            const operationName = opMatch ? opMatch[1] : undefined;
-            const variables = input.variables && Object.keys(input.variables).length > 0
-                ? input.variables
-                : undefined;
-            const payload: Record<string, unknown> = { query: body };
-            if (variables) payload.variables = variables;
-            if (operationName) payload.operationName = operationName;
-            body = JSON.stringify(payload);
-        }
-    }
-
-    return { method, url: input.url, headers, body };
+    return { method, url: input.url, headers, body }
 }
 
 /**
@@ -124,7 +95,7 @@ export function buildRestGraphQlInvokeArgs(input: RestGraphQlDispatchInput): {
  * shape the unified response viewer renders (same shape the SOAP path
  * produces).
  */
-export function normalizeRestGraphQlResponse(
+export function normalizeRestResponse(
     result: ExecuteRestResponse,
     fallbackContentType?: string,
 ): ExecutionResponse {
@@ -147,7 +118,6 @@ export function normalizeRestGraphQlResponse(
  *   - REST → `json` (OpenAPI sample bodies are JSON; the Phase-1 builders
  *     set `contentType: application/json`), falling back to `plaintext`
  *     for a non-JSON content type.
- *   - GraphQL → `graphql` (Monaco's GraphQL language id).
  *
  * Quick requests (scrapbook) carry no `requestType` in the frozen
  * scrapbook.json schema, so a SOAP quick request still gets `xml` here —
@@ -156,9 +126,6 @@ export function normalizeRestGraphQlResponse(
 export function editorLanguageForRequest(req: ApiRequest | null | undefined): string {
     if (!req) return 'xml';
     const requestType: UnifiedRequestType = resolveRequestType(req);
-    if (requestType === 'graphql') {
-        return 'graphql';
-    }
     if (requestType === 'rest') {
         const ct = (req.contentType || '').toLowerCase();
         return ct.includes('json') ? 'json' : 'plaintext';

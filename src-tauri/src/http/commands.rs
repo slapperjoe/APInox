@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use once_cell::sync::Lazy;
 
-/// R-11 (F-11) — in-flight REST/GraphQL requests keyed by client-supplied
+/// R-11 (F-11) — in-flight REST requests keyed by client-supplied
 /// `requestId`, each holding the `CancelToken` the command registered. Mirrors
 /// the SOAP `CANCEL_TOKENS` registry (`soap/commands.rs`) so the unified view
 /// can cancel a running non-SOAP request the same way it cancels a SOAP one
@@ -67,7 +67,7 @@ pub async fn execute_rest_request(
     Ok(response)
 }
 
-/// R-11 (F-11): cancel an in-flight REST/GraphQL request by `requestId`.
+/// R-11 (F-11): cancel an in-flight REST request by `requestId`.
 ///
 /// Result shape mirrors the SOAP `cancel_request` command:
 /// `{ success, cancelled, found, requestId }`. A matching in-flight request has
@@ -83,7 +83,7 @@ pub fn cancel_rest_request(request_id: Option<String>) -> Result<serde_json::Val
     let tokens = REST_CANCEL_TOKENS.lock().unwrap();
     if let Some(token) = tokens.get(&id) {
         token.cancel();
-        log::info!("Cancelled REST/GraphQL request: {}", id);
+        log::info!("Cancelled REST request: {}", id);
         Ok(serde_json::json!({ "success": true, "cancelled": true, "found": true, "requestId": id }))
     } else {
         log::info!("cancel_rest_request: id not found (not in-flight): {}", id);

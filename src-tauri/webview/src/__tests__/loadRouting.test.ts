@@ -4,11 +4,10 @@ import { detectLoadFormat } from '../utils/loadRouting';
 /**
  * R-03c — bridge load-routing test floor.
  *
- * URL/file extension → WSDL vs OpenAPI vs GraphQL routing, extracted into a
+ * URL/file extension → WSDL vs OpenAPI routing, extracted into a
  * pure function (`detectLoadFormat`) and pinned here. The rules mirror the
  * legacy `bridge.ts` LoadWsdl routing (the parity baseline):
  *   - `.json` / `.yaml` / `.yml` (query string stripped) → OpenAPI
- *   - path containing `graphql` or `/gql` → GraphQL
  *   - everything else → WSDL (unknown formats fall to the WSDL path, which
  *     errors cleanly — matching legacy default-branch behavior)
  */
@@ -27,12 +26,6 @@ describe('detectLoadFormat (R-03c load routing)', () => {
         expect(detectLoadFormat('http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso?WSDL')).toBe('wsdl');
         // And an OpenAPI URL with a query still routes to openapi by extension.
         expect(detectLoadFormat('https://example.com/spec.json?cache=123')).toBe('openapi');
-    });
-
-    it('routes graphql paths to graphql', () => {
-        expect(detectLoadFormat('https://spacex-production.up.railway.app/graphql')).toBe('graphql');
-        expect(detectLoadFormat('https://rickandmortyapi.com/graphql')).toBe('graphql');
-        expect(detectLoadFormat('https://api.example.com/v1/gql/query')).toBe('graphql');
     });
 
     it('routes .wsdl and bare service URLs to wsdl', () => {

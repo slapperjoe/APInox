@@ -24,8 +24,8 @@ import { isScrapbookNode } from '../../utils/unifiedScrapbookCapture';
 import { saveUnifiedHistoryEntry } from '../../utils/unifiedHistory';
 import {
     resolveRequestType,
-    buildRestGraphQlInvokeArgs,
-    normalizeRestGraphQlResponse,
+    buildRestInvokeArgs,
+    normalizeRestResponse,
     editorLanguageForRequest,
     findOwnerRequest,
     ExecuteRestResponse,
@@ -42,7 +42,7 @@ export interface UnifiedExplorerMainProps {
     onSelectNode: (type: string, id: string) => void;
     onRefreshProject: (projectName: string) => void;
     /**
-     * Load a WSDL / OpenAPI / GraphQL source. `opts` (R-11 / R-12) only
+     * Load a WSDL / OpenAPI source. `opts` (R-11 / R-12) only
      * applies to the WSDL path: `useProxy` routes the fetch through the app
      * proxy (force-off for local files in Rust), `loadId` makes the in-flight
      * load cancellable via `cancel_unified_load`.
@@ -57,7 +57,7 @@ export interface UnifiedExplorerMainProps {
      * unified execution; the provider persists the entry via
      * `ScrapbookContext.captureExecution` (update keyed by
      * endpoint+operation, else append). Phase 2: the SOAP execute path is the
-     * only execution path (REST/GraphQL land in phase 4 with R-09).
+     * only execution path (REST lands in phase 4 with R-09).
      */
     onAfterExecute?: (request: ApiRequest, operationName?: string | null) => void | Promise<void>;
     /**
@@ -303,7 +303,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
     const [executeError, setExecuteError] = useState<string | null>(null);
     /** R-11 (F-11): in-flight request execution — enables the Cancel button next to Run. */
     const [isExecuting, setIsExecuting] = useState(false);
-    /** R-11 (F-11): the Rust-side cancel token id for the in-flight request (SOAP `cancel_request` / REST/GraphQL `cancel_rest_request`). */
+    /** R-11 (F-11): the Rust-side cancel token id for the in-flight request (SOAP `cancel_request` / REST `cancel_rest_request`). */
     const activeRequestIdRef = useRef<string | null>(null);
     /** F-01: the selected quick (scrapbook) request. Read SYNCHRONOUSLY from
      * the app-level ScrapbookContext — a one-commit-behind useState mirror of
@@ -550,9 +550,8 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
             setUrlInput(prev => ({ ...prev, error: 'Please enter a URL' }));
             return;
         }
-        // R-03: load routing decision (URL/file extension → WSDL vs OpenAPI vs
-        // GraphQL). Phase 0 surfaces the decision in the debug log; Phase 1
-        // routes 'openapi'/'graphql' to parse_spec_as_project.
+        // R-03: load routing decision (URL/file extension → WSDL vs OpenAPI). Phase 0 surfaces the decision in the debug log; Phase 1
+        // routes 'openapi' to parse_spec_as_project.
         const loadUrl = urlInput.url.trim();
         const loadFormat = detectLoadFormat(loadUrl);
         debugLog('[UnifiedExplorerMain] Load routing', { url: loadUrl, format: loadFormat, useProxy });
@@ -576,7 +575,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
     // R-07 (F-03): a sample card click pre-fills the URL input with the exact
     // doc §5.2 URL (utils/sampleApiCards.ts) and clears any prior load error.
     // `detectLoadFormat` (loadRouting) then routes the subsequent Load to the
-    // correct path (WSDL / OpenAPI / GraphQL) — so pre-filling the input alone
+    // correct path (WSDL / OpenAPI) — so pre-filling the input alone
     // is sufficient; no input-type state exists on the unified view.
     const handleSelectSampleCard = useCallback((card: SampleApiCard) => {
         setUrlInput({ url: card.url, loading: false, error: null });
@@ -662,7 +661,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
         // unified path, which now dispatches by request type — SOAP
         // requests (including quick requests, whose type is undeclared in
         // the frozen scrapbook.json schema) take the byte-identical R-02
-        // SOAP baseline; REST and GraphQL requests route to
+        // SOAP baseline; REST requests route to
         // `execute_rest_request` (legacy bridge.ts:433–505 semantics).
         const isQuickRequest = isScrapbookNode(selectedNode);
         const requestType = resolveRequestType(req);
@@ -670,7 +669,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
         // Locate the owning project/operation. For SOAP this resolves the
         // *effective* Content-Type (interface override > stored value > SOAP
         // default — the UI must send exactly what it displays,
-        // SOAP_INTERFACE_CONTENT_TYPE_SPEC.md); for REST/GraphQL it supplies
+        // SOAP_INTERFACE_CONTENT_TYPE_SPEC.md); for REST it supplies
         // the history entry's project/operation names.
         const owner = findOwnerRequest(projects, reqId);
         const ownerProject = owner?.project;
@@ -691,7 +690,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
 
         // R-11 (F-11): the UI passes its own request id so the Cancel button
         // can target exactly this in-flight request (SOAP → `cancel_request`,
-        // REST/GraphQL → `cancel_rest_request`).
+        // REST → `cancel_rest_request`).
         const executionId = crypto.randomUUID();
         activeRequestIdRef.current = executionId;
         setIsExecuting(true);
@@ -699,18 +698,15 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
         const startTime = Date.now();
         try {
             if (requestType !== 'soap') {
-                // ── REST / GraphQL (R-09, F-06/F-07) ─────────────────────────
+                // ── REST (R-09, F-06/F-07) ─────────────────────────
                 // `execute_rest_request` with the legacy bridge's flat-arg
-                // semantics: body only for GraphQL or body methods; raw
-                // GraphQL queries wrapped as {"query": …} (util keeps the
-                // rule in one testable place).
-                const invokeArgs = buildRestGraphQlInvokeArgs({
-                    method: req.method || (requestType === 'graphql' ? 'POST' : 'GET'),
+                // semantics: body only for body methods (util keeps the rule
+                // in one testable place).
+                const invokeArgs = buildRestInvokeArgs({
+                    method: req.method || 'GET',
                     url: effectiveEndpoint || '',
                     headers: req.headers || {},
                     body: currentXml || req.request || null,
-                    variables: req.graphqlConfig?.variables,
-                    isGraphQL: requestType === 'graphql',
                 });
                 // R-11: `requestId` registers a cancel token in Rust (the
                 // token races the send AND the body read in `execute_internal`).
@@ -721,14 +717,13 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                 const duration = Date.now() - startTime;
                 const headers = result.headers || {};
                 const normalizedResponse: ExecutionResponse = {
-                    ...normalizeRestGraphQlResponse(result, req.contentType),
+                    ...normalizeRestResponse(result, req.contentType),
                     time: result.time_taken_ms,
                 };
                 setResponses(prev => ({ ...prev, [reqId]: normalizedResponse }));
                 setLastExecutedId(reqId);
 
-                // F-13 / R-08 (phase 4 extension): every REST/GraphQL
-                // execution writes an entry to the SAME single global
+                // F-13 / R-08 (phase 4 extension): every REST execution writes an entry to the SAME single global
                 // history store (doc §10.4 / Q6), mirroring the legacy
                 // `saveRequestHistory` call at bridge.ts:475–489.
                 const responseBody = normalizedResponse.rawResponse || '';
@@ -927,7 +922,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
     /**
      * R-11 (F-11): cancel the in-flight request from the Cancel button.
      * Routes by the request's type: SOAP → `cancel_request` (existing Rust
-     * registry), REST/GraphQL → `cancel_rest_request`. The Rust side signals
+     * registry), REST → `cancel_rest_request`. The Rust side signals
      * its `CancelToken`; the in-flight call then fails at its next await point
      * (send or body read) and surfaces here as a normal error.
      */
@@ -1386,7 +1381,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                 Sample APIs
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, maxWidth: 560 }}>
-                                {(['OpenAPI', 'SOAP', 'GraphQL'] as const).map(group => (
+                                {(['OpenAPI', 'SOAP'] as const).map(group => (
                                     <div key={group} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                         <span
                                             style={{

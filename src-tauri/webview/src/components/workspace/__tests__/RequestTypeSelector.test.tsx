@@ -48,20 +48,6 @@ describe('RequestTypeSelector', () => {
         expect(screen.queryByRole('button', { name: 'Content Type' })).not.toBeInTheDocument();
     });
 
-    it('should render GraphQL options correctly', () => {
-        render(<RequestTypeSelector {...defaultProps} requestType="graphql" />);
-
-        expect(screen.getByTitle('Request Type')).toHaveValue('graphql');
-
-        // Method Selector should NOT be present (GraphQL implies POST usually, or not configurable here)
-        // Code says: {requestType !== 'graphql' && ...}
-        expect(screen.queryByTitle('HTTP Method')).not.toBeInTheDocument();
-
-        // Body Type and Content Type check
-        expect(screen.queryByTitle('Body Type')).not.toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: 'Content Type' })).not.toBeInTheDocument();
-    });
-
     it('should trigger handlers on change', () => {
         render(<RequestTypeSelector {...defaultProps} requestType="soap" />);
 

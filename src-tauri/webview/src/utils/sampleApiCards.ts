@@ -1,7 +1,7 @@
 /**
  * Sample API cards — unified explorer empty state (R-03d / doc §5.2, F-03).
  *
- * Data contract for the six sample cards that Phase 3 renders in the unified
+ * Data contract for the four sample cards that Phase 3 renders in the unified
  * `EmptyState`. Labels and URLs are the exact values from
  * `docs/UNIFIED_EXPLORER_PARITY_DECISION.md` §5.2 (re-verified against the
  * legacy `ApiExplorerMain.tsx:334–443` card block). Clicking a card
@@ -13,8 +13,8 @@
  * Phase 3 (R-07) and consumes this fixture, so the card data cannot drift
  * from the decision doc.
  */
-export type SampleCardGroup = "OpenAPI" | "SOAP" | "GraphQL";
-export type SampleCardFormat = "openapi" | "wsdl" | "graphql";
+export type SampleCardGroup = "OpenAPI" | "SOAP";
+export type SampleCardFormat = "openapi" | "wsdl";
 
 export interface SampleApiCard {
     label: string;
@@ -25,7 +25,7 @@ export interface SampleApiCard {
 }
 
 /**
- * The six cards, in the documented order (OpenAPI ×2, SOAP ×2, GraphQL ×2).
+ * The four cards, in the documented order (OpenAPI ×2, SOAP ×2).
  * URLs are verbatim from doc §5.2 — the `?WSDL`/`?wsdl` query strings are
  * part of the exact URLs and must be preserved.
  */
@@ -53,17 +53,5 @@ export const SAMPLE_API_CARDS: SampleApiCard[] = [
         group: "SOAP",
         url: "http://www.dneonline.com/calculator.asmx?wsdl",
         format: "wsdl",
-    },
-    {
-        label: "SpaceX",
-        group: "GraphQL",
-        url: "https://spacex-production.up.railway.app/graphql",
-        format: "graphql",
-    },
-    {
-        label: "Rick & Morty",
-        group: "GraphQL",
-        url: "https://rickandmortyapi.com/graphql",
-        format: "graphql",
     },
 ];

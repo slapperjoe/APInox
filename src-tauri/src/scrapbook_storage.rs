@@ -185,13 +185,13 @@ mod tests {
                 {
                     "id": "scrap-3",
                     "name": "SpaceshipQuery",
-                    "request": "query { launches { id name } }",
-                    "requestType": "graphql",
+                    "request": "{\"limit\": 5}",
+                    "requestType": "rest",
                     "method": "POST",
-                    "bodyType": "graphql",
+                    "bodyType": "json",
                     "contentType": "application/json",
                     "headers": { "Content-Type": "application/json" },
-                    "endpoint": "https://spacex.example.com/graphql",
+                    "endpoint": "https://spacex.example.com/v2/launches",
                     "createdAt": "2026-03-05T14:00:00.000Z",
                     "lastModified": "2026-03-06T15:45:30.123Z"
                 },

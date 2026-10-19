@@ -145,7 +145,7 @@ export function useMessageHandler(state: MessageHandlerState) {
                                 language = 'json';
                             } else if (typeof res.rawResponse === 'string') {
                                 const trimmed = res.rawResponse.trim();
-                                const isJsonLike = contentType.includes('json') || contentType.includes('graphql') || trimmed.startsWith('{') || trimmed.startsWith('[');
+                                const isJsonLike = contentType.includes('json') || trimmed.startsWith('{') || trimmed.startsWith('[');
                                 if (isJsonLike) {
                                     const pretty = tryPrettyJson(res.rawResponse);
                                     displayResponse = pretty || res.rawResponse;
