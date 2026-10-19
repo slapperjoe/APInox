@@ -3,6 +3,7 @@ use tauri::{AppHandle, State};
 use uuid::Uuid;
 
 use crate::proxy_models::{MockRule, MockRuleCollection};
+use crate::utils::blocking;
 use crate::{ensure_proxy_state, LazyProxyAppState, ProxyAppState};
 
 #[tauri::command]
@@ -101,8 +102,8 @@ pub async fn export_mock_collection(
     let json = serde_json::to_string_pretty(&collection)
         .map_err(|e| e.to_string())?;
 
-    std::fs::write(&file_path, json)
-        .map_err(|e| format!("Failed to write collection file: {}", e))?;
+    let path_for_blocking = file_path.clone();
+    blocking(move || std::fs::write(&path_for_blocking, json).map_err(|e| format!("Failed to write collection file: {}", e))).await?;
 
     log::info!("[Mock] Exported collection to {}", file_path);
     Ok(())
@@ -118,8 +119,8 @@ pub async fn import_mock_collection(
     app: AppHandle,
 ) -> Result<Vec<MockRule>, String> {
     let state = ensure_proxy_state(state, &app).await?;
-    let content = std::fs::read_to_string(&file_path)
-        .map_err(|e| format!("Failed to read file: {}", e))?;
+    let path_for_blocking = file_path.clone();
+    let content = blocking(move || std::fs::read_to_string(&path_for_blocking).map_err(|e| format!("Failed to read file: {}", e))).await?;
 
     // Try wrapper object first, fall back to bare array for interop.
     let mut rules: Vec<MockRule> =
