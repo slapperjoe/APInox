@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, fireEvent } from '@testing-library/react';
+import { render, fireEvent, act } from '@testing-library/react';
 import { MonacoSingleLineInput } from '../components/MonacoSingleLineInput';
 
 describe('MonacoSingleLineInput inline decorations', () => {
@@ -207,5 +207,42 @@ describe('MonacoSingleLineInput autocomplete popup', () => {
         render(<MonacoSingleLineInput value="" onChange={() => {}} />);
         typeAtCaret(editable(), 'hello', 5);
         expect(document.querySelector('[data-testid="single-line-autocomplete"]')).toBeNull();
+    });
+
+    it('wires the combobox pattern: aria-expanded, aria-controls, aria-activedescendant', () => {
+        render(<MonacoSingleLineInput value="" onChange={() => {}} />);
+        const el = editable();
+        typeAtCaret(el, '{{uu', 4);
+        expect(el.getAttribute('aria-expanded')).toBe('true');
+        expect(el.getAttribute('aria-controls')).toBe('single-line-autocomplete');
+        const popup = document.querySelector('[data-testid="single-line-autocomplete"]');
+        const activeRow = popup?.querySelector('[aria-selected="true"]');
+        expect(activeRow?.id).toBe('autocomplete-option-0');
+        expect(el.getAttribute('aria-activedescendant')).toBe(activeRow?.id);
+    });
+
+    it('re-detects on selectionchange: caret leaving the template closes the popup', () => {
+        render(<MonacoSingleLineInput value="" onChange={() => {}} />);
+        const el = editable();
+        typeAtCaret(el, '{{uu', 4);
+        expect(document.querySelector('[data-testid="single-line-autocomplete"]')).not.toBeNull();
+        const sel = window.getSelection();
+        const range = document.createRange();
+        range.setStart(el.firstChild as Node, 0);
+        range.collapse(true);
+        sel!.removeAllRanges();
+        sel!.addRange(range);
+        act(() => { document.dispatchEvent(new Event('selectionchange')); });
+        expect(document.querySelector('[data-testid="single-line-autocomplete"]')).toBeNull();
+    });
+
+    it('scrolls the active row into view when arrow-key navigation walks it', () => {
+        const scrollSpy = vi.fn();
+        Element.prototype.scrollIntoView = scrollSpy; // jsdom has no implementation
+        render(<MonacoSingleLineInput value="" onChange={() => {}} />);
+        const el = editable();
+        typeAtCaret(el, '{{', 2);
+        fireEvent.keyDown(el, { key: 'ArrowDown' });
+        expect(scrollSpy).toHaveBeenCalled();
     });
 });

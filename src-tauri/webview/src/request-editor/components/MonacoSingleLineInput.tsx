@@ -359,6 +359,7 @@ export const MonacoSingleLineInputBase = forwardRef<
 >(({ value, onChange, placeholder, readOnly = false, onEnter, onFocus, availableVariables, availableEnvVariables }, ref) => {
   const elRef = useRef<HTMLDivElement>(null);
   const caretOffsetRef = useRef<number | null>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
   const [popup, setPopup] = useState<PopupState | null>(null);
 
   // Re-render the decorated content when the value changes externally, then
@@ -387,7 +388,7 @@ export const MonacoSingleLineInputBase = forwardRef<
   // Open/refresh the popup when the caret sits inside an OPEN template
   // (`{{partial` / `${partial` at the caret). A closed template no longer
   // matches, so typing the closing braces dismisses it.
-  const detectPopup = () => {
+  const detectPopup = useCallback(() => {
     if (readOnly) return;
     const el = elRef.current;
     if (!el) return;
@@ -421,7 +422,35 @@ export const MonacoSingleLineInputBase = forwardRef<
     }
     const rect = caretRect(el);
     setPopup({ items, active: 0, top: rect.top, left: rect.left });
-  };
+  }, [readOnly, availableVariables, availableEnvVariables]);
+
+  // Caret moves (arrow keys, clicks) fire no input event, so the popup would
+  // linger after the caret leaves the open template. Re-detect on
+  // selectionchange while the selection is inside this input.
+  useEffect(() => {
+    const el = elRef.current;
+    if (!el) return;
+    const onSelectionChange = () => {
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) return;
+      if (!el.contains(sel.getRangeAt(0).startContainer)) return;
+      caretOffsetRef.current = getCaretOffset(el);
+      detectPopup();
+    };
+    document.addEventListener("selectionchange", onSelectionChange);
+    return () => document.removeEventListener("selectionchange", onSelectionChange);
+  }, [detectPopup]);
+
+  // Keep the active row visible in the height-clamped popup when arrow-key
+  // navigation walks past the bottom edge. jsdom has no scrollIntoView, so
+  // guard it (tests assert the call via a prototype mock).
+  useEffect(() => {
+    if (!popup) return;
+    const row = popupRef.current?.querySelector('[aria-selected="true"]');
+    if (row && typeof (row as HTMLElement).scrollIntoView === "function") {
+      (row as HTMLElement).scrollIntoView({ block: "nearest" });
+    }
+  }, [popup]);
 
   // Accept a suggestion: replace the typed partial with the full name AND the
   // closing brace(s), so the completed template is `{{name}}` — not a bare
@@ -536,6 +565,9 @@ export const MonacoSingleLineInputBase = forwardRef<
         suppressContentEditableWarning
         role="textbox"
         aria-multiline="false"
+        aria-expanded={popup ? "true" : "false"}
+        aria-controls={popup ? "single-line-autocomplete" : undefined}
+        aria-activedescendant={popup ? "autocomplete-option-" + popup.active : undefined}
         data-placeholder={placeholder}
         onInput={handleInput}
         onPaste={handlePaste}
@@ -546,6 +578,8 @@ export const MonacoSingleLineInputBase = forwardRef<
       />
       {popup && (
         <AutocompletePopup
+          ref={popupRef}
+          id="single-line-autocomplete"
           data-testid="single-line-autocomplete"
           role="listbox"
           style={{
@@ -557,6 +591,7 @@ export const MonacoSingleLineInputBase = forwardRef<
           {popup.items.map((item, i) => (
             <AutocompleteRow
               key={item.name}
+              id={"autocomplete-option-" + i}
               $active={i === popup.active}
               data-testid={`autocomplete-item-${item.name}`}
               role="option"

@@ -40,7 +40,12 @@ interface MonacoRequestEditorProps {
     name: string;
     value: string | null;
     source: string;
-  }>; // For autocomplete
+  }>; // For ${...} autocomplete
+  availableEnvVariables?: Array<{
+    name: string;
+    value: string | null;
+    source: string;
+  }>; // For {{...}} autocomplete (env/global variables)
   onLog?: (
     message: string,
     level?: "info" | "warn" | "error" | "debug",
@@ -60,8 +65,13 @@ export interface MonacoRequestEditorHandle {
 // editor's stale provider. Providers are now registered ONCE per language
 // and read each editor's current variables live, keyed by that editor's
 // model URI (published in MonacoRequestEditor's onMount).
-const variableCompletionRegistered = new Set<string>();
-const editorVariablesByModel = new Map<
+// Exported for tests (the provider test populates them with a fake monaco).
+export const variableCompletionRegistered = new Set<string>();
+export const editorVariablesByModel = new Map<
+  string,
+  () => Array<{ name: string; value: string | null; source: string }>
+>();
+export const editorEnvVariablesByModel = new Map<
   string,
   () => Array<{ name: string; value: string | null; source: string }>
 >();
@@ -76,7 +86,17 @@ function getEditorVariables(model: any): Array<{
   return provider ? provider() : [];
 }
 
-function ensureVariableCompletionProviders(monaco: Monaco, language: string): void {
+function getEditorEnvVariables(model: any): Array<{
+  name: string;
+  value: string | null;
+  source: string;
+}> {
+  if (!model || !model.uri) return [];
+  const provider = editorEnvVariablesByModel.get(model.uri.toString());
+  return provider ? provider() : [];
+}
+
+export function ensureVariableCompletionProviders(monaco: Monaco, language: string): void {
   if (variableCompletionRegistered.has(language)) {
     return;
   }
@@ -146,6 +166,26 @@ function ensureVariableCompletionProviders(monaco: Monaco, language: string): vo
       }
 
       const suggestions: any[] = [];
+
+      // Env/global variables first — parity with the single-line popup, which
+      // has always listed them; the editor previously only listed functions.
+      getEditorEnvVariables(model).forEach((variable) => {
+        const { range, insertText } = completionRangeAndText(
+          model,
+          position,
+          match[1].length,
+          variable.name,
+          "}}",
+        );
+        suggestions.push({
+          label: variable.name,
+          kind: monaco.languages.CompletionItemKind.Variable,
+          detail: variable.value ? `= ${variable.value}` : "(not set)",
+          documentation: `From: ${variable.source}\nValue: ${variable.value || "unset"}`,
+          insertText,
+          range,
+        });
+      });
 
       // Add function suggestions
       const functions = [
@@ -234,9 +274,6 @@ function ensureVariableCompletionProviders(monaco: Monaco, language: string): vo
         });
       });
 
-      // TODO: Add environment and global variables when available
-      // This would require passing them as props similar to availableVariables
-
       return { suggestions };
     },
   });
@@ -261,6 +298,7 @@ const MonacoRequestEditorBase = forwardRef<
       fontSize = 14,
       fontFamily = 'Consolas, "Courier New", monospace',
       availableVariables = [],
+      availableEnvVariables = [],
       onLog,
     },
     ref,
@@ -272,6 +310,8 @@ const MonacoRequestEditorBase = forwardRef<
     // stay current without re-registering providers on prop changes.
     const availableVariablesRef = useRef(availableVariables);
     availableVariablesRef.current = availableVariables;
+    const availableEnvVariablesRef = useRef(availableEnvVariables);
+    availableEnvVariablesRef.current = availableEnvVariables;
     // Model URI this editor published its variables under (cleared on unmount).
     const registeredModelUriRef = useRef<string | undefined>(undefined);
     const { theme } = useTheme();
@@ -436,6 +476,7 @@ const MonacoRequestEditorBase = forwardRef<
       if (model && model.uri) {
         const uri = model.uri.toString();
         editorVariablesByModel.set(uri, () => availableVariablesRef.current);
+        editorEnvVariablesByModel.set(uri, () => availableEnvVariablesRef.current);
         registeredModelUriRef.current = uri;
       }
       // Copy (Ctrl+C)
@@ -516,6 +557,7 @@ const MonacoRequestEditorBase = forwardRef<
         const uri = registeredModelUriRef.current;
         if (uri) {
           editorVariablesByModel.delete(uri);
+          editorEnvVariablesByModel.delete(uri);
           registeredModelUriRef.current = undefined;
         }
       };
