@@ -124,7 +124,7 @@ struct TestCaseMeta {
 }
 
 /// Sanitize a name for use as a folder/file name
-fn sanitize_name(name: &str) -> String {
+pub fn sanitize_name(name: &str) -> String {
     let sanitized: String = name.chars()
         .map(|c| match c {
             '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => '_',

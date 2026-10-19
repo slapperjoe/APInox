@@ -216,7 +216,7 @@ pub async fn parse_wsdl_as_project(
     // Auto-save to disk
     let project_dir = project_storage::projects_dir()
         .map_err(|e| format!("Failed to get projects dir: {}", e))?
-        .join(sanitize_name(&service.name));
+        .join(project_storage::sanitize_name(&service.name));
     project_storage::save_unified_project(
         project_dir.to_string_lossy().to_string(),
         project.clone(),
@@ -245,7 +245,7 @@ async fn refresh_unified_project_with_opts(
     // Load existing project
     let project_dir = project_storage::projects_dir()
         .map_err(|e| format!("Failed to get projects dir: {}", e))?
-        .join(sanitize_name(&service_name));
+        .join(project_storage::sanitize_name(&service_name));
 
     let existing = project_storage::load_unified_project(project_dir.to_string_lossy().to_string())
         .map_err(|e| format!("Failed to load project: {}", e))?;
@@ -572,7 +572,7 @@ async fn find_project_by_source_url(url: &str) -> Result<Option<serde_json::Valu
 /// Resolve the on-disk project directory for a project name.
 fn project_dir_for_name(name: &str) -> Result<std::path::PathBuf, String> {
     let dir = project_storage::projects_dir()?;
-    Ok(dir.join(sanitize_name(name)))
+    Ok(dir.join(project_storage::sanitize_name(name)))
 }
 
 /// Save a fully-built project value to disk (delegates to the shared saver).
@@ -1363,7 +1363,7 @@ fn generate_sample_xml(op: &ServiceOperation) -> String {
 pub fn delete_unified_project(name: String) -> Result<(), String> {
     let project_dir = project_storage::projects_dir()
         .map_err(|e| format!("Failed to get projects dir: {}", e))?
-        .join(sanitize_name(&name));
+        .join(project_storage::sanitize_name(&name));
 
     if !project_dir.exists() {
         return Err(format!("Project directory '{}' does not exist", name));
@@ -1383,7 +1383,7 @@ pub fn delete_unified_operation(
 ) -> Result<(), String> {
     let project_dir = project_storage::projects_dir()
         .map_err(|e| format!("Failed to get projects dir: {}", e))?
-        .join(sanitize_name(&project_name));
+        .join(project_storage::sanitize_name(&project_name));
 
     let mut project =
         project_storage::load_unified_project(project_dir.to_string_lossy().to_string())
@@ -1420,7 +1420,7 @@ pub fn delete_unified_request(
 ) -> Result<(), String> {
     let project_dir = project_storage::projects_dir()
         .map_err(|e| format!("Failed to get projects dir: {}", e))?
-        .join(sanitize_name(&project_name));
+        .join(project_storage::sanitize_name(&project_name));
 
     let mut project =
         project_storage::load_unified_project(project_dir.to_string_lossy().to_string())
@@ -1470,7 +1470,7 @@ pub fn new_unified_request(params: serde_json::Value) -> Result<serde_json::Valu
 
     let project_dir = project_storage::projects_dir()
         .map_err(|e| format!("Failed to get projects dir: {}", e))?
-        .join(sanitize_name(&project_name));
+        .join(project_storage::sanitize_name(&project_name));
 
     let mut project =
         project_storage::load_unified_project(project_dir.to_string_lossy().to_string())
@@ -1614,7 +1614,7 @@ pub fn new_unified_request(params: serde_json::Value) -> Result<serde_json::Valu
 fn unified_project_dir(project_name: &str) -> Result<std::path::PathBuf, String> {
     let dir = project_storage::projects_dir()
         .map_err(|e| format!("Failed to get projects dir: {}", e))?;
-    Ok(dir.join(sanitize_name(project_name)))
+    Ok(dir.join(project_storage::sanitize_name(project_name)))
 }
 
 /// R-10 (F-17): set the display name of a unified project (or clear it).
@@ -1740,18 +1740,10 @@ pub fn rename_unified_request(
 }
 
 /// Sanitize a name for use as a folder/file name
-fn sanitize_name(name: &str) -> String {
-    name.chars()
-        .map(|c| match c {
-            '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => '_',
-            _ => c,
-        })
-        .collect()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::project_storage::sanitize_name;
 
     #[test]
     fn test_sanitize_name_clean() {
