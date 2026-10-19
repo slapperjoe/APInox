@@ -6,6 +6,7 @@
 use crate::parsers::wsdl::{ApiService, ServiceOperation, LoadContext};
 use crate::parsers::wsdl_commands::{parse_wsdl_ctx, ParseWsdlRequest};
 use crate::project_storage;
+use crate::utils::blocking;
 use crate::soap::envelope_builder::{EnvelopeBuilder, SoapVersion};
 use serde_json::json;
 use std::fs;
@@ -217,7 +218,7 @@ pub async fn parse_wsdl_as_project(
     let project_dir = project_storage::projects_dir()
         .map_err(|e| format!("Failed to get projects dir: {}", e))?
         .join(project_storage::sanitize_name(&service.name));
-    project_storage::save_unified_project(
+    project_storage::save_unified_project_sync(
         project_dir.to_string_lossy().to_string(),
         project.clone(),
     )
@@ -247,7 +248,7 @@ async fn refresh_unified_project_with_opts(
         .map_err(|e| format!("Failed to get projects dir: {}", e))?
         .join(project_storage::sanitize_name(&service_name));
 
-    let existing = project_storage::load_unified_project(project_dir.to_string_lossy().to_string())
+    let existing = project_storage::load_unified_project_sync(project_dir.to_string_lossy().to_string())
         .map_err(|e| format!("Failed to load project: {}", e))?;
 
     // Ensure it has a source URL
@@ -379,7 +380,7 @@ async fn refresh_unified_project_with_opts(
     }
 
     // Save updated project
-    project_storage::save_unified_project(
+    project_storage::save_unified_project_sync(
         project_dir.to_string_lossy().to_string(),
         updated.clone(),
     )
@@ -577,7 +578,7 @@ fn project_dir_for_name(name: &str) -> Result<std::path::PathBuf, String> {
 
 /// Save a fully-built project value to disk (delegates to the shared saver).
 fn save_project_value(project_dir: &Path, project: &serde_json::Value) -> Result<(), String> {
-    project_storage::save_unified_project(
+    project_storage::save_unified_project_sync(
         project_dir.to_string_lossy().to_string(),
         project.clone(),
     )
@@ -1360,7 +1361,11 @@ fn generate_sample_xml(op: &ServiceOperation) -> String {
 
 /// Delete a unified project entirely (removes the project directory from disk)
 #[tauri::command]
-pub fn delete_unified_project(name: String) -> Result<(), String> {
+pub async fn delete_unified_project(name: String) -> Result<(), String> {
+    blocking(move || delete_unified_project_sync(name)).await
+}
+
+fn delete_unified_project_sync(name: String) -> Result<(), String> {
     let project_dir = project_storage::projects_dir()
         .map_err(|e| format!("Failed to get projects dir: {}", e))?
         .join(project_storage::sanitize_name(&name));
@@ -1377,7 +1382,14 @@ pub fn delete_unified_project(name: String) -> Result<(), String> {
 
 /// Delete an operation from a unified project
 #[tauri::command]
-pub fn delete_unified_operation(
+pub async fn delete_unified_operation(
+    project_name: String,
+    operation_name: String,
+) -> Result<(), String> {
+    blocking(move || delete_unified_operation_sync(project_name, operation_name)).await
+}
+
+fn delete_unified_operation_sync(
     project_name: String,
     operation_name: String,
 ) -> Result<(), String> {
@@ -1386,7 +1398,7 @@ pub fn delete_unified_operation(
         .join(project_storage::sanitize_name(&project_name));
 
     let mut project =
-        project_storage::load_unified_project(project_dir.to_string_lossy().to_string())
+        project_storage::load_unified_project_sync(project_dir.to_string_lossy().to_string())
             .map_err(|e| format!("Failed to load project: {}", e))?;
 
     let operations = project["operations"]
@@ -1405,7 +1417,7 @@ pub fn delete_unified_operation(
 
     project["operations"] = json!(filtered);
 
-    project_storage::save_unified_project(project_dir.to_string_lossy().to_string(), project)
+    project_storage::save_unified_project_sync(project_dir.to_string_lossy().to_string(), project)
         .map_err(|e| format!("Failed to save project after deleting operation: {}", e))?;
 
     Ok(())
@@ -1413,7 +1425,15 @@ pub fn delete_unified_operation(
 
 /// Delete a request from a unified project operation
 #[tauri::command]
-pub fn delete_unified_request(
+pub async fn delete_unified_request(
+    project_name: String,
+    operation_name: String,
+    request_name: String,
+) -> Result<(), String> {
+    blocking(move || delete_unified_request_sync(project_name, operation_name, request_name)).await
+}
+
+fn delete_unified_request_sync(
     project_name: String,
     operation_name: String,
     request_name: String,
@@ -1423,7 +1443,7 @@ pub fn delete_unified_request(
         .join(project_storage::sanitize_name(&project_name));
 
     let mut project =
-        project_storage::load_unified_project(project_dir.to_string_lossy().to_string())
+        project_storage::load_unified_project_sync(project_dir.to_string_lossy().to_string())
             .map_err(|e| format!("Failed to load project: {}", e))?;
 
     let operations = project["operations"]
@@ -1449,7 +1469,7 @@ pub fn delete_unified_request(
         }
     }
 
-    project_storage::save_unified_project(project_dir.to_string_lossy().to_string(), project)
+    project_storage::save_unified_project_sync(project_dir.to_string_lossy().to_string(), project)
         .map_err(|e| format!("Failed to save project after deleting request: {}", e))?;
 
     Ok(())
@@ -1473,7 +1493,7 @@ pub fn new_unified_request(params: serde_json::Value) -> Result<serde_json::Valu
         .join(project_storage::sanitize_name(&project_name));
 
     let mut project =
-        project_storage::load_unified_project(project_dir.to_string_lossy().to_string())
+        project_storage::load_unified_project_sync(project_dir.to_string_lossy().to_string())
             .map_err(|e| format!("Failed to load project: {}", e))?;
 
     // Interface-level override + SOAP version (per SOAP_INTERFACE_CONTENT_TYPE_SPEC §5.2)
@@ -1588,7 +1608,7 @@ pub fn new_unified_request(params: serde_json::Value) -> Result<serde_json::Valu
         .unwrap()
         .clone();
 
-    project_storage::save_unified_project(project_dir.to_string_lossy().to_string(), project)
+    project_storage::save_unified_project_sync(project_dir.to_string_lossy().to_string(), project)
         .map_err(|e| format!("Failed to save project after adding request: {}", e))?;
 
     Ok(new_request)
@@ -1619,14 +1639,21 @@ fn unified_project_dir(project_name: &str) -> Result<std::path::PathBuf, String>
 
 /// R-10 (F-17): set the display name of a unified project (or clear it).
 #[tauri::command]
-pub fn rename_unified_project(
+pub async fn rename_unified_project(
+    project_name: String,
+    display_name: String,
+) -> Result<serde_json::Value, String> {
+    blocking(move || rename_unified_project_sync(project_name, display_name)).await
+}
+
+fn rename_unified_project_sync(
     project_name: String,
     display_name: String,
 ) -> Result<serde_json::Value, String> {
     let project_dir = unified_project_dir(&project_name)?;
 
     let mut project =
-        project_storage::load_unified_project(project_dir.to_string_lossy().to_string())
+        project_storage::load_unified_project_sync(project_dir.to_string_lossy().to_string())
             .map_err(|e| format!("Failed to load project: {}", e))?;
 
     let display_name = display_name.trim().to_string();
@@ -1636,7 +1663,7 @@ pub fn rename_unified_project(
         project["displayName"] = json!(display_name);
     }
 
-    project_storage::save_unified_project(project_dir.to_string_lossy().to_string(), project.clone())
+    project_storage::save_unified_project_sync(project_dir.to_string_lossy().to_string(), project.clone())
         .map_err(|e| format!("Failed to save project after rename: {}", e))?;
 
     Ok(project)
@@ -1645,7 +1672,15 @@ pub fn rename_unified_project(
 /// R-10 (F-17): set the display name of an operation within a unified project.
 /// `operation_name` is the stable operation name (not the display name).
 #[tauri::command]
-pub fn rename_unified_operation(
+pub async fn rename_unified_operation(
+    project_name: String,
+    operation_name: String,
+    display_name: String,
+) -> Result<serde_json::Value, String> {
+    blocking(move || rename_unified_operation_sync(project_name, operation_name, display_name)).await
+}
+
+fn rename_unified_operation_sync(
     project_name: String,
     operation_name: String,
     display_name: String,
@@ -1653,7 +1688,7 @@ pub fn rename_unified_operation(
     let project_dir = unified_project_dir(&project_name)?;
 
     let mut project =
-        project_storage::load_unified_project(project_dir.to_string_lossy().to_string())
+        project_storage::load_unified_project_sync(project_dir.to_string_lossy().to_string())
             .map_err(|e| format!("Failed to load project: {}", e))?;
 
     let operations = project["operations"]
@@ -1677,7 +1712,7 @@ pub fn rename_unified_operation(
         return Err(format!("Operation '{}' not found in project '{}'", operation_name, project_name));
     }
 
-    project_storage::save_unified_project(project_dir.to_string_lossy().to_string(), project.clone())
+    project_storage::save_unified_project_sync(project_dir.to_string_lossy().to_string(), project.clone())
         .map_err(|e| format!("Failed to save project after rename: {}", e))?;
 
     Ok(project)
@@ -1686,7 +1721,16 @@ pub fn rename_unified_operation(
 /// R-10 (F-17): set the display name of a request within an operation.
 /// `request_name` is the stable request name (not the display name).
 #[tauri::command]
-pub fn rename_unified_request(
+pub async fn rename_unified_request(
+    project_name: String,
+    operation_name: String,
+    request_name: String,
+    display_name: String,
+) -> Result<serde_json::Value, String> {
+    blocking(move || rename_unified_request_sync(project_name, operation_name, request_name, display_name)).await
+}
+
+fn rename_unified_request_sync(
     project_name: String,
     operation_name: String,
     request_name: String,
@@ -1695,7 +1739,7 @@ pub fn rename_unified_request(
     let project_dir = unified_project_dir(&project_name)?;
 
     let mut project =
-        project_storage::load_unified_project(project_dir.to_string_lossy().to_string())
+        project_storage::load_unified_project_sync(project_dir.to_string_lossy().to_string())
             .map_err(|e| format!("Failed to load project: {}", e))?;
 
     let operations = project["operations"]
@@ -1733,7 +1777,7 @@ pub fn rename_unified_request(
         ));
     }
 
-    project_storage::save_unified_project(project_dir.to_string_lossy().to_string(), project.clone())
+    project_storage::save_unified_project_sync(project_dir.to_string_lossy().to_string(), project.clone())
         .map_err(|e| format!("Failed to save project after rename: {}", e))?;
 
     Ok(project)
@@ -1861,7 +1905,7 @@ mod tests {
         let project_dir = project_storage::projects_dir()
             .expect("projects dir")
             .join("RenameSvc");
-        project_storage::save_unified_project(
+        project_storage::save_unified_project_sync(
             project_dir.to_string_lossy().to_string(),
             project,
         )
@@ -1874,8 +1918,8 @@ mod tests {
 
     #[test]
     fn test_rename_unified_project_round_trip() {
-        let (res, project_dir) = run_rename_scenario(|project_dir| {
-            let renamed = rename_unified_project(
+        let (res, _dir) = run_rename_scenario(|project_dir| {
+            let renamed = rename_unified_project_sync(
                 "RenameSvc".to_string(),
                 "My Renamed Service".to_string(),
             )
@@ -1888,7 +1932,7 @@ mod tests {
 
             // The change is persisted: re-loading the on-disk project returns
             // the same field.
-            let on_disk = project_storage::load_unified_project(
+            let on_disk = project_storage::load_unified_project_sync(
                 project_dir.to_string_lossy().to_string(),
             )
             .expect("re-load renamed project");
@@ -1905,9 +1949,9 @@ mod tests {
         let (res, _dir) = run_rename_scenario(|_| {
             // Set then clear: an empty/whitespace display name removes the
             // override (the UI falls back to the stable name).
-            rename_unified_project("RenameSvc".to_string(), "First".to_string())
+            rename_unified_project_sync("RenameSvc".to_string(), "First".to_string())
                 .expect("first rename should succeed");
-            rename_unified_project("RenameSvc".to_string(), "   ".to_string())
+            rename_unified_project_sync("RenameSvc".to_string(), "   ".to_string())
                 .expect("clear rename should succeed")
         });
         assert_eq!(res["name"], "RenameSvc");
@@ -1920,7 +1964,7 @@ mod tests {
     #[test]
     fn test_rename_unified_operation_and_request_round_trip() {
         let (op_res, _dir) = run_rename_scenario(|_| {
-            rename_unified_operation(
+            rename_unified_operation_sync(
                 "RenameSvc".to_string(),
                 "RmOp".to_string(),
                 "Op Alias".to_string(),
@@ -1933,7 +1977,7 @@ mod tests {
         assert_eq!(op["displayName"], "Op Alias");
 
         let (req_res, _dir) = run_rename_scenario(|_| {
-            rename_unified_request(
+            rename_unified_request_sync(
                 "RenameSvc".to_string(),
                 "RmOp".to_string(),
                 "sample_RmOp".to_string(),
@@ -1949,7 +1993,7 @@ mod tests {
     #[test]
     fn test_rename_unified_unknown_operation_or_request_errors() {
         let (res, _dir) = run_rename_scenario(|_| {
-            rename_unified_operation(
+            rename_unified_operation_sync(
                 "RenameSvc".to_string(),
                 "MissingOp".to_string(),
                 "X".to_string(),
@@ -1959,7 +2003,7 @@ mod tests {
         assert!(err.contains("MissingOp"), "unexpected error: {}", err);
 
         let (res2, _dir) = run_rename_scenario(|_| {
-            rename_unified_request(
+            rename_unified_request_sync(
                 "RenameSvc".to_string(),
                 "RmOp".to_string(),
                 "MissingReq".to_string(),
@@ -2141,7 +2185,7 @@ mod tests {
             let project_dir = project_storage::projects_dir()
                 .expect("projects dir")
                 .join("E2eCtService");
-            project_storage::save_unified_project(
+            project_storage::save_unified_project_sync(
                 project_dir.to_string_lossy().to_string(),
                 project,
             )
@@ -2555,7 +2599,7 @@ mod tests {
                 .expect("projects dir")
                 .join("Refresh Fixture");
             let mut proj =
-                project_storage::load_unified_project(proj_dir.to_string_lossy().to_string())
+                project_storage::load_unified_project_sync(proj_dir.to_string_lossy().to_string())
                     .expect("load project");
             for op in proj["operations"].as_array_mut().unwrap() {
                 if op["name"] == "pets/listPets" {
@@ -2568,7 +2612,7 @@ mod tests {
                     }));
                 }
             }
-            project_storage::save_unified_project(proj_dir.to_string_lossy().to_string(), proj)
+            project_storage::save_unified_project_sync(proj_dir.to_string_lossy().to_string(), proj)
                 .expect("save project with user request");
 
             // v2: drop /other, add /brand. Server now serves v2.
