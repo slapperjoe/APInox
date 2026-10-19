@@ -2,41 +2,52 @@ use serde::Serialize;
 use tauri::{AppHandle, State};
 
 use crate::certificates::manager::CertInfo;
+use crate::utils::blocking;
 use crate::{ensure_proxy_state, LazyProxyAppState};
 
 #[tauri::command]
 pub async fn get_ca_certificate_info(state: State<'_, LazyProxyAppState>, app: AppHandle) -> Result<CertInfo, String> {
     let state = ensure_proxy_state(state, &app).await?;
-    Ok(state.cert_manager.info())
+    // `info()` is not just a stat: it reads the metadata sidecar and spawns
+    // `security find-certificate` (or the Windows equivalent) to check trust.
+    let mgr = state.cert_manager.clone();
+    blocking(move || Ok(mgr.info())).await
 }
 
 #[tauri::command]
 pub async fn generate_ca_certificate(state: State<'_, LazyProxyAppState>, app: AppHandle) -> Result<CertInfo, String> {
     let state = ensure_proxy_state(state, &app).await?;
-    state.cert_manager.generate().map_err(|e| e.to_string())
+    // Key generation is CPU-bound and the writes follow — this is the slowest
+    // of the four commands.
+    let mgr = state.cert_manager.clone();
+    blocking(move || mgr.generate().map_err(|e| e.to_string())).await
 }
 
 /// Remove the CA certificate from the OS trust store (useful for testing the trust flow).
 #[tauri::command]
 pub async fn untrust_ca_certificate(state: State<'_, LazyProxyAppState>, app: AppHandle) -> Result<TrustResult, String> {
     let state = ensure_proxy_state(state, &app).await?;
-    #[cfg(target_os = "macos")]
-    let mut result = remove_macos();
+    let mgr = state.cert_manager.clone();
+    blocking(move || {
+        #[cfg(target_os = "macos")]
+        let mut result = remove_macos();
 
-    #[cfg(target_os = "windows")]
-    let mut result = remove_windows();
+        #[cfg(target_os = "windows")]
+        let mut result = remove_windows();
 
-    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-    let mut result = TrustResult {
-        success: false,
-        message: "Certificate removal not supported on this platform".to_string(),
-        firefox_note: String::new(),
-        manual_steps: vec![],
-        cert_info: CertInfo::default(),
-    };
+        #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+        let mut result = TrustResult {
+            success: false,
+            message: "Certificate removal not supported on this platform".to_string(),
+            firefox_note: String::new(),
+            manual_steps: vec![],
+            cert_info: CertInfo::default(),
+        };
 
-    result.cert_info = state.cert_manager.info();
-    Ok(result)
+        result.cert_info = mgr.info();
+        Ok(result)
+    })
+    .await
 }
 
 /// Attempt to install the CA certificate into the OS trust store.
@@ -51,34 +62,40 @@ pub async fn untrust_ca_certificate(state: State<'_, LazyProxyAppState>, app: Ap
 #[tauri::command]
 pub async fn trust_ca_certificate(state: State<'_, LazyProxyAppState>, app: AppHandle) -> Result<TrustResult, String> {
     let state = ensure_proxy_state(state, &app).await?;
-    let cert_path = state.cert_manager.cert_path();
-    if !cert_path.exists() {
-        return Err("CA certificate not found — generate it first".to_string());
-    }
+    // The platform installers shell out to `security` / PowerShell, which can
+    // take seconds — the longest thing any of these commands does.
+    let mgr = state.cert_manager.clone();
+    blocking(move || {
+        let cert_path = mgr.cert_path();
+        if !cert_path.exists() {
+            return Err("CA certificate not found — generate it first".to_string());
+        }
 
-    let path_str = cert_path.to_string_lossy().into_owned();
+        let path_str = cert_path.to_string_lossy().into_owned();
 
-    #[cfg(target_os = "macos")]
-    let mut result = install_macos(&path_str);
+        #[cfg(target_os = "macos")]
+        let mut result = install_macos(&path_str);
 
-    #[cfg(target_os = "windows")]
-    let mut result = install_windows(&path_str);
+        #[cfg(target_os = "windows")]
+        let mut result = install_windows(&path_str);
 
-    #[cfg(target_os = "linux")]
-    let mut result = install_linux(&path_str);
+        #[cfg(target_os = "linux")]
+        let mut result = install_linux(&path_str);
 
-    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
-    let mut result = TrustResult {
-        success: false,
-        message: "Certificate trust not supported on this platform".to_string(),
-        firefox_note: firefox_note(),
-        manual_steps: vec!["Manually add the certificate to your system trust store.".to_string()],
-        cert_info: state.cert_manager.info(),
-    };
+        #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+        let mut result = TrustResult {
+            success: false,
+            message: "Certificate trust not supported on this platform".to_string(),
+            firefox_note: firefox_note(),
+            manual_steps: vec!["Manually add the certificate to your system trust store.".to_string()],
+            cert_info: CertInfo::default(),
+        };
 
-    // Re-read cert info (including updated is_trusted) after the trust attempt.
-    result.cert_info = state.cert_manager.info();
-    Ok(result)
+        // Re-read cert info (including updated is_trusted) after the trust attempt.
+        result.cert_info = mgr.info();
+        Ok(result)
+    })
+    .await
 }
 
 #[derive(Serialize)]
@@ -104,8 +121,6 @@ fn firefox_note() -> String {
         "the ca.cer file and check 'Trust this CA to identify websites'."
     ).to_string()
 }
-
-// ── macOS ──────────────────────────────────────────────────────────────────
 
 // ── macOS ──────────────────────────────────────────────────────────────────
 
@@ -227,8 +242,6 @@ fn macos_manual_steps(cert_path: &str) -> Vec<String> {
         format!("Restart Chrome and Safari"),
     ]
 }
-
-// ── Windows ────────────────────────────────────────────────────────────────
 
 // ── Windows ────────────────────────────────────────────────────────────────
 
