@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { debugLog } from './logger';
 
 export interface IgnoreRule {
   id: string;
@@ -13,12 +14,18 @@ function load(): IgnoreRule[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return JSON.parse(raw);
-  } catch {}
+  } catch (e) {
+    debugLog('[useIgnoreList] could not parse stored rules', { error: String(e) });
+  }
   return [];
 }
 
 function persist(rules: IgnoreRule[]) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(rules)); } catch {}
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(rules));
+  } catch (e) {
+    debugLog('[useIgnoreList] could not persist rules', { error: String(e) });
+  }
 }
 
 export function matchesAnyIgnoreRule(url: string, rules: IgnoreRule[]): boolean {

@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useCallback } from "react";
 import type { MonacoType } from "../monaco";
 import { debugLog, debugError, debugWarn } from "../utils/logger";
 
@@ -15,8 +15,7 @@ export const useWildcardDecorations = (
 ) => {
   const decorationsRef = useRef<string[]>([]);
 
-  const updateDecorations = () => {
-    // console.log('updateDecorations called', { editor: !!editor, monaco: !!monaco, valueLength: value ? value.length : 0 });
+  const updateDecorations = useCallback(() => {
     if (!editor || !monaco) return;
 
     try {
@@ -216,7 +215,7 @@ export const useWildcardDecorations = (
     } catch (e) {
       debugWarn("Wildcard decoration update failed", e);
     }
-  };
+  }, [editor, monaco, value, availableChainVariables, availableEnvVariables]);
 
   useEffect(() => {
     // Debounce: fast typing re-triggers this effect per keystroke; running
@@ -227,7 +226,7 @@ export const useWildcardDecorations = (
       updateDecorations();
     }, 150);
     return () => clearTimeout(timer);
-  }, [value, editor, monaco, availableChainVariables, availableEnvVariables]);
+  }, [value, editor, monaco, availableChainVariables, availableEnvVariables, updateDecorations]);
 
   return { updateDecorations };
 };

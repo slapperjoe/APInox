@@ -110,8 +110,18 @@ export interface GraphQLConfig {
 }
 
 // Assertion Types
+// The seven values the AssertionsPanel dropdown can actually produce.
+export type AssertionType =
+    | 'Simple Contains'
+    | 'Simple Not Contains'
+    | 'Response SLA'
+    | 'XPath Match'
+    | 'SOAP Fault'
+    | 'HTTP Status'
+    | 'Script';
+
 export interface Assertion {
-    type: 'Simple Contains' | 'Simple Not Contains' | 'Response SLA' | 'XPath Match' | 'SOAP Fault' | 'HTTP Status' | 'Script';
+    type: AssertionType;
     name?: string;
     id?: string;
     description?: string;
@@ -132,8 +142,12 @@ export interface Assertion {
     };
 }
 
+// Request-level extractors use the capitalized vocabulary; the workflow-step
+// ExtractorType at :911 is lowercase. Two vocabularies, so the names must differ.
+export type RequestExtractorType = 'XPath' | 'JSONPath' | 'Regex' | 'Header';
+
 export interface RequestExtractor {
-    type: 'XPath' | 'JSONPath' | 'Regex' | 'Header';
+    type: RequestExtractorType;
     source: 'body' | 'header';
     path: string;
     variable: string;

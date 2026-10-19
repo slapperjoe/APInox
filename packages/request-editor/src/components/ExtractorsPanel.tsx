@@ -125,13 +125,10 @@ export const ExtractorsPanel: React.FC<ExtractorsPanelProps> = ({
   const handleAdd = () => {
     const newExtractor: RequestExtractor = {
       id: `ext-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-      name: "",
       type: "XPath",
-      enabled: true,
-      query: "",
-      path: "",
       variable: "",
       source: "body",
+      path: "",
     };
     onChange([...extractors, newExtractor]);
   };
@@ -163,7 +160,7 @@ export const ExtractorsPanel: React.FC<ExtractorsPanelProps> = ({
                   currentValue = `(Regex extraction - run step to see result)`;
                 } else {
                   // Default to XPath for backward compatibility
-                  const pathValue = ex.path || ex.query;
+                  const pathValue = ex.path;
                   if (pathValue) {
                     currentValue = CustomXPathEvaluator.evaluate(
                       rawResponse,
@@ -172,7 +169,7 @@ export const ExtractorsPanel: React.FC<ExtractorsPanelProps> = ({
                   }
                 }
                 debugLog(
-                  `[ExtractorsPanel] Type: ${ex.type || "XPath"}, Expr: ${ex.path || ex.query}, Val: ${currentValue}`,
+                  `[ExtractorsPanel] Type: ${ex.type || "XPath"}, Expr: ${ex.path}, Val: ${currentValue}`,
                 );
               } catch (e) {
                 debugError("[ExtractorsPanel] Evaluation Error", e);
@@ -199,7 +196,7 @@ export const ExtractorsPanel: React.FC<ExtractorsPanelProps> = ({
                   )}
                   <InfoRow>
                     <Label>{ex.type === "Regex" ? "Pattern:" : "Path:"}</Label>
-                    <Value>{ex.path || ex.query}</Value>
+                    <Value>{ex.path}</Value>
                   </InfoRow>
                   {ex.defaultValue && (
                     <InfoRow>

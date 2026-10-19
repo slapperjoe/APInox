@@ -275,6 +275,22 @@ export const ScrapbookProvider = ({ children }: { children: ReactNode }) => {
      * best-effort: a persistence failure is logged, never thrown, so an
      * execution can never be broken by scrapbook I/O.
      */
+    /**
+     * Re-fetch the current scrapbook from the backend (used by
+     * `captureExecution` to read back the just-updated entry).
+     * Declared before `captureExecution` so it can appear in its deps.
+     */
+    const refreshScrapbookSilently = useCallback(async (): Promise<ScrapbookRequest[] | null> => {
+        try {
+            const response = await bridge.sendMessageAsync({
+                command: FrontendCommand.GetScrapbook,
+            });
+            return response?.state?.requests || [];
+        } catch {
+            return null;
+        }
+    }, []);
+
     const captureExecution = useCallback(async (request: ApiRequest, operationName?: string | null): Promise<ScrapbookRequest | null> => {
         const captured: ApiRequest = {
             ...request,
@@ -333,22 +349,7 @@ export const ScrapbookProvider = ({ children }: { children: ReactNode }) => {
             console.error('[Scrapbook] Auto-capture failed:', error);
             return null;
         }
-    }, [scrapbookRequests, updateRequest]);
-
-    /**
-     * Re-fetch the current scrapbook from the backend (used by
-     * `captureExecution` to read back the just-updated entry).
-     */
-    const refreshScrapbookSilently = useCallback(async (): Promise<ScrapbookRequest[] | null> => {
-        try {
-            const response = await bridge.sendMessageAsync({
-                command: FrontendCommand.GetScrapbook,
-            });
-            return response?.state?.requests || [];
-        } catch {
-            return null;
-        }
-    }, []);
+    }, [scrapbookRequests, updateRequest, refreshScrapbookSilently]);
 
     return (
         <ScrapbookContext.Provider

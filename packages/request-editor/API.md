@@ -177,13 +177,13 @@ Key-value editor for HTTP headers.
 
 ```tsx
 import { HeadersPanel } from '@apinox/request-editor';
-import type { HttpHeader } from '@apinox/request-editor';
 
 function MyComponent() {
-  const [headers, setHeaders] = React.useState<HttpHeader[]>([
-    { key: 'Content-Type', value: 'text/xml', enabled: true },
-    { key: 'Authorization', value: '{{apiKey}}', enabled: true }
-  ]);
+  // Headers are a plain map, matching ApiRequest.headers in @shared/models.
+  const [headers, setHeaders] = React.useState<Record<string, string>>({
+    'Content-Type': 'text/xml',
+    'Authorization': '{{apiKey}}'
+  });
 
   return (
     <HeadersPanel
@@ -275,20 +275,19 @@ URL query parameter editor.
 
 ```tsx
 import { QueryParamsPanel } from '@apinox/request-editor';
-import type { QueryParam } from '@apinox/request-editor';
 
 function MyComponent() {
-  const [params, setParams] = React.useState<QueryParam[]>([
-    { key: 'api_key', value: '{{apiKey}}', enabled: true },
-    { key: 'format', value: 'json', enabled: true }
-  ]);
+  // Query params are a plain map, matching ApiRequest.queryParams in @shared/models.
+  const [params, setParams] = React.useState<Record<string, string>>({
+    api_key: '{{apiKey}}',
+    format: 'json'
+  });
 
   return (
     <QueryParamsPanel
       params={params}
       onChange={setParams}
-      availableVariables={variables}
-      theme={myTheme}
+      title="Query Parameters"
     />
   );
 }
@@ -423,35 +422,6 @@ function MyComponent() {
   return (
     <VariablesPanel
       variables={variables}
-      theme={myTheme}
-    />
-  );
-}
-```
-
----
-
-### SchemaViewer
-
-Display XML/JSON schema tree.
-
-```tsx
-import { SchemaViewer } from '@apinox/request-editor';
-import type { SchemaNode } from '@apinox/request-editor';
-
-function MyComponent() {
-  const schema: SchemaNode = {
-    name: 'User',
-    type: 'object',
-    children: [
-      { name: 'id', type: 'string' },
-      { name: 'name', type: 'string' }
-    ]
-  };
-
-  return (
-    <SchemaViewer
-      schema={schema}
       theme={myTheme}
     />
   );

@@ -1,8 +1,7 @@
 /**
  * useMessageHandler Hook
- * 
- * Extracted from App.tsx to handle all VS Code extension messages.
- * Contains temporary debug logging for troubleshooting.
+ *
+ * Extracted from App.tsx to handle all backend messages.
  */
 
 import { useEffect, useRef } from 'react';
@@ -78,23 +77,10 @@ export function useMessageHandler(state: MessageHandlerState) {
         setInlineElementValues,
         setConfigPath,
         setConfigDir,
-        // setProxyConfig,
         setSelectedProjectName,
         setWorkspaceDirty,
-        setSavedProjects,
         setSaveErrors,
-        // setWatcherHistory, // Removed - watcher features
-        // setProxyHistory,
-        // setProxyRunning,
-        // setTestExecution,
-        setActiveView,
-        // setActiveBreakpoint, // Removed - breakpoint features
-        // setMockHistory,
-        // setMockRunning,
-        // setMockConfig,
-        // setActiveRunId,
-        // setPerformanceProgress,
-        // setCoordinatorStatus,
+        setActiveView: _setActiveView,
         setRequestHistory,
         projects,
         config,
@@ -102,15 +88,11 @@ export function useMessageHandler(state: MessageHandlerState) {
         selectedRequest,
         startTimeRef,
         requestIdRef,
-        saveProject,
+        saveProject: _saveProject,
         onAttachmentSelected
     } = state;
 
     // MockProxyContext removed - proxy/mock features moved to APIprox
-    // const { setProxyHistory, setMockHistory, setProxyRunning, setMockRunning } = useMockProxy();
-
-    // Silence unused variable warning until migration is complete
-    void setSavedProjects;
 
     // Use refs for values that change frequently to avoid re-registering message listener
     const projectsRef = useRef(projects);
@@ -426,7 +408,6 @@ export function useMessageHandler(state: MessageHandlerState) {
                     }
                     // Mock/Proxy config handled in MockProxyContext
                     break;
-                    break;
 
                 case BackendCommand.RestoreAutosave:
                     debugLog('[useMessageHandler] restoreAutosave', { hasContent: !!message.content });
@@ -483,67 +464,7 @@ export function useMessageHandler(state: MessageHandlerState) {
 
 
                 // Watcher/Proxy/Mock commands removed - features moved to APIprox
-                /*
-                case BackendCommand.WatcherUpdate:
-                    debugLog('[useMessageHandler] watcherUpdate', {
-                        historyLength: message.history?.length
-                    });
-                    setWatcherHistory(message.history);
-                    break;
-
-
-                case BackendCommand.ProxyLog:
-                    if (message.event && setProxyHistory) {
-                        setProxyHistory(prev => [message.event, ...prev].slice(0, 50));
-                    }
-                    break;
-
-                case BackendCommand.MockLog:
-                case BackendCommand.MockHistoryUpdate:
-                    if (message.event && setMockHistory) {
-                        setMockHistory(prev => [message.event, ...prev].slice(0, 50));
-                    }
-                    break;
-                */
-
-                // Proxy/Mock/Breakpoint commands removed - features moved to APIprox
-                /*
-                case BackendCommand.ProxyStatus:
-                    if (message.running !== undefined && setProxyRunning) {
-                        setProxyRunning(message.running);
-                    }
-                    break;
-
-                case BackendCommand.MockStatus:
-                    if (message.running !== undefined && setMockRunning) {
-                        setMockRunning(message.running);
-                    }
-                    break;
-
-                case BackendCommand.MockRulesUpdated:
-                case BackendCommand.MockHit:
-                case BackendCommand.MockRecorded:
-                case BackendCommand.UpdateProxyTarget:
-                    break;
-
-                case BackendCommand.BreakpointHit:
-                    debugLog('[useMessageHandler] breakpointHit', { breakpointId: message.breakpointId, type: message.type });
-                    setActiveBreakpoint({
-                        id: message.breakpointId,
-                        type: message.type,
-                        content: message.content,
-                        headers: message.headers,
-                        breakpointName: message.breakpointName,
-                        timeoutMs: message.timeoutMs,
-                        startTime: Date.now()
-                    });
-                    break;
-
-                case BackendCommand.BreakpointTimeout:
-                    debugLog('[useMessageHandler] breakpointTimeout', { breakpointId: message.breakpointId });
-                    setActiveBreakpoint(null);
-                    break;
-                */
+                                // Proxy/Mock/Breakpoint commands removed - features moved to APIprox
 
                 case BackendCommand.ConfigFileSelected:
                     debugLog('[useMessageHandler] configFileSelected', { path: message.path });
@@ -614,7 +535,6 @@ export function useMessageHandler(state: MessageHandlerState) {
                     }
                     break;
                 case BackendCommand.ProjectSaved:
-                case BackendCommand.ProjectLoaded:
                     // Handled in ProjectContext
                     break;
 

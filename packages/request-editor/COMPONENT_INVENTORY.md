@@ -2,6 +2,11 @@
 
 ## ✅ EXTRACT TO @apinox/request-editor
 
+> `[x]` means the file exists in `src/`. Six items were marked done but are not
+> on disk: `SchemaViewer.tsx`, `common/Button.tsx`, `common/Form.tsx`,
+> `common/NumberSpinner.tsx`, `common/Skeleton.tsx`, `codeGenerator.ts`. They are
+> unchecked here. `API.md` previously documented `SchemaViewer` as importable.
+
 ### Core Editors (HIGH PRIORITY)
 - [x] `MonacoRequestEditor.tsx` - Main request body editor
 - [x] `MonacoResponseViewer.tsx` - Response viewer
@@ -20,15 +25,15 @@
 
 ### Supporting Components (MEDIUM PRIORITY)
 - [x] `ScriptEditor.tsx` - JavaScript editor for test scripts
-- [x] `SchemaViewer.tsx` - XML/JSON schema viewer
+- [ ] `SchemaViewer.tsx` - XML/JSON schema viewer
 - [x] `StatusCodePicker.tsx` - HTTP status code picker
 
 ### Common/Shared Components (LOW PRIORITY)
-- [x] `common/Button.tsx` - Button component
-- [x] `common/Form.tsx` - Form components
-- [x] `common/NumberSpinner.tsx` - Number input spinner
+- [ ] `common/Button.tsx` - Button component
+- [ ] `common/Form.tsx` - Form components
+- [ ] `common/NumberSpinner.tsx` - Number input spinner
 - [x] `common/EmptyState.tsx` - Empty state display
-- [x] `common/Skeleton.tsx` - Loading skeleton
+- [ ] `common/Skeleton.tsx` - Loading skeleton
 
 ### Utilities (HIGH PRIORITY)
 - [x] `xmlFoldingUtils.ts` - XML auto-folding logic
@@ -36,7 +41,7 @@
 - [x] `xpathGenerator.ts` - XPath generation from XML
 - [x] `xpathEvaluator.ts` - XPath evaluation
 - [x] `xmlTreeParser.ts` - XML tree parsing
-- [x] `codeGenerator.ts` - Code snippet generation
+- [ ] `codeGenerator.ts` - Code snippet generation
 
 ### Hooks (MEDIUM PRIORITY)
 - [x] `useWildcardDecorations.ts` - Monaco decorations for variables

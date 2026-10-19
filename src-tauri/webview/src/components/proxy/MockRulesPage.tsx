@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useImperativeHandle, forwardRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useImperativeHandle, forwardRef } from 'react';
 import { SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XL } from "../../styles/spacing";
 import { open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog';
 import { MonacoRequestEditor } from '@apinox/request-editor/monaco';
@@ -422,33 +422,7 @@ export const MockRulesPage = forwardRef<MockRulesPageHandle, {
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
   const [duplicateConflict, setDuplicateConflict] = useState<{ existing: MockRule; pending: MockRule } | null>(null);
 
-  useEffect(() => {
-    loadRules();
-  }, []);
-
-  // Open the editor pre-filled from a traffic log selection
-  useEffect(() => {
-    if (!initialRule) return;
-    const isPreset = CONTENT_TYPES.some(o => o.value !== '' && o.value === initialRule.contentType);
-    setCustomContentType(isPreset ? '' : (initialRule.contentType || ''));
-    setEditingRule({ ...initialRule, tags: initialRule.tags ?? [] });
-    onInitialRuleConsumed?.();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialRule]);
-
-  async function loadRules() {
-    try {
-      const response = await invokeTauriCommand<MockRule[] | { rules: MockRule[] }>('get_mock_rules');
-      const loaded: MockRule[] = Array.isArray(response) ? response : (response.rules ?? []);
-      applyRules(loaded);
-    } catch (error) {
-      console.error('Failed to load mock rules:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  function applyRules(loaded: MockRule[]) {
+  const applyRules = useCallback((loaded: MockRule[]) => {
     setRules(loaded);
     setOpenGroups((prev) => {
       const next = new Set(prev);
@@ -458,7 +432,32 @@ export const MockRulesPage = forwardRef<MockRulesPageHandle, {
       });
       return next;
     });
-  }
+  }, []);
+
+  const loadRules = useCallback(async () => {
+    try {
+      const response = await invokeTauriCommand<MockRule[] | { rules: MockRule[] }>('get_mock_rules');
+      const loaded: MockRule[] = Array.isArray(response) ? response : (response.rules ?? []);
+      applyRules(loaded);
+    } catch (error) {
+      console.error('Failed to load mock rules:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [applyRules]);
+
+  useEffect(() => {
+    loadRules();
+  }, [loadRules]);
+
+  // Open the editor pre-filled from a traffic log selection
+  useEffect(() => {
+    if (!initialRule) return;
+    const isPreset = CONTENT_TYPES.some(o => o.value !== '' && o.value === initialRule.contentType);
+    setCustomContentType(isPreset ? '' : (initialRule.contentType || ''));
+    setEditingRule({ ...initialRule, tags: initialRule.tags ?? [] });
+    onInitialRuleConsumed?.();
+  }, [initialRule, onInitialRuleConsumed]);
 
   async function reloadRules() {
     const response = await invokeTauriCommand<MockRule[] | { rules: MockRule[] }>('get_mock_rules');
