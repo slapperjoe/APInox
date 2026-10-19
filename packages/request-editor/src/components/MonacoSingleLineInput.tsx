@@ -5,6 +5,7 @@ import React, {
   useEffect,
   useLayoutEffect,
   useCallback,
+  useState,
 } from "react";
 import styled from "styled-components";
 import type { EditorVariable } from "../types";
@@ -196,6 +197,89 @@ function tooltipForToken(
   return `Undefined workflow variable ${name} - not extracted in any prior step. Add an extractor in a previous step.`;
 }
 
+// Caret-anchored autocomplete popup (the interactivity the contenteditable
+// rewrite dropped). position: fixed escapes the input container's
+// overflow:hidden clipping box — the standing dropdown-menu rule.
+const AutocompletePopup = styled.div`
+  position: fixed;
+  z-index: 1000;
+  min-width: 180px;
+  max-width: 320px;
+  background: var(--apinox-editorWidget-background);
+  color: var(--apinox-editorWidget-foreground);
+  border: 1px solid var(--apinox-editorWidget-border);
+  border-radius: 4px;
+  padding: 2px 0;
+  font-family: var(--apinox-font-family);
+  font-size: var(--apinox-fs-sm);
+  overflow-y: auto;
+`;
+
+const AutocompleteRow = styled.div<{ $active: boolean }>`
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 3px 8px;
+  cursor: pointer;
+  background: ${(p) => (p.$active ? "var(--apinox-list-activeSelectionBackground)" : "transparent")};
+  color: ${(p) => (p.$active ? "var(--apinox-list-activeSelectionForeground)" : "inherit")};
+
+  .detail {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    opacity: 0.65;
+  }
+`;
+
+interface SuggestionItem {
+  name: string;
+  detail: string;
+}
+
+// `{{...}}` popup entries — the same function set the Monaco completion
+// provider exposes, kept as name + short detail for the row.
+const FUNCTION_ITEMS: SuggestionItem[] = [
+  { name: "uuid", detail: "random UUID v4" },
+  { name: "newguid", detail: "random UUID (alias)" },
+  { name: "now", detail: "current time (ISO)" },
+  { name: "epoch", detail: "unix timestamp" },
+  { name: "randomInt(1,100)", detail: "random integer" },
+  { name: "lorem(5)", detail: "lorem ipsum text" },
+  { name: "name", detail: "random name" },
+  { name: "country", detail: "random country" },
+  { name: "state", detail: "random US state" },
+  { name: "now+1d", detail: "date math (future)" },
+  { name: "now-1d", detail: "date math (past)" },
+  { name: "env", detail: "environment endpoint URL" },
+  { name: "url", detail: "environment endpoint URL" },
+];
+
+interface PopupState {
+  items: SuggestionItem[];
+  active: number;
+  top: number;
+  left: number;
+}
+
+// Caret position in viewport coordinates. jsdom's Range has no
+// getBoundingClientRect, so guard it and fall back to the element's rect
+// (zero in jsdom — tests assert the popup's existence, not its placement).
+function caretRect(el: HTMLElement): { top: number; left: number } {
+  const sel = window.getSelection();
+  if (sel && sel.rangeCount > 0) {
+    const range = sel.getRangeAt(0);
+    if (typeof range.getBoundingClientRect === "function") {
+      const r = range.getBoundingClientRect();
+      if (r && (r.bottom || r.left)) return { top: r.bottom, left: r.left };
+    }
+  }
+  const r = el.getBoundingClientRect();
+  return { top: r.bottom, left: r.left };
+}
+
 // Build the decorated HTML for the value, preserving exact character order so
 // the caret offset maps one-for-one onto the rendered spans. Each decorated
 // token carries a plain-text hover tooltip.
@@ -275,6 +359,7 @@ export const MonacoSingleLineInputBase = forwardRef<
 >(({ value, onChange, placeholder, readOnly = false, onEnter, onFocus, availableVariables, availableEnvVariables }, ref) => {
   const elRef = useRef<HTMLDivElement>(null);
   const caretOffsetRef = useRef<number | null>(null);
+  const [popup, setPopup] = useState<PopupState | null>(null);
 
   // Re-render the decorated content when the value changes externally, then
   // restore the caret so typing does not jump.
@@ -299,6 +384,66 @@ export const MonacoSingleLineInputBase = forwardRef<
     },
   }));
 
+  // Open/refresh the popup when the caret sits inside an OPEN template
+  // (`{{partial` / `${partial` at the caret). A closed template no longer
+  // matches, so typing the closing braces dismisses it.
+  const detectPopup = () => {
+    if (readOnly) return;
+    const el = elRef.current;
+    if (!el) return;
+    const offset = caretOffsetRef.current;
+    if (offset == null) return;
+    const before = (el.textContent || "").slice(0, offset);
+    const m = before.match(/(\{\{|\$\{)([^}]*)$/);
+    if (!m) {
+      setPopup(null);
+      return;
+    }
+    const open = m[1];
+    const partial = m[2];
+    const items = (
+      open === "{{"
+        ? [
+            ...(availableEnvVariables || []).map((v) => ({
+              name: v.name,
+              detail: v.value ? `= ${v.value}` : "(not set)",
+            })),
+            ...FUNCTION_ITEMS,
+          ]
+        : (availableVariables || []).map((v) => ({
+            name: v.name,
+            detail: v.value ? `= ${v.value}` : "(pending)",
+          }))
+    ).filter((i) => i.name.toLowerCase().startsWith(partial.toLowerCase()));
+    if (items.length === 0) {
+      setPopup(null);
+      return;
+    }
+    const rect = caretRect(el);
+    setPopup({ items, active: 0, top: rect.top, left: rect.left });
+  };
+
+  // Accept a suggestion: replace the typed partial with the full name AND the
+  // closing brace(s), so the completed template is `{{name}}` — not a bare
+  // word. If the caret is already inside a closed template, don't double-close.
+  const acceptSuggestion = (item: SuggestionItem) => {
+    const el = elRef.current;
+    if (!el) return;
+    const text = el.textContent || "";
+    const offset = caretOffsetRef.current ?? text.length;
+    const m = text.slice(0, offset).match(/(\{\{|\$\{)([^}]*)$/);
+    if (!m) return;
+    const open = m[1];
+    const close = open === "{{" ? "}}" : "}";
+    const openStart = offset - m[2].length - open.length;
+    const after = text.slice(offset);
+    const insert = item.name + (after.startsWith(close) ? "" : close);
+    const next = text.slice(0, openStart) + open + insert + after;
+    caretOffsetRef.current = openStart + open.length + insert.length;
+    onChange(next);
+    setPopup(null);
+  };
+
   // Force single line behavior (prevent newlines)
   const handleInput = () => {
     const el = elRef.current;
@@ -312,6 +457,7 @@ export const MonacoSingleLineInputBase = forwardRef<
       if (caretOffsetRef.current != null) setCaretOffset(el, caretOffsetRef.current);
     }
     onChange(clean);
+    detectPopup();
   };
 
   const handlePaste = (event: React.ClipboardEvent<HTMLDivElement>) => {
@@ -327,6 +473,28 @@ export const MonacoSingleLineInputBase = forwardRef<
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (popup) {
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setPopup((p) => p && { ...p, active: Math.min(p.active + 1, p.items.length - 1) });
+        return;
+      }
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setPopup((p) => p && { ...p, active: Math.max(p.active - 1, 0) });
+        return;
+      }
+      if (event.key === "Enter" || event.key === "Tab") {
+        event.preventDefault();
+        acceptSuggestion(popup.items[popup.active]);
+        return;
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setPopup(null);
+        return;
+      }
+    }
     if (event.key === "Enter") {
       event.preventDefault(); // single line: never insert a newline
       if (onEnter) onEnter();
@@ -336,6 +504,10 @@ export const MonacoSingleLineInputBase = forwardRef<
   const handleFocus = useCallback(() => {
     if (onFocus) onFocus();
   }, [onFocus]);
+
+  const handleBlur = useCallback(() => {
+    setPopup(null);
+  }, []);
 
   // Backend clipboard paste fallback (parity with the previous Monaco version):
   // only writes into this input when it is the focused element, so a paste
@@ -369,8 +541,37 @@ export const MonacoSingleLineInputBase = forwardRef<
         onPaste={handlePaste}
         onKeyDown={handleKeyDown}
         onFocus={handleFocus}
+        onBlur={handleBlur}
         spellCheck={false}
       />
+      {popup && (
+        <AutocompletePopup
+          data-testid="single-line-autocomplete"
+          role="listbox"
+          style={{
+            top: popup.top,
+            left: popup.left,
+            maxHeight: Math.max(160, window.innerHeight - popup.top - 8),
+          }}
+        >
+          {popup.items.map((item, i) => (
+            <AutocompleteRow
+              key={item.name}
+              $active={i === popup.active}
+              data-testid={`autocomplete-item-${item.name}`}
+              role="option"
+              aria-selected={i === popup.active}
+              onMouseDown={(e) => {
+                e.preventDefault(); // keep the caret/focus in the input
+                acceptSuggestion(item);
+              }}
+            >
+              <span>{item.name}</span>
+              <span className="detail">{item.detail}</span>
+            </AutocompleteRow>
+          ))}
+        </AutocompletePopup>
+      )}
     </InputContainer>
   );
 });

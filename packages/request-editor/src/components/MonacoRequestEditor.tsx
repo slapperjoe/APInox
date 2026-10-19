@@ -11,6 +11,7 @@ import { MonacoEditorWrapper, Monaco } from "../monaco";
 import styled from "styled-components";
 import { useWildcardDecorations } from "../hooks/useWildcardDecorations";
 import { applyAutoFolding } from "../utils/xmlFoldingUtils";
+import { completionRangeAndText } from "../utils/templateCompletion";
 import { useTheme } from "../contexts/ThemeContext";
 import { applyMonacoTheme } from "../utils/monacoTheme";
 import { debugWarn } from "../utils/logger";
@@ -103,24 +104,25 @@ function ensureVariableCompletionProviders(monaco: Monaco, language: string): vo
         return { suggestions: [] };
       }
 
-      const word = model.getWordUntilPosition(position);
-      const range = {
-        startLineNumber: position.lineNumber,
-        endLineNumber: position.lineNumber,
-        startColumn: word.startColumn,
-        endColumn: word.endColumn,
-      };
-
-      const suggestions = getEditorVariables(model).map((variable) => ({
-        label: variable.name,
-        kind: monaco.languages.CompletionItemKind.Variable,
-        detail: variable.value
-          ? `= ${variable.value}`
-          : "(not yet extracted)",
-        documentation: `From: ${variable.source}\nValue: ${variable.value || "pending"}`,
-        insertText: variable.name,
-        range: range,
-      }));
+      const suggestions = getEditorVariables(model).map((variable) => {
+        const { range, insertText } = completionRangeAndText(
+          model,
+          position,
+          match[1].length,
+          variable.name,
+          "}",
+        );
+        return {
+          label: variable.name,
+          kind: monaco.languages.CompletionItemKind.Variable,
+          detail: variable.value
+            ? `= ${variable.value}`
+            : "(not yet extracted)",
+          documentation: `From: ${variable.source}\nValue: ${variable.value || "pending"}`,
+          insertText,
+          range,
+        };
+      });
 
       return { suggestions };
     },
@@ -142,14 +144,6 @@ function ensureVariableCompletionProviders(monaco: Monaco, language: string): vo
       if (!match) {
         return { suggestions: [] };
       }
-
-      const word = model.getWordUntilPosition(position);
-      const range = {
-        startLineNumber: position.lineNumber,
-        endLineNumber: position.lineNumber,
-        startColumn: word.startColumn,
-        endColumn: word.endColumn,
-      };
 
       const suggestions: any[] = [];
 
@@ -223,13 +217,20 @@ function ensureVariableCompletionProviders(monaco: Monaco, language: string): vo
       ];
 
       functions.forEach((fn) => {
+        const { range, insertText } = completionRangeAndText(
+          model,
+          position,
+          match[1].length,
+          fn.name,
+          "}}",
+        );
         suggestions.push({
           label: fn.name,
           kind: monaco.languages.CompletionItemKind.Function,
           detail: fn.detail,
           documentation: fn.doc,
-          insertText: fn.name,
-          range: range,
+          insertText,
+          range,
         });
       });
 
@@ -371,11 +372,15 @@ const MonacoRequestEditorBase = forwardRef<
         updateDecorations();
       }, 0);
 
-      // Fix Enter key to insert newline (prevents Enter from being stolen)
+      // Enter inserts a newline UNLESS the completion widget is open — then
+      // the built-in accept wins (Enter completes the selected variable).
+      // Previously this action was unconditional, so Enter always typed a
+      // newline and could never accept a suggestion.
       editor.addAction({
         id: "insert-newline",
         label: "Insert Newline",
         keybindings: [monaco.KeyCode.Enter],
+        precondition: "!suggestVisible",
         run: (ed: any) => {
           ed.trigger("keyboard", "type", { text: "\n" });
         },
@@ -573,7 +578,7 @@ const MonacoRequestEditorBase = forwardRef<
         lineNumbers: showLineNumbers ? "on" : "off",
         renderLineHighlight: "none",
         contextmenu: true,
-        acceptSuggestionOnEnter: "off",
+        acceptSuggestionOnEnter: "on",
         quickSuggestions: false,
       }),
       [showMinimap, fontSize, fontFamily, readOnly, showLineNumbers],

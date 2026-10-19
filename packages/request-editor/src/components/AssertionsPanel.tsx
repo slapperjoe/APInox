@@ -371,11 +371,13 @@ export const AssertionsPanel: React.FC<AssertionsPanelProps> = ({ assertions, on
                                                     value={a.configuration?.script || ''}
                                                     onChange={(val) => updateConfig(a.id!, 'script', val || '')}
                                                     onMount={(editor, monaco) => {
-                                                        // Fix Enter key to insert newline
+                                                        // Enter inserts a newline unless the completion
+                                                        // widget is open — then Enter accepts the suggestion.
                                                         editor.addAction({
                                                             id: 'insert-newline',
                                                             label: 'Insert Newline',
                                                             keybindings: [monaco.KeyCode.Enter],
+                                                            precondition: '!suggestVisible',
                                                             run: (ed: any) => {
                                                                 ed.trigger('keyboard', 'type', { text: '\n' });
                                                             }
@@ -391,7 +393,7 @@ export const AssertionsPanel: React.FC<AssertionsPanelProps> = ({ assertions, on
                                                         lineDecorationsWidth: 0,
                                                         lineNumbersMinChars: 0,
                                                         automaticLayout: true,
-                                                        acceptSuggestionOnEnter: 'off',
+                                                        acceptSuggestionOnEnter: 'on',
                                                         quickSuggestions: false,
                                                     }}
                                                 />
