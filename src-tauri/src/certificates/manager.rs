@@ -122,7 +122,10 @@ impl CertManager {
     }
 
     /// Check whether the APIprox CA cert is currently installed in the OS trust store.
-    /// Fast (sub-millisecond on warm disk cache) — safe to call from `info()`.
+    ///
+    /// Spawns `security` / PowerShell, so this is tens of milliseconds, not
+    /// sub-millisecond — which is why `info()` callers that use it go through
+    /// `utils::blocking()` rather than running on the async runtime.
     fn detect_trusted(&self) -> bool {
         #[cfg(target_os = "macos")]
         {
