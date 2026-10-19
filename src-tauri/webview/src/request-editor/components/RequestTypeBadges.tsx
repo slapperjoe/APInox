@@ -11,7 +11,7 @@ const BaseBadge = styled.span`
   padding: 4px 8px;
   border-radius: 3px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   text-align: center;
   display: inline-block;
   min-width: 60px;
@@ -27,7 +27,7 @@ const TypeBadgeStyled = styled(BaseBadge)<{ $type: string }>`
       default: return 'var(--apinox-badge-background)';
     }
   }};
-  color: #ffffff;
+  color: var(--apinox-badge-foreground);
 `;
 
 // HTTP Method Badge (GET/POST/PUT/DELETE/etc.)
@@ -42,7 +42,7 @@ const MethodBadgeStyled = styled(BaseBadge)<{ $method: string }>`
       default: return 'var(--apinox-badge-background)';
     }
   }};
-  color: #ffffff;
+  color: var(--apinox-badge-foreground);
   min-width: 70px;
 `;
 
@@ -51,7 +51,7 @@ const BodyTypeBadgeStyled = styled(BaseBadge)`
   background: var(--apinox-editor-inactiveSelectionBackground);
   color: var(--apinox-foreground);
   border: 1px solid var(--apinox-widget-border);
-  font-weight: 500;
+  font-weight: var(--fw-medium);
   min-width: 50px;
 `;
 
@@ -60,7 +60,7 @@ const ContentTypeBadgeStyled = styled(BaseBadge)`
   background: var(--apinox-editor-inactiveSelectionBackground);
   color: var(--apinox-foreground);
   border: 1px solid var(--apinox-widget-border);
-  font-weight: 400;
+  font-weight: var(--fw-regular);
   font-size: 10px;
   min-width: auto;
   max-width: 200px;
