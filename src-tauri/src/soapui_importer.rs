@@ -13,6 +13,7 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::Path;
 use uuid::Uuid;
+use crate::utils::blocking;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Internal event representation (owned, no borrows from reader)
@@ -912,8 +913,8 @@ fn extract_workspace_hrefs(xml: &str) -> Vec<String> {
 pub async fn import_soapui_xml(file_path: &str) -> Result<Vec<Value>, String> {
     log::info!("soapui_importer: importing {}", file_path);
 
-    let content = std::fs::read_to_string(file_path)
-        .map_err(|e| format!("Failed to read file '{}': {}", file_path, e))?;
+    let path = file_path.to_string();
+    let content = blocking(move || std::fs::read_to_string(&path).map_err(|e| format!("Failed to read file '{}': {}", path, e))).await?;
 
     // Detect root element
     let events = collect_events(&content);

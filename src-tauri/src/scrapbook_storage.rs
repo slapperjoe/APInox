@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use crate::utils::resolve_config_dir;
+use crate::utils::{blocking, resolve_config_dir};
 
 /// Scrapbook state — stores requests as raw JSON to preserve all frontend fields
 #[derive(Debug, serde::Serialize, serde::Deserialize, Default)]
@@ -58,6 +58,10 @@ fn save_scrapbook(scrapbook_path: &PathBuf, data: &ScrapbookState) -> Result<(),
 /// Get all scrapbook requests
 #[tauri::command]
 pub async fn get_scrapbook() -> Result<Vec<serde_json::Value>, String> {
+    blocking(get_scrapbook_sync).await
+}
+
+fn get_scrapbook_sync() -> Result<Vec<serde_json::Value>, String> {
     let scrapbook_path = get_scrapbook_path()?;
     let data = load_scrapbook(&scrapbook_path);
     Ok(data.requests)
@@ -66,6 +70,10 @@ pub async fn get_scrapbook() -> Result<Vec<serde_json::Value>, String> {
 /// Add a new request to scrapbook
 #[tauri::command]
 pub async fn add_scrapbook_request(request: serde_json::Value) -> Result<Vec<serde_json::Value>, String> {
+    blocking(move || add_scrapbook_request_sync(request)).await
+}
+
+fn add_scrapbook_request_sync(request: serde_json::Value) -> Result<Vec<serde_json::Value>, String> {
     let scrapbook_path = get_scrapbook_path()?;
     let mut data = load_scrapbook(&scrapbook_path);
 
@@ -84,6 +92,13 @@ pub async fn add_scrapbook_request(request: serde_json::Value) -> Result<Vec<ser
 /// Update an existing scrapbook request (merges fields)
 #[tauri::command]
 pub async fn update_scrapbook_request(
+    id: String,
+    updates: serde_json::Value,
+) -> Result<Vec<serde_json::Value>, String> {
+    blocking(move || update_scrapbook_request_sync(id, updates)).await
+}
+
+fn update_scrapbook_request_sync(
     id: String,
     updates: serde_json::Value,
 ) -> Result<Vec<serde_json::Value>, String> {
@@ -108,6 +123,10 @@ pub async fn update_scrapbook_request(
 /// Delete a scrapbook request
 #[tauri::command]
 pub async fn delete_scrapbook_request(id: String) -> Result<Vec<serde_json::Value>, String> {
+    blocking(move || delete_scrapbook_request_sync(id)).await
+}
+
+fn delete_scrapbook_request_sync(id: String) -> Result<Vec<serde_json::Value>, String> {
     let scrapbook_path = get_scrapbook_path()?;
     let mut data = load_scrapbook(&scrapbook_path);
 

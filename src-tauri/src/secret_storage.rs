@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use crate::utils::resolve_config_dir;
+use crate::utils::{blocking, resolve_config_dir};
 
 const SECRET_REFERENCE_PREFIX: &str = "__SECRET__:";
 const ALGORITHM_IV_SIZE: usize = 12; // GCM nonce size
@@ -207,6 +207,10 @@ fn is_secret_reference(value: &str) -> bool {
 /// Store an environment secret
 #[tauri::command]
 pub async fn store_secret(env_name: String, field_name: String, value: String) -> Result<String, String> {
+    blocking(move || store_secret_sync(env_name, field_name, value)).await
+}
+
+fn store_secret_sync(env_name: String, field_name: String, value: String) -> Result<String, String> {
     let key = format_key(&env_name, &field_name);
     let mut secrets = load_secrets()?;
     secrets.insert(key, value);
@@ -219,6 +223,10 @@ pub async fn store_secret(env_name: String, field_name: String, value: String) -
 /// Retrieve an environment secret
 #[tauri::command]
 pub async fn get_secret(env_name: String, field_name: String) -> Result<Option<String>, String> {
+    blocking(move || get_secret_sync(env_name, field_name)).await
+}
+
+fn get_secret_sync(env_name: String, field_name: String) -> Result<Option<String>, String> {
     let key = format_key(&env_name, &field_name);
     let secrets = load_secrets()?;
     Ok(secrets.get(&key).cloned())
@@ -227,6 +235,10 @@ pub async fn get_secret(env_name: String, field_name: String) -> Result<Option<S
 /// Delete an environment secret
 #[tauri::command]
 pub async fn delete_secret(env_name: String, field_name: String) -> Result<(), String> {
+    blocking(move || delete_secret_sync(env_name, field_name)).await
+}
+
+fn delete_secret_sync(env_name: String, field_name: String) -> Result<(), String> {
     let key = format_key(&env_name, &field_name);
     let mut secrets = load_secrets()?;
     secrets.remove(&key);

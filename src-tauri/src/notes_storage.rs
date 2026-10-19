@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 
-use crate::utils::resolve_config_dir;
+use crate::utils::{blocking, resolve_config_dir};
 
 // ── Directory helpers ────────────────────────────────────────────────────────
 
@@ -142,14 +142,22 @@ fn sniff_is_binary(path: &Path) -> bool {
 // ── Tauri commands ────────────────────────────────────────────────────────────
 
 #[tauri::command]
-pub fn load_notes_index() -> Result<serde_json::Value, String> {
+pub async fn load_notes_index() -> Result<serde_json::Value, String> {
+    blocking(load_notes_index_sync).await
+}
+
+fn load_notes_index_sync() -> Result<serde_json::Value, String> {
     let dir = get_notes_dir()?;
     let index = load_index(&get_index_path(&dir));
     serde_json::to_value(&index).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn load_note_content(file_path: String) -> Result<String, String> {
+pub async fn load_note_content(file_path: String) -> Result<String, String> {
+    blocking(move || load_note_content_sync(file_path)).await
+}
+
+fn load_note_content_sync(file_path: String) -> Result<String, String> {
     let path = PathBuf::from(&file_path);
     if !path.exists() {
         return Err(format!("File not found: {}", file_path));
@@ -161,7 +169,11 @@ pub fn load_note_content(file_path: String) -> Result<String, String> {
 }
 
 #[tauri::command]
-pub fn load_note_bytes(file_path: String) -> Result<String, String> {
+pub async fn load_note_bytes(file_path: String) -> Result<String, String> {
+    blocking(move || load_note_bytes_sync(file_path)).await
+}
+
+fn load_note_bytes_sync(file_path: String) -> Result<String, String> {
     let path = PathBuf::from(&file_path);
     if !path.exists() {
         return Err(format!("File not found: {}", file_path));
@@ -171,7 +183,11 @@ pub fn load_note_bytes(file_path: String) -> Result<String, String> {
 }
 
 #[tauri::command]
-pub fn save_note(file_path: String, content: String) -> Result<String, String> {
+pub async fn save_note(file_path: String, content: String) -> Result<String, String> {
+    blocking(move || save_note_sync(file_path, content)).await
+}
+
+fn save_note_sync(file_path: String, content: String) -> Result<String, String> {
     let path = PathBuf::from(&file_path);
     if let Some(parent) = path.parent() {
         if !parent.exists() {
@@ -185,7 +201,11 @@ pub fn save_note(file_path: String, content: String) -> Result<String, String> {
 }
 
 #[tauri::command]
-pub fn save_note_bytes(file_path: String, data_base64: String) -> Result<String, String> {
+pub async fn save_note_bytes(file_path: String, data_base64: String) -> Result<String, String> {
+    blocking(move || save_note_bytes_sync(file_path, data_base64)).await
+}
+
+fn save_note_bytes_sync(file_path: String, data_base64: String) -> Result<String, String> {
     let path = PathBuf::from(&file_path);
     if let Some(parent) = path.parent() {
         if !parent.exists() {
@@ -201,7 +221,11 @@ pub fn save_note_bytes(file_path: String, data_base64: String) -> Result<String,
 }
 
 #[tauri::command]
-pub fn delete_note(id: String) -> Result<(), String> {
+pub async fn delete_note(id: String) -> Result<(), String> {
+    blocking(move || delete_note_sync(id)).await
+}
+
+fn delete_note_sync(id: String) -> Result<(), String> {
     let dir = get_notes_dir()?;
     let index_path = get_index_path(&dir);
     let mut index = load_index(&index_path);
@@ -222,7 +246,11 @@ pub fn delete_note(id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn rename_note(id: String, new_name: String) -> Result<NoteEntry, String> {
+pub async fn rename_note(id: String, new_name: String) -> Result<NoteEntry, String> {
+    blocking(move || rename_note_sync(id, new_name)).await
+}
+
+fn rename_note_sync(id: String, new_name: String) -> Result<NoteEntry, String> {
     let dir = get_notes_dir()?;
     let index_path = get_index_path(&dir);
     let mut index = load_index(&index_path);
@@ -253,7 +281,11 @@ pub fn rename_note(id: String, new_name: String) -> Result<NoteEntry, String> {
 }
 
 #[tauri::command]
-pub fn upsert_note_index(entry: NoteEntry) -> Result<(), String> {
+pub async fn upsert_note_index(entry: NoteEntry) -> Result<(), String> {
+    blocking(move || upsert_note_index_sync(entry)).await
+}
+
+fn upsert_note_index_sync(entry: NoteEntry) -> Result<(), String> {
     let dir = get_notes_dir()?;
     let index_path = get_index_path(&dir);
     let mut index = load_index(&index_path);
@@ -267,7 +299,11 @@ pub fn upsert_note_index(entry: NoteEntry) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn add_recent_note_path(file_path: String) -> Result<(), String> {
+pub async fn add_recent_note_path(file_path: String) -> Result<(), String> {
+    blocking(move || add_recent_note_path_sync(file_path)).await
+}
+
+fn add_recent_note_path_sync(file_path: String) -> Result<(), String> {
     let dir = get_notes_dir()?;
     let index_path = get_index_path(&dir);
     let mut index = load_index(&index_path);
@@ -279,7 +315,11 @@ pub fn add_recent_note_path(file_path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn sniff_file_type(file_path: String) -> Result<serde_json::Value, String> {
+pub async fn sniff_file_type(file_path: String) -> Result<serde_json::Value, String> {
+    blocking(move || sniff_file_type_sync(file_path)).await
+}
+
+fn sniff_file_type_sync(file_path: String) -> Result<serde_json::Value, String> {
     let path = PathBuf::from(&file_path);
     if !path.exists() {
         return Err(format!("File not found: {}", file_path));
@@ -295,6 +335,10 @@ pub fn sniff_file_type(file_path: String) -> Result<serde_json::Value, String> {
 }
 
 #[tauri::command]
-pub fn get_notes_dir_path() -> Result<String, String> {
+pub async fn get_notes_dir_path() -> Result<String, String> {
+    blocking(get_notes_dir_path_sync).await
+}
+
+fn get_notes_dir_path_sync() -> Result<String, String> {
     get_notes_dir().map(|p| p.to_string_lossy().to_string())
 }

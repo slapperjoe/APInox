@@ -3,6 +3,7 @@ use std::fs;
 use std::io::{Read, Write};
 use std::path::Path;
 use chrono::Utc;
+use crate::utils::blocking;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Workspace {
@@ -304,7 +305,7 @@ pub async fn import_workspace(
         log::info!("import_workspace: Detected directory, loading as single project");
         
         // Use the existing load_project command
-        let project = crate::project_storage::load_project_internal(&file_path)
+        let project = blocking(move || crate::project_storage::load_project_internal(&file_path))
             .await
             .map_err(|e| format!("Failed to load project: {}", e))?;
         
@@ -603,7 +604,7 @@ mod tests {
         std::env::set_var("APINOX_CONFIG_DIR", tmp.path());
 
         // Seed the canonical unified store with the project (flat layout).
-        crate::project_storage::save_unified_project(
+        crate::project_storage::save_unified_project_sync(
             "RTSvc".to_string(),
             sample_unified_project("RTSvc"),
         )

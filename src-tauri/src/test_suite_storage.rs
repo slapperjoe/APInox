@@ -14,7 +14,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::utils::resolve_config_dir;
+use crate::utils::{blocking, resolve_config_dir};
 
 /// Global test-suite file — stores suites as raw JSON to preserve all
 /// frontend fields (testCases/steps/config round-trip byte-for-byte).
@@ -89,6 +89,10 @@ pub(crate) fn save_suites_document(document: &serde_json::Value) -> Result<(), S
 /// Get all global test suites.
 #[tauri::command]
 pub async fn get_test_suites() -> Result<Vec<serde_json::Value>, String> {
+    blocking(get_test_suites_sync).await
+}
+
+fn get_test_suites_sync() -> Result<Vec<serde_json::Value>, String> {
     let path = get_test_suites_path()?;
     let data = load_store(&path);
     Ok(data.suites)
@@ -99,6 +103,10 @@ pub async fn get_test_suites() -> Result<Vec<serde_json::Value>, String> {
 /// takes a whole project).
 #[tauri::command]
 pub async fn save_test_suites(suites: Vec<serde_json::Value>) -> Result<Vec<serde_json::Value>, String> {
+    blocking(move || save_test_suites_sync(suites)).await
+}
+
+fn save_test_suites_sync(suites: Vec<serde_json::Value>) -> Result<Vec<serde_json::Value>, String> {
     let path = get_test_suites_path()?;
     let data = TestSuiteStore { suites };
     save_store(&path, &data)?;
@@ -125,6 +133,10 @@ pub async fn save_test_suites(suites: Vec<serde_json::Value>) -> Result<Vec<serd
 /// without touching the in-app store.
 #[tauri::command]
 pub async fn export_test_suite_to_file(suite_id: String, file_path: String) -> Result<(), String> {
+    blocking(move || export_test_suite_to_file_sync(suite_id, file_path)).await
+}
+
+fn export_test_suite_to_file_sync(suite_id: String, file_path: String) -> Result<(), String> {
     log::info!(
         "export_test_suite_to_file: Exporting suite '{}' to {}",
         suite_id,
@@ -164,6 +176,10 @@ pub async fn export_test_suite_to_file(suite_id: String, file_path: String) -> R
 /// by id) and writes the case object (steps included) to the target path.
 #[tauri::command]
 pub async fn export_test_case_to_file(case_id: String, file_path: String) -> Result<(), String> {
+    blocking(move || export_test_case_to_file_sync(case_id, file_path)).await
+}
+
+fn export_test_case_to_file_sync(case_id: String, file_path: String) -> Result<(), String> {
     log::info!(
         "export_test_case_to_file: Exporting case '{}' to {}",
         case_id,
@@ -215,6 +231,10 @@ pub async fn export_test_case_to_file(case_id: String, file_path: String) -> Res
 /// missing `variables` stays absent (the webview treats it as `Record<string,string>`).
 #[tauri::command]
 pub async fn import_test_suite_from_file(file_path: String) -> Result<serde_json::Value, String> {
+    blocking(move || import_test_suite_from_file_sync(file_path)).await
+}
+
+fn import_test_suite_from_file_sync(file_path: String) -> Result<serde_json::Value, String> {
     log::info!("import_test_suite_from_file: Loading suite from {}", file_path);
 
     let json_content = std::fs::read_to_string(&file_path)
@@ -250,6 +270,10 @@ pub async fn import_test_suite_from_file(file_path: String) -> Result<serde_json
 /// contract as `import_test_suite_from_file` — the webview re-keys ids.
 #[tauri::command]
 pub async fn import_test_case_from_file(file_path: String) -> Result<serde_json::Value, String> {
+    blocking(move || import_test_case_from_file_sync(file_path)).await
+}
+
+fn import_test_case_from_file_sync(file_path: String) -> Result<serde_json::Value, String> {
     log::info!("import_test_case_from_file: Loading case from {}", file_path);
 
     let json_content = std::fs::read_to_string(&file_path)
@@ -352,6 +376,13 @@ fn read_project_suites_dir(tests_dir: &Path) -> Vec<serde_json::Value> {
 /// local suites from the project so they are not persisted twice.
 #[tauri::command]
 pub async fn migrate_all_project_suites_to_global() -> Result<
+    Vec<serde_json::Value>,
+    String,
+> {
+    blocking(migrate_all_project_suites_to_global_sync).await
+}
+
+fn migrate_all_project_suites_to_global_sync() -> Result<
     Vec<serde_json::Value>,
     String,
 > {
