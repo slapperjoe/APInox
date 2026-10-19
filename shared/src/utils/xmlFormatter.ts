@@ -7,7 +7,7 @@ export function stripCausalityData(xml: string): string {
     return processedXml;
 }
 
-export function formatXml(xml: string, alignAttributes: boolean = false, inlineElementValues: boolean = false, hideCausalityData: boolean = false): string {
+export function formatXml(xml: string, alignAttributes = false, inlineElementValues = false, hideCausalityData = false): string {
     if (typeof xml !== 'string') return '';
 
     let formatted = '';

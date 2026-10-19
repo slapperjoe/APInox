@@ -161,7 +161,7 @@ const EditorWithToolbarInternal = forwardRef<MonacoRequestEditorHandle, Omit<Mon
       setInternalValue(formatted);
       onChange(formatted);
       setShowSettings(false);
-    }, [language, internalValue, settings, onChange, ref]);
+    }, [language, internalValue, settings, onChange, ref, setShowSettings]);
 
     const handleEditorChange = useCallback((newValue: string) => {
       setInternalValue(newValue);

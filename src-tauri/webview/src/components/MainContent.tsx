@@ -252,7 +252,7 @@ const MainContent: React.FC = () => {
     // Unified Explorer Handlers
     const handleUnifiedSelectNode = useCallback((type: string, id: string) => {
         setUnifiedSelectedNode({ type, id });
-    }, []);
+    }, [setUnifiedSelectedNode]);
     
     // ──────────────────────────────────────────────────────────────────────────
     // F-01 / R-05 — Quick Requests (scrapbook) for the unified explorer.
@@ -338,12 +338,12 @@ const MainContent: React.FC = () => {
         } catch (e) {
             console.error('[UnifiedExplorer] Failed to create quick request:', e);
         }
-    }, [createScrapbookRequest, selectScrapbookRequest, updateScrapbookRequest, unifiedSelectedNode, unifiedProjects, ensureProjectFullUnified]);
+    }, [createScrapbookRequest, selectScrapbookRequest, updateScrapbookRequest, unifiedSelectedNode, unifiedProjects, ensureProjectFullUnified, setUnifiedSelectedNode]);
 
     const handleUnifiedScrapbookSelect = useCallback((request: ScrapbookRequest) => {
         selectScrapbookRequest(request);
         setUnifiedSelectedNode({ type: 'scrapbook', id: request.id });
-    }, [selectScrapbookRequest]);
+    }, [selectScrapbookRequest, setUnifiedSelectedNode]);
 
     const handleUnifiedScrapbookDelete = useCallback((id: string) => {
         deleteScrapbookRequest(id).catch((e) => {
@@ -352,7 +352,7 @@ const MainContent: React.FC = () => {
         // If the deleted entry is the selected node, clear the unified
         // selection so the main view leaves the quick-request editor.
         setUnifiedSelectedNode(prev => (prev && prev.type === 'scrapbook' && prev.id === id) ? null : prev);
-    }, [deleteScrapbookRequest]);
+    }, [deleteScrapbookRequest, setUnifiedSelectedNode]);
 
     const handleUnifiedScrapbookExecute = useCallback((request: ScrapbookRequest) => {
         if (!request) return;
@@ -363,7 +363,7 @@ const MainContent: React.FC = () => {
                 console.error('[UnifiedExplorer] Quick request execution failed:', e);
             });
         }
-    }, [unifiedExecuteFn, selectScrapbookRequest]);
+    }, [unifiedExecuteFn, selectScrapbookRequest, setUnifiedSelectedNode]);
     
     const handleUnifiedRefresh = useCallback(async (projectName: string) => {
         const project = unifiedProjects.find(p => p.name === projectName);
@@ -401,7 +401,7 @@ const MainContent: React.FC = () => {
         } catch (e) {
             console.error('[UnifiedExplorer] Refresh failed:', e);
         }
-    }, [unifiedProjects, saveUnifiedProject]);
+    }, [unifiedProjects, saveUnifiedProject, setUnifiedProjects]);
     
     const handleUnifiedDeleteProject = useCallback(async (projectName: string) => {
         try {
@@ -413,7 +413,7 @@ const MainContent: React.FC = () => {
         } catch (e) {
             console.error('[UnifiedExplorer] Delete project failed:', e);
         }
-    }, [setUnifiedSelectedNode]);
+    }, [setUnifiedSelectedNode, setUnifiedProjects]);
     
     const handleUnifiedDeleteOperation = useCallback(async (projectName: string, operationName: string) => {
         // Capture the deleted subtree's selection ids before the state update
@@ -441,7 +441,7 @@ const MainContent: React.FC = () => {
         } catch (e) {
             console.error('[UnifiedExplorer] Delete operation failed:', e);
         }
-    }, [unifiedProjects, unifiedSelectedNode, setUnifiedSelectedNode]);
+    }, [unifiedProjects, unifiedSelectedNode, setUnifiedSelectedNode, setUnifiedProjects]);
     
     const handleUnifiedDeleteRequest = useCallback(async (projectName: string, operationName: string, requestName: string) => {
         // Capture the deleted request's selection id before removal.
@@ -470,7 +470,7 @@ const MainContent: React.FC = () => {
         } catch (e) {
             console.error('[UnifiedExplorer] Delete request failed:', e);
         }
-    }, [unifiedProjects, unifiedSelectedNode, setUnifiedSelectedNode]);
+    }, [unifiedProjects, unifiedSelectedNode, setUnifiedSelectedNode, setUnifiedProjects]);
     
     // ── R-10 (F-17): context-menu rename (display-only `displayName`) ──────
     // Each rename command loads the project, sets/clears the additive
@@ -482,17 +482,17 @@ const MainContent: React.FC = () => {
     const handleUnifiedRenameProject = useCallback(async (projectName: string, displayName: string) => {
         const updated = await bridge.invokeTauriCommand<UnifiedProject>('rename_unified_project', { projectName, displayName });
         setUnifiedProjects(prev => prev.map(p => (p.name === projectName ? updated : p)));
-    }, []);
+    }, [setUnifiedProjects]);
 
     const handleUnifiedRenameOperation = useCallback(async (projectName: string, operationName: string, displayName: string) => {
         const updated = await bridge.invokeTauriCommand<UnifiedProject>('rename_unified_operation', { projectName, operationName, displayName });
         setUnifiedProjects(prev => prev.map(p => (p.name === projectName ? updated : p)));
-    }, []);
+    }, [setUnifiedProjects]);
 
     const handleUnifiedRenameRequest = useCallback(async (projectName: string, operationName: string, requestName: string, displayName: string) => {
         const updated = await bridge.invokeTauriCommand<UnifiedProject>('rename_unified_request', { projectName, operationName, requestName, displayName });
         setUnifiedProjects(prev => prev.map(p => (p.name === projectName ? updated : p)));
-    }, []);
+    }, [setUnifiedProjects]);
     
     const handleUnifiedNewRequest = useCallback(async (projectName: string, operationName: string) => {
         try {
@@ -559,7 +559,7 @@ const MainContent: React.FC = () => {
         } catch (e) {
             console.error("[UnifiedExplorer] New request failed:", e);
         }
-    }, [updateUnifiedProject]);
+    }, [updateUnifiedProject, setUnifiedSelectedNode]);
     
     const handleUnifiedProjectContentTypeChange = useCallback(async (projectName: string, contentType: string) => {
         const project = unifiedProjects.find(p => p.name === projectName);
@@ -586,7 +586,7 @@ const MainContent: React.FC = () => {
         } catch (e) {
             console.error("[UnifiedExplorer] Content-type change failed:", e);
         }
-    }, [unifiedProjects]);
+    }, [unifiedProjects, setUnifiedProjects]);
     
     const handleUnifiedExport = useCallback(async (projectName: string) => {
         const project = unifiedProjects.find(p => p.name === projectName);
@@ -725,7 +725,7 @@ const MainContent: React.FC = () => {
             }),
         };
         setUnifiedProjects(prev => [...prev, enrichedProject]);
-    }, []);
+    }, [setUnifiedProjects]);
     
     const handleUnifiedReorderOperation = useCallback(async (projectName: string, fromIndex: number, toIndex: number) => {
         try {
@@ -1080,9 +1080,15 @@ const MainContent: React.FC = () => {
         config
     });
 
+    // Hoisted above the handlers below: `setRequestHistory` is used by them, and
+    // once those handlers are memoized the dependency must be readable at the
+    // point the useCallback runs. It was declared further down, which would put
+    // it in the temporal dead zone.
+    const [requestHistory, setRequestHistory] = useState<RequestHistoryEntry[]>([]);
+
     // Wrapped Handlers for State Cleanup
 
-    const handleDeleteSuite = (suiteId: string) => {
+    const handleDeleteSuite = useCallback((suiteId: string) => {
         // Call original handler (2-click confirm: first click arms, second deletes)
         _handleDeleteSuite(suiteId);
 
@@ -1096,15 +1102,15 @@ const MainContent: React.FC = () => {
                 setSelectedStep(null);
             }
         }
-    };
+    }, [_handleDeleteSuite, selectedTestCase, findGlobalCase, setSelectedTestCase, setSelectedStep]);
 
-    const handleDeleteTestCase = (caseId: string) => {
+    const handleDeleteTestCase = useCallback((caseId: string) => {
         _handleDeleteTestCase(caseId);
         if (selectedTestCase?.id === caseId) {
             setSelectedTestCase(null);
             setSelectedStep(null);
         }
-    };
+    }, [_handleDeleteTestCase, selectedTestCase, setSelectedTestCase, setSelectedStep]);
 
     // TESTS sidebar step delete (two-click confirm lives in `handleDeleteTestStep`).
     // Clear the in-editor step selection if the removed step was the open one,
@@ -1150,7 +1156,7 @@ const MainContent: React.FC = () => {
     // — but History/Favorites now live inside the unified explorer, whose
     // editor is driven by `unifiedSelectedNode` + the scrapbook context, so a
     // legacy write was invisible.
-    const handleReplayRequest = async (entry: RequestHistoryEntry) => {
+    const handleReplayRequest = useCallback(async (entry: RequestHistoryEntry) => {
         try {
             setActiveView(SidebarView.UNIFIED_EXPLORER);
             const created = await createScrapbookRequest();
@@ -1179,9 +1185,9 @@ const MainContent: React.FC = () => {
         } catch (error) {
             console.error('[MainContent] Failed to open history entry:', error);
         }
-    };
+    }, [setActiveView, createScrapbookRequest, updateScrapbookRequest, selectScrapbookRequest, setUnifiedSelectedNode]);
 
-    const handleToggleHistoryStar = async (id: string) => {
+    const handleToggleHistoryStar = useCallback(async (id: string) => {
         try {
             await bridge.invokeTauriCommand('toggle_star_history', { id });
             // Refresh history
@@ -1190,9 +1196,9 @@ const MainContent: React.FC = () => {
         } catch (error) {
             console.error('[MainContent] Failed to toggle star:', error);
         }
-    };
+    }, [setRequestHistory]);
 
-    const handleDeleteHistory = async (id: string) => {
+    const handleDeleteHistory = useCallback(async (id: string) => {
         try {
             await bridge.invokeTauriCommand('delete_history_entry', { id });
             // Refresh history
@@ -1201,9 +1207,9 @@ const MainContent: React.FC = () => {
         } catch (error) {
             console.error('[MainContent] Failed to delete history entry:', error);
         }
-    };
+    }, [setRequestHistory]);
 
-    const handleRenameHistory = async (id: string, name: string) => {
+    const handleRenameHistory = useCallback(async (id: string, name: string) => {
         try {
             await bridge.invokeTauriCommand('rename_history_entry', { id, name });
             // Refresh history
@@ -1212,7 +1218,7 @@ const MainContent: React.FC = () => {
         } catch (error) {
             console.error('[MainContent] Failed to rename history entry:', error);
         }
-    };
+    }, [setRequestHistory]);
 
     /**
      * Add a project request (from the explorer tree's right-click menu) to
@@ -1221,7 +1227,7 @@ const MainContent: React.FC = () => {
      * requests that were never executed. The entry carries the request's
      * name/endpoint/body so replaying it from Favorites re-sends it.
      */
-    const handleFavoriteRequest = async (projectName: string, operationName: string, req: ApiRequest) => {
+    const handleFavoriteRequest = useCallback(async (projectName: string, operationName: string, req: ApiRequest) => {
         try {
             const entry: RequestHistoryEntry & { method: string; status?: number } = {
                 id: crypto.randomUUID(),
@@ -1243,7 +1249,7 @@ const MainContent: React.FC = () => {
         } catch (error) {
             console.error('[MainContent] Failed to add request to favorites:', error);
         }
-    };
+    }, [setRequestHistory]);
 
     // Extractor Modal State (needed before useWorkspaceCallbacks)
     const [extractorModal, setExtractorModal] = React.useState<{ xpath: string, value: string, source: 'body' | 'header', variableName: string } | null>(null);
@@ -1529,7 +1535,7 @@ const MainContent: React.FC = () => {
     }, [unifiedProjects]);
 
     // Workspace State
-    const [requestHistory, setRequestHistory] = useState<RequestHistoryEntry[]>([]);
+    // (requestHistory state hoisted above the wrapped handlers)
 
     useEffect(() => {
         if (!isTauri()) return;
@@ -1570,11 +1576,8 @@ const MainContent: React.FC = () => {
         setSidebarExpanded,
         setActiveView,
         selectedRequest,
-        setSelectedInterface,
-        setSelectedOperation,
         setSelectedRequest,
         setSelectedTestCase,
-        selectedPerformanceSuiteId,
         setSelectedPerformanceSuiteId
     });
 
@@ -1656,7 +1659,7 @@ const MainContent: React.FC = () => {
                 }
             }
         }
-    }, [globalTestSuites, selectedStep, selectedTestCase]);
+    }, [globalTestSuites, selectedStep, selectedTestCase, setSelectedStep]);
 
     // Sync selectedTestSuite - clear if deleted
     useEffect(() => {
@@ -1672,7 +1675,7 @@ const MainContent: React.FC = () => {
                 setSelectedTestSuite(null);
             }
         }
-    }, [globalTestSuites, selectedTestSuite, findGlobalSuite]);
+    }, [globalTestSuites, selectedTestSuite, findGlobalSuite, setSelectedTestSuite]);
 
     // Auto-save projects when workspace becomes dirty
     useEffect(() => {
@@ -1703,7 +1706,7 @@ const MainContent: React.FC = () => {
 
 
     // Handle selection reset when closing a project (context handles the deletion)
-    const handleCloseProject = (name: string) => {
+    const handleCloseProject = useCallback((name: string) => {
         // If we're closing the selected project, clear selection
         if (deleteConfirm === name && selectedProjectName === name) {
             setSelectedInterface(null);
@@ -1712,7 +1715,7 @@ const MainContent: React.FC = () => {
         }
         // Delegate to context
         closeProject(name);
-    };
+    }, [deleteConfirm, selectedProjectName, setSelectedInterface, setSelectedOperation, setSelectedRequest, closeProject]);
 
     // ==========================================================================
     // WORKSPACE CONTEXT VALUE - Aggregates all state for WorkspaceLayout subtree
@@ -1845,7 +1848,7 @@ const MainContent: React.FC = () => {
         setSelectedInterface, setSelectedOperation, setSelectedRequest, setSelectedTestSuite,
         setSelectedTestCase, setLayoutMode, setShowLineNumbers,
         setSplitRatio, startResizing, setInlineElementValues, setHideCausalityData,
-        addProject, saveProject, setProjects, setSelectedStep, setActiveView,
+        addProject, saveProject, setProjects, setSelectedStep,
         handleAddExtractor, handleAddExistenceAssertion, setImportToPerformanceModal,
     ]);
 
@@ -1978,9 +1981,8 @@ const MainContent: React.FC = () => {
         // history sub-window entries) and the view-state fields.
         // t_b2eae8b0: import handlers (SoapUI + APInox workspace) write the
         // unified store directly and depend on refreshUnifiedProjects.
-        saveProject, refreshUnifiedProjects,
         handleUnifiedImportSoapUI, handleUnifiedImportWorkspace,
-        deleteConfirm, setDeleteConfirm, setExportWorkspaceModal, setShowBulkImportModal,
+        deleteConfirm, setExportWorkspaceModal, setShowBulkImportModal,
         testExecution,
         handleAddSuite, handleDeleteSuite, handleRunTestSuiteWrapper,
         handleAddTestCase, handleDeleteTestCase, handleRenameTestCase, handleRenameSuite,
@@ -1998,15 +2000,13 @@ const MainContent: React.FC = () => {
         handleUnifiedSelectNode, handleUnifiedRefresh, handleUnifiedDeleteProject,
         handleUnifiedDeleteOperation, handleUnifiedDeleteRequest, handleUnifiedNewRequest,
         handleUnifiedRenameProject, handleUnifiedRenameOperation, handleUnifiedRenameRequest,
-        handleUnifiedProjectContentTypeChange,
         handleUnifiedExport, handleUnifiedReorderOperation, handleUnifiedReorderRequest,
         handleGenerateTestSuite,
         scrapbookRequests, selectedScrapbookRequest, scrapbookLoading,
         handleUnifiedScrapbookCreate, handleUnifiedScrapbookSelect,
         handleUnifiedScrapbookDelete, handleUnifiedScrapbookExecute,
-        registerUnifiedExecute,
-        activeView, handleSetActiveViewWrapper, sidebarExpanded, backendConnected,
-        workspaceDirty, handleSaveUiState, setShowHelp,
+        activeView, sidebarExpanded, backendConnected,
+        workspaceDirty, handleSaveUiState,
         sidebarLocked, guardedChangeView, guardedOpenSettings, guardedOpenHelp,
         isMobileDrawerOpen, isMobile, setIsMobileDrawerOpen, hasUpdate,
         trafficCapturing,

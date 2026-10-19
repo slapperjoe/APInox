@@ -125,7 +125,7 @@ export const Sidebar: React.FC = () => {
     // Mirrors the live dragged width so handleResizeEnd can persist the final
     // value (the closure only captures startWidth, not the latest).
     const liveWidthRef = React.useRef(sidebarWidth);
-    liveWidthRef.current = sidebarWidth;
+    React.useEffect(() => { liveWidthRef.current = sidebarWidth; }, [sidebarWidth]);
 
     const handleResizeStart = (e: React.MouseEvent) => {
         e.preventDefault();

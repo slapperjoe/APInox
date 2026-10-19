@@ -218,7 +218,9 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
         setSelectedPerformanceSuiteId(null);
         setResponseState(null);
         setResponseCache({});
-    }, []);
+        // setSelectedRequest is a prop, not a useState setter in this component,
+        // so the rule cannot prove it stable; the other setters are.
+    }, [setSelectedRequest]);
 
     /**
      * Clears sub-selections but keeps test case.
@@ -230,7 +232,8 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
         setSelectedOperation(null);
         setSelectedInterface(null);
         setResponseState(null);
-    }, []);
+        // setSelectedRequest is a prop, not a useState setter in this component.
+    }, [setSelectedRequest]);
 
     // -------------------------------------------------------------------------
     // CONTEXT VALUE

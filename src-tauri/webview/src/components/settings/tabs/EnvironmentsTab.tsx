@@ -4,7 +4,7 @@
  * Environment profiles management for the Settings modal.
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Plus, Trash2, Check, Download, Upload, Eye, EyeOff, Lock, X, Pencil } from 'lucide-react';
 import styled, { css } from 'styled-components';
 import { bridge } from '../../../utils/bridge';
@@ -87,7 +87,10 @@ export const EnvironmentsTab: React.FC<EnvironmentsTabProps> = ({
     onRenameEnv,
     onImportEnvironments,
 }) => {
-    const environments = config.environments || {};
+    // Memoized: `config.environments || {}` produced a new object on every render
+    // when environments were absent, which made the effect below re-run on every
+    // render rather than when the environment actually changed.
+    const environments = useMemo(() => config.environments || {}, [config.environments]);
     const envKeys = Object.keys(environments);
     const fileInputRef = useRef<HTMLInputElement>(null);
 

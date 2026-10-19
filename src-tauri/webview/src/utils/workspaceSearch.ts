@@ -183,7 +183,7 @@ function calculateMatchScore(query: string, target: string): number {
 function calculateScore(
     matchScore: number,
     type: SearchResultType,
-    metadataMatches: number = 0
+    metadataMatches = 0
 ): number {
     const typePriority = TYPE_PRIORITY[type] || 1.0;
     return (matchScore * typePriority) + (metadataMatches * 0.5);

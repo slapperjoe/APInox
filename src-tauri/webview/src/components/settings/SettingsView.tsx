@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import styled from 'styled-components';
 import { MonacoEditorWrapper, Monaco } from '@apinox/request-editor/monaco';
 import { AlertTriangle, Settings, FileJson, Globe, Cloud, Server, ArrowUpCircle, Info } from 'lucide-react';
@@ -125,7 +125,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ rawConfig, onSave, i
     // Proxy ignore list (shared with ProxySettingsPanel)
     const { rules: ignoreRules, addRule: addIgnoreRule, removeRule: removeIgnoreRule } = useIgnoreList();
 
-    const applyEditorTheme = (monacoInstance: Monaco) => {
+    const applyEditorTheme = useCallback((monacoInstance: Monaco) => {
         const root = document.documentElement;
         const getVar = (name: string, fallback: string) => {
             const value = getComputedStyle(root).getPropertyValue(name).trim();
@@ -153,13 +153,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ rawConfig, onSave, i
 
         monacoInstance.editor.setTheme(themeId);
         setEditorTheme(themeId);
-    };
+    }, [theme]);
 
     useEffect(() => {
         if (monacoRef.current) {
             applyEditorTheme(monacoRef.current);
         }
-    }, [theme]);
+    }, [applyEditorTheme]);
 
     // Initial Parse
     useEffect(() => {
@@ -218,7 +218,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ rawConfig, onSave, i
                     // ignore
                 });
         }
-    }, []);
+    }, [rawConfig]);
 
     const handleTabSwitch = (tab: SettingsTab) => {
         if (tab === SettingsTab.JSON) {
@@ -378,7 +378,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ rawConfig, onSave, i
         setGuiConfig(prev => ({ ...prev, activeEnvironment: key }));
     };
 
-    const persistGuiConfig = (config: ApinoxConfig) => {
+    const persistGuiConfig = useCallback((config: ApinoxConfig) => {
         if (!configLoaded) return;
         // Clobber guard: skip the write when nothing changed since the last
         // save. The view snapshots the WHOLE config and, on autosave/unmount,
@@ -389,7 +389,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ rawConfig, onSave, i
         if (JSON.stringify(config) === lastSavedConfigRef.current) return;
         onSave('', config);
         lastSavedConfigRef.current = JSON.stringify(config);
-    };
+    }, [configLoaded, onSave]);
 
     const DEFAULT_CONFIG: ApinoxConfig = {
         version: 1,
@@ -453,7 +453,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ rawConfig, onSave, i
         } else {
             persistRef.current.persistGuiConfig(guiConfigRef.current);
         }
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, []);
 
     useEffect(() => {
         if (!configLoaded) return;
@@ -467,7 +467,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ rawConfig, onSave, i
         }, 400);
 
         return () => clearTimeout(handle);
-    }, [guiConfig, activeTab, configLoaded]);
+    }, [guiConfig, activeTab, configLoaded, persistGuiConfig]);
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>

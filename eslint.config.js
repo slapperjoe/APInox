@@ -59,6 +59,8 @@ module.exports = [
             // style debt, not defects, so they do not gate the build.
             '@typescript-eslint/no-non-null-assertion': 'warn',
             '@typescript-eslint/no-empty-function': 'warn',
+            // Also dropped from recommended in v8. Kept as a warning.
+            '@typescript-eslint/no-inferrable-types': 'warn',
             '@typescript-eslint/no-unused-vars': [
                 'error',
                 { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }
@@ -75,7 +77,13 @@ module.exports = [
         files: ['**/__tests__/**', '**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}'],
         rules: {
             '@typescript-eslint/no-empty-function': 'off',
-            '@typescript-eslint/no-non-null-assertion': 'off'
+            '@typescript-eslint/no-non-null-assertion': 'off',
+            // unifiedProjectContextLoader.test.tsx accumulates the observed phase
+            // sequence during render so the rendered attribute includes the phase
+            // just seen. Moving the push into an effect makes the attribute lag one
+            // render and the assertion fails, so the render-time ref write is
+            // required there.
+            'react-hooks/refs': 'off'
         }
     }
 ];

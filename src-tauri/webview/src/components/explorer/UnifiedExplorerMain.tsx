@@ -570,7 +570,8 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
         } finally {
             activeLoadIdRef.current = null;
         }
-    }, [urlInput.url, urlInput, useProxy, onLoadWsdl]);
+    // urlInput.url is covered by urlInput; listing both is redundant.
+    }, [urlInput, useProxy, onLoadWsdl]);
 
     // R-07 (F-03): a sample card click pre-fills the URL input with the exact
     // doc §5.2 URL (utils/sampleApiCards.ts) and clears any prior load error.

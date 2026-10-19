@@ -215,7 +215,9 @@ export const useWildcardDecorations = (
     } catch (e) {
       debugWarn("Wildcard decoration update failed", e);
     }
-  }, [editor, monaco, value, availableChainVariables, availableEnvVariables]);
+  // `value` is not read here — the function gets the text from the model. It is
+  // the *effect* that needs it, so that typing re-triggers the debounce.
+  }, [editor, monaco, availableChainVariables, availableEnvVariables]);
 
   useEffect(() => {
     // Debounce: fast typing re-triggers this effect per keystroke; running

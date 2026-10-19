@@ -29,7 +29,10 @@ export const SampleRequestPanel: React.FC<SampleRequestPanelProps> = ({
     // interface override > sample/action > SOAP-version default)
     const sampleData = useMemo(() => {
         return generateSampleWithMetadata(operation, interfaceContext ?? null);
-    }, [operation, interfaceContext?.contentType, interfaceContext?.soapVersion]);
+    // The memo uses the whole interfaceContext, not just those two fields, so
+    // depending on expressions (and not the object) would miss changes to any
+    // other field.
+    }, [operation, interfaceContext]);
 
     // Parse XML to tree
     const xmlTree = useMemo(() => {
