@@ -59,6 +59,8 @@ module.exports = [
             // style debt, not defects, so they do not gate the build.
             '@typescript-eslint/no-non-null-assertion': 'warn',
             '@typescript-eslint/no-empty-function': 'warn',
+            // Also dropped from recommended in v8. Kept as a warning.
+            '@typescript-eslint/no-inferrable-types': 'warn',
             '@typescript-eslint/no-unused-vars': [
                 'error',
                 { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }

@@ -170,7 +170,7 @@ export const generateXmlFromSchema = (
     const METADATA_FIELDS = ['targetNSAlias', 'targetNamespace'];
 
     // Helper to recursively build body content from plain object schema
-    const buildBody = (node: Record<string, any> | string | Array<any> | undefined, indent: string = ''): string => {
+    const buildBody = (node: Record<string, any> | string | Array<any> | undefined, indent = ''): string => {
         if (!node) return '';
 
         // Handle simple types (strings, or schema definitions like "xsd:int")
@@ -243,9 +243,9 @@ export const generateXmlFromSchemaNode = (
     const MAX_XML_DEPTH = 64;
     const buildFromNode = (
         node: SchemaNode,
-        indent: string = '',
+        indent = '',
         path: Set<SchemaNode> = new Set(),
-        depth: number = 0
+        depth = 0
     ): string => {
         if (!node) return '';
         if (depth > MAX_XML_DEPTH) return `${indent}<!--Max depth reached-->`;
@@ -327,7 +327,7 @@ export const generateXmlFromSchemaNode = (
  * @param indent - Indentation string for proper XML formatting
  * @returns XML string with parameter elements
  */
-export const getInitialXml = (input: any, indent: string = '         '): string => {
+export const getInitialXml = (input: any, indent = '         '): string => {
     if (!input || typeof input !== 'object') {
         return '';
     }

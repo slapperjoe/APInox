@@ -70,8 +70,8 @@ function mockInvoke(launchInstaller: () => Promise<void>) {
 
 /** Render, download the update, and click "Run installer". */
 async function reachRunInstaller(
-    runButtonName: RegExp = /run installer/i,
-    downloadButtonName: RegExp = /download update/i
+    runButtonName = /run installer/i,
+    downloadButtonName = /download update/i
 ) {
     render(<UpdatesTab />);
     const downloadBtn = await screen.findByRole('button', { name: downloadButtonName });

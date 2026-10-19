@@ -85,7 +85,7 @@ const convertDomNodeToTree = (node: Node, depth: number): XmlTreeNode => {
 
 export const serializeTreeToXml = (
   node: XmlTreeNode,
-  indent: string = "",
+  indent = "",
 ): string => {
   if (node.type === "text") {
     return node.value || "";
