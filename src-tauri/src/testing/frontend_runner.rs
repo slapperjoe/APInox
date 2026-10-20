@@ -64,6 +64,7 @@ pub async fn run_step(
                 duration_ms: start.elapsed().as_millis() as u64,
                 assertion_results: vec![],
                 extracted_variables: HashMap::new(),
+                schema_issues: Vec::new(),
                 error: None,
                 stop_remaining: false,
             })
@@ -85,6 +86,7 @@ pub async fn run_step(
                 duration_ms: start.elapsed().as_millis() as u64,
                 assertion_results: vec![],
                 extracted_variables: HashMap::new(),
+                schema_issues: Vec::new(),
                 error: if met {
                     None
                 } else {
@@ -113,6 +115,7 @@ pub async fn run_step(
                 duration_ms: duration,
                 assertion_results: vec![],
                 extracted_variables: HashMap::new(),
+                schema_issues: Vec::new(),
                 error,
                 stop_remaining: false,
             })
@@ -158,6 +161,7 @@ pub async fn run_step(
                 duration_ms: 0,
                 assertion_results: vec![],
                 extracted_variables: HashMap::new(),
+                schema_issues: Vec::new(),
                 error: None,
                 stop_remaining: false,
             })
@@ -272,6 +276,7 @@ pub(crate) async fn run_test_case_steps(
         duration_ms: start.elapsed().as_millis() as u64,
         assertion_results: vec![],
         extracted_variables: extracted,
+        schema_issues: Vec::new(),
         error,
         stop_remaining: false,
     }
@@ -287,6 +292,7 @@ fn fail_result(start: Instant, msg: String) -> StepExecutionResult {
         duration_ms: start.elapsed().as_millis() as u64,
         assertion_results: vec![],
         extracted_variables: HashMap::new(),
+        schema_issues: Vec::new(),
         error: Some(msg),
         stop_remaining: false,
     }
@@ -972,6 +978,10 @@ pub(crate) fn build_frontend_request(step: &Value) -> FrontendRequest {
             .get("attachments")
             .and_then(|v| serde_json::from_value::<Vec<SoapAttachment>>(v.clone()).ok())
             .filter(|v| !v.is_empty()),
+        response_schema: step
+            .get("responseSchema")
+            .cloned()
+            .filter(|v| v.is_object()),
     }
 }
 
@@ -1003,6 +1013,7 @@ pub(crate) async fn run_request_step(
             duration_ms: start.elapsed().as_millis() as u64,
             assertion_results: vec![],
             extracted_variables: HashMap::new(),
+            schema_issues: Vec::new(),
             error: Some("No endpoint specified".to_string()),
             stop_remaining: false,
         });
@@ -1115,6 +1126,7 @@ pub(crate) async fn run_request_step(
                 duration_ms,
                 assertion_results: vec![],
                 extracted_variables: HashMap::new(),
+                schema_issues: Vec::new(),
                 error: Some(format!("HTTP request failed: {}", e)),
                 stop_remaining: false,
             });
@@ -1137,6 +1149,24 @@ pub(crate) async fn run_request_step(
         response_body.len()
     );
     log::info!("[FrontendRunner] Response body:\n{}", response_body);
+
+    // Contract check against the OpenAPI schema stored on the request. Reported
+    // only: the step's assertions govern pass/fail, so a violation shows up as a
+    // finding without silently failing a suite that was passing before.
+    let schema_issues = match &req.response_schema {
+        Some(schema) if schema.is_object() =>
+            crate::parsers::schema_validator::validate_body(&response_body, schema),
+        _ => Vec::new(),
+    };
+    if !schema_issues.is_empty() {
+        log::info!(
+            "[FrontendRunner] Response does not match the stored schema: {} issue(s)",
+            schema_issues.len()
+        );
+        for issue in &schema_issues {
+            log::info!("[FrontendRunner]   {}: {}", issue.path, issue.message);
+        }
+    }
 
     // Run assertions
     let assertion_results = run_assertions(
@@ -1172,6 +1202,7 @@ pub(crate) async fn run_request_step(
         duration_ms,
         assertion_results,
         extracted_variables,
+        schema_issues,
         error,
         stop_remaining,
     })

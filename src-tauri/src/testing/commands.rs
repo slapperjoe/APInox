@@ -164,6 +164,7 @@ pub async fn run_test_case(request: RunTestCaseRequest) -> Result<RunTestCaseRes
                                 "statusCode": result.status_code
                             },
                             "assertionResults": result.assertion_results,
+                            "schemaIssues": result.schema_issues,
                             "error": result.error
                         }));
 
@@ -446,6 +447,7 @@ pub async fn run_test_suite(request: RunTestSuiteRequest) -> Result<RunTestSuite
                             "durationMs": result.duration_ms,
                             "statusCode": result.status_code,
                             "assertionResults": result.assertion_results,
+                            "schemaIssues": result.schema_issues,
                             "error": result.error
                         }));
                         if !result.passed {

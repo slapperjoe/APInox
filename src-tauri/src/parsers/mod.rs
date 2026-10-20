@@ -3,6 +3,7 @@
 
 pub mod wsdl;
 pub mod openapi_parser;
+pub mod schema_validator;
 pub mod commands;
 pub mod wsdl_commands;
 pub mod unified_explorer_commands;

@@ -92,6 +92,10 @@ pub struct FrontendRequest {
     /// Attachments (SwA / MTOM / inline Base64), read from disk at send time.
     #[serde(default)]
     pub attachments: Option<Vec<crate::soap::attachments::SoapAttachment>>,
+    /// OpenAPI response schema captured at import. When present, the response
+    /// body is checked against it.
+    #[serde(default)]
+    pub response_schema: Option<serde_json::Value>,
 }
 
 /// Matches TypeScript `Assertion`
@@ -165,6 +169,11 @@ pub struct StepExecutionResult {
     pub duration_ms: u64,
     pub assertion_results: Vec<AssertionResult>,
     pub extracted_variables: HashMap<String, String>,
+    /// Response-contract violations from the OpenAPI schema stored on the
+    /// request. Reported, not enforced: they do not change `passed` — the step's
+    /// assertions govern its outcome.
+    #[serde(default)]
+    pub schema_issues: Vec<crate::parsers::schema_validator::SchemaIssue>,
     pub error: Option<String>,
     /// Set by a FAILED 'condition' step: the caller must stop executing the
     /// remaining steps of its step list. Assertion semantics (user decision):

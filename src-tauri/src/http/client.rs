@@ -87,6 +87,12 @@ pub struct HttpResponse {
     /// M5: true when the response body was truncated at RESPONSE_BODY_LIMIT.
     #[serde(default)]
     pub truncated: bool,
+    /// Response-contract violations found by the JSON Schema subset validator
+    /// (see parsers/schema_validator.rs). Empty when the request carries no
+    /// schema or the body is not JSON — a body the validator cannot read is
+    /// skipped, never guessed at.
+    #[serde(default)]
+    pub schema_issues: Vec<crate::parsers::schema_validator::SchemaIssue>,
 }
 
 pub struct HttpClient;
@@ -135,6 +141,7 @@ impl HttpClient {
                     error: Some(detail),
                     error_kind: Some(kind),
                     truncated: false,
+                    schema_issues: Vec::new(),
                 }
             }
         }
@@ -265,6 +272,7 @@ impl HttpClient {
             error: None,
             error_kind: None,
             truncated,
+            schema_issues: Vec::new(),
         })
     }
 

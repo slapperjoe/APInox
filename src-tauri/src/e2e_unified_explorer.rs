@@ -341,6 +341,7 @@ mod e2e {
             headers.clone(),
             None,
             Some(Uuid::new_v4().to_string()),
+            None,
         )
         .await
         .expect("REST GET should not error");
@@ -354,6 +355,7 @@ mod e2e {
             headers.clone(),
             Some(r#"{"name":"rex"}"#.to_string()),
             Some(Uuid::new_v4().to_string()),
+            None,
         )
         .await
         .expect("REST POST should not error");

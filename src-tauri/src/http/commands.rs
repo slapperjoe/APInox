@@ -28,6 +28,9 @@ pub async fn execute_rest_request(
     // a UUID is generated (the request is then not individually cancellable
     // by the UI, matching the SOAP path's fallback).
     request_id: Option<String>,
+    // The request's stored OpenAPI response schema, when the request came from
+    // an OpenAPI import. Present means the response is checked against it.
+    response_schema: Option<serde_json::Value>,
 ) -> Result<HttpResponse, String> {
     log::info!("Executing REST request: {} {}", method, url);
 
@@ -58,11 +61,18 @@ pub async fn execute_rest_request(
         proxy_password: None,
     };
 
-    let response = client.execute_with_cancel(request, Some(cancel_token)).await;
+    let mut response = client.execute_with_cancel(request, Some(cancel_token)).await;
 
     // R-11: unregister regardless of success/cancel — the entry must not
     // outlive the request.
     REST_CANCEL_TOKENS.lock().unwrap().remove(&request_id);
+
+    // Contract check: only a successful response with a stored schema is
+    // validated, and only when the body parses as JSON.
+    if let (Some(schema), true) = (response_schema.filter(|s| s.is_object()), response.success) {
+        response.schema_issues =
+            crate::parsers::schema_validator::validate_body(&response.body, &schema);
+    }
 
     Ok(response)
 }
