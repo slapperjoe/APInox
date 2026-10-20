@@ -5,7 +5,7 @@
  * Extracted from App.tsx to reduce complexity.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import {
     UnifiedProject,
     ApiInterface,
@@ -474,7 +474,9 @@ export function useTestCaseHandlers({
         });
     }, [selectedTestCase, selectedStep, applyStepUpdate]);
 
-    return {
+    // Memoised so the TestRunnerContext value, which spreads this object, keeps
+    // a stable identity between renders.
+    return useMemo(() => ({
         handleSelectTestSuite,
         handleSelectTestCase,
         handleAddAssertion,
@@ -483,5 +485,9 @@ export function useTestCaseHandlers({
         handleRunTestCaseWrapper,
         handleRunTestSuiteWrapper,
         handleSaveExtractor
-    };
+    }), [
+        handleSelectTestSuite, handleSelectTestCase, handleAddAssertion,
+        handleAddExistenceAssertion, handleGenerateTestSuite,
+        handleRunTestCaseWrapper, handleRunTestSuiteWrapper, handleSaveExtractor
+    ]);
 }

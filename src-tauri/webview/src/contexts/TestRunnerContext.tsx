@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useMemo, ReactNode } from 'react';
 import { useTestCaseHandlers } from '../hooks/useTestCaseHandlers';
 import { useRequestExecution } from '../hooks/useRequestExecution';
 import { useProject } from './ProjectContext';
@@ -321,13 +321,19 @@ export const TestRunnerProvider = ({ children }: { children: ReactNode }) => {
     // But I didn't destructure it above.
     // Let's check useProject usage above.
 
-    return (
-        <TestRunnerContext.Provider value={{
+    // Memoised so consumers keep a stable value identity between renders.
+    const value = useMemo(
+        () => ({
             testExecution,
             setTestExecution,
             ...testCaseHandlers,
             ...requestExecution
-        }}>
+        }),
+        [testExecution, testCaseHandlers, requestExecution]
+    );
+
+    return (
+        <TestRunnerContext.Provider value={value}>
             {children}
         </TestRunnerContext.Provider>
     );

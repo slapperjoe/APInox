@@ -16,7 +16,7 @@
  *   const { activeView, setActiveView, layoutMode, toggleLayout } = useUI();
  */
 
-import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback, useMemo } from 'react';
 import { ApinoxConfig } from '@shared/models';
 import { bridge } from '../utils/bridge';
 
@@ -210,7 +210,10 @@ export function UIProvider({ children }: UIProviderProps) {
     // CONTEXT VALUE
     // -------------------------------------------------------------------------
 
-    const value: UIContextValue = {
+    // Memoised so a state change does not hand every consumer a fresh object
+    // identity (which re-renders all of them). The useState setters are stable,
+    // so they are not deps; only the values that actually change are.
+    const value: UIContextValue = useMemo(() => ({
         // View State - Moved to NavigationContext
 
         // Layout State
@@ -250,7 +253,13 @@ export function UIProvider({ children }: UIProviderProps) {
         setConfigPath,
         configDir,
         setConfigDir
-    };
+    }), [
+        layoutMode, showLineNumbers, inlineElementValues, hideCausalityData,
+        splitRatio, isResizing,
+        showHelp, helpSection, showDevOpsModal, showDebugModal,
+        config, rawConfig, configPath, configDir,
+        toggleLayout, toggleLineNumbers, openHelp, openDebugModal
+    ]);
 
     return (
         <UIContext.Provider value={value}>

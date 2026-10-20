@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
 import { bridge, isTauri } from '../utils/bridge';
 import { PerformanceSuite, PerformanceRequest, ApiRequest } from '@shared/models';
 import { BackendCommand, FrontendCommand } from '@shared/messages';
@@ -521,30 +521,43 @@ export const PerformanceProvider = ({ children }: { children: ReactNode }) => {
         }
     }, [config?.performanceSuites, selectedPerformanceSuiteId, setSelectedPerformanceSuiteId]);
 
+    // Memoised so consumers keep a stable value identity between renders.
+    const value = useMemo(() => ({
+        activeRunId,
+        performanceProgress,
+        coordinatorStatus,
+        expandedPerformanceSuiteIds,
+        handleAddPerformanceSuite,
+        handleDeletePerformanceSuite,
+        handleRunPerformanceSuite,
+        handleStopPerformanceRun,
+        handleSelectPerformanceSuite,
+        handleUpdatePerformanceSuite,
+        handleAddPerformanceRequest,
+        handleAddPerformanceTestCase,
+        handleDeletePerformanceRequest,
+        handleUpdatePerformanceRequest,
+        handleSelectPerformanceRequest,
+        handleStartCoordinator,
+        handleStopCoordinator,
+        handleTogglePerformanceSuiteExpand,
+        setActiveRunId,
+        setPerformanceProgress,
+        setCoordinatorStatus
+    }), [
+        activeRunId, performanceProgress, coordinatorStatus,
+        expandedPerformanceSuiteIds,
+        handleAddPerformanceSuite, handleDeletePerformanceSuite,
+        handleRunPerformanceSuite, handleStopPerformanceRun,
+        handleSelectPerformanceSuite, handleUpdatePerformanceSuite,
+        handleAddPerformanceRequest, handleAddPerformanceTestCase,
+        handleDeletePerformanceRequest, handleUpdatePerformanceRequest,
+        handleSelectPerformanceRequest, handleStartCoordinator,
+        handleStopCoordinator, handleTogglePerformanceSuiteExpand
+    ]);
+
     return (
-        <PerformanceContext.Provider value={{
-            activeRunId,
-            performanceProgress,
-            coordinatorStatus,
-            expandedPerformanceSuiteIds,
-            handleAddPerformanceSuite,
-            handleDeletePerformanceSuite,
-            handleRunPerformanceSuite,
-            handleStopPerformanceRun,
-            handleSelectPerformanceSuite,
-            handleUpdatePerformanceSuite,
-            handleAddPerformanceRequest,
-            handleAddPerformanceTestCase,
-            handleDeletePerformanceRequest,
-            handleUpdatePerformanceRequest,
-            handleSelectPerformanceRequest,
-            handleStartCoordinator,
-            handleStopCoordinator,
-            handleTogglePerformanceSuiteExpand,
-            setActiveRunId,
-            setPerformanceProgress,
-            setCoordinatorStatus
-        }}>
+        <PerformanceContext.Provider value={value}>
             {children}
         </PerformanceContext.Provider>
     );

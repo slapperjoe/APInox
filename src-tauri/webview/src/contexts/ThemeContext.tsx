@@ -5,7 +5,7 @@
  * Automatically detects runtime environment and only applies themes when NOT in VSCode.
  */
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 
 import { themes, ThemeName } from '../styles/themes';
 import { debugLog } from '../utils/logger';
@@ -137,7 +137,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
     }, [theme, isTauriMode]);
 
     // Wrapper to save theme preference
-    const setTheme = (newTheme: ThemeName) => {
+    const setTheme = useCallback((newTheme: ThemeName) => {
         if (!isTauriMode) {
             console.warn('[ThemeContext] Theme switching disabled in VSCode mode');
             return;
@@ -146,17 +146,23 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
         setThemeState(newTheme);
         localStorage.setItem('apinox-theme', newTheme);
         debugLog(`[ThemeContext] Theme changed to`, newTheme);
-    };
+    }, [isTauriMode]);
 
-    const setUIFont = (font: UIFontValue) => {
+    const setUIFont = useCallback((font: UIFontValue) => {
         setUIFontState(font);
         localStorage.setItem('apinox-ui-font', font);
         applyUIFont(font);
         debugLog(`[ThemeContext] UI font changed to`, font);
-    };
+    }, []);
+
+    // Memoised so consumers keep a stable value identity between renders.
+    const value = useMemo(
+        () => ({ theme, setTheme, isTauriMode, monacoTheme, uiFont, setUIFont }),
+        [theme, setTheme, isTauriMode, monacoTheme, uiFont, setUIFont]
+    );
 
     return (
-        <ThemeContext.Provider value={{ theme, setTheme, isTauriMode, monacoTheme, uiFont, setUIFont }}>
+        <ThemeContext.Provider value={value}>
             {children}
         </ThemeContext.Provider>
     );

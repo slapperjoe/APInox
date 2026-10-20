@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, startTransition, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, startTransition, ReactNode } from 'react';
 import { SidebarView } from '@shared/models';
 import { BackendCommand } from '@shared/messages';
 
@@ -24,16 +24,16 @@ export const NavigationProvider = ({ children }: { children: ReactNode }) => {
     const [activeView, _setActiveView] = useState<SidebarView>(SidebarView.UNIFIED_EXPLORER);
     const [sidebarExpanded, setSidebarExpanded] = useState<boolean>(true);
 
-    const toggleSidebar = () => setSidebarExpanded(prev => !prev);
+    const toggleSidebar = useCallback(() => setSidebarExpanded(prev => !prev), []);
 
     // Wrap setActiveView in startTransition to handle lazy-loaded views
     // This prevents "component suspended while responding to synchronous input" errors
     // when switching to views that contain React.lazy components (NotesEditor, ProxyPanel, etc.)
-    const setActiveView = (view: React.SetStateAction<SidebarView>) => {
+    const setActiveView = useCallback((view: React.SetStateAction<SidebarView>) => {
         startTransition(() => {
             _setActiveView(view);
         });
-    };
+    }, []);
 
     // Message Handling
     useEffect(() => {
@@ -74,16 +74,19 @@ export const NavigationProvider = ({ children }: { children: ReactNode }) => {
         };
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
-    }, []);
+    }, [setActiveView]);
+
+    // Memoised so consumers keep a stable value identity between renders.
+    const value = useMemo(() => ({
+        activeView,
+        setActiveView,
+        sidebarExpanded,
+        setSidebarExpanded,
+        toggleSidebar
+    }), [activeView, sidebarExpanded, setActiveView, toggleSidebar]);
 
     return (
-        <NavigationContext.Provider value={{
-            activeView,
-            setActiveView,
-            sidebarExpanded,
-            setSidebarExpanded,
-            toggleSidebar
-        }}>
+        <NavigationContext.Provider value={value}>
             {children}
         </NavigationContext.Provider>
     );

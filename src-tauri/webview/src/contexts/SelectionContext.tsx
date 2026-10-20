@@ -15,7 +15,7 @@
  *   const { selectedRequest, setSelectedRequest, clearSelection } = useSelection();
  */
 
-import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode, useEffect } from 'react';
 import { ApiInterface, ApiOperation, ApiRequest, TestCase, TestStep, TestSuite } from '@shared/models';
 
 // =============================================================================
@@ -239,7 +239,10 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
     // CONTEXT VALUE
     // -------------------------------------------------------------------------
 
-    const value: SelectionContextValue = {
+    // Memoised: an inline object here hands every consumer a fresh identity on
+    // any state change, re-rendering all of them. Stable useState setters are
+    // not deps; the wrapped setters (useCallback) and the values are.
+    const value: SelectionContextValue = useMemo(() => ({
         // Selection State
         selectedInterface,
         selectedOperation,
@@ -267,7 +270,12 @@ export function SelectionProvider({ children }: SelectionProviderProps) {
         // Utilities
         clearSelection,
         clearSubSelection
-    };
+    }), [
+        selectedInterface, selectedOperation, selectedRequestState, selectedStep,
+        selectedTestSuite, selectedTestCase, selectedPerformanceSuiteId,
+        response, loading,
+        setSelectedRequest, setResponse, clearSelection, clearSubSelection
+    ]);
 
     return (
         <SelectionContext.Provider value={value}>

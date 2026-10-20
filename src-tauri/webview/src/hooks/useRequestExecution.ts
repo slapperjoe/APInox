@@ -5,7 +5,7 @@
  * Extracted from App.tsx to reduce complexity.
  */
 
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useMemo } from 'react';
 import { bridge } from '../utils/bridge';
 import { debugLog } from '../utils/logger';
 import { CustomXPathEvaluator } from '../utils/xpathEvaluator';
@@ -461,14 +461,16 @@ export function useRequestExecution({
         }
     }, [selectedRequest, selectedOperation, handleRequestUpdate]);
 
-    return {
+    // Memoised so the TestRunnerContext value, which spreads this object, keeps
+    // a stable identity between renders. The refs are stable, so they are not deps.
+    return useMemo(() => ({
         executeRequest,
         cancelRequest,
         handleRequestUpdate,
         handleResetRequest,
         startTimeRef,
         requestIdRef
-    };
+    }), [executeRequest, cancelRequest, handleRequestUpdate, handleResetRequest]);
 }
 
 // Helper function to recursively update a request in folder structure

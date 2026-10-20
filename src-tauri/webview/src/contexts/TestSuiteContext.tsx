@@ -13,7 +13,7 @@
  * historical `tests/` suites into the global store, then re-loads.
  */
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo, useRef } from 'react';
 import { TestSuite, TestCase } from '@shared/models';
 import { bridge, invokeTauriCommand } from '../utils/bridge';
 import { debugLog } from '../utils/logger';
@@ -164,8 +164,14 @@ export const TestSuiteProvider = ({ children }: { children: ReactNode }) => {
         return null;
     }, [testSuites]);
 
+    // Memoised so consumers keep a stable value identity between renders.
+    const value = useMemo(
+        () => ({ testSuites, loading, addSuite, deleteSuite, updateSuite, updateTestCase, findSuiteById, findCaseById }),
+        [testSuites, loading, addSuite, deleteSuite, updateSuite, updateTestCase, findSuiteById, findCaseById]
+    );
+
     return (
-        <TestSuiteContext.Provider value={{ testSuites, loading, addSuite, deleteSuite, updateSuite, updateTestCase, findSuiteById, findCaseById }}>
+        <TestSuiteContext.Provider value={value}>
             {children}
         </TestSuiteContext.Provider>
     );
