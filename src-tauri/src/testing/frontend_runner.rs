@@ -1118,6 +1118,7 @@ pub(crate) async fn run_request_step(
     let assertion_results = run_assertions(
         req.assertions.as_deref().unwrap_or(&[]),
         &response_body,
+        &response_headers,
         status_code,
         duration_ms,
     );
@@ -1290,15 +1291,20 @@ pub(crate) fn detect_soap_fault(body: &str) -> Option<String> {
 fn run_assertions(
     assertions: &[FrontendAssertion],
     body: &str,
+    headers: &HashMap<String, String>,
     status_code: u16,
     duration_ms: u64,
 ) -> Vec<AssertionResult> {
-    assertions.iter().map(|a| run_assertion(a, body, status_code, duration_ms)).collect()
+    assertions
+        .iter()
+        .map(|a| run_assertion(a, body, headers, status_code, duration_ms))
+        .collect()
 }
 
 fn run_assertion(
     assertion: &FrontendAssertion,
     body: &str,
+    headers: &HashMap<String, String>,
     status_code: u16,
     duration_ms: u64,
 ) -> AssertionResult {
@@ -1391,6 +1397,61 @@ fn run_assertion(
                     name,
                     status: "FAIL".to_string(),
                     message: Some(format!("XPath '{}' returned no results or failed to evaluate", xpath_expr)),
+                },
+            }
+        }
+        "JSONPath Match" => {
+            let expr = config.and_then(|c| c.jsonpath.as_deref()).unwrap_or("");
+            let expected = config.and_then(|c| c.expected_content.as_deref()).unwrap_or("");
+            match JsonPathEvaluator::evaluate(body, expr) {
+                Some(actual) => {
+                    let ok = actual.trim() == expected.trim();
+                    AssertionResult {
+                        name,
+                        status: if ok { "PASS" } else { "FAIL" }.to_string(),
+                        message: if !ok {
+                            Some(format!("JSONPath '{}': got '{}', expected '{}'", expr, actual, expected))
+                        } else {
+                            None
+                        },
+                    }
+                }
+                None => AssertionResult {
+                    name,
+                    status: "FAIL".to_string(),
+                    message: Some(format!(
+                        "JSONPath '{}' returned no results or the response is not JSON",
+                        expr
+                    )),
+                },
+            }
+        }
+        "Header Match" => {
+            let header_name = config.and_then(|c| c.header.as_deref()).unwrap_or("");
+            let expected = config.and_then(|c| c.expected_content.as_deref()).unwrap_or("");
+            match headers
+                .iter()
+                .find(|(k, _)| k.eq_ignore_ascii_case(header_name))
+            {
+                Some((_, actual)) => {
+                    let ok = actual.trim() == expected.trim();
+                    AssertionResult {
+                        name,
+                        status: if ok { "PASS" } else { "FAIL" }.to_string(),
+                        message: if !ok {
+                            Some(format!(
+                                "Header '{}': got '{}', expected '{}'",
+                                header_name, actual, expected
+                            ))
+                        } else {
+                            None
+                        },
+                    }
+                }
+                None => AssertionResult {
+                    name,
+                    status: "FAIL".to_string(),
+                    message: Some(format!("Response has no header '{}'", header_name)),
                 },
             }
         }
@@ -1918,7 +1979,7 @@ mod tests {
                 ..Default::default()
             }),
         };
-        let r = run_assertion(&expect_absent, fault_body, 200, 10);
+        let r = run_assertion(&expect_absent, fault_body, &HashMap::new(), 200, 10);
         assert_eq!(r.status, "FAIL");
         assert!(r.message.as_deref().unwrap().contains("Unexpected SOAP fault"));
     }
@@ -1955,5 +2016,79 @@ mod tests {
         assert_eq!(vars.get("token").map(String::as_str), Some("abc123"));
         assert_eq!(vars.get("missing").map(String::as_str), Some("fallback"));
         assert_eq!(vars.get("trace").map(String::as_str), Some("t-9"));
+    }
+
+    fn assertion(type_: &str, config: AssertionConfiguration) -> FrontendAssertion {
+        FrontendAssertion {
+            assertion_type: type_.to_string(),
+            name: Some(type_.to_string()),
+            configuration: Some(config),
+        }
+    }
+
+    #[test]
+    fn jsonpath_assertion_evaluates_json_and_reports_the_mismatch() {
+        let pass = assertion(
+            "JSONPath Match",
+            AssertionConfiguration {
+                jsonpath: Some("$.data.token".to_string()),
+                expected_content: Some("abc123".to_string()),
+                ..Default::default()
+            },
+        );
+        let r = run_assertion(&pass, r#"{"data":{"token":"abc123"}}"#, &HashMap::new(), 200, 10);
+        assert_eq!(r.status, "PASS");
+
+        let wrong = assertion(
+            "JSONPath Match",
+            AssertionConfiguration {
+                jsonpath: Some("$.data.token".to_string()),
+                expected_content: Some("nope".to_string()),
+                ..Default::default()
+            },
+        );
+        let r = run_assertion(&wrong, r#"{"data":{"token":"abc123"}}"#, &HashMap::new(), 200, 10);
+        assert_eq!(r.status, "FAIL");
+        assert!(r.message.as_deref().unwrap().contains("got 'abc123'"));
+
+        // A JSONPath against an XML body must say so, not pass silently.
+        let xml = assertion(
+            "JSONPath Match",
+            AssertionConfiguration {
+                jsonpath: Some("$.data.token".to_string()),
+                expected_content: Some("abc123".to_string()),
+                ..Default::default()
+            },
+        );
+        let r = run_assertion(&xml, "<Envelope><Body/></Envelope>", &HashMap::new(), 200, 10);
+        assert_eq!(r.status, "FAIL");
+        assert!(r.message.as_deref().unwrap().contains("not JSON"));
+    }
+
+    #[test]
+    fn header_assertion_reads_response_headers_case_insensitively() {
+        let headers = HashMap::from([("X-Trace-Id".to_string(), "t-9".to_string())]);
+        let a = assertion(
+            "Header Match",
+            AssertionConfiguration {
+                header: Some("x-trace-id".to_string()),
+                expected_content: Some("t-9".to_string()),
+                ..Default::default()
+            },
+        );
+        let r = run_assertion(&a, "{}", &headers, 200, 10);
+        assert_eq!(r.status, "PASS");
+
+        let missing = assertion(
+            "Header Match",
+            AssertionConfiguration {
+                header: Some("X-Missing".to_string()),
+                expected_content: Some("x".to_string()),
+                ..Default::default()
+            },
+        );
+        let r = run_assertion(&missing, "{}", &headers, 200, 10);
+        assert_eq!(r.status, "FAIL");
+        assert!(r.message.as_deref().unwrap().contains("no header 'X-Missing'"));
     }
 }

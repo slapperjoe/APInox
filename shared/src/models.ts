@@ -104,12 +104,14 @@ export interface RestConfig {
 }
 
 // Assertion Types
-// The seven values the AssertionsPanel dropdown can actually produce.
+// The nine values the AssertionsPanel dropdown can actually produce.
 export type AssertionType =
     | 'Simple Contains'
     | 'Simple Not Contains'
     | 'Response SLA'
     | 'XPath Match'
+    | 'JSONPath Match'
+    | 'Header Match'
     | 'SOAP Fault'
     | 'HTTP Status'
     | 'Script';
@@ -124,8 +126,10 @@ export interface Assertion {
         token?: string; // For Contains/Not Contains
         ignoreCase?: boolean; // For Contains
         sla?: string; // For SLA (ms)
-        xpath?: string; // For XPath
-        expectedContent?: string; // For XPath
+        xpath?: string; // For XPath Match
+        jsonpath?: string; // For JSONPath Match
+        header?: string; // For Header Match — the header NAME to read
+        expectedContent?: string; // For XPath / JSONPath / Header Match
         // SOAP Fault
         expectFault?: boolean; // true = expect fault, false = expect success
         faultCode?: string; // Optional: e.g. "Client", "Server"

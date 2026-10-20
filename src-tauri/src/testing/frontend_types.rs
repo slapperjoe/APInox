@@ -112,6 +112,10 @@ pub struct AssertionConfiguration {
     pub sla: Option<String>,
     /// For XPath Match
     pub xpath: Option<String>,
+    /// For JSONPath Match
+    pub jsonpath: Option<String>,
+    /// For Header Match — the header NAME to read
+    pub header: Option<String>,
     pub expected_content: Option<String>,
     /// For SOAP Fault
     pub expect_fault: Option<bool>,
