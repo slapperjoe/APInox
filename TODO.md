@@ -9,7 +9,10 @@ This document tracks planned features for APInox, ordered by priority.
 ## 📋 Remaining Work
 
 ### OpenAPI/REST — Response Validation
-- [ ] Response validation against OpenAPI schema
+- [x] Response validation against the stored OpenAPI schema — the import now keeps the resolved response schema per request, and `src-tauri/src/parsers/schema_validator.rs` checks the subset OpenAPI response schemas actually use (type, nullable, enum, required, properties, items). Findings show in the response pane.
+- [ ] Keywords the subset validator does not read (minLength, oneOf, format, …) are skipped rather than judged
+- [ ] A non-JSON response body is skipped, not judged
+- [ ] Validation is reported, not enforced — a violation does not fail a test step
 
 ### Request Chaining — Optional Enhancements
 - [ ] Test data sets (parameterized testing with CSV/JSON input)
