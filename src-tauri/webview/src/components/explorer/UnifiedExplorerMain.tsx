@@ -112,6 +112,39 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
     const [lastExecutedId, setLastExecutedId] = useState<string | null>(null);
     const [editingRequest, setEditingRequest] = useState<ApiRequest | null>(null);
     const [editingXml, setEditingXml] = useState<string>('');
+    /** F-12: the editor's current text, kept authoritative on EVERY write path.
+     *  The React state mirror is coalesced (see handleEditorChange) so a burst of
+     *  keystrokes costs one render instead of one per character; Save and Run read
+     *  the ref, which is never a frame behind. */
+    const editingXmlRef = useRef<string>('');
+    const editorSyncFrameRef = useRef<number | null>(null);
+
+    const applyEditingXml = useCallback((value: string) => {
+        editingXmlRef.current = value;
+        setEditingXml(value);
+    }, []);
+
+    /** Monaco fires onDidChangeModelContent per character. Writing that straight to
+     *  state re-renders this whole subtree per character, so the state mirror is
+     *  coalesced to one update per animation frame. The ref carries the value
+     *  immediately, so nothing downstream can see a stale body. */
+    const handleEditorChange = useCallback((value: string) => {
+        editingXmlRef.current = value;
+        if (editorSyncFrameRef.current !== null) return;
+        editorSyncFrameRef.current = requestAnimationFrame(() => {
+            editorSyncFrameRef.current = null;
+            setEditingXml(editingXmlRef.current);
+        });
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            if (editorSyncFrameRef.current !== null) {
+                cancelAnimationFrame(editorSyncFrameRef.current);
+                editorSyncFrameRef.current = null;
+            }
+        };
+    }, []);
     const [envVariables, setEnvVariables] = useState<Record<string, string>>({});
     /** R-01: last execution failure, surfaced as a banner above the response viewer. */
     const [executeError, setExecuteError] = useState<string | null>(null);
@@ -224,7 +257,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
             // lookup key `editingRequest` would have been cleared).
             if (isScrapbookNode(selectedNode)) return;
             setEditingRequest(null);
-            setEditingXml('');
+            applyEditingXml('');
             return;
         }
         for (const project of projects) {
@@ -232,13 +265,13 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                 for (const req of (op.requests || [])) {
                     if ((req.id || req.name) === selectedNode.id) {
                         setEditingRequest(req);
-                        setEditingXml(req.request || '');
+                        applyEditingXml(req.request || '');
                         return;
                     }
                 }
             }
         }
-    }, [selectedNode, projects]);
+    }, [selectedNode, projects, applyEditingXml]);
 
     // F-14: seed the top-bar endpoint input whenever the selection (or the
     // selected entry's data) changes. `resolveTopBarEndpoint` returning null
@@ -304,7 +337,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
             if (changed) {
                 // Switching entries, or the stored entry changed on the
                 // server side (save / auto-capture): re-seed the editor.
-                setEditingXml(target.request || '');
+                applyEditingXml(target.request || '');
                 setScrapbookEndpoint(target.endpoint || '');
                 scrapbookSyncRef.current = {
                     id: target.id,
@@ -314,11 +347,11 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
             }
         } else {
             setEditingRequest(null);
-            setEditingXml('');
+            applyEditingXml('');
             setScrapbookEndpoint('');
             scrapbookSyncRef.current = { id: null, endpoint: '', body: '' };
         }
-    }, [selectedNode, selectedScrapbook]);
+    }, [selectedNode, selectedScrapbook, applyEditingXml]);
 
     // Find selected entity
     const findSelected = () => {
@@ -597,7 +630,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
             let soapBodyXml = currentXml || req.request || '';
             if (soapBodyXml.trim() === '') {
                 if (editingRequest && (editingRequest.id || editingRequest.name) === reqId) {
-                    soapBodyXml = editingXml || editingRequest.request || '';
+                    soapBodyXml = editingXmlRef.current || editingRequest.request || '';
                 } else {
                     const live = owner?.operation?.requests?.find(r => (r.id || r.name) === reqId);
                     if (live?.request) soapBodyXml = live.request;
@@ -728,7 +761,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
             setIsExecuting(false);
             activeRequestIdRef.current = null;
         }
-    }, [envVariables, persistRequestUpdate, projects, selectedNode, onAfterExecute, editingRequest, editingXml]);
+    }, [envVariables, persistRequestUpdate, projects, selectedNode, onAfterExecute, editingRequest]);
 
     /**
      * R-11 (F-11): cancel the in-flight request from the Cancel button.
@@ -754,13 +787,16 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
 
     const handleSaveRequest = useCallback(async () => {
         if (!editingRequest) return;
+        // F-12: read the ref, not the state mirror — the mirror is coalesced per
+        // frame, so a save immediately after typing must not use a stale body.
+        const xml = editingXmlRef.current;
         // F-01: quick requests save back through the app-level ScrapbookContext
         // (updateRequest → `update_scrapbook_request` → scrapbook.json).
         if (isScrapbookNode(selectedNode) && selectedScrapbook?.id) {
             const sbReq = selectedScrapbook;
             const updated: ScrapbookRequest = {
                 ...sbReq,
-                request: editingXml,
+                request: xml,
                 endpoint: scrapbookEndpoint,
                 lastModified: new Date().toISOString(),
             };
@@ -768,7 +804,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
             try {
                 if (updateScrapbookRequest) {
                     await updateScrapbookRequest(sbReq.id, {
-                        request: editingXml,
+                        request: xml,
                         endpoint: scrapbookEndpoint,
                     });
                 }
@@ -778,10 +814,10 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
             }
             return;
         }
-        editingRequest.request = editingXml;
-        await persistRequestUpdate(editingRequest, editingXml);
+        editingRequest.request = xml;
+        await persistRequestUpdate(editingRequest, xml);
         debugLog('[UnifiedExplorerMain] Request body saved', editingRequest.name);
-    }, [editingRequest, editingXml, persistRequestUpdate, selectedNode, selectedScrapbook, scrapbookEndpoint, updateScrapbookRequest]);
+    }, [editingRequest, persistRequestUpdate, selectedNode, selectedScrapbook, scrapbookEndpoint, updateScrapbookRequest]);
 
     /**
      * Update the quick-request's headers (custom header rows AND the unlocked
@@ -1089,7 +1125,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                         />
                         <button
                             data-testid="unified-topbar-run"
-                            onClick={() => handleExecuteRequest(editingRequest!, editingXml, scrapbookEndpoint)}
+                            onClick={() => handleExecuteRequest(editingRequest!, editingXmlRef.current, scrapbookEndpoint)}
                             disabled={!editingRequest || isExecuting}
                             style={{
                                 padding: '8px 14px',
@@ -1464,7 +1500,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                 value={editingXml}
                                 requestId={editingRequest?.id || editingRequest?.name}
                                 language={editorLanguageForRequest(editingRequest)}
-                                onChange={(value: string) => setEditingXml(value)}
+                                onChange={handleEditorChange}
                                 headers={editingRequest?.headers || {}}
                                 contentType={effectiveContentType(editingRequest)}
                                 onHeadersChange={updateScrapbookRequestHeaders}
@@ -1497,7 +1533,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                 value={editingXml}
                                 requestId={editingRequest?.id || editingRequest?.name}
                                 language={editorLanguageForRequest(editingRequest)}
-                                onChange={(value: string) => setEditingXml(value)}
+                                onChange={handleEditorChange}
                                 headers={editingRequest?.headers || {}}
                                 contentType={resolveEffectiveContentType(selected.request, selected.operation, selected.project.soapVersion)}
                                 onHeadersChange={updateProjectRequestHeaders}
