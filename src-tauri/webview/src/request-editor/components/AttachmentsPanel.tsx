@@ -12,6 +12,7 @@ import {
   Music,
 } from "lucide-react";
 import { debugLog } from "../utils/logger";
+import { pickAttachment } from "../utils/attachmentPicker";
 import { RequestAttachment, AttachmentType } from "../types";
 import { SPACING_XS, SPACING_SM } from "../styles/spacing";
 import { PanelContainer } from "./common/PanelShell";
@@ -201,13 +202,12 @@ export const AttachmentsPanel: React.FC<AttachmentsPanelProps> = ({
 }) => {
   const [isDragging, setIsDragging] = React.useState(false);
 
-  const handleAddClick = useCallback(() => {
-    // TODO: Request file picker from backend
-    // bridge.sendMessage({ command: FrontendCommand.SelectAttachment });
-    debugLog(
-      "[AttachmentsPanel] File picker not yet implemented in standalone package",
-    );
-  }, []);
+  const handleAddClick = useCallback(async () => {
+    const attachment = await pickAttachment(attachments.length);
+    if (!attachment) return;
+    debugLog("[AttachmentsPanel] Attachment added", { name: attachment.name, size: attachment.size });
+    onChange([...attachments, attachment]);
+  }, [attachments, onChange]);
 
   const handleDelete = useCallback(
     (id: string) => {
