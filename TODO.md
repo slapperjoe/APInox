@@ -12,7 +12,6 @@ This document tracks planned features for APInox, ordered by priority.
 - [ ] Response validation against OpenAPI schema
 
 ### Request Chaining — Optional Enhancements
-- [ ] Header extractors (HTTP response headers as variables)
 - [ ] Test data sets (parameterized testing with CSV/JSON input)
 
 ---
@@ -29,7 +28,7 @@ Visual editor for Dev/Test/Prod environments; qny of thoseuick switcher; AES-256
 Response time graphs, load testing (concurrent requests), SLA indicators, CSV/JSON export, historical comparison.
 
 ### Request Chaining / Workflows
-Variable extraction (XPath, JSONPath, Regex), inject into subsequent requests, conditional execution, loops, workflow summary view, variable autocomplete, drag & drop workflow builder.
+Variable extraction (XPath, JSONPath, Regex), header extractors (case-insensitive header lookup), inject into subsequent requests, conditional execution, loops, workflow summary view, variable autocomplete, drag & drop workflow builder. All four types are dispatched by one shared rule (shared/src/utils/extractValue.ts) so the webview runner, the Rust test runner and the performance runner agree; JSONPath and Regex were selectable in the UI but executed as XPath until this was fixed.
 
 ### OpenAPI/REST Support
 REST + GraphQL request editor; OpenAPI/Swagger import with auto-generated requests; query/path params; REST auth (Basic, Bearer, API Key).
