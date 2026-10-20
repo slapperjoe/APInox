@@ -2,6 +2,7 @@
 // Handles SOAP envelope building, WS-Security, and SOAP client operations
 
 pub mod client;
+pub mod attachments;
 pub mod ws_security;
 pub mod envelope_builder;
 pub mod commands;

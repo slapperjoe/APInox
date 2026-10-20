@@ -572,6 +572,7 @@ pub fn run() {
             parsers::unified_explorer_commands::rename_unified_operation,
             parsers::unified_explorer_commands::rename_unified_request,
             soap::commands::execute_soap_request,
+            soap::attachments::read_attachment_file,
             soap::commands::cancel_request,
             soap::commands::cancel_all_requests,
             testing::commands::run_test_case,

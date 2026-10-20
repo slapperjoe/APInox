@@ -89,6 +89,9 @@ pub struct FrontendRequest {
     pub headers: Option<HashMap<String, String>>,
     pub assertions: Option<Vec<FrontendAssertion>>,
     pub extractors: Option<Vec<FrontendExtractor>>,
+    /// Attachments (SwA / MTOM / inline Base64), read from disk at send time.
+    #[serde(default)]
+    pub attachments: Option<Vec<crate::soap::attachments::SoapAttachment>>,
 }
 
 /// Matches TypeScript `Assertion`

@@ -2,7 +2,7 @@
 ///
 /// Executes test cases in the TypeScript format (FrontendTestCase) that the
 /// webview sends.
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use once_cell::sync::Lazy;
 use quick_xml::events::Event;
 use quick_xml::Reader;
@@ -21,6 +21,7 @@ static TEST_CLIENT: Lazy<Client> = Lazy::new(Client::new);
 /// cap for payloads that bypass it (sync mode, hand-built requests).
 pub(crate) const MAX_REFERENCE_DEPTH: u32 = 10;
 
+use crate::soap::attachments::{build_multipart, SoapAttachment};
 use crate::utils::{JsonPathEvaluator, RegexExtractor, XPathEvaluator, WildcardProcessor, substitute_variables, CONTENT_TYPE_XML};
 
 use super::frontend_types::{
@@ -967,6 +968,10 @@ pub(crate) fn build_frontend_request(step: &Value) -> FrontendRequest {
         } else {
             Some(extractors)
         },
+        attachments: step
+            .get("attachments")
+            .and_then(|v| serde_json::from_value::<Vec<SoapAttachment>>(v.clone()).ok())
+            .filter(|v| !v.is_empty()),
     }
 }
 
@@ -1026,6 +1031,10 @@ pub(crate) async fn run_request_step(
         _ => client.post(&endpoint),
     };
 
+    let attachments: &[SoapAttachment] = req.attachments.as_deref().unwrap_or(&[]);
+    let (wire_body, multipart_type) = build_multipart(&body, attachments).map_err(|e| anyhow!(e))?;
+    let wire_len = wire_body.len();
+
     // Apply extra headers from the request config. Names/values are resolved
     // through the step template (see apply_header_substitution) so workflow
     // variables work in header values too; blank names are skipped there and
@@ -1038,9 +1047,13 @@ pub(crate) async fn run_request_step(
         applied_headers = kept;
         for (k, v) in &applied_headers {
             if k.eq_ignore_ascii_case("content-type") {
-                // Override the default Content-Type we set above
-                builder = builder.header("Content-Type", v.as_str());
-                content_type_overridden = true;
+                if multipart_type.is_empty() {
+                    // Override the default Content-Type we set above
+                    builder = builder.header("Content-Type", v.as_str());
+                    content_type_overridden = true;
+                }
+                // A multipart body carries its own boundary, so a stored
+                // Content-Type cannot be used; it is set from the assembly below.
             } else {
                 builder = builder.header(k.as_str(), v.as_str());
             }
@@ -1053,13 +1066,16 @@ pub(crate) async fn run_request_step(
         }
     }
 
-    if !content_type_overridden {
+    if !multipart_type.is_empty() {
+        builder = builder.header("Content-Type", &multipart_type);
+        applied_headers.push(("Content-Type".to_string(), multipart_type.clone()));
+    } else if !content_type_overridden {
         builder = builder.header("Content-Type", &content_type);
         applied_headers.push(("Content-Type".to_string(), content_type.clone()));
     }
 
     if method != "GET" && method != "DELETE" {
-        builder = builder.body(body.clone());
+        builder = builder.body(wire_body);
     }
 
     // Log exactly what is about to go out on the wire: the effective
@@ -1069,10 +1085,18 @@ pub(crate) async fn run_request_step(
     // checked against what was actually sent — the single-run SOAP path
     // already logs `Request body:` (soap/client.rs).
     log::info!(
-        "[FrontendRunner] {} {} (body {} bytes)",
+        "[FrontendRunner] {} {} (body {} bytes{})",
         method,
         endpoint,
-        body.len()
+        wire_len,
+        if multipart_type.is_empty() {
+            String::new()
+        } else {
+            format!(
+                " as multipart, {} part(s)",
+                attachments.iter().filter(|a| a.enabled.unwrap_or(true)).count()
+            )
+        }
     );
     for (k, v) in &applied_headers {
         log::info!("[FrontendRunner] Request header: {}: {}", k, v);

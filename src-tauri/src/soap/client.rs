@@ -8,6 +8,7 @@ use quick_xml::Reader;
 use std::sync::Arc;
 
 use super::{EnvelopeBuilder, SoapVersion};
+use super::attachments::{build_multipart, SoapAttachment};
 use super::ws_security::WsSecurityConfig;
 use crate::parsers::wsdl::types::ServiceOperation;
 use crate::http::client::{CancelToken, read_capped_body};
@@ -95,6 +96,7 @@ impl SoapClient {
         security: Option<WsSecurityConfig>,
         endpoint_override: Option<String>,
         content_type_override: Option<&str>,
+        attachments: &[SoapAttachment],
         cancel_token: Option<Arc<CancelToken>>,
     ) -> Result<SoapResponse> {
         // Build the SOAP envelope
@@ -116,11 +118,18 @@ impl SoapClient {
             .ok_or_else(|| anyhow!("No endpoint specified for operation"))?;
 
         // Prepare headers
-        let content_type = content_type_override.unwrap_or_else(|| soap_version.content_type());
+        let (body, multipart_type) = build_multipart(&envelope, attachments).map_err(|e| anyhow!(e))?;
+        let content_type = if multipart_type.is_empty() {
+            content_type_override
+                .unwrap_or_else(|| soap_version.content_type())
+                .to_string()
+        } else {
+            multipart_type
+        };
         let mut request = self.http_client
             .post(&endpoint)
-            .header("Content-Type", content_type)
-            .body(envelope.clone());
+            .header("Content-Type", &content_type)
+            .body(body);
 
         // Add SOAPAction header for SOAP 1.1
         if soap_version == SoapVersion::Soap11 {
@@ -201,6 +210,7 @@ impl SoapClient {
             security,
             endpoint_override,
             content_type_override,
+            &[],
             None,
         )
         .await
@@ -214,14 +224,22 @@ impl SoapClient {
         endpoint: &str,
         soap_action: Option<&str>,
         content_type_override: Option<&str>,
+        attachments: &[SoapAttachment],
         cancel_token: Option<Arc<CancelToken>>,
     ) -> Result<SoapResponse> {
-        let content_type = content_type_override.unwrap_or_else(|| soap_version.content_type());
+        let (body, multipart_type) = build_multipart(raw_envelope, attachments).map_err(|e| anyhow!(e))?;
+        let content_type = if multipart_type.is_empty() {
+            content_type_override
+                .unwrap_or_else(|| soap_version.content_type())
+                .to_string()
+        } else {
+            multipart_type
+        };
 
         let mut request = self.http_client
             .post(endpoint)
-            .header("Content-Type", content_type)
-            .body(raw_envelope.to_string());
+            .header("Content-Type", &content_type)
+            .body(body);
 
         if soap_version == SoapVersion::Soap11 {
             let action = soap_action.unwrap_or("");
@@ -289,6 +307,7 @@ impl SoapClient {
             endpoint,
             soap_action,
             content_type_override,
+            &[],
             None,
         )
         .await

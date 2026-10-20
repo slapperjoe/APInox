@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex};
 use once_cell::sync::Lazy;
 
 use crate::soap::{SoapVersion, SoapClient, WsSecurityConfig, UsernameToken, PasswordType};
+use crate::soap::attachments::SoapAttachment;
 use crate::parsers::wsdl::types::ServiceOperation;
 use crate::utils::WildcardProcessor;
 use crate::http::client::CancelToken;
@@ -44,6 +45,10 @@ pub struct ExecuteSoapRequest {
     /// exactly this in-flight request.
     #[serde(default)]
     pub request_id: Option<String>,
+    /// Attachments (SwA / MTOM / inline Base64). The model stores the path; the
+    /// file is read at send time, so a stale project blob cannot send stale bytes.
+    #[serde(default)]
+    pub attachments: Vec<SoapAttachment>,
 }
 
 /// Response from SOAP execution
@@ -223,6 +228,7 @@ async fn execute_soap_request_inner(
             &processed_endpoint,
             request.operation.action.as_deref(),
             content_type_override.as_deref(),
+            &request.attachments,
             cancel_token,
         ).await
     } else if request
@@ -242,6 +248,7 @@ async fn execute_soap_request_inner(
             security,
             request.endpoint,
             content_type_override.as_deref(),
+            &request.attachments,
             cancel_token,
         ).await
     } else {
