@@ -28,6 +28,16 @@ export const DEBOUNCE_MS = 300;
 export const TREE_NAV_DELAY_MS = 100;
 
 // ---------------------------------------------------------------------------
+// List caps
+// ---------------------------------------------------------------------------
+
+/** Cap on the in-memory traffic list. The proxy emits one event per exchange
+ *  and every entry renders as a DOM row, so an uncapped array grows for the
+ *  whole session. Newest entries are kept — the traffic list renders
+ *  newest-first — and the oldest are dropped. */
+export const MAX_TRAFFIC_LOGS = 1000;
+
+// ---------------------------------------------------------------------------
 // UI interaction delays (milliseconds)
 // ---------------------------------------------------------------------------
 

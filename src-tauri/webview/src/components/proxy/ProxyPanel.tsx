@@ -6,6 +6,7 @@ import { TrafficDetails } from './TrafficDetails';
 import { BreakpointsPage } from './BreakpointsPage';
 import { useIgnoreList } from '../../utils/useIgnoreList';
 import { bridge } from '../../utils/bridge';
+import { MAX_TRAFFIC_LOGS } from '../../constants';
 import { tokens } from './tokens';
 
 const SPLIT_KEY = 'apinox-traffic-split-px';
@@ -67,9 +68,15 @@ export function ProxyPanel({ onNavigateTo, onAddToApinoxProject, onCreateTestCas
     window.addEventListener('mouseup', onUp);
   }, [splitPx]);
 
+  // The list is capped at MAX_TRAFFIC_LOGS: every entry renders as a DOM row, so
+  // an uncapped array grows for the whole session and the scroll container gets
+  // heavy. Newest entries are kept — the traffic list renders newest-first.
   useEffect(() => {
     const unlisten = listen<TrafficLog>('traffic-event', (event) => {
-      setLogs(prev => [...prev, event.payload]);
+      setLogs(prev => {
+        const next = [...prev, event.payload];
+        return next.length > MAX_TRAFFIC_LOGS ? next.slice(next.length - MAX_TRAFFIC_LOGS) : next;
+      });
     });
     return () => { unlisten.then(fn => fn()); };
   }, []);
