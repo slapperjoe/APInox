@@ -74,7 +74,7 @@ describe('scrapbook capture contract (R-03b)', () => {
 
         it('prevents unbounded growth: re-running the same op overwrites the entry', () => {
             // Simulate the Phase-2 hook applying the decision N times.
-            let requests = [entry('GetFoo', 'http://h/s')];
+            const requests = [entry('GetFoo', 'http://h/s')];
             for (let i = 0; i < 5; i++) {
                 const decision = resolveScrapbookCapture(requests, req('GetFoo', 'http://h/s'), 'GetFoo');
                 expect(decision.mode).toBe('update');

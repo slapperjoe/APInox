@@ -258,8 +258,8 @@ export function useTestCaseHandlers({
         }
 
         // Identify Operations (the single target operation)
-        let operationsToProcess: ApiOperation[] = [fullTarget];
-        let baseName = fullTarget.name;
+        const operationsToProcess: ApiOperation[] = [fullTarget];
+        const baseName = fullTarget.name;
 
         // Create Suite
         const newSuite: TestSuite = {

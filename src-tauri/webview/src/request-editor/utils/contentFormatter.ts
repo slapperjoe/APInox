@@ -69,7 +69,7 @@ export function formatContent(
 
     // If prettyPrint is true, format according to language
     if (language === 'xml') {
-        let formatted = formatXml(
+        const formatted = formatXml(
             content,
             settings.alignAttributes,
             settings.inlineValues,

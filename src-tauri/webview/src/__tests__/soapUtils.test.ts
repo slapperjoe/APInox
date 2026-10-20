@@ -247,7 +247,7 @@ describe('soapUtils', () => {
 
         it('should cap runaway depth on a deep chain', () => {
             // Deep non-cyclic chain longer than the depth cap
-            let root: SchemaNode = { name: 'Level0', type: 'tns:L0', kind: 'complex' };
+            const root: SchemaNode = { name: 'Level0', type: 'tns:L0', kind: 'complex' };
             let cur = root;
             for (let i = 1; i < 200; i++) {
                 const next: SchemaNode = { name: `Level${i}`, type: `tns:L${i}`, kind: 'complex' };

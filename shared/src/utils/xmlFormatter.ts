@@ -94,7 +94,7 @@ export function formatXml(xml: string, alignAttributes = false, inlineElementVal
                 const match = token.match(/^<([^\s>]+)([\s\S]*?)(\/?>)$/);
                 if (match) {
                     const tagName = match[1];
-                    let attrsString = match[2];
+                    const attrsString = match[2];
                     const closing = match[3];
 
                     // Every branch below assigns, so the empty initialiser was dead.

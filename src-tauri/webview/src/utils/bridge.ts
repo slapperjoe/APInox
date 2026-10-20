@@ -286,7 +286,7 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
             const headers: Record<string, string> = { ...(message.headers || {}) };
             // REST carries a body only for the body methods
             const hasBody = ['POST', 'PUT', 'PATCH'].includes(method);
-            let body: string | null = hasBody ? (message.xml || null) : null;
+            const body: string | null = hasBody ? (message.xml || null) : null;
 
             const startTime = Date.now();
             const response = await tauriInvoke('execute_rest_request', {
