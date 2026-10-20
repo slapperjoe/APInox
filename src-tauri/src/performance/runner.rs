@@ -8,7 +8,7 @@ use crate::http::client::{CancelToken, HttpClient, HttpRequest};
 use crate::performance::types::{PerformanceRequest, PerformanceResult};
 use crate::testing::frontend_runner::{run_step, MAX_REFERENCE_DEPTH};
 use crate::testing::frontend_types::FrontendTestStep;
-use crate::utils::{substitute_variables, CONTENT_TYPE_XML};
+use crate::utils::{substitute_variables, CONTENT_TYPE_XML, JsonPathEvaluator, RegexExtractor};
 
 /// Execute a single performance request and return a `PerformanceResult`.
 /// M1: an optional cancel token lets abort_performance_suite interrupt an
@@ -66,10 +66,22 @@ pub async fn execute_request(
     let duration = start.elapsed().as_secs_f64() * 1000.0;
 
     for extractor in &req.extractors {
-        if extractor.extractor_type.to_lowercase() == "xpath" {
-            if let Some(value) = extract_xpath(&response_body, &extractor.path) {
-                extracted_values.insert(extractor.variable.clone(), value);
-            }
+        let ty = extractor.extractor_type.to_lowercase();
+        let value = if ty == "header" || extractor.source.as_deref() == Some("header") {
+            resp.headers
+                .iter()
+                .find(|(k, _)| k.eq_ignore_ascii_case(&extractor.path))
+                .map(|(_, v)| v.clone())
+        } else if ty == "jsonpath" {
+            JsonPathEvaluator::evaluate(&response_body, &extractor.path)
+        } else if ty == "regex" {
+            RegexExtractor::extract(&response_body, &extractor.path)
+        } else {
+            extract_xpath(&response_body, &extractor.path)
+        };
+
+        if let Some(value) = value.or_else(|| extractor.default_value.clone()) {
+            extracted_values.insert(extractor.variable.clone(), value);
         }
     }
 

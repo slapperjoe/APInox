@@ -21,7 +21,7 @@ static TEST_CLIENT: Lazy<Client> = Lazy::new(Client::new);
 /// cap for payloads that bypass it (sync mode, hand-built requests).
 pub(crate) const MAX_REFERENCE_DEPTH: u32 = 10;
 
-use crate::utils::{RegexExtractor, XPathEvaluator, WildcardProcessor, substitute_variables, CONTENT_TYPE_XML};
+use crate::utils::{JsonPathEvaluator, RegexExtractor, XPathEvaluator, WildcardProcessor, substitute_variables, CONTENT_TYPE_XML};
 
 use super::frontend_types::{
     AssertionResult, FrontendAssertion, FrontendExtractor, FrontendRequest,
@@ -1443,6 +1443,10 @@ fn run_extractors(
                 let path = ext.path.as_deref().unwrap_or("");
                 RegexExtractor::extract(body, path)
             }
+            "JSONPath" => {
+                let path = ext.path.as_deref().unwrap_or("");
+                JsonPathEvaluator::evaluate(body, path)
+            }
             "Header" => {
                 let name = ext.path.as_deref().unwrap_or("");
                 // Case-insensitive header lookup
@@ -1917,5 +1921,39 @@ mod tests {
         let r = run_assertion(&expect_absent, fault_body, 200, 10);
         assert_eq!(r.status, "FAIL");
         assert!(r.message.as_deref().unwrap().contains("Unexpected SOAP fault"));
+    }
+
+    fn extractor(
+        variable: &str,
+        type_: &str,
+        source: &str,
+        path: &str,
+        default: Option<&str>,
+    ) -> FrontendExtractor {
+        FrontendExtractor {
+            id: "ext".to_string(),
+            variable: variable.to_string(),
+            extractor_type: Some(type_.to_string()),
+            source: Some(source.to_string()),
+            path: Some(path.to_string()),
+            default_value: default.map(|s| s.to_string()),
+        }
+    }
+
+    #[test]
+    fn jsonpath_extractors_are_not_run_as_xpath() {
+        let vars = run_extractors(
+            &[
+                extractor("token", "JSONPath", "body", "$.data.token", None),
+                extractor("missing", "JSONPath", "body", "$.nope", Some("fallback")),
+                extractor("trace", "Header", "header", "x-trace-id", None),
+            ],
+            r#"{"data":{"token":"abc123"}}"#,
+            &HashMap::from([("X-Trace-Id".to_string(), "t-9".to_string())]),
+        );
+
+        assert_eq!(vars.get("token").map(String::as_str), Some("abc123"));
+        assert_eq!(vars.get("missing").map(String::as_str), Some("fallback"));
+        assert_eq!(vars.get("trace").map(String::as_str), Some("t-9"));
     }
 }

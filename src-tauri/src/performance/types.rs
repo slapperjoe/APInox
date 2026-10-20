@@ -95,6 +95,13 @@ pub struct RequestExtractor {
     #[serde(rename = "type")]
     pub extractor_type: String,
     pub path: String,
+    /// Which part of the response the path reads. Defaults to body; "header"
+    /// makes `path` a header name.
+    #[serde(default)]
+    pub source: Option<String>,
+    /// Used when extraction finds nothing.
+    #[serde(default)]
+    pub default_value: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -24,6 +24,7 @@ where
 }
 
 pub mod regex_extractor;
+pub mod jsonpath_evaluator;
 pub mod wildcard_processor;
 pub mod xpath_evaluator;
 pub mod body_reader;
@@ -34,6 +35,7 @@ pub mod proxy_guard;
 pub mod template;
 
 pub use regex_extractor::RegexExtractor;
+pub use jsonpath_evaluator::JsonPathEvaluator;
 pub use wildcard_processor::WildcardProcessor;
 pub use xpath_evaluator::XPathEvaluator;
 pub use body_reader::{read_body, SpooledBody};
