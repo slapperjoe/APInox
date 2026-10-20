@@ -82,11 +82,13 @@ export function BreakpointsPage({ initialRule, onInitialRuleConsumed }: {
     return () => { unlisten.then(fn => fn()); };
   }, []);
 
-  // Tick every 500 ms to drive progress bars
+  // Tick every 500 ms to drive progress bars — only while the queue has items.
+  // An idle breakpoints page was re-rendering twice a second for nothing.
   useEffect(() => {
+    if (queue.length === 0) return;
     tickRef.current = setInterval(() => setNow(Date.now()), 500);
     return () => { if (tickRef.current) clearInterval(tickRef.current); };
-  }, []);
+  }, [queue.length]);
 
   // Auto-continue or auto-drop timed-out items
   useEffect(() => {

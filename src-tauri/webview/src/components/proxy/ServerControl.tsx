@@ -8,6 +8,15 @@ import { ProxySetupGuide } from './ProxySetupGuide';
 type ProxyMode = 'proxy' | 'mock' | 'both' | 'sniffer' | 'sniffer-mock';
 type SetupTab = 'env' | 'httpclient' | 'iisexpress' | 'wcf';
 
+/** The status polls hand the component a fresh object every tick, which
+ *  re-renders even when nothing changed. Compare before committing so an
+ *  unchanged status costs nothing. */
+function unchanged<T>(prev: T, next: T): boolean {
+  if (prev === next) return true;
+  if (!prev || !next) return false;
+  return JSON.stringify(prev) === JSON.stringify(next);
+}
+
 interface ServerControlProps {
   onStatusChange?: (info: { running: boolean; port: number; mode: string }) => void;
 }
@@ -50,7 +59,7 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
     if (operationInProgress.current) return;
     try {
       const s = await invokeTauriCommand<any>('get_proxy_status');
-      setStatus(s);
+      setStatus(prev => unchanged(prev, s) ? prev : s);
       setProxyEnabled(s.running);
       if (s.port) setProxyPort(s.port);
       if (s.running && s.targetUrl !== undefined) setTargetUrl(s.targetUrl);
@@ -77,7 +86,7 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
   async function loadSysProxyStatus() {
     try {
       const s = await invokeTauriCommand<SystemProxyStatus>('get_system_proxy_status');
-      setSysProxyStatus(s);
+      setSysProxyStatus(prev => unchanged(prev, s) ? prev : s);
     } catch (err: any) {
       console.error('[Sniffer] Failed to load system proxy status:', err);
     }

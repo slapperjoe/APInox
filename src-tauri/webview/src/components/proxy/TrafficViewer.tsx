@@ -591,23 +591,17 @@ const TrafficRow = React.memo(function TrafficRow({ log, isSelected, onClick, on
   onClick: (l: TrafficLog) => void;
   onContextMenu: (e: React.MouseEvent, l: TrafficLog) => void;
 }) {
-  const [hovered, setHovered] = useState(false);
   const ss = statusStyle(log.status);
   const path = extractPath(log.url);
   const soapAction = extractSoapAction(log);
+  // Hover highlight lives in CSS (.traffic-row:hover in index.css) — no per-row
+  // hovered state, and no inline background here so the :hover rule can apply.
   return (
     <div
+      className={`traffic-row${isSelected ? ' is-selected' : ''}`}
       onClick={() => onClick(log)}
       onContextMenu={(e) => onContextMenu(e, log)}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
       title={log.url}
-      style={{
-        padding: '8px 12px',
-        cursor: 'pointer',
-        background: isSelected ? tokens.surface.active : hovered ? tokens.surface.stripe : 'transparent',
-        borderBottom: `1px solid ${tokens.surface.elevated}`,
-      }}
     >
       {/* Line 1: method badge + path (no hostname) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: soapAction ? 2 : 4 }}>

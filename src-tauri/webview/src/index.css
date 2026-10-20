@@ -36,11 +36,17 @@
 
     /* Font-weight tokens (UI consistency audit): use var(--fw-*) instead of
      * raw numbers or the `bold` keyword. 400 body, 500 interactive text,
-     * 600 secondary labels, 700 section titles / headings. */
+     * 600 secondary labels, 700 section titles / headings.
+     *
+     * --fw-bold resolves to 600, NOT 700: the bundled Fira Code ships only
+     * Regular/Medium/SemiBold (400/500/600), so a 700 request has no real face
+     * and the browser synthesizes a fake bold — thick and mushy, which is what
+     * made the UI read heavy. If a real 700 face is ever bundled, restore this
+     * to 700 and the 48 usage sites pick it up with no code change. */
     --fw-regular: 400;
     --fw-medium: 500;
     --fw-semibold: 600;
-    --fw-bold: 700;
+    --fw-bold: 600;
 
     /* Terminal / code-console palette — intentionally theme-independent:
      * a script console keeps its dark look in every theme (VS Code does the
@@ -376,6 +382,25 @@ code,
 @keyframes apinox-badge-pulse {
     0%, 100% { opacity: 1; transform: scale(1); }
     50%      { opacity: 0.4; transform: scale(0.75); }
+}
+
+/* Traffic list row. Hover is CSS, not React state: a per-row
+   `const [hovered, setHovered]` fired a render on every mouse move across the
+   list. The row carries no inline background — an inline background outranks the
+   :hover rule, so the highlight would silently never render. */
+.traffic-row {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--apinox-surface-elevated, #2d2d30);
+    background: transparent;
+}
+
+.traffic-row:hover {
+    background: var(--apinox-editor-lineHighlightBackground, #2a2d2e);
+}
+
+.traffic-row.is-selected {
+    background: var(--apinox-list-activeSelectionBackground, #37373d);
 }
 
 /* Hamburger for narrow desktop windows — fixed overlay sitting in the TitleBar */

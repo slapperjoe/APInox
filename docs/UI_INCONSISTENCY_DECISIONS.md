@@ -61,6 +61,12 @@ index.css value; `tokens.ts` uses the var instead of its own `-apple-system` sta
 **Introduce font-weight tokens** `--fw-regular`/`--fw-medium`/`--fw-semibold`/`--fw-bold`
 (400/500/600/700), used via `var()` everywhere. Replace every `bold` with the bold token.
 
+Follow-up: `--fw-bold` now resolves to **600**, not 700. The bundled Fira Code ships only
+Regular/Medium/SemiBold (400/500/600), so a 700 request has no real face and the browser
+synthesizes a fake bold — thick and mushy, the source of the "this reads heavy" complaint.
+The token keeps its meaning (heaviest available face); the ~48 usage sites are unchanged and
+pick up a real 700 automatically if that face is ever bundled.
+
 ### 11. Spacing
 **One scale: `styles/spacing.ts` is the single TS source.** Re-derive the `--space-*` CSS
 vars to the same values (4/8/12/16/20/24/32). Delete `tokens.space`. Migrate 6px and 10px
