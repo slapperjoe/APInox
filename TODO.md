@@ -22,7 +22,7 @@ This document tracks planned features for APInox, ordered by priority.
 Return canned responses for operations — define per-operation mocks, match by URL/XPath/regex, latency simulation, passthrough for unmatched requests.
 
 ### Environment Variables
-Visual editor for Dev/Test/Prod environments; qny of thoseuick switcher; AES-256-GCM encrypted secrets; `{{variable}}` resolution in requests; import/export.
+Visual editor for Dev/Test/Prod environments; quick switcher; AES-256-GCM encrypted secrets; `{{variable}}` resolution in requests; import/export.
 
 ### Performance Metrics
 Response time graphs, load testing (concurrent requests), SLA indicators, CSV/JSON export, historical comparison.
