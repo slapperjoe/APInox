@@ -41,8 +41,26 @@ const ReadOnlyField = styled.div`
     font-size: 12px;
 `;
 
-const ContentTypeSelect = styled.select`
+const ContentTypeValue = styled.div`
     flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: ${SPACING_SM};
+`;
+
+const CustomContentTypeValue = styled.div`
+    flex: 1;
+    min-width: 0;
+    display: flex;
+`;
+
+const ContentTypeSelect = styled.select<{ $custom?: boolean }>`
+    /* The dropdown takes the remaining space. When "Other…" is active the
+       header name keeps its size and the dropdown is the thing that shrinks —
+       it keeps just enough width for its current value and the text box gets
+       the rest. */
+    flex: ${props => (props.$custom ? '0 0 140px' : '1')};
     min-width: 0;
     padding: 6px ${SPACING_SM};
     background: var(--apinox-input-background);
@@ -230,15 +248,18 @@ const HeadersPanelBase: React.FC<HeadersPanelProps> = ({
 
             {/* Content-Type row — the only place Content-Type is chosen. The
                 header name is fixed; the value is a dropdown of the common
-                types, and "Other…" turns it into a free-text value. */}
+                types, and "Other…" turns it into a free-text value. The name
+                column keeps its width in both states: the dropdown is what
+                shrinks when the text box appears. */}
             <HeaderRow>
                 <PanelFlexColumn>
                     <ReadOnlyField title="Content-Type (fixed header name)">
                         Content-Type
                     </ReadOnlyField>
                 </PanelFlexColumn>
-                <PanelFlexColumn>
+                <ContentTypeValue>
                     <ContentTypeSelect
+                        $custom={showCustomInput}
                         aria-label="Content-Type"
                         title="Content-Type sent with this request"
                         value={showCustomInput ? CONTENT_TYPE_OTHER : currentContentType}
@@ -249,18 +270,18 @@ const HeadersPanelBase: React.FC<HeadersPanelProps> = ({
                         ))}
                         <option value={CONTENT_TYPE_OTHER}>Other…</option>
                     </ContentTypeSelect>
-                </PanelFlexColumn>
-                {showCustomInput && (
-                    <PanelFlexColumn>
-                        <MonacoSingleLineInput
-                            value={currentContentType}
-                            onChange={setContentType}
-                            placeholder="Custom Content-Type"
-                            availableVariables={availableVariables}
-                            availableEnvVariables={availableEnvVariables}
-                        />
-                    </PanelFlexColumn>
-                )}
+                    {showCustomInput && (
+                        <CustomContentTypeValue>
+                            <MonacoSingleLineInput
+                                value={currentContentType}
+                                onChange={setContentType}
+                                placeholder="Custom Content-Type"
+                                availableVariables={availableVariables}
+                                availableEnvVariables={availableEnvVariables}
+                            />
+                        </CustomContentTypeValue>
+                    )}
+                </ContentTypeValue>
             </HeaderRow>
             <HintText>
                 {showCustomInput
