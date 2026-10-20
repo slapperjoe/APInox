@@ -212,6 +212,20 @@ export const WorkspaceLayout: React.FC = () => {
         }
     }, [activeView, selectedTestCase, selectedStep, testExecution]);
 
+    // Projection of the above into the package view's variable shape. Mapping it
+    // inline produced a NEW array on every render, which re-triggered each
+    // single-line input's layout effect — rebuilding its decorated spans and
+    // destroying the caret and selection the user was working with. Memoised so
+    // the identity only changes when the variables themselves change.
+    const packageVariables = React.useMemo(
+        () => availableVariables.map(v => ({
+            name: v.name,
+            value: v.value,
+            source: v.source
+        })) as PackageVariable[],
+        [availableVariables]
+    );
+
     // Environment/global variables for {{...}} tooltips in the single-line inputs.
     // Deps are plain bindings rather than `config?.x` expressions — a memo cannot
     // depend on a computed expression and still be preserved.
@@ -895,11 +909,7 @@ export const WorkspaceLayout: React.FC = () => {
                 onReset={onReset}
                 readOnly={preventEditing}
                 defaultEndpoint={defaultEndpoint}
-                availableVariables={availableVariables.map(v => ({
-                    name: v.name,
-                    value: v.value,
-                    source: v.source
-                }) as PackageVariable)}
+                availableVariables={packageVariables}
                 availableEnvVariables={availableEnvVariables as any}
                 showBreadcrumb={false}
                 breadcrumbPath={[]}

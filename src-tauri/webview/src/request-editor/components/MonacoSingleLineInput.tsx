@@ -360,6 +360,12 @@ export const MonacoSingleLineInputBase = forwardRef<
   const elRef = useRef<HTMLDivElement>(null);
   const caretOffsetRef = useRef<number | null>(null);
   const popupRef = useRef<HTMLDivElement>(null);
+  /** True when the pending value came from THIS element's own typing. */
+  const selfChangeRef = useRef(false);
+  /** The HTML last written to the element — compared against the freshly
+   *  generated HTML so a parent re-render that hands the same value (or a fresh
+   *  variables array with the same contents) does not rebuild the DOM. */
+  const lastHtmlRef = useRef<string>('');
   const [popup, setPopup] = useState<PopupState | null>(null);
 
   // Re-render the decorated content when the value changes externally, then
@@ -367,8 +373,20 @@ export const MonacoSingleLineInputBase = forwardRef<
   useLayoutEffect(() => {
     const el = elRef.current;
     if (!el) return;
-    el.innerHTML = renderDecoratedHTML(value, availableVariables, availableEnvVariables);
-    if (caretOffsetRef.current != null) {
+    // Skip the rebuild when the change originated from this element's own typing:
+    // the DOM already shows the text, and replacing innerHTML destroys the caret
+    // AND the user's selection — the reason text selection felt laggy here. The
+    // unchanged-HTML check covers a parent re-render that hands the component a
+    // fresh variables array: nothing to rebuild, so the selection survives.
+    if (selfChangeRef.current) {
+      selfChangeRef.current = false;
+      return;
+    }
+    const html = renderDecoratedHTML(value, availableVariables, availableEnvVariables);
+    if (html === lastHtmlRef.current) return;
+    lastHtmlRef.current = html;
+    el.innerHTML = html;
+    if (caretOffsetRef.current != null && document.activeElement === el) {
       setCaretOffset(el, caretOffsetRef.current);
     }
   }, [value, availableVariables, availableEnvVariables]);
@@ -427,6 +445,11 @@ export const MonacoSingleLineInputBase = forwardRef<
   // Caret moves (arrow keys, clicks) fire no input event, so the popup would
   // linger after the caret leaves the open template. Re-detect on
   // selectionchange while the selection is inside this input.
+  // Attached only while THIS input is focused: Monaco's hidden textarea updates its
+  // selection on every cursor/selection change, which fires a document-level
+  // selectionchange — with ~10 single-line inputs mounted, every one of them ran a
+  // getSelection + contains + regex check per event. Only the focused element can
+  // own a DOM selection, so one listener is enough.
   useEffect(() => {
     const el = elRef.current;
     if (!el) return;
@@ -437,8 +460,16 @@ export const MonacoSingleLineInputBase = forwardRef<
       caretOffsetRef.current = getCaretOffset(el);
       detectPopup();
     };
-    document.addEventListener("selectionchange", onSelectionChange);
-    return () => document.removeEventListener("selectionchange", onSelectionChange);
+    const attach = () => document.addEventListener("selectionchange", onSelectionChange);
+    const detach = () => document.removeEventListener("selectionchange", onSelectionChange);
+    if (document.activeElement === el) attach();
+    el.addEventListener("focus", attach);
+    el.addEventListener("blur", detach);
+    return () => {
+      detach();
+      el.removeEventListener("focus", attach);
+      el.removeEventListener("blur", detach);
+    };
   }, [detectPopup]);
 
   // Keep the active row visible in the height-clamped popup when arrow-key
@@ -480,6 +511,9 @@ export const MonacoSingleLineInputBase = forwardRef<
     const raw = el.textContent || "";
     const clean = raw.replace(/[\r\n]+/g, "");
     caretOffsetRef.current = getCaretOffset(el);
+    // The DOM already shows what the user typed, so the layout effect must not
+    // rebuild it — that would destroy the caret and the selection.
+    selfChangeRef.current = true;
     if (clean !== raw) {
       // Newline stripped: rebuild content so the DOM matches the emitted value.
       el.innerHTML = renderDecoratedHTML(clean, availableVariables, availableEnvVariables);

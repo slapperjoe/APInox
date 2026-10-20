@@ -226,6 +226,9 @@ describe('MonacoSingleLineInput autocomplete popup', () => {
         const el = editable();
         typeAtCaret(el, '{{uu', 4);
         expect(document.querySelector('[data-testid="single-line-autocomplete"]')).not.toBeNull();
+        // The listener is attached only while this input is focused (see the
+        // component), so the test must focus it before dispatching the event.
+        fireEvent.focus(el);
         const sel = window.getSelection();
         const range = document.createRange();
         range.setStart(el.firstChild as Node, 0);
@@ -244,5 +247,23 @@ describe('MonacoSingleLineInput autocomplete popup', () => {
         typeAtCaret(el, '{{', 2);
         fireEvent.keyDown(el, { key: 'ArrowDown' });
         expect(scrollSpy).toHaveBeenCalled();
+    });
+
+    it('does not rebuild the decorated DOM when a re-render hands the same value', () => {
+        const vars = [{ name: 'a', value: '1', source: 'environment' }];
+        const { rerender } = render(
+            <MonacoSingleLineInput value="x{{a}}y" onChange={() => {}} availableEnvVariables={vars} />
+        );
+        const token = document.querySelector('.wildcard-tag-text');
+        expect(token).not.toBeNull();
+
+        // A parent re-render with the same value and an equivalent-but-fresh
+        // variables array must not replace the element's children: that rebuild
+        // destroyed the caret and the user's selection. Same node identity proves
+        // the guard held.
+        rerender(
+            <MonacoSingleLineInput value="x{{a}}y" onChange={() => {}} availableEnvVariables={[...vars]} />
+        );
+        expect(document.querySelector('.wildcard-tag-text')).toBe(token);
     });
 });

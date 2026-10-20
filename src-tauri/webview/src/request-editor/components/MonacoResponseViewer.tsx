@@ -89,6 +89,13 @@ const MonacoResponseViewerBase: React.FC<MonacoResponseViewerProps> = ({
                     lineNumbers: showLineNumbers ? 'on' : 'off',
                     renderLineHighlight: 'none',
                     contextmenu: true,
+                    // Monaco defaults this to true: every selection change scans the
+                    // whole model for occurrences of the selected text and renders a
+                    // highlight range per match. On the 100 KB+ responses this viewer
+                    // routinely holds, that scan runs per selection event — the single
+                    // biggest source of "selection feels slow". The viewer is read-only
+                    // and selection here is for copy/XPath, not for match navigation.
+                    selectionHighlight: false,
                 }),
                 [showMinimap, fontSize, fontFamily, showLineNumbers]
             );

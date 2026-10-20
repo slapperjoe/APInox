@@ -622,6 +622,9 @@ const MonacoRequestEditorBase = forwardRef<
         contextmenu: true,
         acceptSuggestionOnEnter: "on",
         quickSuggestions: false,
+        // Same as the response viewer: Monaco's default scans the whole model for
+        // occurrences of the selected text on every selection change.
+        selectionHighlight: false,
       }),
       [showMinimap, fontSize, fontFamily, readOnly, showLineNumbers],
     );
