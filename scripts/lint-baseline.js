@@ -23,7 +23,10 @@ const { spawnSync } = require('child_process');
 
 const root = path.join(__dirname, '..');
 const baselinePath = path.join(root, 'lint-baseline.json');
-const targets = ['src-tauri/webview/src', 'packages', 'shared'];
+// 'packages' is no longer a lint target: the request-editor was folded into the
+// webview source tree (7ec84084), leaving only the Rust wsdl-parser crate there,
+// and ESLint 10 hard-errors when every file under a target is ignored.
+const targets = ['src-tauri/webview/src', 'shared'];
 
 // ESLint exits non-zero when any error is present, which is the normal state
 // while the baseline is non-empty — so read stdout rather than the exit code.

@@ -194,7 +194,6 @@ jobs:
       - name: Pre-build steps
         run: |
           node scripts/version.js sync
-          npm run build:packages
 
       - name: Build Tauri app
         run: npx tauri build

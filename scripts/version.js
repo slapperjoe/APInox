@@ -17,7 +17,7 @@
  *   node scripts/version.js sync [x.y.z]       — write version to all config files
  *   node scripts/version.js set x.y.z          — force the exact version (release reuse)
  *   node scripts/version.js bump <major|minor> ["msg"] — bump + changelog + git commit + tag
- *   node scripts/version.js build [tauri-args...] — sync + build:packages + tauri build
+ *   node scripts/version.js build [tauri-args...] — sync + tauri build
  */
 
 const fs = require("fs");
@@ -376,7 +376,6 @@ function bump(type, message) {
 // ── build ──────────────────────────────────────────────────────────────────
 function build(extraArgs) {
   run("node scripts/version.js sync");
-  run("npm run build:packages");
   run("node scripts/run-npm-install.js src-tauri/webview");
 
   console.log(`\n> npx tauri build ${extraArgs.join(" ")}`);

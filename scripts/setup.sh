@@ -17,9 +17,9 @@ echo "[2/3] Installing project dependencies..."
 cd "${REPO_ROOT}"
 npm install
 
-# Step 3: Build shared packages
-echo "[3/3] Building shared packages..."
-npm run build:packages
+# Step 3: Install webview deps
+echo "[3/3] Installing webview dependencies..."
+cd "${REPO_ROOT}/src-tauri/webview" && npm install
 
 # Configure zsh prompt to show container name when in distrobox
 ZSHRC_FILE="/home/mark/.zshrc"
