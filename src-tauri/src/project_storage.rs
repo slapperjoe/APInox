@@ -104,6 +104,8 @@ struct RequestMeta {
     ws_security: JsonValue,
     #[serde(default, skip_serializing_if = "JsonValue::is_null")]
     attachments: JsonValue,
+    #[serde(default, skip_serializing_if = "JsonValue::is_null", rename = "responseSchema")]
+    response_schema: JsonValue,
 }
 
 /// Data written to tests/{suite}/suite.json
@@ -463,6 +465,7 @@ fn save_request(req: &JsonValue, op_dir: &Path) -> Result<(), String> {
         extractors: req["extractors"].clone(),
         ws_security: req["wsSecurity"].clone(),
         attachments: req["attachments"].clone(),
+        response_schema: req["responseSchema"].clone(),
     };
     let meta_val = serde_json::to_value(&meta)
         .map_err(|e| format!("Failed to serialize request meta: {}", e))?;

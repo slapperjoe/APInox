@@ -22,6 +22,10 @@ pub struct OpenApiPath {
     pub tags: Vec<String>,
     pub parameters: Vec<OpenApiParameter>,
     pub sample_body: Option<String>,
+    /// The response schema, with $ref resolved. The parser used to read only the
+    /// request side of an operation, so the contract the spec declared for the
+    /// response was discarded and a response could never be checked against it.
+    pub response_schema: Option<Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -167,6 +171,8 @@ impl OpenApiParser {
                         _ => None,
                     };
 
+                    let response_schema = Self::extract_response_schema(op_obj, spec);
+
                     paths.push(OpenApiPath {
                         path: path_key.clone(),
                         method: method.to_uppercase(),
@@ -176,6 +182,7 @@ impl OpenApiParser {
                         tags,
                         parameters,
                         sample_body,
+                        response_schema,
                     });
                 }
             }
@@ -309,6 +316,78 @@ impl OpenApiParser {
         Some(current)
     }
 
+    /// Pick the operation's response schema: 200, else the first 2xx, else
+    /// default. OAS3 nests it under content[mediaType].schema; Swagger 2 puts it
+    /// directly on the response. $ref is resolved so the stored schema is
+    /// self-contained and the validator needs no spec document.
+    fn extract_response_schema(
+        op_obj: &serde_json::Map<String, Value>,
+        spec: &Value,
+    ) -> Option<Value> {
+        let responses = op_obj.get("responses")?.as_object()?;
+        let chosen = responses
+            .get("200")
+            .or_else(|| responses.iter().find(|(code, _)| code.starts_with('2')).map(|(_, v)| v))
+            .or_else(|| responses.get("default"))?;
+
+        let schema = chosen
+            .get("content")
+            .and_then(|c| c.as_object())
+            .and_then(|m| m.get("application/json").or_else(|| m.values().next()))
+            .and_then(|mt| mt.get("schema"))
+            .or_else(|| chosen.get("schema"))?;
+
+        let resolved = Self::resolve_schema(schema, spec, 0);
+        if resolved.is_null() {
+            return None;
+        }
+        Some(resolved)
+    }
+
+    const MAX_SCHEMA_DEPTH: usize = 8;
+
+    fn resolve_schema(schema: &Value, spec: &Value, depth: usize) -> Value {
+        // A self-referential schema (a node whose property refs the same node)
+        // stops here rather than recursing forever; the stored schema is then
+        // truncated at that depth.
+        if depth > Self::MAX_SCHEMA_DEPTH {
+            return Value::Null;
+        }
+        if let Some(reference) = schema.get("$ref").and_then(|v| v.as_str()) {
+            return match Self::lookup_ref(spec, reference) {
+                Some(target) => Self::resolve_schema(&target, spec, depth + 1),
+                None => Value::Null,
+            };
+        }
+        if let Some(obj) = schema.as_object() {
+            let mut out = obj.clone();
+            if let Some(props) = obj.get("properties").and_then(|v| v.as_object()) {
+                let resolved: serde_json::Map<String, Value> = props
+                    .iter()
+                    .map(|(key, value)| (key.clone(), Self::resolve_schema(value, spec, depth + 1)))
+                    .collect();
+                out.insert("properties".to_string(), Value::Object(resolved));
+            }
+            if let Some(items) = obj.get("items") {
+                out.insert("items".to_string(), Self::resolve_schema(items, spec, depth + 1));
+            }
+            return Value::Object(out);
+        }
+        schema.clone()
+    }
+
+    fn lookup_ref(spec: &Value, reference: &str) -> Option<Value> {
+        if !reference.starts_with("#/") {
+            return None;
+        }
+        let mut current = spec;
+        for segment in reference[2..].split('/') {
+            let key = segment.replace("~1", "/").replace("~0", "~");
+            current = current.get(&key)?;
+        }
+        Some(current.clone())
+    }
+
     #[allow(clippy::ptr_arg)] // Called with &Vec from as_array(), closure handles coercion
     fn extract_parameters(params_array: &Vec<Value>) -> Vec<OpenApiParameter> {
         params_array.iter()
@@ -374,5 +453,74 @@ mod tests {
         assert_eq!(spec.paths.len(), 1);
         assert_eq!(spec.paths[0].method, "GET");
         assert_eq!(spec.paths[0].path, "/users");
+    }
+
+    #[test]
+    fn captures_the_response_schema_with_ref_resolved() {
+        let spec_json = r##"{
+            "openapi": "3.0.0",
+            "info": { "title": "API", "version": "1.0.0" },
+            "paths": {
+                "/users": {
+                    "get": {
+                        "operationId": "getUsers",
+                        "responses": {
+                            "200": {
+                                "content": {
+                                    "application/json": {
+                                        "schema": { "$ref": "#/components/schemas/User" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "components": {
+                "schemas": {
+                    "User": {
+                        "type": "object",
+                        "required": ["id"],
+                        "properties": { "id": { "type": "integer" } }
+                    }
+                }
+            }
+        }"##;
+
+        let spec = OpenApiParser::parse_json(spec_json).unwrap();
+        let schema = spec.paths[0].response_schema.as_ref().unwrap();
+        assert_eq!(schema["type"], "object");
+        assert_eq!(schema["required"][0], "id");
+
+        // The stored schema is self-contained: the validator needs no spec.
+        let issues =
+            crate::parsers::schema_validator::validate(&serde_json::json!({ "id": "abc" }), schema);
+        assert_eq!(issues.len(), 1);
+        assert_eq!(issues[0].path, "$.id");
+    }
+
+    #[test]
+    fn swagger_2_response_schema_is_read_from_the_response_directly() {
+        let spec_json = r#"{
+            "swagger": "2.0",
+            "info": { "title": "API", "version": "1.0.0" },
+            "paths": {
+                "/pets": {
+                    "get": {
+                        "operationId": "listPets",
+                        "responses": {
+                            "200": { "schema": { "type": "array", "items": { "type": "string" } } }
+                        }
+                    }
+                }
+            }
+        }"#;
+
+        let spec = OpenApiParser::parse_json(spec_json).unwrap();
+        let schema = spec.paths[0].response_schema.as_ref().unwrap();
+        let issues =
+            crate::parsers::schema_validator::validate(&serde_json::json!([ "ok", 3 ]), schema);
+        assert_eq!(issues.len(), 1);
+        assert_eq!(issues[0].path, "$[1]");
     }
 }

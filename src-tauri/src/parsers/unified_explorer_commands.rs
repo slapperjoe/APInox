@@ -736,6 +736,7 @@ fn build_openapi_operation(p: &OpenApiPath, base_url: &str) -> serde_json::Value
             "description": p.description,
             "tags": p.tags,
             "parameters": p.parameters,
+            "responseSchema": p.response_schema,
         },
         "fullSchema": Value::Null,
         "targetNamespace": "",
@@ -754,6 +755,7 @@ fn build_openapi_operation(p: &OpenApiPath, base_url: &str) -> serde_json::Value
                 "request": request_body,
                 "requestType": "rest",
                 "bodyType": if has_body { "json" } else { "none" },
+                "responseSchema": p.response_schema,
             }
         ],
     })
@@ -1814,6 +1816,7 @@ mod tests {
                         description: None,
                     }],
                     sample_body: None,
+                    response_schema: None,
                 },
                 OpenApiPath {
                     path: "/pets".to_string(),
@@ -1826,6 +1829,7 @@ mod tests {
                     sample_body: Some(
                         serde_json::json!({ "name": "dog", "tag": "puppy" }).to_string(),
                     ),
+                    response_schema: None,
                 },
             ],
         }
