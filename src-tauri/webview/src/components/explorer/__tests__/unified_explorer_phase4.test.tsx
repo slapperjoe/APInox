@@ -246,14 +246,15 @@ describe('Phase 4 — SOAP regression gate (Country Info, byte-identical R-02 ba
         expect(historyCall![1].entry.method).toBe('POST');
     });
 
-    it('a project-level content-type override is respected in the SOAP payload', async () => {
+    it('the request Content-Type header is what the SOAP payload sends', async () => {
         setupInvoke();
         const project = makeSoapProject();
         const req = project.operations[0].requests[0];
-        // No explicit request content type (drop the field + any header) so
-        // resolution falls through to the interface-override tier.
-        delete req.contentType;
-        project.contentType = 'application/xml';
+        // The header is the source of truth: a stored field mirror that
+        // disagrees with it, and a project-level default, both lose to it.
+        req.contentType = 'text/xml; charset=utf-8';
+        req.headers = { 'Content-Type': 'application/xml' };
+        project.contentType = 'application/json';
         render(
             <UnifiedExplorerMain
                 {...baseProps}
@@ -267,8 +268,6 @@ describe('Phase 4 — SOAP regression gate (Country Info, byte-identical R-02 ba
         await waitFor(() => {
             const call = findCall('execute_soap_request');
             expect(call).toBeDefined();
-            // The override (application/xml) wins over the SOAP 1.1 default
-            // (text/xml; charset=utf-8) — F-22 behaviour preserved.
             expect(call![1].request.contentType).toBe('application/xml');
         });
     });

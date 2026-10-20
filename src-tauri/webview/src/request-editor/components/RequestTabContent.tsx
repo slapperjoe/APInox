@@ -14,6 +14,7 @@ import type { FormField, BinaryFile, EditorVariable } from '../types';
 import { useEditorSettings } from '../contexts/EditorSettingsContext';
 import type { MonacoRequestEditorHandle } from './MonacoRequestEditor';
 import type { ExtraTab } from './MonacoRequestEditorWithToolbar';
+import { effectiveContentType } from '../utils/contentType';
 
 type BuiltinTabType = 'request' | 'headers' | 'params' | 'assertions' | 'extractors' | 'auth' | 'attachments' | 'variables';
 export type TabType = BuiltinTabType | string;
@@ -43,13 +44,23 @@ interface Variable {
   source: string;
 }
 
+/**
+ * Form enctype follows the Content-Type header — the Headers tab dropdown is
+ * the source of truth — so a form request whose header says
+ * `application/x-www-form-urlencoded` encodes that way instead of the default.
+ */
+function formEnctype(request: ApiRequest): 'application/x-www-form-urlencoded' | 'multipart/form-data' {
+    const ct = effectiveContentType(request, '').toLowerCase();
+    return ct === 'application/x-www-form-urlencoded' || ct === 'multipart/form-data'
+        ? ct
+        : 'multipart/form-data';
+}
+
 export interface RequestTabContentProps {
   activeTab: TabType;
   request: ApiRequest;
   onUpdateRequest: (updated: ApiRequest) => void;
   readOnly: boolean;
-  /** Whether the Content-Type header row is locked (default `true`). */
-  contentTypeLocked?: boolean;
   availableVariables: Variable[];
   /** Environment/global variables, forwarded to the panels for {{...}} tooltips. */
   availableEnvVariables?: EditorVariable[];
@@ -65,7 +76,6 @@ const RequestTabContentBase: React.FC<RequestTabContentProps> = ({
   request,
   onUpdateRequest,
   readOnly,
-  contentTypeLocked = true,
   availableVariables,
   availableEnvVariables,
   requestEditorRef,
@@ -121,13 +131,7 @@ const RequestTabContentBase: React.FC<RequestTabContentProps> = ({
           <FormDataPanel
             fields={request.formFields || []}
             onChange={handleFormFieldsChange}
-            enctype={
-              (request.contentType === 'application/x-www-form-urlencoded' ||
-                request.contentType === 'multipart/form-data')
-                ? request.contentType
-                : 'multipart/form-data'
-            }
-            availableVariables={availableVariables}
+            enctype={formEnctype(request)}            availableVariables={availableVariables}
             availableEnvVariables={availableEnvVariables}
             onPickFile={onPickFile}
           />
@@ -189,8 +193,6 @@ const RequestTabContentBase: React.FC<RequestTabContentProps> = ({
           headers={request.headers || {}}
           onChange={handleHeadersChange}
           contentType={request.contentType}
-          contentTypeLocked={contentTypeLocked}
-          onContentTypeChange={handleHeadersChange}
           availableVariables={availableVariables}
           availableEnvVariables={availableEnvVariables}
         />

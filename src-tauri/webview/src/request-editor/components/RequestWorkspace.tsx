@@ -10,6 +10,7 @@ import { XPathGenerator } from '../utils/xpathGenerator';
 import { useEditorSettings, EditorSettingsProvider } from '../contexts/EditorSettingsContext';
 import { formatXml } from '../utils/xmlFormatter';
 import { formatContent } from '../utils/contentFormatter';
+import { effectiveContentType } from '../utils/contentType';
 import { RequestTypeSelector } from './RequestTypeSelector';
 import { RequestTypeBadge, MethodBadge, BodyTypeBadge, ContentTypeBadge, BadgeGroup } from './RequestTypeBadges';
 import type { RequestType, BodyType, HttpMethod } from '../types';
@@ -80,8 +81,6 @@ export interface RequestWorkspaceProps {
   availableVariables?: Variable[];
   /** Environment/global variables, forwarded to the panels/inputs for {{...}} tooltips. */
   availableEnvVariables?: EditorVariable[];
-  /** Whether the Content-Type header row is locked (default `true`). */
-  contentTypeLocked?: boolean;
 
   // Display options
   showBreadcrumb?: boolean;
@@ -142,7 +141,6 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
   defaultEndpoint,
   availableVariables = [],
   availableEnvVariables = [],
-  contentTypeLocked = true,
   showBreadcrumb = false,
   breadcrumbPath = [],
   onCreateExtractor,
@@ -263,16 +261,9 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
     onUpdateRequest({ ...request, method });
   }, [request, onUpdateRequest]);
 
-  const handleContentTypeChange = useCallback((contentType: string) => {
-    onUpdateRequest({ ...request, contentType });
-  }, [request, onUpdateRequest]);
-
-  // Keep the `contentType` field in lockstep with the Content-Type header
-  // when the headers tab edits it (only possible while the row is unlocked —
-  // see HeadersPanel). Without the sync the field stays stale: the toolbar
-  // dropdown shows the old value and the runner's content-type fixing
-  // (useRequestExecution.fixContentType) would overwrite the edited header
-  // at run time.
+  // Content-Type lives in the headers record (the Headers tab dropdown is the
+  // only place it is chosen). `contentType` is kept as a derived mirror so the
+  // badge, the form enctype and the editor language still see it.
   const handleTabUpdate = useCallback((updated: RequestWorkspaceProps['request']) => {
     const ctOf = (h?: Record<string, string>) => {
       if (!h) return undefined;
@@ -446,8 +437,8 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
           <BadgeGroup>
             <RequestTypeBadge type={request.requestType || 'soap'} />
             <MethodBadge method={request.method || 'POST'} />
-            {request.requestType === 'soap' && request.contentType && (
-              <ContentTypeBadge contentType={request.contentType} />
+            {request.requestType === 'soap' && effectiveContentType(request, '') && (
+              <ContentTypeBadge contentType={effectiveContentType(request)} />
             )}
             {request.requestType === 'rest' && request.bodyType && (
               <BodyTypeBadge bodyType={request.bodyType} />
@@ -459,11 +450,9 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
             requestType={request.requestType || 'soap'}
             bodyType={request.bodyType}
             method={(request.method || 'POST') as HttpMethod}
-            contentType={request.contentType || 'application/soap+xml'}
             onRequestTypeChange={handleRequestTypeChange}
             onBodyTypeChange={handleBodyTypeChange}
             onMethodChange={handleMethodChange}
-            onContentTypeChange={handleContentTypeChange}
             readOnly={false}
             compact={true}
           />
@@ -611,7 +600,6 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
                 request={request}
                 onUpdateRequest={handleTabUpdate}
                 readOnly={readOnly}
-                contentTypeLocked={contentTypeLocked}
                 availableVariables={availableVariables}
                 availableEnvVariables={availableEnvVariables}
                 requestEditorRef={requestEditorRef}

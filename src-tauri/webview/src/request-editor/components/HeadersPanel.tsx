@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useEffect, memo } from 'react';
+import React, { useCallback, useRef, useEffect, useState, memo } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from './common/EmptyState';
 import { PanelContainer, PanelIconButton, PanelFlexColumn } from './common/PanelShell';
@@ -6,6 +6,12 @@ import { Plus, Trash2, List } from 'lucide-react';
 import { MonacoSingleLineInput } from './MonacoSingleLineInput';
 import { SPACING_XS, SPACING_SM } from '../styles/spacing';
 import type { EditorVariable } from '../types';
+import {
+    CONTENT_TYPE_OPTIONS,
+    CONTENT_TYPE_OTHER,
+    findContentTypeHeader,
+    isStandardContentType,
+} from '../utils/contentType';
 
 const HeaderRow = styled.div<{ $dimmed?: boolean }>`
     display: flex;
@@ -35,11 +41,17 @@ const ReadOnlyField = styled.div`
     font-size: 12px;
 `;
 
-const LockIndicator = styled.div`
-    width: 30px;
-    text-align: center;
-    font-size: 10px;
-    opacity: 0.5;
+const ContentTypeSelect = styled.select`
+    flex: 1;
+    min-width: 0;
+    padding: 6px ${SPACING_SM};
+    background: var(--apinox-input-background);
+    border: 1px solid var(--apinox-input-border);
+    border-radius: ${SPACING_XS};
+    color: var(--apinox-input-foreground);
+    font-family: monospace;
+    font-size: 12px;
+    cursor: pointer;
 `;
 
 const HintText = styled.div`
@@ -53,28 +65,12 @@ interface HeadersPanelProps {
     headers: Record<string, string>;
     onChange: (headers: Record<string, string>) => void;
     /**
-     * Effective Content-Type resolved by the caller (request override >
-     * interface override > WSDL default — see SOAP_INTERFACE_CONTENT_TYPE_SPEC.md
-     * §5.3). Shown in the Content-Type row; when the row is unlocked it is
-     * the placeholder shown while no explicit override is set. Falls back to
-     * 'application/soap+xml' when omitted.
+     * Content-Type to show when the request has no `Content-Type` header yet —
+     * the value the app would default to (WSDL / interface resolution, or the
+     * stored mirror). The dropdown below writes the header, and the header is
+     * what is sent. Falls back to 'application/soap+xml' when omitted.
      */
     contentType?: string;
-    /**
-     * Whether the Content-Type row is locked (read-only, managed by the
-     * WSDL/interface resolution) or an editable header. Defaults to `true`
-     * (locked) — the historical behaviour. `false` is the opt-in from
-     * Settings → General → "Allow overriding Content-Type".
-     */
-    contentTypeLocked?: boolean;
-    /**
-     * Invoked when the user edits the Content-Type in the unlocked row.
-     * Receives the NEW full headers record (the `Content-Type` entry added or
-     * removed); callers typically forward it straight to their headers
-     * onChange / onUpdateRequest. Omitting this handler keeps the row
-     * read-only even when unlocked (matches the `readOnly` editor mode).
-     */
-    onContentTypeChange?: (headers: Record<string, string>) => void;
     /** Chain/workflow variables, forwarded to the single-line inputs for ${...} tooltips. */
     availableVariables?: EditorVariable[];
     /** Environment/global variables, forwarded to the single-line inputs for {{...}} tooltips. */
@@ -132,24 +128,31 @@ const HeadersPanelBase: React.FC<HeadersPanelProps> = ({
     headers,
     onChange,
     contentType,
-    contentTypeLocked = true,
-    onContentTypeChange,
     availableVariables,
     availableEnvVariables,
 }) => {
-    const effectiveContentType = contentType || 'application/soap+xml';
-    const hasContentTypeOverride =
-        !contentTypeLocked &&
-        Object.entries(headers || {}).some(([key]) => key.toLowerCase() === 'content-type');
+    const defaultContentType = contentType || 'application/soap+xml';
+    const currentContentType = findContentTypeHeader(headers) || defaultContentType;
+    // A stored value outside the fixed list (a captured header carrying
+    // `action="urn:..."`, for example) is a custom one, so the row opens in
+    // "Other" mode and the value is preserved verbatim rather than snapped to
+    // the nearest standard option.
+    const isCustom = !isStandardContentType(currentContentType);
+    // "Other…" is a mode, not a value. It is re-derived when the displayed
+    // value changes (a different request selected, or the custom value replaced)
+    // rather than in an effect, so the row never shows "Other…" against a value
+    // that is actually one of the standard options.
+    const [customMode, setCustomMode] = useState(isCustom);
+    const [lastContentType, setLastContentType] = useState(currentContentType);
+    if (currentContentType !== lastContentType) {
+        setLastContentType(currentContentType);
+        setCustomMode(isCustom);
+    }
+    const showCustomInput = customMode || isCustom;
 
-    // Filter out Content-Type as it's managed by the toolbar dropdown
-    const filteredHeaders = Object.fromEntries(
-        Object.entries(headers || {}).filter(([key]) => key.toLowerCase() !== 'content-type')
-    );
-    const entries = Object.entries(filteredHeaders);
-    const displayContentType = hasContentTypeOverride
-        ? Object.entries(headers!).find(([key]) => key.toLowerCase() === 'content-type')![1]
-        : effectiveContentType;
+    // Content-Type has its own row above, so it is filtered out of the editable
+    // table (the table would otherwise show a duplicate, renameable row).
+    const entries = Object.entries(headers || {}).filter(([key]) => key.toLowerCase() !== 'content-type');
 
     // Refs + stable handlers: the row callbacks keep a constant identity so
     // memoized rows skip re-render when a different row changes.
@@ -161,9 +164,10 @@ const HeadersPanelBase: React.FC<HeadersPanelProps> = ({
     useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
 
     const updateHeader = useCallback((oldKey: string, newKey: string, newValue: string) => {
-        // Prevent adding Content-Type via this panel
+        // Content-Type has its own row (the dropdown above), so a second row
+        // with that name would be a duplicate — ignore it.
         if (newKey.toLowerCase() === 'content-type') {
-            return; // Silently ignore - Content-Type is managed by toolbar
+            return;
         }
         const newHeaders = { ...headersRef.current };
         if (oldKey !== newKey) {
@@ -188,11 +192,11 @@ const HeadersPanelBase: React.FC<HeadersPanelProps> = ({
         onChangeRef.current(newHeaders);
     };
 
-    const setContentTypeOverride = (value: string) => {
-        if (!onContentTypeChange) return;
+    // The single write path for Content-Type: the header the dropdown (or the
+    // custom input) chooses IS what gets sent, so it is written straight into
+    // the headers record under the canonical `Content-Type` key.
+    const setContentType = useCallback((value: string) => {
         const newHeaders = { ...headersRef.current };
-        // Drop any existing case-variant of the header before writing the
-        // canonical `Content-Type` key.
         for (const key of Object.keys(newHeaders)) {
             if (key.toLowerCase() === 'content-type') delete newHeaders[key];
         }
@@ -200,20 +204,17 @@ const HeadersPanelBase: React.FC<HeadersPanelProps> = ({
         if (trimmed !== '') {
             newHeaders['Content-Type'] = trimmed;
         }
-        onContentTypeChange(newHeaders);
-    };
+        onChangeRef.current(newHeaders);
+    }, []);
 
-    const clearContentTypeOverride = () => {
-        const newHeaders = { ...headersRef.current };
-        for (const key of Object.keys(newHeaders)) {
-            if (key.toLowerCase() === 'content-type') delete newHeaders[key];
+    const handleContentTypeSelect = (picked: string) => {
+        if (picked === CONTENT_TYPE_OTHER) {
+            setCustomMode(true);
+            return;
         }
-        if (Object.keys(newHeaders).length !== Object.keys(headersRef.current).length) {
-            onContentTypeChange?.(newHeaders);
-        }
+        setCustomMode(false);
+        setContentType(picked);
     };
-
-    const contentEditable = !contentTypeLocked && !!onContentTypeChange;
 
     return (
         <PanelContainer>
@@ -227,56 +228,45 @@ const HeadersPanelBase: React.FC<HeadersPanelProps> = ({
                 </PanelIconButton>
             </HeaderTitle>
 
-            {/* Content-Type row — read-only when locked (managed by the
-                WSDL/interface resolution), an editable override header when
-                unlocked. */}
-            <HeaderRow $dimmed={!contentEditable}>
+            {/* Content-Type row — the only place Content-Type is chosen. The
+                header name is fixed; the value is a dropdown of the common
+                types, and "Other…" turns it into a free-text value. */}
+            <HeaderRow>
                 <PanelFlexColumn>
-                    {/* The header NAME is always the fixed `Content-Type`
-                        label — only the value (next column) is editable when
-                        unlocked. */}
-                    <ReadOnlyField>
+                    <ReadOnlyField title="Content-Type (fixed header name)">
                         Content-Type
                     </ReadOnlyField>
                 </PanelFlexColumn>
                 <PanelFlexColumn>
-                    {contentEditable ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: SPACING_SM, flex: 1, minWidth: 0 }}>
-                            <MonacoSingleLineInput
-                                value={displayContentType}
-                                onChange={(v: string) => setContentTypeOverride(v)}
-                                placeholder={hasContentTypeOverride ? 'Content-Type' : effectiveContentType}
-                                availableVariables={availableVariables}
-                                availableEnvVariables={availableEnvVariables}
-                            />
-                            {hasContentTypeOverride && (
-                                <PanelIconButton
-                                    onClick={clearContentTypeOverride}
-                                    title="Clear override (use the resolved value)"
-                                >
-                                    <Trash2 size={14} />
-                                </PanelIconButton>
-                            )}
-                        </div>
-                    ) : (
-                        <ReadOnlyField>
-                            {displayContentType}
-                        </ReadOnlyField>
-                    )}
+                    <ContentTypeSelect
+                        aria-label="Content-Type"
+                        title="Content-Type sent with this request"
+                        value={showCustomInput ? CONTENT_TYPE_OTHER : currentContentType}
+                        onChange={(e) => handleContentTypeSelect(e.target.value)}
+                    >
+                        {CONTENT_TYPE_OPTIONS.map(option => (
+                            <option key={option} value={option}>{option}</option>
+                        ))}
+                        <option value={CONTENT_TYPE_OTHER}>Other…</option>
+                    </ContentTypeSelect>
                 </PanelFlexColumn>
-                <LockIndicator
-                    title={contentTypeLocked ? 'Managed by WSDL / interface resolution' : 'Editable — overrides the resolved value'}
-                >
-                    {contentTypeLocked ? '🔒' : hasContentTypeOverride ? '✏️' : '🔓'}
-                </LockIndicator>
+                {showCustomInput && (
+                    <PanelFlexColumn>
+                        <MonacoSingleLineInput
+                            value={currentContentType}
+                            onChange={setContentType}
+                            placeholder="Custom Content-Type"
+                            availableVariables={availableVariables}
+                            availableEnvVariables={availableEnvVariables}
+                        />
+                    </PanelFlexColumn>
+                )}
             </HeaderRow>
-            {!contentTypeLocked && contentEditable && (
-                <HintText>
-                    {hasContentTypeOverride
-                        ? 'Overriding the resolved value (shown as placeholder).'
-                        : `Unlocked — type a value to override ${effectiveContentType}.`}
-                </HintText>
-            )}
+            <HintText>
+                {showCustomInput
+                    ? 'Custom value — pick a standard type from the dropdown to go back.'
+                    : 'This is the Content-Type the request sends. Pick "Other…" to type a custom value.'}
+            </HintText>
 
             {entries.length === 0 && (
                 <EmptyState title="No custom headers defined." />

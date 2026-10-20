@@ -177,7 +177,11 @@ function MyComponent() {
 
 ### HeadersPanel
 
-Key-value editor for HTTP headers.
+Key-value editor for HTTP headers. Content-Type has its own row: a dropdown of
+the common types plus **Other…** for a custom value, and it is the only place
+Content-Type can be set — what the dropdown holds is what the request sends. The
+optional `contentType` prop supplies the fallback shown when the request has no
+Content-Type header yet (the WSDL/interface default).
 
 ```tsx
 import { HeadersPanel } from '@apinox/request-editor';

@@ -14,7 +14,8 @@ import { debugLog } from '../../utils/logger';
 import { useScrapbookOptional } from '../../contexts/ScrapbookContext';
 import { useUnifiedProjectsSafe } from '../../contexts/UnifiedProjectContext';
 import { UnifiedProject, ApiOperation, ApiRequest, ScrapbookRequest } from '@shared/models';
-import { soapDefault, resolveEffectiveContentType, generateSampleWithMetadata } from '../../utils/soapUtils';
+import { resolveEffectiveContentType, generateSampleWithMetadata } from '../../utils/soapUtils';
+import { effectiveContentType, findContentTypeHeader } from '../../utils/contentType';
 import { parseXmlToTree } from '../../utils/xmlTreeParser';
 import { commandErrorText, invokeTauriCommand } from '../../utils/bridge';
 import { buildExecuteOperation } from '../../utils/executeOperation';
@@ -49,8 +50,6 @@ export interface UnifiedExplorerMainProps {
      */
     onLoadWsdl: (url: string, opts?: { useProxy?: boolean; loadId?: string }) => void;
     onNewRequest: (projectName: string, operationName: string) => void;
-    /** Interface-level (project) Content-Type override change — propagates to all existing requests and persists the project. */
-    onProjectContentTypeChange?: (projectName: string, contentType: string) => void;
     /**
      * F-02 (Q4(c)) — quick-request auto-capture hook. Called with the executed
      * request and its owning operation name (if any) after every *successful*
@@ -67,14 +66,6 @@ export interface UnifiedExplorerMainProps {
      * here and calls back into this component's real execute path.
      */
     onRegisterExecute?: (execute: (req: ApiRequest) => Promise<void>) => void;
-    /**
-     * Settings → General: whether the request editor's Content-Type header is
-     * locked to the WSDL/interface-resolved value. Default locked (`true`);
-     * opting out makes the row an editable override header. Passed as a prop
-     * (instead of reading `useUI()` here) so the component stays unit-testable
-     * without a `UIProvider`.
-     */
-    contentTypeLocked?: boolean;
 }
 
 interface UrlInputState {
@@ -82,177 +73,6 @@ interface UrlInputState {
     loading: boolean;
     error: string | null;
 }
-
-/**
- * Project-level Content-Type override picker (project overview card).
- *
- * The trigger is intentionally narrow: a stored override can be a long
- * Content-Type string — a cloned SOAP 1.2 request carries
- * `action="urn:..."` — and the previous full-width native <select> stretched
- * across the whole overview card to display it. The trigger shows the current
- * value with ellipsis (full value in a title tooltip); the open list sizes
- * itself to its content (at least the trigger width, capped at a window-safe
- * max) so long options stay readable. A non-standard current value is added
- * to the option list so it is always representable and re-selectable (a
- * native <select> cannot display a value that matches no <option>).
- */
-const CONTENT_TYPE_STANDARD_OPTIONS: string[] = ['text/xml', 'application/soap+xml', 'application/xml'];
-
-interface ProjectContentTypeSelectProps {
-    value: string;
-    soapVersion?: string;
-    disabled?: boolean;
-    onChange: (value: string) => void;
-}
-
-export const ProjectContentTypeSelect: React.FC<ProjectContentTypeSelectProps> = ({ value, soapVersion, disabled, onChange }) => {
-    const [open, setOpen] = useState(false);
-    const rootRef = useRef<HTMLDivElement>(null);
-
-    const currentValue = value || '';
-    const defaultLabel = `SOAP default (${soapDefault(soapVersion)})`;
-    const isStandard = currentValue === '' || CONTENT_TYPE_STANDARD_OPTIONS.includes(currentValue);
-    const options: { value: string; label: string }[] = [
-        { value: '', label: defaultLabel },
-        ...CONTENT_TYPE_STANDARD_OPTIONS.map(v => ({ value: v, label: v })),
-        ...(!isStandard && currentValue ? [{ value: currentValue, label: currentValue }] : []),
-    ];
-
-    useEffect(() => {
-        if (!open) return;
-        const onDown = (e: MouseEvent) => {
-            if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
-        };
-        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
-        document.addEventListener('mousedown', onDown);
-        document.addEventListener('keydown', onKey);
-        return () => {
-            document.removeEventListener('mousedown', onDown);
-            document.removeEventListener('keydown', onKey);
-        };
-    }, [open]);
-
-    const selectedLabel = options.find(o => o.value === currentValue)?.label ?? currentValue;
-
-    return (
-        <div ref={rootRef} style={{ position: 'relative', width: 160, marginTop: 4 }}>
-            <button
-                type="button"
-                disabled={disabled}
-                aria-haspopup="listbox"
-                aria-expanded={open}
-                aria-label="Content-Type override"
-                title={currentValue || defaultLabel}
-                onClick={() => !disabled && setOpen(prev => !prev)}
-                style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    padding: '4px 22px 4px 8px',
-                    backgroundColor: 'var(--apinox-input-background)',
-                    color: disabled
-                        ? 'var(--apinox-disabledForeground, var(--apinox-input-foreground))'
-                        : 'var(--apinox-input-foreground)',
-                    border: '1px solid var(--apinox-input-border)',
-                    borderRadius: 4,
-                    fontSize: 'var(--apinox-fs-base)',
-                    fontFamily: 'inherit',
-                    cursor: disabled ? 'not-allowed' : 'pointer',
-                    opacity: disabled ? 0.6 : 1,
-                    textAlign: 'left',
-                }}
-            >
-                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {selectedLabel}
-                </span>
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="10"
-                    height="6"
-                    viewBox="0 0 10 6"
-                    style={{
-                        position: 'absolute',
-                        right: 8,
-                        top: '50%',
-                        transform: `translateY(-50%) rotate(${open ? '180deg' : '0deg'})`,
-                        transition: 'transform 0.15s ease',
-                        flexShrink: 0,
-                        fill: 'var(--apinox-input-foreground)',
-                        opacity: 0.7,
-                    }}
-                >
-                    <path d="M0 0L5 6L10 0" />
-                </svg>
-            </button>
-            {open && (
-                <div
-                    role="listbox"
-                    aria-label="Content-Type override options"
-                    style={{
-                        position: 'absolute',
-                        top: 'calc(100% + 2px)',
-                        left: 0,
-                        minWidth: '100%',
-                        // "As wide as required": the list sizes to its
-                        // content (shrink-to-fit), at least the trigger width,
-                        // capped only by the window (the 160px offset keeps
-                        // the right edge inside even on narrow windows).
-                        maxWidth: 'calc(90vw - 160px)',
-                        background: 'var(--apinox-dropdown-listBackground, var(--apinox-dropdown-background))',
-                        border: '1px solid var(--apinox-dropdown-border)',
-                        boxShadow: '0 4px 12px var(--apinox-widget-shadow, rgba(0, 0, 0, 0.36))',
-                        zIndex: 1000,
-                    }}
-                >
-                    {options.map(option => {
-                        const isSelected = option.value === currentValue;
-                        return (
-                            <div
-                                key={option.value || 'soap-default'}
-                                role="option"
-                                aria-selected={isSelected}
-                                title={option.label}
-                                onMouseDown={() => {
-                                    onChange(option.value);
-                                    setOpen(false);
-                                }}
-                                style={{
-                                    padding: '8px 12px',
-                                    cursor: 'pointer',
-                                    background: isSelected
-                                        ? 'var(--apinox-list-activeSelectionBackground)'
-                                        : 'transparent',
-                                    color: isSelected
-                                        ? 'var(--apinox-list-activeSelectionForeground)'
-                                        : 'var(--apinox-dropdown-foreground)',
-                                    fontSize: 'var(--apinox-fs-base)',
-                                    fontFamily: 'var(--apinox-font-family)',
-                                    whiteSpace: 'nowrap',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                }}
-                                onMouseEnter={e => {
-                                    if (!isSelected) {
-                                        (e.currentTarget as HTMLDivElement).style.background = 'var(--apinox-list-hoverBackground)';
-                                    }
-                                }}
-                                onMouseLeave={e => {
-                                    if (!isSelected) {
-                                        (e.currentTarget as HTMLDivElement).style.background = 'transparent';
-                                    }
-                                }}
-                            >
-                                {option.label}
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
-        </div>
-    );
-};
 
 interface ExecuteSoapResponse {
     success: boolean;
@@ -270,15 +90,9 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
     onRefreshProject,
     onLoadWsdl,
     onNewRequest,
-    onProjectContentTypeChange,
     onAfterExecute,
     onRegisterExecute,
-    contentTypeLocked = true,
 }) => {
-    // Settings → General: whether the request editor's Content-Type header is
-    // locked to the WSDL/interface-resolved value. Default locked (`true`);
-    // opting out makes the row an editable override header.
-
     const [urlInput, setUrlInput] = useState<UrlInputState>({ url: 'http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso?WSDL', loading: false, error: null });
     /** R-12 (F-23): route the WSDL load through the app proxy (force-off for local files). */
     const [useProxy, setUseProxy] = useState<boolean>(false);
@@ -674,10 +488,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
         const owner = findOwnerRequest(projects, reqId);
         const ownerProject = owner?.project;
         const ownerOperation = owner?.operation;
-        const effectiveContentType = resolveEffectiveContentType(req, ownerOperation ?? null, {
-            contentType: ownerProject?.contentType,
-            soapVersion: ownerProject?.soapVersion,
-        });
+        const effectiveContentType = resolveEffectiveContentType(req, ownerOperation ?? null, ownerProject?.soapVersion);
 
         // F-14: top-bar endpoint edit overrides the stored endpoint for this
         // send (transient — persisted only via the explicit Save button).
@@ -981,23 +792,27 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
      */
     const updateScrapbookRequestHeaders = useCallback((headers: Record<string, string>) => {
         if (!editingRequest) return;
-        const updated = { ...editingRequest, headers };
+        // The header is the source of truth; keep the stored mirror in step so
+        // the badge and the editor language show what is actually sent.
+        const updated = { ...editingRequest, headers, contentType: findContentTypeHeader(headers) };
         setEditingRequest(updated);
         if (isScrapbookNode(selectedNode) && updated.id && updateScrapbookRequest) {
-            updateScrapbookRequest(updated.id, { headers }).catch((e: any) => {
+            updateScrapbookRequest(updated.id, { headers, contentType: updated.contentType }).catch((e: any) => {
                 console.error('[UnifiedExplorerMain] Failed to save quick request headers:', e);
             });
         }
     }, [editingRequest, selectedNode, updateScrapbookRequest]);
 
     /**
-     * Update a project request's headers (custom header rows AND the unlocked
-     * Content-Type override both funnel through here). State update + persist
-     * through `persistRequestUpdate` (the project-request save path).
+     * Update a project request's headers. Content-Type is one of them — the
+     * Headers tab dropdown is the only place it is chosen — so the header is
+     * the source of truth and the `contentType` mirror is refreshed from it.
+     * State update + persist through `persistRequestUpdate` (the project-request
+     * save path).
      */
     const updateProjectRequestHeaders = useCallback((headers: Record<string, string>) => {
         if (!editingRequest) return;
-        const updated = { ...editingRequest, headers };
+        const updated = { ...editingRequest, headers, contentType: findContentTypeHeader(headers) };
         setEditingRequest(updated);
         persistRequestUpdate(updated);
     }, [editingRequest, persistRequestUpdate]);
@@ -1026,10 +841,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
     let sampleDeclaredNamespace: string | null = null;
     if (selected && selected.type === 'operation') {
         try {
-            const { sampleXml } = generateSampleWithMetadata(selected.operation, {
-                contentType: selected.project.contentType,
-                soapVersion: selected.project.soapVersion,
-            });
+            const { sampleXml } = generateSampleWithMetadata(selected.operation, selected.project.soapVersion);
             if (sampleXml) {
                 const root = parseXmlToTree(sampleXml);
                 for (const node of [root, ...(root.children || [])]) {
@@ -1462,15 +1274,6 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                     {selected.project.parsedAt ? new Date(selected.project.parsedAt).toLocaleDateString() : 'N/A'}
                                 </div>
                             </div>
-                            <div style={{ padding: '12px', background: 'var(--apinox-panel-background)', borderRadius: 6, border: '1px solid var(--apinox-panel-border)' }}>
-                                <div style={{ fontSize: 'var(--apinox-fs-md)', opacity: 0.7 }}>Content-Type {selected.project.contentType ? '(override)' : `— SOAP ${selected.project.soapVersion || '1.1'} default: ${soapDefault(selected.project.soapVersion)}`}</div>
-                                <ProjectContentTypeSelect
-                                    value={selected.project.contentType || ''}
-                                    soapVersion={selected.project.soapVersion}
-                                    disabled={!onProjectContentTypeChange}
-                                    onChange={(v) => onProjectContentTypeChange?.(selected.project.name, v)}
-                                />
-                            </div>
                         </div>
 
                         {selected.project.sourceUrl && (
@@ -1571,8 +1374,8 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                     {resolveEffectiveContentType(
                                         (selected.operation.requests || []).find(r => r.name.startsWith('sample_')) || null,
                                         selected.operation,
-                                        { contentType: selected.project.contentType, soapVersion: selected.project.soapVersion }
-                                    )}{selected.project.contentType ? ' (interface override)' : ''}
+                                        selected.project.soapVersion
+                                    )}
                                 </div>
 
                                 <div style={{ opacity: 0.7 }}>Binding:</div>
@@ -1590,7 +1393,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                         <div style={{ marginBottom: 20 }}>
                             <SampleRequestPanel
                                 operation={selected.operation}
-                                interfaceContext={{ contentType: selected.project.contentType, soapVersion: selected.project.soapVersion }}
+                                soapVersion={selected.project.soapVersion}
                                 onCreateRequest={() => onNewRequest(selected.project.name, selected.operation.name)}
                             />
                         </div>
@@ -1617,7 +1420,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                     <span>{req.name}</span>
                                 </div>
                                 <div style={{ fontSize: 'var(--apinox-fs-md)', opacity: 0.7 }}>
-                                    {req.method || 'POST'} {resolveEffectiveContentType(req, selected.operation, { contentType: selected.project.contentType, soapVersion: selected.project.soapVersion })}
+                                    {req.method || 'POST'} {resolveEffectiveContentType(req, selected.operation, selected.project.soapVersion)}
                                 </div>
                             </div>
                         ))}
@@ -1644,7 +1447,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                 </span>
                                 {selected.request && (
                                     <span style={{ fontSize: 'var(--apinox-fs-md)', opacity: 0.7, whiteSpace: 'nowrap' }}>
-                                        {selected.request.method || 'POST'} • {selected.request.contentType || 'application/soap+xml'}
+                                        {selected.request.method || 'POST'} • {effectiveContentType(selected.request)}
                                     </span>
                                 )}
                             </div>
@@ -1663,9 +1466,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                 language={editorLanguageForRequest(editingRequest)}
                                 onChange={(value: string) => setEditingXml(value)}
                                 headers={editingRequest?.headers || {}}
-                                contentType={editingRequest?.contentType || 'application/soap+xml'}
-                                contentTypeLocked={contentTypeLocked}
-                                onContentTypeChange={updateScrapbookRequestHeaders}
+                                contentType={effectiveContentType(editingRequest)}
                                 onHeadersChange={updateScrapbookRequestHeaders}
                             />
                         </div>
@@ -1698,9 +1499,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                                 language={editorLanguageForRequest(editingRequest)}
                                 onChange={(value: string) => setEditingXml(value)}
                                 headers={editingRequest?.headers || {}}
-                                contentType={resolveEffectiveContentType(selected.request, selected.operation, { contentType: selected.project.contentType, soapVersion: selected.project.soapVersion })}
-                                contentTypeLocked={contentTypeLocked}
-                                onContentTypeChange={updateProjectRequestHeaders}
+                                contentType={resolveEffectiveContentType(selected.request, selected.operation, selected.project.soapVersion)}
                                 onHeadersChange={updateProjectRequestHeaders}
                                 extraTabs={[
                                     {

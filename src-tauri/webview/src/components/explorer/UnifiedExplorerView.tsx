@@ -17,8 +17,6 @@ interface UnifiedExplorerViewProps {
     onSelectNode: (type: string, id: string) => void;
     onRefreshProject: (projectName: string) => void;
     onNewRequest: (projectName: string, operationName: string) => void;
-    /** Interface-level (project) Content-Type override change — propagates to all existing requests and persists the project. */
-    onProjectContentTypeChange?: (projectName: string, contentType: string) => void;
     onWsdlLoaded?: (project: UnifiedProject) => void;
     /**
      * F-01 — receives the unified execute function registered by
@@ -26,12 +24,6 @@ interface UnifiedExplorerViewProps {
      * is rendered in `Sidebar.tsx` — a sibling of this view).
      */
     onRegisterExecute?: (execute: (req: ApiRequest) => Promise<void>) => void;
-    /**
-     * Settings → General: whether the request editor's Content-Type header is
-     * locked (default `true`). Read from `config.ui.contentTypeLocked` by the
-     * orchestrator and passed down so the component tree stays provider-free.
-     */
-    contentTypeLocked?: boolean;
 }
 
 const UnifiedExplorerView: React.FC<UnifiedExplorerViewProps> = ({
@@ -40,10 +32,8 @@ const UnifiedExplorerView: React.FC<UnifiedExplorerViewProps> = ({
     onSelectNode,
     onRefreshProject,
     onNewRequest,
-    onProjectContentTypeChange,
     onWsdlLoaded,
     onRegisterExecute,
-    contentTypeLocked = true,
 }) => {
 
     const handleLoadWsdl = useCallback(async (url: string, opts?: { useProxy?: boolean; loadId?: string }) => {
@@ -96,10 +86,8 @@ const UnifiedExplorerView: React.FC<UnifiedExplorerViewProps> = ({
                 onRefreshProject={onRefreshProject}
                 onLoadWsdl={handleLoadWsdl}
                 onNewRequest={onNewRequest}
-                onProjectContentTypeChange={onProjectContentTypeChange}
                 onAfterExecute={handleAfterExecute}
                 onRegisterExecute={onRegisterExecute}
-                contentTypeLocked={contentTypeLocked}
             />
         </div>
     );

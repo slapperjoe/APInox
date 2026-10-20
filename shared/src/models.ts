@@ -653,13 +653,6 @@ export interface ApinoxConfig {
         editorFontSize?: number;
         editorFontFamily?: string;
         uiFontFamily?: string;
-        /**
-         * Whether the request editor's Content-Type header is locked to the
-         * value resolved from the WSDL/interface (default, `true`). When
-         * `false`, the Content-Type row becomes an editable header that
-         * overrides the resolved value (stored on the request's headers).
-         */
-        contentTypeLocked?: boolean;
     };
     activeEnvironment?: string;
     lastConfigPath?: string;

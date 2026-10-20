@@ -2,6 +2,12 @@
 
 
 ## [Unreleased] - 2026-10-15
+### Changed
+- **Content-Type is a header, chosen in the Headers tab**: the Content-Type row is now a dropdown of the common types (`application/json`, `application/xml`, `text/xml`, `text/xml; charset=utf-8`, `application/soap+xml`, `application/soap+xml; charset=utf-8`, `text/plain`, `application/x-www-form-urlencoded`, `multipart/form-data`) plus **Other…**, which turns the value into a free-text input (variables still work). The value picked there is exactly what is sent — for SOAP, REST and the test runner. A stored value outside the list (a captured header carrying `action="urn:..."`) opens the row in Other mode and is preserved verbatim. `request.contentType` is now only a derived mirror of the header, backfilled from it.
+
+### Removed
+- **Content-Type locking**: the "Lock Content-Type to WSDL / interface value" setting (`config.ui.contentTypeLocked`) is gone, along with the toolbar Content-Type dropdown and the project/interface Content-Type picker. The Headers tab is the only place Content-Type can be chosen, so the read-only "locked" row, the lock indicator and the override hint are gone with it.
+
 ### Added
 - **Performance suites — test case steps**: a performance suite step can now be a whole test case (`Add Test Case` in the Steps section). The step is a live reference to a global test case: at run time the webview embeds the case's steps and the perf runner executes them through the test runner, so every inner step type works (request, delay, condition, loop, script, transfer, nested references). Each inner HTTP call produces its own result row — grouped under the case in the results view — so percentiles and SLA reflect the real calls rather than one number for the whole case; a case-level SLA threshold is checked against the case total and reported when breached. Case variables are layered over the run variables and do not leak back out.
 - **Test Case Wizard — bulk variable controls**: the "Captured & reused values" section now shows an accepted/total count and **Add all** / **Remove all** controls, matching the "Select all" affordance the requests section already had.

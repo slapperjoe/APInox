@@ -269,7 +269,6 @@ const MainContent: React.FC = () => {
         handleUnifiedRenameOperation,
         handleUnifiedRenameRequest,
         handleUnifiedNewRequest,
-        handleUnifiedProjectContentTypeChange,
         handleUnifiedExport,
         handleUnifiedImportWorkspace,
         handleUnifiedImportSoapUI,
@@ -471,7 +470,7 @@ const MainContent: React.FC = () => {
         })();
 
         // Headers: everything from the traffic, or just the authoritative
-        // Content-Type. Keep the header in sync with the field so the locked
+        // Content-Type. Keep the header in sync with the field mirror so the
         // Content-Type row shows exactly what will be sent.
         const headers: Record<string, string> = includeAllHeaders
             ? { ...log.requestHeaders }
@@ -1620,9 +1619,9 @@ const MainContent: React.FC = () => {
                                     // wizard's tagged captured values emitted as
                                     // {{variable}} (extractor on the source step).
                                     // The Content-Type string is copied exactly
-                                    // (including any `action=...` parameter) and the
-                                    // step is tagged fromTraffic so its Content-Type
-                                    // header row is unlocked.
+                                    // (including any `action=...` parameter), so the
+                                    // Headers tab shows it as a custom ("Other…")
+                                    // value rather than snapping to a standard option.
                                     const steps = buildTrafficTestSteps(result.selectedLogs, {
                                         extractors: result.extractors,
                                         valueSubstitutions: result.valueSubstitutions,
@@ -1680,10 +1679,8 @@ const MainContent: React.FC = () => {
                         onSelectNode={handleUnifiedSelectNode}
                         onRefreshProject={handleUnifiedRefresh}
                         onNewRequest={handleUnifiedNewRequest}
-                        onProjectContentTypeChange={handleUnifiedProjectContentTypeChange}
                         onWsdlLoaded={handleUnifiedWsdlLoaded}
                         onRegisterExecute={registerUnifiedExecute}
-                        contentTypeLocked={config?.ui?.contentTypeLocked ?? true}
                     />
                 </div>
             )}

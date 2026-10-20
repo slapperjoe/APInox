@@ -1,4 +1,5 @@
 import { ApiRequest, ApiOperation, UnifiedProject } from '@shared/models';
+import { effectiveContentType } from '@shared/utils/contentType';
 import type { ExecutionResponse } from '../request-editor/monaco';
 
 /**
@@ -127,7 +128,7 @@ export function editorLanguageForRequest(req: ApiRequest | null | undefined): st
     if (!req) return 'xml';
     const requestType: UnifiedRequestType = resolveRequestType(req);
     if (requestType === 'rest') {
-        const ct = (req.contentType || '').toLowerCase();
+        const ct = effectiveContentType(req, '').toLowerCase();
         return ct.includes('json') ? 'json' : 'plaintext';
     }
     // SOAP (and quick requests, whose type is undeclared in scrapbook.json).

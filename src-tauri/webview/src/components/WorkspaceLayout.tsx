@@ -894,11 +894,6 @@ export const WorkspaceLayout: React.FC = () => {
                 onCancel={onCancel}
                 onReset={onReset}
                 readOnly={preventEditing}
-                // Traffic-captured steps keep the captured Content-Type as the
-                // source of truth (it may carry `action=...`), so their
-                // Content-Type header row is always unlocked — the global
-                // setting only governs every other request.
-                contentTypeLocked={activeRequest?.fromTraffic ? false : (config?.ui?.contentTypeLocked ?? true)}
                 defaultEndpoint={defaultEndpoint}
                 availableVariables={availableVariables.map(v => ({
                     name: v.name,

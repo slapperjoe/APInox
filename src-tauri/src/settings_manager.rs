@@ -72,8 +72,6 @@ pub struct UiConfig {
     pub editor_font_family: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ui_font_family: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub content_type_locked: Option<bool>,
 }
 
 impl Default for ApinoxConfig {
@@ -97,7 +95,6 @@ impl Default for ApinoxConfig {
                 editor_font_size: None,
                 editor_font_family: None,
                 ui_font_family: None,
-                content_type_locked: None,
             }),
             active_environment: Some("Build".to_string()),
             environments: Some(Self::default_environments()),
@@ -272,7 +269,6 @@ fn update_ui_settings_sync(ui: UiConfig) -> Result<(), String> {
             editor_font_size: ui.editor_font_size.or(existing_ui.editor_font_size),
             editor_font_family: ui.editor_font_family.or_else(|| existing_ui.editor_font_family.clone()),
             ui_font_family: ui.ui_font_family.or_else(|| existing_ui.ui_font_family.clone()),
-            content_type_locked: ui.content_type_locked.or(existing_ui.content_type_locked),
         });
     } else {
         config.ui = Some(ui);

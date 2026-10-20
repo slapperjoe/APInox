@@ -17,7 +17,7 @@ import { ApiRequest, ScrapbookRequest, UnifiedProject } from '@shared/models';
 import { BackendCommand } from '@shared/messages';
 import { bridge } from '../utils/bridge';
 import { saveImportedProjectsAsUnified } from '../utils/importUnifiedStore';
-import { generateInitialXmlForOperation, soapDefault, rewriteRequestsForContentTypeChange } from '../utils/soapUtils';
+import { generateInitialXmlForOperation, soapDefault } from '../utils/soapUtils';
 import { useUnifiedProjects } from '../contexts/UnifiedProjectContext';
 import { useScrapbook } from '../contexts/ScrapbookContext';
 
@@ -309,9 +309,9 @@ export function useUnifiedExplorerHandlers() {
                     requestName = `Request${requestNumber}.xml`;
                 }
 
-                // Precedence (SOAP_INTERFACE_CONTENT_TYPE_SPEC.md §5.2): project
-                // contentType override ?? op.input.contentType ?? SOAP-version
-                // default. No bare "application/soap+xml" fallback.
+                // Seed for the new request's Content-Type header: the project's
+                // stored default, else the operation's, else the SOAP-version
+                // default. The user can change it per request in the Headers tab.
                 const newContentType: string = project.contentType || operation.input?.contentType || soapDefault(project.soapVersion);
 
                 const newReq: ApiRequest = {
@@ -345,33 +345,6 @@ export function useUnifiedExplorerHandlers() {
             console.error("[UnifiedExplorer] New request failed:", e);
         }
     }, [updateUnifiedProject, setUnifiedSelectedNode]);
-
-    const handleUnifiedProjectContentTypeChange = useCallback(async (projectName: string, contentType: string) => {
-        const project = unifiedProjects.find(p => p.name === projectName);
-        if (!project) return;
-        const oldValue = project.contentType || "";
-        if (oldValue === contentType) return;
-
-        // Propagate in place (SOAP_INTERFACE_CONTENT_TYPE_SPEC.md §5.4): sample
-        // requests and inheriting requests are rewritten to the new effective
-        // value (field + Content-Type header); user-customized requests are
-        // untouched. Then persist immediately.
-        const updatedProject: UnifiedProject = {
-            ...project,
-            contentType: contentType || undefined,
-            operations: rewriteRequestsForContentTypeChange(project.operations, project.contentType, contentType, project.soapVersion),
-        };
-
-        try {
-            await bridge.invokeTauriCommand("save_unified_project", {
-                dirPath: project.name,
-                project: JSON.parse(JSON.stringify(updatedProject)),
-            });
-            setUnifiedProjects(prev => prev.map(p => p.name === projectName ? updatedProject : p));
-        } catch (e) {
-            console.error("[UnifiedExplorer] Content-type change failed:", e);
-        }
-    }, [unifiedProjects, setUnifiedProjects]);
 
     const handleUnifiedExport = useCallback(async (projectName: string) => {
         const project = unifiedProjects.find(p => p.name === projectName);
@@ -536,7 +509,6 @@ export function useUnifiedExplorerHandlers() {
         handleUnifiedRenameOperation,
         handleUnifiedRenameRequest,
         handleUnifiedNewRequest,
-        handleUnifiedProjectContentTypeChange,
         handleUnifiedExport,
         // handleUnifiedImportFile stays internal: only the two named import
         // entry points (workspace / SoapUI) are consumed, and they differ by

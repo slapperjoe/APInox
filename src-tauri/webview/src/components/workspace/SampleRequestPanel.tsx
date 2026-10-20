@@ -7,8 +7,8 @@ import * as S from './SampleRequestPanel.styles';
 
 interface SampleRequestPanelProps {
     operation: ApiOperation;
-    /** Optional interface context (classic ApiInterface or unified UnifiedProject) used to resolve the *effective* Content-Type for display. */
-    interfaceContext?: { contentType?: string; soapVersion?: string };
+    /** SOAP version — supplies the default Content-Type when the sample has none. */
+    soapVersion?: string | null;
     onCreateRequest?: (sampleXml: string, metadata: {
         endpoint?: string;
         soapAction?: string;
@@ -19,20 +19,17 @@ interface SampleRequestPanelProps {
 
 export const SampleRequestPanel: React.FC<SampleRequestPanelProps> = ({
     operation,
-    interfaceContext,
+    soapVersion,
     onCreateRequest
 }) => {
     const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
     const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set());
 
     // Generate sample data (Content-Type is the *effective* value:
-    // interface override > sample/action > SOAP-version default)
+    // sample request header > its own stored value > SOAP-version default)
     const sampleData = useMemo(() => {
-        return generateSampleWithMetadata(operation, interfaceContext ?? null);
-    // The memo uses the whole interfaceContext, not just those two fields, so
-    // depending on expressions (and not the object) would miss changes to any
-    // other field.
-    }, [operation, interfaceContext]);
+        return generateSampleWithMetadata(operation, soapVersion ?? null);
+    }, [operation, soapVersion]);
 
     // Parse XML to tree
     const xmlTree = useMemo(() => {

@@ -12,25 +12,20 @@
  * The captured Content-Type string is copied EXACTLY, including any extra
  * parameters (SOAP 1.2 requests carry `action="urn:..."` in the
  * Content-Type). Both the `Content-Type` header and the `contentType`
- * field hold that raw value, and `bodyType` is deliberately left unset so
- * the runner never rewrites the captured header (see
- * useRequestExecution.fixContentType).
+ * mirror hold that raw value, and `bodyType` is deliberately left unset so
+ * nothing re-derives the captured value from the body type.
  *
- * Steps are tagged `fromTraffic: true` so the editor unlocks the
- * Content-Type header row for them (the captured value is the source of
- * truth, not a WSDL/interface resolution).
+ * The captured header is the source of truth: the Headers tab shows it as a
+ * custom ("Other…") Content-Type rather than snapping it to a standard option.
  */
 import type { TrafficLog } from '../components/proxy/TrafficViewer';
 import type { ApiRequest, RequestExtractor, TestStep } from '@shared/models';
+import { findContentTypeHeader } from '@shared/utils/contentType';
 import { applyValueSubstitutions, trafficStepName } from './trafficWorkflow';
 
 /** Look up the captured Content-Type value (case-insensitive key). */
 export function findContentType(headers?: Record<string, string>): string {
-    if (!headers) return '';
-    for (const [k, v] of Object.entries(headers)) {
-        if (k.toLowerCase() === 'content-type') return v;
-    }
-    return '';
+    return findContentTypeHeader(headers);
 }
 
 /** Test-environment-safe id generator (crypto.randomUUID is absent in some jsdom runs). */

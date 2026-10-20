@@ -3,6 +3,7 @@ import { bridge, isTauri } from '../utils/bridge';
 import { PerformanceSuite, PerformanceRequest, ApiRequest } from '@shared/models';
 import { BackendCommand, FrontendCommand } from '@shared/messages';
 import { getInitialXml } from '@shared/utils/soapUtils';
+import { effectiveContentType } from '@shared/utils/contentType';
 import { useUI } from './UIContext';
 import { useSelection } from './SelectionContext';
 import { useNavigation } from './NavigationContext';
@@ -333,7 +334,7 @@ export const PerformanceProvider = ({ children }: { children: ReactNode }) => {
             request: request.requestBody,
             headers: request.headers,
             extractors: request.extractors,
-            contentType: request.headers?.['Content-Type'] || request.headers?.['content-type'] || 'application/soap+xml',
+            contentType: effectiveContentType(request),
             requestType: request.requestType,
             bodyType: request.bodyType,
             restConfig: request.restConfig,

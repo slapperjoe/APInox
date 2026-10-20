@@ -7,7 +7,6 @@ describe('RequestTypeSelector', () => {
         onRequestTypeChange: vi.fn(),
         onBodyTypeChange: vi.fn(),
         onMethodChange: vi.fn(),
-        onContentTypeChange: vi.fn(),
     };
 
     beforeEach(() => {
@@ -25,8 +24,9 @@ describe('RequestTypeSelector', () => {
         expect(methodSelect).toBeInTheDocument();
         expect(methodSelect.children).toHaveLength(2); // GET, POST
 
-        // Content Type Selector (SOAP specific) — compact trigger button
-        expect(screen.getByRole('button', { name: 'Content Type' })).toBeInTheDocument();
+        // Content-Type is a header now: the Headers tab is the only place it is
+        // chosen, so the toolbar no longer carries a Content-Type control.
+        expect(screen.queryByRole('button', { name: 'Content Type' })).not.toBeInTheDocument();
 
         // Body Type should NOT be present for SOAP
         expect(screen.queryByTitle('Body Type')).not.toBeInTheDocument();
@@ -44,7 +44,7 @@ describe('RequestTypeSelector', () => {
         // Body Type Selector (REST specific)
         expect(screen.getByTitle('Body Type')).toBeInTheDocument();
 
-        // Content Type should NOT be present for REST
+        // No Content-Type control for REST either — same rule as SOAP
         expect(screen.queryByRole('button', { name: 'Content Type' })).not.toBeInTheDocument();
     });
 
@@ -58,11 +58,6 @@ describe('RequestTypeSelector', () => {
         // Change Method
         fireEvent.change(screen.getByTitle('HTTP Method'), { target: { value: 'GET' } });
         expect(defaultProps.onMethodChange).toHaveBeenCalledWith('GET');
-
-        // Change Content Type — the custom dropdown: open the trigger, pick the option
-        fireEvent.click(screen.getByRole('button', { name: 'Content Type' }));
-        fireEvent.click(screen.getByRole('option', { name: 'text/xml' }));
-        expect(defaultProps.onContentTypeChange).toHaveBeenCalledWith('text/xml');
     });
 
     it('should trigger body type change for REST', () => {

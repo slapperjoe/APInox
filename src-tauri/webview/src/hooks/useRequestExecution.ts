@@ -46,62 +46,29 @@ function getContentTypeForBodyType(bodyType: BodyType): string {
 }
 
 /**
- * Fix legacy content-type mismatches
- * If we detect old default content-types that don't match the body type, fix them
+ * Resolve the Content-Type the request actually sends.
+ *
+ * Content-Type is a header: the Headers tab dropdown writes
+ * `headers['Content-Type']`, and that header is what goes on the wire, so the
+ * header wins here. `request.contentType` is only its derived mirror — used as
+ * a fallback for stored requests that predate the header, and refreshed from
+ * the header so the badge, editor language and form enctype see the value that
+ * is really being sent.
  */
 function fixContentType(request: ApiRequest): { contentType: string; headers: Record<string, string> } {
-    const legacyDefaults = ['text/xml; charset=utf-8', 'text/xml', 'application/soap+xml'];
-    const currentContentType = request.contentType || '';
-    const currentHeaderContentType = request.headers?.['Content-Type'] || '';
-    
-    // For REST requests with a body type, ensure content type matches
-    if (request.requestType === 'rest') {
-        if (request.bodyType) {
-            const expectedContentType = getContentTypeForBodyType(request.bodyType);
-            
-            // If current content type is a legacy SOAP default, fix it
-            if (legacyDefaults.includes(currentContentType) || currentContentType === '') {
-                return {
-                    contentType: expectedContentType,
-                    headers: {
-                        ...(request.headers || {}),
-                        'Content-Type': expectedContentType
-                    }
-                };
-            }
-            
-            // If header doesn't match content type field, fix header
-            if (currentHeaderContentType !== currentContentType) {
-                return {
-                    contentType: currentContentType,
-                    headers: {
-                        ...(request.headers || {}),
-                        'Content-Type': currentContentType
-                    }
-                };
-            }
-        }
-    }
-    
-    // For SOAP requests: ensure header matches the contentType field (dropdown is authoritative)
-    if (request.requestType === 'soap' && currentContentType) {
-        // If header doesn't match the contentType field, fix it
-        if (currentHeaderContentType !== currentContentType) {
-            return {
-                contentType: currentContentType,
-                headers: {
-                    ...(request.headers || {}),
-                    'Content-Type': currentContentType
-                }
-            };
-        }
-    }
-    
-    // No fix needed - header already matches
-    return {
-        contentType: currentContentType,
-        headers: request.headers || {}
-    };
+    const headers = { ...(request.headers || {}) };
+    const headerKey = Object.keys(headers).find(k => k.toLowerCase() === 'content-type');
+    const effective = (headerKey ? headers[headerKey] : '').trim()
+        || (request.contentType || '').trim()
+        || (request.requestType === 'rest' && request.bodyType ? getContentTypeForBodyType(request.bodyType) : '')
+        || 'application/soap+xml';
+
+    // Normalise the canonical key so the mirror and the header agree with what
+    // is sent (a stored request may hold `content-type` in any casing).
+    if (headerKey && headerKey !== 'Content-Type') delete headers[headerKey];
+    headers['Content-Type'] = effective;
+
+    return { contentType: effective, headers };
 }
 
 interface UseRequestExecutionParams {
