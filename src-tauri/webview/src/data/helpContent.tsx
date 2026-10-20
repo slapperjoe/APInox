@@ -327,6 +327,8 @@ const HELP_SECTIONS_RAW = [
     - **Simple Contains** / **Simple Not Contains**
     - **Response SLA**
     - **XPath Match**
+    - **JSONPath Match** (JSON responses)
+    - **Header Match** (response headers)
     - **SOAP Fault**
     - **HTTP Status**
     - **Script (JavaScript)**

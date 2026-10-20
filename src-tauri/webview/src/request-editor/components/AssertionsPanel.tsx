@@ -206,6 +206,8 @@ export const AssertionsPanel: React.FC<AssertionsPanelProps> = ({ assertions, on
         if (type === 'Simple Contains') newAssertion.configuration = { token: '', ignoreCase: true };
         if (type === 'Simple Not Contains') newAssertion.configuration = { token: '', ignoreCase: true };
         if (type === 'XPath Match') newAssertion.configuration = { xpath: '', expectedContent: '' };
+        if (type === 'JSONPath Match') newAssertion.configuration = { jsonpath: '', expectedContent: '' };
+        if (type === 'Header Match') newAssertion.configuration = { header: '', expectedContent: '' };
         if (type === 'SOAP Fault') newAssertion.configuration = { expectFault: false };
         if (type === 'HTTP Status') newAssertion.configuration = { expectedStatus: '200' };
         if (type === 'Script') newAssertion.configuration = { script: '// return true to pass, false to fail\n// Available: response, statusCode\nreturn response.includes("Success");' };
@@ -245,6 +247,8 @@ export const AssertionsPanel: React.FC<AssertionsPanelProps> = ({ assertions, on
                     <option value="Simple Not Contains">Not Contains</option>
                     <option value="Response SLA">Response SLA</option>
                     <option value="XPath Match">XPath Match</option>
+                    <option value="JSONPath Match">JSONPath Match</option>
+                    <option value="Header Match">Header Match</option>
                     <option value="SOAP Fault">SOAP Fault</option>
                     <option value="HTTP Status">HTTP Status</option>
                     <option value="Script">Script (JavaScript)</option>
@@ -308,6 +312,46 @@ export const AssertionsPanel: React.FC<AssertionsPanelProps> = ({ assertions, on
                                                 <FlexInput
                                                     value={a.configuration?.expectedContent || ''}
                                                     onChange={(e) => updateConfig(a.id!, 'expectedContent', e.target.value)}
+                                                    placeholder="Value"
+                                                />
+                                            </FieldRow>
+                                        </FieldColumn>
+                                    )}
+                                    {a.type === 'JSONPath Match' && (
+                                        <FieldColumn>
+                                            <FieldRow>
+                                                <FieldLabel>JSONPath:</FieldLabel>
+                                                <FlexInput
+                                                    value={a.configuration?.jsonpath || ''}
+                                                    onChange={(e) => updateConfig(a.id ?? '', 'jsonpath', e.target.value)}
+                                                    placeholder="$.data.token"
+                                                />
+                                            </FieldRow>
+                                            <FieldRow>
+                                                <FieldLabel>Expected:</FieldLabel>
+                                                <FlexInput
+                                                    value={a.configuration?.expectedContent || ''}
+                                                    onChange={(e) => updateConfig(a.id ?? '', 'expectedContent', e.target.value)}
+                                                    placeholder="Value"
+                                                />
+                                            </FieldRow>
+                                        </FieldColumn>
+                                    )}
+                                    {a.type === 'Header Match' && (
+                                        <FieldColumn>
+                                            <FieldRow>
+                                                <FieldLabel>Header:</FieldLabel>
+                                                <FlexInput
+                                                    value={a.configuration?.header || ''}
+                                                    onChange={(e) => updateConfig(a.id ?? '', 'header', e.target.value)}
+                                                    placeholder="X-Trace-Id"
+                                                />
+                                            </FieldRow>
+                                            <FieldRow>
+                                                <FieldLabel>Expected:</FieldLabel>
+                                                <FlexInput
+                                                    value={a.configuration?.expectedContent || ''}
+                                                    onChange={(e) => updateConfig(a.id ?? '', 'expectedContent', e.target.value)}
                                                     placeholder="Value"
                                                 />
                                             </FieldRow>

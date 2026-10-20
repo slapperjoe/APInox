@@ -94,4 +94,39 @@ describe('AssertionsPanel', () => {
         // The CheckCircle2 icon should be present
         expect(screen.getByText('Simple Contains')).toBeInTheDocument();
     });
+
+    it('adds a JSONPath Match assertion with its own config fields', () => {
+        const onChange = vi.fn();
+        render(<AssertionsPanel assertions={[]} onChange={onChange} />);
+
+        fireEvent.change(screen.getByRole('combobox'), { target: { value: 'JSONPath Match' } });
+
+        const newAssertion = onChange.mock.calls[0][0][0];
+        expect(newAssertion.type).toBe('JSONPath Match');
+        expect(newAssertion.configuration).toEqual({ jsonpath: '', expectedContent: '' });
+    });
+
+    it('renders the JSONPath input, not an XPath input, for a JSONPath assertion', () => {
+        const assertions = [{
+            id: 'jp-1',
+            type: 'JSONPath Match' as const,
+            configuration: { jsonpath: '$.data.token', expectedContent: 'abc123' }
+        }];
+        render(<AssertionsPanel assertions={assertions} onChange={vi.fn()} />);
+
+        expect(screen.getByDisplayValue('$.data.token')).toBeInTheDocument();
+        expect(screen.getByText('JSONPath:')).toBeInTheDocument();
+    });
+
+    it('renders the header name input for a Header Match assertion', () => {
+        const assertions = [{
+            id: 'hdr-1',
+            type: 'Header Match' as const,
+            configuration: { header: 'X-Trace-Id', expectedContent: 't-9' }
+        }];
+        render(<AssertionsPanel assertions={assertions} onChange={vi.fn()} />);
+
+        expect(screen.getByDisplayValue('X-Trace-Id')).toBeInTheDocument();
+        expect(screen.getByText('Header:')).toBeInTheDocument();
+    });
 });
