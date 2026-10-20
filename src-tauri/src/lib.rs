@@ -478,11 +478,20 @@ pub fn run() {
     std::env::set_var("no_proxy", "*");
 
     // On Linux, WebKitGTK's DMA-BUF renderer can produce "Error 71 (Protocol error)"
-    // on some Wayland compositors (KDE Plasma, etc.). Disabling it avoids the crash
-    // while keeping Wayland support for everything else.
+    // on some Wayland compositors (observed on KDE Plasma). Disabling the renderer is
+    // not a transport tweak: WebKit leaves no buffer transport, which also switches
+    // off accelerated compositing and threaded scrolling — so on a dmabuf-capable
+    // compositor (wlroots) it is pure lost smoothness. Only force it for the
+    // compositor that actually crashes, and never override an explicit choice.
+    // WebKit checks these variables by presence, so the way to opt out is to leave
+    // the variable unset; on WebKitGTK 2.44+ the better explicit override is
+    // WEBKIT_DMABUF_RENDERER_FORCE_SHM=1, which keeps hardware acceleration.
     #[cfg(target_os = "linux")]
     if std::env::var("WEBKIT_DISABLE_DMABUF_RENDERER").is_err() {
-        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+        let desktop = std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default();
+        if desktop.to_ascii_lowercase().contains("kde") {
+            std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+        }
     }
 
     tauri::Builder::default()
