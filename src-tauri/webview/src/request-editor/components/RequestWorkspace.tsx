@@ -6,7 +6,9 @@ import { MonacoSingleLineInput } from './MonacoSingleLineInput';
 import type { MonacoSingleLineInputHandle } from './MonacoSingleLineInput';
 import type { MonacoRequestEditorHandle } from './MonacoRequestEditor';
 import type { FormField, BinaryFile, EditorVariable } from '../types';
+import type { SchemaIssue } from '@shared/models';
 import { XPathGenerator } from '../utils/xpathGenerator';
+import { formatSchemaReport } from '../utils/schemaReport';
 import { useEditorSettings, EditorSettingsProvider } from '../contexts/EditorSettingsContext';
 import { formatXml } from '../utils/xmlFormatter';
 import { formatContent } from '../utils/contentFormatter';
@@ -55,6 +57,8 @@ export interface ExecutionResponse {
    * backend's flattened cause chain — see `ErrorDetailBanner`.
    */
   error?: string | null;
+  /** Contract violations against the request's stored OpenAPI schema. */
+  schemaIssues?: SchemaIssue[];
 }
 
 export interface Variable {
@@ -225,6 +229,13 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
       }
     };
   }, [loading]);
+
+  // Perf: memoize the schema-violation report so the banner's text is not
+  // rebuilt on every keystroke in the request editor.
+  const schemaReport = useMemo(
+    () => formatSchemaReport(response?.schemaIssues ?? []),
+    [response?.schemaIssues],
+  );
 
   // Handle response selection for XPath generation
   useEffect(() => {
@@ -642,6 +653,12 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
                   <ErrorDetailBanner
                     message={response.error}
                     testId="response-error-banner"
+                  />
+                )}
+                {schemaReport && (
+                  <ErrorDetailBanner
+                    message={schemaReport}
+                    testId="schema-issues-banner"
                   />
                 )}
                 {/* Response Editor - Full height */}

@@ -141,3 +141,39 @@ describe('findOwnerRequest', () => {
         expect(findOwnerRequest([project], 'not-there')).toBeNull();
     });
 });
+
+describe('response schema validation (OpenAPI contract check)', () => {
+    it('passes the stored schema through to the command args', () => {
+        const args = buildRestInvokeArgs({
+            method: 'GET',
+            url: 'https://api.example.com/pets',
+            headers: {},
+            body: null,
+            responseSchema: { type: 'object', required: ['id'] },
+        });
+        expect(args.responseSchema).toEqual({ type: 'object', required: ['id'] });
+    });
+
+    it('omits the schema when the request has none', () => {
+        const args = buildRestInvokeArgs({
+            method: 'GET',
+            url: 'https://api.example.com/pets',
+            headers: {},
+            body: null,
+        });
+        expect(args.responseSchema).toBeUndefined();
+    });
+
+    it('maps the backend findings onto the response the pane renders', () => {
+        const response = normalizeRestResponse({
+            success: true,
+            status: 200,
+            headers: {},
+            body: '{"id": 1}',
+            schema_issues: [{ path: '$.id', message: 'expected string, got integer' }],
+        });
+        expect(response.schemaIssues).toEqual([
+            { path: '$.id', message: 'expected string, got integer' },
+        ]);
+    });
+});

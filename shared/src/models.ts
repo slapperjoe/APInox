@@ -218,6 +218,12 @@ export interface BinaryFile {
 }
 
 /** Stored response from the last execution of a request */
+export interface SchemaIssue {
+    /** JSON-pointer-ish path to the value that failed, e.g. `$.data.items[0]`. */
+    path: string;
+    message: string;
+}
+
 export interface RequestResponse {
     rawResponse?: string;
     status?: number;
@@ -226,6 +232,8 @@ export interface RequestResponse {
     size?: number;
     headers?: Record<string, string>;
     contentType?: string;
+    /** Contract violations found against the request's stored OpenAPI schema. */
+    schemaIssues?: SchemaIssue[];
 }
 
 export interface ApiRequest {
@@ -243,6 +251,8 @@ export interface ApiRequest {
     id?: string;
     wsSecurity?: WSSecurityConfig;
     attachments?: RequestAttachment[];
+    /** OpenAPI response schema captured at import (JSON Schema node). */
+    responseSchema?: unknown;
     /** Response from the last execution, persisted across restarts */
     lastResponse?: RequestResponse;
 

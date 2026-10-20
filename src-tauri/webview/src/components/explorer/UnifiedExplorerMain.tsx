@@ -551,6 +551,7 @@ export const UnifiedExplorerMain: React.FC<UnifiedExplorerMainProps> = ({
                     url: effectiveEndpoint || '',
                     headers: req.headers || {},
                     body: currentXml || req.request || null,
+                    responseSchema: req.responseSchema,
                 });
                 // R-11: `requestId` registers a cancel token in Rust (the
                 // token races the send AND the body read in `execute_internal`).

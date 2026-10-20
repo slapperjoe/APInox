@@ -1,4 +1,4 @@
-import { ApiRequest, ApiOperation, UnifiedProject } from '@shared/models';
+import { ApiRequest, ApiOperation, SchemaIssue, UnifiedProject } from '@shared/models';
 import { effectiveContentType } from '@shared/utils/contentType';
 import type { ExecutionResponse } from '../request-editor/monaco';
 
@@ -39,6 +39,8 @@ export interface ExecuteRestResponse {
     time_taken_ms?: number;
     error?: string | null;
     truncated?: boolean;
+    /** Contract violations against the request's stored OpenAPI schema. */
+    schema_issues?: SchemaIssue[];
 }
 
 export interface RestDispatchInput {
@@ -49,6 +51,8 @@ export interface RestDispatchInput {
     headers: Record<string, string>;
     /** Raw body: JSON text for REST. */
     body: string | null;
+    /** Stored OpenAPI response schema; present means the response is checked. */
+    responseSchema?: unknown;
 }
 
 /**
@@ -80,6 +84,7 @@ export function buildRestInvokeArgs(input: RestDispatchInput): {
     url: string;
     headers: Record<string, string>;
     body: string | null;
+    responseSchema?: unknown;
 } {
     const method = (input.method || 'GET').toUpperCase();
     const headers = { ...(input.headers || {}) };
@@ -88,7 +93,7 @@ export function buildRestInvokeArgs(input: RestDispatchInput): {
     const hasBody = ['POST', 'PUT', 'PATCH'].includes(method);
     const body: string | null = hasBody ? (input.body || null) : null;
 
-    return { method, url: input.url, headers, body }
+    return { method, url: input.url, headers, body, responseSchema: input.responseSchema }
 }
 
 /**
@@ -107,6 +112,7 @@ export function normalizeRestResponse(
         statusText: result.status_text || (result.success ? 'OK' : (result.error || 'Error')),
         headers,
         contentType: headers['content-type'] || fallbackContentType,
+        schemaIssues: result.schema_issues,
     };
 }
 
