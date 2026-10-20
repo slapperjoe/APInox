@@ -2,7 +2,7 @@ import React, { Suspense } from 'react';
 import { Play, ChevronLeft, GitBranch, Clock, FileCode, FileText, RefreshCw } from 'lucide-react';
 import { SidebarView, WorkflowStep, TestStep } from '@shared/models';
 import { bridge } from '../utils/bridge';
-import { CustomXPathEvaluator } from '../utils/xpathEvaluator';
+import { extractValue } from '@shared/utils/extractValue';
 import { useMobileLayout } from '../hooks/useMobileLayout';
 
 import { ErrorBoundary, formatXml, validateUrl, validateJson, validateXml } from '../request-editor/core';
@@ -173,17 +173,17 @@ export const WorkspaceLayout: React.FC = () => {
                                         ? stepExec.response.result
                                         : JSON.stringify(stepExec.response.result));
                                 
-                                if (rawResp && ext.source === 'body') {
+                                if (rawResp || ext.source === 'header') {
                                     try {
-                                        value = CustomXPathEvaluator.evaluate(rawResp, ext.path);
+                                        value = extractValue(ext, rawResp, stepExec.response.headers || {});
                                         if (!value && ext.defaultValue) {
                                             value = ext.defaultValue;
                                         }
                                     } catch (e) {
                                         // The fallback is intentional, but the failure itself
-                                        // was invisible — a malformed XPath and an empty result
+                                        // was invisible — a malformed path and an empty result
                                         // produced the same outcome with no signal.
-                                        console.warn('[WorkspaceLayout] XPath evaluation failed, using default value', { path: ext.path, error: e });
+                                        console.warn('[WorkspaceLayout] extraction failed, using default value', { path: ext.path, error: e });
                                         if (ext.defaultValue) {
                                             value = ext.defaultValue;
                                         }

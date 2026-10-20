@@ -8,7 +8,7 @@
 import { useRef, useCallback, useMemo } from 'react';
 import { bridge } from '../utils/bridge';
 import { debugLog } from '../utils/logger';
-import { CustomXPathEvaluator } from '../utils/xpathEvaluator';
+import { extractValue } from '@shared/utils/extractValue';
 import { FrontendCommand } from '@shared/messages';
 import { getInitialXml } from '@shared/utils/xmlUtils';
 import { PERF_REQUEST_ID_PREFIX, DEBOUNCE_MS } from '../constants';
@@ -187,19 +187,10 @@ export function useRequestExecution({
                                         ? stepExec.response.result
                                         : JSON.stringify(stepExec.response.result));
 
-                                    if (ext.type === 'Header' || ext.source === 'header') {
-                                        const responseHeaders: Record<string, string> = stepExec.response.headers || {};
-                                        const headerValue = Object.entries(responseHeaders)
-                                            .find(([k]) => k.toLowerCase() === (ext.path || '').toLowerCase())?.[1];
-                                        if (headerValue) {
-                                            contextVariables[ext.variable] = headerValue;
-                                            debugLog(`[Context] Extracted header '${ext.variable}' from step '${step.name}'`, headerValue);
-                                        } else if (ext.defaultValue) {
-                                            contextVariables[ext.variable] = ext.defaultValue;
-                                        }
-                                    } else if (rawResp && ext.source === 'body') {
+                                    const responseHeaders: Record<string, string> = stepExec.response.headers || {};
+                                    if (rawResp || ext.source === 'header') {
                                         try {
-                                            const val = CustomXPathEvaluator.evaluate(rawResp, ext.path);
+                                            const val = extractValue(ext, rawResp, responseHeaders);
                                             if (val) {
                                                 contextVariables[ext.variable] = val;
                                                 debugLog(`[Context] Extracted '${ext.variable}' from step '${step.name}'`, val);
