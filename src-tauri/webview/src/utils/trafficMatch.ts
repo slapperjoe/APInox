@@ -56,7 +56,11 @@ export const SCORE_ACTION_FULL = 70;
 export const SCORE_ACTION_TAIL = 65;
 export const SCORE_BODY_ELEMENT = 60;
 export const SCORE_PATH_TEMPLATE = 55;
+/** A template matched past a spec base path — same operation, less certain. */
+export const SCORE_PATH_TEMPLATE_BASE = 50;
 export const SCORE_PATH_SEGMENT = 40;
+/** Leading captured segments allowed to be the spec's base path. */
+export const MAX_BASE_PATH_SEGMENTS = 3;
 export const HOST_BONUS = 20;
 /** Menu cap — a project with 200 operations would otherwise blow out the submenu.
  *  Applied by the caller, which is also what knows whether it truncated. */
@@ -107,22 +111,44 @@ export function pathOnly(url: string): string {
 }
 
 /**
- * Segment-wise match of a captured path against an OpenAPI template: `{id}`
- * takes any single non-empty segment, literal segments must match. Compared
- * case-insensitively, like the rest of the scorer.
+ * Segment-wise match of a captured path against an OpenAPI template.
  *
- * Returns false for a template with no placeholders — a literal path is already
- * covered by the operation-name check, and matching it here would double-count.
+ * Returns the number of extra leading captured segments — the spec's base path
+ * — or null when the path does not match. The stored template is relative to
+ * `servers[0].url` (or Swagger's `basePath`), which the import bakes into
+ * `originalEndpoint` but not into `input.path`, so a capture to
+ * `/api/orders/123` carries a segment the template does not know about. Capped
+ * at `MAX_BASE_PATH_SEGMENTS` so a stray prefix cannot match anything.
+ *
+ * Placeholders are matched inside a segment too (`/files/{version}.pdf`), not
+ * only when the whole segment is one. A template with no placeholders returns
+ * null — a literal path is already covered by the operation-name check.
  */
-export function pathTemplateMatches(template: string, capturedPath: string): boolean {
-    if (!template || !template.includes('{')) return false;
+export function matchPathTemplate(template: string, capturedPath: string): number | null {
+    if (!template || !template.includes('{')) return null;
     const tSeg = template.split('/').filter(Boolean);
     const cSeg = capturedPath.split('/').filter(Boolean);
-    if (tSeg.length !== cSeg.length) return false;
-    return tSeg.every((seg, i) =>
-        seg.startsWith('{') && seg.endsWith('}')
-            ? cSeg[i].length > 0
-            : seg.toLowerCase() === cSeg[i].toLowerCase());
+    if (cSeg.length < tSeg.length) return null;
+    const baseSegments = cSeg.length - tSeg.length;
+    if (baseSegments > MAX_BASE_PATH_SEGMENTS) return null;
+
+    for (let i = 0; i < tSeg.length; i++) {
+        const captured = cSeg[baseSegments + i];
+        if (!captured) return null;
+        const seg = tSeg[i];
+        if (!seg.includes('{')) {
+            if (seg.toLowerCase() !== captured.toLowerCase()) return null;
+            continue;
+        }
+        // Escape the literals first, then turn each escaped `{name}` into a
+        // single-segment wildcard.
+        const pattern = new RegExp(
+            `^${seg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\{[^}]+\\\}/g, '[^/]+')}$`,
+            'i',
+        );
+        if (!pattern.test(captured)) return null;
+    }
+    return baseSegments;
 }
 
 /**
@@ -171,10 +197,11 @@ export function matchTrafficToOperations(log: TrafficLog, projects: UnifiedProje
                     // operations, and the capture is one of them.
                     const template = op.input?.path;
                     const opMethod = op.input?.method;
-                    if (template && pathTemplateMatches(template, capturedPath)
+                    const baseSegments = template ? matchPathTemplate(template, capturedPath) : null;
+                    if (baseSegments !== null
                         && (!opMethod || opMethod.toUpperCase() === (log.method || '').toUpperCase())) {
-                        score = SCORE_PATH_TEMPLATE;
-                        reason = 'Path template';
+                        score = baseSegments === 0 ? SCORE_PATH_TEMPLATE : SCORE_PATH_TEMPLATE_BASE;
+                        reason = baseSegments === 0 ? 'Path template' : 'Path template (base path)';
                     } else if (pathSeg && pathSeg.toLowerCase() === op.name.toLowerCase()) {
                         score = SCORE_PATH_SEGMENT;
                         reason = 'URL path';

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-    matchTrafficToOperations, pathTemplateMatches,
+    matchTrafficToOperations, matchPathTemplate,
     actionTail, contentTypeAction, bodyElementName, pathOnly,
 } from "../trafficMatch";
 import type { TrafficLog } from "../../components/proxy/TrafficViewer";
@@ -119,17 +119,30 @@ describe("matchTrafficToOperations", () => {
     });
 });
 
-describe("pathTemplateMatches", () => {
+describe("matchPathTemplate", () => {
     it("takes a single segment per placeholder and requires the literals", () => {
-        expect(pathTemplateMatches("/orders/{id}", "/orders/123")).toBe(true);
-        expect(pathTemplateMatches("/orders/{id}/items/{sku}", "/orders/123/items/AB")).toBe(true);
-        expect(pathTemplateMatches("/orders/{id}", "/orders/123/items")).toBe(false);
-        expect(pathTemplateMatches("/orders/{id}", "/users/123")).toBe(false);
-        expect(pathTemplateMatches("/orders/{id}", "/orders/")).toBe(false);
+        expect(matchPathTemplate("/orders/{id}", "/orders/123")).toBe(0);
+        expect(matchPathTemplate("/orders/{id}/items/{sku}", "/orders/123/items/AB")).toBe(0);
+        expect(matchPathTemplate("/orders/{id}", "/orders/123/items")).toBe(null);
+        expect(matchPathTemplate("/orders/{id}", "/users/123")).toBe(null);
+        expect(matchPathTemplate("/orders/{id}", "/orders/")).toBe(null);
+    });
+
+    it("reports the spec base path as extra leading segments", () => {
+        // The import stores the template relative to servers[0].url, so a
+        // capture to /api/orders/123 carries a segment the template does not.
+        expect(matchPathTemplate("/orders/{id}", "/api/orders/123")).toBe(1);
+        expect(matchPathTemplate("/orders/{id}", "/v1/api/orders/123")).toBe(2);
+        expect(matchPathTemplate("/orders/{id}", "/a/b/c/d/orders/123")).toBe(null);
+    });
+
+    it("matches a placeholder inside a segment, not only a whole one", () => {
+        expect(matchPathTemplate("/files/{version}.pdf", "/files/2.0.pdf")).toBe(0);
+        expect(matchPathTemplate("/files/{version}.pdf", "/files/2.0.docx")).toBe(null);
     });
 
     it("leaves placeholder-free templates to the operation-name check", () => {
-        expect(pathTemplateMatches("/orders", "/orders")).toBe(false);
+        expect(matchPathTemplate("/orders", "/orders")).toBe(null);
     });
 
     it("ignores the query", () => {
@@ -151,6 +164,12 @@ describe("matchTrafficToOperations — REST path templates", () => {
         const log = mkLog({ id: "a", method: "DELETE", url: "http://api/orders/123" });
         const matches = matchTrafficToOperations(log, [mkProject({ name: "Api", operations: [restOp("Orders/get", "/orders/{id}", "get")] })]);
         expect(matches).toHaveLength(0);
+    });
+
+    it("matches past a spec base path and says so in the reason", () => {
+        const log = mkLog({ id: "a", method: "GET", url: "http://api.example.com/v1/orders/123" });
+        const matches = matchTrafficToOperations(log, [mkProject({ name: "Api", operations: [restOp("Orders/get", "/orders/{id}", "get")] })]);
+        expect(matches[0].reason).toBe("Path template (base path)");
     });
 
     it("ranks a template match above a bare segment match", () => {

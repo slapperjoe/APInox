@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { AddToProjectDialog } from '../AddToProjectDialog';
 import { matchTrafficToOperations } from '../../../utils/trafficMatch';
@@ -71,6 +72,18 @@ describe('AddToProjectDialog with ranked matches', () => {
         const options = screen.getAllByRole('combobox')[1].querySelectorAll('option');
         expect(options[0]).toHaveTextContent('GetPrice — Body element');
         expect(options[1]).toHaveTextContent('Unrelated');
+    });
+
+    it('keeps the seeded match under StrictMode, where the mount effect runs twice', () => {
+        const matches = matchTrafficToOperations(log, projects);
+        render(
+            <React.StrictMode>
+                <AddToProjectDialog log={log} projects={projects} matches={matches} onConfirm={vi.fn()} onClose={vi.fn()} />
+            </React.StrictMode>,
+        );
+        // A "first run" flag would be consumed by the first invocation and the
+        // second would reset the operation to the new-operation sentinel.
+        expect(screen.getAllByRole('combobox')[1]).toHaveValue('Login');
     });
 
     it('still defaults to a new operation when nothing matches', () => {

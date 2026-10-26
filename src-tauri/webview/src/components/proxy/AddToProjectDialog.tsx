@@ -170,11 +170,16 @@ export function AddToProjectDialog({ log, projects, matches, onConfirm, onClose 
 
     // Reset the operation cascade when the project changes: default to a NEW
     // operation (the captured request usually doesn't match a WSDL operation),
-    // re-seeding the suggested name from the traffic. The first run is skipped
-    // so the seeded top match survives.
-    const firstProjectRun = useRef(true);
+    // re-seeding the suggested name from the traffic.
+    //
+    // The guard compares the project name rather than counting effect runs,
+    // because StrictMode invokes the mount effect twice and a "first run" flag
+    // is consumed by the first invocation — the second would clobber the seeded
+    // match and the dialog would open on "New operation…" instead.
+    const lastProject = useRef(selectedProjectName);
     useEffect(() => {
-        if (firstProjectRun.current) { firstProjectRun.current = false; return; }
+        if (lastProject.current === selectedProjectName) return;
+        lastProject.current = selectedProjectName;
         setSelectedOperationValue(NEW_OPERATION_SENTINEL);
         setNewOperationName(deriveOperationName(log));
     }, [selectedProjectName]); // eslint-disable-line react-hooks/exhaustive-deps
