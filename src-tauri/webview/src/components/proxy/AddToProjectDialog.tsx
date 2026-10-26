@@ -14,15 +14,21 @@
  * disabled. The write path is the unified store (updateUnifiedProject), so the
  * new request appears in the tree immediately.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { UnifiedProject } from '@shared/models';
 import { tokens } from './tokens';
 import type { TrafficLog } from './TrafficViewer';
-import type { AddToProjectDestination } from '../../utils/trafficMatch';
+import type { AddToProjectDestination, TrafficMatch } from '../../utils/trafficMatch';
 
 interface AddToProjectDialogProps {
     log: TrafficLog;
     projects: UnifiedProject[];
+    /**
+     * Scored matches for this capture (utils/trafficMatch). The menu caps what
+     * it lists at 12; the dialog is where the rest are visible, so it takes the
+     * full ranked list and uses it to pre-select and order both dropdowns.
+     */
+    matches?: TrafficMatch[];
     onConfirm: (projectName: string, destination: AddToProjectDestination, requestName: string, includeAllHeaders: boolean) => void;
     onClose: () => void;
 }
@@ -129,25 +135,46 @@ const NEW_OPERATION_SENTINEL = '__new__';
 
 // ── component ─────────────────────────────────────────────────────────────
 
-export function AddToProjectDialog({ log, projects, onConfirm, onClose }: AddToProjectDialogProps) {
+export function AddToProjectDialog({ log, projects, matches, onConfirm, onClose }: AddToProjectDialogProps) {
     const writableProjects = projects.filter(p => !p.readOnly);
+    // Ranked, but only over projects this dialog can actually write to.
+    const ranked = (matches ?? []).filter(m => writableProjects.some(p => p.name === m.projectName));
+    const topMatch = ranked[0];
 
-    const [selectedProjectName, setSelectedProjectName] = useState<string>(writableProjects[0]?.name ?? '');
+    // First rank per project, so the project dropdown leads with the match.
+    const projectRank = new Map<string, number>();
+    ranked.forEach((m, i) => { if (!projectRank.has(m.projectName)) projectRank.set(m.projectName, i); });
+    const orderedProjects = ranked.length
+        ? writableProjects.slice().sort((a, b) => (projectRank.get(a.name) ?? ranked.length) - (projectRank.get(b.name) ?? ranked.length))
+        : writableProjects;
+
+    const [selectedProjectName, setSelectedProjectName] = useState<string>(topMatch?.projectName ?? writableProjects[0]?.name ?? '');
 
     // Operation destination: existing operation name, or the "new" sentinel.
-    const [selectedOperationValue, setSelectedOperationValue] = useState<string>(NEW_OPERATION_SENTINEL);
+    // Seeded from the top match — a ranked list is only useful if the dialog
+    // opens on the answer it produced.
+    const [selectedOperationValue, setSelectedOperationValue] = useState<string>(topMatch?.operationName ?? NEW_OPERATION_SENTINEL);
     const [newOperationName, setNewOperationName] = useState<string>(() => deriveOperationName(log));
 
     const [requestName, setRequestName] = useState<string>(deriveDefaultName(log));
     const [includeAllHeaders, setIncludeAllHeaders] = useState<boolean>(false);
 
-    const selectedProject: UnifiedProject | undefined = writableProjects.find(p => p.name === selectedProjectName);
-    const operations = selectedProject?.operations ?? [];
+    const selectedProject: UnifiedProject | undefined = orderedProjects.find(p => p.name === selectedProjectName);
+    // Matched operations first in score order, then the rest as the WSDL lists
+    // them (equal ranks keep the original order).
+    const projectMatches = ranked.filter(m => m.projectName === selectedProjectName);
+    const opRank = new Map(projectMatches.map((m, i) => [m.operationName, i]));
+    const operations = (selectedProject?.operations ?? []).slice().sort(
+        (a, b) => (opRank.get(a.name) ?? projectMatches.length) - (opRank.get(b.name) ?? projectMatches.length),
+    );
 
     // Reset the operation cascade when the project changes: default to a NEW
     // operation (the captured request usually doesn't match a WSDL operation),
-    // re-seeding the suggested name from the traffic.
+    // re-seeding the suggested name from the traffic. The first run is skipped
+    // so the seeded top match survives.
+    const firstProjectRun = useRef(true);
     useEffect(() => {
+        if (firstProjectRun.current) { firstProjectRun.current = false; return; }
         setSelectedOperationValue(NEW_OPERATION_SENTINEL);
         setNewOperationName(deriveOperationName(log));
     }, [selectedProjectName]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -187,7 +214,7 @@ export function AddToProjectDialog({ log, projects, onConfirm, onClose }: AddToP
                     {log.method} {log.url}
                 </div>
 
-                {writableProjects.length === 0 ? (
+                {orderedProjects.length === 0 ? (
                     <div style={{ color: tokens.text.muted, fontSize: 'var(--apinox-fs-base)' }}>
                         No writable projects found. Open or create a project first.
                     </div>
@@ -201,7 +228,7 @@ export function AddToProjectDialog({ log, projects, onConfirm, onClose }: AddToP
                                 value={selectedProjectName}
                                 onChange={e => setSelectedProjectName(e.target.value)}
                             >
-                                {writableProjects.map(p => (
+                                {orderedProjects.map(p => (
                                     <option key={p.name} value={p.name}>{p.displayName || p.name}</option>
                                 ))}
                             </select>
@@ -216,9 +243,18 @@ export function AddToProjectDialog({ log, projects, onConfirm, onClose }: AddToP
                                     value={selectedOperationValue}
                                     onChange={e => setSelectedOperationValue(e.target.value)}
                                 >
-                                    {operations.map(op => (
-                                        <option key={op.id || op.name} value={op.name}>{op.displayName || op.name}</option>
-                                    ))}
+                                    {operations.map(op => {
+                                        // Matched operations carry the signal
+                                        // that put them here, so the ranking is
+                                        // legible rather than just a reorder.
+                                        const pos = opRank.get(op.name);
+                                        const name = op.displayName || op.name;
+                                        return (
+                                            <option key={op.id || op.name} value={op.name}>
+                                                {pos !== undefined ? `${name} — ${projectMatches[pos].reason}` : name}
+                                            </option>
+                                        );
+                                    })}
                                     <option value={NEW_OPERATION_SENTINEL}>New operation…</option>
                                 </select>
                             )}

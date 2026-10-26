@@ -9,7 +9,7 @@ import { useEditorSettings } from '../../request-editor/core';
 import { IgnoreRule, matchesAnyIgnoreRule, ignorePatternFor } from '../../utils/useIgnoreList';
 import { extractPath, extractSoapAction } from '../../utils/trafficWorkflow';
 import {
-    matchTrafficToOperations, candidateProjectsForActionMatch, MAX_MENU_MATCHES,
+    matchTrafficToOperations, projectsToUpgrade, MAX_MENU_MATCHES,
     type AddToProjectDestination, type TrafficMatch,
 } from '../../utils/trafficMatch';
 import type { UnifiedProject } from '@shared/models';
@@ -268,6 +268,9 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = EMPTY_RULES, on
   const [methodFilter, setMethodFilter] = useState('ALL');
   const [statusGroups, setStatusGroups] = useState<Set<StatusGroupKey>>(new Set(DEFAULT_STATUS_GROUPS));
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; log: TrafficLog } | null>(null);
+  // Candidate projects still being upgraded for the open menu — what the
+  // "checking WSDLs" line reflects. Cleared when the menu closes.
+  const [pendingUpgrades, setPendingUpgrades] = useState<Set<string>>(new Set());
 
   // Live editor settings (same object the detail pane's Monaco uses) so the
   // right-click "copy" options format XML exactly as the app currently does —
@@ -281,6 +284,12 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = EMPTY_RULES, on
     const close = () => setCtxMenu(null);
     window.addEventListener('mousedown', close);
     return () => window.removeEventListener('mousedown', close);
+  }, [ctxMenu]);
+
+  // Pending upgrades belong to the open menu only — a stale set would carry the
+  // "checking WSDLs" line into the next right-click.
+  useEffect(() => {
+    if (!ctxMenu) setPendingUpgrades(new Set());
   }, [ctxMenu]);
 
   const filteredLogs = useMemo(() => {
@@ -305,12 +314,24 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = EMPTY_RULES, on
   const handleContextMenu = useCallback((e: React.MouseEvent, log: TrafficLog) => {
     e.preventDefault();
     setCtxMenu({ x: e.clientX, y: e.clientY, log });
-    // The strongest scoring signal (SOAPAction) cannot fire on a first-paint
-    // skeleton, which carries action: ''. Kick the plausible candidates —
-    // ensureProjectFull resolves immediately for projects already full (and
-    // dedupes by name), and ctxMatches below re-scores when one upgrades.
+    // Signals 1 and 3 need content a skeleton does not carry (`action` and
+    // `input`), so an operation whose name differs from its input element or
+    // its path template is invisible until the project is upgraded. Kick the
+    // plausible candidates and ctxMatches re-scores as each one lands.
     if (ensureProjectFull && projects) {
-      for (const project of candidateProjectsForActionMatch(log, projects)) void ensureProjectFull(project.name);
+      const candidates = projectsToUpgrade(log, projects);
+      if (candidates.length === 0) return;
+      setPendingUpgrades(new Set(candidates.map(p => p.name)));
+      for (const project of candidates) {
+        void ensureProjectFull(project.name).then(() => {
+          setPendingUpgrades(prev => {
+            if (!prev.has(project.name)) return prev;
+            const next = new Set(prev);
+            next.delete(project.name);
+            return next;
+          });
+        });
+      }
     }
   }, [ensureProjectFull, projects]);
 
@@ -502,14 +523,20 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = EMPTY_RULES, on
             });
           }
           if (addSubItems.length) {
+            const baseSub = matches.length
+              ? shown.length < matches.length
+                ? `${shown.length} of ${matches.length} matches`
+                : `${matches.length} matching operation${matches.length > 1 ? 's' : ''}`
+              : 'No WSDL match';
+            // The submenu can gain entries while the menu is open, so say what
+            // is still in flight rather than let matches appear silently.
+            const scanNote = pendingUpgrades.size > 0 ? ' · checking WSDLs' : '';
             sections.push({
               title: 'Add to Operation',
               items: [{
                 icon: Download,
                 label: 'Add to',
-                sub: matches.length
-                  ? shown.length < matches.length ? `${shown.length} of ${matches.length} matches` : `${matches.length} matching operation${matches.length > 1 ? 's' : ''}`
-                  : 'No WSDL match',
+                sub: baseSub + scanNote,
                 subItems: addSubItems,
               }],
             });

@@ -11,15 +11,18 @@
  *      (SOAP 1.2 carries the action in Content-Type, not in a header).
  *   2. The first element under <Body> — for document/literal-wrapped WSDLs
  *      that element IS the operation name.
- *   3. The URL's last path segment — the REST/OpenAPI convention.
+ *   3. The URL path — an OpenAPI template (`/orders/{id}`) matched
+ *      segment-wise against the captured path, or the last segment against the
+ *      operation name when no template is stored.
  * Host is a tie-breaker, never a match on its own: it is what separates two
  * projects that both define an operation of the same name.
  *
  * SKELETONS: the unified explorer first-paints projects as name-only
  * skeletons (UnifiedProjectContext), where `action` is ''. Signals 2 and 3
- * still score there; signal 1 only fires for projects already opened. The
- * scorer loads nothing itself — `candidateProjectsForActionMatch` below is how
- * a caller decides which projects are worth upgrading.
+ * still score there; signals 1 and 3's template form only fire for projects
+ * already opened, because a skeleton carries neither `action` nor `input`. The
+ * scorer loads nothing itself — `projectsToUpgrade` below is how a caller
+ * decides which projects are worth upgrading.
  *
  * NOTE: `extractSoapAction` (trafficWorkflow) is the DISPLAY variant — it
  * returns the header tail or the Body child, whichever it finds, as one
@@ -31,6 +34,7 @@ import type { TrafficLog } from '../components/proxy/TrafficViewer';
 import type { UnifiedProject } from '@shared/models';
 import { lastPathSegment } from './trafficWorkflow';
 import { findContentTypeHeader } from '@shared/utils/contentType';
+import { isFullProject } from '@shared/utils/projectFullness';
 
 /** Where a matched capture lands — the same destination AddToProjectDialog writes. */
 export interface AddToProjectDestination {
@@ -54,6 +58,7 @@ export interface TrafficMatch {
 export const SCORE_ACTION_FULL = 70;
 export const SCORE_ACTION_TAIL = 65;
 export const SCORE_BODY_ELEMENT = 60;
+export const SCORE_PATH_TEMPLATE = 55;
 export const SCORE_PATH_SEGMENT = 40;
 export const HOST_BONUS = 20;
 /** Menu cap — a project with 200 operations would otherwise blow out the submenu.
@@ -99,6 +104,30 @@ export function hostOf(url: string): string {
     try { return new URL(url).host.toLowerCase(); } catch { return ''; }
 }
 
+/** Path without the query — an OpenAPI template is matched against this. */
+export function pathOnly(url: string): string {
+    try { return new URL(url).pathname; } catch { return url; }
+}
+
+/**
+ * Segment-wise match of a captured path against an OpenAPI template: `{id}`
+ * takes any single non-empty segment, literal segments must match. Compared
+ * case-insensitively, like the rest of the scorer.
+ *
+ * Returns false for a template with no placeholders — a literal path is already
+ * covered by the operation-name check, and matching it here would double-count.
+ */
+export function pathTemplateMatches(template: string, capturedPath: string): boolean {
+    if (!template || !template.includes('{')) return false;
+    const tSeg = template.split('/').filter(Boolean);
+    const cSeg = capturedPath.split('/').filter(Boolean);
+    if (tSeg.length !== cSeg.length) return false;
+    return tSeg.every((seg, i) =>
+        seg.startsWith('{') && seg.endsWith('}')
+            ? cSeg[i].length > 0
+            : seg.toLowerCase() === cSeg[i].toLowerCase());
+}
+
 /**
  * Score every operation in `projects` against `log`, strongest match first.
  * Read-only projects are skipped — the menu can only add to a writable one.
@@ -108,6 +137,7 @@ export function matchTrafficToOperations(log: TrafficLog, projects: UnifiedProje
     const ctAction = contentTypeAction(log);
     const bodyEl = bodyElementName(log);
     const pathSeg = lastPathSegment(log.url);
+    const capturedPath = pathOnly(log.url);
     const logHost = hostOf(log.url);
 
     const matches: TrafficMatch[] = [];
@@ -136,9 +166,22 @@ export function matchTrafficToOperations(log: TrafficLog, projects: UnifiedProje
                 if (bodyEl && bodyEl.toLowerCase() === op.name.toLowerCase()) {
                     score = SCORE_BODY_ELEMENT;
                     reason = 'Body element';
-                } else if (pathSeg && pathSeg.toLowerCase() === op.name.toLowerCase()) {
-                    score = SCORE_PATH_SEGMENT;
-                    reason = 'URL path';
+                } else {
+                    // OpenAPI import stores the template on the operation's
+                    // input (`/orders/{id}`), which is what a concrete captured
+                    // path has to be matched against. Method is part of the
+                    // match: the same template with GET and POST is two
+                    // operations, and the capture is one of them.
+                    const template = op.input?.path;
+                    const opMethod = op.input?.method;
+                    if (template && pathTemplateMatches(template, capturedPath)
+                        && (!opMethod || opMethod.toUpperCase() === (log.method || '').toUpperCase())) {
+                        score = SCORE_PATH_TEMPLATE;
+                        reason = 'Path template';
+                    } else if (pathSeg && pathSeg.toLowerCase() === op.name.toLowerCase()) {
+                        score = SCORE_PATH_SEGMENT;
+                        reason = 'URL path';
+                    }
                 }
             }
 
@@ -166,27 +209,24 @@ export function matchTrafficToOperations(log: TrafficLog, projects: UnifiedProje
 }
 
 /**
- * The projects worth upgrading to full detail so the SOAPAction signal can
- * fire. A skeleton carries `action: ''`, so an operation whose NAME differs
- * from its input element is invisible to the scorer until the project is
- * upgraded — and the scorer can't know to upgrade it.
+ * The projects worth upgrading to full detail so the signals that need content
+ * can fire — SOAPAction (signal 1) and the OpenAPI path template (signal 3)
+ * are both absent on a skeleton, so an operation whose NAME differs from its
+ * input element or its template is invisible until the project is upgraded.
  *
  * Upgrading every project on a right-click would defeat the skeleton loader,
  * so the set is limited to the projects the capture plausibly belongs to:
  * those already matching by name, plus those the capture's host points at.
- * Callers pass these to `ensureProjectFull`, which resolves immediately for
- * projects that are already full — so listing a full project here is free.
+ * Already-full projects are excluded, so the result is exactly the work a
+ * caller has to do — which is also what makes a loading indicator honest.
  */
-export function candidateProjectsForActionMatch(
-    log: TrafficLog,
-    projects: UnifiedProject[],
-): UnifiedProject[] {
+export function projectsToUpgrade(log: TrafficLog, projects: UnifiedProject[]): UnifiedProject[] {
     const logHost = hostOf(log.url);
     const bodyEl = bodyElementName(log).toLowerCase();
     const pathSeg = lastPathSegment(log.url).toLowerCase();
 
     return projects.filter((project) => {
-        if (project.readOnly) return false;
+        if (project.readOnly || isFullProject(project)) return false;
         if (logHost && hostOf(project.sourceUrl || '') === logHost) return true;
         for (const op of project.operations || []) {
             const name = op.name.toLowerCase();

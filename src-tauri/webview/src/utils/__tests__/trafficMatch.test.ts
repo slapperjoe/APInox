@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { matchTrafficToOperations, candidateProjectsForActionMatch, actionTail, contentTypeAction, bodyElementName } from "../trafficMatch";
+import {
+    matchTrafficToOperations, projectsToUpgrade, pathTemplateMatches,
+    actionTail, contentTypeAction, bodyElementName, pathOnly,
+} from "../trafficMatch";
 import type { TrafficLog } from "../../components/proxy/TrafficViewer";
 import type { UnifiedProject } from "@shared/models";
 
@@ -116,7 +119,52 @@ describe("matchTrafficToOperations", () => {
     });
 });
 
-describe("candidateProjectsForActionMatch", () => {
+describe("pathTemplateMatches", () => {
+    it("takes a single segment per placeholder and requires the literals", () => {
+        expect(pathTemplateMatches("/orders/{id}", "/orders/123")).toBe(true);
+        expect(pathTemplateMatches("/orders/{id}/items/{sku}", "/orders/123/items/AB")).toBe(true);
+        expect(pathTemplateMatches("/orders/{id}", "/orders/123/items")).toBe(false);
+        expect(pathTemplateMatches("/orders/{id}", "/users/123")).toBe(false);
+        expect(pathTemplateMatches("/orders/{id}", "/orders/")).toBe(false);
+    });
+
+    it("leaves placeholder-free templates to the operation-name check", () => {
+        expect(pathTemplateMatches("/orders", "/orders")).toBe(false);
+    });
+
+    it("ignores the query", () => {
+        expect(pathOnly("http://x/orders/123?expand=customer")).toBe("/orders/123");
+    });
+});
+
+describe("matchTrafficToOperations — REST path templates", () => {
+    const restOp = (name: string, path: string, method: string) =>
+        ({ name, action: "", input: { path, method }, requests: [] });
+
+    it("matches a concrete URL against the stored template", () => {
+        const log = mkLog({ id: "a", method: "GET", url: "http://api/orders/123?expand=customer" });
+        const matches = matchTrafficToOperations(log, [mkProject({ name: "Api", operations: [restOp("Orders/get", "/orders/{id}", "get")] })]);
+        expect(matches[0].reason).toBe("Path template");
+    });
+
+    it("does not match the same template under a different method", () => {
+        const log = mkLog({ id: "a", method: "DELETE", url: "http://api/orders/123" });
+        const matches = matchTrafficToOperations(log, [mkProject({ name: "Api", operations: [restOp("Orders/get", "/orders/{id}", "get")] })]);
+        expect(matches).toHaveLength(0);
+    });
+
+    it("ranks a template match above a bare segment match", () => {
+        const log = mkLog({ id: "a", method: "GET", url: "http://api/orders/123" });
+        const matches = matchTrafficToOperations(log, [mkProject({
+            name: "Api",
+            operations: [restOp("orders", "/orders/{id}", "get"), restOp("123", "", "get")],
+        })]);
+        expect(matches[0].operationName).toBe("orders");
+        expect(matches[0].reason).toBe("Path template");
+    });
+});
+
+describe("projectsToUpgrade", () => {
     // A wrapped-style capture names its operation through the Body element, so
     // a skeleton scores it. A style-literal capture does not — its operation is
     // only findable through the action, which a skeleton does not carry.
@@ -127,7 +175,7 @@ describe("candidateProjectsForActionMatch", () => {
     });
 
     it("includes the project the capture's host points at", () => {
-        const candidates = candidateProjectsForActionMatch(literalLog, [
+        const candidates = projectsToUpgrade(literalLog, [
             mkProject({ name: "Svc", sourceUrl: "http://svc/Service1.asmx?WSDL", operations: [op("Authenticate")] }),
             mkProject({ name: "Unrelated", sourceUrl: "http://other/api", operations: [op("Nothing")] }),
         ]);
@@ -136,23 +184,32 @@ describe("candidateProjectsForActionMatch", () => {
 
     it("includes a project already matching by name, even on a different host", () => {
         const bodyLog = mkLog({ id: "b", url: "http://svc/", requestBody: "<e:Envelope><e:Body><GetPrice/></e:Body></e:Envelope>" });
-        const candidates = candidateProjectsForActionMatch(bodyLog, [
+        const candidates = projectsToUpgrade(bodyLog, [
             mkProject({ name: "Other", sourceUrl: "http://other/api", operations: [op("GetPrice")] }),
         ]);
         expect(candidates.map(p => p.name)).toEqual(["Other"]);
     });
 
     it("matches on an operation's own endpoint, not just the project source URL", () => {
-        const candidates = candidateProjectsForActionMatch(literalLog, [
+        const candidates = projectsToUpgrade(literalLog, [
             mkProject({ name: "Svc", operations: [{ name: "Authenticate", action: "", originalEndpoint: "http://svc/Service1.asmx", requests: [] }] }),
         ]);
         expect(candidates.map(p => p.name)).toEqual(["Svc"]);
     });
 
     it("skips read-only projects", () => {
-        const candidates = candidateProjectsForActionMatch(literalLog, [
+        const candidates = projectsToUpgrade(literalLog, [
             mkProject({ name: "Svc", sourceUrl: "http://svc/", readOnly: true, operations: [op("Authenticate")] }),
         ]);
         expect(candidates).toHaveLength(0);
+    });
+
+    it("excludes projects already carrying full detail — there is nothing to upgrade", () => {
+        const full = mkProject({
+            name: "Svc",
+            sourceUrl: "http://svc/",
+            operations: [{ name: "Authenticate", action: "urn:svc#Login", requests: [{ name: "sample", request: "<Login/>" }] }],
+        });
+        expect(projectsToUpgrade(literalLog, [full])).toHaveLength(0);
     });
 });

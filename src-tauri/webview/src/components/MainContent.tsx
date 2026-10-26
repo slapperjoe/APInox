@@ -9,7 +9,7 @@ import { generateInitialXmlForOperation } from '../utils/soapUtils';
 import { Sidebar } from './Sidebar';
 import { WorkspaceContext } from '../contexts/WorkspaceContext';
 import { SidebarContext } from '../contexts/SidebarContext';
-import type { AddToProjectDestination } from '../utils/trafficMatch';
+import { matchTrafficToOperations, type AddToProjectDestination } from '../utils/trafficMatch';
 import { lastPathSegment } from '../utils/trafficWorkflow';
 import type { TrafficLog } from './proxy/TrafficViewer';
 import type { PickRequestItem } from './modals/PickRequestModal';
@@ -1765,6 +1765,7 @@ const MainContent: React.FC = () => {
                         <AddToProjectDialog
                             log={addTrafficLog}
                             projects={unifiedProjects}
+                            matches={matchTrafficToOperations(addTrafficLog, unifiedProjects)}
                             onConfirm={handleConfirmAddTrafficToProject}
                             onClose={() => setAddTrafficLog(null)}
                         />

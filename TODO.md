@@ -18,11 +18,12 @@ This document tracks planned features for APInox, ordered by priority.
 - [ ] Test data sets (parameterized testing with CSV/JSON input)
 
 ### Traffic → Operation Matching
-Right-click a capture and add it to the unified-explorer operation its WSDL matches, with multiple matches offered as submenu options (`src-tauri/webview/src/utils/trafficMatch.ts`). Shipped: SOAPAction (header, or the `action=` Content-Type parameter for SOAP 1.2), the first element under `<Body>`, the URL's last path segment, host as the tie-breaker, and the skeleton upgrade kicked for candidate projects so action matching can fire.
+Right-click a capture and add it to the unified-explorer operation its WSDL matches, with multiple matches offered as submenu options (`src-tauri/webview/src/utils/trafficMatch.ts`). Shipped: SOAPAction (header, or the `action=` Content-Type parameter for SOAP 1.2), the first element under `<Body>`, the URL path, host as the tie-breaker, and the skeleton upgrade kicked for candidate projects so the content-based signals can fire.
 
-- [ ] REST path templates — a concrete URL (`/orders/123`) is matched literally against the operation name, so it only hits an operation named `123`; normalising it to the OpenAPI template (`/orders/{id}`) is not done
-- [ ] No feedback while a candidate project is still loading — the submenu can gain a match under the cursor with nothing saying so
-- [ ] The submenu caps at 12 matches with no way to see the rest except through the picker dialog
+- [x] REST path templates — a concrete URL (`/orders/123`) is now matched segment-wise against the stored OpenAPI template (`/orders/{id}`), with the method as part of the match
+- [x] Loading feedback — the menu line carries `checking WSDLs` while candidate projects are still upgrading, so a match appearing under the cursor is not silent
+- [x] The 12-match cap — the menu still caps at 12, but the picker dialog now takes the full ranked list, opens on the top match and shows which signal ranked each operation
+- [ ] Templates still only score projects already opened — a skeleton carries neither `action` nor `input`, so the upgrade kick has to guess candidates from the host, and a capture whose project is only findable through its template is missed until the host matches
 
 ---
 

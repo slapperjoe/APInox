@@ -108,6 +108,17 @@ describe('TrafficViewer right-click "Add to"', () => {
         expect(ensureProjectFull).not.toHaveBeenCalledWith('Unrelated');
     });
 
+    it('says what is still in flight while candidates upgrade', () => {
+        const neverResolves = new Promise<UnifiedProject | null>(() => {});
+        const ensureProjectFull = vi.fn().mockReturnValue(neverResolves);
+        renderViewer({ logs: [log], projects: [project], ensureProjectFull, onAddTrafficToOperation: vi.fn(), onAddToApinoxProject: vi.fn() });
+
+        openMenu();
+        // The submenu can gain entries under the cursor, so the parent line
+        // names the work still happening instead of letting it appear silently.
+        expect(screen.getByText('1 matching operation · checking WSDLs')).toBeInTheDocument();
+    });
+
     it('re-scores once a candidate project upgrades from its skeleton', () => {
         // Style-literal capture: the Body element does not name the operation,
         // so a skeleton (action: '') finds nothing until it is upgraded. The
@@ -118,7 +129,8 @@ describe('TrafficViewer right-click "Add to"', () => {
 
         const { rerender } = renderViewer({ logs: [log], projects: [skeleton], ensureProjectFull, onAddTrafficToOperation: vi.fn(), onAddToApinoxProject: vi.fn() });
         openMenu();
-        expect(screen.getByText('No WSDL match')).toBeInTheDocument();
+        // The skeleton is a candidate, so the in-flight note is part of the line.
+        expect(screen.getByText('No WSDL match · checking WSDLs')).toBeInTheDocument();
 
         rerender(<EditorSettingsProvider><TrafficViewer logs={[log]} projects={[upgraded]} ensureProjectFull={ensureProjectFull} onAddTrafficToOperation={vi.fn()} onAddToApinoxProject={vi.fn()} /></EditorSettingsProvider>);
         fireEvent.mouseEnter(screen.getByText('Add to'));
