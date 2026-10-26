@@ -67,8 +67,7 @@ describe('TrafficViewer right-click "Add to"', () => {
 
         expect(onAddTrafficToOperation).toHaveBeenCalledWith(
             log,
-            'Service1',
-            { operationName: 'Login', isNew: false },
+            expect.objectContaining({ projectName: 'Service1', operationName: 'Login' }),
         );
     });
 

@@ -9,7 +9,7 @@ import { bridge } from '../../utils/bridge';
 import { MAX_TRAFFIC_LOGS } from '../../constants';
 import { tokens } from './tokens';
 import type { UnifiedProject } from '@shared/models';
-import type { AddToProjectDestination } from '../../utils/trafficMatch';
+import type { TrafficMatch } from '../../utils/trafficMatch';
 
 const SPLIT_KEY = 'apinox-traffic-split-px';
 const DEFAULT_SPLIT_PX = 280;
@@ -24,7 +24,7 @@ interface ProxyPanelProps {
   /** Projects the capture is scored against for the traffic right-click "Add to" menu. */
   projects?: UnifiedProject[];
   /** Adds a capture straight to a matched operation (no dialog). */
-  onAddTrafficToOperation?: (log: TrafficLog, projectName: string, destination: AddToProjectDestination) => void;
+  onAddTrafficToOperation?: (log: TrafficLog, match: TrafficMatch) => void;
   /** Opens the "Create Test Case from Traffic" dialog for the current capture. */
   onCreateTestCaseFromTraffic?: (anchorLog: TrafficLog, allLogs: TrafficLog[]) => void;
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-    matchTrafficToOperations, matchPathTemplate,
+    matchTrafficToOperations, matchPathTemplate, deriveRequestName, looksLikeValue,
     actionTail, contentTypeAction, bodyElementName, pathOnly,
 } from "../trafficMatch";
 import type { TrafficLog } from "../../components/proxy/TrafficViewer";
@@ -147,6 +147,32 @@ describe("matchPathTemplate", () => {
 
     it("ignores the query", () => {
         expect(pathOnly("http://x/orders/123?expand=customer")).toBe("/orders/123");
+    });
+});
+
+describe("deriveRequestName", () => {
+    const match = {
+        projectName: "Api", projectDisplay: "Api",
+        operationName: "Orders/get", operationDisplay: "Orders/get",
+        score: 55, reason: "Path template",
+    };
+
+    it("uses the operation name when the path segment is a captured value", () => {
+        expect(deriveRequestName(mkLog({ id: "a", url: "http://api/orders/123" }), match)).toBe("Orders/get");
+        expect(deriveRequestName(mkLog({ id: "a", url: "http://api/orders/6f1c2b3a-1111-2222-3333-444455556666" }), match)).toBe("Orders/get");
+    });
+
+    it("keeps the traffic row's own text when the segment is a route name", () => {
+        expect(deriveRequestName(mkLog({ id: "a", url: "http://api/orders/profile" }), match)).toBe("profile");
+        expect(deriveRequestName(mkLog({ id: "a", url: "http://svc/Service1.asmx" }), match)).toBe("Service1.asmx");
+    });
+
+    it("recognises values", () => {
+        expect(looksLikeValue("123")).toBe(true);
+        expect(looksLikeValue("6f1c2b3a-1111-2222-3333-444455556666")).toBe(true);
+        expect(looksLikeValue("deadbeefdeadbeef")).toBe(true);
+        expect(looksLikeValue("profile")).toBe(false);
+        expect(looksLikeValue("Service1.asmx")).toBe(false);
     });
 });
 

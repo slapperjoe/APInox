@@ -110,6 +110,26 @@ export function pathOnly(url: string): string {
     try { return new URL(url).pathname; } catch { return url; }
 }
 
+/** True when a path segment looks like a captured value rather than a route
+ *  name: all digits, a UUID, or a long hex id. */
+export function looksLikeValue(segment: string): boolean {
+    return /^\d+$/.test(segment)
+        || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(segment)
+        || /^[0-9a-f]{12,}$/i.test(segment);
+}
+
+/**
+ * Request name for a direct add. The traffic row's own text (the last path
+ * segment) is the sensible default, but for REST captures that segment is often
+ * a value — `/orders/123` would name the request `123` — so when it looks like
+ * one, the matched operation's name is used instead. Unlike the dialog, a direct
+ * add has no chance to rename afterwards.
+ */
+export function deriveRequestName(log: TrafficLog, match: TrafficMatch): string {
+    const segment = lastPathSegment(log.url);
+    return looksLikeValue(segment) ? match.operationDisplay : segment;
+}
+
 /**
  * Segment-wise match of a captured path against an OpenAPI template.
  *

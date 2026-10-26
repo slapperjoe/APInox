@@ -9,8 +9,10 @@ import { generateInitialXmlForOperation } from '../utils/soapUtils';
 import { Sidebar } from './Sidebar';
 import { WorkspaceContext } from '../contexts/WorkspaceContext';
 import { SidebarContext } from '../contexts/SidebarContext';
-import { matchTrafficToOperations, type AddToProjectDestination } from '../utils/trafficMatch';
-import { lastPathSegment } from '../utils/trafficWorkflow';
+import {
+    matchTrafficToOperations, deriveRequestName,
+    type AddToProjectDestination, type TrafficMatch,
+} from '../utils/trafficMatch';
 import type { TrafficLog } from './proxy/TrafficViewer';
 import type { PickRequestItem } from './modals/PickRequestModal';
 import type { BulkImportResult } from './modals/BulkImportModal';
@@ -552,15 +554,22 @@ const MainContent: React.FC = () => {
     }, [addTrafficLog, addTrafficLogToProject]);
 
     // Right-click "Add to" → a matched operation: writes straight through the
-    // unified store, no dialog. The request is named from the URL's last path
-    // segment (what the traffic row shows) and only the authoritative
-    // Content-Type header is carried over — the same defaults the dialog uses.
+    // unified store, no dialog. Only the authoritative Content-Type header is
+    // carried over — the same defaults the dialog uses. The request is named
+    // from the URL's last path segment, except when that segment is a captured
+    // value (`/orders/123` → `123`), where the operation name is used instead:
+    // a direct add has no rename step.
     const handleAddTrafficToOperation = useCallback(async (
         log: TrafficLog,
-        projectName: string,
-        destination: AddToProjectDestination,
+        match: TrafficMatch,
     ) => {
-        await addTrafficLogToProject(log, projectName, destination, lastPathSegment(log.url), false);
+        await addTrafficLogToProject(
+            log,
+            match.projectName,
+            { operationName: match.operationName, isNew: false },
+            deriveRequestName(log, match),
+            false,
+        );
     }, [addTrafficLogToProject]);
 
 

@@ -9,7 +9,8 @@ import { useEditorSettings } from '../../request-editor/core';
 import { IgnoreRule, matchesAnyIgnoreRule, ignorePatternFor } from '../../utils/useIgnoreList';
 import { extractPath, extractSoapAction } from '../../utils/trafficWorkflow';
 import {
-    matchTrafficToOperations, MAX_MENU_MATCHES, type AddToProjectDestination,
+    matchTrafficToOperations, MAX_MENU_MATCHES,
+    type AddToProjectDestination, type TrafficMatch,
 } from '../../utils/trafficMatch';
 import type { UnifiedProject } from '@shared/models';
 
@@ -250,7 +251,7 @@ interface TrafficViewerProps {
   /** Projects the capture is scored against for the right-click "Add to" menu. */
   projects?: UnifiedProject[];
   /** Called when user right-clicks → "Add to" → a matched operation (adds directly, no dialog). */
-  onAddTrafficToOperation?: (log: TrafficLog, projectName: string, destination: AddToProjectDestination) => void;
+  onAddTrafficToOperation?: (log: TrafficLog, match: TrafficMatch) => void;
   /** Called when user right-clicks → "Create Test Case from Traffic". */
   onCreateTestCaseFromTraffic?: (log: TrafficLog) => void;
   /** Called when user right-clicks → "Replay Request" (re-send identically) */
@@ -474,7 +475,7 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = EMPTY_RULES, on
             icon: FileText,
             label: m.operationDisplay,
             sub: `${m.projectDisplay} · ${m.reason}`,
-            onClick: () => { onAddTrafficToOperation?.(log, m.projectName, { operationName: m.operationName, isNew: false }); setCtxMenu(null); },
+            onClick: () => { onAddTrafficToOperation?.(log, m); setCtxMenu(null); },
           }));
           if (onAddToApinoxProject) {
             addSubItems.push({
