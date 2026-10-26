@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-    matchTrafficToOperations, projectsToUpgrade, pathTemplateMatches,
+    matchTrafficToOperations, pathTemplateMatches,
     actionTail, contentTypeAction, bodyElementName, pathOnly,
 } from "../trafficMatch";
 import type { TrafficLog } from "../../components/proxy/TrafficViewer";
@@ -164,52 +164,35 @@ describe("matchTrafficToOperations — REST path templates", () => {
     });
 });
 
-describe("projectsToUpgrade", () => {
-    // A wrapped-style capture names its operation through the Body element, so
-    // a skeleton scores it. A style-literal capture does not — its operation is
-    // only findable through the action, which a skeleton does not carry.
+describe("skeleton-shaped projects", () => {
+    // A skeleton is a name-only tree with empty bodies, but it carries `action`,
+    // `path` and `method` — the scalars the scorer needs — so an unopened
+    // project still matches without a detail load. That is what keeps a large
+    // workspace matchable in one pass instead of one IPC call per project.
     const literalLog = mkLog({
         id: "a", url: "http://svc/Service1.asmx",
         requestHeaders: { "SOAPAction": '"urn:svc#Login"' },
         requestBody: "<e:Envelope><e:Body><SomethingElse/></e:Body></e:Envelope>",
     });
 
-    it("includes the project the capture's host points at", () => {
-        const candidates = projectsToUpgrade(literalLog, [
-            mkProject({ name: "Svc", sourceUrl: "http://svc/Service1.asmx?WSDL", operations: [op("Authenticate")] }),
-            mkProject({ name: "Unrelated", sourceUrl: "http://other/api", operations: [op("Nothing")] }),
-        ]);
-        expect(candidates.map(p => p.name)).toEqual(["Svc"]);
-    });
-
-    it("includes a project already matching by name, even on a different host", () => {
-        const bodyLog = mkLog({ id: "b", url: "http://svc/", requestBody: "<e:Envelope><e:Body><GetPrice/></e:Body></e:Envelope>" });
-        const candidates = projectsToUpgrade(bodyLog, [
-            mkProject({ name: "Other", sourceUrl: "http://other/api", operations: [op("GetPrice")] }),
-        ]);
-        expect(candidates.map(p => p.name)).toEqual(["Other"]);
-    });
-
-    it("matches on an operation's own endpoint, not just the project source URL", () => {
-        const candidates = projectsToUpgrade(literalLog, [
-            mkProject({ name: "Svc", operations: [{ name: "Authenticate", action: "", originalEndpoint: "http://svc/Service1.asmx", requests: [] }] }),
-        ]);
-        expect(candidates.map(p => p.name)).toEqual(["Svc"]);
-    });
-
-    it("skips read-only projects", () => {
-        const candidates = projectsToUpgrade(literalLog, [
-            mkProject({ name: "Svc", sourceUrl: "http://svc/", readOnly: true, operations: [op("Authenticate")] }),
-        ]);
-        expect(candidates).toHaveLength(0);
-    });
-
-    it("excludes projects already carrying full detail — there is nothing to upgrade", () => {
-        const full = mkProject({
+    it("scores a skeleton through its action even when the operation name differs", () => {
+        const skeleton = mkProject({
             name: "Svc",
-            sourceUrl: "http://svc/",
-            operations: [{ name: "Authenticate", action: "urn:svc#Login", requests: [{ name: "sample", request: "<Login/>" }] }],
+            sourceUrl: "http://svc/Service1.asmx?WSDL",
+            operations: [{ name: "Authenticate", action: "urn:svc#Login", requests: [{ name: "sample", request: "" }] }],
         });
-        expect(projectsToUpgrade(literalLog, [full])).toHaveLength(0);
+        const matches = matchTrafficToOperations(literalLog, [skeleton]);
+        expect(matches[0].reason).toBe("SOAPAction");
+    });
+
+    it("scores a skeleton through its path template", () => {
+        const restLog = mkLog({ id: "b", method: "GET", url: "http://api/orders/123" });
+        const skeleton = mkProject({
+            name: "Api",
+            sourceUrl: "http://api/openapi.json",
+            operations: [{ name: "Orders/get", action: "", input: { path: "/orders/{id}", method: "get" }, requests: [{ name: "sample", request: "" }] }],
+        });
+        const matches = matchTrafficToOperations(restLog, [skeleton]);
+        expect(matches[0].reason).toBe("Path template");
     });
 });

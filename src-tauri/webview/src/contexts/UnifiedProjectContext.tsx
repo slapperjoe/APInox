@@ -49,9 +49,6 @@ import React, { createContext, useContext, useState, useCallback, useRef, useMem
 import { UnifiedProject, UnifiedProjectSkeleton, ExplorerLoadState, ExplorerLoadError } from '@shared/models';
 import { BackendCommand } from '@shared/messages';
 import { bridge, isTauri } from '../utils/bridge';
-// t_aafaf92b: the fullness check lives in shared so traffic matching can use
-// the same content-based rule (see shared/src/utils/projectFullness.ts).
-import { isFullProject } from '@shared/utils/projectFullness';
 
 interface UnifiedProjectContextValue {
     /**
@@ -152,6 +149,20 @@ export function useUnifiedProjectsSafe(): UnifiedProjectContextValue {
         } as unknown as UnifiedProjectContextValue;
     }
     return ctx;
+}
+
+/** True for a project already carrying full detail (fullSchema + non-empty
+ *  request bodies). Skeleton rows carry placeholder EMPTY bodies (and no
+ *  fullSchema), so they are NOT full — the check must be content-based, not
+ *  presence-based (`'' !== null` would misclassify skeletons as full). */
+function isFullProject(p: UnifiedProject | undefined | null): boolean {
+    if (!p || !Array.isArray(p.operations)) return false;
+    return p.operations.some(
+        op => op.fullSchema != null
+            || (Array.isArray(op.requests) && op.requests.some(
+                r => typeof r.request === 'string' && r.request.length > 0,
+            )),
+    );
 }
 
 export function UnifiedProjectProvider({ children }: { children: ReactNode }) {
@@ -277,7 +288,11 @@ export function UnifiedProjectProvider({ children }: { children: ReactNode }) {
                 lastRefreshedAt: s.lastRefreshedAt ? new Date(s.lastRefreshedAt) : undefined,
                 operations: (s.operations || []).map(op => ({
                     name: op.name,
-                    action: '',
+                    // The skeleton carries the two scalars traffic matching
+                    // scores (action, path template), so an unopened project can
+                    // still be matched without a detail load.
+                    action: op.action ?? '',
+                    input: op.path || op.method ? { path: op.path, method: op.method } : undefined,
                     displayName: op.displayName,
                     requests: (op.requestNames || []).map(rn => ({
                         name: rn.name,

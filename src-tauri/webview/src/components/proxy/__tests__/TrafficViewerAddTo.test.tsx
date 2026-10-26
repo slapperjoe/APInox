@@ -91,49 +91,19 @@ describe('TrafficViewer right-click "Add to"', () => {
         expect(screen.queryByText('Add to')).not.toBeInTheDocument();
     });
 
-    it('kicks the skeleton upgrade for candidate projects only', () => {
-        const ensureProjectFull = vi.fn().mockResolvedValue(null);
-        renderViewer({
-            logs: [log],
-            projects: [
-                project, // the capture's host points at this one
-                { ...project, name: 'Unrelated', displayName: 'Unrelated', sourceUrl: 'http://other/api', operations: [{ name: 'Nothing', action: '', requests: [] }] },
-            ],
-            ensureProjectFull,
-            onAddTrafficToOperation: vi.fn(),
-        });
+    it('matches a skeleton-shaped project without a detail load', () => {
+        // A skeleton is a name-only tree with empty bodies, but it carries the
+        // action — so a style-literal capture whose operation name differs from
+        // its Body element still resolves, in one pass, for every project.
+        const skeleton = {
+            ...project,
+            operations: [{ name: 'Authenticate', action: 'urn:svc#Login', requests: [{ name: 'sample', request: '' }] }],
+        };
+        renderViewer({ logs: [log], projects: [skeleton], onAddTrafficToOperation: vi.fn() });
 
         openMenu();
-        expect(ensureProjectFull).toHaveBeenCalledWith('Service1');
-        expect(ensureProjectFull).not.toHaveBeenCalledWith('Unrelated');
-    });
-
-    it('says what is still in flight while candidates upgrade', () => {
-        const neverResolves = new Promise<UnifiedProject | null>(() => {});
-        const ensureProjectFull = vi.fn().mockReturnValue(neverResolves);
-        renderViewer({ logs: [log], projects: [project], ensureProjectFull, onAddTrafficToOperation: vi.fn(), onAddToApinoxProject: vi.fn() });
-
-        openMenu();
-        // The submenu can gain entries under the cursor, so the parent line
-        // names the work still happening instead of letting it appear silently.
-        expect(screen.getByText('1 matching operation · checking WSDLs')).toBeInTheDocument();
-    });
-
-    it('re-scores once a candidate project upgrades from its skeleton', () => {
-        // Style-literal capture: the Body element does not name the operation,
-        // so a skeleton (action: '') finds nothing until it is upgraded. The
-        // upgrade landing in the store is what re-renders the open menu.
-        const skeleton = { ...project, operations: [{ name: 'Authenticate', action: '', requests: [] }] };
-        const upgraded = { ...project, operations: [{ name: 'Authenticate', action: 'urn:svc#Login', requests: [] }] };
-        const ensureProjectFull = vi.fn().mockResolvedValue(upgraded);
-
-        const { rerender } = renderViewer({ logs: [log], projects: [skeleton], ensureProjectFull, onAddTrafficToOperation: vi.fn(), onAddToApinoxProject: vi.fn() });
-        openMenu();
-        // The skeleton is a candidate, so the in-flight note is part of the line.
-        expect(screen.getByText('No WSDL match · checking WSDLs')).toBeInTheDocument();
-
-        rerender(<EditorSettingsProvider><TrafficViewer logs={[log]} projects={[upgraded]} ensureProjectFull={ensureProjectFull} onAddTrafficToOperation={vi.fn()} onAddToApinoxProject={vi.fn()} /></EditorSettingsProvider>);
         fireEvent.mouseEnter(screen.getByText('Add to'));
         expect(screen.getByText('Production · SOAPAction')).toBeInTheDocument();
     });
+
 });

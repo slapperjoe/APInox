@@ -9,8 +9,7 @@ import { useEditorSettings } from '../../request-editor/core';
 import { IgnoreRule, matchesAnyIgnoreRule, ignorePatternFor } from '../../utils/useIgnoreList';
 import { extractPath, extractSoapAction } from '../../utils/trafficWorkflow';
 import {
-    matchTrafficToOperations, projectsToUpgrade, MAX_MENU_MATCHES,
-    type AddToProjectDestination, type TrafficMatch,
+    matchTrafficToOperations, MAX_MENU_MATCHES, type AddToProjectDestination,
 } from '../../utils/trafficMatch';
 import type { UnifiedProject } from '@shared/models';
 
@@ -250,8 +249,6 @@ interface TrafficViewerProps {
   onAddToApinoxProject?: (log: TrafficLog) => void;
   /** Projects the capture is scored against for the right-click "Add to" menu. */
   projects?: UnifiedProject[];
-  /** Upgrades a project from its skeleton so the SOAPAction signal can score it. */
-  ensureProjectFull?: (name: string) => Promise<UnifiedProject | null>;
   /** Called when user right-clicks → "Add to" → a matched operation (adds directly, no dialog). */
   onAddTrafficToOperation?: (log: TrafficLog, projectName: string, destination: AddToProjectDestination) => void;
   /** Called when user right-clicks → "Create Test Case from Traffic". */
@@ -262,15 +259,12 @@ interface TrafficViewerProps {
   onClearTraffic?: () => void;
 }
 
-export function TrafficViewer({ logs, onSelectLog, ignoreRules = EMPTY_RULES, onAddIgnoreRule, onCreateMockRule, onCreateReplaceRule, onCreateBreakpoint, onAddToApinoxProject, projects, ensureProjectFull, onAddTrafficToOperation, onCreateTestCaseFromTraffic, onReplayRequest, onClearTraffic }: TrafficViewerProps) {
+export function TrafficViewer({ logs, onSelectLog, ignoreRules = EMPTY_RULES, onAddIgnoreRule, onCreateMockRule, onCreateReplaceRule, onCreateBreakpoint, onAddToApinoxProject, projects, onAddTrafficToOperation, onCreateTestCaseFromTraffic, onReplayRequest, onClearTraffic }: TrafficViewerProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [urlFilter, setUrlFilter] = useState('');
   const [methodFilter, setMethodFilter] = useState('ALL');
   const [statusGroups, setStatusGroups] = useState<Set<StatusGroupKey>>(new Set(DEFAULT_STATUS_GROUPS));
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; log: TrafficLog } | null>(null);
-  // Candidate projects still being upgraded for the open menu — what the
-  // "checking WSDLs" line reflects. Cleared when the menu closes.
-  const [pendingUpgrades, setPendingUpgrades] = useState<Set<string>>(new Set());
 
   // Live editor settings (same object the detail pane's Monaco uses) so the
   // right-click "copy" options format XML exactly as the app currently does —
@@ -284,12 +278,6 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = EMPTY_RULES, on
     const close = () => setCtxMenu(null);
     window.addEventListener('mousedown', close);
     return () => window.removeEventListener('mousedown', close);
-  }, [ctxMenu]);
-
-  // Pending upgrades belong to the open menu only — a stale set would carry the
-  // "checking WSDLs" line into the next right-click.
-  useEffect(() => {
-    if (!ctxMenu) setPendingUpgrades(new Set());
   }, [ctxMenu]);
 
   const filteredLogs = useMemo(() => {
@@ -314,34 +302,8 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = EMPTY_RULES, on
   const handleContextMenu = useCallback((e: React.MouseEvent, log: TrafficLog) => {
     e.preventDefault();
     setCtxMenu({ x: e.clientX, y: e.clientY, log });
-    // Signals 1 and 3 need content a skeleton does not carry (`action` and
-    // `input`), so an operation whose name differs from its input element or
-    // its path template is invisible until the project is upgraded. Kick the
-    // plausible candidates and ctxMatches re-scores as each one lands.
-    if (ensureProjectFull && projects) {
-      const candidates = projectsToUpgrade(log, projects);
-      if (candidates.length === 0) return;
-      setPendingUpgrades(new Set(candidates.map(p => p.name)));
-      for (const project of candidates) {
-        void ensureProjectFull(project.name).then(() => {
-          setPendingUpgrades(prev => {
-            if (!prev.has(project.name)) return prev;
-            const next = new Set(prev);
-            next.delete(project.name);
-            return next;
-          });
-        });
-      }
-    }
-  }, [ensureProjectFull, projects]);
+  }, []);
 
-  // Scored for the open menu. Recomputed when the project list changes, so an
-  // action match from a project upgraded after the menu opened shows up without
-  // the user reopening it.
-  const ctxMatches = useMemo<TrafficMatch[]>(
-    () => (ctxMenu && projects) ? matchTrafficToOperations(ctxMenu.log, projects) : [],
-    [ctxMenu, projects],
-  );
 
   const isDefaultStatus = setsEqual(statusGroups, DEFAULT_STATUS_GROUPS);
   const hasFilters = !!urlFilter || methodFilter !== 'ALL' || !isDefaultStatus;
@@ -505,7 +467,7 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = EMPTY_RULES, on
         // straight through the unified store with no dialog; the last entry is
         // the manual picker for when nothing matched, or when the user wants a
         // different destination. Read-only projects are excluded by the scorer.
-        const matches = ctxMatches;
+        const matches = projects ? matchTrafficToOperations(log, projects) : [];
         const shown = matches.slice(0, MAX_MENU_MATCHES);
         if (onAddTrafficToOperation || onAddToApinoxProject) {
           const addSubItems: CtxMenuItem[] = shown.map((m) => ({
@@ -523,20 +485,16 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = EMPTY_RULES, on
             });
           }
           if (addSubItems.length) {
-            const baseSub = matches.length
-              ? shown.length < matches.length
-                ? `${shown.length} of ${matches.length} matches`
-                : `${matches.length} matching operation${matches.length > 1 ? 's' : ''}`
-              : 'No WSDL match';
-            // The submenu can gain entries while the menu is open, so say what
-            // is still in flight rather than let matches appear silently.
-            const scanNote = pendingUpgrades.size > 0 ? ' · checking WSDLs' : '';
             sections.push({
               title: 'Add to Operation',
               items: [{
                 icon: Download,
                 label: 'Add to',
-                sub: baseSub + scanNote,
+                sub: matches.length
+                  ? shown.length < matches.length
+                    ? `${shown.length} of ${matches.length} matches`
+                    : `${matches.length} matching operation${matches.length > 1 ? 's' : ''}`
+                  : 'No WSDL match',
                 subItems: addSubItems,
               }],
             });

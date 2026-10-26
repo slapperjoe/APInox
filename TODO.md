@@ -18,12 +18,11 @@ This document tracks planned features for APInox, ordered by priority.
 - [ ] Test data sets (parameterized testing with CSV/JSON input)
 
 ### Traffic → Operation Matching
-Right-click a capture and add it to the unified-explorer operation its WSDL matches, with multiple matches offered as submenu options (`src-tauri/webview/src/utils/trafficMatch.ts`). Shipped: SOAPAction (header, or the `action=` Content-Type parameter for SOAP 1.2), the first element under `<Body>`, the URL path, host as the tie-breaker, and the skeleton upgrade kicked for candidate projects so the content-based signals can fire.
+Right-click a capture and add it to the unified-explorer operation its WSDL matches, with multiple matches offered as submenu options (`src-tauri/webview/src/utils/trafficMatch.ts`). Shipped: SOAPAction (header, or the `action=` Content-Type parameter for SOAP 1.2), the first element under `<Body>`, the URL path, host as the tie-breaker, and a matching index on the skeleton so a large workspace is matched without loading any project.
 
-- [x] REST path templates — a concrete URL (`/orders/123`) is now matched segment-wise against the stored OpenAPI template (`/orders/{id}`), with the method as part of the match
-- [x] Loading feedback — the menu line carries `checking WSDLs` while candidate projects are still upgrading, so a match appearing under the cursor is not silent
-- [x] The 12-match cap — the menu still caps at 12, but the picker dialog now takes the full ranked list, opens on the top match and shows which signal ranked each operation
-- [ ] Templates still only score projects already opened — a skeleton carries neither `action` nor `input`, so the upgrade kick has to guess candidates from the host, and a capture whose project is only findable through its template is missed until the host matches
+- [x] REST path templates — a concrete URL (`/orders/123`) is matched segment-wise against the stored OpenAPI template (`/orders/{id}`), with the method as part of the match
+- [x] The 12-match cap — the menu still caps at 12, but the picker dialog takes the full ranked list, opens on the top match and shows which signal ranked each operation
+- [x] Skeletons could not be matched — the skeleton now carries `action`, `path` and `method`, three scalars pulled from an `operation.json` it already reads and parses, so matching needs no detail load. That replaced the earlier "kick the upgrade for candidate projects" approach and the loading indicator with it: the first-paint column grows ~65 bytes per operation, which is cheaper than one IPC call per project on a big workspace, and the contract's size bound moved from 5% to 10% to cover the deliberate exception.
 
 ---
 

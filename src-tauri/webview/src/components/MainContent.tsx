@@ -226,11 +226,7 @@ const MainContent: React.FC = () => {
         setSelectedNode: setUnifiedSelectedNode,
         // t_aafaf92b: fullness-guarded project updater — see the note in
         // useUnifiedExplorerHandlers.
-        updateProject: updateUnifiedProject,
-        // t_aafaf92b: on-demand skeleton→detail upgrade. The traffic menu needs
-        // it because a skeleton carries action: '', so the SOAPAction signal
-        // cannot score an unopened project.
-        ensureProjectFull
+        updateProject: updateUnifiedProject
     } = useUnifiedProjects();
 
     const {
@@ -1632,7 +1628,6 @@ const MainContent: React.FC = () => {
                                 onNavigateTo={(view) => handleSetActiveViewWrapper(view as SidebarView)}
                                 onAddToApinoxProject={handleAddTrafficToProject}
                                 projects={unifiedProjects}
-                                ensureProjectFull={ensureProjectFull}
                                 onAddTrafficToOperation={handleAddTrafficToOperation}
                                 onCreateTestCaseFromTraffic={handleCreateTestCaseFromTraffic}
                             />

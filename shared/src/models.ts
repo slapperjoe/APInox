@@ -478,10 +478,22 @@ export interface UnifiedProject {
  * input/output schemas, no testSuites/folders) — ~0.5% of the full payload
  * (contract §2). The webview replaces a skeleton with the full project (from
  * `load_unified_project_detail`) the first time the project is opened.
+ *
+ * The three operation extras are the exception, and they are deliberate:
+ * `action`, `path` and `method` are what traffic matching scores. They are two
+ * short scalars pulled out of an `operation.json` the skeleton already reads
+ * and parses, so they cost nothing to add — and having them means a large
+ * workspace can be matched without loading a single project.
  */
 export interface UnifiedProjectSkeletonOperation {
     name: string;
     displayName?: string;
+    /** SOAPAction from the WSDL binding ('' or absent when the WSDL has none). */
+    action?: string;
+    /** OpenAPI path template, e.g. `/orders/{id}` — absent for WSDL operations. */
+    path?: string;
+    /** HTTP method the template belongs to, as stored by the OpenAPI import. */
+    method?: string;
     /**
      * Request names only (no bodies, no metadata). Each entry also carries the
      * stable request `id` when one exists, so a skeleton row and the upgraded

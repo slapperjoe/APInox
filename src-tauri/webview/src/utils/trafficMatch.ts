@@ -17,12 +17,10 @@
  * Host is a tie-breaker, never a match on its own: it is what separates two
  * projects that both define an operation of the same name.
  *
- * SKELETONS: the unified explorer first-paints projects as name-only
- * skeletons (UnifiedProjectContext), where `action` is ''. Signals 2 and 3
- * still score there; signals 1 and 3's template form only fire for projects
- * already opened, because a skeleton carries neither `action` nor `input`. The
- * scorer loads nothing itself — `projectsToUpgrade` below is how a caller
- * decides which projects are worth upgrading.
+ * SKELETONS: the unified explorer first-paints projects as name-only skeletons
+ * (UnifiedProjectContext), but the skeleton carries `action`, `path` and
+ * `method` — exactly the scalars signals 1 and 3 score — so an unopened project
+ * still matches without a detail load. The scorer loads nothing itself.
  *
  * NOTE: `extractSoapAction` (trafficWorkflow) is the DISPLAY variant — it
  * returns the header tail or the Body child, whichever it finds, as one
@@ -34,7 +32,6 @@ import type { TrafficLog } from '../components/proxy/TrafficViewer';
 import type { UnifiedProject } from '@shared/models';
 import { lastPathSegment } from './trafficWorkflow';
 import { findContentTypeHeader } from '@shared/utils/contentType';
-import { isFullProject } from '@shared/utils/projectFullness';
 
 /** Where a matched capture lands — the same destination AddToProjectDialog writes. */
 export interface AddToProjectDestination {
@@ -208,31 +205,3 @@ export function matchTrafficToOperations(log: TrafficLog, projects: UnifiedProje
         || a.operationDisplay.localeCompare(b.operationDisplay));
 }
 
-/**
- * The projects worth upgrading to full detail so the signals that need content
- * can fire — SOAPAction (signal 1) and the OpenAPI path template (signal 3)
- * are both absent on a skeleton, so an operation whose NAME differs from its
- * input element or its template is invisible until the project is upgraded.
- *
- * Upgrading every project on a right-click would defeat the skeleton loader,
- * so the set is limited to the projects the capture plausibly belongs to:
- * those already matching by name, plus those the capture's host points at.
- * Already-full projects are excluded, so the result is exactly the work a
- * caller has to do — which is also what makes a loading indicator honest.
- */
-export function projectsToUpgrade(log: TrafficLog, projects: UnifiedProject[]): UnifiedProject[] {
-    const logHost = hostOf(log.url);
-    const bodyEl = bodyElementName(log).toLowerCase();
-    const pathSeg = lastPathSegment(log.url).toLowerCase();
-
-    return projects.filter((project) => {
-        if (project.readOnly || isFullProject(project)) return false;
-        if (logHost && hostOf(project.sourceUrl || '') === logHost) return true;
-        for (const op of project.operations || []) {
-            const name = op.name.toLowerCase();
-            if ((bodyEl && name === bodyEl) || (pathSeg && name === pathSeg)) return true;
-            if (logHost && hostOf(op.originalEndpoint || '') === logHost) return true;
-        }
-        return false;
-    });
-}

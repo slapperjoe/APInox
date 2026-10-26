@@ -1738,6 +1738,13 @@ fn load_unified_project_skeleton(dir: &Path) -> Option<serde_json::Value> {
             operations.push(serde_json::json!({
                 "name": name,
                 "displayName": op_json.get("displayName").cloned().filter(|v| !v.is_null()),
+                // Two short scalars, not the `input` object. Traffic matching
+                // needs the SOAPAction and the OpenAPI path template, and this
+                // file is already parsed above — extracting them costs nothing,
+                // so a big workspace can be matched without loading any project.
+                "action": op_json.get("action").cloned().filter(|v| !v.is_null()),
+                "path": op_json.get("input").and_then(|i| i.get("path")).cloned().filter(|v| !v.is_null()),
+                "method": op_json.get("input").and_then(|i| i.get("method")).cloned().filter(|v| !v.is_null()),
                 "requestNames": request_names,
             }));
         }
@@ -2794,7 +2801,10 @@ mod tests {
                     "name": "BigOp",
                     "displayName": "Big Op (display)",
                     "action": "http://example.com/BigOp",
-                    "input": { "name": "BigOpInput", "children": [] },
+                    // The OpenAPI import stores the path template and method on
+                    // `input`; the skeleton keeps those two scalars and strips
+                    // the rest of the object.
+                    "input": { "name": "BigOpInput", "children": [], "path": "/operations/{id}", "method": "POST" },
                     "targetNamespace": "http://example.com/ns",
                     "originalEndpoint": "http://example.com/svc",
                     "fullSchema": {
@@ -2865,6 +2875,11 @@ mod tests {
         let sop = &s["operations"][0];
         assert_eq!(sop["name"], "BigOp");
         assert_eq!(sop["displayName"], "Big Op (display)");
+        // The three scalars traffic matching scores must survive, so a large
+        // workspace can be matched without loading any project.
+        assert_eq!(sop["action"], "http://example.com/BigOp");
+        assert_eq!(sop["path"], "/operations/{id}");
+        assert_eq!(sop["method"], "POST");
         assert_eq!(
             sop["requestNames"][0]["name"], "BigReq",
             "request NAMES are the only per-request data the skeleton keeps"
@@ -2884,12 +2899,15 @@ mod tests {
 
         // The skeleton must be DRAMATICALLY smaller than the full payload
         // (the measured ~0.5% first-paint column): 50-node schema + 2 KB body
-        // vs. a ~200-byte name tree.
+        // vs. a name tree. That tree now carries three matching scalars per
+        // operation — action, path, method — on purpose, because they are what
+        // lets a large workspace be matched without loading any project. So the
+        // bound is 10%, not 5%: still an order of magnitude smaller.
         let full_bytes = serde_json::to_string(f).unwrap().len();
         let skel_bytes = serde_json::to_string(s).unwrap().len();
         assert!(
-            skel_bytes * 20 < full_bytes,
-            "skeleton ({skel_bytes} B) must be <5% of full payload ({full_bytes} B)"
+            skel_bytes * 10 < full_bytes,
+            "skeleton ({skel_bytes} B) must be <10% of full payload ({full_bytes} B)"
         );
 
         std::env::remove_var("APINOX_CONFIG_DIR");
