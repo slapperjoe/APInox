@@ -9,8 +9,7 @@ import { useEditorSettings } from '../../request-editor/core';
 import { IgnoreRule, matchesAnyIgnoreRule, ignorePatternFor } from '../../utils/useIgnoreList';
 import { extractPath, extractSoapAction } from '../../utils/trafficWorkflow';
 import {
-    matchTrafficToOperations, MAX_MENU_MATCHES,
-    type AddToProjectDestination, type TrafficMatch,
+    matchTrafficToOperations, MAX_MENU_MATCHES, type TrafficMatch,
 } from '../../utils/trafficMatch';
 import type { UnifiedProject } from '@shared/models';
 
