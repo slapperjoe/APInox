@@ -2,7 +2,7 @@
 
 This document tracks planned features for APInox, ordered by priority.
 
-**Last Updated**: 2026-04-23
+**Last Updated**: 2026-10-26
 
 ---
 
@@ -16,6 +16,13 @@ This document tracks planned features for APInox, ordered by priority.
 
 ### Request Chaining — Optional Enhancements
 - [ ] Test data sets (parameterized testing with CSV/JSON input)
+
+### Traffic → Operation Matching
+Right-click a capture and add it to the unified-explorer operation its WSDL matches, with multiple matches offered as submenu options (`src-tauri/webview/src/utils/trafficMatch.ts`). Shipped: SOAPAction (header, or the `action=` Content-Type parameter for SOAP 1.2), the first element under `<Body>`, the URL's last path segment, host as the tie-breaker, and the skeleton upgrade kicked for candidate projects so action matching can fire.
+
+- [ ] REST path templates — a concrete URL (`/orders/123`) is matched literally against the operation name, so it only hits an operation named `123`; normalising it to the OpenAPI template (`/orders/{id}`) is not done
+- [ ] No feedback while a candidate project is still loading — the submenu can gain a match under the cursor with nothing saying so
+- [ ] The submenu caps at 12 matches with no way to see the rest except through the picker dialog
 
 ---
 
