@@ -8,6 +8,11 @@ import { formatXml } from '@shared/utils/xmlFormatter';
 import { useEditorSettings } from '../../request-editor/core';
 import { IgnoreRule, matchesAnyIgnoreRule, ignorePatternFor } from '../../utils/useIgnoreList';
 import { extractPath, extractSoapAction } from '../../utils/trafficWorkflow';
+import {
+    matchTrafficToOperations, candidateProjectsForActionMatch, MAX_MENU_MATCHES,
+    type AddToProjectDestination, type TrafficMatch,
+} from '../../utils/trafficMatch';
+import type { UnifiedProject } from '@shared/models';
 
 export interface TrafficLog {
   id: string;
@@ -243,6 +248,12 @@ interface TrafficViewerProps {
   onCreateBreakpoint?: (log: TrafficLog) => void;
   /** Called when user right-clicks → "Add to APInox Project..." */
   onAddToApinoxProject?: (log: TrafficLog) => void;
+  /** Projects the capture is scored against for the right-click "Add to" menu. */
+  projects?: UnifiedProject[];
+  /** Upgrades a project from its skeleton so the SOAPAction signal can score it. */
+  ensureProjectFull?: (name: string) => Promise<UnifiedProject | null>;
+  /** Called when user right-clicks → "Add to" → a matched operation (adds directly, no dialog). */
+  onAddTrafficToOperation?: (log: TrafficLog, projectName: string, destination: AddToProjectDestination) => void;
   /** Called when user right-clicks → "Create Test Case from Traffic". */
   onCreateTestCaseFromTraffic?: (log: TrafficLog) => void;
   /** Called when user right-clicks → "Replay Request" (re-send identically) */
@@ -251,7 +262,7 @@ interface TrafficViewerProps {
   onClearTraffic?: () => void;
 }
 
-export function TrafficViewer({ logs, onSelectLog, ignoreRules = EMPTY_RULES, onAddIgnoreRule, onCreateMockRule, onCreateReplaceRule, onCreateBreakpoint, onAddToApinoxProject, onCreateTestCaseFromTraffic, onReplayRequest, onClearTraffic }: TrafficViewerProps) {
+export function TrafficViewer({ logs, onSelectLog, ignoreRules = EMPTY_RULES, onAddIgnoreRule, onCreateMockRule, onCreateReplaceRule, onCreateBreakpoint, onAddToApinoxProject, projects, ensureProjectFull, onAddTrafficToOperation, onCreateTestCaseFromTraffic, onReplayRequest, onClearTraffic }: TrafficViewerProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [urlFilter, setUrlFilter] = useState('');
   const [methodFilter, setMethodFilter] = useState('ALL');
@@ -294,7 +305,22 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = EMPTY_RULES, on
   const handleContextMenu = useCallback((e: React.MouseEvent, log: TrafficLog) => {
     e.preventDefault();
     setCtxMenu({ x: e.clientX, y: e.clientY, log });
-  }, []);
+    // The strongest scoring signal (SOAPAction) cannot fire on a first-paint
+    // skeleton, which carries action: ''. Kick the plausible candidates —
+    // ensureProjectFull resolves immediately for projects already full (and
+    // dedupes by name), and ctxMatches below re-scores when one upgrades.
+    if (ensureProjectFull && projects) {
+      for (const project of candidateProjectsForActionMatch(log, projects)) void ensureProjectFull(project.name);
+    }
+  }, [ensureProjectFull, projects]);
+
+  // Scored for the open menu. Recomputed when the project list changes, so an
+  // action match from a project upgraded after the menu opened shows up without
+  // the user reopening it.
+  const ctxMatches = useMemo<TrafficMatch[]>(
+    () => (ctxMenu && projects) ? matchTrafficToOperations(ctxMenu.log, projects) : [],
+    [ctxMenu, projects],
+  );
 
   const isDefaultStatus = setsEqual(statusGroups, DEFAULT_STATUS_GROUPS);
   const hasFilters = !!urlFilter || methodFilter !== 'ALL' || !isDefaultStatus;
@@ -453,12 +479,41 @@ export function TrafficViewer({ logs, onSelectLog, ignoreRules = EMPTY_RULES, on
           });
         }
 
-        // APInox section — single item, no nesting needed
-        if (onAddToApinoxProject) {
-          sections.push({
-            title: 'APInox',
-            items: [{ icon: Download, label: 'Add to APInox Project...', sub: 'Save request to project workspace', onClick: () => { onAddToApinoxProject!(log); setCtxMenu(null); } }],
-          });
+        // Add to — the operation this capture already belongs to, scored
+        // against the loaded projects (utils/trafficMatch). A match writes
+        // straight through the unified store with no dialog; the last entry is
+        // the manual picker for when nothing matched, or when the user wants a
+        // different destination. Read-only projects are excluded by the scorer.
+        const matches = ctxMatches;
+        const shown = matches.slice(0, MAX_MENU_MATCHES);
+        if (onAddTrafficToOperation || onAddToApinoxProject) {
+          const addSubItems: CtxMenuItem[] = shown.map((m) => ({
+            icon: FileText,
+            label: m.operationDisplay,
+            sub: `${m.projectDisplay} · ${m.reason}`,
+            onClick: () => { onAddTrafficToOperation?.(log, m.projectName, { operationName: m.operationName, isNew: false }); setCtxMenu(null); },
+          }));
+          if (onAddToApinoxProject) {
+            addSubItems.push({
+              icon: Link,
+              label: matches.length ? 'Choose project…' : 'Add to a new operation…',
+              sub: 'Open the add-to-project dialog',
+              onClick: () => { onAddToApinoxProject?.(log); setCtxMenu(null); },
+            });
+          }
+          if (addSubItems.length) {
+            sections.push({
+              title: 'Add to Operation',
+              items: [{
+                icon: Download,
+                label: 'Add to',
+                sub: matches.length
+                  ? shown.length < matches.length ? `${shown.length} of ${matches.length} matches` : `${matches.length} matching operation${matches.length > 1 ? 's' : ''}`
+                  : 'No WSDL match',
+                subItems: addSubItems,
+              }],
+            });
+          }
         }
 
         // Test Case — save a set of captured requests as a raw test case

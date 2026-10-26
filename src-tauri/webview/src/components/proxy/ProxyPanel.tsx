@@ -8,6 +8,8 @@ import { useIgnoreList } from '../../utils/useIgnoreList';
 import { bridge } from '../../utils/bridge';
 import { MAX_TRAFFIC_LOGS } from '../../constants';
 import { tokens } from './tokens';
+import type { UnifiedProject } from '@shared/models';
+import type { AddToProjectDestination } from '../../utils/trafficMatch';
 
 const SPLIT_KEY = 'apinox-traffic-split-px';
 const DEFAULT_SPLIT_PX = 280;
@@ -19,11 +21,17 @@ type ProxyTab = 'traffic' | 'breakpoints';
 interface ProxyPanelProps {
   onNavigateTo?: (view: string) => void;
   onAddToApinoxProject?: (log: TrafficLog) => void;
+  /** Projects the capture is scored against for the traffic right-click "Add to" menu. */
+  projects?: UnifiedProject[];
+  /** Upgrades a project from its skeleton so the traffic menu can score its SOAPAction. */
+  ensureProjectFull?: (name: string) => Promise<UnifiedProject | null>;
+  /** Adds a capture straight to a matched operation (no dialog). */
+  onAddTrafficToOperation?: (log: TrafficLog, projectName: string, destination: AddToProjectDestination) => void;
   /** Opens the "Create Test Case from Traffic" dialog for the current capture. */
   onCreateTestCaseFromTraffic?: (anchorLog: TrafficLog, allLogs: TrafficLog[]) => void;
 }
 
-export function ProxyPanel({ onNavigateTo, onAddToApinoxProject, onCreateTestCaseFromTraffic }: ProxyPanelProps) {
+export function ProxyPanel({ onNavigateTo, onAddToApinoxProject, projects, ensureProjectFull, onAddTrafficToOperation, onCreateTestCaseFromTraffic }: ProxyPanelProps) {
   const [activeTab, setActiveTab] = useState<ProxyTab>('traffic');
   const [logs, setLogs] = useState<TrafficLog[]>([]);
   const [selectedLog, setSelectedLog] = useState<TrafficLog | null>(null);
@@ -181,6 +189,9 @@ export function ProxyPanel({ onNavigateTo, onAddToApinoxProject, onCreateTestCas
                 onCreateBreakpoint={handleCreateBreakpoint}
                 onClearTraffic={handleClearTraffic}
                 onAddToApinoxProject={onAddToApinoxProject}
+                projects={projects}
+                ensureProjectFull={ensureProjectFull}
+                onAddTrafficToOperation={onAddTrafficToOperation}
                 onReplayRequest={handleReplayRequest}
                 onCreateTestCaseFromTraffic={(log) => { if (logs.length > 0) onCreateTestCaseFromTraffic?.(log, logs); }}
               />

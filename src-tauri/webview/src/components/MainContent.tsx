@@ -9,7 +9,8 @@ import { generateInitialXmlForOperation } from '../utils/soapUtils';
 import { Sidebar } from './Sidebar';
 import { WorkspaceContext } from '../contexts/WorkspaceContext';
 import { SidebarContext } from '../contexts/SidebarContext';
-import type { AddToProjectDestination } from './proxy/AddToProjectDialog';
+import type { AddToProjectDestination } from '../utils/trafficMatch';
+import { lastPathSegment } from '../utils/trafficWorkflow';
 import type { TrafficLog } from './proxy/TrafficViewer';
 import type { PickRequestItem } from './modals/PickRequestModal';
 import type { BulkImportResult } from './modals/BulkImportModal';
@@ -225,7 +226,11 @@ const MainContent: React.FC = () => {
         setSelectedNode: setUnifiedSelectedNode,
         // t_aafaf92b: fullness-guarded project updater — see the note in
         // useUnifiedExplorerHandlers.
-        updateProject: updateUnifiedProject
+        updateProject: updateUnifiedProject,
+        // t_aafaf92b: on-demand skeleton→detail upgrade. The traffic menu needs
+        // it because a skeleton carries action: '', so the SOAPAction signal
+        // cannot score an unopened project.
+        ensureProjectFull
     } = useUnifiedProjects();
 
     const {
@@ -445,16 +450,15 @@ const MainContent: React.FC = () => {
         setAddTrafficLog(log);
     }, []);
 
-    const handleConfirmAddTrafficToProject = useCallback(async (
+    /** Build the request from a capture and write it into a unified project.
+     *  Shared by the dialog confirm and the right-click "Add to" match. */
+    const addTrafficLogToProject = useCallback(async (
+        log: TrafficLog,
         projectName: string,
         destination: AddToProjectDestination,
         requestName: string,
         includeAllHeaders: boolean,
     ) => {
-        if (!addTrafficLog) return;
-        const log = addTrafficLog;
-        setAddTrafficLog(null);
-
         // Extract the bare Content-Type (e.g. "application/soap+xml") from the raw
         // header value. SOAP Content-Type headers often carry extra directives
         // like `application/soap+xml; charset=utf-8; action="..."` — preserve
@@ -537,7 +541,31 @@ const MainContent: React.FC = () => {
         } catch (e) {
             console.error('[Traffic] Add to unified project failed:', e);
         }
-    }, [addTrafficLog, updateUnifiedProject, setUnifiedSelectedNode]);
+    }, [updateUnifiedProject, setUnifiedSelectedNode]);
+
+    const handleConfirmAddTrafficToProject = useCallback(async (
+        projectName: string,
+        destination: AddToProjectDestination,
+        requestName: string,
+        includeAllHeaders: boolean,
+    ) => {
+        if (!addTrafficLog) return;
+        const log = addTrafficLog;
+        setAddTrafficLog(null);
+        await addTrafficLogToProject(log, projectName, destination, requestName, includeAllHeaders);
+    }, [addTrafficLog, addTrafficLogToProject]);
+
+    // Right-click "Add to" → a matched operation: writes straight through the
+    // unified store, no dialog. The request is named from the URL's last path
+    // segment (what the traffic row shows) and only the authoritative
+    // Content-Type header is carried over — the same defaults the dialog uses.
+    const handleAddTrafficToOperation = useCallback(async (
+        log: TrafficLog,
+        projectName: string,
+        destination: AddToProjectDestination,
+    ) => {
+        await addTrafficLogToProject(log, projectName, destination, lastPathSegment(log.url), false);
+    }, [addTrafficLogToProject]);
 
 
 
@@ -1603,6 +1631,9 @@ const MainContent: React.FC = () => {
                             <ProxyPanel
                                 onNavigateTo={(view) => handleSetActiveViewWrapper(view as SidebarView)}
                                 onAddToApinoxProject={handleAddTrafficToProject}
+                                projects={unifiedProjects}
+                                ensureProjectFull={ensureProjectFull}
+                                onAddTrafficToOperation={handleAddTrafficToOperation}
                                 onCreateTestCaseFromTraffic={handleCreateTestCaseFromTraffic}
                             />
                         </div>

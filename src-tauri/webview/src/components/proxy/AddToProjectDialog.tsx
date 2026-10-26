@@ -18,17 +18,7 @@ import React, { useState, useEffect } from 'react';
 import { UnifiedProject } from '@shared/models';
 import { tokens } from './tokens';
 import type { TrafficLog } from './TrafficViewer';
-
-/** Where in the unified project the captured request lands. */
-export type AddToProjectDestination = {
-    /** Target operation name (stable name, not display name). */
-    operationName: string;
-    /**
-     * True → create a NEW operation with this name holding the request.
-     * False → append the request to the existing operation of that name.
-     */
-    isNew: boolean;
-};
+import type { AddToProjectDestination } from '../../utils/trafficMatch';
 
 interface AddToProjectDialogProps {
     log: TrafficLog;
