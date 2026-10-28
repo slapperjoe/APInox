@@ -132,7 +132,7 @@ interface TrafficDetailsProps {
 
 export function TrafficDetails({ log }: TrafficDetailsProps) {
   const [view, setView] = useState<DetailView>('body');
-  const { settings, updateSettings } = useEditorSettings();
+  const { settings } = useEditorSettings();
   const bodyRef = useRef<HTMLDivElement>(null);
   const [bodyHeight, setBodyHeight] = useState(0);
 
@@ -201,8 +201,6 @@ export function TrafficDetails({ log }: TrafficDetailsProps) {
                 readOnly
                 requestId={log.id}
                 headers={log.requestHeaders}
-                initialSettings={settings}
-                onSettingsChange={updateSettings}
               />
             </EditorPane>
             <SplitDivider $dragging={isDragging} onMouseDown={(e) => handleDividerMouseDown(e, effectivePx ?? 0)} />

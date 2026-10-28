@@ -1,12 +1,17 @@
-// import React from 'react'; // React 17+ JSX transform doesn't need React in scope
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { debugLog } from './utils/logger';
-import { ThemeProvider, EditorSettingsProvider, ErrorBoundary } from './request-editor/core'; // Use package providers
-import type { EditorSettings } from './request-editor/core';
+import { bridge } from './utils/bridge';
+import {
+    ThemeProvider,
+    EditorSettingsProvider,
+    ErrorBoundary,
+    editorSettingsFromConfig,
+    editorSettingsToUiConfig,
+} from './request-editor/core'; // Use package providers
 import { applyUIFont, UIFontValue } from './utils/fontLoader';
 import { ProjectProvider } from './contexts/ProjectContext';
 import { SelectionProvider } from './contexts/SelectionContext';
-import { UIProvider } from './contexts/UIContext';
+import { UIProvider, useUI } from './contexts/UIContext';
 import { NavigationProvider } from './contexts/NavigationContext';
 import { UnifiedProjectProvider } from './contexts/UnifiedProjectContext';
 import { TestRunnerProvider } from './contexts/TestRunnerContext';
@@ -19,29 +24,35 @@ import { DebugIndicator } from './components/DebugIndicator';
 import TitleBar from './components/TitleBar';
 import { MacOSTitleBarSearch } from './components/MacOSTitleBarSearch';
 
-// Editor settings persistence
-const EDITOR_SETTINGS_KEY = 'apinox-editor-settings';
-
 // Apply saved UI font on startup
 const savedUIFont = localStorage.getItem('apinox-ui-font') as UIFontValue | null;
 applyUIFont(savedUIFont ?? 'fira-code');
 
-function loadEditorSettings(): EditorSettings | undefined {
-    try {
-        const stored = localStorage.getItem(EDITOR_SETTINGS_KEY);
-        return stored ? JSON.parse(stored) : undefined;
-    } catch (err) {
-        console.error('Failed to load editor settings:', err);
-        return undefined;
-    }
-}
+/**
+ * Editor settings live in `config.ui` — the same store every other UI setting uses.
+ *
+ * They used to live in `localStorage`, which meant the same setting had two sources
+ * of truth: the notes gear and the proxy editor read the app-level provider
+ * (localStorage), while the request editor read and wrote `config.ui`. They agreed
+ * only when both started from defaults. One store now, and the mapping is the shared
+ * one in `EditorSettingsContext`.
+ */
+function EditorSettingsStore({ children }: { children: ReactNode }) {
+    const { config } = useUI();
 
-function saveEditorSettings(settings: EditorSettings): void {
-    try {
-        localStorage.setItem(EDITOR_SETTINGS_KEY, JSON.stringify(settings));
-    } catch (err) {
-        console.error('Failed to save editor settings:', err);
-    }
+    return (
+        <EditorSettingsProvider
+            initialSettings={editorSettingsFromConfig(config?.ui)}
+            onSettingsChange={(settings) => {
+                bridge.sendMessage({
+                    command: 'saveUiState',
+                    ui: { ...config?.ui, ...editorSettingsToUiConfig(settings) },
+                });
+            }}
+        >
+            {children}
+        </EditorSettingsProvider>
+    );
 }
 
 export default function App() {
@@ -84,13 +95,11 @@ export default function App() {
     
     return (
         <ThemeProvider standalone={true}>
-            <EditorSettingsProvider
-                initialSettings={loadEditorSettings()}
-                onSettingsChange={saveEditorSettings}
-            >
-                <ProjectProvider>
-                <SelectionProvider>
-                    <UIProvider>
+            <ProjectProvider>
+            <SelectionProvider>
+                <UIProvider>
+                    {/* Inside UIProvider: the settings store reads `config`. */}
+                    <EditorSettingsStore>
                         <NavigationProvider>
                             <ScrapbookProvider>
                                 <UnifiedProjectProvider>
@@ -116,10 +125,10 @@ export default function App() {
                                 </UnifiedProjectProvider>
                             </ScrapbookProvider>
                         </NavigationProvider>
-                    </UIProvider>
-                    </SelectionProvider>
-                </ProjectProvider>
-            </EditorSettingsProvider>
+                    </EditorSettingsStore>
+                </UIProvider>
+                </SelectionProvider>
+            </ProjectProvider>
         </ThemeProvider>
     );
 }

@@ -916,14 +916,6 @@ export const WorkspaceLayout: React.FC = () => {
                 onLog={(message, level = 'info') => {
                     console.log(`[${level.toUpperCase()}] ${message}`);
                 }}
-                initialEditorSettings={{
-                    fontSize: config?.ui?.editorFontSize || 14,
-                    fontFamily: config?.ui?.editorFontFamily || 'Consolas, "Courier New", monospace',
-                    showLineNumbers: config?.ui?.showLineNumbers ?? true,
-                    alignAttributes: config?.ui?.alignAttributes ?? false,
-                    inlineValues: config?.ui?.inlineElementValues ?? true,
-                    hideCausality: false
-                }}
                 initialLayoutMode={config?.ui?.layoutMode as 'vertical' | 'horizontal' ?? 'vertical'}
                 layoutMode={isMobile ? 'horizontal' : undefined}
                 onLayoutModeChange={(mode) => {
@@ -932,19 +924,6 @@ export const WorkspaceLayout: React.FC = () => {
                         ui: {
                             ...config?.ui,
                             layoutMode: mode
-                        }
-                    });
-                }}
-                onEditorSettingsChange={(settings) => {
-                    bridge.sendMessage({
-                        command: 'saveUiState',
-                        ui: {
-                            ...config?.ui,
-                            editorFontSize: settings.fontSize,
-                            editorFontFamily: settings.fontFamily,
-                            showLineNumbers: settings.showLineNumbers,
-                            alignAttributes: settings.alignAttributes,
-                            inlineElementValues: settings.inlineValues
                         }
                     });
                 }}

@@ -3,12 +3,15 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { NoteEntry, NoteLanguage } from "@shared/models";
 import { captureLog } from "../utils/logger";
+import { bridge, commandErrorText } from "../utils/bridge";
+import { BackendCommand } from "@shared/messages";
 import { detectLanguage, DetectedLanguage } from "./detectLanguage";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -30,15 +33,43 @@ export interface ActiveNote {
   loadedAt: number;
 }
 
+/**
+ * bytes → base64 without spreading the whole array as function arguments.
+ * `String.fromCharCode(...bytes)` exhausts the stack on large files, so encode
+ * in chunks. The backend decodes the same payload in `save_note_bytes`.
+ */
+function bytesToBase64(bytes: Uint8Array): string {
+  const CHUNK = 8192;
+  let out = "";
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    out += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(out);
+}
+
+/**
+ * Parse the ISO timestamp the notes commands return (`save_note`,
+ * `save_note_bytes`, `sniff_file_type`) into epoch ms. Falls back to the client
+ * clock when the value is unparseable, so a bad timestamp can never make every
+ * later check read as an external change.
+ */
+function toEpochMs(iso: string): number {
+  const ms = new Date(iso).getTime();
+  return Number.isNaN(ms) ? Date.now() : ms;
+}
+
 interface NotesState {
   notes: NoteEntry[];
   activeNote: ActiveNote | null;
   isLoading: boolean;
+  /** A plain, renderable message. The external-change signal is NOT carried here
+   *  — it has its own state (`externalChangePath`), so real errors are visible
+   *  instead of being hidden behind a sentinel string the UI string-matches. */
   error: string | null;
+  externalChangePath: string | null;
 }
 
 interface NotesActions {
-  loadIndex: () => Promise<void>;
   openNote: (entry: NoteEntry) => Promise<void>;
   newNote: (name?: string) => Promise<void>;
   openFileDialog: () => Promise<void>;
@@ -48,10 +79,11 @@ interface NotesActions {
   deleteNote: (id: string) => Promise<void>;
   renameNote: (id: string, newName: string) => Promise<void>;
   updateContent: (content: string) => void;
-  updateByte: (offset: number, value: number) => void;
   setViewMode: (mode: NoteViewMode) => void;
   setLanguageOverride: (lang: NoteLanguage) => void;
   checkExternalChange: () => Promise<void>;
+  clearExternalChange: () => void;
+  clearError: () => void;
 }
 
 type NotesContextValue = NotesState & NotesActions;
@@ -93,32 +125,64 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [activeNote, setActiveNote] = useState<ActiveNote | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [externalChangePath, setExternalChangePath] = useState<string | null>(null);
 
   // Auto-save timer ref
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /**
+   * Mirror of `activeNote` for the debounce callback. The write used to run
+   * inside a `setActiveNote` updater; keeping IO in the callback means the timer
+   * reads the note through this ref instead.
+   */
+  const activeNoteRef = useRef<ActiveNote | null>(null);
+  useEffect(() => {
+    activeNoteRef.current = activeNote;
+  }, [activeNote]);
+
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    };
+  }, []);
 
   // ── Index ────────────────────────────────────────────────────────────────
 
-  const loadIndex = useCallback(async () => {
-    try {
-      const index = await invoke<{ entries: NoteEntry[] }>("load_notes_index");
-      setNotes(index.entries ?? []);
-    } catch (e) {
-      setError(String(e));
-    }
+  // Initial load. The state update happens in the promise continuation rather than in
+  // the effect body, which is the external-system callback the rule permits — and
+  // `loadIndex` was never consumed by any component, so it existed only for this.
+  useEffect(() => {
+    invoke<{ entries: NoteEntry[] }>("load_notes_index")
+      .then((index) => setNotes(index.entries ?? []))
+      .catch((e) => setError(commandErrorText(e)));
   }, []);
 
-  useEffect(() => { loadIndex(); }, [loadIndex]);
+  // The backend is the source of truth for the index: every mutation pushes
+  // `notesUpdated` on the bridge channel, so the list re-syncs from the
+  // authoritative snapshot rather than only from what this component did.
+  useEffect(() => {
+    const unsubscribe = bridge.onMessage((message) => {
+      if (message.command === BackendCommand.NotesUpdated) {
+        setNotes(message.entries ?? []);
+      }
+    });
+    return unsubscribe;
+  }, []);
 
   // ── Open ─────────────────────────────────────────────────────────────────
 
   const openNote = useCallback(async (entry: NoteEntry) => {
     setIsLoading(true);
     setError(null);
+    setExternalChangePath(null);
     try {
-      // Sniff binary first
-      const sniff = await invoke<{ isBinary: boolean }>("sniff_file_type", { filePath: entry.filePath });
+      // Sniff binary first. The returned mtime is the baseline for the
+      // external-change check — using the disk value rather than the client clock
+      // avoids skew between the two.
+      const sniff = await invoke<{ isBinary: boolean; lastModified: string }>("sniff_file_type", {
+        filePath: entry.filePath,
+      });
       const isBin = sniff.isBinary;
+      const baseline = toEpochMs(sniff.lastModified);
 
       if (isBin) {
         const b64 = await invoke<string>("load_note_bytes", { filePath: entry.filePath });
@@ -131,7 +195,7 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           savedBytes: new Uint8Array(bytes),
           detected: { language: "binary", isMarkdown: false, isBinary: true },
           viewMode: "raw",
-          loadedAt: Date.now(),
+          loadedAt: baseline,
         });
       } else {
         const content = await invoke<string>("load_note_content", { filePath: entry.filePath });
@@ -147,13 +211,13 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           savedContent: content,
           detected: finalDetected,
           viewMode: finalDetected.isMarkdown ? "interactive" : "raw",
-          loadedAt: Date.now(),
+          loadedAt: baseline,
         });
       }
 
       await invoke("add_recent_note_path", { filePath: entry.filePath });
     } catch (e) {
-      setError(String(e));
+      setError(commandErrorText(e));
     } finally {
       setIsLoading(false);
     }
@@ -167,18 +231,19 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const fileName = `${safeName}.txt`;
     const filePath = `${notesDir}/${fileName}`;
 
+    const diskMtime = await invoke<string>("save_note", { filePath, content: "" });
+
     const entry: NoteEntry = {
       id: crypto.randomUUID(),
       name: safeName,
       filePath,
       language: "plaintext",
-      lastModified: new Date().toISOString(),
+      lastModified: diskMtime,
       isBinary: false,
       isManaged: true,
       createdAt: new Date().toISOString(),
     };
 
-    await invoke("save_note", { filePath, content: "" });
     await invoke("upsert_note_index", { entry });
 
     setNotes((prev) => [entry, ...prev.filter((n) => n.id !== entry.id)]);
@@ -188,7 +253,7 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       savedContent: "",
       detected: { language: "plaintext", isMarkdown: false, isBinary: false },
       viewMode: "raw",
-      loadedAt: Date.now(),
+      loadedAt: toEpochMs(diskMtime),
     });
   }, []);
 
@@ -219,7 +284,7 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setNotes((prev) => [entry, ...prev.filter((n) => n.filePath !== selected)]);
       await openNote(entry);
     } catch (e) {
-      setError(String(e));
+      setError(commandErrorText(e));
     }
   }, [openNote]);
 
@@ -228,16 +293,36 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const saveActive = useCallback(async () => {
     if (!activeNote) return;
     try {
+      // The backend returns the authoritative disk mtime. Re-baselining
+      // `loadedAt` on it is what keeps `checkExternalChange` from reporting the
+      // app's own write as an external edit on the next focus.
       if (activeNote.detected.isBinary && activeNote.bytes) {
-        const b64 = btoa(String.fromCharCode(...activeNote.bytes));
-        await invoke("save_note_bytes", { filePath: activeNote.entry.filePath, dataB64: b64 });
-        setActiveNote((prev) => prev ? { ...prev, savedBytes: new Uint8Array(prev.bytes!) } : prev);
+        const b64 = bytesToBase64(activeNote.bytes);
+        const diskMtime = await invoke<string>("save_note_bytes", {
+          filePath: activeNote.entry.filePath,
+          dataBase64: b64,
+        });
+        // Narrow inside the updater rather than asserting: the outer guard checked
+        // `activeNote`, but `prev` is a different reference the compiler cannot know is
+        // the same object.
+        // Narrow inside the updater rather than asserting: the outer guard checked
+        // `activeNote`, but `prev` is a different reference the compiler cannot know is
+        // the same object.
+        setActiveNote((prev) => {
+          if (!prev?.bytes) return prev;
+          return { ...prev, savedBytes: new Uint8Array(prev.bytes), loadedAt: toEpochMs(diskMtime) };
+        });
       } else {
-        await invoke("save_note", { filePath: activeNote.entry.filePath, content: activeNote.content });
-        setActiveNote((prev) => prev ? { ...prev, savedContent: prev.content } : prev);
+        const diskMtime = await invoke<string>("save_note", {
+          filePath: activeNote.entry.filePath,
+          content: activeNote.content,
+        });
+        setActiveNote((prev) =>
+          prev ? { ...prev, savedContent: prev.content, loadedAt: toEpochMs(diskMtime) } : prev
+        );
       }
     } catch (e) {
-      setError(String(e));
+      setError(commandErrorText(e));
     }
   }, [activeNote]);
 
@@ -255,27 +340,33 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (!dest) return;
 
       const name = dest.split(/[/\\]/).pop() ?? dest;
+
+      const diskMtime = activeNote.detected.isBinary && activeNote.bytes
+        ? await invoke<string>("save_note_bytes", { filePath: dest, dataBase64: bytesToBase64(activeNote.bytes) })
+        : await invoke<string>("save_note", { filePath: dest, content: activeNote.content });
+
+      // The backend's mtime is authoritative — the index records it, and the same
+      // value re-baselines the external-change check.
       const updatedEntry: NoteEntry = {
         ...activeNote.entry,
         name,
         filePath: dest,
-        lastModified: new Date().toISOString(),
+        lastModified: diskMtime,
       };
-
-      if (activeNote.detected.isBinary && activeNote.bytes) {
-        const b64 = btoa(String.fromCharCode(...activeNote.bytes));
-        await invoke("save_note_bytes", { filePath: dest, dataB64: b64 });
-      } else {
-        await invoke("save_note", { filePath: dest, content: activeNote.content });
-      }
 
       await invoke("upsert_note_index", { entry: updatedEntry });
       setNotes((prev) => prev.map((n) => n.id === updatedEntry.id ? updatedEntry : n));
       setActiveNote((prev) =>
-        prev ? { ...prev, entry: updatedEntry, savedContent: prev.content, savedBytes: prev.detected.isBinary && prev.bytes ? new Uint8Array(prev.bytes) : prev.savedBytes } : prev
+        prev ? {
+          ...prev,
+          entry: updatedEntry,
+          savedContent: prev.content,
+          savedBytes: prev.detected.isBinary && prev.bytes ? new Uint8Array(prev.bytes) : prev.savedBytes,
+          loadedAt: toEpochMs(diskMtime),
+        } : prev
       );
     } catch (e) {
-      setError(String(e));
+      setError(commandErrorText(e));
     }
   }, [activeNote]);
 
@@ -295,7 +386,7 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setNotes((prev) => prev.filter((n) => n.id !== id));
       if (activeNote?.entry.id === id) setActiveNote(null);
     } catch (e) {
-      setError(String(e));
+      setError(commandErrorText(e));
     }
   }, [notes, activeNote]);
 
@@ -305,16 +396,18 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const entry = notes.find((n) => n.id === id);
     if (!entry) return;
     try {
-      const dir = entry.filePath.substring(0, Math.max(entry.filePath.lastIndexOf("/"), entry.filePath.lastIndexOf("\\")));
-      const ext = entry.filePath.substring(entry.filePath.lastIndexOf("."));
-      const newPath = `${dir}/${newName}${ext}`;
-      await invoke("rename_note", { oldPath: entry.filePath, newPath });
-      setNotes((prev) => prev.map((n) => n.id === id ? { ...n, name: newName, filePath: newPath } : n));
+      // The backend owns the rename: it moves the file for managed notes,
+      // updates index.json, and returns the authoritative entry. Only managed
+      // notes are moved on disk — an external note keeps its path and gets the
+      // name change in the index, so the UI must take the returned entry rather
+      // than re-deriving a path here.
+      const updated = await invoke<NoteEntry>("rename_note", { id, newName });
+      setNotes((prev) => prev.map((n) => (n.id === updated.id ? updated : n)));
       if (activeNote?.entry.id === id) {
-        setActiveNote((prev) => prev ? { ...prev, entry: { ...prev.entry, name: newName, filePath: newPath } } : prev);
+        setActiveNote((prev) => (prev ? { ...prev, entry: updated } : prev));
       }
     } catch (e) {
-      setError(String(e));
+      setError(commandErrorText(e));
     }
   }, [notes, activeNote]);
 
@@ -334,27 +427,22 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Auto-save: text notes only, 2s debounce
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(() => {
-      setActiveNote((prev) => {
-        if (!prev || prev.detected.isBinary) return prev;
-        // Skip write if nothing changed since last disk save
-        if (prev.content === prev.savedContent) return prev;
-        invoke("save_note", { filePath: prev.entry.filePath, content: prev.content })
-          .then(() => setActiveNote((p) => p ? { ...p, savedContent: p.content } : p))
-          .catch((err) => {
-              captureLog('error', '[Notes] Auto-save failed', err);
-          });
-        return prev;
-      });
+      const note = activeNoteRef.current;
+      if (!note || note.detected.isBinary) return;
+      // Skip write if nothing changed since last disk save
+      if (note.content === note.savedContent) return;
+      invoke<string>("save_note", { filePath: note.entry.filePath, content: note.content })
+        .then((diskMtime) => {
+          // Re-baseline the external-change check on the mtime this write
+          // produced, so the app's own autosave is not read as an external edit.
+          setActiveNote((p) =>
+            p ? { ...p, savedContent: p.content, loadedAt: toEpochMs(diskMtime) } : p
+          );
+        })
+        .catch((err) => {
+          captureLog("error", "[Notes] Auto-save failed", err);
+        });
     }, 2000);
-  }, []);
-
-  const updateByte = useCallback((offset: number, value: number) => {
-    setActiveNote((prev) => {
-      if (!prev?.bytes) return prev;
-      const next = new Uint8Array(prev.bytes);
-      next[offset] = value;
-      return { ...prev, bytes: next };
-    });
   }, []);
 
   // ── View mode / language override ────────────────────────────────────────
@@ -381,6 +469,9 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [activeNote]);
 
+  const clearExternalChange = useCallback(() => setExternalChangePath(null), []);
+  const clearError = useCallback(() => setError(null), []);
+
   // ── External change detection ────────────────────────────────────────────
 
   const checkExternalChange = useCallback(async () => {
@@ -389,14 +480,17 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const result = await invoke<{ lastModified: string }>("sniff_file_type", {
         filePath: activeNote.entry.filePath,
       });
-      // Compare timestamps: convert ISO lastModified to epoch ms
-      const diskMtime = new Date(result.lastModified).getTime();
+      const diskMtime = toEpochMs(result.lastModified);
       if (diskMtime > activeNote.loadedAt) {
-        // Prompt handled by UI — just surface via error channel with sentinel
-        setError(`__external_change__:${activeNote.entry.filePath}`);
+        setExternalChangePath(activeNote.entry.filePath);
       }
-    } catch {
-      // file may not exist yet (new unsaved note) — ignore
+    } catch (e) {
+      // A file that does not exist yet (a new, unsaved note) is not an external
+      // change — but a real read failure must still surface.
+      const message = commandErrorText(e);
+      if (!message.toLowerCase().includes('not found')) {
+        setError(message);
+      }
     }
   }, [activeNote]);
 
@@ -407,15 +501,28 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => window.removeEventListener("focus", handler);
   }, [checkExternalChange]);
 
-  const value: NotesContextValue = {
-    notes, activeNote, isLoading, error,
-    loadIndex, openNote, newNote, openFileDialog,
-    saveActive, saveAsDialog, closeActive,
-    deleteNote, renameNote,
-    updateContent, updateByte,
-    setViewMode, setLanguageOverride,
-    checkExternalChange,
-  };
+  // Memoised like every other context in the app — a fresh object each render
+  // re-renders every consumer.
+  const value: NotesContextValue = useMemo(
+    () => ({
+      notes, activeNote, isLoading, error, externalChangePath,
+      openNote, newNote, openFileDialog,
+      saveActive, saveAsDialog, closeActive,
+      deleteNote, renameNote,
+      updateContent,
+      setViewMode, setLanguageOverride,
+      checkExternalChange, clearExternalChange, clearError,
+    }),
+    [
+      notes, activeNote, isLoading, error, externalChangePath,
+      openNote, newNote, openFileDialog,
+      saveActive, saveAsDialog, closeActive,
+      deleteNote, renameNote,
+      updateContent,
+      setViewMode, setLanguageOverride,
+      checkExternalChange, clearExternalChange, clearError,
+    ]
+  );
 
   return <NotesContext.Provider value={value}>{children}</NotesContext.Provider>;
 };

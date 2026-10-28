@@ -28,6 +28,7 @@ pub mod jsonpath_evaluator;
 pub mod wildcard_processor;
 pub mod xpath_evaluator;
 pub mod body_reader;
+pub mod atomic_write;
 pub mod config;
 pub mod error_detail;
 pub mod http;
@@ -39,6 +40,7 @@ pub use jsonpath_evaluator::JsonPathEvaluator;
 pub use wildcard_processor::WildcardProcessor;
 pub use xpath_evaluator::XPathEvaluator;
 pub use body_reader::{read_body, SpooledBody};
+pub use atomic_write::write_atomic;
 pub use config::resolve_config_dir;
 pub use error_detail::{
     classify_error_chain, describe_request_failure, error_kind_label, format_error_chain,

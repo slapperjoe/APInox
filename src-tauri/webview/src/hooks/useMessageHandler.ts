@@ -9,6 +9,7 @@ import { bridge, isTauri } from '../utils/bridge';
 import { debugLog } from '../utils/logger';
 import { generateInitialXmlForOperation } from '../utils/soapUtils';
 import { BackendCommand, FrontendCommand } from '@shared/messages';
+import { editorSettingsFromConfig, type EditorSettings } from '../request-editor/core';
 import { useTestSuitesOptional } from '../contexts/TestSuiteContext';
 import {
     ApinoxProject,
@@ -34,6 +35,13 @@ export interface MessageHandlerState {
     setShowLineNumbers: React.Dispatch<React.SetStateAction<boolean>>;
     setSplitRatio: React.Dispatch<React.SetStateAction<number>> | ((ratio: number) => void);
     setInlineElementValues: React.Dispatch<React.SetStateAction<boolean>>;
+    /**
+     * Editor settings are applied here as well: `config.ui` is the single store, so a
+     * change made outside the editor (the Settings → JSON editor, or the General
+     * panel's line-numbers toggle) must reach the editor settings store. This is an
+     * external-system callback, not an effect.
+     */
+    setEditorSettings: (settings: EditorSettings) => void;
     configPath?: string | null;
     setConfigPath: React.Dispatch<React.SetStateAction<string | null>>;
     setConfigDir: React.Dispatch<React.SetStateAction<string | null>>;
@@ -75,6 +83,7 @@ export function useMessageHandler(state: MessageHandlerState) {
         setShowLineNumbers,
         setSplitRatio,
         setInlineElementValues,
+        setEditorSettings,
         setConfigPath,
         setConfigDir,
         setSelectedProjectName,
@@ -393,6 +402,11 @@ export function useMessageHandler(state: MessageHandlerState) {
                         if (message.config.ui.showLineNumbers !== undefined) setShowLineNumbers(message.config.ui.showLineNumbers);
                         if (message.config.ui.splitRatio !== undefined) setSplitRatio(message.config.ui.splitRatio);
                         if (message.config.ui.inlineElementValues !== undefined) setInlineElementValues(message.config.ui.inlineElementValues);
+                        // Editor settings are part of the same store, so an external
+                        // change (Settings → JSON, or the General panel) must reach the
+                        // editors too — the provider is seeded once and would otherwise
+                        // keep showing the old value.
+                        setEditorSettings(editorSettingsFromConfig(message.config.ui));
                     }
 
                     if (message.config.lastConfigPath) {

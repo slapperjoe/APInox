@@ -57,8 +57,11 @@ describe('HistorySidebar — embedded filter trigger', () => {
         const field = input.parentElement as HTMLElement;
         expect(field).not.toBeNull();
         expect(field.contains(trigger)).toBe(true);
-        // The field is the single shared container: input and trigger share
-        // one parent (the bordered control), they are not on separate rows.
-        expect(trigger.parentElement).toBe(field);
+        // The field is the single shared container: input and trigger sit inside
+        // the same bordered control, not on separate rows. The trigger is wrapped
+        // in the shared <Tooltip>, so the field is the wrapper's parent.
+        const tooltipWrapper = trigger.parentElement as HTMLElement;
+        expect(tooltipWrapper).not.toBeNull();
+        expect(tooltipWrapper.parentElement).toBe(field);
     });
 });

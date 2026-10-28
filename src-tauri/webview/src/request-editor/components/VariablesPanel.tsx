@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from './common/EmptyState';
 import { Variable, CheckCircle, XCircle, Circle, Copy } from 'lucide-react';
+import { Tooltip } from '../../components/common/Tooltip';
 import { CustomXPathEvaluator } from '../utils/xpathEvaluator';
 
 // Stub TestCase type
@@ -254,12 +255,13 @@ export const VariablesPanel: React.FC<VariablesPanelProps> = ({
                                 </VariableValue>
                             )}
                         </VariableInfo>
-                        <CopyButton
-                            onClick={() => handleCopy(variable.name)}
-                            title="Copy variable syntax"
-                        >
-                            <Copy size={14} />
-                        </CopyButton>
+                        <Tooltip content="Copy variable syntax">
+                            <CopyButton
+                                onClick={() => handleCopy(variable.name)}
+                            >
+                                <Copy size={14} />
+                            </CopyButton>
+                        </Tooltip>
                     </VariableItem>
                 ))}
             </VariablesList>

@@ -5,6 +5,7 @@ import { Search, X } from 'lucide-react';
 import { useSearch } from '../contexts/SearchContext';
 import { useUI } from '../contexts/UIContext';
 import { SearchDropdown } from './SearchDropdown';
+import { Tooltip } from './common/Tooltip';
 import { SearchResult } from '../utils/workspaceSearch';
 import apinoxIcon from '../assets/apinox-icon.png';
 import pkg from '../../package.json';
@@ -247,9 +248,11 @@ export const MacOSTitleBarSearch: React.FC = () => {
             data-search-input
           />
           {searchQuery && (
-            <ClearButton onClick={clearSearch} title="Clear search">
-              <X />
-            </ClearButton>
+            <Tooltip content="Clear search">
+              <ClearButton onClick={clearSearch}>
+                <X />
+              </ClearButton>
+            </Tooltip>
           )}
         </SearchWrapper>
       </SearchBarContainer>

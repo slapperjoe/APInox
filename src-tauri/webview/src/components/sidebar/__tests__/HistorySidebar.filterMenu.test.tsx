@@ -75,9 +75,12 @@ describe('HistorySidebar — header row shape', () => {
         renderHistory();
         expect(screen.getByPlaceholderText('Search history...')).toBeInTheDocument();
         expect(screen.getByLabelText('Advanced Filters')).toBeInTheDocument();
-        // The former inline "Advanced Filters" toggle row is gone — the label
-        // appears only as the trigger's accessible name (no visible text node).
-        expect(screen.queryByText('Advanced Filters')).not.toBeInTheDocument();
+        // The former inline "Advanced Filters" toggle row is gone — the label now
+        // appears only as the trigger's accessible name plus the shared Tooltip
+        // bubble (revealed on hover), never as an inline row.
+        const advancedFiltersNodes = screen.queryAllByText('Advanced Filters');
+        expect(advancedFiltersNodes).toHaveLength(1);
+        expect(advancedFiltersNodes[0]).toHaveAttribute('role', 'tooltip');
         // The inline filter block content is not rendered by default.
         expect(screen.queryByText('Date Range:')).not.toBeInTheDocument();
         expect(screen.queryByText('Clear All Filters')).not.toBeInTheDocument();

@@ -1,6 +1,7 @@
 import React from 'react';
 import { HelpCircle } from 'lucide-react';
 import { IconButton } from './common/Button';
+import { Tooltip } from './common/Tooltip';
 import { useUI } from '../contexts/UIContext';
 
 
@@ -20,12 +21,13 @@ export const ContextHelpButton: React.FC<ContextHelpButtonProps> = ({
     const { openHelp } = useUI();
 
     return (
-        <IconButton
-            onClick={() => openHelp(sectionId)}
-            title={title}
-            style={style}
-        >
-            <HelpCircle size={size} />
-        </IconButton>
+        <Tooltip content={title}>
+            <IconButton
+                onClick={() => openHelp(sectionId)}
+                style={style}
+            >
+                <HelpCircle size={size} />
+            </IconButton>
+        </Tooltip>
     );
 };

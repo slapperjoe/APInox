@@ -20,6 +20,7 @@ import {
   SidebarHeaderActions,
 } from "./shared/SidebarStyles";
 import { HeaderButton } from "../common/Button";
+import { DirtyDot } from "../common/DirtyDot";
 import { Tooltip } from "../common/Tooltip";
 import { useNotes, noteDirtyKind } from "../../notes/NotesContext";
 
@@ -61,17 +62,6 @@ const ItemName = styled.span`
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-`;
-
-const DirtyDot = styled.span<{ $kind: "external" | "managed" }>`
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: ${({ $kind }) =>
-    $kind === "external"
-      ? "var(--apinox-charts-orange, #d18616)"
-      : "var(--apinox-disabledForeground, #656565)"};
-  flex-shrink: 0;
 `;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -194,8 +184,8 @@ export const NotesList: React.FC = () => {
 
               {dirtyKind && (
                 <DirtyDot
-                  $kind={dirtyKind}
-                  title={dirtyKind === "external" ? "Unsaved changes" : "Modified — auto-saving"}
+                  kind={dirtyKind}
+                  label={dirtyKind === "external" ? "Unsaved changes" : "Modified — auto-saving"}
                 />
               )}
             </Item>

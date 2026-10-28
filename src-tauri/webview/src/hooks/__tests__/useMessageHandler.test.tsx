@@ -76,6 +76,7 @@ describe('useMessageHandler', () => {
             setShowLineNumbers: vi.fn(),
             setSplitRatio: vi.fn(),
             setInlineElementValues: vi.fn(),
+            setEditorSettings: vi.fn(),
             setConfigPath: vi.fn(),
             setSelectedProjectName: vi.fn(),
             setWorkspaceDirty: vi.fn(),
@@ -133,6 +134,43 @@ describe('useMessageHandler', () => {
 
         expect(mockState.setConfig).toHaveBeenCalledWith(config);
         expect(mockState.setLayoutMode).toHaveBeenCalledWith('horizontal');
+    });
+
+    /**
+     * `config.ui` is the single store for editor settings, so a change made outside
+     * the editors must reach them. The provider is seeded once, so without this the
+     * editors keep showing the old value after the Settings panel or the JSON editor
+     * changes it.
+     */
+    it('applies editor settings from config.ui on SettingsUpdate', () => {
+        renderHook(() => useMessageHandler(mockState), { wrapper: Wrapper });
+
+        messageHandlerCallback({
+            command: BackendCommand.SettingsUpdate,
+            config: {
+                ui: {
+                    editorFontSize: 18,
+                    editorFontFamily: 'JetBrains Mono',
+                    showLineNumbers: false,
+                    showMinimap: true,
+                    prettyPrint: false,
+                    hideCausalityData: true,
+                    alignAttributes: true,
+                    inlineElementValues: false,
+                },
+            },
+        });
+
+        expect(mockState.setEditorSettings).toHaveBeenCalledWith({
+            inlineValues: false,
+            alignAttributes: true,
+            hideCausality: true,
+            showLineNumbers: false,
+            showMinimap: true,
+            fontSize: 18,
+            fontFamily: 'JetBrains Mono',
+            prettyPrint: false,
+        });
     });
 
     it('should handle ProjectLoaded message', () => {

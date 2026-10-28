@@ -73,8 +73,9 @@ describe('SettingsView (full-area settings)', () => {
 
     it('switches to the Globals tab via initialTab', async () => {
         renderView({ initialTab: 'globals' });
-        // GlobalsTab's list header carries the "Add Variable" button.
-        expect(await screen.findByTitle('Add Variable')).toBeInTheDocument();
+        // GlobalsTab's "Add Variable" icon button carries the shared Tooltip,
+        // which supplies the accessible name.
+        expect(await screen.findByLabelText('Add Variable')).toBeInTheDocument();
     });
 
     it('persists pending GUI edits on unmount (replaces modal close-save)', async () => {

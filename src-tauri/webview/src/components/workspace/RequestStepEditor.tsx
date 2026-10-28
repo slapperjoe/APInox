@@ -5,6 +5,7 @@ import { SPACING_SM } from '../../styles/spacing';
 import { GitBranch, AlertCircle, Plus, X } from 'lucide-react';
 import { PrimaryButton, SecondaryButton } from '../common/Button';
 import { EmptyState } from '../common/EmptyState';
+import { Tooltip } from '../common/Tooltip';
 import { MonacoEditorWrapper, applyMonacoTheme } from '../../request-editor/monaco';
 import * as monaco from 'monaco-editor';
 import { useTheme } from '../../request-editor/core'; // package ThemeContext (mounted in the app tree)
@@ -251,13 +252,14 @@ export const RequestStepEditor: React.FC<RequestStepEditorProps> = ({ step, onUp
                                             value={row.value}
                                             onChange={(e) => updateHeaderRow(i, { value: e.target.value })}
                                         />
-                                        <HeaderRemove
-                                            aria-label={`Remove header ${i}`}
-                                            title="Remove header"
-                                            onClick={() => removeHeaderRow(i)}
-                                        >
-                                            <X size={14} />
-                                        </HeaderRemove>
+                                        <Tooltip content="Remove header">
+                                            <HeaderRemove
+                                                aria-label={`Remove header ${i}`}
+                                                onClick={() => removeHeaderRow(i)}
+                                            >
+                                                <X size={14} />
+                                            </HeaderRemove>
+                                        </Tooltip>
                                     </HeaderRow>
                                 ))}
                             </div>
@@ -322,13 +324,14 @@ export const RequestStepEditor: React.FC<RequestStepEditorProps> = ({ step, onUp
                                             onChange={(e) => updateExtractor(i, { pattern: e.target.value })}
                                         />
                                         <ExtractorTypeBadge>{ex.source === 'header' ? 'header' : 'body'}</ExtractorTypeBadge>
-                                        <ExtractorRemove
-                                            aria-label={`Remove extractor ${i}`}
-                                            title="Remove extractor"
-                                            onClick={() => removeExtractor(i)}
-                                        >
-                                            <X size={14} />
-                                        </ExtractorRemove>
+                                        <Tooltip content="Remove extractor">
+                                            <ExtractorRemove
+                                                aria-label={`Remove extractor ${i}`}
+                                                onClick={() => removeExtractor(i)}
+                                            >
+                                                <X size={14} />
+                                            </ExtractorRemove>
+                                        </Tooltip>
                                     </ExtractorRow>
                                 ))}
                             </div>

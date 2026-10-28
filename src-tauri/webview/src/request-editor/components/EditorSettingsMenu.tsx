@@ -2,6 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { Type, Braces, WrapText, AlignLeft, ListOrdered, Map, Minus, Plus, Layout as LayoutIcon } from 'lucide-react';
 import * as S from './RequestWorkspace.styles';
+import { Tooltip } from '../../components/common/Tooltip';
 import { useEditorSettings } from '../contexts/EditorSettingsContext';
 import type { MonoFont } from '../utils/fontDetection';
 import type { SettingsMenuPosition } from '../hooks/useSettingsDropdown';
@@ -76,21 +77,23 @@ export const EditorSettingsMenu: React.FC<EditorSettingsMenuProps> = ({
               Font Size
             </S.MenuLabel>
             <S.MenuControls>
-              <S.MenuIconButton
-                onClick={() => editorSettings.updateSettings({ fontSize: Math.max(8, editorSettings.settings.fontSize - 1) })}
-                disabled={editorSettings.settings.fontSize <= 8}
-                title="Decrease"
-              >
-                <Minus size={12} />
-              </S.MenuIconButton>
+              <Tooltip content="Decrease font size">
+                <S.MenuIconButton
+                  onClick={() => editorSettings.updateSettings({ fontSize: Math.max(8, editorSettings.settings.fontSize - 1) })}
+                  disabled={editorSettings.settings.fontSize <= 8}
+                >
+                  <Minus size={12} />
+                </S.MenuIconButton>
+              </Tooltip>
               <S.FontSizeDisplay>{editorSettings.settings.fontSize}px</S.FontSizeDisplay>
-              <S.MenuIconButton
-                onClick={() => editorSettings.updateSettings({ fontSize: Math.min(24, editorSettings.settings.fontSize + 1) })}
-                disabled={editorSettings.settings.fontSize >= 24}
-                title="Increase"
-              >
-                <Plus size={12} />
-              </S.MenuIconButton>
+              <Tooltip content="Increase font size">
+                <S.MenuIconButton
+                  onClick={() => editorSettings.updateSettings({ fontSize: Math.min(24, editorSettings.settings.fontSize + 1) })}
+                  disabled={editorSettings.settings.fontSize >= 24}
+                >
+                  <Plus size={12} />
+                </S.MenuIconButton>
+              </Tooltip>
             </S.MenuControls>
           </S.MenuRow>
         </S.MenuSection>

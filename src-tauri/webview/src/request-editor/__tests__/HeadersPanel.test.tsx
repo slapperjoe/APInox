@@ -63,7 +63,7 @@ describe('HeadersPanel', () => {
         const headers = { 'Authorization': 'Bearer token' };
         render(<HeadersPanel headers={headers} onChange={onChange} />);
 
-        const deleteButton = screen.getByTitle('Delete Header');
+        const deleteButton = screen.getByLabelText('Delete Header');
         fireEvent.click(deleteButton);
 
         expect(onChange).toHaveBeenCalledWith({});

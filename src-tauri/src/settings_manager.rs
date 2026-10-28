@@ -47,7 +47,7 @@ pub struct NetworkConfig {
     pub strict_ssl: Option<bool>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UiConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -72,6 +72,15 @@ pub struct UiConfig {
     pub editor_font_family: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ui_font_family: Option<String>,
+    /// Editor settings that had no config field and lived only in localStorage.
+    /// `hide_causality_data` was already being sent by `saveUiState` but had no
+    /// field, so the write was silently dropped.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub show_minimap: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pretty_print: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hide_causality_data: Option<bool>,
 }
 
 impl Default for ApinoxConfig {
@@ -95,6 +104,11 @@ impl Default for ApinoxConfig {
                 editor_font_size: None,
                 editor_font_family: None,
                 ui_font_family: None,
+                // Match the frontend's DEFAULT_EDITOR_SETTINGS so a fresh config and a
+                // fresh provider agree.
+                show_minimap: Some(false),
+                pretty_print: Some(true),
+                hide_causality_data: Some(false),
             }),
             active_environment: Some("Build".to_string()),
             environments: Some(Self::default_environments()),
@@ -269,6 +283,9 @@ fn update_ui_settings_sync(ui: UiConfig) -> Result<(), String> {
             editor_font_size: ui.editor_font_size.or(existing_ui.editor_font_size),
             editor_font_family: ui.editor_font_family.or_else(|| existing_ui.editor_font_family.clone()),
             ui_font_family: ui.ui_font_family.or_else(|| existing_ui.ui_font_family.clone()),
+            show_minimap: ui.show_minimap.or(existing_ui.show_minimap),
+            pretty_print: ui.pretty_print.or(existing_ui.pretty_print),
+            hide_causality_data: ui.hide_causality_data.or(existing_ui.hide_causality_data),
         });
     } else {
         config.ui = Some(ui);
@@ -324,4 +341,72 @@ pub fn load_config_internal() -> Result<ApinoxConfig, String> {
 
 pub fn save_config_internal(config: &ApinoxConfig) -> Result<(), String> {
     save_config(config)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utils::config::CONFIG_DIR_TEST_LOCK;
+    use uuid::Uuid;
+
+    /// `resolve_config_dir()` reads a process-global env var, so the lock must be held
+    /// for the whole test — the pattern `notes_storage` and `project_storage` use.
+    struct ConfigTestEnv {
+        _guard: std::sync::MutexGuard<'static, ()>,
+    }
+
+    impl ConfigTestEnv {
+        fn new() -> Self {
+            let _guard = CONFIG_DIR_TEST_LOCK
+                .lock()
+                .unwrap_or_else(|p| p.into_inner());
+            let dir = std::env::temp_dir().join(format!("apinox-settings-test-{}", Uuid::new_v4()));
+            fs::create_dir_all(&dir).expect("create temp config dir");
+            std::env::set_var("APINOX_CONFIG_DIR", &dir);
+            Self { _guard }
+        }
+    }
+
+    #[test]
+    fn ui_settings_merge_keeps_the_editor_fields() {
+        let _env = ConfigTestEnv::new();
+
+        // `hideCausalityData` was being sent by `saveUiState` with no matching field on
+        // UiConfig, so the write was silently dropped and the setting never survived a
+        // restart. `showMinimap` and `prettyPrint` had no config field at all — they
+        // lived only in localStorage.
+        update_ui_settings_sync(UiConfig {
+            show_minimap: Some(true),
+            pretty_print: Some(false),
+            hide_causality_data: Some(true),
+            ..UiConfig::default()
+        })
+        .expect("update_ui_settings_sync");
+
+        let ui = load_config().expect("load_config").ui.expect("ui section");
+        assert_eq!(ui.show_minimap, Some(true));
+        assert_eq!(ui.pretty_print, Some(false));
+        assert_eq!(ui.hide_causality_data, Some(true));
+    }
+
+    #[test]
+    fn a_partial_ui_update_does_not_drop_existing_values() {
+        let _env = ConfigTestEnv::new();
+
+        update_ui_settings_sync(UiConfig {
+            editor_font_size: Some(18),
+            ..UiConfig::default()
+        })
+        .expect("first merge");
+
+        update_ui_settings_sync(UiConfig {
+            show_line_numbers: Some(false),
+            ..UiConfig::default()
+        })
+        .expect("second merge");
+
+        let ui = load_config().expect("load_config").ui.expect("ui section");
+        assert_eq!(ui.editor_font_size, Some(18));
+        assert_eq!(ui.show_line_numbers, Some(false));
+    }
 }

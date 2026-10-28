@@ -4,6 +4,7 @@ import { ApiOperation } from '@shared/models';
 import { generateSampleWithMetadata } from '../../utils/soapUtils';
 import { parseXmlToTree, serializeTreeToXml, XmlTreeNode } from '../../utils/xmlTreeParser';
 import * as S from './SampleRequestPanel.styles';
+import { Tooltip } from '../common/Tooltip';
 
 interface SampleRequestPanelProps {
     operation: ApiOperation;
@@ -98,12 +99,14 @@ export const SampleRequestPanel: React.FC<SampleRequestPanelProps> = ({
                     <S.ElementNode>
                         {/* Collapse icon (only if has element children) */}
                         {hasChildren ? (
-                            <S.CollapseIcon 
-                                collapsed={isCollapsed}
-                                onClick={() => toggleNodeCollapse(path)}
-                            >
-                                <ChevronDown size={14} />
-                            </S.CollapseIcon>
+                            <Tooltip content={isCollapsed ? 'Expand element' : 'Collapse element'}>
+                                <S.CollapseIcon 
+                                    collapsed={isCollapsed}
+                                    onClick={() => toggleNodeCollapse(path)}
+                                >
+                                    <ChevronDown size={14} />
+                                </S.CollapseIcon>
+                            </Tooltip>
                         ) : (
                             <span style={{ width: '16px', display: 'inline-block' }}></span>
                         )}

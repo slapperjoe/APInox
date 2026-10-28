@@ -6,6 +6,8 @@ use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use std::path::{Path, PathBuf};
 use std::fs;
 
+use crate::utils::write_atomic;
+
 /// Certificate format
 #[derive(Debug, Clone)]
 pub enum CertificateFormat {
@@ -65,8 +67,8 @@ impl CertificateManager {
         let cert_path = self.certs_dir.join(format!("{}.crt", name));
         let key_path = self.certs_dir.join(format!("{}.key", name));
         
-        fs::write(&cert_path, &cert.certificate)?;
-        fs::write(&key_path, &cert.private_key)?;
+        write_atomic(&cert_path, cert.certificate.as_bytes())?;
+        write_atomic(&key_path, cert.private_key.as_bytes())?;
         
         Ok((cert_path, key_path))
     }

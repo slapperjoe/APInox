@@ -6,6 +6,7 @@ import { ToolbarButton, IconButton, RunButton } from '../../styles/WorkspaceLayo
 import { ContextHelpButton } from '../ContextHelpButton';
 import { EmptyState } from '../common/EmptyState';
 import { Spinner } from '../common/Spinner';
+import { Tooltip } from '../common/Tooltip';
 import { VariablesEditor } from './VariablesEditor';
 import { SPACING_XS, SPACING_SM, SPACING_MD, SPACING_LG, SPACING_XL, SPACING_3XL } from '../../styles/spacing';
 
@@ -392,17 +393,21 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
                                     }
                                 }}
                             >
-                                <WfStepToggle
-                                    $hasChildren={hasNestedSteps}
-                                    title={hasNestedSteps ? (wfExpanded ? 'Collapse test case steps' : 'Expand test case steps') : undefined}
-                                    onClick={(e) => {
-                                        if (!hasNestedSteps) return;
-                                        e.stopPropagation();
-                                        toggleWfExpand(step.id, !!status);
-                                    }}
-                                >
-                                    {hasNestedSteps && (wfExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />)}
-                                </WfStepToggle>
+                                {hasNestedSteps ? (
+                                    <Tooltip content={wfExpanded ? 'Collapse test case steps' : 'Expand test case steps'}>
+                                        <WfStepToggle
+                                            $hasChildren={hasNestedSteps}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                toggleWfExpand(step.id, !!status);
+                                            }}
+                                        >
+                                            {wfExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                        </WfStepToggle>
+                                    </Tooltip>
+                                ) : (
+                                    <WfStepToggle $hasChildren={hasNestedSteps} />
+                                )}
                                 <StepIndex>
                                     <StepIndexNumber>{index + 1}.</StepIndexNumber>
                                     {status?.status === 'running' && (
@@ -469,40 +474,43 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
 
                                     {onMoveStep && (
                                         <>
-                                            <IconButton
-                                                onClick={(e) => { e.stopPropagation(); onMoveStep(step.id, 'up'); }}
-                                                title="Move Up"
-                                                disabled={index === 0}
-                                            >
-                                                <ArrowUp size={14} />
-                                            </IconButton>
-                                            <IconButton
-                                                onClick={(e) => { e.stopPropagation(); onMoveStep(step.id, 'down'); }}
-                                                title="Move Down"
-                                                disabled={index === testCase.steps.length - 1}
-                                            >
-                                                <ArrowDown size={14} />
-                                            </IconButton>
+                                            <Tooltip content="Move Up">
+                                                <IconButton
+                                                    onClick={(e) => { e.stopPropagation(); onMoveStep(step.id, 'up'); }}
+                                                    disabled={index === 0}
+                                                >
+                                                    <ArrowUp size={14} />
+                                                </IconButton>
+                                            </Tooltip>
+                                            <Tooltip content="Move Down">
+                                                <IconButton
+                                                    onClick={(e) => { e.stopPropagation(); onMoveStep(step.id, 'down'); }}
+                                                    disabled={index === testCase.steps.length - 1}
+                                                >
+                                                    <ArrowDown size={14} />
+                                                </IconButton>
+                                            </Tooltip>
                                         </>
                                     )}
 
                                     {onDeleteStep && (
-                                        <DeleteStepButton
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                if (isConfirming) {
-                                                    onDeleteStep(step.id);
-                                                    setDeleteConfirm(null);
-                                                } else {
-                                                    setDeleteConfirm(step.id);
-                                                    setTimeout(() => setDeleteConfirm(null), 2000);
-                                                }
-                                            }}
-                                            shake={isConfirming}
-                                            title={isConfirming ? "Click to Confirm Delete" : "Delete Step"}
-                                        >
-                                            <Trash2 size={14} />
-                                        </DeleteStepButton>
+                                        <Tooltip content={isConfirming ? 'Click to Confirm Delete' : 'Delete Step'}>
+                                            <DeleteStepButton
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (isConfirming) {
+                                                        onDeleteStep(step.id);
+                                                        setDeleteConfirm(null);
+                                                    } else {
+                                                        setDeleteConfirm(step.id);
+                                                        setTimeout(() => setDeleteConfirm(null), 2000);
+                                                    }
+                                                }}
+                                                shake={isConfirming}
+                                            >
+                                                <Trash2 size={14} />
+                                            </DeleteStepButton>
+                                        </Tooltip>
                                     )}
                                 </StepActions>
                             </StepRow>

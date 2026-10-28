@@ -1,26 +1,51 @@
-import React, { useCallback, useRef, useState, useEffect } from "react";
+import React, { useCallback, useRef, useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import styled from "styled-components";
-import { GhostButton } from "../components/common/Button";
-import { MonacoEditorWrapper, MonacoEditorWrapperProps, useSettingsDropdown } from "../request-editor/monaco";
+import { IconButton, SecondaryButton, ToggleTab } from "../components/common/Button";
+import { Tooltip } from "../components/common/Tooltip";
+import { DirtyDot } from "../components/common/DirtyDot";
+import { Spinner } from "../components/common/Spinner";
+import { MonacoEditorWrapper, Monaco, useSettingsDropdown } from "../request-editor/monaco";
 import {
+  CompactIconButton,
+  EditorSettingsMenu,
+  FontSizeDisplay,
+  MenuControls,
+  MenuIconButton,
+  MenuLabel,
+  MenuRow,
+  MenuSection,
+  MenuSectionTitle,
+} from "../request-editor/components/RequestWorkspace.styles";
+import { MONOSPACE_FONTS, getInstalledFonts } from "../request-editor/utils/fontDetection";
+import {
+  Minus,
+  Plus,
   Save,
   Eye,
   Edit3,
   Code,
   FileText,
   X,
-  ChevronDown,
   Settings,
+  Type,
+  ListOrdered,
+  ChevronDown,
 } from "lucide-react";
 import { NoteLanguage } from "@shared/models";
-import { useNotes, isNoteDirty, noteDirtyKind, NoteViewMode } from "./NotesContext";
+import { useNotes, noteDirtyKind } from "./NotesContext";
+import { useSaveShortcut } from "../hooks/useSaveShortcut";
 import { NotesCodeMirrorEditor, NotesCodeMirrorEditorRef } from "./NotesCodeMirrorEditor";
 import { NotesContextToolbar } from "./NotesContextToolbar";
-import { NotesPreview, DebouncedNotesPreview } from "./NotesPreview";
+import { DebouncedNotesPreview } from "./NotesPreview";
 import { NotesHexEditor } from "./NotesHexEditor";
-import { useEditorSettings } from "../request-editor/core";
+import { useEditorSettings, useTheme } from "../request-editor/core";
+import { applyMonacoTheme, isLightTheme } from "../request-editor/utils/monacoTheme";
 import { EmptyState } from "../components/common/EmptyState";
-import { CustomSelect } from "../components/common/CustomSelect";
+import { CustomSelect, type CustomSelectOption } from "../components/common/CustomSelect";
+import { ErrorDetailBanner } from "../request-editor/components/common/ErrorDetailBanner";
+import { Toolbar, ToolbarSeparator } from "../styles/WorkspaceLayout.styles";
+import { SPACING_MD, SPACING_SM } from "../styles/spacing";
 
 // ─── Styled ───────────────────────────────────────────────────────────────────
 
@@ -29,60 +54,21 @@ const Root = styled.div`
   flex-direction: column;
   height: 100%;
   width: 100%;
-  background: var(--apinox-editor-background, #1e1e1e);
+  background: var(--apinox-editor-background);
   overflow: hidden;
 `;
 
-const Toolbar = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 12px;
-  background: var(--apinox-sideBar-background, #252526);
-  border-bottom: 1px solid var(--apinox-panel-border, #80808059);
-  flex-shrink: 0;
-  min-height: 34px;
-`;
+// Toolbar and ToolbarSeparator come from styles/WorkspaceLayout.styles.ts; the
+// buttons are the shared Button primitives; the dirty indicator is
+// components/common/DirtyDot.tsx.
 
 const NoteTitle = styled.span`
   font-size: var(--apinox-fs-base);
-  color: var(--apinox-foreground, #cccccc);
+  color: var(--apinox-foreground);
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-`;
-
-const DirtyDot = styled.span<{ $kind: "external" | "managed" }>`
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  /* External files: bright orange — needs explicit save.
-     Managed notes: muted amber — auto-save will handle it. */
-  background: ${({ $kind }) =>
-    $kind === "external"
-      ? "var(--apinox-charts-orange, #d18616)"
-      : "var(--apinox-disabledForeground, #656565)"};
-  flex-shrink: 0;
-`;
-
-const ToolbarBtn = styled(GhostButton)<{ $active?: boolean }>`
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  border: 1px solid ${(p) => p.$active ? "var(--apinox-activityBar-activeBorder, #007fd4)" : "transparent"};
-  border-radius: 4px;
-  background: ${(p) => p.$active ? "var(--apinox-list-activeSelectionBackground, #37373d)" : "transparent"};
-  color: var(--apinox-foreground, #cccccc);
-  font-size: var(--apinox-fs-md);
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-
-  &:hover {
-    background: var(--apinox-list-hoverBackground, #2a2d2e);
-  }
 `;
 
 const EditorBody = styled.div`
@@ -98,92 +84,27 @@ const EditorPane = styled.div`
   overflow: hidden;
 `;
 
-const LoadingOverlay = styled.div`
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  align-items: center;
-  justify-content: center;
-  background: var(--apinox-editor-background, #1e1e1e);
-  color: var(--apinox-foreground, #cccccc);
-  font-size: 14px;
-`;
-
-const Separator = styled.div`
-  width: 1px;
-  height: 18px;
-  background: var(--apinox-panel-border, #80808059);
-  margin: 0 2px;
-`;
-
 const SavedFlash = styled.span`
   font-size: var(--apinox-fs-sm);
-  color: var(--apinox-testing-iconPassed, #73c991);
+  color: var(--apinox-testing-iconPassed);
   flex-shrink: 0;
 `;
 
-const SettingsPopup = styled.div`
-  position: fixed;
-  z-index: 9999;
-  background: var(--apinox-dropdown-background, #3c3c3c);
-  border: 1px solid var(--apinox-panel-border, #80808059);
-  border-radius: 4px;
-  padding: 12px;
-  width: 260px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+/** External-change notice — a warning, not an error, so it keeps its own banner
+ *  with a Reload action rather than going through `ErrorDetailBanner`. */
+const WarningBanner = styled.div`
+  padding: ${SPACING_SM} ${SPACING_MD};
+  background: var(--apinox-inputValidation-warningBackground);
+  border-top: 1px solid var(--apinox-inputValidation-warningBorder);
+  font-size: var(--apinox-fs-md);
   display: flex;
-  flex-direction: column;
-  gap: 12px;
-`;
-
-const SettingsRow = styled.label`
-  display: flex;
+  gap: ${SPACING_MD};
   align-items: center;
-  justify-content: space-between;
-  font-size: var(--apinox-fs-md);
-  color: var(--apinox-foreground, #cccccc);
-  gap: 8px;
 `;
 
-const SettingsInput = styled.input`
-  width: 60px;
-  padding: 2px 8px;
-  border: 1px solid var(--apinox-panel-border, #80808059);
-  border-radius: 4px;
-  background: var(--apinox-input-background, #3c3c3c);
-  color: var(--apinox-foreground, #cccccc);
-  font-size: var(--apinox-fs-md);
-`;
-
-const SettingsSelect = styled.select`
-  flex: 1;
-  min-width: 0;
-  padding: 2px 4px;
-  border: 1px solid var(--apinox-panel-border, #80808059);
-  border-radius: 4px;
-  background: var(--apinox-input-background, #3c3c3c);
-  color: var(--apinox-foreground, #cccccc);
-  font-size: var(--apinox-fs-md);
-`;
-
-const SettingsDivider = styled.hr`
-  border: none;
-  border-top: 1px solid var(--apinox-panel-border, #80808059);
-  margin: 0;
-`;
-
-const MONO_FONTS = [
-  { label: "JetBrains Mono", value: "JetBrains Mono" },
-  { label: "Fira Code", value: "Fira Code" },
-  { label: "Cascadia Code", value: "Cascadia Code" },
-  { label: "Consolas", value: "Consolas" },
-  { label: "Courier New", value: "Courier New" },
-  { label: "Menlo", value: "Menlo" },
-  { label: "Monaco", value: "Monaco" },
-  { label: "Source Code Pro", value: "Source Code Pro" },
-  { label: "SF Mono", value: "SF Mono" },
-  { label: "monospace (system)", value: "monospace" },
-];
+// Font list comes from the shared font detection (full CSS stacks, not bare
+// names), with the curated list as the fallback when nothing is detected.
+const FALLBACK_FONTS: CustomSelectOption[] = MONOSPACE_FONTS.map((f) => ({ label: f.name, value: f.value }));
 
 const LANGUAGES: { value: NoteLanguage; label: string }[] = [
   { value: "markdown", label: "Markdown" },
@@ -226,40 +147,71 @@ export const NotesEditor: React.FC = () => {
     closeActive,
     openNote,
     updateContent,
-    updateByte,
     setViewMode,
     setLanguageOverride,
+    externalChangePath,
+    clearExternalChange,
+    clearError,
   } = useNotes();
 
   const { settings, updateSettings } = useEditorSettings();
+  const { theme, monacoTheme } = useTheme();
 
   const cmRef = useRef<NotesCodeMirrorEditorRef>(null);
   const [cmContext, setCmContext] = React.useState("Paragraph");
   const [showSaved, setShowSaved] = useState(false);
+  const [editorTheme, setEditorTheme] = useState<string>(monacoTheme);
   const settingsPopupRef = useRef<HTMLDivElement>(null);
   const {
     open: showSettings,
-    setOpen: setShowSettings,
     position: settingsPos,
     toggle: handleToggleSettings,
     buttonRef: settingsButtonRef,
-  } = useSettingsDropdown(settingsPopupRef, { includeMaxHeight: false });
+  } = useSettingsDropdown(settingsPopupRef);
+
+  const fontOptions = useMemo(() => {
+    const installed = getInstalledFonts();
+    return installed.length > 0 ? installed.map((f) => ({ label: f.name, value: f.value })) : FALLBACK_FONTS;
+  }, []);
+
+  // Monaco themes are defined from the app's CSS vars (see monacoTheme.ts) rather
+  // than using the base vs/vs-dark themes, so the editor picks up all six themes.
+  const monacoRef = useRef<Monaco | null>(null);
+  const applyEditorTheme = useCallback((monacoInstance: Monaco) => {
+    setEditorTheme(applyMonacoTheme(monacoInstance, theme));
+  }, [theme]);
+
+  const handleEditorDidMount = useCallback(
+    (_editor: unknown, monacoInstance: Monaco) => {
+      monacoRef.current = monacoInstance;
+      applyEditorTheme(monacoInstance);
+    },
+    [applyEditorTheme]
+  );
+
+  useEffect(() => {
+    if (monacoRef.current) applyEditorTheme(monacoRef.current);
+  }, [applyEditorTheme]);
+
+  const savedFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (savedFlashTimer.current) clearTimeout(savedFlashTimer.current);
+    };
+  }, []);
 
   const handleSave = useCallback(async () => {
     await saveActive();
     setShowSaved(true);
-    setTimeout(() => setShowSaved(false), 1500);
+    if (savedFlashTimer.current) clearTimeout(savedFlashTimer.current);
+    savedFlashTimer.current = setTimeout(() => setShowSaved(false), 1500);
   }, [saveActive]);
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
-        e.preventDefault();
-        handleSave();
-      }
-    },
-    [handleSave]
-  );
+  // Ctrl/Cmd+S is dispatched centrally (hooks/useSaveShortcut.ts): the pane
+  // registers its handler for its own container, so the shortcut saves the note
+  // when the note has focus and the dirty projects otherwise — never both at once.
+  const rootRef = useRef<HTMLDivElement>(null);
+  useSaveShortcut(rootRef, handleSave);
 
   const handleExternalChangeReload = useCallback(async () => {
     if (activeNote) {
@@ -270,9 +222,9 @@ export const NotesEditor: React.FC = () => {
   if (isLoading) {
     return (
       <Root>
-        <LoadingOverlay>
-          <span>Loading...</span>
-        </LoadingOverlay>
+        <EmptyState icon={null} title="Loading note…">
+          <Spinner size={16} />
+        </EmptyState>
       </Root>
     );
   }
@@ -292,18 +244,20 @@ export const NotesEditor: React.FC = () => {
   const isBinary = detected.isBinary;
   const monacoLang = MONACO_LANG[detected.language] ?? "plaintext";
 
-  // Determine color scheme from CSS var (dark if not explicitly light)
-  const colorScheme =
-    document.documentElement.classList.contains("light") ? "light" : "dark";
+  // Both editor stacks follow the app theme. The previous check looked for a
+  // `light` class on <html> that nothing ever sets (ThemeContext applies themes
+  // as CSS vars on <html> and a data-theme attribute on <body>), so the notes
+  // editor was permanently dark in all six themes.
+  const colorScheme = isLightTheme(theme) ? 'light' : 'dark';
 
   return (
-    <Root onKeyDown={handleKeyDown} tabIndex={-1}>
+    <Root ref={rootRef} tabIndex={-1}>
       {/* Toolbar */}
       <Toolbar>
         {dirtyKind && (
           <DirtyDot
-            $kind={dirtyKind}
-            title={dirtyKind === "external" ? "Unsaved changes — save to update file" : "Modified — will auto-save"}
+            kind={dirtyKind}
+            label={dirtyKind === "external" ? "Unsaved changes — save to update file" : "Modified — will auto-save"}
           />
         )}
         {showSaved && !isDirty && <SavedFlash>✓ Saved</SavedFlash>}
@@ -312,66 +266,56 @@ export const NotesEditor: React.FC = () => {
         {/* View mode toggle — only for markdown */}
         {isMarkdown && (
           <>
-            <ToolbarBtn
-              $active={viewMode === "interactive"}
-              onClick={() => setViewMode("interactive")}
-              title="Interactive (hybrid)"
-            >
-              <Edit3 size={14} /> Edit
-            </ToolbarBtn>
-            <ToolbarBtn
-              $active={viewMode === "preview"}
-              onClick={() => setViewMode("preview")}
-              title="Preview"
-            >
-              <Eye size={14} /> Preview
-            </ToolbarBtn>
-            <ToolbarBtn
-              $active={viewMode === "raw"}
-              onClick={() => setViewMode("raw")}
-              title="Raw markdown"
-            >
-              <Code size={14} /> Raw
-            </ToolbarBtn>
-            <Separator />
+            <ToggleTab $active={viewMode === "interactive"} onClick={() => setViewMode("interactive")}>
+              <Edit3 size={16} /> Edit
+            </ToggleTab>
+            <ToggleTab $active={viewMode === "preview"} onClick={() => setViewMode("preview")}>
+              <Eye size={16} /> Preview
+            </ToggleTab>
+            <ToggleTab $active={viewMode === "raw"} onClick={() => setViewMode("raw")}>
+              <Code size={16} /> Raw
+            </ToggleTab>
+            <ToolbarSeparator />
           </>
         )}
 
-        {/* Language selector — themed CustomSelect (a native <select>'s
-            option popup is OS-controlled and would ignore the theme vars). */}
+        {/* Themed CustomSelect — a native <select>'s option popup is OS-controlled
+            and would ignore the theme vars. */}
         {!isBinary && (
-          <span title="Language override" style={{ flexShrink: 0 }}>
-            <CustomSelect
-              value={detected.language}
-              onChange={(v) => setLanguageOverride(v as NoteLanguage)}
-              options={LANGUAGES}
-              style={{ width: 116 }}
-            />
-          </span>
+          <CustomSelect
+            ariaLabel="Language override"
+            value={detected.language}
+            onChange={(v) => setLanguageOverride(v as NoteLanguage)}
+            options={LANGUAGES}
+            style={{ width: 116, flexShrink: 0 }}
+          />
         )}
 
-        <Separator />
+        <ToolbarSeparator />
 
-        <ToolbarBtn onClick={handleSave} title="Save (Cmd/Ctrl+S)">
-          <Save size={14} /> Save
-        </ToolbarBtn>
-        <ToolbarBtn onClick={saveAsDialog} title="Save As…">
-          <ChevronDown size={14} /> Save As
-        </ToolbarBtn>
+        <SecondaryButton onClick={handleSave} title="Save (Cmd/Ctrl+S)">
+          <Save size={16} /> Save
+        </SecondaryButton>
+        <SecondaryButton onClick={saveAsDialog} title="Save As…">
+          <ChevronDown size={16} /> Save As
+        </SecondaryButton>
 
         {/* Editor settings gear */}
-        <ToolbarBtn
-          ref={settingsButtonRef}
-          $active={showSettings}
-          onClick={handleToggleSettings}
-          title="Editor settings"
-        >
-          <Settings size={14} />
-        </ToolbarBtn>
+        <Tooltip content="Editor settings">
+          <CompactIconButton
+            ref={settingsButtonRef}
+            className={showSettings ? 'active' : ''}
+            onClick={handleToggleSettings}
+          >
+            <Settings size={14} />
+          </CompactIconButton>
+        </Tooltip>
 
-        <ToolbarBtn onClick={closeActive} title="Close note">
-          <X size={14} />
-        </ToolbarBtn>
+        <Tooltip content="Close note">
+          <IconButton onClick={closeActive}>
+            <X size={16} />
+          </IconButton>
+        </Tooltip>
       </Toolbar>
 
       {/* Editor body */}
@@ -386,10 +330,7 @@ export const NotesEditor: React.FC = () => {
 
         <EditorPane>
           {isBinary ? (
-            <NotesHexEditor
-              data={activeNote.bytes ?? new Uint8Array(0)}
-              onByteChange={updateByte}
-            />
+            <NotesHexEditor data={activeNote.bytes ?? new Uint8Array(0)} />
           ) : isMarkdown && viewMode === "preview" ? (
             <DebouncedNotesPreview content={activeNote.content} />
           ) : isMarkdown ? (
@@ -413,7 +354,8 @@ export const NotesEditor: React.FC = () => {
               language={monacoLang}
               value={activeNote.content}
               onChange={(v) => updateContent(v ?? "")}
-              theme={colorScheme === "light" ? "vs" : "vs-dark"}
+              theme={editorTheme}
+              onMount={handleEditorDidMount}
               options={{
                 minimap: { enabled: false },
                 wordWrap: "on",
@@ -429,66 +371,89 @@ export const NotesEditor: React.FC = () => {
         </EditorPane>
       </EditorBody>
 
-      {/* External change banner */}
-      {error?.startsWith("__external_change__") && (
-        <div
-          style={{
-            padding: "8px 12px",
-            background: "var(--apinox-inputValidation-warningBackground, #352a05)",
-            borderTop: "1px solid var(--apinox-inputValidation-warningBorder, #b89500)",
-            fontSize: 'var(--apinox-fs-md)',
-            display: "flex",
-            gap: 12,
-            alignItems: "center",
-          }}
-        >
-          <span>⚠ File changed externally.</span>
-          <ToolbarBtn onClick={handleExternalChangeReload}>
-            Reload
-          </ToolbarBtn>
-        </div>
+      {/* Real failures are now visible — they used to be hidden because the only
+          thing the UI rendered was the external-change sentinel. */}
+      {error && (
+        <ErrorDetailBanner message={error} onDismiss={clearError} testId="notes-error" />
       )}
 
-      {/* Editor settings popup */}
-      {showSettings && settingsPos && (
-        <SettingsPopup
+      {/* External change banner */}
+      {externalChangePath && (
+        <WarningBanner>
+          <span>⚠ File changed externally.</span>
+          <SecondaryButton onClick={handleExternalChangeReload}>Reload</SecondaryButton>
+          <IconButton onClick={clearExternalChange} title="Dismiss">Dismiss</IconButton>
+        </WarningBanner>
+      )}
+
+      {/* Editor settings popup — the shared menu shell (see EditorSettingsMenu),
+        portalled like the other dropdowns so the sidebar's overflow:hidden does
+        not clip it. */}
+      {showSettings && settingsPos && createPortal(
+        <div
           ref={settingsPopupRef}
-          style={{ top: settingsPos.top, right: settingsPos.right }}
+          style={{
+            position: 'fixed',
+            top: settingsPos.top,
+            right: settingsPos.right,
+            maxHeight: settingsPos.maxHeight ? `${settingsPos.maxHeight}px` : undefined,
+            overflowY: 'auto',
+            zIndex: 999999,
+          }}
         >
-          <SettingsRow>
-            Font size
-            <SettingsInput
-              type="number"
-              min={8}
-              max={32}
-              value={settings.fontSize}
-              onChange={(e) => updateSettings({ fontSize: Number(e.target.value) })}
-            />
-          </SettingsRow>
-          <SettingsRow>
-            Font family
-            <SettingsSelect
-              value={settings.fontFamily}
-              onChange={(e) => updateSettings({ fontFamily: e.target.value })}
-            >
-              {MONO_FONTS.map((f) => (
-                <option key={f.value} value={f.value}>{f.label}</option>
-              ))}
-              {/* Keep current value even if not in list */}
-              {!MONO_FONTS.find((f) => f.value === settings.fontFamily) && (
-                <option value={settings.fontFamily}>{settings.fontFamily}</option>
-              )}
-            </SettingsSelect>
-          </SettingsRow>
-          <SettingsRow>
-            Line numbers
-            <input
-              type="checkbox"
-              checked={settings.showLineNumbers}
-              onChange={(e) => updateSettings({ showLineNumbers: e.target.checked })}
-            />
-          </SettingsRow>
-        </SettingsPopup>
+          <EditorSettingsMenu>
+            <MenuSection>
+              <MenuSectionTitle>Font Settings</MenuSectionTitle>
+              <MenuRow>
+                <MenuLabel><Type size={14} /> Font Family</MenuLabel>
+                <CustomSelect
+                  ariaLabel="Font family"
+                  value={settings.fontFamily}
+                  onChange={(v) => updateSettings({ fontFamily: v })}
+                  options={fontOptions}
+                />
+              </MenuRow>
+              <MenuRow>
+                <MenuLabel><Type size={14} /> Font Size</MenuLabel>
+                <MenuControls>
+                  <Tooltip content="Decrease font size">
+                    <MenuIconButton
+                      onClick={() => updateSettings({ fontSize: Math.max(8, settings.fontSize - 1) })}
+                      disabled={settings.fontSize <= 8}
+                    >
+                      <Minus size={12} />
+                    </MenuIconButton>
+                  </Tooltip>
+                  <FontSizeDisplay>{settings.fontSize}px</FontSizeDisplay>
+                  <Tooltip content="Increase font size">
+                    <MenuIconButton
+                      onClick={() => updateSettings({ fontSize: Math.min(24, settings.fontSize + 1) })}
+                      disabled={settings.fontSize >= 24}
+                    >
+                      <Plus size={12} />
+                    </MenuIconButton>
+                  </Tooltip>
+                </MenuControls>
+              </MenuRow>
+            </MenuSection>
+
+            <MenuSection>
+              <MenuSectionTitle>View Options</MenuSectionTitle>
+              <MenuRow>
+                <MenuLabel><ListOrdered size={14} /> Line Numbers</MenuLabel>
+                <Tooltip content={settings.showLineNumbers ? 'Line numbers on' : 'Line numbers off'}>
+                  <MenuIconButton
+                    onClick={() => updateSettings({ showLineNumbers: !settings.showLineNumbers })}
+                    className={settings.showLineNumbers ? 'active' : ''}
+                  >
+                    {settings.showLineNumbers ? 'On' : 'Off'}
+                  </MenuIconButton>
+                </Tooltip>
+              </MenuRow>
+            </MenuSection>
+          </EditorSettingsMenu>
+        </div>,
+        document.body
       )}
     </Root>
   );

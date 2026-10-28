@@ -7,6 +7,7 @@ import { SidebarContextMenu, CtxMenuSection, CtxMenuItem, Pencil, Trash2 } from 
 import { SidebarContainer, SidebarHeader, SidebarHeaderActions, SidebarHeaderTitle, RowActions } from './shared/SidebarStyles';
 import { IconButton, RunButton } from '../common/Button';
 import { InlineFormInput } from '../common/Form';
+import { Tooltip } from '../common/Tooltip';
 import { SPACING_XS, SPACING_SM } from '../../styles/spacing';
 
 // Styled Components
@@ -170,13 +171,17 @@ export const PerformanceUi: React.FC<SidebarPerformanceProps> = ({
             <SidebarHeader>
                 <SidebarHeaderTitle>Performance Suites</SidebarHeaderTitle>
                 <SidebarHeaderActions>
-                    <IconButton onClick={handleCreateSuite} title="New Performance Suite">
-                        <Plus size={14} />
-                    </IconButton>
-                    {isRunning && (
-                        <IconButton onClick={onStopRun} title="Stop All Runs">
-                            <Square size={14} fill="currentColor" />
+                    <Tooltip content="New Performance Suite">
+                        <IconButton onClick={handleCreateSuite}>
+                            <Plus size={14} />
                         </IconButton>
+                    </Tooltip>
+                    {isRunning && (
+                        <Tooltip content="Stop All Runs">
+                            <IconButton onClick={onStopRun}>
+                                <Square size={14} fill="currentColor" />
+                            </IconButton>
+                        </Tooltip>
                     )}
                 </SidebarHeaderActions>
             </SidebarHeader>
@@ -206,25 +211,29 @@ export const PerformanceUi: React.FC<SidebarPerformanceProps> = ({
                                 onClick={() => onSelectSuite(suite.id)}
                                 onContextMenu={(e) => handleContextMenu(e, 'suite', suite.id, suite.name)}
                             >
-                                <SuiteIcon onClick={(e) => { e.stopPropagation(); onToggleSuiteExpand?.(suite.id); }}>
-                                    {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                                </SuiteIcon>
+                                <Tooltip content={expanded ? 'Collapse suite' : 'Expand suite'}>
+                                    <SuiteIcon onClick={(e) => { e.stopPropagation(); onToggleSuiteExpand?.(suite.id); }}>
+                                        {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                    </SuiteIcon>
+                                </Tooltip>
                                 <SuiteLabel>
                                     {suite.name}
                                 </SuiteLabel>
                                 <Actions $parent={SuiteItem}>
-                                    <IconButton
-                                        onClick={(e) => { e.stopPropagation(); onAddRequest?.(suite.id); }}
-                                        title="Add Request"
-                                    >
-                                        <Plus size={14} />
-                                    </IconButton>
-                                    <RunButton
-                                        onClick={(e) => { e.stopPropagation(); onRunSuite(suite.id); }}
-                                        title="Run Suite"
-                                    >
-                                        <Play size={14} fill="currentColor" />
-                                    </RunButton>
+                                    <Tooltip content="Add Request">
+                                        <IconButton
+                                            onClick={(e) => { e.stopPropagation(); onAddRequest?.(suite.id); }}
+                                        >
+                                            <Plus size={14} />
+                                        </IconButton>
+                                    </Tooltip>
+                                    <Tooltip content="Run Suite">
+                                        <RunButton
+                                            onClick={(e) => { e.stopPropagation(); onRunSuite(suite.id); }}
+                                        >
+                                            <Play size={14} fill="currentColor" />
+                                        </RunButton>
+                                    </Tooltip>
                                 </Actions>
                             </SuiteItem>
 

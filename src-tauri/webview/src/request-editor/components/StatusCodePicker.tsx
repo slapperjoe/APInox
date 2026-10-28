@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import styled from 'styled-components';
 import { X, ChevronDown } from 'lucide-react';
+import { Tooltip } from '../../components/common/Tooltip';
 
 const COMMON_CODES = [
     { code: 200, label: '200 OK' },
@@ -170,9 +171,11 @@ export const StatusCodePicker: React.FC<StatusCodePickerProps> = ({ value, onCha
                 {selectedCodes.map(code => (
                     <Pill key={code} $isError={isErrorCode(code)}>
                         {code}
-                        <RemoveButton onClick={() => removeCode(code)} title="Remove">
-                            <X size={10} />
-                        </RemoveButton>
+                        <Tooltip content="Remove">
+                            <RemoveButton onClick={() => removeCode(code)}>
+                                <X size={10} />
+                            </RemoveButton>
+                        </Tooltip>
                     </Pill>
                 ))}
                 <DropdownTrigger ref={triggerRef} onClick={() => setIsOpen(!isOpen)}>

@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use serde_json;
 use std::path::PathBuf;
 use crate::proxy_models::{MockRule, ReplaceRule, BreakpointRule};
+use crate::utils::write_atomic;
 
 pub struct RulesStorage {
     config_dir: PathBuf,
@@ -58,7 +59,7 @@ impl RulesStorage {
         let path = self.config_dir.join(filename);
         let content = serde_json::to_string_pretty(data)
             .context("Failed to serialize JSON")?;
-        std::fs::write(&path, content)
+        write_atomic(&path, content.as_bytes())
             .with_context(|| format!("Failed to write {:?}", path))
     }
 }

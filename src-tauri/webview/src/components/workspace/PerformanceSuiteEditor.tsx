@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { Play, Plus, Trash2, Settings, Clock, Repeat, Flame, Zap, GripVertical, Square, Calendar, ToggleLeft, ToggleRight, Import, Download, ChevronDown, ChevronRight, CheckCircle, XCircle, AlertTriangle, Users, Server, FileJson, BarChart3, FlaskConical } from 'lucide-react';
 import { Spinner } from '../common/Spinner';
 import { EmptyState } from '../common/EmptyState';
+import { Tooltip } from '../common/Tooltip';
 import { PerformanceSuite, PerformanceRun, PerformanceSchedule, PerformanceRequest, TestCase, CoordinatorStatus } from '@shared/models';
 import { WorkerStatusPanel } from './WorkerStatusPanel';
 
@@ -732,22 +733,23 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
 
                                         {onDeleteRequest && (
-                                            <IconButton
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    if (deleteConfirmId === req.id) {
-                                                        onDeleteRequest(suite.id, req.id);
-                                                        setDeleteConfirmId(null);
-                                                    } else {
-                                                        setDeleteConfirmId(req.id);
-                                                        setTimeout(() => setDeleteConfirmId(current => current === req.id ? null : current), 3000);
-                                                    }
-                                                }}
-                                                title={deleteConfirmId === req.id ? "Click again to Confirm" : "Remove Request"}
-                                                shake={deleteConfirmId === req.id}
-                                            >
-                                                <Trash2 size={14} />
-                                            </IconButton>
+                                            <Tooltip content={deleteConfirmId === req.id ? 'Click again to Confirm' : 'Remove Request'}>
+                                                <IconButton
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (deleteConfirmId === req.id) {
+                                                            onDeleteRequest(suite.id, req.id);
+                                                            setDeleteConfirmId(null);
+                                                        } else {
+                                                            setDeleteConfirmId(req.id);
+                                                            setTimeout(() => setDeleteConfirmId(current => current === req.id ? null : current), 3000);
+                                                        }
+                                                    }}
+                                                    shake={deleteConfirmId === req.id}
+                                                >
+                                                    <Trash2 size={14} />
+                                                </IconButton>
+                                            </Tooltip>
                                         )}
                                     </div>
                                 </RequestItem>
@@ -819,21 +821,22 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                         {schedules.filter(s => s.suiteId === suite.id).map(schedule => (
                             <RequestItem key={schedule.id}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
-                                    <button
-                                        onClick={() => onToggleSchedule?.(schedule.id, !schedule.enabled)}
-                                        style={{
-                                            background: 'none',
-                                            border: 'none',
-                                            cursor: 'pointer',
-                                            color: schedule.enabled
-                                                ? 'var(--apinox-testing-iconPassed)'
-                                                : 'var(--apinox-disabledForeground)',
-                                            padding: 0
-                                        }}
-                                        title={schedule.enabled ? 'Disable' : 'Enable'}
-                                    >
-                                        {schedule.enabled ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
-                                    </button>
+                                    <Tooltip content={schedule.enabled ? 'Disable schedule' : 'Enable schedule'}>
+                                        <button
+                                            onClick={() => onToggleSchedule?.(schedule.id, !schedule.enabled)}
+                                            style={{
+                                                background: 'none',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                color: schedule.enabled
+                                                    ? 'var(--apinox-testing-iconPassed)'
+                                                    : 'var(--apinox-disabledForeground)',
+                                                padding: 0
+                                            }}
+                                        >
+                                            {schedule.enabled ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
+                                        </button>
+                                    </Tooltip>
                                     <div>
                                         <div style={{ fontWeight: 'var(--fw-medium)' }}>
                                             <code>{schedule.cronExpression}</code>
@@ -844,22 +847,23 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                                         </div>
                                     </div>
                                 </div>
-                                <IconButton
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (deleteConfirmId === schedule.id) {
-                                            onDeleteSchedule?.(schedule.id);
-                                            setDeleteConfirmId(null);
-                                        } else {
-                                            setDeleteConfirmId(schedule.id);
-                                            setTimeout(() => setDeleteConfirmId(current => current === schedule.id ? null : current), 3000);
-                                        }
-                                    }}
-                                    title={deleteConfirmId === schedule.id ? "Click again to Confirm" : "Delete Schedule"}
-                                    shake={deleteConfirmId === schedule.id}
-                                >
-                                    <Trash2 size={14} />
-                                </IconButton>
+                                <Tooltip content={deleteConfirmId === schedule.id ? 'Click again to Confirm' : 'Delete Schedule'}>
+                                    <IconButton
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (deleteConfirmId === schedule.id) {
+                                                onDeleteSchedule?.(schedule.id);
+                                                setDeleteConfirmId(null);
+                                            } else {
+                                                setDeleteConfirmId(schedule.id);
+                                                setTimeout(() => setDeleteConfirmId(current => current === schedule.id ? null : current), 3000);
+                                            }
+                                        }}
+                                        shake={deleteConfirmId === schedule.id}
+                                    >
+                                        <Trash2 size={14} />
+                                    </IconButton>
+                                </Tooltip>
                             </RequestItem>
                         ))}
 
@@ -968,56 +972,58 @@ export const PerformanceSuiteEditor: React.FC<PerformanceSuiteEditorProps> = ({
                                                     </div>
                                                 </div>
                                                 <div style={{ display: 'flex', gap: 4 }}>
-                                                    <ToolbarButton
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            // Export CSV
-                                                            const csv = [
-                                                                'Request,Iteration,Duration (ms),Status,Success,SLA Breached,Timestamp',
-                                                                ...run.results.map(r =>
-                                                                    `"${r.requestName}",${r.iteration},${r.duration.toFixed(2)},${r.status},${r.success},${r.slaBreached},${new Date(r.timestamp).toISOString()}`
-                                                                )
-                                                            ].join('\n');
-                                                            const blob = new Blob([csv], { type: 'text/csv' });
-                                                            const url = URL.createObjectURL(blob);
-                                                            const a = document.createElement('a');
-                                                            a.href = url;
-                                                            a.download = `performance-run-${run.id}.csv`;
-                                                            a.click();
-                                                            URL.revokeObjectURL(url);
-                                                        }}
-                                                        title="Export CSV"
-                                                    >
-                                                        <Download size={14} />
-                                                    </ToolbarButton>
-                                                    <ToolbarButton
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            // Export JSON
-                                                            const exportData = {
-                                                                runId: run.id,
-                                                                suiteId: run.suiteId,
-                                                                suiteName: run.suiteName,
-                                                                startTime: run.startTime,
-                                                                endTime: run.endTime,
-                                                                status: run.status,
-                                                                environment: run.environment,
-                                                                summary: run.summary,
-                                                                results: run.results
-                                                            };
-                                                            const json = JSON.stringify(exportData, null, 2);
-                                                            const blob = new Blob([json], { type: 'application/json' });
-                                                            const url = URL.createObjectURL(blob);
-                                                            const a = document.createElement('a');
-                                                            a.href = url;
-                                                            a.download = `performance-run-${run.id}.json`;
-                                                            a.click();
-                                                            URL.revokeObjectURL(url);
-                                                        }}
-                                                        title="Export JSON"
-                                                    >
-                                                        <FileJson size={14} />
-                                                    </ToolbarButton>
+                                                    <Tooltip content="Export CSV">
+                                                      <ToolbarButton
+                                                          onClick={(e) => {
+                                                              e.stopPropagation();
+                                                              // Export CSV
+                                                              const csv = [
+                                                                  'Request,Iteration,Duration (ms),Status,Success,SLA Breached,Timestamp',
+                                                                  ...run.results.map(r =>
+                                                                      `"${r.requestName}",${r.iteration},${r.duration.toFixed(2)},${r.status},${r.success},${r.slaBreached},${new Date(r.timestamp).toISOString()}`
+                                                                  )
+                                                              ].join('\n');
+                                                              const blob = new Blob([csv], { type: 'text/csv' });
+                                                              const url = URL.createObjectURL(blob);
+                                                              const a = document.createElement('a');
+                                                              a.href = url;
+                                                              a.download = `performance-run-${run.id}.csv`;
+                                                              a.click();
+                                                              URL.revokeObjectURL(url);
+                                                          }}
+                                                      >
+                                                          <Download size={14} />
+                                                      </ToolbarButton>
+                                                      </Tooltip>
+                                                    <Tooltip content="Export JSON">
+                                                      <ToolbarButton
+                                                          onClick={(e) => {
+                                                              e.stopPropagation();
+                                                              // Export JSON
+                                                              const exportData = {
+                                                                  runId: run.id,
+                                                                  suiteId: run.suiteId,
+                                                                  suiteName: run.suiteName,
+                                                                  startTime: run.startTime,
+                                                                  endTime: run.endTime,
+                                                                  status: run.status,
+                                                                  environment: run.environment,
+                                                                  summary: run.summary,
+                                                                  results: run.results
+                                                              };
+                                                              const json = JSON.stringify(exportData, null, 2);
+                                                              const blob = new Blob([json], { type: 'application/json' });
+                                                              const url = URL.createObjectURL(blob);
+                                                              const a = document.createElement('a');
+                                                              a.href = url;
+                                                              a.download = `performance-run-${run.id}.json`;
+                                                              a.click();
+                                                              URL.revokeObjectURL(url);
+                                                          }}
+                                                      >
+                                                          <FileJson size={14} />
+                                                      </ToolbarButton>
+                                                      </Tooltip>
                                                 </div>
                                             </RunHeader>
 

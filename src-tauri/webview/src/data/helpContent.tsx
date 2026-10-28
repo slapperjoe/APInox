@@ -1,4 +1,4 @@
-import { MonitorPlay, FileJson, Network, Radio, Layout, FlaskConical, Compass, FolderOpen, Settings, Cloud, Clock, ListChecks, Braces } from 'lucide-react';
+import { MonitorPlay, FileJson, Network, Radio, Layout, FlaskConical, Compass, FolderOpen, Settings, Cloud, Clock, ListChecks, Braces, FileText } from 'lucide-react';
 
 const normalizeContent = (text: string) => {
     const trimmed = text.replace(/^\n/, '').replace(/\n\s*$/, '');
@@ -559,6 +559,73 @@ const HELP_SECTIONS_RAW = [
     Utility views for monitoring traffic and reviewing request history.
     `,
         children: [
+            {
+                id: 'notes',
+                label: 'Notes',
+                icon: FileText,
+                order: 1,
+                content: `
+    # Notes
+
+    A scratchpad for markdown, plain text, code, and binary files. Open the **Notes**
+    view at the bottom of the sidebar rail.
+
+    ## Two kinds of note
+
+    - **Managed** — created with **New note**. The app owns the file and keeps it in the
+      notes directory inside your config directory.
+    - **External** — a file you picked with **Open file…**. It stays wherever you picked
+      it; the index only references it.
+
+    Managed-ness is decided from the path rather than from a flag, so the app only
+    creates, renames, or deletes files that are actually inside the notes directory.
+
+    ## View modes
+
+    Markdown notes have three modes:
+
+    - **Edit** — the hybrid editor. Markdown syntax stays visible on the line your cursor
+      is on, and the surrounding formatting renders.
+    - **Preview** — rendered markdown.
+    - **Raw** — the plain source.
+
+    The context toolbar on the left changes with whatever the cursor is inside: Text,
+    Header, Table, List, or Quote.
+
+    ## Saving
+
+    - Text notes autosave two seconds after a change. Binary notes are never autosaved.
+    - **Save** writes immediately. **Cmd/Ctrl+S** saves whichever pane has focus — the
+      note when the note is focused, otherwise the dirty projects.
+    - **Save As…** writes to a file you choose.
+
+    ## The dirty indicator
+
+    - **Amber dot** — an external file with unsaved changes; it needs an explicit save.
+    - **Grey dot** — a managed note that has changed and will autosave.
+
+    ## External changes
+
+    The file's modified time is checked when the window regains focus. If it changed on
+    disk since you opened it, a banner offers **Reload** or **Dismiss**.
+
+    ## Binary files
+
+    Files detected as binary open in a read-only hex view. Focus the grid once and use
+    arrow keys to move the cursor, or **Home** and **End** to jump to the ends. The status
+    bar shows the byte count and the current offset.
+
+    ## Limits
+
+    Notes are capped at 10 MiB, on open and on save. The whole file travels through the
+    command channel as a JSON string, so an unbounded file would mean an unbounded payload.
+
+    ## Editor settings
+
+    The gear sets font family, font size, and line numbers. These are the same editor
+    settings the request editor uses, so changing them here changes them there.
+    `
+            },
             {
                 id: 'history',
                 label: 'History',

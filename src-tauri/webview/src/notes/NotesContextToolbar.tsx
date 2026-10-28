@@ -1,6 +1,9 @@
 import React from "react";
-import { GhostButton } from "../components/common/Button";
+import { IconButton } from "../components/common/Button";
+import { SectionLabel } from "../components/common/SectionLabel";
+import { Tooltip } from "../components/common/Tooltip";
 import styled from "styled-components";
+import { SPACING_BASE, SPACING_MD, SPACING_SM } from "../styles/spacing";
 import {
   Bold,
   Italic,
@@ -24,77 +27,34 @@ const Toolbar = styled.div`
   width: 44px;
   min-width: 44px;
   height: 100%;
-  padding: 8px 0;
-  border-right: 1px solid var(--apinox-panel-border, #80808059);
-  background: var(--apinox-sideBar-background, #252526);
-  gap: 4px;
+  padding: ${SPACING_SM} 0;
+  border-right: 1px solid var(--apinox-panel-border);
+  background: var(--apinox-sideBar-background);
+  gap: ${SPACING_BASE}px;
   overflow-y: auto;
 `;
 
-const SectionLabel = styled.div`
-  font-size: 9px;
-  font-weight: var(--fw-bold);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--apinox-descriptionForeground, #8b949e);
+/** Vertical rail label. The orientation is layout for this narrow toolbar, not a
+ *  styling fork — it wraps the shared `SectionLabel` so the tokens stay single
+ *  source (item 8 allows `as="h3"` / `as="div"` only). */
+const VerticalLabel = styled(SectionLabel)`
   writing-mode: vertical-rl;
   transform: rotate(180deg);
-  margin: 8px 0;
+  margin: ${SPACING_MD} 0;
   user-select: none;
 `;
 
-const IconBtn = styled(GhostButton)`
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--apinox-foreground, #cccccc);
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-
-  &:hover {
-    background: var(--apinox-list-hoverBackground, #2a2d2e);
-    color: var(--apinox-foreground, #cccccc);
-  }
-
-  &:hover > span {
-    opacity: 1;
-  }
-`;
-
-const Tooltip = styled.span`
-  position: absolute;
-  left: calc(100% + 6px);
-  top: 50%;
-  transform: translateY(-50%);
-  padding: 3px 8px;
-  background: var(--apinox-tooltip-background);
-  color: var(--apinox-tooltip-foreground);
-  font-size: var(--apinox-fs-sm);
-  border-radius: 4px;
-  white-space: nowrap;
-  opacity: 0;
-  pointer-events: none;
-  z-index: 100;
-  transition: opacity 0.1s;
-`;
-
-interface ContextToolbarProps {
+interface NotesContextToolbarProps {
   context: string;
   onAction: (action: string) => void;
 }
 
 const ICON_SIZE = 16;
 
-export const NotesContextToolbar: React.FC<ContextToolbarProps> = ({
+export const NotesContextToolbar = React.memo(({
   context,
   onAction,
-}) => {
+}: NotesContextToolbarProps) => {
   const type = context || "Paragraph";
 
   let title = "Text";
@@ -132,19 +92,20 @@ export const NotesContextToolbar: React.FC<ContextToolbarProps> = ({
       { icon: <List size={ICON_SIZE} />, label: "List", action: "Make List" },
       { icon: <Heading1 size={ICON_SIZE} />, label: "Header", action: "H1" },
       { icon: <Table size={ICON_SIZE} />, label: "Table", action: "Add Row" },
-      { icon: <ImageIcon size={ICON_SIZE} />, label: "Image", action: "insert-image" },
+      { icon: <ImageIcon size={ICON_SIZE} />, label: "Image", action: "Image" },
     ];
   }
 
   return (
     <Toolbar>
-      <SectionLabel>{title}</SectionLabel>
+      <VerticalLabel>{title}</VerticalLabel>
       {items.map((item) => (
-        <IconBtn key={item.label} onClick={() => onAction(item.action)} title={item.label}>
-          {item.icon}
-          <Tooltip>{item.label}</Tooltip>
-        </IconBtn>
+        <Tooltip key={item.label} content={item.label} side="right">
+          <IconButton onClick={() => onAction(item.action)}>
+            {item.icon}
+          </IconButton>
+        </Tooltip>
       ))}
     </Toolbar>
   );
-};
+});

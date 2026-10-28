@@ -57,7 +57,7 @@ describe('ExtractorsPanel', () => {
         }];
         render(<ExtractorsPanel extractors={extractors} onChange={onChange} />);
 
-        const deleteButton = screen.getByTitle('Delete Extractor');
+        const deleteButton = screen.getByLabelText('Delete Extractor');
         fireEvent.click(deleteButton);
 
         expect(onChange).toHaveBeenCalledWith([]);

@@ -27,6 +27,7 @@ import {
 import { RequestHistoryEntry } from "@shared/models";
 import { EmptyState } from "../common/EmptyState";
 import { IconButton, GhostButton } from "../common/Button";
+import { Tooltip } from "../common/Tooltip";
 import { SidebarContextMenu, CtxMenuSection, CtxMenuItem } from "./shared/SidebarContextMenu";
 import { SPACING_XS, SPACING_SM, SPACING_MD, SPACING_LG } from "../../styles/spacing";
 
@@ -199,10 +200,6 @@ const ClearFiltersButton = styled(GhostButton)`
     edge. No border of its own (the field owns the single border) — it sits
     absolutely inside the field so the two read as one control. */
 const FilterMenuTrigger = styled(GhostButton)<{ $active: boolean }>`
-    position: absolute;
-    right: 3px;
-    top: 50%;
-    transform: translateY(-50%);
     background: ${props => props.$active ? 'var(--apinox-button-background)' : 'transparent'};
     color: ${props => props.$active ? 'var(--apinox-button-foreground)' : 'var(--apinox-icon-foreground)'};
     border: none;
@@ -218,6 +215,16 @@ const FilterMenuTrigger = styled(GhostButton)<{ $active: boolean }>`
             ? 'var(--apinox-button-hoverBackground)'
             : 'var(--apinox-list-hoverBackground)'};
     }
+`;
+
+/** The trigger is absolutely positioned inside the search field, so the shared
+ *  Tooltip wrapper carries that positioning — the bubble needs a positioned
+ *  ancestor, and the wrapper is what sits in the field's right edge. */
+const FilterMenuTooltip = styled(Tooltip)`
+    position: absolute;
+    right: 3px;
+    top: 50%;
+    transform: translateY(-50%);
 `;
 
 /** The popout panel itself (position: fixed, clamped to the viewport).
@@ -656,16 +663,16 @@ export default function HistorySidebar({
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
-                    <FilterMenuTrigger
-                        ref={filterTriggerRef}
-                        $active={filterMenuOpen || hasActiveFilters}
-                        onClick={openFilterMenu}
-                        title="Advanced Filters"
-                        aria-label="Advanced Filters"
-                        aria-expanded={filterMenuOpen}
-                    >
-                        <Menu size={14} />
-                    </FilterMenuTrigger>
+                    <FilterMenuTooltip content="Advanced Filters">
+                        <FilterMenuTrigger
+                            ref={filterTriggerRef}
+                            $active={filterMenuOpen || hasActiveFilters}
+                            onClick={openFilterMenu}
+                            aria-expanded={filterMenuOpen}
+                        >
+                            <Menu size={14} />
+                        </FilterMenuTrigger>
+                    </FilterMenuTooltip>
                 </SearchField>
             </HeaderRow>
 

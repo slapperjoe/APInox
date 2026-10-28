@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useEffect, useState, memo } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from './common/EmptyState';
 import { PanelContainer, PanelIconButton, PanelFlexColumn } from './common/PanelShell';
+import { Tooltip } from '../../components/common/Tooltip';
 import { Plus, Trash2, List } from 'lucide-react';
 import { MonacoSingleLineInput } from './MonacoSingleLineInput';
 import { SPACING_XS, SPACING_SM } from '../styles/spacing';
@@ -135,9 +136,11 @@ const HeaderRowItem = memo(function HeaderRowItem({
                     availableEnvVariables={availableEnvVariables}
                 />
             </PanelFlexColumn>
-            <PanelIconButton onClick={() => removeHeader(headerKey)} title="Delete Header">
-                <Trash2 size={14} />
-            </PanelIconButton>
+            <Tooltip content="Delete Header">
+                <PanelIconButton onClick={() => removeHeader(headerKey)}>
+                    <Trash2 size={14} />
+                </PanelIconButton>
+            </Tooltip>
         </HeaderRow>
     );
 });

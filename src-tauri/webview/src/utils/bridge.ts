@@ -1155,6 +1155,11 @@ export const bridge = {
                 callback(event.payload);
             }).then(unlisten => {
                 tauriUnlisten = unlisten;
+            }).catch((e) => {
+                // `listen` rejects outside a Tauri runtime (embedded/browser mode),
+                // which otherwise surfaces as an unhandled rejection. The window
+                // `message` channel still delivers events, so the listener stays live.
+                console.error('[Bridge] Tauri event listen failed:', e);
             });
         }
 

@@ -16,21 +16,40 @@ import {
 } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { languages } from "@codemirror/language-data";
-import { oneDark } from "@codemirror/theme-one-dark";
 import { syntaxTree } from "@codemirror/language";
 import { hybridPlugin, baseDirFacet } from "./hybridPlugin";
+import { SPACING_SM, SPACING_XS } from "../styles/spacing";
 
-// Minimal light theme — relies on APInox CSS vars for background/foreground
-const lightTheme = EditorView.theme(
-  {
-    "&": { background: "var(--apinox-editor-background, #1e1e1e)", color: "var(--apinox-editor-foreground)" },
-    ".cm-gutters": { background: "var(--apinox-panel-background)", color: "var(--apinox-editorLineNumber-foreground)", borderRight: "1px solid var(--apinox-panel-border)" },
-    ".cm-activeLine": { background: "var(--apinox-editor-lineHighlightBackground)" },
-    ".cm-cursor": { borderLeftColor: "var(--apinox-editor-foreground)" },
-    ".cm-selectionBackground, ::selection": { background: "var(--apinox-editor-selectionBackground, #264f78) !important" },
-  },
-  { dark: false }
-);
+// Theme built from the app's CSS vars so all six themes reach CodeMirror — the
+// fixed `oneDark` palette ignored solarized/zed/dankshell. `dark` only tunes
+// CodeMirror's own defaults (scrollbar, selection contrast).
+//
+// The `.cm-*` rules below are the classes `hybridPlugin.ts` assigns to its
+// widgets; they had no styles anywhere in the app, so the hybrid rendering
+// (bullets, rules, images, tables, rendered headings) fell back to browser
+// defaults.
+const apinoxTheme = (dark: boolean) =>
+  EditorView.theme(
+    {
+      "&": { background: "var(--apinox-editor-background)", color: "var(--apinox-editor-foreground)" },
+      ".cm-gutters": { background: "var(--apinox-panel-background)", color: "var(--apinox-editorLineNumber-foreground)", borderRight: `1px solid var(--apinox-panel-border)` },
+      ".cm-activeLine": { background: "var(--apinox-editor-lineHighlightBackground)" },
+      ".cm-cursor": { borderLeftColor: "var(--apinox-editor-foreground)" },
+      ".cm-selectionBackground, ::selection": { background: "var(--apinox-editor-selectionBackground)" },
+
+      ".cm-bullet": { color: "var(--apinox-symbolIcon-classForeground)", fontWeight: "var(--fw-bold)" },
+      ".cm-hr": { border: "none", borderTop: `1px solid var(--apinox-panel-border)`, margin: `${SPACING_XS} 0` },
+      ".cm-image": { maxWidth: "100%", maxHeight: "160px", borderRadius: "2px" },
+      ".cm-table-widget table": { borderCollapse: "collapse", margin: `${SPACING_XS} 0` },
+      ".cm-table-widget th, .cm-table-widget td": {
+        border: `1px solid var(--apinox-panel-border)`,
+        padding: `${SPACING_XS} ${SPACING_SM}`,
+      },
+      ".cm-header-rendered-1": { fontWeight: "var(--fw-bold)", fontSize: "var(--apinox-fs-title)" },
+      ".cm-header-rendered-2, .cm-header-rendered-3": { fontWeight: "var(--fw-bold)" },
+    },
+    { dark }
+  );
 
 export interface NotesCodeMirrorEditorRef {
   executeCommand: (cmd: string) => void;
@@ -130,6 +149,16 @@ export const NotesCodeMirrorEditor = forwardRef<
       }
     };
 
+    const toggleQuote = (view: EditorView) => {
+      const { state } = view;
+      const line = state.doc.lineAt(state.selection.main.head);
+      if (line.text.startsWith("> ")) {
+        view.dispatch({ changes: { from: line.from, to: line.from + 2, insert: "" }, selection: { anchor: line.from } });
+      } else {
+        view.dispatch({ changes: { from: line.from, to: line.from, insert: "> " }, selection: { anchor: line.from + 2 } });
+      }
+    };
+
     const toggleHeader = (view: EditorView, level: number) => {
       const { state } = view;
       const line = state.doc.lineAt(state.selection.main.head);
@@ -167,6 +196,8 @@ export const NotesCodeMirrorEditor = forwardRef<
           case "Add Row": insertTextAtCursor(view, "\n| Col | Col |"); break;
           case "Add Col": insertTextAtCursor(view, " | Col"); break;
           case "Make List": toggleList(view); break;
+          case "Quote": toggleQuote(view); break;
+          case "Image": insertTextAtCursor(view, "![alt](image.png)"); break;
         }
       },
     }));
@@ -192,7 +223,7 @@ export const NotesCodeMirrorEditor = forwardRef<
           history(),
           markdown({ codeLanguages: languages }),
           highlightActiveLine(),
-          themeCompartment.of(colorScheme === "light" ? lightTheme : oneDark),
+          themeCompartment.of(apinoxTheme(colorScheme === "dark")),
           baseDirCompartment.of(baseDirFacet.of(getBaseDir(filePath))),
           pluginCompartment.of(viewMode === "interactive" ? hybridPlugin : []),
           lineWrappingCompartment.of(wordWrap ? EditorView.lineWrapping : []),
@@ -222,7 +253,7 @@ export const NotesCodeMirrorEditor = forwardRef<
     // Reconfigure theme compartment when color scheme changes
     useEffect(() => {
       viewRef.current?.dispatch({
-        effects: themeCompartment.reconfigure(colorScheme === "light" ? lightTheme : oneDark),
+        effects: themeCompartment.reconfigure(apinoxTheme(colorScheme === "dark")),
       });
     }, [colorScheme, themeCompartment]);
 

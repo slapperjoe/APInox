@@ -7,6 +7,7 @@ import { useProject } from '../contexts/ProjectContext';
 import { useUI } from '../contexts/UIContext';
 import { useSearch } from '../contexts/SearchContext';
 import { SearchDropdown } from './SearchDropdown';
+import { Tooltip } from './common/Tooltip';
 import apinoxIcon from '../assets/apinox-icon.png';
 import { Search, X, FileText, Folder, Box, Layers, TestTube, ChevronRight } from 'lucide-react';
 import { MULTI_CLICK_RESET_MS } from '../constants';
@@ -440,9 +441,11 @@ const TitleBar: React.FC = () => {
               data-search-input
             />
             {searchQuery && (
-              <ClearButton onClick={clearSearch} title="Clear search">
-                <X />
-              </ClearButton>
+              <Tooltip content="Clear search">
+                <ClearButton onClick={clearSearch}>
+                  <X />
+                </ClearButton>
+              </Tooltip>
             )}
           </SearchContainer>
           
@@ -461,27 +464,33 @@ const TitleBar: React.FC = () => {
         </DragRegion>
         {platformOS !== 'macos' && (
           <WindowControls>
-            <WindowButton onClick={handleMinimize} title="Minimize">
-              <svg viewBox="0 0 10 1" fill="currentColor">
-                <rect width="10" height="1" />
-              </svg>
-            </WindowButton>
-            <WindowButton onClick={handleMaximize} title={isMaximized ? "Restore" : "Maximize"}>
-              {isMaximized ? (
-                <svg viewBox="0 0 10 10" fill="currentColor">
-                  <path d="M2,0 L2,2 L0,2 L0,10 L8,10 L8,8 L10,8 L10,0 Z M3,1 L9,1 L9,7 L8,7 L8,2 L3,2 Z M1,3 L7,3 L7,9 L1,9 Z" />
+            <Tooltip content="Minimize">
+              <WindowButton onClick={handleMinimize}>
+                <svg viewBox="0 0 10 1" fill="currentColor">
+                  <rect width="10" height="1" />
                 </svg>
-              ) : (
+              </WindowButton>
+            </Tooltip>
+            <Tooltip content={isMaximized ? 'Restore' : 'Maximize'}>
+              <WindowButton onClick={handleMaximize}>
+                {isMaximized ? (
+                  <svg viewBox="0 0 10 10" fill="currentColor">
+                    <path d="M2,0 L2,2 L0,2 L0,10 L8,10 L8,8 L10,8 L10,0 Z M3,1 L9,1 L9,7 L8,7 L8,2 L3,2 Z M1,3 L7,3 L7,9 L1,9 Z" />
+                  </svg>
+                ) : (
+                  <svg viewBox="0 0 10 10" fill="currentColor">
+                    <path d="M0,0 L0,10 L10,10 L10,0 Z M1,1 L9,1 L9,9 L1,9 Z" />
+                  </svg>
+                )}
+              </WindowButton>
+            </Tooltip>
+            <Tooltip content="Close">
+              <WindowButton onClick={handleClose} $isClose>
                 <svg viewBox="0 0 10 10" fill="currentColor">
-                  <path d="M0,0 L0,10 L10,10 L10,0 Z M1,1 L9,1 L9,9 L1,9 Z" />
+                  <path d="M0,0 L10,10 M10,0 L0,10" stroke="currentColor" strokeWidth="1.2" />
                 </svg>
-              )}
-            </WindowButton>
-            <WindowButton onClick={handleClose} $isClose title="Close">
-              <svg viewBox="0 0 10 10" fill="currentColor">
-                <path d="M0,0 L10,10 M10,0 L0,10" stroke="currentColor" strokeWidth="1.2" />
-              </svg>
-            </WindowButton>
+              </WindowButton>
+            </Tooltip>
           </WindowControls>
         )}
       </TitleBarContainer>

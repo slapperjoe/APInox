@@ -13,6 +13,10 @@ interface CustomSelectProps {
     disabled?: boolean;
     style?: React.CSSProperties;
     placeholder?: string;
+    /** Accessible name for the trigger. Without it the control has none — the
+     *  displayed label is content, not a name, and screen readers announce the
+     *  value alone. */
+    ariaLabel?: string;
 }
 
 export const CustomSelect: React.FC<CustomSelectProps> = ({
@@ -22,6 +26,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
     disabled = false,
     style,
     placeholder,
+    ariaLabel,
 }) => {
     const [open, setOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -48,6 +53,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
             {/* Trigger button */}
             <button
                 type="button"
+                aria-label={ariaLabel}
                 onClick={() => !disabled && setOpen(prev => !prev)}
                 style={{
                     display: 'flex',

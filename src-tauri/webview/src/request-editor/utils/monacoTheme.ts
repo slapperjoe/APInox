@@ -5,6 +5,15 @@ export function getMonacoThemeId(theme: string): string {
 }
 
 /**
+ * Whether a theme name is a light variant. Single source of truth for the
+ * light/dark decision — Monaco's base theme, CodeMirror's theme flag, and the
+ * notes editor all read it from here so they cannot disagree.
+ */
+export function isLightTheme(theme: string): boolean {
+    return theme.includes('light');
+}
+
+/**
  * Convert a CSS color string to a hex value Monaco can accept.
  * Monaco rejects rgba() / rgb() strings, so we convert them to #RRGGBBAA hex.
  * Already-valid hex values are passed through unchanged.
@@ -38,7 +47,7 @@ export function applyMonacoTheme(monacoInstance: MonacoType, theme: string): str
         return value || fallback;
     };
 
-    const isLight = theme.includes('light');
+    const isLight = isLightTheme(theme);
     const themeId = getMonacoThemeId(theme);
 
     monacoInstance.editor.defineTheme(themeId, {

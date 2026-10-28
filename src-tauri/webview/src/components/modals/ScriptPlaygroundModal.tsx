@@ -7,6 +7,7 @@ import { bridge, isTauri } from '../../utils/bridge';
 import { PrimaryButton, SecondaryButton, GhostButton } from '../common/Button';
 import { useTheme } from '../../request-editor/core'; // Use package ThemeContext
 import { Modal } from './Modal';
+import { Tooltip } from '../common/Tooltip';
 import { SPACING_XS, SPACING_SM, SPACING_MD, SPACING_LG } from '../../styles/spacing';
 import { tokens } from '../proxy/tokens';
 
@@ -313,24 +314,25 @@ export const ScriptPlaygroundModal: React.FC<ScriptPlaygroundModalProps> = ({ on
             title={`Script Playground (${scriptType === 'assertion' ? 'Assertion' : 'Test Step'})`}
             size="fullscreen"
             headerExtra={
-                <button
-                    onClick={() => setShowHelp(!showHelp)}
-                    title="Help"
-                    style={{
-                        background: 'transparent',
-                        border: 'none',
-                        cursor: 'pointer',
-                        color: 'var(--apinox-icon-foreground)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        padding: 4,
-                        borderRadius: 4
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'var(--apinox-toolbar-hoverBackground)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                >
-                    <HelpCircle size={18} />
-                </button>
+                <Tooltip content="Help">
+                    <button
+                        onClick={() => setShowHelp(!showHelp)}
+                        style={{
+                            background: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: 'var(--apinox-icon-foreground)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            padding: 4,
+                            borderRadius: 4
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--apinox-toolbar-hoverBackground)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                        <HelpCircle size={18} />
+                    </button>
+                </Tooltip>
             }
             footer={
                 <Footer>

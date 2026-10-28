@@ -61,7 +61,6 @@ class ImageWidget extends WidgetType {
         img.src = resolvedUrl;
         img.alt = this.alt;
         img.className = "cm-image";
-        img.title = this.alt;
         return img;
     }
 }

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import styled from "styled-components";
 import { EmptyState } from "./common/EmptyState";
+import { Tooltip } from "../../components/common/Tooltip";
 import { Upload, X, File } from "lucide-react";
 import { debugError } from "../utils/logger";
 import { BinaryBodyPanelProps, BinaryFile } from "../types";
@@ -217,13 +218,14 @@ export const BinaryBodyPanel: React.FC<BinaryBodyPanelProps> = ({
             )}
           </FileMetadata>
         </FileInfo>
-        <RemoveButton
-          onClick={handleRemoveFile}
-          disabled={readOnly}
-          title="Remove file"
-        >
-          <X size={16} />
-        </RemoveButton>
+        <Tooltip content="Remove file">
+          <RemoveButton
+            onClick={handleRemoveFile}
+            disabled={readOnly}
+          >
+            <X size={16} />
+          </RemoveButton>
+        </Tooltip>
       </FileCard>
 
       <InfoSection>

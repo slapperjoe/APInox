@@ -679,6 +679,9 @@ export interface ApinoxConfig {
         editorFontSize?: number;
         editorFontFamily?: string;
         uiFontFamily?: string;
+        showMinimap?: boolean;
+        prettyPrint?: boolean;
+        hideCausalityData?: boolean;
     };
     activeEnvironment?: string;
     lastConfigPath?: string;

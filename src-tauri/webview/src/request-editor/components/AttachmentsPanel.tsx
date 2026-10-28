@@ -1,6 +1,7 @@
 import React, { useCallback } from "react";
 import styled from "styled-components";
 import { EmptyState } from "./common/EmptyState";
+import { Tooltip } from "../../components/common/Tooltip";
 import {
   Paperclip,
   Plus,
@@ -302,12 +303,13 @@ export const AttachmentsPanel: React.FC<AttachmentsPanelProps> = ({
                 <option value="SwA">SwA (Multipart)</option>
                 <option value="MTOM">MTOM</option>
               </TypeSelect>
-              <DeleteButton
-                onClick={() => handleDelete(att.id)}
-                title="Remove attachment"
-              >
-                <Trash2 size={16} />
-              </DeleteButton>
+              <Tooltip content="Remove attachment">
+                <DeleteButton
+                  onClick={() => handleDelete(att.id)}
+                >
+                  <Trash2 size={16} />
+                </DeleteButton>
+              </Tooltip>
             </AttachmentCard>
           ))}
 

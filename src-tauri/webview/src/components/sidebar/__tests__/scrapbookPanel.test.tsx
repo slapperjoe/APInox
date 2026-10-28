@@ -110,7 +110,7 @@ describe('ScrapbookPanel (doc §8.2)', () => {
         );
         // The play button is the first action button inside Request A's row.
         const rows = screen.getAllByRole('button');
-        const executeButton = rows.find(b => b.getAttribute('title') === 'Execute Request');
+        const executeButton = rows.find(b => b.getAttribute('aria-label') === 'Execute Request');
         expect(executeButton).toBeDefined();
         fireEvent.click(executeButton!);
         expect(baseProps.onExecuteRequest).toHaveBeenCalledTimes(1);

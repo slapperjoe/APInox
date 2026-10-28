@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import { MODAL_DEFAULTS, MODAL_SIZES, MODAL_CONSTRAINTS, ModalSize } from './constants';
 import { SPACING_MD } from '../../styles/spacing';
 import { PrimaryButton, IconButton } from '../common/Button';
+import { Tooltip } from '../common/Tooltip';
 
 const overlayEnter = keyframes`
   from { opacity: 0; }
@@ -232,9 +233,11 @@ export const Modal: React.FC<ModalProps> = ({
             <ModalHeaderExtra>{headerExtra}</ModalHeaderExtra>
           )}
           {showCloseButton && (
-            <IconButton onClick={onClose} title="Close">
-              <X size={16} />
-            </IconButton>
+            <Tooltip content="Close">
+              <IconButton onClick={onClose}>
+                <X size={16} />
+              </IconButton>
+            </Tooltip>
           )}
         </ModalHeader>
         <ModalBody>

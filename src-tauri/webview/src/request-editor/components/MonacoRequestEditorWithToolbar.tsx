@@ -4,10 +4,11 @@ import { Settings, Type, Minus, Plus, WrapText, AlignLeft, Braces, ListOrdered, 
 import { MonacoRequestEditor as BaseMonacoRequestEditor } from './MonacoRequestEditor';
 import type { MonacoRequestEditorHandle } from './MonacoRequestEditor';
 import { HeadersPanel } from './HeadersPanel';
-import { EditorSettingsProvider, useEditorSettings, EditorSettings } from '../contexts/EditorSettingsContext';
+import { useEditorSettings } from '../contexts/EditorSettingsContext';
 import { formatXml } from '../utils/xmlFormatter';
 import { getInstalledFonts, type MonoFont } from '../utils/fontDetection';
 import { useSettingsDropdown } from '../hooks/useSettingsDropdown';
+import { Tooltip } from '../../components/common/Tooltip';
 import {
   TabsHeader,
   TabButton,
@@ -73,10 +74,8 @@ export interface MonacoRequestEditorWithToolbarProps {
   availableVariables?: Array<{ name: string; value: string | null; source: string }>;
   /** Show tab bar with gear icon (default: true) */
   showToolbar?: boolean;
-  /** Initial editor settings */
-  initialSettings?: Partial<EditorSettings>;
-  /** Callback when settings change (for persistence) */
-  onSettingsChange?: (settings: EditorSettings) => void;
+  /** Settings come from the shared EditorSettingsContext — the app-level provider
+      backed by `config.ui`. Owning a provider here was the second store. */
   /** Apply formatting automatically when settings change */
   autoFormat?: boolean;
   /** Current headers value — enables the Headers tab */
@@ -91,8 +90,9 @@ export interface MonacoRequestEditorWithToolbarProps {
 
 type InternalTab = 'body' | 'headers' | string;
 
-// Internal component that uses settings context
-const EditorWithToolbarInternal = forwardRef<MonacoRequestEditorHandle, Omit<MonacoRequestEditorWithToolbarProps, 'initialSettings' | 'onSettingsChange'>>(
+// Uses the shared EditorSettingsContext rather than owning a provider — the app-level
+// provider is the single store.
+export const MonacoRequestEditorWithToolbar = forwardRef<MonacoRequestEditorHandle, MonacoRequestEditorWithToolbarProps>(
   ({
     value,
     onChange,
@@ -223,14 +223,15 @@ const EditorWithToolbarInternal = forwardRef<MonacoRequestEditorHandle, Omit<Mon
               </TabButton>
             ))}
             <TabsRight>
-              <CompactIconButton
-                ref={settingsButtonRef}
-                title="Editor Settings"
-                onClick={handleToggleSettings}
-                className={showSettings ? 'active' : ''}
-              >
-                <Settings size={14} />
-              </CompactIconButton>
+              <Tooltip content="Editor Settings">
+                <CompactIconButton
+                  ref={settingsButtonRef}
+                  onClick={handleToggleSettings}
+                  className={showSettings ? 'active' : ''}
+                >
+                  <Settings size={14} />
+                </CompactIconButton>
+              </Tooltip>
             </TabsRight>
           </TabsHeader>
         )}
@@ -268,21 +269,23 @@ const EditorWithToolbarInternal = forwardRef<MonacoRequestEditorHandle, Omit<Mon
                 <MenuRow>
                   <MenuLabel><Type size={14} /> Font Size</MenuLabel>
                   <MenuControls>
-                    <MenuIconButton
-                      onClick={() => updateSettings({ fontSize: Math.max(8, settings.fontSize - 1) })}
-                      disabled={settings.fontSize <= 8}
-                      title="Decrease"
-                    >
-                      <Minus size={12} />
-                    </MenuIconButton>
+                    <Tooltip content="Decrease font size">
+                      <MenuIconButton
+                        onClick={() => updateSettings({ fontSize: Math.max(8, settings.fontSize - 1) })}
+                        disabled={settings.fontSize <= 8}
+                      >
+                        <Minus size={12} />
+                      </MenuIconButton>
+                    </Tooltip>
                     <FontSizeDisplay>{settings.fontSize}px</FontSizeDisplay>
-                    <MenuIconButton
-                      onClick={() => updateSettings({ fontSize: Math.min(24, settings.fontSize + 1) })}
-                      disabled={settings.fontSize >= 24}
-                      title="Increase"
-                    >
-                      <Plus size={12} />
-                    </MenuIconButton>
+                    <Tooltip content="Increase font size">
+                      <MenuIconButton
+                        onClick={() => updateSettings({ fontSize: Math.min(24, settings.fontSize + 1) })}
+                        disabled={settings.fontSize >= 24}
+                      >
+                        <Plus size={12} />
+                      </MenuIconButton>
+                    </Tooltip>
                   </MenuControls>
                 </MenuRow>
               </MenuSection>
@@ -353,22 +356,6 @@ const EditorWithToolbarInternal = forwardRef<MonacoRequestEditorHandle, Omit<Mon
           document.body
         )}
       </EditorWrapper>
-    );
-  }
-);
-
-EditorWithToolbarInternal.displayName = 'EditorWithToolbarInternal';
-
-// Main exported component with settings provider
-export const MonacoRequestEditorWithToolbar = forwardRef<MonacoRequestEditorHandle, MonacoRequestEditorWithToolbarProps>(
-  ({ initialSettings, onSettingsChange, ...props }, ref) => {
-    return (
-      <EditorSettingsProvider
-        initialSettings={initialSettings}
-        onSettingsChange={onSettingsChange}
-      >
-        <EditorWithToolbarInternal ref={ref} {...props} />
-      </EditorSettingsProvider>
     );
   }
 );

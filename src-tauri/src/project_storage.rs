@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 #[cfg(test)]
 use uuid::Uuid;
 use crate::error::CommandError;
-use crate::utils::{blocking, resolve_config_dir};
+use crate::utils::{blocking, resolve_config_dir, write_atomic};
 
 /// Returns the ~/.apinox/projects/ directory, creating it if needed.
 pub fn projects_dir() -> Result<PathBuf, String> {
@@ -172,7 +172,9 @@ fn sanitized_names(array: &[serde_json::Value], key: &str) -> std::collections::
 fn write_json(path: &Path, data: &serde_json::Value) -> Result<(), String> {
     let json = serde_json::to_string_pretty(data)
         .map_err(|e| format!("Failed to serialize {}: {}", path.display(), e))?;
-    fs::write(path, json)
+    // Every project/interface/operation/request/suite/case save goes through here, so
+    // this is the highest-value write in the app: a half-written file is a lost project.
+    write_atomic(path, json.as_bytes())
         .map_err(|e| format!("Failed to write {}: {}", path.display(), e))
 }
 
@@ -448,7 +450,7 @@ fn save_request(req: &JsonValue, op_dir: &Path) -> Result<(), String> {
     let safe_name = sanitize_name(name);
 
     let body = req["request"].as_str().unwrap_or("");
-    fs::write(op_dir.join(format!("{}.xml", safe_name)), body)
+    write_atomic(&op_dir.join(format!("{}.xml", safe_name)), body.as_bytes())
         .map_err(|e| format!("Failed to write request body: {}", e))?;
 
     let meta = RequestMeta {
@@ -1419,7 +1421,7 @@ fn save_unified_request(req: &serde_json::Value, op_dir: &Path) -> Result<(), St
     let safe_name = sanitize_name(name);
 
     let body = req["request"].as_str().unwrap_or("");
-    fs::write(op_dir.join(format!("{}.xml", safe_name)), body)
+    write_atomic(&op_dir.join(format!("{}.xml", safe_name)), body.as_bytes())
         .map_err(|e| format!("Failed to write request body: {}", e))?;
 
     write_json(&op_dir.join(format!("{}.json", safe_name)), &serde_json::json!({
@@ -3112,5 +3114,20 @@ mod tests {
         println!("total first-paint window: {skel_ms} ms (was {list_ms} ms SYNC on the main thread)");
 
         std::env::remove_var("APINOX_CONFIG_DIR");
+    }
+
+    #[test]
+    fn write_json_leaves_only_the_target_file_behind() {
+        // `write_json` is the single write path for every project, interface,
+        // operation, request, suite and case save — so it is where a half-written file
+        // would actually cost a user their work.
+        let dir = std::env::temp_dir().join(format!("apinox-write-json-test-{}", Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).expect("create temp dir");
+
+        write_json(&dir.join("properties.json"), &serde_json::json!({ "name": "CountryInfo" }))
+            .expect("write_json");
+
+        let left: Vec<_> = std::fs::read_dir(&dir).unwrap().collect();
+        assert_eq!(left.len(), 1, "a temp file was left behind");
     }
 }

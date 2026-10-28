@@ -8,6 +8,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import styled, { css } from 'styled-components';
 import { shake } from '../../common/Button';
+import { Tooltip } from '../../common/Tooltip';
 import {
     ApinoxConfig,
     EnvList,
@@ -72,9 +73,11 @@ export const GlobalsTab: React.FC<GlobalsTabProps> = ({
             <EnvList>
                 <div style={{ padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--apinox-panel-border)' }}>
                     <span style={{ fontSize: '12px', fontWeight: 'var(--fw-semibold)' }}>Globals</span>
-                    <IconButton onClick={onAddGlobal} title="Add Variable">
-                        <Plus size={14} />
-                    </IconButton>
+                    <Tooltip content="Add Variable">
+                        <IconButton onClick={onAddGlobal}>
+                            <Plus size={14} />
+                        </IconButton>
+                    </Tooltip>
                 </div>
                 {globalKeys.map(key => (
                     <EnvItem
@@ -94,13 +97,14 @@ export const GlobalsTab: React.FC<GlobalsTabProps> = ({
                     <>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                             <h3 style={{ margin: 0, textTransform: 'uppercase', fontSize: 'var(--apinox-fs-md)' }}>Variable</h3>
-                            <DeleteButton
-                                onClick={handleDeleteClick}
-                                confirming={confirmDelete}
-                                title={confirmDelete ? "Click again to confirm delete" : "Delete Variable"}
-                            >
-                                <Trash2 size={14} />
-                            </DeleteButton>
+                            <Tooltip content={confirmDelete ? 'Click again to confirm delete' : 'Delete Variable'}>
+                                <DeleteButton
+                                    onClick={handleDeleteClick}
+                                    confirming={confirmDelete}
+                                >
+                                    <Trash2 size={14} />
+                                </DeleteButton>
+                            </Tooltip>
                         </div>
                         <FormGroup>
                             <Label>Key Name</Label>

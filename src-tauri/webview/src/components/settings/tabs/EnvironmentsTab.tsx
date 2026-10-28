@@ -9,6 +9,7 @@ import { Plus, Trash2, Check, Download, Upload, Eye, EyeOff, Lock, X, Pencil } f
 import styled, { css } from 'styled-components';
 import { bridge } from '../../../utils/bridge';
 import { shake, GhostButton } from '../../common/Button';
+import { Tooltip } from '../../common/Tooltip';
 import {
     ApinoxConfig,
     EnvList,
@@ -27,6 +28,13 @@ const DeleteButton = styled(IconButton)<{ confirming?: boolean }>`
     ${props => props.confirming && css`
         animation: ${shake} 0.5s ease-in-out infinite;
     `}
+`;
+
+/** The eye toggle sits inside a `position: relative` input wrapper, so the
+ *  Tooltip wrapper itself carries the absolute positioning. */
+const SecretVisibilityTooltip = styled(Tooltip)`
+    position: absolute;
+    right: 4px;
 `;
 
 const CustomFieldsSection = styled.div`
@@ -370,15 +378,21 @@ export const EnvironmentsTab: React.FC<EnvironmentsTabProps> = ({
                 <div style={{ padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--apinox-panel-border)' }}>
                     <span style={{ fontSize: '12px', fontWeight: 'var(--fw-semibold)' }}>Profiles</span>
                     <div style={{ display: 'flex', gap: 4 }}>
-                        <IconButton onClick={handleExport} title="Export Environments">
-                            <Download size={14} />
-                        </IconButton>
-                        <IconButton onClick={handleImportClick} title="Import Environments">
-                            <Upload size={14} />
-                        </IconButton>
-                        <IconButton onClick={onAddEnv} title="Add Environment">
-                            <Plus size={14} />
-                        </IconButton>
+                        <Tooltip content="Export Environments">
+                            <IconButton onClick={handleExport}>
+                                <Download size={14} />
+                            </IconButton>
+                        </Tooltip>
+                        <Tooltip content="Import Environments">
+                            <IconButton onClick={handleImportClick}>
+                                <Upload size={14} />
+                            </IconButton>
+                        </Tooltip>
+                        <Tooltip content="Add Environment">
+                            <IconButton onClick={onAddEnv}>
+                                <Plus size={14} />
+                            </IconButton>
+                        </Tooltip>
                         <input
                             ref={fileInputRef}
                             type="file"
@@ -439,12 +453,13 @@ export const EnvironmentsTab: React.FC<EnvironmentsTabProps> = ({
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                     <h3 style={{ margin: 0, textTransform: 'uppercase', fontSize: 'var(--apinox-fs-md)' }}>{selectedEnvKey}</h3>
                                     {onRenameEnv && (
-                                        <IconButton
-                                            onClick={() => { setRenameKey(selectedEnvKey); setRenameValue(selectedEnvKey); }}
-                                            title="Rename Environment"
-                                        >
-                                            <Pencil size={12} />
-                                        </IconButton>
+                                        <Tooltip content="Rename Environment">
+                                            <IconButton
+                                                onClick={() => { setRenameKey(selectedEnvKey); setRenameValue(selectedEnvKey); }}
+                                            >
+                                                <Pencil size={12} />
+                                            </IconButton>
+                                        </Tooltip>
                                     )}
                                 </div>
                             )}
@@ -454,13 +469,14 @@ export const EnvironmentsTab: React.FC<EnvironmentsTabProps> = ({
                                         <Check size={14} /> Set Active
                                     </PrimaryButton>
                                 )}
-                                <DeleteButton
-                                    onClick={handleDeleteClick}
-                                    confirming={confirmDelete}
-                                    title={confirmDelete ? "Click again to confirm delete" : "Delete Environment"}
-                                >
-                                    <Trash2 size={14} />
-                                </DeleteButton>
+                                <Tooltip content={confirmDelete ? 'Click again to confirm delete' : 'Delete Environment'}>
+                                    <DeleteButton
+                                        onClick={handleDeleteClick}
+                                        confirming={confirmDelete}
+                                    >
+                                        <Trash2 size={14} />
+                                    </DeleteButton>
+                                </Tooltip>
                             </div>
                         </div>
                         <FormGroup>
@@ -526,13 +542,13 @@ export const EnvironmentsTab: React.FC<EnvironmentsTabProps> = ({
                                                 style={{ paddingRight: isSecret ? 35 : 8 }}
                                             />
                                             {isSecret && (
-                                                <IconButton
-                                                    onClick={() => toggleSecretVisibility(fieldName)}
-                                                    style={{ position: 'absolute', right: 4 }}
-                                                    title={isVisible ? 'Hide' : 'Show'}
-                                                >
-                                                    {isVisible ? <EyeOff size={14} /> : <Eye size={14} />}
-                                                </IconButton>
+                                                <SecretVisibilityTooltip content={isVisible ? 'Hide' : 'Show'}>
+                                                    <IconButton
+                                                        onClick={() => toggleSecretVisibility(fieldName)}
+                                                    >
+                                                        {isVisible ? <EyeOff size={14} /> : <Eye size={14} />}
+                                                    </IconButton>
+                                                </SecretVisibilityTooltip>
                                             )}
                                         </div>
                                         <SecretToggle
@@ -543,12 +559,13 @@ export const EnvironmentsTab: React.FC<EnvironmentsTabProps> = ({
                                             <Lock size={12} />
                                             {isSecret ? 'Secret' : 'Plain'}
                                         </SecretToggle>
-                                        <IconButton
-                                            onClick={() => deleteCustomField(fieldName)}
-                                            title="Delete Field"
-                                        >
-                                            <X size={14} />
-                                        </IconButton>
+                                        <Tooltip content="Delete Field">
+                                            <IconButton
+                                                onClick={() => deleteCustomField(fieldName)}
+                                            >
+                                                <X size={14} />
+                                            </IconButton>
+                                        </Tooltip>
                                     </CustomFieldRow>
                                 );
                             })}
@@ -568,13 +585,14 @@ export const EnvironmentsTab: React.FC<EnvironmentsTabProps> = ({
                                     placeholder="Value"
                                     onKeyDown={e => e.key === 'Enter' && addCustomField()}
                                 />
-                                <IconButton
-                                    onClick={addCustomField}
-                                    disabled={!newFieldName.trim()}
-                                    title="Add Custom Field"
-                                >
-                                    <Plus size={14} />
-                                </IconButton>
+                                <Tooltip content="Add Custom Field">
+                                    <IconButton
+                                        onClick={addCustomField}
+                                        disabled={!newFieldName.trim()}
+                                    >
+                                        <Plus size={14} />
+                                    </IconButton>
+                                </Tooltip>
                             </CustomFieldRow>
                         </CustomFieldsSection>
                         

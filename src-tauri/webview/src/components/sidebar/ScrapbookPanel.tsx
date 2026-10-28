@@ -154,15 +154,16 @@ export const ScrapbookPanel: React.FC<ScrapbookPanelProps> = ({
                         })}
                     </RequestName>
                     <RequestActions>
-                        <IconButton
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onExecuteRequest(request);
-                            }}
-                            title="Execute Request"
-                        >
-                            <Play size={14} />
-                        </IconButton>
+                        <Tooltip content="Execute Request">
+                            <IconButton
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onExecuteRequest(request);
+                                }}
+                            >
+                                <Play size={14} />
+                            </IconButton>
+                        </Tooltip>
                     </RequestActions>
                 </RequestItem>
             ))}

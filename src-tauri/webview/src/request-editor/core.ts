@@ -18,6 +18,8 @@ export {
   EditorSettingsProvider,
   useEditorSettings,
   DEFAULT_EDITOR_SETTINGS,
+  editorSettingsFromConfig,
+  editorSettingsToUiConfig,
 } from "./contexts/EditorSettingsContext";
 export type { EditorSettings } from "./contexts/EditorSettingsContext";
 

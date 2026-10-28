@@ -12,6 +12,8 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use time::{Duration, OffsetDateTime};
 
+use crate::utils::write_atomic;
+
 /// 10-year validity for a local dev CA — long enough to not be a maintenance burden.
 const CA_VALIDITY_DAYS: i64 = 3650;
 /// 1-year validity for per-domain leaf certs.
@@ -226,9 +228,11 @@ impl CertManager {
         let valid_to = fmt_dt(expiry);
         let subject = "CN=APIprox Root CA, O=APIprox, C=AU".to_string();
 
-        std::fs::write(self.cert_path(), cert.pem())
+        let pem = cert.pem();
+        write_atomic(&self.cert_path(), pem.as_bytes())
             .context("Failed to write certificate")?;
-        std::fs::write(self.key_path(), key_pair.serialize_pem())
+        let key_pem = key_pair.serialize_pem();
+        write_atomic(&self.key_path(), key_pem.as_bytes())
             .context("Failed to write private key")?;
 
         let meta = CertMeta {
@@ -238,7 +242,8 @@ impl CertManager {
             valid_to,
             fingerprint,
         };
-        std::fs::write(self.meta_path(), serde_json::to_string_pretty(&meta)?)
+        let meta_json = serde_json::to_string_pretty(&meta)?;
+        write_atomic(&self.meta_path(), meta_json.as_bytes())
             .context("Failed to write cert metadata")?;
 
         // Invalidate leaf cache — old leaf certs were signed by the previous CA key.

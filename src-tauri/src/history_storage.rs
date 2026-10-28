@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use crate::utils::resolve_config_dir;
+use crate::utils::{resolve_config_dir, write_atomic};
 
 /// Request history entry stored in history.json
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -124,7 +124,7 @@ fn save_history(history_path: &PathBuf, data: &HistoryFile) -> Result<(), String
     let content = serde_json::to_string_pretty(data)
         .map_err(|e| format!("Failed to serialize history: {}", e))?;
     
-    fs::write(history_path, content)
+    write_atomic(history_path, content.as_bytes())
         .map_err(|e| format!("Failed to write history file: {}", e))?;
     
     Ok(())

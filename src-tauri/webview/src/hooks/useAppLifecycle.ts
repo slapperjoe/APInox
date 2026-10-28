@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { bridge, isTauri } from '../utils/bridge';
 import { UnifiedProject } from '@shared/models';
+import { focusedSaveHandler } from './useSaveShortcut';
 
 interface UseAppLifecycleProps {
     projects: UnifiedProject[];
@@ -148,6 +149,14 @@ export const useAppLifecycle = ({
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault();
+                // A focused pane may own the shortcut (e.g. the notes editor).
+                // Running only the focused handler is what stops Cmd+S from
+                // saving the note AND every dirty project at once.
+                const scoped = focusedSaveHandler();
+                if (scoped) {
+                    void scoped();
+                    return;
+                }
                 // Save all dirty UNIFIED projects (the canonical store). The
                 // legacy save_project path is retired — writing it would put
                 // nested interfaces/folders into unified project dirs.

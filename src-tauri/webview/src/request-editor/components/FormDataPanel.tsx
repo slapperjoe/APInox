@@ -2,6 +2,7 @@ import React, { useState, useCallback, useRef, useEffect, memo } from "react";
 import styled from "styled-components";
 import { EmptyState } from "./common/EmptyState";
 import { PanelContainer, PanelIconButton, PanelFlexColumn } from "./common/PanelShell";
+import { Tooltip } from "../../components/common/Tooltip";
 import { Plus, Trash2, Upload, File, X } from "lucide-react";
 import { MonacoSingleLineInput } from "./MonacoSingleLineInput";
 import { SPACING_XS, SPACING_SM } from "../styles/spacing";
@@ -187,9 +188,11 @@ const FieldRowItem = memo(function FieldRowItem({
               <FileName title={field.fileName}>{field.fileName}</FileName>
               {field.fileSize && <FileSize>{formatFileSize(field.fileSize)}</FileSize>}
               {!readOnly && (
-                <PanelIconButton onClick={() => clearFile(index)} title="Remove file">
-                  <X size={14} />
-                </PanelIconButton>
+                <Tooltip content="Remove file">
+                  <PanelIconButton onClick={() => clearFile(index)}>
+                    <X size={14} />
+                  </PanelIconButton>
+                </Tooltip>
               )}
             </FilePreview>
           ) : (
@@ -220,9 +223,11 @@ const FieldRowItem = memo(function FieldRowItem({
         )}
       </PanelFlexColumn>
 
-      <PanelIconButton onClick={() => removeField(index)} disabled={readOnly} title="Remove">
-        <Trash2 size={16} />
-      </PanelIconButton>
+      <Tooltip content="Remove">
+        <PanelIconButton onClick={() => removeField(index)} disabled={readOnly}>
+          <Trash2 size={16} />
+        </PanelIconButton>
+      </Tooltip>
     </FieldRow>
   );
 });

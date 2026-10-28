@@ -7,6 +7,7 @@ import React, { useCallback, useRef, useEffect, memo } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from './common/EmptyState';
 import { PanelContainer, PanelIconButton } from './common/PanelShell';
+import { Tooltip } from '../../components/common/Tooltip';
 import { Plus, Trash2, Code } from 'lucide-react';
 import { MonacoSingleLineInput } from './MonacoSingleLineInput';
 import { SPACING_XS, SPACING_SM } from '../styles/spacing';
@@ -123,9 +124,11 @@ const ParamRowItem = memo(function ParamRowItem({
                 />
             </InputWrapper>
             {!readOnly && (
-                <PanelIconButton onClick={() => removeParam(paramKey)} title={`Delete ${paramLabel}`}>
-                    <Trash2 size={14} />
-                </PanelIconButton>
+                <Tooltip content={`Delete ${paramLabel}`}>
+                    <PanelIconButton onClick={() => removeParam(paramKey)}>
+                        <Trash2 size={14} />
+                    </PanelIconButton>
+                </Tooltip>
             )}
         </ParamRow>
     );

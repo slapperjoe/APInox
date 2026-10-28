@@ -64,9 +64,10 @@ beforeEach(() => {
 });
 
 /**
- * Expand a tree row by clicking its chevron (the first child of the row div).
- * The tree is collapsed by default, so operation/request rows only render
- * once their parent is expanded.
+ * Expand a tree row by clicking its chevron (the row's first child, now wrapped
+ * in the shared <Tooltip> so the slot is found by its test id). The tree is
+ * collapsed by default, so operation/request rows only render once their parent
+ * is expanded.
  */
 const expandRow = (label: string, container: HTMLElement) => {
     // Find the row span whose text is exactly the label (the label span is a
@@ -76,7 +77,8 @@ const expandRow = (label: string, container: HTMLElement) => {
     );
     expect(spans.length, `row "${label}" not found`).toBeGreaterThan(0);
     const row = spans[spans.length - 1]!.parentElement as HTMLElement;
-    const chevron = row.firstElementChild as HTMLElement;
+    const chevron = (row.querySelector('[data-testid="tree-chevron-slot"]') ??
+        row.firstElementChild) as HTMLElement;
     expect(chevron, 'row has no chevron (not expandable?)').toBeTruthy();
     fireEvent.click(chevron);
 };

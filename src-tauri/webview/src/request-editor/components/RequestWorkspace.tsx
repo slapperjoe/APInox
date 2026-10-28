@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { Play, X, Variable, Settings, Braces, Minus } from 'lucide-react';
 import * as S from './RequestWorkspace.styles';
+import { Tooltip } from '../../components/common/Tooltip';
 import { MonacoResponseViewer } from './MonacoResponseViewer';
 import { MonacoSingleLineInput } from './MonacoSingleLineInput';
 import type { MonacoSingleLineInputHandle } from './MonacoSingleLineInput';
@@ -9,7 +10,7 @@ import type { FormField, BinaryFile, EditorVariable } from '../types';
 import type { SchemaIssue } from '@shared/models';
 import { XPathGenerator } from '../utils/xpathGenerator';
 import { formatSchemaReport } from '../utils/schemaReport';
-import { useEditorSettings, EditorSettingsProvider } from '../contexts/EditorSettingsContext';
+import { useEditorSettings } from '../contexts/EditorSettingsContext';
 import { formatXml } from '../utils/xmlFormatter';
 import { formatContent } from '../utils/contentFormatter';
 import { effectiveContentType } from '../utils/contentType';
@@ -104,23 +105,9 @@ export interface RequestWorkspaceProps {
   // Logging callback (replaces direct bridge.sendMessage)
   onLog?: (message: string, level?: 'info' | 'warn' | 'error' | 'debug') => void;
 
-  // Editor settings (for persistence)
-  initialEditorSettings?: Partial<{
-    fontSize: number;
-    fontFamily: string;
-    showLineNumbers: boolean;
-    alignAttributes: boolean;
-    inlineValues: boolean;
-    hideCausality: boolean;
-  }>;
-  onEditorSettingsChange?: (settings: {
-    fontSize: number;
-    fontFamily: string;
-    showLineNumbers: boolean;
-    alignAttributes: boolean;
-    inlineValues: boolean;
-    hideCausality: boolean;
-  }) => void;
+  // Editor settings come from the shared EditorSettingsContext — the app-level
+  // provider backed by `config.ui`. They used to be passed in as props so this
+  // component could own its own provider, which is what created the second store.
   
   // File picker callbacks for form-data and binary uploads
   onPickFile?: () => Promise<{ name: string; content: string; contentType: string; size: number } | null>;
@@ -132,8 +119,9 @@ export interface RequestWorkspaceProps {
 type BuiltinTabType = 'request' | 'headers' | 'params' | 'assertions' | 'extractors' | 'auth' | 'attachments' | 'variables';
 type TabType = BuiltinTabType | string;
 
-// Internal component that uses the context
-const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
+// Uses the shared EditorSettingsContext rather than owning a provider — the app-level
+// provider is the single store.
+export const RequestWorkspace: React.FC<RequestWorkspaceProps> = ({
   request,
   response,
   loading = false,
@@ -580,22 +568,24 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
         ))}
         <S.TabsRight>
           {activeTab === 'request' && (
-            <S.CompactIconButton
-              title={editorSettings.settings.prettyPrint ? 'Minify (Compress)' : 'Pretty Print (Format)'}
-              onClick={handleTogglePrettyPrint}
-            >
-              {editorSettings.settings.prettyPrint ? <Minus size={14} /> : <Braces size={14} />}
-            </S.CompactIconButton>
+            <Tooltip content={editorSettings.settings.prettyPrint ? 'Minify (Compress)' : 'Pretty Print (Format)'}>
+              <S.CompactIconButton
+                onClick={handleTogglePrettyPrint}
+              >
+                {editorSettings.settings.prettyPrint ? <Minus size={14} /> : <Braces size={14} />}
+              </S.CompactIconButton>
+            </Tooltip>
           )}
           <S.SettingsMenuWrapper>
-            <S.CompactIconButton
-              ref={settingsButtonRef}
-              title="Editor Settings"
-              onClick={handleToggleSettings}
-              className={showEditorSettings ? 'active' : ''}
-            >
-              <Settings size={14} />
-            </S.CompactIconButton>
+            <Tooltip content="Editor Settings">
+              <S.CompactIconButton
+                ref={settingsButtonRef}
+                onClick={handleToggleSettings}
+                className={showEditorSettings ? 'active' : ''}
+              >
+                <Settings size={14} />
+              </S.CompactIconButton>
+            </Tooltip>
           </S.SettingsMenuWrapper>
         </S.TabsRight>
       </S.TabsHeader>
@@ -725,18 +715,3 @@ const RequestWorkspaceInternal: React.FC<RequestWorkspaceProps> = ({
   );
 };
 
-// Export wrapped with EditorSettingsProvider
-export const RequestWorkspace: React.FC<RequestWorkspaceProps> = ({ 
-  initialEditorSettings, 
-  onEditorSettingsChange,
-  ...props 
-}) => {
-  return (
-    <EditorSettingsProvider
-      initialSettings={initialEditorSettings}
-      onSettingsChange={onEditorSettingsChange}
-    >
-      <RequestWorkspaceInternal {...props} />
-    </EditorSettingsProvider>
-  );
-};

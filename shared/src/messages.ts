@@ -139,6 +139,11 @@ export enum BackendCommand {
     ScrapbookLoaded = 'scrapbookLoaded',
     ScrapbookUpdated = 'scrapbookUpdated',
 
+    // Notes — pushed by `notes_storage::update_index` after every index mutation,
+    // so the UI re-syncs from the authoritative index instead of hand-mutating its
+    // own copy (which made an external index edit invisible).
+    NotesUpdated = 'notesUpdated',
+
     // Mock/Proxy
     MockHistoryStart = 'mockHistoryStart',
     MockHistoryUpdate = 'mockHistoryUpdate',

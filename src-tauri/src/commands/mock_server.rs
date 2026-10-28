@@ -1,9 +1,10 @@
 use chrono::Utc;
+use std::path::Path;
 use tauri::{AppHandle, State};
 use uuid::Uuid;
 
 use crate::proxy_models::{MockRule, MockRuleCollection};
-use crate::utils::blocking;
+use crate::utils::{blocking, write_atomic};
 use crate::{ensure_proxy_state, LazyProxyAppState, ProxyAppState};
 
 #[tauri::command]
@@ -103,7 +104,11 @@ pub async fn export_mock_collection(
         .map_err(|e| e.to_string())?;
 
     let path_for_blocking = file_path.clone();
-    blocking(move || std::fs::write(&path_for_blocking, json).map_err(|e| format!("Failed to write collection file: {}", e))).await?;
+    blocking(move || {
+        write_atomic(Path::new(&path_for_blocking), json.as_bytes())
+            .map_err(|e| format!("Failed to write collection file: {}", e))
+    })
+    .await?;
 
     log::info!("[Mock] Exported collection to {}", file_path);
     Ok(())

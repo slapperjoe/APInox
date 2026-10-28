@@ -2,6 +2,7 @@ import React, { useMemo, memo } from "react";
 import styled from "styled-components";
 import { EmptyState } from './common/EmptyState';
 import { PanelContainer, PanelIconButton } from './common/PanelShell';
+import { Tooltip } from '../../components/common/Tooltip';
 import { Trash2, Pencil, Variable, Plus } from "lucide-react";
 import { CustomXPathEvaluator } from "../utils/xpathEvaluator";
 import { RequestExtractor } from "../types";
@@ -168,9 +169,11 @@ const ExtractorsPanelBase: React.FC<ExtractorsPanelProps> = ({
           <Variable size={16} />
           Context Variables extracted from this Step
         </ToolbarTitle>
-        <PanelIconButton onClick={handleAdd} title="Add Extractor">
-          <Plus size={16} />
-        </PanelIconButton>
+        <Tooltip content="Add Extractor">
+          <PanelIconButton onClick={handleAdd}>
+            <Plus size={16} />
+          </PanelIconButton>
+        </Tooltip>
       </Toolbar>
       <ExtractorList>
         {extractors.length === 0 ? (
@@ -217,19 +220,21 @@ const ExtractorsPanelBase: React.FC<ExtractorsPanelProps> = ({
                 </ExtractorInfo>
                 <ButtonGroup>
                   {onEdit && (
-                    <PanelIconButton
-                      onClick={() => onEdit(ex, index)}
-                      title="Edit Extractor"
-                    >
-                      <Pencil size={16} />
-                    </PanelIconButton>
+                    <Tooltip content="Edit Extractor">
+                      <PanelIconButton
+                        onClick={() => onEdit(ex, index)}
+                      >
+                        <Pencil size={16} />
+                      </PanelIconButton>
+                    </Tooltip>
                   )}
-                  <DeleteButton
-                    onClick={() => handleDelete(index)}
-                    title="Delete Extractor"
-                  >
-                    <Trash2 size={16} />
-                  </DeleteButton>
+                  <Tooltip content="Delete Extractor">
+                    <DeleteButton
+                      onClick={() => handleDelete(index)}
+                    >
+                      <Trash2 size={16} />
+                    </DeleteButton>
+                  </Tooltip>
                 </ButtonGroup>
               </ExtractorItem>
             );

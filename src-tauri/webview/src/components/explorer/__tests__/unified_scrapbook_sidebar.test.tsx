@@ -148,7 +148,7 @@ describe('UnifiedExplorerSidebar + Quick Requests (doc §8.3 — Q1(a) bottom se
 
         const executeButton = screen
             .getAllByRole('button')
-            .find(b => b.getAttribute('title') === 'Execute Request');
+            .find(b => b.getAttribute('aria-label') === 'Execute Request');
         fireEvent.click(executeButton!);
         expect(scrapbook.onExecuteRequest).toHaveBeenCalledTimes(1);
         expect(scrapbook.onExecuteRequest).toHaveBeenCalledWith(quickRequest);

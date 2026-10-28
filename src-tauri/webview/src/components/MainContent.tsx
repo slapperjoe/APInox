@@ -7,6 +7,7 @@ import { saveImportedProjectsAsUnified } from '../utils/importUnifiedStore';
 import { captureLog } from '../utils/logger';
 import { generateInitialXmlForOperation } from '../utils/soapUtils';
 import { Sidebar } from './Sidebar';
+import { Tooltip } from './common/Tooltip';
 import { WorkspaceContext } from '../contexts/WorkspaceContext';
 import { SidebarContext } from '../contexts/SidebarContext';
 import {
@@ -30,6 +31,7 @@ import { usePerformance } from '../contexts/PerformanceContext';
 import { useTestRunner } from '../contexts/TestRunnerContext';
 import { useScrapbook } from '../contexts/ScrapbookContext';
 import { useTestSuites } from '../contexts/TestSuiteContext';
+import { useEditorSettings } from '../request-editor/core';
 import { useSidebarCallbacks } from '../hooks/useSidebarCallbacks';
 import { useWorkspaceCallbacks } from '../hooks/useWorkspaceCallbacks';
 import { useAppLifecycle } from '../hooks/useAppLifecycle';
@@ -367,6 +369,11 @@ const MainContent: React.FC = () => {
         setConfigPath,
         setConfigDir
     } = useUI();
+
+    // Editor settings are part of the same store as the rest of the UI settings, so
+    // the backend message handler needs a way to push an external change (Settings →
+    // JSON, or the General panel) into the editors.
+    const { applySettings: applyEditorSettings } = useEditorSettings();
 
     // ── Startup update check ─────────────────────────────────────────────────
     const [hasUpdate, setHasUpdate] = useState(false);
@@ -1191,6 +1198,7 @@ const MainContent: React.FC = () => {
         setShowLineNumbers,
         setSplitRatio,
         setInlineElementValues,
+        setEditorSettings: applyEditorSettings,
         setConfigPath,
         setConfigDir,
         // setProxyConfig, // Handled in MockProxyContext
@@ -1595,16 +1603,16 @@ const MainContent: React.FC = () => {
         <Container $showCustomTitleBar={showCustomTitleBar} $isMacOS={platformOS === 'macos'}>
             {/* Narrow-desktop hamburger — fixed overlay in TitleBar area, narrow viewports only */}
             {isMobile && (
-                <button
-                    className="narrow-desktop-hamburger"
-                    onClick={(e) => { e.stopPropagation(); setIsMobileDrawerOpen(prev => !prev); }}
-                    title={isMobileDrawerOpen ? "Close sidebar" : "Open sidebar"}
-                    aria-label={isMobileDrawerOpen ? "Close sidebar" : "Open sidebar"}
-                >
-                    <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M2 4h16v2H2zM2 9h16v2H2zM2 14h16v2H2z"/>
-                    </svg>
-                </button>
+                <Tooltip content={isMobileDrawerOpen ? 'Close sidebar' : 'Open sidebar'}>
+                    <button
+                        className="narrow-desktop-hamburger"
+                        onClick={(e) => { e.stopPropagation(); setIsMobileDrawerOpen(prev => !prev); }}
+                    >
+                        <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M2 4h16v2H2zM2 9h16v2H2zM2 14h16v2H2z"/>
+                        </svg>
+                    </button>
+                </Tooltip>
             )}
 
             {/* Backdrop — closes sidebar on mobile when tapping outside */}

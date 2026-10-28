@@ -334,7 +334,7 @@ describe('TestsUi', () => {
         // delete either — deletion is right-click menu only now.
         render(<TestsUi {...defaultProps} projects={[emptySuiteProject]} selectedTestSuite={{ id: 'suite-empty' } as any} />);
         expect(screen.queryByLabelText('Run Suite')).not.toBeInTheDocument();
-        expect(screen.queryByTitle('Delete Suite')).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('Delete Suite')).not.toBeInTheDocument();
 
         // The right-click menu omits Run but keeps the other suite actions.
         fireEvent.contextMenu(screen.getByText('Empty Suite'));
@@ -464,20 +464,20 @@ describe('TestsUi', () => {
             // referenced case lives in a collapsed suite).
             expect(screen.getByText('Run TC')).toBeInTheDocument();
             expect(screen.queryByText('Login Request')).not.toBeInTheDocument();
-            expect(screen.getByTitle('Expand test case steps')).toBeInTheDocument();
+            expect(screen.getByLabelText('Expand test case steps')).toBeInTheDocument();
 
-            // Click the step's chevron (title attribute gates it).
-            fireEvent.click(screen.getByTitle('Expand test case steps'));
+            // Click the step's chevron (the shared Tooltip's aria-label gates it).
+            fireEvent.click(screen.getByLabelText('Expand test case steps'));
             expect(screen.getByText('Login Request')).toBeInTheDocument();
             expect(screen.getByText('Wait')).toBeInTheDocument();
-            expect(screen.queryByTitle('Expand test case steps')).not.toBeInTheDocument();
+            expect(screen.queryByLabelText('Expand test case steps')).not.toBeInTheDocument();
 
             // Collapse again.
-            fireEvent.click(screen.getByTitle('Collapse test case steps'));
+            fireEvent.click(screen.getByLabelText('Collapse test case steps'));
             expect(screen.queryByText('Login Request')).not.toBeInTheDocument();
 
             // Clicking a nested step selects the PARENT test step.
-            fireEvent.click(screen.getByTitle('Expand test case steps'));
+            fireEvent.click(screen.getByLabelText('Expand test case steps'));
             fireEvent.click(screen.getByText('Login Request'));
             expect(defaultProps.onSelectTestStep).toHaveBeenCalledWith('case-host', 'step-tc');
         });
@@ -488,7 +488,7 @@ describe('TestsUi', () => {
             expect(screen.getByText('Run TC')).toBeInTheDocument();
             // No step-level expand toggle: the dangling reference isn't
             // expandable, and its (absent) steps never render.
-            expect(screen.queryByTitle('Expand test case steps')).not.toBeInTheDocument();
+            expect(screen.queryByLabelText('Expand test case steps')).not.toBeInTheDocument();
             expect(screen.queryByText('Login Request')).not.toBeInTheDocument();
         });
 
@@ -518,7 +518,7 @@ describe('TestsUi', () => {
             render(<TestsUi {...defaultProps} projects={[project]} />);
 
             expect(screen.getByText('Run TC')).toBeInTheDocument();
-            expect(screen.queryByTitle('Expand test case steps')).not.toBeInTheDocument();
+            expect(screen.queryByLabelText('Expand test case steps')).not.toBeInTheDocument();
         });
 
         it('non-testCase steps show no chevron even when test cases are present', () => {
@@ -527,7 +527,7 @@ describe('TestsUi', () => {
             // The default project has a plain request step: no step-level
             // chevrons (no right-pointing chevron; no expand toggle title).
             expect(screen.queryAllByTestId('icon-chevron-right')).toHaveLength(0);
-            expect(screen.queryByTitle('Expand test case steps')).not.toBeInTheDocument();
+            expect(screen.queryByLabelText('Expand test case steps')).not.toBeInTheDocument();
         });
     });
 
@@ -670,7 +670,7 @@ describe('TestsUi', () => {
 
             // Expanded: the sub-step rows mirror the per-step results —
             // running → spinner, skipped → Minus.
-            fireEvent.click(view.getByTitle('Expand test case steps'));
+            fireEvent.click(view.getByLabelText('Expand test case steps'));
             expect(view.getAllByTestId('icon-loader')).toHaveLength(1);
             expect(view.getAllByTestId('icon-minus')).toHaveLength(1);
         });
@@ -682,7 +682,7 @@ describe('TestsUi', () => {
                     projects={[hostStepProject]}
                 />
             );
-            fireEvent.click(view.getByTitle('Expand test case steps'));
+            fireEvent.click(view.getByLabelText('Expand test case steps'));
 
             const paddingLeft = (label: string) =>
                 window.getComputedStyle(

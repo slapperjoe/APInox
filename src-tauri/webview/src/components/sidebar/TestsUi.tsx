@@ -531,12 +531,18 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                                     }}
                                     onContextMenu={(e) => handleContextMenu(e, suite.name, 'suite', undefined, undefined, suite.id)}
                                 >
-                                    <SuiteToggle
-                                        $hasChildren={hasCases}
-                                        onClick={hasCases ? (e) => { e.stopPropagation(); onToggleSuiteExpand(suite.id); } : undefined}
-                                    >
-                                        {hasCases && (suite.expanded !== false ? <ChevronDown size={14} /> : <ChevronRight size={14} />)}
-                                    </SuiteToggle>
+                                    {hasCases ? (
+                                        <Tooltip content={suite.expanded !== false ? 'Collapse suite' : 'Expand suite'}>
+                                            <SuiteToggle
+                                                $hasChildren={hasCases}
+                                                onClick={(e) => { e.stopPropagation(); onToggleSuiteExpand(suite.id); }}
+                                            >
+                                                {suite.expanded !== false ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                            </SuiteToggle>
+                                        </Tooltip>
+                                    ) : (
+                                        <SuiteToggle $hasChildren={hasCases} />
+                                    )}
                                     <SuiteIcon>
                                         <ListChecks size={14} />
                                     </SuiteIcon>
@@ -584,12 +590,18 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                                                 }}
                                                 onContextMenu={(e) => handleContextMenu(e, tc.name, 'case', tc.id)}
                                             >
-                                                <CaseToggle
-                                                    $hasChildren={hasSteps}
-                                                    onClick={hasSteps ? (e) => { e.stopPropagation(); onToggleCaseExpand(tc.id); } : undefined}
-                                                >
-                                                    {hasSteps && (tc.expanded !== false ? <ChevronDown size={14} /> : <ChevronRight size={14} />)}
-                                                </CaseToggle>
+                                                {hasSteps ? (
+                                                    <Tooltip content={tc.expanded !== false ? 'Collapse test case' : 'Expand test case'}>
+                                                        <CaseToggle
+                                                            $hasChildren={hasSteps}
+                                                            onClick={(e) => { e.stopPropagation(); onToggleCaseExpand(tc.id); }}
+                                                        >
+                                                            {tc.expanded !== false ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                                        </CaseToggle>
+                                                    </Tooltip>
+                                                ) : (
+                                                    <CaseToggle $hasChildren={hasSteps} />
+                                                )}
                                                 {renameId === tc.id ? (
                                                     <InlineFormInput
                                                         type="text"
@@ -656,13 +668,18 @@ export const TestsUi: React.FC<TestsUiProps> = ({
                                                             ) : (
                                                                 <>
                                                                     {stepStatusSlot(testExecution?.[tc.id]?.[step.id])}
-                                                                    <NestedStepToggle
-                                                                        $hasChildren={hasNestedSteps}
-                                                                        title={hasNestedSteps ? (isNestedExpanded ? 'Collapse test case steps' : 'Expand test case steps') : undefined}
-                                                                        onClick={hasNestedSteps ? (e) => { e.stopPropagation(); toggleNestedExpand(step.id); } : undefined}
-                                                                    >
-                                                                        {hasNestedSteps && (isNestedExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />)}
-                                                                    </NestedStepToggle>
+                                                                    {hasNestedSteps ? (
+                                                                        <Tooltip content={isNestedExpanded ? 'Collapse test case steps' : 'Expand test case steps'}>
+                                                                            <NestedStepToggle
+                                                                                $hasChildren={hasNestedSteps}
+                                                                                onClick={(e) => { e.stopPropagation(); toggleNestedExpand(step.id); }}
+                                                                            >
+                                                                                {isNestedExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                                                            </NestedStepToggle>
+                                                                        </Tooltip>
+                                                                    ) : (
+                                                                        <NestedStepToggle $hasChildren={hasNestedSteps} />
+                                                                    )}
                                                                     <StepTypeIcon>
                                                                         {(() => {
                                                                             switch (step.type) {

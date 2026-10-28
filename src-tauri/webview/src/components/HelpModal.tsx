@@ -63,7 +63,7 @@ const ContentArea = styled.div`
     p { margin-bottom: ${SPACING_MD}; line-height: 1.5; }
     ul { margin-left: ${SPACING_LG}; margin-bottom: ${SPACING_MD}; }
     li { margin-bottom: ${SPACING_XS}; }
-    code { background: var(--apinox-textCodeBlock-background); padding: 2px 4px; border-radius: 4px; font-family: monospace; }
+    code { background: var(--apinox-textCodeBlock-background); padding: ${SPACING_XS}; border-radius: 4px; font-family: monospace; }
     pre { background: var(--apinox-textCodeBlock-background); padding: ${SPACING_MD}; border-radius: 4px; overflow-x: auto; margin-bottom: ${SPACING_MD}; }
     img { max-width: 100%; height: auto; border: 1px solid var(--apinox-panel-border); margin: ${SPACING_SM} 0; border-radius: 4px; }
 `;

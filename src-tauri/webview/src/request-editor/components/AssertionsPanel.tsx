@@ -7,6 +7,7 @@ import { StatusCodePicker } from './StatusCodePicker';
 import { MonacoEditorWrapper } from '../monaco';
 import { SPACING_XS, SPACING_SM, SPACING_LG } from "../styles/spacing";
 import { PanelContainer } from "./common/PanelShell";
+import { Tooltip } from '../../components/common/Tooltip';
 const Toolbar = styled.div`
     display: flex;
     gap: ${SPACING_SM};
@@ -434,9 +435,11 @@ export const AssertionsPanel: React.FC<AssertionsPanelProps> = ({ assertions, on
                                     )}
                                 </ConfigText>
                             </Details>
-                            <TransparentButton onClick={() => handleRemove(a.id!)} title="Delete Assertion">
-                                <Trash2 size={16} />
-                            </TransparentButton>
+                            <Tooltip content="Delete Assertion">
+                                <TransparentButton onClick={() => handleRemove(a.id!)}>
+                                    <Trash2 size={16} />
+                                </TransparentButton>
+                            </Tooltip>
                         </AssertionItem>
                     );
                 })}
