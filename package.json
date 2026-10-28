@@ -7,7 +7,7 @@
     "url": "https://github.com/slapperjoe/apinox.git"
   },
   "license": "MIT",
-  "version": "0.67.962",
+  "version": "0.68.964",
   "engines": {
     "node": ">=20.19.0"
   },
