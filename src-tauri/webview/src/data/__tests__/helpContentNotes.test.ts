@@ -84,6 +84,13 @@ describe('the Notes help page', () => {
         expect(content()).toMatch(/whichever pane has focus/);
     });
 
+    it('documents find and replace, which the notes editor did not have before', () => {
+        // NotesCodeMirrorEditor.tsx — `@codemirror/search` was not a dependency at all, so
+        // Ctrl+F fell through to the browser. The help must name both panels.
+        expect(content()).toMatch(/Ctrl\+F/);
+        expect(content()).toMatch(/Ctrl\+H/);
+    });
+
     it('documents the dirty-dot meanings in the order the shared component renders them', () => {
         // components/common/DirtyDot.tsx: external = warning amber (needs an explicit
         // save), managed = grey (autosave will handle it). The help must not swap them.

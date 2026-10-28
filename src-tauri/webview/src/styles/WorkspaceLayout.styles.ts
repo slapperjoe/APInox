@@ -353,12 +353,15 @@ export const CompactIconButton = styled(IconButton)`
 
 
 
-export const ProjectContainer = styled.div`
-    padding: 40px;
+export const ProjectContainer = styled.div<{ $editor?: boolean }>`
+    padding: ${props => (props.$editor ? '0 40px 40px' : '40px')};
     color: var(--apinox-foreground);
     overflow-y: auto;
     flex: 1;
     min-height: 0;
+    // The raw JSON pane fills its container, so that view needs a flex column; the overview
+    // stays a plain scrolling block.
+    ${props => (props.$editor ? 'display: flex; flex-direction: column;' : '')};
 `;
 
 export const ProjectHeader = styled.div`

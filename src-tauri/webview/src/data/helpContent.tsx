@@ -294,11 +294,15 @@ const HELP_SECTIONS_RAW = [
     ## Edit as JSON
 
     Right-click a case or a suite and choose **Edit as JSON** to edit the whole entity as one
-    document. This is the way to rename a variable across every step: the variables panel edits
+    document. It opens as a tab in the workspace — **Steps | JSON** for a case, **Overview | JSON**
+    for a suite — so the entity stays in view and the document survives navigating away and back.
+
+    This is the way to rename a variable across every step: the variables panel edits
     values, but it cannot rename a name, so a \`{{token}}\` rename otherwise means editing
     each step body one at a time.
 
-    Find and replace works in this view (Ctrl+F / Ctrl+H).
+    Find and replace works in this view (Ctrl+F / Ctrl+H), and Ctrl/Cmd+S saves this document
+    rather than every dirty project.
 
     Renaming a variable in the variables panel now updates the references to it as well —
     the step bodies, assertion tokens, and the extractor that produces the value. Both
@@ -618,6 +622,12 @@ const HELP_SECTIONS_RAW = [
 
     The context toolbar on the left changes with whatever the cursor is inside: Text,
     Header, Table, List, or Quote.
+
+    ## Find and replace
+
+    **Ctrl+F** opens the search panel and **Ctrl+H** the replace panel. It works in every view
+    mode, and the panel is styled from the theme variables so it follows all six themes rather
+    than falling back to browser defaults.
 
     ## Saving
 

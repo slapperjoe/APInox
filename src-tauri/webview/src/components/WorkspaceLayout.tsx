@@ -99,6 +99,9 @@ export const WorkspaceLayout: React.FC = () => {
     const updateTestCaseVariables = workspace.updateTestCaseVariables;
     const renameTestSuiteVariable = workspace.renameTestSuiteVariable;
     const renameTestCaseVariable = workspace.renameTestCaseVariable;
+    const jsonViewFor = workspace.jsonViewFor;
+    const setJsonViewFor = workspace.setJsonViewFor;
+    const saveJsonEntity = workspace.saveJsonEntity;
     const onAddExtractor = workspace.handleAddExtractor;
     const onAddExistenceAssertion = workspace.handleAddExistenceAssertion;
     const onImportFromWorkspace = workspace.onImportFromWorkspace;
@@ -437,6 +440,12 @@ export const WorkspaceLayout: React.FC = () => {
                 onSelectTestCase={navigationActions?.onSelectTestCase}
                 onUpdateVariables={updateTestSuiteVariables ? (vars) => updateTestSuiteVariables(selectedTestSuite.id, vars) : undefined}
                 onRenameVariable={renameTestSuiteVariable ? (from, to) => renameTestSuiteVariable(selectedTestSuite.id, from, to) : undefined}
+                json={{
+                    active: jsonViewFor?.type === 'suite' && jsonViewFor.id === selectedTestSuite.id,
+                    onOpen: () => setJsonViewFor({ type: 'suite', id: selectedTestSuite.id }),
+                    onClose: () => setJsonViewFor(null),
+                    onSave: (edited) => saveJsonEntity({ type: 'suite', id: selectedTestSuite.id }, edited),
+                }}
             />;
         }
 
@@ -734,6 +743,12 @@ export const WorkspaceLayout: React.FC = () => {
                     onOpenStepRequest={onOpenStepRequest}
                     onUpdateVariables={(vars) => updateTestCaseVariables(selectedTestCase.id, vars)}
                     onRenameVariable={(from, to) => renameTestCaseVariable(selectedTestCase.id, from, to)}
+                    json={{
+                        active: jsonViewFor?.type === 'case' && jsonViewFor.id === selectedTestCase.id,
+                        onOpen: () => setJsonViewFor({ type: 'case', id: selectedTestCase.id }),
+                        onClose: () => setJsonViewFor(null),
+                        onSave: (edited) => saveJsonEntity({ type: 'case', id: selectedTestCase.id }, edited),
+                    }}
                     testCases={globalTestCases}
                     projects={projects}
                 />

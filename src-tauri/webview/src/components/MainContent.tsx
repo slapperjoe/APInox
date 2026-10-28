@@ -20,7 +20,6 @@ import type { BulkImportResult } from './modals/BulkImportModal';
 import { ApiRequest, TestCase, TestStep, TestSuite, SidebarView, RequestHistoryEntry, WsdlDiff, ApiInterface, ApiOperation, ApinoxProject, UnifiedProject, ScrapbookRequest } from '@shared/models';
 import { buildTrafficTestSteps } from '../utils/trafficTestCase';
 import { renameVariableReferences, renameVariableInSuite } from '../utils/variableRename';
-import { testCaseValidator, testSuiteValidator } from '../utils/jsonValidators';
 import { BackendCommand, FrontendCommand } from '@shared/messages';
 import { PERF_REQUEST_ID_PREFIX } from '../constants';
 import { useMessageHandler } from '../hooks/useMessageHandler';
@@ -74,10 +73,6 @@ const AddToProjectDialog = React.lazy(() =>
 const AddToTestCaseModal = React.lazy(() =>
     import('./modals/AddToTestCaseModal').then(module => ({ default: module.AddToTestCaseModal }))
 );
-const EditJsonModal = React.lazy(() =>
-    import('./modals/EditJsonModal').then(module => ({ default: module.EditJsonModal }))
-);
-
 const CreateTestCaseFromTrafficWizard = React.lazy(() =>
     import('./proxy/CreateTestCaseFromTrafficWizard').then(module => ({ default: module.CreateTestCaseFromTrafficWizard }))
 );
@@ -983,10 +978,10 @@ const MainContent: React.FC = () => {
     // Modals (remaining)
     const [confirmationModal, setConfirmationModal] = useState<ConfirmationState | null>(null);
     const [addToTestCaseModal, setAddToTestCaseModal] = React.useState<{ open: boolean, request: ApiRequest | null }>({ open: false, request: null });
-    // Raw JSON editor. The state holds the entity type and its id rather than the object,
-    // so the modal always shows the current store entry rather than a snapshot taken when
-    // it opened.
-    const [jsonEditorTarget, setJsonEditorTarget] = useState<{ type: 'case' | 'suite'; id: string } | null>(null);
+    // Raw JSON pane. The state holds the entity type and its id rather than the object, so the
+    // pane always shows the current store entry rather than a snapshot taken when it opened, and
+    // the tab survives navigating away and back.
+    const [jsonViewFor, setJsonViewFor] = useState<{ type: 'case' | 'suite'; id: string } | null>(null);
     // Create Test Case from Traffic: the full capture (capture order) plus the
     // right-clicked log as the pre-selected anchor. Full-page wizard rendered
     // in place of ProxyPanel — not a modal.
@@ -1313,9 +1308,23 @@ const MainContent: React.FC = () => {
         closeProject(name);
     }, [deleteConfirm, selectedProjectName, setSelectedInterface, setSelectedOperation, setSelectedRequest, closeProject]);
 
+    // The context menu opens the raw JSON pane for an entity. It selects the entity first, so
+    // the pane renders in the same place the structured view would — the tab strip is Steps
+    // (or Overview) | JSON, and the entity is the one the user right-clicked.
     const handleEditJson = useCallback((type: 'case' | 'suite', id: string) => {
-        setJsonEditorTarget({ type, id });
-    }, [setJsonEditorTarget]);
+        if (type === 'case') {
+            const found = findGlobalCase(id);
+            if (!found) return;
+            setSelectedTestSuite(found.suite);
+            setSelectedTestCase(found.testCase);
+        } else {
+            const suite = findGlobalSuite(id);
+            if (!suite) return;
+            setSelectedTestSuite(suite);
+            setSelectedTestCase(null);
+        }
+        setJsonViewFor({ type, id });
+    }, [findGlobalCase, findGlobalSuite, setSelectedTestSuite, setSelectedTestCase, setJsonViewFor]);
 
     // ==========================================================================
     // WORKSPACE CONTEXT VALUE - Aggregates all state for WorkspaceLayout subtree
@@ -1374,6 +1383,15 @@ const MainContent: React.FC = () => {
         selectTestSuite: setSelectedTestSuite,
         selectTestCase: setSelectedTestCase,
         selectTestStep: handleSelectStep,
+        jsonViewFor,
+        setJsonViewFor,
+        saveJsonEntity: (target: { type: 'case' | 'suite'; id: string }, document: any) => {
+            if (target.type === 'case') {
+                updateGlobalTestCase(target.id, () => document);
+            } else {
+                updateGlobalSuite(document);
+            }
+        },
         // REQUEST ACTIONS
         executeRequest,
         cancelRequest,
@@ -1456,6 +1474,7 @@ const MainContent: React.FC = () => {
         handleAddStep, handleRunTestCaseWrapper, handleRunTestSuiteWrapper,
         handleAddAssertion, handleAddPerformanceSuite, handleDeletePerformanceSuite,
         findGlobalSuite, findGlobalCase, updateGlobalSuite, updateGlobalTestCase,
+        jsonViewFor, setJsonViewFor,
         handleRunPerformanceSuite, handleStopPerformanceRun, handleSelectPerformanceSuite,
         handleUpdatePerformanceSuite, handleAddPerformanceRequestForUi, handleAddPerformanceTestCase,
         handleDeletePerformanceRequest, handleUpdatePerformanceRequest,
@@ -1894,34 +1913,6 @@ const MainContent: React.FC = () => {
                         />
                     </Suspense>
                 )
-            }
-
-            {/* Raw JSON editor — find and replace across step bodies, which the structured
-                editors cannot do. */}
-            {
-                jsonEditorTarget && (() => {
-                    const document = jsonEditorTarget.type === 'case'
-                        ? findGlobalCase(jsonEditorTarget.id)?.testCase
-                        : findGlobalSuite(jsonEditorTarget.id);
-                    if (!document) return null;
-
-                    const isCase = jsonEditorTarget.type === 'case';
-                    return (
-                        <Suspense fallback={null}>
-                            <EditJsonModal
-                                document={document}
-                                entityLabel={isCase ? 'test case' : 'test suite'}
-                                expectedId={jsonEditorTarget.id}
-                                entityValidator={isCase ? testCaseValidator : testSuiteValidator}
-                                onClose={() => setJsonEditorTarget(null)}
-                                onSave={(edited) => isCase
-                                    ? updateGlobalTestCase(jsonEditorTarget.id, () => edited)
-                                    : updateGlobalSuite(edited)
-                                }
-                            />
-                        </Suspense>
-                    );
-                })()
             }
 
             {pickRequestModal.open && (

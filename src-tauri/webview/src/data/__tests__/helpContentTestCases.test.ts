@@ -36,6 +36,10 @@ describe('the Test Suites help page', () => {
         expect(content()).toMatch(/Ctrl\+F|Ctrl\+H/);
         // It covers both entities, not just cases — the suite menu offers it too.
         expect(content()).toMatch(/Right-click a case or a suite/);
+        // It is a workspace tab, not a dialog: the modal could not stay open and had no
+        // entity context, which is what made it the worse UI.
+        expect(content()).toMatch(/opens as a tab in the workspace/);
+        expect(content()).toMatch(/Steps \| JSON/);
     });
 
     it('documents that renaming a variable in the panel now updates its references', () => {

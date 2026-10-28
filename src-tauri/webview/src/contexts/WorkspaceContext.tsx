@@ -136,6 +136,15 @@ interface WorkspaceContextValue {
     selectTestCase: (testCase: TestCase | null) => void;
     /** Select a test step */
     selectTestStep: (step: TestStep | null) => void;
+
+    /** Which test entity is open in the raw JSON pane. Null shows the structured view.
+        Held as an id rather than the object so the pane always shows the current store
+        entry, and the tab survives navigating away and back. */
+    jsonViewFor: { type: 'case' | 'suite'; id: string } | null;
+    setJsonViewFor: (target: { type: 'case' | 'suite'; id: string } | null) => void;
+    /** Replace an entity with a document edited in the raw JSON pane. Validation runs before
+        this is called, so the store only ever receives a document the runner can execute. */
+    saveJsonEntity: (target: { type: 'case' | 'suite'; id: string }, document: any) => void;
     
     /** Execute an HTTP/SOAP request */
     executeRequest: (xml: string) => void;

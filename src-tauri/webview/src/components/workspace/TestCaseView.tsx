@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import { Play, Plus, FileCode, ArrowUp, ArrowDown, Trash2, ListChecks, CheckCircle, XCircle, Clock, FileText, GitBranch, RefreshCw, ChevronDown, ChevronRight, Minus } from 'lucide-react';
 import { TestCase, TestStep, TestStepType } from '@shared/models';
-import { ToolbarButton, IconButton, RunButton } from '../../styles/WorkspaceLayout.styles';
+import { ToolbarButton, IconButton, RunButton, TabsHeader, TabButton } from '../../styles/WorkspaceLayout.styles';
 import { ContextHelpButton } from '../ContextHelpButton';
 import { EmptyState } from '../common/EmptyState';
 import { Spinner } from '../common/Spinner';
 import { Tooltip } from '../common/Tooltip';
 import { VariablesEditor } from './VariablesEditor';
+import { JsonDocumentPane } from './JsonDocumentPane';
+import { testCaseValidator } from '../../utils/jsonValidators';
 import { SPACING_XS, SPACING_SM, SPACING_MD, SPACING_LG, SPACING_XL, SPACING_3XL } from '../../styles/spacing';
 
 // Empty state component
@@ -28,10 +30,13 @@ const EmptyHelp = styled.div`
     z-index: 1;
 `;
 
-const ViewContainer = styled.div`
-    padding: ${SPACING_XL};
+const ViewContainer = styled.div<{ $editor?: boolean }>`
+    padding: ${props => (props.$editor ? `0 ${SPACING_XL} ${SPACING_XL}` : SPACING_XL)};
     flex: 1;
     overflow: auto;
+    // The JSON tab fills the pane, so its container has to be a flex column; the structured
+    // view stays a plain scrolling block.
+    ${props => (props.$editor ? 'display: flex; flex-direction: column; min-height: 0;' : '')};
     color: var(--apinox-editor-foreground);
     font-family: var(--apinox-font-family);
 `;
@@ -269,6 +274,15 @@ export interface TestCaseViewProps {
         case's step bodies, assertion tokens and extractor definitions. Returns how many
         references were rewritten. */
     onRenameVariable?: (from: string, to: string) => number;
+    /** Raw JSON view for this case. When `active` the pane replaces the steps list, so the
+        tab strip (Steps | JSON) renders. Undefined when the view is rendered without the
+        full app wiring (isolated component tests). */
+    json?: {
+        active: boolean;
+        onOpen: () => void;
+        onClose: () => void;
+        onSave: (document: any) => void;
+    };
     /** Global test cases, for resolving a 'testCase' step's referenced case
         (label + read-only nested steps preview). */
     testCases?: Array<{ id: string; name: string; steps?: TestStep[] }>;
@@ -289,6 +303,7 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
     onOpenStepRequest,
     onUpdateVariables,
     onRenameVariable,
+    json,
     testCases,
     // projects // Unused
 }) => {
@@ -325,7 +340,7 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
     };
 
     return (
-        <ViewContainer>
+        <ViewContainer $editor={json?.active}>
             <HeaderRow>
                 <h1>Test Case: {testCase.name}</h1>
                 <HeaderActions>
@@ -336,6 +351,23 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
                 </HeaderActions>
             </HeaderRow>
 
+            {json && (
+                <TabsHeader>
+                    <TabButton $active={!json.active} onClick={json.onClose}>Steps</TabButton>
+                    <TabButton $active={json.active} onClick={json.onOpen}>JSON</TabButton>
+                </TabsHeader>
+            )}
+
+            {json?.active ? (
+                <JsonDocumentPane
+                    document={testCase}
+                    entityLabel="test case"
+                    expectedId={testCase.id}
+                    entityValidator={testCaseValidator}
+                    onSave={json.onSave}
+                />
+            ) : (
+                <>
             {onAddStep && (
                 <StepsToolbar>
                     <ToolbarButton onClick={() => onAddStep(testCase.id, 'delay')}>
@@ -571,7 +603,9 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
                         );
                     })}
                 </StepsList>
-            </StepsSection>
+                </StepsSection>
+                </>
+            )}
         </ViewContainer>
     );
 };

@@ -1,10 +1,12 @@
 import React from 'react';
 import { ContextHelpButton } from '../ContextHelpButton';
 import { VariablesEditor } from './VariablesEditor';
+import { JsonDocumentPane } from './JsonDocumentPane';
+import { testSuiteValidator } from '../../utils/jsonValidators';
 import {
     ProjectContainer, StatsGridSpaced, StatCard, StatLabel, StatValue,
     SectionHeading, OperationsList, OperationItem, OperationRow,
-    OperationMeta, ChevronIconFaint
+    OperationMeta, ChevronIconFaint, TabsHeader, TabButton
 } from '../../styles/WorkspaceLayout.styles';
 
 export const TestSuiteSummary: React.FC<{
@@ -16,17 +18,43 @@ export const TestSuiteSummary: React.FC<{
     /** Rename a suite variable AND the references to it across every case in the suite.
         Returns how many references were rewritten. */
     onRenameVariable?: (from: string, to: string) => number;
-}> = ({ suite, onSelectTestCase, onUpdateVariables, onRenameVariable }) => {
+    /** Raw JSON view for this suite. When `active` the pane replaces the overview, so the
+        tab strip (Overview | JSON) renders. Undefined when the view is rendered without the
+        full app wiring (isolated component tests). */
+    json?: {
+        active: boolean;
+        onOpen: () => void;
+        onClose: () => void;
+        onSave: (document: any) => void;
+    };
+}> = ({ suite, onSelectTestCase, onUpdateVariables, onRenameVariable, json }) => {
     // Calculate total steps
     const totalSteps = suite.testCases.reduce((sum, tc) => sum + tc.steps.length, 0);
 
     return (
-        <ProjectContainer>
+        <ProjectContainer $editor={json?.active}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h1>Test Suite: {suite.name}</h1>
                 <ContextHelpButton sectionId="test-suite" />
             </div>
 
+            {json && (
+                <TabsHeader>
+                    <TabButton $active={!json.active} onClick={json.onClose}>Overview</TabButton>
+                    <TabButton $active={json.active} onClick={json.onOpen}>JSON</TabButton>
+                </TabsHeader>
+            )}
+
+            {json?.active ? (
+                <JsonDocumentPane
+                    document={suite}
+                    entityLabel="test suite"
+                    expectedId={suite.id}
+                    entityValidator={testSuiteValidator}
+                    onSave={json.onSave}
+                />
+            ) : (
+                <>
             {/* Statistics Grid */}
             <StatsGridSpaced>
                 <StatCard>
@@ -67,6 +95,8 @@ export const TestSuiteSummary: React.FC<{
                     </OperationItem>
                 ))}
             </OperationsList>
+                </>
+            )}
         </ProjectContainer>
     );
 };

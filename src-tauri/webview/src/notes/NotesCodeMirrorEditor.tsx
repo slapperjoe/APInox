@@ -7,6 +7,7 @@ import {
 } from "react";
 import { EditorState, Compartment } from "@codemirror/state";
 import { EditorView, keymap, highlightActiveLine } from "@codemirror/view";
+import { search, searchKeymap, openSearchPanel } from "@codemirror/search";
 import {
   defaultKeymap,
   history,
@@ -47,6 +48,53 @@ const apinoxTheme = (dark: boolean) =>
       },
       ".cm-header-rendered-1": { fontWeight: "var(--fw-bold)", fontSize: "var(--apinox-fs-title)" },
       ".cm-header-rendered-2, .cm-header-rendered-3": { fontWeight: "var(--fw-bold)" },
+
+      // Find and replace. Built from the same CSS vars as the rest of the theme so all six
+      // themes reach it — the search panel is DOM, not canvas, so it would otherwise fall
+      // back to browser defaults and read as a foreign widget.
+      ".cm-panel.cm-search": {
+        background: "var(--apinox-panel-background)",
+        color: "var(--apinox-descriptionForeground)",
+        fontFamily: "inherit",
+        fontSize: "var(--apinox-fs-sm)",
+        padding: `${SPACING_XS} ${SPACING_SM}`,
+        borderTop: `1px solid var(--apinox-panel-border)`,
+        display: "flex",
+        flexWrap: "wrap",
+        alignItems: "center",
+        gap: `${SPACING_XS}`,
+      },
+      ".cm-panel.cm-search input, .cm-panel.cm-search textarea": {
+        background: "var(--apinox-input-background)",
+        color: "var(--apinox-input-foreground)",
+        border: `1px solid var(--apinox-input-border)`,
+        borderRadius: "2px",
+        padding: `${SPACING_XS}`,
+        fontFamily: "inherit",
+        fontSize: "var(--apinox-fs-sm)",
+      },
+      ".cm-panel.cm-search input:focus, .cm-panel.cm-search textarea:focus": {
+        outline: "none",
+        borderColor: "var(--apinox-focusBorder)",
+      },
+      ".cm-panel.cm-search button": {
+        background: "var(--apinox-tertiaryButton-background)",
+        color: "var(--apinox-tertiaryButton-foreground)",
+        border: `1px solid var(--apinox-panel-border)`,
+        borderRadius: "2px",
+        padding: `${SPACING_XS} ${SPACING_SM}`,
+        cursor: "pointer",
+      },
+      ".cm-panel.cm-search button:hover": {
+        color: "var(--apinox-foreground)",
+      },
+      ".cm-panel.cm-search label": {
+        display: "flex",
+        alignItems: "center",
+        gap: `${SPACING_XS}`,
+      },
+      ".cm-searchMatch": { background: "var(--apinox-editor-selectionBackground)" },
+      ".cm-searchMatch-selected": { background: "var(--apinox-focusBorder)" },
     },
     { dark }
   );
@@ -100,6 +148,17 @@ export const NotesCodeMirrorEditor = forwardRef<
     const pluginCompartment = useMemo(() => new Compartment(), []);
     const lineWrappingCompartment = useMemo(() => new Compartment(), []);
     const fontCompartment = useMemo(() => new Compartment(), []);
+
+    // CodeMirror's search keymap binds Ctrl/Cmd+F but not Ctrl/Cmd+H: the panel it opens
+    // already contains a replace field, so the missing piece is focus. Without this the app's
+    // documented replace shortcut does nothing and the user has to click into the panel.
+    const openReplacePanel = (view: EditorView) => {
+      openSearchPanel(view);
+      const replaceField = view.dom.querySelector('.cm-panel.cm-search input[name="replace"]') as HTMLInputElement | null;
+      replaceField?.focus();
+      // CodeMirror's Command contract: returning true means the key was handled.
+      return true;
+    };
 
     const insertTextAtCursor = (view: EditorView, text: string) => {
       const { from, to } = view.state.selection.main;
@@ -219,7 +278,8 @@ export const NotesCodeMirrorEditor = forwardRef<
       const startState = EditorState.create({
         doc,
         extensions: [
-          keymap.of([...defaultKeymap, ...historyKeymap]),
+          keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, { key: "Mod-h", run: openReplacePanel, preventDefault: true }]),
+          search({ top: true }),
           history(),
           markdown({ codeLanguages: languages }),
           highlightActiveLine(),

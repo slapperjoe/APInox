@@ -150,3 +150,27 @@ describe('the notes feature is on the shared message contract', () => {
     expect(NOTES('NotesContext.tsx')).toContain('message.entries');
   });
 });
+
+describe('the notes editor has find and replace', () => {
+  /**
+   * The notes feature had no search at all: `@codemirror/search` was not a dependency and
+   * nothing imported it, so Ctrl+F fell through to the browser. That is why raw JSON editing
+   * — which is nothing but find-and-replace over a document — had to live in its own modal.
+   */
+  it('search is a declared dependency and wired into the keymap', () => {
+    const pkg = JSON.parse(readFileSync(resolve(WEBVIEW, 'package.json'), 'utf8'));
+    expect(pkg.dependencies['@codemirror/search']).toBeTruthy();
+
+    const editor = NOTES('NotesCodeMirrorEditor.tsx');
+    expect(editor).toContain('from "@codemirror/search"');
+    expect(editor).toContain('...searchKeymap');
+    expect(editor).toContain('search(');
+  });
+
+  it('the search panel is styled from the theme vars, not browser defaults', () => {
+    const theme = NOTES('NotesCodeMirrorEditor.tsx');
+    for (const selector of ['.cm-panel.cm-search', '.cm-searchMatch', '.cm-searchMatch-selected']) {
+      expect(theme, `${selector} is not styled`).toContain(selector);
+    }
+  });
+});
