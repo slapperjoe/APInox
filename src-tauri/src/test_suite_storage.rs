@@ -14,7 +14,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::utils::{blocking, resolve_config_dir};
+use crate::utils::{blocking, resolve_config_dir, write_atomic};
 
 /// Global test-suite file — stores suites as raw JSON to preserve all
 /// frontend fields (testCases/steps/config round-trip byte-for-byte).
@@ -59,7 +59,7 @@ fn load_store(path: &PathBuf) -> TestSuiteStore {
 fn save_store(path: &PathBuf, data: &TestSuiteStore) -> Result<(), String> {
     let content = serde_json::to_string_pretty(data)
         .map_err(|e| format!("Failed to serialize test suites: {}", e))?;
-    fs::write(path, content)
+    write_atomic(path, content.as_bytes())
         .map_err(|e| format!("Failed to write test-suites file: {}", e))?;
     log::info!("Saved global test suites ({} suite(s))", data.suites.len());
     Ok(())
@@ -159,7 +159,7 @@ fn export_test_suite_to_file_sync(suite_id: String, file_path: String) -> Result
     let json_content = serde_json::to_string_pretty(suite)
         .map_err(|e| format!("Failed to serialize test suite: {}", e))?;
 
-    std::fs::write(&file_path, json_content)
+    write_atomic(Path::new(&file_path), json_content.as_bytes())
         .map_err(|e| format!("Failed to write test suite file: {}", e))?;
 
     log::info!(
@@ -211,7 +211,7 @@ fn export_test_case_to_file_sync(case_id: String, file_path: String) -> Result<(
     let json_content = serde_json::to_string_pretty(case)
         .map_err(|e| format!("Failed to serialize test case: {}", e))?;
 
-    std::fs::write(&file_path, json_content)
+    write_atomic(Path::new(&file_path), json_content.as_bytes())
         .map_err(|e| format!("Failed to write test case file: {}", e))?;
 
     log::info!(
@@ -307,7 +307,7 @@ fn import_test_case_from_file_sync(file_path: String) -> Result<serde_json::Valu
 /// Read one project's suites from its `tests/` subdir (the historical layout):
 /// `tests/{suite}/suite.json` plus per-case `case.json` bodies, merged into the
 /// same `TestSuite` shape the webview used to receive.
-fn read_project_suites_dir(tests_dir: &Path) -> Vec<serde_json::Value> {
+pub(crate) fn read_project_suites_dir(tests_dir: &Path) -> Vec<serde_json::Value> {
     let mut suites = Vec::new();
     let Ok(entries) = fs::read_dir(tests_dir) else {
         return suites;
@@ -361,6 +361,39 @@ fn read_project_suites_dir(tests_dir: &Path) -> Vec<serde_json::Value> {
                         .to_string()
                         .into();
                 }
+
+                // The historical layout wrote `case.json` as {id, name} only and put
+                // each step in its own `NN_StepName.json`, ordered by filename. Without
+                // this the migration moved suites with no steps — the fixture in the
+                // existing test put steps inside case.json, so the gap was invisible.
+                if case.get("steps").is_none() {
+                    let mut step_files: Vec<PathBuf> = match fs::read_dir(&case_dir) {
+                        Ok(entries) => entries
+                            .flatten()
+                            .map(|e| e.path())
+                            .filter(|p| {
+                                p.is_file()
+                                    && p.extension().and_then(|s| s.to_str()) == Some("json")
+                                    && p.file_name().and_then(|f| f.to_str()) != Some("case.json")
+                            })
+                            .collect(),
+                        Err(_) => Vec::new(),
+                    };
+                    step_files.sort_by_key(|p| p.file_name().map(|f| f.to_string_lossy().to_string()));
+                    let mut steps: Vec<serde_json::Value> = Vec::new();
+                    for path in step_files {
+                        let Ok(s_content) = fs::read_to_string(&path) else {
+                            log::warn!("Skipping unparseable step file: {}", path.display());
+                            continue;
+                        };
+                        match serde_json::from_str::<serde_json::Value>(&s_content) {
+                            Ok(step) => steps.push(step),
+                            Err(_) => log::warn!("Skipping unparseable step file: {}", path.display()),
+                        }
+                    }
+                    case["steps"] = serde_json::Value::Array(steps);
+                }
+
                 cases.push(case);
             }
         }
@@ -678,6 +711,49 @@ mod tests {
             "migrated project's tests/ dir must be removed"
         );
         let _ = env; // hold the config lock for the test's lifetime
+    }
+
+    /// The historical layout wrote `case.json` as `{id, name}` only and put each step in
+    /// its own `NN_StepName.json`. The migration reader read `case.json` but not the step
+    /// files, so a legacy project migrated its suites WITHOUT steps. The existing fixture
+    /// put steps inside `case.json`, which hid the gap.
+    #[tokio::test]
+    async fn migration_reads_the_per_step_files_of_the_historical_layout() {
+        let env = SuiteTestEnv::new("migrate-steps", None);
+        let proj = env.dir.join("projects").join("ProjY");
+        let case_dir = proj.join("tests").join("Suite 1").join("Case 1");
+        std::fs::create_dir_all(&case_dir).expect("create case dir");
+        std::fs::write(
+            proj.join("tests").join("Suite 1").join("suite.json"),
+            r#"{ "id": "suite-y", "name": "Suite 1" }"#,
+        )
+        .expect("write suite.json");
+        std::fs::write(case_dir.join("case.json"), r#"{ "id": "case-y", "name": "Case 1" }"#)
+            .expect("write case.json");
+
+        // Out of order on purpose: the reader must sort by filename, not rely on readdir
+        // order, because the layout's numbering IS the step order.
+        std::fs::write(
+            case_dir.join("02_Second.json"),
+            r#"{ "id": "st-2", "name": "Second", "type": "delay", "config": { "delayMs": 20 } }"#,
+        )
+        .expect("write step 2");
+        std::fs::write(
+            case_dir.join("01_First.json"),
+            r#"{ "id": "st-1", "name": "First", "type": "request", "config": { "request": { "name": "R", "request": "<y/>" } } }"#,
+        )
+        .expect("write step 1");
+
+        let moved = migrate_all_project_suites_to_global().await.expect("migrate");
+        assert_eq!(moved.len(), 1);
+
+        let stored = get_test_suites().await.expect("get");
+        let steps = stored[0]["testCases"][0]["steps"]
+            .as_array()
+            .expect("steps array");
+        assert_eq!(steps.len(), 2, "steps must come from the per-step files");
+        assert_eq!(steps[0]["id"], "st-1", "ordered by filename, not readdir order");
+        assert_eq!(steps[1]["id"], "st-2");
     }
 
     /// File round-trip: a stored suite exports to disk and imports back with

@@ -239,6 +239,7 @@ export const Sidebar: React.FC = () => {
                         onImportSuite={testsProps.onImportSuite}
                         onImportTestCase={testsProps.onImportTestCase}
                         onExportTestCase={testsProps.onExportTestCase}
+                        onEditTestCaseJson={testsProps.onEditTestCaseJson}
                         testExecution={testsProps.testExecution}
                         deleteConfirm={testsProps.deleteConfirm}
                     />

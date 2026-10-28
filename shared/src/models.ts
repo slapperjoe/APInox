@@ -454,7 +454,10 @@ export interface UnifiedProject {
     id?: string;
     /** R-10 (F-17): display-only rename override (context menu). The stable `name` — used for the on-disk directory, WSDL binding and refresh merge — is preserved; an empty/undefined value falls back to `name` in the UI. */
     displayName?: string;
-    /** Test suites (Phase B, t_86c34d38: relocated from the legacy ApinoxProject). Persisted in the project dir's `tests/` subdir, mirroring the legacy layout. */
+    /** Test suites. The global store (`~/.apinox/test-suites.json`) owns them — the
+     * per-project `tests/` layout is retired, so this is empty for every project loaded
+     * from disk. It remains for the migration path and for component tests that render
+     * without a provider. */
     testSuites?: TestSuite[];
     /** User-created folders (Phase B, t_86c34d38: carried over from the legacy ApinoxProject so migration doesn't drop user folder/requests). */
     folders?: ApinoxFolder[];

@@ -72,6 +72,9 @@ const AddToProjectDialog = React.lazy(() =>
 const AddToTestCaseModal = React.lazy(() =>
     import('./modals/AddToTestCaseModal').then(module => ({ default: module.AddToTestCaseModal }))
 );
+const EditTestCaseJsonModal = React.lazy(() =>
+    import('./modals/EditTestCaseJsonModal').then(module => ({ default: module.EditTestCaseJsonModal }))
+);
 
 const CreateTestCaseFromTrafficWizard = React.lazy(() =>
     import('./proxy/CreateTestCaseFromTrafficWizard').then(module => ({ default: module.CreateTestCaseFromTrafficWizard }))
@@ -978,6 +981,10 @@ const MainContent: React.FC = () => {
     // Modals (remaining)
     const [confirmationModal, setConfirmationModal] = useState<ConfirmationState | null>(null);
     const [addToTestCaseModal, setAddToTestCaseModal] = React.useState<{ open: boolean, request: ApiRequest | null }>({ open: false, request: null });
+    // Raw JSON editor for a case. The state holds the case id rather than the object, so
+    // the modal always shows the current store entry rather than a snapshot taken when it
+    // opened.
+    const [jsonEditorCaseId, setJsonEditorCaseId] = useState<string | null>(null);
     // Create Test Case from Traffic: the full capture (capture order) plus the
     // right-clicked log as the pre-selected anchor. Full-page wizard rendered
     // in place of ProxyPanel — not a modal.
@@ -1304,6 +1311,10 @@ const MainContent: React.FC = () => {
         closeProject(name);
     }, [deleteConfirm, selectedProjectName, setSelectedInterface, setSelectedOperation, setSelectedRequest, closeProject]);
 
+    const handleEditTestCaseJson = useCallback((caseId: string) => {
+        setJsonEditorCaseId(caseId);
+    }, [setJsonEditorCaseId]);
+
     // ==========================================================================
     // WORKSPACE CONTEXT VALUE - Aggregates all state for WorkspaceLayout subtree
     // ==========================================================================
@@ -1474,6 +1485,7 @@ const MainContent: React.FC = () => {
             onImportSuite: handleImportSuite,
             onImportTestCase: handleImportTestCase,
             onExportTestCase: handleExportTestCase,
+            onEditTestCaseJson: handleEditTestCaseJson,
             onToggleSuiteExpand: handleToggleSuiteExpand,
             onToggleCaseExpand: handleToggleCaseExpand,
             // Live per-step execution status — mirrors the TestCaseView status
@@ -1577,6 +1589,7 @@ const MainContent: React.FC = () => {
         handleToggleSuiteExpand, handleToggleCaseExpand, handleSelectStep, handleRenameTestStep,
         handleDeleteStepFromMenu,
         handleExportSuite, handleExportTestCase, handleImportSuite, handleImportTestCase,
+        handleEditTestCaseJson,
         selectedTestSuite, selectedTestCase, globalTestSuites, findGlobalCase,
         config, activeRunId, selectedPerformanceSuiteId,
         handleAddPerformanceSuite, handleDeletePerformanceSuite, handleRunPerformanceSuite,
@@ -1863,6 +1876,24 @@ const MainContent: React.FC = () => {
                         />
                     </Suspense>
                 )
+            }
+
+            {/* Raw JSON editor for a test case — find and replace across step bodies,
+                which the step editors cannot do. */}
+            {
+                jsonEditorCaseId && (() => {
+                    const found = findGlobalCase(jsonEditorCaseId);
+                    if (!found) return null;
+                    return (
+                        <Suspense fallback={null}>
+                            <EditTestCaseJsonModal
+                                testCase={found.testCase}
+                                onClose={() => setJsonEditorCaseId(null)}
+                                onSave={(edited) => updateGlobalTestCase(found.testCase.id, () => edited)}
+                            />
+                        </Suspense>
+                    );
+                })()
             }
 
             {pickRequestModal.open && (

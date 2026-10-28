@@ -53,6 +53,10 @@ export interface SidebarTestsProps {
     onImportSuite?: () => void;
     onImportTestCase?: (suiteId: string) => void;
     onExportTestCase?: (caseId: string) => void;
+    /** Raw JSON editor for a case — the escape hatch for find-and-replace across step
+     *  bodies, which the step editors cannot do. Undefined when the rail renders without
+     *  the full app wiring (isolated component tests). */
+    onEditTestCaseJson?: (caseId: string) => void;
     onToggleSuiteExpand: (suiteId: string) => void;
     onToggleCaseExpand: (caseId: string) => void;
     deleteConfirm: string | null;

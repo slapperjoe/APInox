@@ -213,6 +213,9 @@ export interface TestsUiProps {
     onImportSuite?: () => void;
     onImportTestCase?: (suiteId: string) => void;
     onExportTestCase?: (caseId: string) => void;
+    /** Open the raw JSON editor for a case — the escape hatch for find-and-replace
+     *  across step bodies, which the step editors cannot do. */
+    onEditTestCaseJson?: (caseId: string) => void;
     deleteConfirm: string | null;
 }
 
@@ -246,6 +249,7 @@ export const TestsUi: React.FC<TestsUiProps> = ({
     onImportSuite,
     onImportTestCase,
     onExportTestCase,
+    onEditTestCaseJson,
     deleteConfirm
 }) => {
     const addSuiteBtnRef = useRef<HTMLButtonElement>(null);
@@ -460,9 +464,12 @@ export const TestsUi: React.FC<TestsUiProps> = ({
             ...(onImportTestCase ? [{ icon: FileText, label: 'Import Test Case', onClick: () => { onImportTestCase(contextMenu.suiteId!); closeContextMenu(); } }] : []),
         ]
         : [];
-    const caseFileItems: CtxMenuItem[] = contextMenu?.type === 'case' && contextMenu.caseId
+    // Narrow once rather than asserting inside each closure.
+    const caseId = contextMenu?.type === 'case' ? contextMenu.caseId : null;
+    const caseFileItems: CtxMenuItem[] = caseId
         ? [
-            ...(onExportTestCase ? [{ icon: Download, label: 'Export Test Case', onClick: () => { onExportTestCase(contextMenu.caseId!); closeContextMenu(); } }] : []),
+            ...(onEditTestCaseJson ? [{ icon: FileCode, label: 'Edit as JSON', onClick: () => { onEditTestCaseJson(caseId); closeContextMenu(); } }] : []),
+            ...(onExportTestCase ? [{ icon: Download, label: 'Export Test Case', onClick: () => { onExportTestCase(caseId); closeContextMenu(); } }] : []),
         ]
         : [];
 

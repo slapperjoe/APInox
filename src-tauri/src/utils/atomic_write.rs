@@ -177,6 +177,7 @@ mod tests {
             "soap/certificate_manager.rs",
             "commands/mock_server.rs",
             "notes_storage.rs",
+            "test_suite_storage.rs",
         ];
 
         let offenders = modules

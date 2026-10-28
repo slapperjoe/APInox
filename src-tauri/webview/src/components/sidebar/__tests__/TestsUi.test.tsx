@@ -72,6 +72,7 @@ describe('TestsUi', () => {
         onSelectTestStep: vi.fn(),
         onRenameTestStep: vi.fn(),
         onDeleteTestStep: vi.fn(),
+        onEditTestCaseJson: vi.fn(),
         deleteConfirm: null
     };
 
@@ -144,6 +145,29 @@ describe('TestsUi', () => {
         fireEvent.blur(input); // Trigger submit
 
         expect(defaultProps.onRenameTestCase).toHaveBeenCalledWith('case-1', 'Renamed Case');
+    });
+
+    /**
+     * Right-click → Edit as JSON is the find-and-replace path. The variables panel edits
+     * values but cannot rename a name, so renaming a `{{token}}` across step bodies needs
+     * the raw document.
+     */
+    it('right-clicking a case offers Edit as JSON', () => {
+        render(<TestsUi {...defaultProps} />);
+
+        fireEvent.contextMenu(screen.getByText('Case 1'));
+        const item = screen.getByText('Edit as JSON');
+        fireEvent.click(item);
+
+        expect(defaultProps.onEditTestCaseJson).toHaveBeenCalledWith('case-1');
+    });
+
+    it('the menu omits Edit as JSON when the rail renders without the app wiring', () => {
+        const withoutEditor = { ...defaultProps, onEditTestCaseJson: undefined };
+        render(<TestsUi {...withoutEditor} />);
+
+        fireEvent.contextMenu(screen.getByText('Case 1'));
+        expect(screen.queryByText('Edit as JSON')).not.toBeInTheDocument();
     });
 
     it('should handle run actions', () => {

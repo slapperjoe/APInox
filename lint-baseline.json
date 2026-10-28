@@ -1,5 +1,5 @@
 {
-  "@typescript-eslint/no-non-null-assertion": 48,
+  "@typescript-eslint/no-non-null-assertion": 47,
   "@typescript-eslint/no-require-imports": 4,
   "react-hooks/set-state-in-effect": 37,
   "@typescript-eslint/ban-ts-comment": 2,

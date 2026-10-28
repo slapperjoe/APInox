@@ -288,6 +288,27 @@ const HELP_SECTIONS_RAW = [
     ## Test Cases
 
     Suites contain **Test Cases** with ordered steps. Add cases from the suite row, then add steps inside each case.
+
+    Right-click a case for **Run**, **Rename**, **Delete**, **Edit as JSON** and **Export**.
+
+    ## Edit as JSON
+
+    Right-click a case and choose **Edit as JSON** to edit the whole case as one document.
+    This is the way to rename a variable across every step: the variables panel edits
+    values, but it cannot rename a name, so a \`{{token}}\` rename otherwise means editing
+    each step body one at a time.
+
+    Find and replace works in this view (Ctrl+F / Ctrl+H).
+
+    Saving replaces the case in the global store, so the document must parse and each step
+    must have an \`id\`, a \`name\`, and a \`type\` the runner knows. The case \`id\` itself cannot
+    change — it is the key the store and the runner resolve against. A transfer pointing at a
+    step id that is no longer in the case is warned about before saving — it is not an
+    error, but it does nothing at run time.
+
+    Test suites live in a single global store (\`test-suites.json\` in the config directory).
+    The older per-project layout — a \`tests/\` folder with one file per step — is retired;
+    projects that still have one are migrated on startup.
     `
             },
             {

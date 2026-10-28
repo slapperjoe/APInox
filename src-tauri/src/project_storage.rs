@@ -108,22 +108,6 @@ struct RequestMeta {
     response_schema: JsonValue,
 }
 
-/// Data written to tests/{suite}/suite.json
-#[derive(Debug, Serialize, Deserialize)]
-struct TestSuiteMeta {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    id: Option<String>,
-    name: String,
-}
-
-/// Data written to tests/{suite}/{case}/case.json
-#[derive(Debug, Serialize, Deserialize)]
-struct TestCaseMeta {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    id: Option<String>,
-    name: String,
-}
-
 /// Sanitize a name for use as a folder/file name
 pub fn sanitize_name(name: &str) -> String {
     let sanitized: String = name.chars()
@@ -227,7 +211,9 @@ fn save_project_sync(project: &serde_json::Value) -> Result<String, String> {
 
     save_properties(&dir, &project)?;
     save_interfaces(&dir, &project)?;
-    save_test_suites(&dir, &project)?;
+    // C (global suites): the legacy `tests/` layout is gone — suites are routed to the
+    // global store, the single source of truth, exactly as the unified path does.
+    crate::test_suite_storage::merge_project_suites_into_global(&project)?;
     save_folders(&dir, &project)?;
 
     Ok(dir.to_string_lossy().to_string())
@@ -267,30 +253,8 @@ fn save_interfaces(dir: &Path, project: &serde_json::Value) -> Result<(), String
     Ok(())
 }
 
-/// Save all test suites, cleaning up orphaned directories.
-///
-/// Shared by BOTH the legacy store (`save_project`) and the unified store
-/// (`save_unified_project`) — the `tests/` subdir layout is identical. The
-/// guard that prevents the legacy auto-save from clobbering a unified project's
-/// suites lives in `save_project` (which no-ops for unified dirs), NOT here:
-/// `save_unified_project` must be able to write suites through this path.
-fn save_test_suites(dir: &Path, project: &serde_json::Value) -> Result<(), String> {
-    let tests_dir = dir.join("tests");
-    fs::create_dir_all(&tests_dir)
-        .map_err(|e| format!("Failed to create tests directory: {}", e))?;
-
-    if let Some(test_suites) = project["testSuites"].as_array() {
-        cleanup_orphan_dirs(&tests_dir, &sanitized_names(test_suites, "name"));
-        for suite in test_suites {
-            save_test_suite(suite, &tests_dir)?;
-        }
-    }
-    Ok(())
-}
-
 /// Save all folders, replacing any previously written folder files.
-/// Shared by both the legacy and unified stores (identical `folders/` layout);
-/// the unified-dir guard is in `save_project` (see save_test_suites).
+/// Shared by both the legacy and unified stores (identical `folders/` layout).
 fn save_folders(dir: &Path, project: &serde_json::Value) -> Result<(), String> {
     let folders_dir = dir.join("folders");
     fs::create_dir_all(&folders_dir)
@@ -474,74 +438,7 @@ fn save_request(req: &JsonValue, op_dir: &Path) -> Result<(), String> {
     write_json(&op_dir.join(format!("{}.json", safe_name)), &meta_val)
 }
 
-/// Save a test suite to its directory
-fn save_test_suite(suite: &JsonValue, tests_dir: &Path) -> Result<(), String> {
-    let name = suite["name"].as_str().ok_or("Missing test suite name")?;
-    let safe_name = sanitize_name(name);
-    let suite_dir = tests_dir.join(&safe_name);
 
-    fs::create_dir_all(&suite_dir)
-        .map_err(|e| format!("Failed to create test suite directory: {}", e))?;
-
-    let meta = TestSuiteMeta {
-        id: suite["id"].as_str().map(|s| s.to_string()),
-        name: name.to_string(),
-    };
-    let meta_val = serde_json::to_value(&meta)
-        .map_err(|e| format!("Failed to serialize test suite meta: {}", e))?;
-    write_json(&suite_dir.join("suite.json"), &meta_val)?;
-
-    if let Some(test_cases) = suite["testCases"].as_array() {
-        cleanup_orphan_dirs(&suite_dir, &sanitized_names(test_cases, "name"));
-        for tc in test_cases {
-            save_test_case(tc, &suite_dir)?;
-        }
-    }
-
-    Ok(())
-}
-
-/// Save a test case to its directory
-fn save_test_case(tc: &JsonValue, suite_dir: &Path) -> Result<(), String> {
-    let name = tc["name"].as_str().ok_or("Missing test case name")?;
-    let safe_name = sanitize_name(name);
-    let case_dir = suite_dir.join(&safe_name);
-
-    fs::create_dir_all(&case_dir)
-        .map_err(|e| format!("Failed to create test case directory: {}", e))?;
-
-    let meta = TestCaseMeta {
-        id: tc["id"].as_str().map(|s| s.to_string()),
-        name: name.to_string(),
-    };
-    let meta_val = serde_json::to_value(&meta)
-        .map_err(|e| format!("Failed to serialize test case meta: {}", e))?;
-    write_json(&case_dir.join("case.json"), &meta_val)?;
-
-    // Remove all existing step files before rewriting them in order.
-    if let Ok(entries) = fs::read_dir(&case_dir) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.is_file() {
-                if let Some(filename) = path.file_name().and_then(|f| f.to_str()) {
-                    if filename != "case.json" && filename.ends_with(".json") {
-                        let _ = fs::remove_file(path);
-                    }
-                }
-            }
-        }
-    }
-
-    if let Some(steps) = tc["steps"].as_array() {
-        for (i, step) in steps.iter().enumerate() {
-            let step_name = step["name"].as_str().unwrap_or("step");
-            let path = case_dir.join(format!("{:02}_{}.json", i + 1, sanitize_name(step_name)));
-            write_json(&path, step)?;
-        }
-    }
-
-    Ok(())
-}
 
 /// Load a project from disk
 #[tauri::command]
@@ -587,21 +484,10 @@ pub(crate) fn load_project_internal(dir_path: &str) -> Result<serde_json::Value,
         }
     }
     
-    // Load test suites
-    let tests_dir = dir.join("tests");
-    let mut test_suites = Vec::new();
-    
-    if tests_dir.exists() {
-        if let Ok(entries) = fs::read_dir(&tests_dir) {
-            for entry in entries.flatten() {
-                if entry.path().is_dir() {
-                    if let Ok(suite) = load_test_suite(&entry.path()) {
-                        test_suites.push(suite);
-                    }
-                }
-            }
-        }
-    }
+    // Test suites. The global store owns them (C); this read exists only for dirs that
+    // have not been migrated yet — `migrate_all_project_suites_to_global` moves them and
+    // removes the `tests/` dir, so a migrated project returns an empty list here.
+    let test_suites = crate::test_suite_storage::read_project_suites_dir(&dir.join("tests"));
     
     // Load folders
     let folders_dir = dir.join("folders");
@@ -725,77 +611,6 @@ fn load_request(op_dir: &Path, base_name: &str) -> Result<JsonValue, String> {
 
     let body = fs::read_to_string(&body_path).unwrap_or_default();
     meta_val["request"] = JsonValue::String(body);
-
-    Ok(meta_val)
-}
-
-/// Load a test suite from its directory
-fn load_test_suite(suite_dir: &Path) -> Result<JsonValue, String> {
-    let meta_path = suite_dir.join("suite.json");
-    let meta_json = fs::read_to_string(&meta_path)
-        .map_err(|e| format!("Failed to read suite.json: {}", e))?;
-    let meta: TestSuiteMeta = serde_json::from_str(&meta_json)
-        .map_err(|e| format!("Failed to parse suite.json: {}", e))?;
-
-    let mut meta_val = serde_json::to_value(&meta)
-        .map_err(|e| format!("Failed to serialize suite meta: {}", e))?;
-
-    // Load test cases
-    let mut test_cases = Vec::new();
-
-    if let Ok(entries) = fs::read_dir(suite_dir) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.is_dir() {
-                if let Ok(tc) = load_test_case(&path) {
-                    test_cases.push(tc);
-                }
-            }
-        }
-    }
-
-    meta_val["testCases"] = JsonValue::Array(test_cases);
-
-    Ok(meta_val)
-}
-
-/// Load a test case from its directory
-fn load_test_case(case_dir: &Path) -> Result<JsonValue, String> {
-    let meta_path = case_dir.join("case.json");
-    let meta_json = fs::read_to_string(&meta_path)
-        .map_err(|e| format!("Failed to read case.json: {}", e))?;
-    let meta: TestCaseMeta = serde_json::from_str(&meta_json)
-        .map_err(|e| format!("Failed to parse case.json: {}", e))?;
-
-    let mut meta_val = serde_json::to_value(&meta)
-        .map_err(|e| format!("Failed to serialize case meta: {}", e))?;
-
-    // Load steps (ordered by filename)
-    let mut steps = Vec::new();
-
-    if let Ok(entries) = fs::read_dir(case_dir) {
-        let mut step_files: Vec<_> = entries
-            .filter_map(|e| e.ok())
-            .filter(|e| {
-                let path = e.path();
-                path.is_file()
-                    && path.extension().and_then(|s| s.to_str()) == Some("json")
-                    && path.file_name().and_then(|f| f.to_str()) != Some("case.json")
-            })
-            .collect();
-
-        step_files.sort_by_key(|e| e.file_name());
-
-        for entry in step_files {
-            if let Ok(step_json) = fs::read_to_string(entry.path()) {
-                if let Ok(step) = serde_json::from_str::<JsonValue>(&step_json) {
-                    steps.push(step);
-                }
-            }
-        }
-    }
-
-    meta_val["steps"] = JsonValue::Array(steps);
 
     Ok(meta_val)
 }
@@ -1317,15 +1132,14 @@ pub(crate) fn save_unified_project_sync(dir_path: String, project: serde_json::V
         .ok_or("Missing or invalid operations array")?;
 
     let op_names = sanitized_names(operations, "name");
-    // Phase B (t_86c34d38): `tests/` and `folders/` hold the project's test
-    // suites and user folders (shared with the legacy layout) — protect them
-    // from the operation-dir cleanup. `interfaces/` is the LEGACY nested tree:
-    // the unified and legacy formats co-locate in the same dir and PROXY /
-    // WORKFLOWS still read the nested model, so a unified save must not delete
-    // it (making the migration non-destructive is what keeps those features
-    // working — see migrate_legacy_project_dir).
+    // `folders/` holds the project's user folders (shared with the legacy layout) —
+    // protect it from the operation-dir cleanup. `tests/` is no longer protected because
+    // it is no longer written: the global store owns suites and `save_unified_project_sync`
+    // removes any lingering `tests/` dir. `interfaces/` is the LEGACY nested tree: the
+    // unified and legacy formats co-locate in the same dir and PROXY / WORKFLOWS still
+    // read the nested model, so a unified save must not delete it (making the migration
+    // non-destructive is what keeps those features working — see migrate_legacy_project_dir).
     let mut keep: std::collections::HashSet<String> = op_names;
-    keep.insert("tests".to_string());
     keep.insert("folders".to_string());
     keep.insert("interfaces".to_string());
     cleanup_orphan_dirs(&dir, &keep);
@@ -1480,10 +1294,10 @@ pub(crate) fn load_unified_project_sync(dir_path: String) -> Result<serde_json::
         }
     }
 
-    // Phase B (t_86c34d38): unified projects now also carry test suites and
-    // user folders (relocated from the legacy ApinoxProject). They live in the
-    // same `tests/` / `folders/` subdirs as the legacy layout.
-    let test_suites = load_test_suites_from_dir(&dir);
+    // C (global suites): a unified project carries no suites — the global store owns
+    // them, and `save_unified_project_sync` removes any lingering `tests/` dir. The field
+    // stays so the webview's shape is unchanged; it is empty for every unified project.
+    let test_suites: Vec<JsonValue> = Vec::new();
     let folders = load_folders_from_dir(&dir);
 
     Ok(serde_json::json!({
@@ -1503,25 +1317,6 @@ pub(crate) fn load_unified_project_sync(dir_path: String) -> Result<serde_json::
         "testSuites": test_suites,
         "folders": folders,
     }))
-}
-
-/// Load all test suites from a project dir's `tests/` subdir (Phase B, t_86c34d38).
-/// Shared by the unified and legacy loaders so the on-disk layout stays identical.
-fn load_test_suites_from_dir(dir: &Path) -> Vec<JsonValue> {
-    let tests_dir = dir.join("tests");
-    let mut test_suites = Vec::new();
-    if tests_dir.exists() {
-        if let Ok(entries) = fs::read_dir(&tests_dir) {
-            for entry in entries.flatten() {
-                if entry.path().is_dir() {
-                    if let Ok(suite) = load_test_suite(&entry.path()) {
-                        test_suites.push(suite);
-                    }
-                }
-            }
-        }
-    }
-    test_suites
 }
 
 /// Load all folders from a project dir's `folders/` subdir (Phase B, t_86c34d38).
@@ -2236,10 +2031,36 @@ mod tests {
                 }
             }
         }
-        // tests/ + folders/ subdirs (same layout the migration must preserve)
+        // tests/ + folders/ subdirs. The production writer for this layout is gone (the
+        // global store owns suites), so the fixture is built directly — which is what the
+        // migration test needs: it must read the historical shape, not a writer's output.
         if let Some(suites) = project["testSuites"].as_array() {
             if !suites.is_empty() {
-                save_test_suites(&dir, project).expect("save legacy suites");
+                let tests_dir = dir.join("tests");
+                for suite in suites {
+                    let suite_name = suite["name"].as_str().unwrap_or("suite");
+                    let suite_dir = tests_dir.join(sanitize_name(suite_name));
+                    fs::create_dir_all(&suite_dir).unwrap();
+                    write_json(&suite_dir.join("suite.json"), &serde_json::json!({
+                        "id": suite.get("id").cloned(),
+                        "name": suite_name,
+                    })).unwrap();
+
+                    for case in suite["testCases"].as_array().unwrap_or(&vec![]).iter() {
+                        let case_name = case["name"].as_str().unwrap_or("case");
+                        let case_dir = suite_dir.join(sanitize_name(case_name));
+                        fs::create_dir_all(&case_dir).unwrap();
+                        // case.json carries only {id, name}; each step is its own file.
+                        write_json(&case_dir.join("case.json"), &serde_json::json!({
+                            "id": case.get("id").cloned(),
+                            "name": case_name,
+                        })).unwrap();
+                        for (i, step) in case["steps"].as_array().unwrap_or(&vec![]).iter().enumerate() {
+                            let step_name = step["name"].as_str().unwrap_or("step");
+                            write_json(&case_dir.join(format!("{:02}_{}.json", i + 1, sanitize_name(step_name))), step).unwrap();
+                        }
+                    }
+                }
             }
         }
         if let Some(folders) = project["folders"].as_array() {
@@ -2461,6 +2282,55 @@ mod tests {
             .expect("properties.json still present");
         let props2: serde_json::Value = serde_json::from_str(&props_str2).expect("parse props2");
         assert_eq!(props2["format"], "APInox-unified-v1", "still unified after proxy save");
+
+        std::env::remove_var("APINOX_CONFIG_DIR");
+    }
+
+    /// The legacy per-project `tests/` layout is gone: a legacy-format save must route
+    /// suites to the global store (the single source of truth) rather than writing
+    /// `tests/{suite}/{case}/NN_step.json`.
+    #[tokio::test]
+    async fn legacy_save_routes_suites_to_the_global_store_instead_of_writing_tests() {
+        use crate::utils::config::CONFIG_DIR_TEST_LOCK;
+        let _guard = CONFIG_DIR_TEST_LOCK
+            .lock()
+            .unwrap_or_else(|p| p.into_inner());
+        let tmp = tempfile::tempdir().expect("tempdir");
+        std::env::set_var("APINOX_CONFIG_DIR", tmp.path());
+
+        let project = serde_json::json!({
+            "name": "LegacySaver",
+            "id": "ls",
+            "interfaces": [],
+            "folders": [],
+            "testSuites": [
+                { "id": "ls-suite", "name": "Suite", "testCases": [
+                    { "id": "ls-case", "name": "Case", "steps": [
+                        { "id": "ls-step", "name": "Step", "type": "delay", "config": { "delayMs": 5 } }
+                    ] }
+                ] }
+            ]
+        });
+
+        save_project(project).await.expect("legacy save");
+
+        let dir = tmp.path().join("projects").join("LegacySaver");
+        assert!(
+            !dir.join("tests").exists(),
+            "the legacy per-project tests/ layout must no longer be written"
+        );
+
+        let global = crate::test_suite_storage::get_test_suites()
+            .await
+            .expect("global suites");
+        let suite = global
+            .iter()
+            .find(|s| s["id"] == "ls-suite")
+            .expect("suite routed to the global store");
+        assert_eq!(
+            suite["testCases"][0]["steps"][0]["id"], "ls-step",
+            "the whole case, not just the meta"
+        );
 
         std::env::remove_var("APINOX_CONFIG_DIR");
     }
