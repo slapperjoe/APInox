@@ -1777,6 +1777,24 @@ mod tests {
         assert!(r.passed && !r.stop_remaining);
     }
 
+    /// A request step is a self-contained copy, never a link.
+    ///
+    /// The retired per-project layout stored `config.requestId` pointing at a project
+    /// request, so a step could change when the project changed. `FrontendStepConfig` has no
+    /// such field — a document carrying one deserialises to a step with no request at all,
+    /// and the runner fails rather than resolving against a project. That is what makes the
+    /// global suite store safe: suites never need a project to run.
+    #[tokio::test]
+    async fn request_step_cannot_resolve_against_a_project() {
+        let mut ctx: HashMap<String, Value> = HashMap::new();
+        let s = step("request", "call", serde_json::json!({ "requestId": "req-1" }));
+        let err = run_step(&s, None, &mut ctx, None, 0).await.unwrap_err();
+        assert!(
+            err.to_string().contains("no request config"),
+            "a link-only step must fail, not look a project up: {err}"
+        );
+    }
+
     #[tokio::test]
     async fn loop_count_runs_body_with_iterator_variable() {
         let mut ctx: HashMap<String, Value> = HashMap::new();

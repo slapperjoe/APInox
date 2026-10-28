@@ -90,7 +90,7 @@ export function buildTrafficTestSteps(logs: TrafficLog[], opts: BuildTestStepsOp
             id: newId(),
             name: apiRequest.name,
             type: 'request' as const,
-            config: { request: apiRequest, requestId: undefined },
+            config: { request: apiRequest },
         };
     });
 }

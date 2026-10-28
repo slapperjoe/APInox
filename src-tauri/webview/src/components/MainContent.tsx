@@ -1864,8 +1864,7 @@ const MainContent: React.FC = () => {
                                             // Explicitly preserve requestType and bodyType to prevent defaulting to soap
                                             requestType: req.requestType || 'soap',
                                             bodyType: req.bodyType
-                                        },
-                                        requestId: undefined
+                                        }
                                     }
                                 };
 

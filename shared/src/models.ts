@@ -556,9 +556,13 @@ export interface TestStep {
     type: TestStepType;
     // Common configuration
     config: {
-        // For 'request'
-        requestId?: string; // Reference to a project request (if linked)
-        request?: ApiRequest; // Standalone request copy
+        // For 'request' — always a self-contained copy. A step is never a link to a
+        // project request: the runner reads `config.request` directly and errors without
+        // it, so there is no lookup to fall back to and editing a step never changes the
+        // request it was built from. (The retired per-project layout had a `requestId`
+        // link; nothing reads it, so it is gone. Suites in the global store are
+        // self-contained for exactly this reason.)
+        request?: ApiRequest;
 
         // For 'delay'
         delayMs?: number;
