@@ -34,6 +34,18 @@ describe('the Test Suites help page', () => {
         // rename a name.
         expect(content()).toMatch(/cannot rename a name/);
         expect(content()).toMatch(/Ctrl\+F|Ctrl\+H/);
+        // It covers both entities, not just cases — the suite menu offers it too.
+        expect(content()).toMatch(/Right-click a case or a suite/);
+    });
+
+    it('documents that renaming a variable in the panel now updates its references', () => {
+        // The footgun this fixes: the panel used to change only the definition, leaving
+        // every `{{oldName}}` dangling silently.
+        expect(content()).toMatch(/updates the references to it as well/);
+        // Both syntaxes `utils/template.rs` substitutes.
+        expect(content()).toContain('{{name}}');
+        expect(content()).toContain('${name}');
+        expect(content()).toMatch(/when the name field loses focus/);
     });
 
     it('states the global store is the source of truth, not the retired per-project layout', () => {
@@ -44,7 +56,8 @@ describe('the Test Suites help page', () => {
     it('states what saving validates', () => {
         expect(content()).toMatch(/must parse/);
         expect(content()).toMatch(/warned about/);
-        // The case id is the store key, so the editor blocks changing it.
-        expect(content()).toMatch(/case `id` itself cannot\s+change/);
+        // The entity id is the store key, so the editor blocks changing it — for cases and
+        // suites alike.
+        expect(content()).toMatch(/entity `id` itself cannot\s+change/);
     });
 });

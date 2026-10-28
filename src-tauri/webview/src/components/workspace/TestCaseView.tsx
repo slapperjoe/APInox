@@ -265,6 +265,10 @@ export interface TestCaseViewProps {
     /** Commit this case's variables (case-level {{name}} values). When
         provided, a variable editor is shown above the steps. */
     onUpdateVariables?: (variables: Record<string, string>) => void;
+    /** Rename a case variable AND the `{{name}}` / `${name}` references to it in this
+        case's step bodies, assertion tokens and extractor definitions. Returns how many
+        references were rewritten. */
+    onRenameVariable?: (from: string, to: string) => number;
     /** Global test cases, for resolving a 'testCase' step's referenced case
         (label + read-only nested steps preview). */
     testCases?: Array<{ id: string; name: string; steps?: TestStep[] }>;
@@ -284,6 +288,7 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
     onDeleteStep,
     onOpenStepRequest,
     onUpdateVariables,
+    onRenameVariable,
     testCases,
     // projects // Unused
 }) => {
@@ -359,6 +364,7 @@ export const TestCaseView: React.FC<TestCaseViewProps> = ({
                     <VariablesEditor
                         variables={testCase.variables}
                         onChange={onUpdateVariables}
+                        onRenameVariable={onRenameVariable}
                         hint="Reusable name→value pairs available to every step in this case as {{name}} — scoped to this case only. A case variable overrides the suite's variables and the active environment."
                     />
                 </VariablesRow>

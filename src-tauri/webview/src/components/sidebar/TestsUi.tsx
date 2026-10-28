@@ -213,8 +213,10 @@ export interface TestsUiProps {
     onImportSuite?: () => void;
     onImportTestCase?: (suiteId: string) => void;
     onExportTestCase?: (caseId: string) => void;
-    /** Open the raw JSON editor for a case — the escape hatch for find-and-replace
-     *  across step bodies, which the step editors cannot do. */
+    /** Raw JSON editor — the escape hatch for find-and-replace across step bodies, which
+     *  the structured editors cannot do. Undefined when the rail renders without the full
+     *  app wiring (isolated component tests). */
+    onEditTestSuiteJson?: (suiteId: string) => void;
     onEditTestCaseJson?: (caseId: string) => void;
     deleteConfirm: string | null;
 }
@@ -248,6 +250,7 @@ export const TestsUi: React.FC<TestsUiProps> = ({
     onExportSuite,
     onImportSuite,
     onImportTestCase,
+    onEditTestSuiteJson,
     onExportTestCase,
     onEditTestCaseJson,
     deleteConfirm
@@ -457,14 +460,16 @@ export const TestsUi: React.FC<TestsUiProps> = ({
     // Import Test Case; case: Export Test Case). Each item renders only when
     // its handler is wired (isolated component tests omit the handlers), and
     // an empty section is never rendered.
-    const suiteFileItems: CtxMenuItem[] = contextMenu?.type === 'suite' && contextMenu.suiteId
+    // Narrow once rather than asserting inside each closure.
+    const suiteId = contextMenu?.type === 'suite' ? contextMenu.suiteId : null;
+    const suiteFileItems: CtxMenuItem[] = suiteId
         ? [
-            ...(onExportSuite ? [{ icon: Download, label: 'Export Suite', onClick: () => { onExportSuite(contextMenu.suiteId!); closeContextMenu(); } }] : []),
+            ...(onEditTestSuiteJson ? [{ icon: FileCode, label: 'Edit as JSON', onClick: () => { onEditTestSuiteJson(suiteId); closeContextMenu(); } }] : []),
+            ...(onExportSuite ? [{ icon: Download, label: 'Export Suite', onClick: () => { onExportSuite(suiteId); closeContextMenu(); } }] : []),
             ...(onImportSuite ? [{ icon: FolderOpen, label: 'Import Suite', onClick: () => { onImportSuite(); closeContextMenu(); } }] : []),
-            ...(onImportTestCase ? [{ icon: FileText, label: 'Import Test Case', onClick: () => { onImportTestCase(contextMenu.suiteId!); closeContextMenu(); } }] : []),
+            ...(onImportTestCase ? [{ icon: FileText, label: 'Import Test Case', onClick: () => { onImportTestCase(suiteId); closeContextMenu(); } }] : []),
         ]
         : [];
-    // Narrow once rather than asserting inside each closure.
     const caseId = contextMenu?.type === 'case' ? contextMenu.caseId : null;
     const caseFileItems: CtxMenuItem[] = caseId
         ? [

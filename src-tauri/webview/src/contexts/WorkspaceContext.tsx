@@ -170,9 +170,15 @@ interface WorkspaceContextValue {
     /** Replace a test suite's variables (suite-level {{name}} values,
         shared by every case in the suite). */
     updateTestSuiteVariables: (suiteId: string, variables: Record<string, string>) => void;
+    /** Rename a suite variable AND the references to it across every case in the suite.
+        Returns how many references were rewritten. */
+    renameTestSuiteVariable: (suiteId: string, from: string, to: string) => number;
     /** Replace a test case's variables (case-level {{name}} values,
         scoped to this case only — override the suite's). */
     updateTestCaseVariables: (caseId: string, variables: Record<string, string>) => void;
+    /** Rename a case variable AND the references to it in this case's steps.
+        Returns how many references were rewritten. */
+    renameTestCaseVariable: (caseId: string, from: string, to: string) => number;
     
     // ==================== ACTIONS - Test Step Management ====================
     /** Update a test step */

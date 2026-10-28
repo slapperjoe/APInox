@@ -97,6 +97,8 @@ export const WorkspaceLayout: React.FC = () => {
     const onRunTestCase = workspace.handleRunTestCase;
     const updateTestSuiteVariables = workspace.updateTestSuiteVariables;
     const updateTestCaseVariables = workspace.updateTestCaseVariables;
+    const renameTestSuiteVariable = workspace.renameTestSuiteVariable;
+    const renameTestCaseVariable = workspace.renameTestCaseVariable;
     const onAddExtractor = workspace.handleAddExtractor;
     const onAddExistenceAssertion = workspace.handleAddExistenceAssertion;
     const onImportFromWorkspace = workspace.onImportFromWorkspace;
@@ -434,6 +436,7 @@ export const WorkspaceLayout: React.FC = () => {
                 suite={selectedTestSuite}
                 onSelectTestCase={navigationActions?.onSelectTestCase}
                 onUpdateVariables={updateTestSuiteVariables ? (vars) => updateTestSuiteVariables(selectedTestSuite.id, vars) : undefined}
+                onRenameVariable={renameTestSuiteVariable ? (from, to) => renameTestSuiteVariable(selectedTestSuite.id, from, to) : undefined}
             />;
         }
 
@@ -730,6 +733,7 @@ export const WorkspaceLayout: React.FC = () => {
                     onDeleteStep={onDeleteStep}
                     onOpenStepRequest={onOpenStepRequest}
                     onUpdateVariables={(vars) => updateTestCaseVariables(selectedTestCase.id, vars)}
+                    onRenameVariable={(from, to) => renameTestCaseVariable(selectedTestCase.id, from, to)}
                     testCases={globalTestCases}
                     projects={projects}
                 />

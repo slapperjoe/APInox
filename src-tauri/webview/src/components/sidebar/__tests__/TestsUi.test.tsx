@@ -249,6 +249,16 @@ describe('TestsUi', () => {
         v4b.unmount();
     });
 
+    it('right-clicking a suite offers Edit as JSON', () => {
+        const onEditTestSuiteJson = vi.fn();
+        render(<TestsUi {...defaultProps} onEditTestSuiteJson={onEditTestSuiteJson} />);
+
+        fireEvent.contextMenu(screen.getByText('Suite 1'));
+        fireEvent.click(screen.getByText('Edit as JSON'));
+
+        expect(onEditTestSuiteJson).toHaveBeenCalledWith('suite-1');
+    });
+
     it('renaming a suite from its right-click menu persists the new name', () => {
         const onRenameSuite = vi.fn();
         render(<TestsUi {...defaultProps} onRenameSuite={onRenameSuite} />);

@@ -91,4 +91,82 @@ describe('VariablesEditor', () => {
         fireEvent.change(newName, { target: { value: 'user' } });
         expect(onChange).toHaveBeenLastCalledWith({ token: 'abc', user: '' });
     });
+
+    /**
+     * Renaming a variable has to change the definition AND what points at it. The editor
+     * used to change only the definition, so every `{{oldName}}` in the step bodies was left
+     * dangling — silently, because nothing warned.
+     */
+    describe('renaming a variable', () => {
+        it('propagates the rename on blur, not on every keystroke', () => {
+            const onRenameVariable = vi.fn(() => 2);
+            render(
+                <VariablesEditor
+                    variables={{ token: 'abc' }}
+                    onChange={vi.fn()}
+                    onRenameVariable={onRenameVariable}
+                />
+            );
+
+            const name = nameInputs()[0] as HTMLInputElement;
+            fireEvent.focus(name);
+            fireEvent.change(name, { target: { value: 'tok' } });
+
+            // Typing one character at a time would propagate partial renames into the
+            // references, so the rename is committed on blur.
+            expect(onRenameVariable).not.toHaveBeenCalled();
+
+            fireEvent.blur(name);
+            expect(onRenameVariable).toHaveBeenCalledWith('token', 'tok');
+        });
+
+        it('reports how many references it updated', () => {
+            const onRenameVariable = vi.fn(() => 2);
+            render(
+                <VariablesEditor
+                    variables={{ token: 'abc' }}
+                    onChange={vi.fn()}
+                    onRenameVariable={onRenameVariable}
+                />
+            );
+
+            const name = nameInputs()[0] as HTMLInputElement;
+            fireEvent.focus(name);
+            fireEvent.change(name, { target: { value: 'tok' } });
+            fireEvent.blur(name);
+
+            expect(screen.getByTestId('rename-note')).toHaveTextContent('updated 2 references');
+        });
+
+        it('says so when a rename leaves references dangling', () => {
+            // Without a rename handler the editor changes only the definition. That is the
+            // footgun, so it must be stated rather than glossed over.
+            render(<VariablesEditor variables={{ token: 'abc' }} onChange={vi.fn()} />);
+
+            const name = nameInputs()[0] as HTMLInputElement;
+            fireEvent.focus(name);
+            fireEvent.change(name, { target: { value: 'tok' } });
+            fireEvent.blur(name);
+
+            expect(screen.getByTestId('rename-note')).toHaveTextContent('references to {{token}} are not updated');
+        });
+
+        it('does not call the handler when the name is unchanged', () => {
+            const onRenameVariable = vi.fn();
+            render(
+                <VariablesEditor
+                    variables={{ token: 'abc' }}
+                    onChange={vi.fn()}
+                    onRenameVariable={onRenameVariable}
+                />
+            );
+
+            const name = nameInputs()[0] as HTMLInputElement;
+            fireEvent.focus(name);
+            fireEvent.change(name, { target: { value: 'token' } });
+            fireEvent.blur(name);
+
+            expect(onRenameVariable).not.toHaveBeenCalled();
+        });
+    });
 });

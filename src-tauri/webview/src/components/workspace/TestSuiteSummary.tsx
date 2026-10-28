@@ -13,7 +13,10 @@ export const TestSuiteSummary: React.FC<{
     /** Commit this suite's variables (suite-level {{name}} values, shared by
         every case in the suite). When provided, a variable editor is shown. */
     onUpdateVariables?: (variables: Record<string, string>) => void;
-}> = ({ suite, onSelectTestCase, onUpdateVariables }) => {
+    /** Rename a suite variable AND the references to it across every case in the suite.
+        Returns how many references were rewritten. */
+    onRenameVariable?: (from: string, to: string) => number;
+}> = ({ suite, onSelectTestCase, onUpdateVariables, onRenameVariable }) => {
     // Calculate total steps
     const totalSteps = suite.testCases.reduce((sum, tc) => sum + tc.steps.length, 0);
 
@@ -41,6 +44,7 @@ export const TestSuiteSummary: React.FC<{
                     <VariablesEditor
                         variables={suite.variables}
                         onChange={onUpdateVariables}
+                        onRenameVariable={onRenameVariable}
                         hint="Reusable name→value pairs shared by every case in this suite as {{name}}. A case's own variables override these; both override the active environment."
                     />
                 </div>

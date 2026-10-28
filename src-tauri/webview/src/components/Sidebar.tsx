@@ -238,6 +238,7 @@ export const Sidebar: React.FC = () => {
                         onExportSuite={testsProps.onExportSuite}
                         onImportSuite={testsProps.onImportSuite}
                         onImportTestCase={testsProps.onImportTestCase}
+                        onEditTestSuiteJson={testsProps.onEditTestSuiteJson}
                         onExportTestCase={testsProps.onExportTestCase}
                         onEditTestCaseJson={testsProps.onEditTestCaseJson}
                         testExecution={testsProps.testExecution}

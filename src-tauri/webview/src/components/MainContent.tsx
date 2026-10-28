@@ -19,6 +19,8 @@ import type { PickRequestItem } from './modals/PickRequestModal';
 import type { BulkImportResult } from './modals/BulkImportModal';
 import { ApiRequest, TestCase, TestStep, TestSuite, SidebarView, RequestHistoryEntry, WsdlDiff, ApiInterface, ApiOperation, ApinoxProject, UnifiedProject, ScrapbookRequest } from '@shared/models';
 import { buildTrafficTestSteps } from '../utils/trafficTestCase';
+import { renameVariableReferences, renameVariableInSuite } from '../utils/variableRename';
+import { testCaseValidator, testSuiteValidator } from '../utils/jsonValidators';
 import { BackendCommand, FrontendCommand } from '@shared/messages';
 import { PERF_REQUEST_ID_PREFIX } from '../constants';
 import { useMessageHandler } from '../hooks/useMessageHandler';
@@ -72,8 +74,8 @@ const AddToProjectDialog = React.lazy(() =>
 const AddToTestCaseModal = React.lazy(() =>
     import('./modals/AddToTestCaseModal').then(module => ({ default: module.AddToTestCaseModal }))
 );
-const EditTestCaseJsonModal = React.lazy(() =>
-    import('./modals/EditTestCaseJsonModal').then(module => ({ default: module.EditTestCaseJsonModal }))
+const EditJsonModal = React.lazy(() =>
+    import('./modals/EditJsonModal').then(module => ({ default: module.EditJsonModal }))
 );
 
 const CreateTestCaseFromTrafficWizard = React.lazy(() =>
@@ -981,10 +983,10 @@ const MainContent: React.FC = () => {
     // Modals (remaining)
     const [confirmationModal, setConfirmationModal] = useState<ConfirmationState | null>(null);
     const [addToTestCaseModal, setAddToTestCaseModal] = React.useState<{ open: boolean, request: ApiRequest | null }>({ open: false, request: null });
-    // Raw JSON editor for a case. The state holds the case id rather than the object, so
-    // the modal always shows the current store entry rather than a snapshot taken when it
-    // opened.
-    const [jsonEditorCaseId, setJsonEditorCaseId] = useState<string | null>(null);
+    // Raw JSON editor. The state holds the entity type and its id rather than the object,
+    // so the modal always shows the current store entry rather than a snapshot taken when
+    // it opened.
+    const [jsonEditorTarget, setJsonEditorTarget] = useState<{ type: 'case' | 'suite'; id: string } | null>(null);
     // Create Test Case from Traffic: the full capture (capture order) plus the
     // right-clicked log as the pre-selected anchor. Full-page wizard rendered
     // in place of ProxyPanel — not a modal.
@@ -1311,9 +1313,9 @@ const MainContent: React.FC = () => {
         closeProject(name);
     }, [deleteConfirm, selectedProjectName, setSelectedInterface, setSelectedOperation, setSelectedRequest, closeProject]);
 
-    const handleEditTestCaseJson = useCallback((caseId: string) => {
-        setJsonEditorCaseId(caseId);
-    }, [setJsonEditorCaseId]);
+    const handleEditJson = useCallback((type: 'case' | 'suite', id: string) => {
+        setJsonEditorTarget({ type, id });
+    }, [setJsonEditorTarget]);
 
     // ==========================================================================
     // WORKSPACE CONTEXT VALUE - Aggregates all state for WorkspaceLayout subtree
@@ -1395,6 +1397,22 @@ const MainContent: React.FC = () => {
         updateTestCaseVariables: (caseId: string, variables: Record<string, string>) => {
             updateGlobalTestCase(caseId, tc => ({ ...tc, variables }));
         },
+        // The definition is renamed by VariablesEditor; these rewrite what points at it.
+        // Without this half, renaming a variable leaves every `{{oldName}}` dangling.
+        renameTestSuiteVariable: (suiteId: string, from: string, to: string) => {
+            const suite = findGlobalSuite(suiteId);
+            if (!suite) return 0;
+            const result = renameVariableInSuite(suite, from, to);
+            if (result.updated > 0) updateGlobalSuite(result.suite);
+            return result.updated;
+        },
+        renameTestCaseVariable: (caseId: string, from: string, to: string) => {
+            const found = findGlobalCase(caseId);
+            if (!found) return 0;
+            const result = renameVariableReferences(found.testCase, from, to);
+            if (result.updated > 0) updateGlobalTestCase(caseId, () => result.testCase);
+            return result.updated;
+        },
         // TEST STEP
         updateTestStep: handleUpdateStep,
         deleteTestStep: handleDeleteStep,
@@ -1437,7 +1455,7 @@ const MainContent: React.FC = () => {
         handleToggleLineNumbers, handleUpdateStep, handleDeleteStep, handleMoveStep,
         handleAddStep, handleRunTestCaseWrapper, handleRunTestSuiteWrapper,
         handleAddAssertion, handleAddPerformanceSuite, handleDeletePerformanceSuite,
-        findGlobalSuite, updateGlobalSuite, updateGlobalTestCase,
+        findGlobalSuite, findGlobalCase, updateGlobalSuite, updateGlobalTestCase,
         handleRunPerformanceSuite, handleStopPerformanceRun, handleSelectPerformanceSuite,
         handleUpdatePerformanceSuite, handleAddPerformanceRequestForUi, handleAddPerformanceTestCase,
         handleDeletePerformanceRequest, handleUpdatePerformanceRequest,
@@ -1485,7 +1503,8 @@ const MainContent: React.FC = () => {
             onImportSuite: handleImportSuite,
             onImportTestCase: handleImportTestCase,
             onExportTestCase: handleExportTestCase,
-            onEditTestCaseJson: handleEditTestCaseJson,
+            onEditTestCaseJson: (caseId: string) => handleEditJson('case', caseId),
+            onEditTestSuiteJson: (suiteId: string) => handleEditJson('suite', suiteId),
             onToggleSuiteExpand: handleToggleSuiteExpand,
             onToggleCaseExpand: handleToggleCaseExpand,
             // Live per-step execution status — mirrors the TestCaseView status
@@ -1589,7 +1608,7 @@ const MainContent: React.FC = () => {
         handleToggleSuiteExpand, handleToggleCaseExpand, handleSelectStep, handleRenameTestStep,
         handleDeleteStepFromMenu,
         handleExportSuite, handleExportTestCase, handleImportSuite, handleImportTestCase,
-        handleEditTestCaseJson,
+        handleEditJson,
         selectedTestSuite, selectedTestCase, globalTestSuites, findGlobalCase,
         config, activeRunId, selectedPerformanceSuiteId,
         handleAddPerformanceSuite, handleDeletePerformanceSuite, handleRunPerformanceSuite,
@@ -1878,18 +1897,28 @@ const MainContent: React.FC = () => {
                 )
             }
 
-            {/* Raw JSON editor for a test case — find and replace across step bodies,
-                which the step editors cannot do. */}
+            {/* Raw JSON editor — find and replace across step bodies, which the structured
+                editors cannot do. */}
             {
-                jsonEditorCaseId && (() => {
-                    const found = findGlobalCase(jsonEditorCaseId);
-                    if (!found) return null;
+                jsonEditorTarget && (() => {
+                    const document = jsonEditorTarget.type === 'case'
+                        ? findGlobalCase(jsonEditorTarget.id)?.testCase
+                        : findGlobalSuite(jsonEditorTarget.id);
+                    if (!document) return null;
+
+                    const isCase = jsonEditorTarget.type === 'case';
                     return (
                         <Suspense fallback={null}>
-                            <EditTestCaseJsonModal
-                                testCase={found.testCase}
-                                onClose={() => setJsonEditorCaseId(null)}
-                                onSave={(edited) => updateGlobalTestCase(found.testCase.id, () => edited)}
+                            <EditJsonModal
+                                document={document}
+                                entityLabel={isCase ? 'test case' : 'test suite'}
+                                expectedId={jsonEditorTarget.id}
+                                entityValidator={isCase ? testCaseValidator : testSuiteValidator}
+                                onClose={() => setJsonEditorTarget(null)}
+                                onSave={(edited) => isCase
+                                    ? updateGlobalTestCase(jsonEditorTarget.id, () => edited)
+                                    : updateGlobalSuite(edited)
+                                }
                             />
                         </Suspense>
                     );

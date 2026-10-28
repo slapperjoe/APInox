@@ -1,23 +1,21 @@
 /**
- * Raw JSON editor for a test case.
+ * Raw JSON editor for a store entity.
  *
  * The point of the feature is find-and-replace across step bodies — the variables panel
  * edits values but cannot rename a name, so a `{{token}}` rename otherwise means editing
  * every step one at a time.
  *
  * What these tests guard is the boundary a raw editor has to hold: it must accept things
- * the step editors would not allow, but it must not let you save a document the runner
- * cannot execute.
+ * the structured editors would not allow, but it must not let you save a document the
+ * runner cannot execute, and it must not let you change the key the entry is filed under.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
-import {
-    EditorSettingsProvider,
-    ThemeProvider,
-} from '../../../request-editor/core';
-import { EditTestCaseJsonModal, validateTestCaseDocument } from '../EditTestCaseJsonModal';
-import { TestCase } from '@shared/models';
+import { EditorSettingsProvider, ThemeProvider } from '../../../request-editor/core';
+import { EditJsonModal } from '../EditJsonModal';
+import { testCaseValidator, testSuiteValidator, validateJsonDocument } from '../../../utils/jsonValidators';
+import { TestCase, TestSuite } from '@shared/models';
 
 // Monaco cannot run in jsdom, so the editor is replaced with a textarea the tests can
 // drive — the same pattern the explorer tests use.
@@ -47,12 +45,28 @@ const caseWithTransfer: TestCase = {
     ],
 };
 
-function renderModal(testCase: TestCase, onSave: (tc: TestCase) => void) {
+const suite: TestSuite = {
+    id: 's1',
+    name: 'Suite',
+    variables: { baseUrl: 'https://example.com' },
+    testCases: [caseWithTransfer],
+};
+
+function renderModal(
+    document: unknown,
+    entityLabel: string,
+    expectedId: string,
+    entityValidator: (parsed: Record<string, unknown>) => { error?: string; warnings: string[] },
+    onSave: (doc: any) => void
+) {
     render(
         <ThemeProvider standalone={true}>
             <EditorSettingsProvider>
-                <EditTestCaseJsonModal
-                    testCase={testCase}
+                <EditJsonModal
+                    document={document}
+                    entityLabel={entityLabel}
+                    expectedId={expectedId}
+                    entityValidator={entityValidator}
                     onSave={onSave}
                     onClose={() => {}}
                 />
@@ -61,27 +75,34 @@ function renderModal(testCase: TestCase, onSave: (tc: TestCase) => void) {
     );
 }
 
-const editor = () => screen.getByTestId('editor');
+const editor = () => screen.getByTestId('editor') as HTMLTextAreaElement;
 const save = () => fireEvent.click(screen.getByText('Save'));
 
-describe('the editor shows the case as the store holds it', () => {
-    it('renders the case pretty-printed', () => {
-        renderModal(caseWithTransfer, vi.fn());
-        const shown = JSON.parse((editor() as HTMLTextAreaElement).value);
+beforeEach(() => {
+    document.body.innerHTML = '';
+});
+
+describe('the editor shows the entity as the store holds it', () => {
+    it('renders a case pretty-printed', () => {
+        renderModal(caseWithTransfer, 'test case', 'c1', testCaseValidator, vi.fn());
+        const shown = JSON.parse(editor().value);
         expect(shown.id).toBe('c1');
         expect(shown.variables).toEqual({ token: 'abc' });
         expect(shown.steps).toHaveLength(3);
     });
+
+    it('renders a suite pretty-printed', () => {
+        renderModal(suite, 'test suite', 's1', testSuiteValidator, vi.fn());
+        const shown = JSON.parse(editor().value);
+        expect(shown.id).toBe('s1');
+        expect(shown.testCases).toHaveLength(1);
+    });
 });
 
 describe('saving', () => {
-    beforeEach(() => {
-        document.body.innerHTML = '';
-    });
-
     it('saves the parsed document', () => {
         const onSave = vi.fn();
-        renderModal(caseWithTransfer, onSave);
+        renderModal(caseWithTransfer, 'test case', 'c1', testCaseValidator, onSave);
 
         fireEvent.change(editor(), {
             target: { value: JSON.stringify({ id: 'c1', name: 'Case', steps: [] }) },
@@ -93,7 +114,7 @@ describe('saving', () => {
 
     it('refuses to save invalid JSON and says so', () => {
         const onSave = vi.fn();
-        renderModal(caseWithTransfer, onSave);
+        renderModal(caseWithTransfer, 'test case', 'c1', testCaseValidator, onSave);
 
         fireEvent.change(editor(), { target: { value: '{ id: "c1", }' } });
         save();
@@ -104,7 +125,7 @@ describe('saving', () => {
 
     it('refuses a step type the runner does not know', () => {
         const onSave = vi.fn();
-        renderModal(caseWithTransfer, onSave);
+        renderModal(caseWithTransfer, 'test case', 'c1', testCaseValidator, onSave);
 
         fireEvent.change(editor(), {
             target: {
@@ -121,36 +142,44 @@ describe('saving', () => {
         expect(screen.getByTestId('json-error')).toHaveTextContent('unknown type: banana');
     });
 
-    it('blocks changing the case id', () => {
+    it('refuses a suite whose testCases is not an array', () => {
         const onSave = vi.fn();
-        renderModal(caseWithTransfer, onSave);
+        renderModal(suite, 'test suite', 's1', testSuiteValidator, onSave);
 
         fireEvent.change(editor(), {
-            target: {
-                value: JSON.stringify({ id: 'c2', name: 'Case', steps: [] }),
-            },
+            target: { value: JSON.stringify({ id: 's1', name: 'Suite', testCases: {} }) },
         });
         save();
 
         expect(onSave).not.toHaveBeenCalled();
-        expect(screen.getByTestId('json-error')).toHaveTextContent('case `id` cannot be changed');
+        expect(screen.getByTestId('json-error')).toHaveTextContent('`testCases` must be an array');
     });
 
-    it('accepts the id unchanged', () => {
+    it('blocks changing the entity id', () => {
         const onSave = vi.fn();
-        renderModal(caseWithTransfer, onSave);
+        renderModal(caseWithTransfer, 'test case', 'c1', testCaseValidator, onSave);
 
-        fireEvent.change(editor(), {
-            target: { value: JSON.stringify({ id: 'c1', name: 'Renamed', steps: [] }) },
-        });
+        fireEvent.change(editor(), { target: { value: JSON.stringify({ id: 'c2', name: 'Case', steps: [] }) } });
         save();
 
-        expect(onSave).toHaveBeenCalledWith({ id: 'c1', name: 'Renamed', steps: [] });
+        expect(onSave).not.toHaveBeenCalled();
+        expect(screen.getByTestId('json-error')).toHaveTextContent('`id` cannot be changed');
+    });
+
+    it('blocks changing a suite id', () => {
+        const onSave = vi.fn();
+        renderModal(suite, 'test suite', 's1', testSuiteValidator, onSave);
+
+        fireEvent.change(editor(), { target: { value: JSON.stringify({ id: 's2', name: 'Suite', testCases: [] }) } });
+        save();
+
+        expect(onSave).not.toHaveBeenCalled();
+        expect(screen.getByTestId('json-error')).toHaveTextContent('`id` cannot be changed');
     });
 
     it('warns about a dangling transfer reference but still saves', () => {
         const onSave = vi.fn();
-        renderModal(caseWithTransfer, onSave);
+        renderModal(caseWithTransfer, 'test case', 'c1', testCaseValidator, onSave);
 
         // Deleting s3 leaves the transfer pointing at a step that no longer exists.
         // That is not a syntax error and the document may be mid-restructure, so it is
@@ -174,27 +203,19 @@ describe('saving', () => {
     });
 });
 
-describe('validateTestCaseDocument', () => {
+describe('validateJsonDocument', () => {
     it('rejects a non-object document', () => {
-        expect(validateTestCaseDocument([1, 2, 3]).error).toBe('The document must be a test case object.');
+        expect(validateJsonDocument([1, 2, 3], 'c1', testCaseValidator).error)
+            .toBe('The document must be an object.');
     });
 
     it('requires steps to be an array', () => {
-        expect(validateTestCaseDocument({ id: 'c', name: 'N', steps: {} }).error).toBe('`steps` must be an array.');
-    });
-
-    it('accepts a clean document', () => {
-        expect(validateTestCaseDocument(caseWithTransfer).error).toBeUndefined();
-    });
-
-    it('blocks a case id that differs from the entry being edited', () => {
-        expect(validateTestCaseDocument(caseWithTransfer, 'c1').error).toBeUndefined();
-        expect(validateTestCaseDocument(caseWithTransfer, 'other').error).toContain(
-            'case `id` cannot be changed'
-        );
+        expect(validateJsonDocument(caseWithTransfer, 'c1', testCaseValidator).error).toBeUndefined();
+        expect(testCaseValidator({ id: 'c1', name: 'N', steps: {} }).error)
+            .toBe('`steps` must be an array.');
     });
 
     it('does not block step ids — a mid-restructure document is allowed', () => {
-        expect(validateTestCaseDocument(caseWithTransfer, 'c1').error).toBeUndefined();
+        expect(validateJsonDocument(caseWithTransfer, 'c1', testCaseValidator).error).toBeUndefined();
     });
 });

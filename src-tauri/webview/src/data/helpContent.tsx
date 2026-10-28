@@ -293,18 +293,24 @@ const HELP_SECTIONS_RAW = [
 
     ## Edit as JSON
 
-    Right-click a case and choose **Edit as JSON** to edit the whole case as one document.
-    This is the way to rename a variable across every step: the variables panel edits
+    Right-click a case or a suite and choose **Edit as JSON** to edit the whole entity as one
+    document. This is the way to rename a variable across every step: the variables panel edits
     values, but it cannot rename a name, so a \`{{token}}\` rename otherwise means editing
     each step body one at a time.
 
     Find and replace works in this view (Ctrl+F / Ctrl+H).
 
-    Saving replaces the case in the global store, so the document must parse and each step
-    must have an \`id\`, a \`name\`, and a \`type\` the runner knows. The case \`id\` itself cannot
-    change — it is the key the store and the runner resolve against. A transfer pointing at a
-    step id that is no longer in the case is warned about before saving — it is not an
-    error, but it does nothing at run time.
+    Renaming a variable in the variables panel now updates the references to it as well —
+    the step bodies, assertion tokens, and the extractor that produces the value. Both
+    syntaxes are handled (\`{{name}}\` and \`\${name}\`), and the editor reports how many
+    references it rewrote. Renaming commits when the name field loses focus, not on every
+    keystroke, so typing a name character by character does not propagate partial renames.
+
+    Saving replaces the entity in the global store, so the document must parse and each step
+    must have an \`id\`, a \`name\`, and a \`type\` the runner knows; a suite's \`testCases\` must be an
+    array of cases. The entity \`id\` itself cannot change — it is the key the store and the
+    runner resolve against. A transfer pointing at a step id that is no longer in the case is
+    warned about before saving — it is not an error, but it does nothing at run time.
 
     Test suites live in a single global store (\`test-suites.json\` in the config directory).
     The older per-project layout — a \`tests/\` folder with one file per step — is retired;

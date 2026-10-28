@@ -1,9 +1,9 @@
 {
-  "@typescript-eslint/no-non-null-assertion": 47,
+  "@typescript-eslint/no-non-null-assertion": 45,
   "@typescript-eslint/no-require-imports": 4,
   "react-hooks/set-state-in-effect": 37,
   "@typescript-eslint/ban-ts-comment": 2,
-  "@typescript-eslint/no-unused-vars": 76,
+  "@typescript-eslint/no-unused-vars": 75,
   "react-hooks/exhaustive-deps": 8,
   "react-hooks/preserve-manual-memoization": 2,
   "@typescript-eslint/no-empty-function": 47,
