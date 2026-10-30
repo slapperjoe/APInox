@@ -1,17 +1,17 @@
 # APInox Frontend Architecture
 
-The frontend is a React application built with Vite, designed to run inside a VS Code Webview.
+The frontend is a React application built with Vite, running inside the Tauri webview.
 
 ## Component Hierarchy
 
 ### `App.tsx`
 The root component (= "The Monolith"). It currently holds most of the application state due to legacy reasons.
 - **State**: Projects, Config, Watcher History, Proxy History, UI State (expand/collapse).
-- **Communication**: Uses `bridge` to send/receive messages from the VS Code specific backend.
+- **Communication**: Uses `bridge` to send/receive messages from the Tauri (Rust) backend.
 
 ### `Sidebar.tsx`
 The main navigation and tool panel on the left side.
-- **Role**: Renders the active view based on `activeView` state (Projects, Explorer, Watcher, Proxy).
+- **Role**: Renders the active view based on `activeView` state (Explorer, Tests, Performance, Proxy, Mock, Notes, Settings).
 - **Refactoring Status**: Decomposed into sub-components (Stage 2).
 
 #### Sidebar Components (`src/components/sidebar/`)
