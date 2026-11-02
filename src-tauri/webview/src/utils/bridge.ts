@@ -200,6 +200,38 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
     }
 
     try {
+    // ── Diagnostics (the Debug view's Certificate & Proxy checks) ────────────
+    // These were Node-server commands with no Rust implementation, so every check
+    // reported "Command '…' not implemented". They are Rust commands now; the routes keep
+    // the camelCase names the panel calls.
+    if (message.command === 'checkCertificate') {
+        return await tauriInvoke('check_certificate');
+    }
+    if (message.command === 'checkCertificateStore') {
+        return await tauriInvoke('check_certificate_store');
+    }
+    if (message.command === 'testHttpsServer') {
+        return await tauriInvoke('test_https_server');
+    }
+    if (message.command === 'testProxyConnection') {
+        return await tauriInvoke('test_proxy_connection');
+    }
+    if (message.command === 'getProxyStatus') {
+        return await tauriInvoke('get_proxy_status');
+    }
+    if (message.command === 'installCertificateToLocalMachine') {
+        return await tauriInvoke('install_certificate_to_local_machine');
+    }
+    if (message.command === 'moveCertificateToLocalMachine') {
+        return await tauriInvoke('move_certificate_to_local_machine', { thumbprint: message.thumbprint });
+    }
+    if (message.command === 'regenerateCertificate') {
+        return await tauriInvoke('regenerate_certificate');
+    }
+    if (message.command === 'resetCertificates') {
+        return await tauriInvoke('reset_certificates');
+    }
+
         // Route LoadWsdl to appropriate Rust parser based on URL type
         if (message.command === FrontendCommand.LoadWsdl) {
             const url: string = message.url || '';

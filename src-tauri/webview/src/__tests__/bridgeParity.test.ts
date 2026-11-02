@@ -28,11 +28,16 @@ const PRODUCT_DIRS = [
 /**
  * Known-deferred commands: dispatched from UI code but with no Rust command and
  * no `tryRustCommand` branch on the current main base. These are pre-existing
- * tech debt (not introduced by this branch) — proxy test connection, TLS
- * certificate management, the distributed-test coordinator, sample-schema
- * generation, native export, environment activation, and a few WSDL/playground
- * paths. The parity test allowlists them so it stays green, while still failing
- * on any command that is dispatched WITHOUT a branch and NOT in this list.
+ * tech debt (not introduced by this branch) — the distributed-test coordinator,
+ * sample-schema generation, native export, environment activation, and a few
+ * WSDL/playground paths. The parity test allowlists them so it stays green, while
+ * still failing on any command that is dispatched WITHOUT a branch and NOT in this
+ * list.
+ *
+ * The diagnostics checks (checkCertificate, checkCertificateStore, testHttpsServer,
+ * testProxyConnection, getProxyStatus, install/move to LocalMachine, regenerate and
+ * reset) used to sit in this list. They have Rust implementations now and are routed in
+ * `tryRustCommand`, so they are guarded again.
  *
  * If a command in this list gets a `tryRustCommand` branch (or a Rust command),
  * remove it here so the test starts guarding it again.
@@ -44,16 +49,7 @@ const DEFERRED_COMMANDS = new Set<string>([
   'pickOperationForTestCase',
   'pickOperationForPerformance',
   'executePlaygroundScript',
-  'checkCertificate',
-  'checkCertificateStore',
-  'installCertificateToLocalMachine',
-  'moveCertificateToLocalMachine',
-  'regenerateCertificate',
-  'resetCertificates',
   'exportNative',
-  'getProxyStatus',
-  'testHttpsServer',
-  'testProxyConnection',
 ]);
 
 /**

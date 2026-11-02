@@ -5,3 +5,4 @@ pub mod replacer_server;
 pub mod breakpoint_server;
 pub mod certificates_server;
 pub mod sniffer_server;
+pub mod diagnostics;

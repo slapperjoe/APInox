@@ -6,6 +6,7 @@ use rcgen::{
 use rustls::pki_types::{PrivateKeyDer, PrivatePkcs8KeyDer};
 use rustls::sign::CertifiedKey;
 use serde::{Deserialize, Serialize};
+use sha1::Sha1;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::net::IpAddr;
@@ -36,6 +37,11 @@ pub struct CertInfo {
     pub valid_to: Option<String>,
     /// Colon-separated uppercase hex SHA-256 of the DER-encoded cert.
     pub fingerprint: Option<String>,
+    /// Uppercase hex SHA-1 of the DER-encoded cert — the value Windows reports as a
+    /// certificate's thumbprint (`certmgr`, PowerShell's `Thumbprint`), which is what
+    /// the diagnostics compare against the store. `fingerprint` is SHA-256, so the two
+    /// are not interchangeable.
+    pub thumbprint: Option<String>,
     /// Whether the CA cert is currently installed in the OS trust store.
     pub is_trusted: bool,
 }
@@ -83,7 +89,7 @@ impl CertManager {
         self.config_dir.join("ca.key")
     }
 
-    fn meta_path(&self) -> PathBuf {
+    pub fn meta_path(&self) -> PathBuf {
         self.config_dir.join("ca.meta.json")
     }
 
@@ -92,7 +98,7 @@ impl CertManager {
     /// with an existing certificate object, and that rebuild is a different
     /// certificate — same key, different serial and validity — so its thumbprint
     /// does not match the one the client has in its store.
-    fn persisted_ca_der(&self) -> Option<rustls::pki_types::CertificateDer<'static>> {
+    pub fn persisted_ca_der(&self) -> Option<rustls::pki_types::CertificateDer<'static>> {
         // The `pem` crate is already a dependency (rcgen writes PEM through it);
         // `rustls-pemfile` is a dev-dependency only, so it cannot be used here.
         let raw = std::fs::read(self.cert_path()).ok()?;
@@ -102,7 +108,7 @@ impl CertManager {
 
     pub fn info(&self) -> CertInfo {
         let exists = self.cert_path().exists() && self.key_path().exists();
-        let is_trusted = if exists { self.detect_trusted() } else { false };
+        let (in_user, in_machine) = if exists { self.detect_stores() } else { (false, false) };
 
         let base = CertInfo {
             exists,
@@ -113,7 +119,8 @@ impl CertManager {
             valid_from: None,
             valid_to: None,
             fingerprint: None,
-            is_trusted,
+            thumbprint: self.thumbprint(),
+            is_trusted: in_user || in_machine,
         };
 
         if !exists {
@@ -137,65 +144,85 @@ impl CertManager {
         base
     }
 
-    /// Check whether the APIprox CA cert is currently installed in the OS trust store.
+    /// SHA-1 thumbprint of the DER-encoded cert — the value Windows reports as
+    /// `Thumbprint` and `certmgr` shows. `fingerprint` is SHA-256, so the two cannot be
+    /// compared against each other.
+    pub fn thumbprint(&self) -> Option<String> {
+        let der = self.persisted_ca_der()?;
+        let hash = Sha1::digest(der.as_ref());
+        Some(hash.iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(""))
+    }
+
+    /// Which trust stores the CA is installed in, as `(currentUser, localMachine)`.
+    ///
+    /// Both matter. `install_windows` writes to CurrentUser\Root because that needs no
+    /// elevation, but the CryptoAPI chain engine validates against LocalMachine\Root for
+    /// services and other users — an IIS app pool, a scheduled task, or a Windows service
+    /// running as SYSTEM only trusts the machine store. Checking one store alone reports a
+    /// trusted CA as missing, and its traffic fails the MITM handshake.
     ///
     /// Spawns `security` / PowerShell, so this is tens of milliseconds, not
     /// sub-millisecond — which is why `info()` callers that use it go through
     /// `utils::blocking()` rather than running on the async runtime.
-    fn detect_trusted(&self) -> bool {
+    pub fn detect_stores(&self) -> (bool, bool) {
         #[cfg(target_os = "macos")]
         {
-            // Check login keychain — no elevation required for reads.
-            let home = match std::env::var("HOME") {
-                Ok(h) => h,
-                Err(_) => return false,
+            // Reads need no elevation: the login keychain is the user store, the System
+            // keychain is the machine store.
+            let home = std::env::var("HOME").unwrap_or_default();
+            let found = |keychain: String| {
+                let output = std::process::Command::new("security")
+                    .args(["find-certificate", "-a", "-c", "APIprox", &keychain])
+                    .output();
+                matches!(output, Ok(o) if o.status.success() && !o.stdout.is_empty())
             };
-            let keychain = format!("{}/Library/Keychains/login.keychain-db", home);
-            let output = std::process::Command::new("security")
-                .args(["find-certificate", "-a", "-c", "APIprox", &keychain])
-                .output();
-            matches!(output, Ok(o) if o.status.success() && !o.stdout.is_empty())
+            (
+                found(format!("{home}/Library/Keychains/login.keychain-db")),
+                found("/Library/Keychains/System.keychain".to_string()),
+            )
         }
 
         #[cfg(target_os = "windows")]
         {
-            // Use PowerShell's cert provider — reliable subject-based lookup with no
-            // certutil ambiguities around exit codes or exact-name matching.
-            //
-            // Both stores are consulted: `install_windows` writes to CurrentUser\Root
-            // (no elevation), but the CryptoAPI chain engine validates against
-            // LocalMachine\Root for services and other users — an IIS app pool, a
-            // scheduled task, or a Windows service running as SYSTEM only trusts the
-            // machine store, so checking one store alone reports a trusted CA as
-            // missing and its traffic fails the MITM handshake.
+            // PowerShell's cert provider — reliable subject/thumbprint lookup with no
+            // certutil ambiguities around exit codes or exact-name matching. One subprocess
+            // for both stores; the counts are parsed by `parse_store_counts`.
             use std::os::windows::process::CommandExt;
             const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+            let found_by = match self.thumbprint() {
+                Some(tp) => format!("$_.Thumbprint -eq '{tp}'"),
+                None => "$_.Subject -like '*APIprox*'".to_string(),
+            };
+            let command = format!(
+                "$u = @(Get-ChildItem Cert:\\CurrentUser\\Root | Where-Object {{ {found_by} }}).Count; \\
+                 $m = @(Get-ChildItem Cert:\\LocalMachine\\Root | Where-Object {{ {found_by} }}).Count; \\
+                 \"$u $m\""
+            );
             let output = std::process::Command::new("powershell")
-                .args([
-                    "-NoProfile",
-                    "-NonInteractive",
-                    "-Command",
-                    "if (Get-ChildItem Cert:\\CurrentUser\\Root, Cert:\\LocalMachine\\Root | Where-Object { $_.Subject -like '*APIprox*' }) { exit 0 } else { exit 1 }",
-                ])
+                .args(["-NoProfile", "-NonInteractive", "-Command", &command])
                 .creation_flags(CREATE_NO_WINDOW)
                 .output();
-            matches!(output, Ok(o) if o.status.success())
+            match output {
+                Ok(o) => parse_store_counts(&String::from_utf8_lossy(&o.stdout)),
+                Err(_) => (false, false),
+            }
         }
 
         #[cfg(target_os = "linux")]
         {
-            // Best-effort: check common anchor directories.
+            // Best-effort: check common anchor directories. There is no user-level trust
+            // store on Linux, so the user half is always false.
             let paths = [
                 "/usr/local/share/ca-certificates/apiprox-ca.crt",
                 "/etc/pki/ca-trust/source/anchors/apiprox-ca.crt",
                 "/etc/ca-certificates/trust-source/anchors/apiprox-ca.crt",
             ];
-            paths.iter().any(|p| std::path::Path::new(p).exists())
+            (false, paths.iter().any(|p| std::path::Path::new(p).exists()))
         }
 
         #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
         {
-            false
+            (false, false)
         }
     }
 
@@ -377,6 +404,16 @@ impl CertManager {
     }
 }
 
+/// Parses PowerShell's `"<userCount> <machineCount>"` output into
+/// `(installedForUser, installedForMachine)`.
+#[cfg(any(test, target_os = "windows"))]
+fn parse_store_counts(out: &str) -> (bool, bool) {
+    let mut parts = out.trim().split_whitespace();
+    let user = parts.next().and_then(|v| v.parse::<u32>().ok()).unwrap_or(0);
+    let machine = parts.next().and_then(|v| v.parse::<u32>().ok()).unwrap_or(0);
+    (user > 0, machine > 0)
+}
+
 /// SAN entry for a leaf certificate.
 ///
 /// `DnsName` rejects IP literals, so a MITM'd host that is an address — the usual
@@ -474,6 +511,27 @@ mod tests {
                 "each group should be hex"
             );
         }
+    }
+
+    #[test]
+    fn thumbprint_is_sha1_hex_and_differs_from_the_sha256_fingerprint() {
+        let (_dir, mgr) = temp_manager();
+        mgr.generate().unwrap();
+        let tp = mgr.thumbprint().unwrap();
+        assert_eq!(tp.len(), 40, "SHA-1 thumbprint is 40 hex chars: {tp}");
+        assert!(tp.chars().all(|c| c.is_ascii_hexdigit()));
+        // The diagnostics compare the thumbprint with the store; a SHA-256 fingerprint
+        // can never match it.
+        assert_ne!(tp, mgr.info().fingerprint.unwrap().replace(':', ""));
+    }
+
+    #[test]
+    fn parse_store_counts_reads_both_stores() {
+        assert_eq!(parse_store_counts("1 0"), (true, false));
+        assert_eq!(parse_store_counts("0 1"), (false, true));
+        assert_eq!(parse_store_counts("2 3"), (true, true));
+        assert_eq!(parse_store_counts(""), (false, false));
+        assert_eq!(parse_store_counts("not a pair"), (false, false));
     }
 
     #[test]

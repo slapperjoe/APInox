@@ -11,6 +11,8 @@ interface CertInfo {
   validFrom?: string;
   validTo?: string;
   fingerprint?: string;
+  /** SHA-1 — what Windows calls the thumbprint, and what the store lookup matches. */
+  thumbprint?: string;
   isTrusted: boolean;
 }
 

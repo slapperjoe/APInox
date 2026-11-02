@@ -57,6 +57,9 @@ bytes = "1"
 # TLS for HTTPS proxy (from APIprox integration)
 rustls = "0.23"
 tokio-rustls = "0.26"
+# The diagnostics handshake validates against the OS trust store, the same anchors a
+# browser or a .NET client uses — which is the whole point of the proxy connection test.
+rustls-native-certs = "0.8"
 
 # File watching (from APIprox integration)
 notify = "6"

@@ -665,6 +665,7 @@ export enum SidebarView {
     MOCK = 'mock',       // Mock server (from APIprox)
     NOTES = 'notes',     // Notes / markdown scratchpad
     SETTINGS = 'settings', // Settings (full work-area view, was a modal)
+    DEBUG = 'debug',     // Debug & diagnostics (full work-area view, was a modal)
 }
 
 export interface ApinoxConfig {
@@ -1200,6 +1201,8 @@ export interface CertInfo {
     validFrom: string;
     validTo: string;
     fingerprint: string;
+    /** SHA-1 — what Windows reports as the thumbprint; the store lookup matches this, not the SHA-256 fingerprint. */
+    thumbprint: string;
     isTrusted: boolean;
 }
 
