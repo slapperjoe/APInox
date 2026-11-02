@@ -123,6 +123,15 @@ static HOP_BY_HOP: Lazy<HashSet<&'static str>> = Lazy::new(|| {
     .collect()
 });
 
+/// Per-connection MITM state: the shared rustls config plus the CA that signs the
+/// leaf. Grouped so `handle_request`/`handle_connect` keep the same argument count as
+/// the rest of the proxy pipeline.
+#[derive(Clone)]
+struct Mitm {
+    server_cfg: ServerConfig,
+    cert_manager: Arc<CertManager>,
+}
+
 /// Run the forward proxy server. Loops forever; cancel by aborting the spawned task.
 pub async fn run_proxy(
     config: ProxyConfig,
@@ -139,16 +148,20 @@ pub async fn run_proxy(
 
     log::info!("[Proxy] Listening on port {}", config.port);
 
-    // Build TLS acceptor for HTTPS MITM — signed certs are generated on demand per domain.
-    let resolver = Arc::new(SniResolver { cert_manager });
+    // Build the base TLS config for HTTPS MITM — signed certs are generated on
+    // demand per domain. The per-connection clone carries the CONNECT host as the
+    // SNI fallback (see `SniResolver`), so clients that send no SNI are still MITM'd.
     let server_cfg = ServerConfig::builder_with_provider(Arc::new(
         rustls::crypto::ring::default_provider(),
     ))
     .with_protocol_versions(rustls::ALL_VERSIONS)
     .context("Failed to configure TLS protocol versions")?
     .with_no_client_auth()
-    .with_cert_resolver(resolver);
-    let tls_acceptor = TlsAcceptor::from(Arc::new(server_cfg));
+    .with_cert_resolver(Arc::new(SniResolver {
+        cert_manager: cert_manager.clone(),
+        fallback_domain: None,
+    }));
+    let mitm = Arc::new(Mitm { server_cfg, cert_manager });
 
     let config = Arc::new(config);
 
@@ -165,7 +178,7 @@ pub async fn run_proxy(
         let config = config.clone();
         let replacer = replacer.clone();
         let app = app.clone();
-        let tls_acceptor = tls_acceptor.clone();
+        let mitm = mitm.clone();
         let mock_state = mock_state.clone();
         let breakpoints = breakpoints.clone();
 
@@ -174,12 +187,12 @@ pub async fn run_proxy(
                 let config = config.clone();
                 let replacer = replacer.clone();
                 let app = app.clone();
-                let tls_acceptor = tls_acceptor.clone();
+                let mitm = mitm.clone();
                 let mock_state = mock_state.clone();
                 let breakpoints = breakpoints.clone();
                 async move {
                     Ok::<_, Infallible>(
-                        handle_request(req, config, replacer, app, tls_acceptor, mock_state, breakpoints).await,
+                        handle_request(req, config, replacer, app, mitm, mock_state, breakpoints).await,
                     )
                 }
             });
@@ -207,12 +220,12 @@ async fn handle_request(
     config: Arc<ProxyConfig>,
     replacer: SharedReplacerService,
     app: AppHandle,
-    tls_acceptor: TlsAcceptor,
+    mitm: Arc<Mitm>,
     mock_state: SharedMockState,
     breakpoints: SharedBreakpointService,
 ) -> Response<Full<Bytes>> {
     if req.method() == Method::CONNECT {
-        handle_connect(req, config, replacer, app, tls_acceptor, mock_state, breakpoints).await
+        handle_connect(req, config, replacer, app, mitm, mock_state, breakpoints).await
     } else {
         handle_http(req, config, replacer, app, mock_state, breakpoints).await
     }
@@ -229,7 +242,7 @@ async fn handle_connect(
     config: Arc<ProxyConfig>,
     replacer: SharedReplacerService,
     app: AppHandle,
-    tls_acceptor: TlsAcceptor,
+    mitm: Arc<Mitm>,
     mock_state: SharedMockState,
     breakpoints: SharedBreakpointService,
 ) -> Response<Full<Bytes>> {
@@ -247,6 +260,15 @@ async fn handle_connect(
         match hyper::upgrade::on(req).await {
             Ok(upgraded) => {
                 let client_io = TokioIo::new(upgraded);
+                // Per-connection resolver: the CONNECT host is the SNI fallback, so a
+                // client that sends no SNI — or sends an IP address, which rustls treats as
+                // absent per RFC 6066 — still gets a leaf and is still MITM'd.
+                let mut cfg = mitm.server_cfg.clone();
+                cfg.cert_resolver = Arc::new(SniResolver {
+                    cert_manager: mitm.cert_manager.clone(),
+                    fallback_domain: Some(hostname.clone()),
+                });
+                let tls_acceptor = TlsAcceptor::from(Arc::new(cfg));
                 match tls_acceptor.accept(client_io).await {
                     Ok(tls_stream) => {
                         let inner_io = TokioIo::new(tls_stream);

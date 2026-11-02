@@ -81,15 +81,17 @@ async fn main() {
     log_line(&format!("Listening on {}", addr));
 
     // ── Real SNI resolver + rustls acceptor (same as run_proxy) ────────────
-    let resolver = Arc::new(SniResolver { cert_manager: cert_manager.clone() });
     let server_cfg = ServerConfig::builder_with_provider(Arc::new(
         rustls::crypto::ring::default_provider(),
     ))
     .with_protocol_versions(rustls::ALL_VERSIONS)
     .unwrap()
     .with_no_client_auth()
-    .with_cert_resolver(resolver);
-    let tls_acceptor = TlsAcceptor::from(Arc::new(server_cfg));
+    .with_cert_resolver(Arc::new(SniResolver {
+        cert_manager: cert_manager.clone(),
+        fallback_domain: None,
+    }));
+    let server_cfg = Arc::new(server_cfg);
 
     loop {
         let (stream, peer) = match listener.accept().await {
@@ -101,12 +103,16 @@ async fn main() {
         };
         let peer_str = peer.to_string();
         let io = TokioIo::new(stream);
-        let tls_acceptor = tls_acceptor.clone();
+        let server_cfg = server_cfg.clone();
+        let cert_manager = cert_manager.clone();
 
         tokio::spawn(async move {
             let svc = service_fn(move |req: Request<Incoming>| {
-                let tls_acceptor = tls_acceptor.clone();
-                async move { Ok::<_, Infallible>(handle_request(req, tls_acceptor).await) }
+                let server_cfg = server_cfg.clone();
+                let cert_manager = cert_manager.clone();
+                async move {
+                    Ok::<_, Infallible>(handle_request(req, server_cfg, cert_manager).await)
+                }
             });
 
             if let Err(e) = hyper::server::conn::http1::Builder::new()
@@ -124,10 +130,11 @@ async fn main() {
 
 async fn handle_request(
     req: Request<Incoming>,
-    tls_acceptor: TlsAcceptor,
+    server_cfg: Arc<ServerConfig>,
+    cert_manager: Arc<CertManager>,
 ) -> Response<Full<Bytes>> {
     if req.method() == Method::CONNECT {
-        handle_connect(req, tls_acceptor).await
+        handle_connect(req, server_cfg, cert_manager).await
     } else {
         handle_http(req).await
     }
@@ -137,7 +144,8 @@ async fn handle_request(
 /// (minus mock/breakpoint/replacer, which are no-ops with empty rule sets).
 async fn handle_connect(
     req: Request<Incoming>,
-    tls_acceptor: TlsAcceptor,
+    server_cfg: Arc<ServerConfig>,
+    cert_manager: Arc<CertManager>,
 ) -> Response<Full<Bytes>> {
     let host = match req.uri().authority().map(|a| a.to_string()) {
         Some(h) => h,
@@ -154,6 +162,14 @@ async fn handle_connect(
         match hyper::upgrade::on(req).await {
             Ok(upgraded) => {
                 let client_io = TokioIo::new(upgraded);
+                // Per-connection resolver, as in production: the CONNECT host is the
+                // SNI fallback for clients that send no usable SNI.
+                let mut cfg = (*server_cfg).clone();
+                cfg.cert_resolver = Arc::new(SniResolver {
+                    cert_manager: cert_manager.clone(),
+                    fallback_domain: Some(hostname.clone()),
+                });
+                let tls_acceptor = TlsAcceptor::from(Arc::new(cfg));
                 match tls_acceptor.accept(client_io).await {
                     Ok(tls_stream) => {
                         log_line(&format!(

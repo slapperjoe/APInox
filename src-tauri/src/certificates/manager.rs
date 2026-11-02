@@ -8,6 +8,7 @@ use rustls::sign::CertifiedKey;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
+use std::net::IpAddr;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use time::{Duration, OffsetDateTime};
@@ -86,6 +87,19 @@ impl CertManager {
         self.config_dir.join("ca.meta.json")
     }
 
+    /// The CA exactly as it was installed (the PEM on disk), for presenting in the
+    /// leaf chain. `sign_for_domain` rebuilds CA params because `rcgen` cannot sign
+    /// with an existing certificate object, and that rebuild is a different
+    /// certificate — same key, different serial and validity — so its thumbprint
+    /// does not match the one the client has in its store.
+    fn persisted_ca_der(&self) -> Option<rustls::pki_types::CertificateDer<'static>> {
+        // The `pem` crate is already a dependency (rcgen writes PEM through it);
+        // `rustls-pemfile` is a dev-dependency only, so it cannot be used here.
+        let raw = std::fs::read(self.cert_path()).ok()?;
+        let cert = pem::parse_many(&raw).ok()?.into_iter().next()?;
+        Some(rustls::pki_types::CertificateDer::from(cert.contents().to_vec()))
+    }
+
     pub fn info(&self) -> CertInfo {
         let exists = self.cert_path().exists() && self.key_path().exists();
         let is_trusted = if exists { self.detect_trusted() } else { false };
@@ -147,6 +161,13 @@ impl CertManager {
         {
             // Use PowerShell's cert provider — reliable subject-based lookup with no
             // certutil ambiguities around exit codes or exact-name matching.
+            //
+            // Both stores are consulted: `install_windows` writes to CurrentUser\Root
+            // (no elevation), but the CryptoAPI chain engine validates against
+            // LocalMachine\Root for services and other users — an IIS app pool, a
+            // scheduled task, or a Windows service running as SYSTEM only trusts the
+            // machine store, so checking one store alone reports a trusted CA as
+            // missing and its traffic fails the MITM handshake.
             use std::os::windows::process::CommandExt;
             const CREATE_NO_WINDOW: u32 = 0x0800_0000;
             let output = std::process::Command::new("powershell")
@@ -154,7 +175,7 @@ impl CertManager {
                     "-NoProfile",
                     "-NonInteractive",
                     "-Command",
-                    "if (Get-ChildItem Cert:\\CurrentUser\\Root | Where-Object { $_.Subject -like '*APIprox*' }) { exit 0 } else { exit 1 }",
+                    "if (Get-ChildItem Cert:\\CurrentUser\\Root, Cert:\\LocalMachine\\Root | Where-Object { $_.Subject -like '*APIprox*' }) { exit 0 } else { exit 1 }",
                 ])
                 .creation_flags(CREATE_NO_WINDOW)
                 .output();
@@ -305,13 +326,7 @@ impl CertManager {
         let mut dn = DistinguishedName::new();
         dn.push(DnType::CommonName, domain);
         leaf_params.distinguished_name = dn;
-        leaf_params.subject_alt_names = vec![
-            SanType::DnsName(
-                domain
-                    .try_into()
-                    .with_context(|| format!("Invalid domain name: {}", domain))?,
-            ),
-        ];
+        leaf_params.subject_alt_names = vec![san_for_domain(domain)?];
         leaf_params.not_before = now;
         leaf_params.not_after = now + Duration::days(LEAF_VALIDITY_DAYS);
         leaf_params.is_ca = IsCa::NoCa;
@@ -337,7 +352,19 @@ impl CertManager {
             .load_private_key(key_der)
             .map_err(|e| anyhow::anyhow!("Failed to load signing key: {:?}", e))?;
 
-        let certified_key = Arc::new(CertifiedKey::new(vec![cert_der], signing_key));
+        // Send the full chain (leaf + the trusted root), not the leaf alone. Clients
+        // that build the chain from their own trust store (CryptoAPI, browsers) accept
+        // a leaf-only chain, but stacks that only read the chain the server presents —
+        // Java, older .NET, some Go and Python clients — cannot verify a leaf whose
+        // issuer is not in the message. Presenting the root costs one DER per handshake
+        // and is what every MITM proxy does.
+        //
+        // Present the CA as installed, not the copy rebuilt above: the rebuild has a
+        // different serial and validity window, so its thumbprint differs. A client
+        // that pins the root thumbprint, or that reads `chain.ChainElements[1]`, must
+        // be shown the certificate it actually trusted.
+        let ca_der = self.persisted_ca_der().unwrap_or_else(|| ca_cert.der().clone());
+        let certified_key = Arc::new(CertifiedKey::new(vec![cert_der, ca_der], signing_key));
 
         // Cache for subsequent requests to the same domain.
         self.leaf_cache
@@ -347,6 +374,24 @@ impl CertManager {
 
         log::debug!("[CertManager] Signed leaf cert for {}", domain);
         Ok(certified_key)
+    }
+}
+
+/// SAN entry for a leaf certificate.
+///
+/// `DnsName` rejects IP literals, so a MITM'd host that is an address — the usual
+/// shape when a client dials `https://127.0.0.1:9000` or a machine name — needs the
+/// `iPAddress` SAN. Clients validate the name they sent (or the address they
+/// connected to) against the SAN, so choosing the wrong variant rejects the leaf
+/// even when the CA is trusted.
+fn san_for_domain(domain: &str) -> Result<SanType> {
+    match domain.parse::<IpAddr>() {
+        Ok(ip) => Ok(SanType::IpAddress(ip)),
+        Err(_) => Ok(SanType::DnsName(
+            domain
+                .try_into()
+                .with_context(|| format!("Invalid domain name: {}", domain))?,
+        )),
     }
 }
 
@@ -522,7 +567,9 @@ mod tests {
         let (_dir, mgr) = temp_manager();
         mgr.generate().unwrap();
         let ck = mgr.sign_for_domain("example.com").unwrap();
-        assert_eq!(ck.cert.len(), 1, "leaf cert chain should have 1 cert");
+        // Leaf plus the root: clients that only read the chain the server presents
+        // cannot verify a leaf whose issuer is absent from the message.
+        assert_eq!(ck.cert.len(), 2, "leaf cert chain should present leaf + CA");
     }
 
     #[test]
@@ -542,6 +589,48 @@ mod tests {
         let ck1 = mgr.sign_for_domain("example.com").unwrap();
         let ck2 = mgr.sign_for_domain("api.example.com").unwrap();
         assert!(!Arc::ptr_eq(&ck1, &ck2), "different domains must get different certs");
+    }
+
+    #[test]
+    fn sign_for_domain_accepts_an_ip_address() {
+        let (_dir, mgr) = temp_manager();
+        mgr.generate().unwrap();
+        // A client dialing by IP sends no usable SNI, so the resolver's fallback is
+        // an address. `DnsName` rejects IP literals, which used to fail the signing.
+        let ck = mgr.sign_for_domain("127.0.0.1").unwrap();
+        assert_eq!(ck.cert.len(), 2);
+    }
+
+    #[test]
+    fn chain_presents_the_installed_ca_not_the_rebuilt_one() {
+        let (_dir, mgr) = temp_manager();
+        let info = mgr.generate().unwrap();
+        let ck = mgr.sign_for_domain("example.com").unwrap();
+
+        let mut h = Sha256::new();
+        h.update(ck.cert[1].as_ref());
+        let presented = h
+            .finalize()
+            .iter()
+            .map(|b| format!("{:02X}", b))
+            .collect::<Vec<_>>()
+            .join(":");
+
+        // A validation callback that compares the chain root against the CA in the
+        // store sees the rebuilt params (different serial/validity) unless we present
+        // the file it actually trusted.
+        assert_eq!(presented, info.fingerprint.unwrap(), "presented root must be the installed CA");
+    }
+
+    #[test]
+    fn san_for_domain_uses_dns_for_hostnames() {
+        assert!(matches!(san_for_domain("api.example.com").unwrap(), SanType::DnsName(_)));
+    }
+
+    #[test]
+    fn san_for_domain_uses_ip_for_addresses() {
+        assert!(matches!(san_for_domain("127.0.0.1").unwrap(), SanType::IpAddress(_)));
+        assert!(matches!(san_for_domain("::1").unwrap(), SanType::IpAddress(_)));
     }
 
     #[test]
@@ -579,6 +668,7 @@ mod tests {
         use crate::certificates::sni_resolver::SniResolver;
         let resolver = Arc::new(SniResolver {
             cert_manager: mgr.clone(),
+            fallback_domain: None,
         });
         let server_cfg = ServerConfig::builder_with_provider(Arc::new(
             rustls::crypto::ring::default_provider(),

@@ -1969,6 +1969,7 @@ mod tests {
         // ── Server side: the real SNI resolver, real per-domain leaf ─────────
         let resolver = Arc::new(crate::certificates::sni_resolver::SniResolver {
             cert_manager: mgr.clone(),
+            fallback_domain: None,
         });
         let server_cfg = ServerConfig::builder_with_provider(Arc::new(
             rustls::crypto::ring::default_provider(),
@@ -2086,6 +2087,7 @@ mod tests {
 
             let resolver = Arc::new(crate::certificates::sni_resolver::SniResolver {
                 cert_manager: mgr,
+                fallback_domain: None,
             });
             let server_cfg = rustls::ServerConfig::builder_with_provider(Arc::new(
                 rustls::crypto::ring::default_provider(),
