@@ -148,6 +148,10 @@ pub async fn run_proxy(
 
     log::info!("[Proxy] Listening on port {}", config.port);
 
+    // Registered for the life of this task so `proxy_guard::is_self_proxy` compares the
+    // auto-discovered proxy against the ports actually listening, not the defaults.
+    let _listener = crate::utils::proxy_guard::track_listener(config.port);
+
     // Build the base TLS config for HTTPS MITM — signed certs are generated on
     // demand per domain. The per-connection clone carries the CONNECT host as the
     // SNI fallback (see `SniResolver`), so clients that send no SNI are still MITM'd.

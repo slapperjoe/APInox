@@ -15,7 +15,9 @@
 //! the tests there); this module is the shared detection used by the proxy
 //! forward path, the mock passthrough and the traffic replay command:
 //!
-//!   * `is_self_proxy` — is this proxy URL one of APInox's own listeners?
+//!   * `is_self_proxy` — is this proxy URL one of APInox's own listeners? The default
+//!     ports plus whatever APInox has actually bound right now, so a sniffer started on
+//!     a non-default port is still recognised as the loop.
 //!   * `effective_proxy` — what would reqwest's default system matcher pick
 //!     for a given URL scheme (env vars first, then the OS store), so the
 //!     caller can spot the collision before dialing.
@@ -24,6 +26,7 @@
 //! (`.no_proxy()`); every other configuration keeps reqwest's default
 //! auto-discovery (explicit/corporate proxies are still honoured).
 
+use std::collections::HashSet;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
@@ -38,6 +41,35 @@ pub fn in_app_listener_ports() -> Vec<u16> {
         crate::proxy_models::ProxyConfig::default().port,
         crate::proxy_models::MockConfig::default().port,
     ]
+}
+
+/// Ports an APInox listener is currently bound to.
+///
+/// The defaults are not enough on their own: the UI can start the sniffer or the mock
+/// server on any port, and a self-proxy collision is only a collision if the
+/// auto-discovered proxy points at a port APInox is actually listening on. With the
+/// defaults alone, a sniffer on e.g. 9000 forwards back into itself — the loop this
+/// module exists to prevent — and the recorded traffic has requests but no response.
+static TRACKED_PORTS: Lazy<Mutex<HashSet<u16>>> = Lazy::new(|| Mutex::new(HashSet::new()));
+
+/// Registers a bound listener for as long as the returned guard is alive. Dropping it
+/// (task aborted, server exited) removes the port.
+pub struct ListenerGuard(u16);
+
+pub fn track_listener(port: u16) -> ListenerGuard {
+    TRACKED_PORTS.lock().unwrap().insert(port);
+    ListenerGuard(port)
+}
+
+fn listener_ports() -> HashSet<u16> {
+    let tracked = TRACKED_PORTS.lock().unwrap();
+    in_app_listener_ports().into_iter().chain(tracked.iter().copied()).collect()
+}
+
+impl Drop for ListenerGuard {
+    fn drop(&mut self) {
+        TRACKED_PORTS.lock().unwrap().remove(&self.0);
+    }
 }
 
 /// Parses a proxy URL (`http://host:port`) into its host and port components.
@@ -75,7 +107,7 @@ pub fn proxy_host_is_loopback_like(host: &str) -> bool {
 pub fn is_self_proxy(proxy_url: &str) -> bool {
     match parse_proxy_target(proxy_url) {
         Some((host, port)) => {
-            proxy_host_is_loopback_like(host) && in_app_listener_ports().contains(&port)
+            proxy_host_is_loopback_like(host) && listener_ports().contains(&port)
         }
         None => false,
     }
@@ -314,6 +346,19 @@ mod tests {
         ] {
             assert!(!is_self_proxy(url), "{url} should NOT be a self-proxy");
         }
+    }
+
+    #[test]
+    fn test_is_self_proxy_flags_a_live_port_that_is_not_a_default() {
+        let _g = env_lock();
+        // A sniffer started on the port the docs use: the defaults do not know about it,
+        // and forwarding through the OS proxy re-enters APInox — requests recorded, no
+        // response, because the traffic event is emitted only after the upstream answers.
+        assert!(!is_self_proxy("http://127.0.0.1:9000"), "9000 is not a default listener");
+        let guard = track_listener(9000);
+        assert!(is_self_proxy("http://127.0.0.1:9000"), "a bound listener is the loop");
+        drop(guard);
+        assert!(!is_self_proxy("http://127.0.0.1:9000"), "dropping the guard removes the port");
     }
 
     #[test]

@@ -28,6 +28,10 @@ pub async fn run_mock(state: SharedMockState, app: AppHandle) -> Result<()> {
 
     log::info!("[Mock] Listening on port {}", port);
 
+    // Registered for the life of this task so `proxy_guard::is_self_proxy` compares the
+    // auto-discovered proxy against the ports actually listening, not the defaults.
+    let _listener = crate::utils::proxy_guard::track_listener(port);
+
     loop {
         let (stream, _peer) = match listener.accept().await {
             Ok(v) => v,
