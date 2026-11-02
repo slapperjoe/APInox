@@ -1,23 +1,22 @@
 /**
- * DebugModal.tsx
- * 
- * Debug and diagnostics modal for APInox.
- * Shows Tauri backend logs, frontend logs, system debug information, and connection testing.
- * Opens with Ctrl+Shift+D keyboard shortcut.
+ * DebugView.tsx
+ *
+ * The Debug work-area view — backend logs, frontend logs, system information and the
+ * certificate/proxy diagnostics. It is a full view like Settings rather than a modal: the
+ * panels below are tall, and a 900px modal with a max height clips them, which is what
+ * made the last section render as a heading with nothing under it.
+ *
+ * Opens with Ctrl+Shift+D, the title-bar logo double-click, or the rail entry.
  */
 
 import React, { useState, useEffect } from 'react';
-import { Modal } from './Modal';
 import { bridge, commandErrorText } from '../../utils/bridge';
 import { DiagnosticsTab } from './DiagnosticsTab';
 import { frontendLogs, captureLog } from '../../utils/logger';
 
-interface DebugModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-}
+import { ScrollArea } from '../common/ScrollArea';
 
-// Intercept console methods so they also appear in the Debug Modal frontend log panel.
+// Intercept console methods so they also appear in the Debug view's frontend log panel.
 // The original methods are still called so errors/warnings remain visible in DevTools.
 const originalConsoleLog = console.log;
 const originalConsoleWarn = console.warn;
@@ -38,7 +37,7 @@ console.error = (...args: any[]) => {
     originalConsoleError.apply(console, args);
 };
 
-export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
+export const DebugView: React.FC = () => {
 
     // Tab state
     const [activeTab, setActiveTab] = useState<'logs' | 'diagnostics'>('logs');
@@ -108,9 +107,8 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
         }
     }, [showFrontendLogs]);
 
-    // Load logs and debug info when modal opens in Tauri mode
+    // Load logs and debug info when the view mounts (Tauri mode).
     useEffect(() => {
-        if (!isOpen) return;
 
         const loadLogsAndDebugInfo = async () => {
             try {
@@ -126,7 +124,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                     const logs = await invoke<string[]>('get_tauri_logs', { lines: 2000 });
                     setTauriLogs(logs);
                 } catch (e) {
-                    console.warn('[DebugModal] Failed to get logs:', e);
+                    console.warn('[DebugView] Failed to get logs:', e);
                     setTauriLogs(['Unable to retrieve logs: ' + String(e)]);
                 }
 
@@ -138,13 +136,13 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                     const debugInfo = await invoke<any>('get_debug_info');
                     setSettingsDebug(debugInfo);
                 } catch (e) {
-                    console.warn('[DebugModal] Failed to get debug info:', e);
+                    console.warn('[DebugView] Failed to get debug info:', e);
                 }
 
                 setFetchError(null);
             } catch (error: any) {
                 setFetchError(commandErrorText(error) || 'Failed to load debug information');
-                console.error('[DebugModal] Failed to load debug info:', error);
+                console.error('[DebugView] Failed to load debug info:', error);
             } finally {
                 setIsLoadingLogs(false);
             }
@@ -154,18 +152,16 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
 
         // Only poll if explicitly requested (don't auto-poll to avoid UI freezing)
         // User can manually refresh if needed
-    }, [isOpen]);
+    }, []);
 
     // Check debug indicator visibility on mount
     useEffect(() => {
-        if (!isOpen) return;
-        
         const indicator = document.getElementById('debug-indicator');
         if (indicator) {
             const isVisible = indicator.style.display !== 'none';
             setDebugIndicatorVisible(isVisible);
         }
-    }, [isOpen]);
+    }, []);
 
     const clearTauriLogs = () => {
         setTauriLogs([]);
@@ -231,19 +227,26 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
             setCopyStatus('✓ Copied!');
             setTimeout(() => setCopyStatus(null), 2000);
         } catch (error: any) {
-            console.error('[DebugModal] Failed to copy diagnostics:', error);
+            console.error('[DebugView] Failed to copy diagnostics:', error);
             setCopyStatus('✗ Failed to copy');
             setTimeout(() => setCopyStatus(null), 2000);
         }
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Debug & Diagnostics" width={900}>
+        <div style={{
+            flex: 1,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            background: 'var(--apinox-editor-background)',
+        }}>
             {/* Tab Navigation */}
-            <div style={{ 
-                display: 'flex', 
+            <div style={{
+                display: 'flex',
                 borderBottom: '1px solid var(--apinox-panel-border)',
-                marginBottom: '20px'
+                flexShrink: 0,
+                background: 'var(--apinox-sideBar-background)',
             }}>
                 <button
                     onClick={() => setActiveTab('logs')}
@@ -279,8 +282,11 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
 
             {/* Tab Content */}
             {activeTab === 'diagnostics' ? (
-                <DiagnosticsTab />
+                <ScrollArea padding="16px 20px">
+                    <DiagnosticsTab />
+                </ScrollArea>
             ) : (
+            <ScrollArea padding="16px 20px">
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 {/* Action Buttons */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
@@ -310,7 +316,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                                     const tauriLogs = await invoke<string[]>('get_tauri_logs', { lines: 2000 });
                                     setTauriLogs(tauriLogs);
                                 } catch (e) {
-                                    console.error('[DebugModal] Failed to refresh logs:', e);
+                                    console.error('[DebugView] Failed to refresh logs:', e);
                                 } finally {
                                     setIsLoadingLogs(false);
                                 }
@@ -637,7 +643,8 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                     <div style={{ opacity: 0.5, fontSize: '0.9em' }}>Loading system information...</div>
                 )}
             </div>
+            </ScrollArea>
             )}
-        </Modal>
+        </div>
     );
 };

@@ -63,7 +63,8 @@ export const NavigationProvider = ({ children }: { children: ReactNode }) => {
                             'mock': SidebarView.MOCK,
                             'tests': SidebarView.TESTS,
                             'performance': SidebarView.PERFORMANCE,
-                            'settings': SidebarView.SETTINGS
+                            'settings': SidebarView.SETTINGS,
+                            'debug': SidebarView.DEBUG
                         };
                         const view = viewMap[message.view] || message.view as SidebarView;
                         setActiveView(view);

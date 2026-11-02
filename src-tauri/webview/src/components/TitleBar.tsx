@@ -5,12 +5,14 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { invoke } from '@tauri-apps/api/core';
 import { useProject } from '../contexts/ProjectContext';
 import { useUI } from '../contexts/UIContext';
+import { useNavigation } from '../contexts/NavigationContext';
 import { useSearch } from '../contexts/SearchContext';
 import { SearchDropdown } from './SearchDropdown';
 import { Tooltip } from './common/Tooltip';
 import apinoxIcon from '../assets/apinox-icon.png';
 import { Search, X, FileText, Folder, Box, Layers, TestTube, ChevronRight } from 'lucide-react';
 import { MULTI_CLICK_RESET_MS } from '../constants';
+import { SidebarView } from '@shared/models';
 
 const TitleBarContainer = styled.div`
   position: fixed;
@@ -281,7 +283,7 @@ const TitleBar: React.FC = () => {
   const [version, setVersion] = useState<string>('');
   const [platformOS, setPlatformOS] = useState<'macos' | 'windows' | 'linux' | 'unknown'>('unknown');
   const { projects } = useProject();
-  const { openDebugModal } = useUI();
+  const { setActiveView } = useNavigation();
   const { 
     searchQuery, 
     setSearchQuery, 
@@ -314,7 +316,7 @@ const TitleBar: React.FC = () => {
     const timer = setTimeout(() => {
       if (clickCount + 1 >= 2) {
         // Double-click detected
-        openDebugModal();
+        setActiveView(SidebarView.DEBUG);
       }
       setClickCount(0);
       setClickTimer(null);
@@ -423,7 +425,7 @@ const TitleBar: React.FC = () => {
     <>
       <TitleBarContainer>
         <DragRegion $isMacOS={platformOS === 'macos'} $isMaximized={isMaximized} data-tauri-drag-region>
-          <AppLogo onClick={handleLogoClick} title="Double-click to open Debug Console">
+          <AppLogo onClick={handleLogoClick} title="Double-click to open the Debug view">
             <LogoIcon src={apinoxIcon} alt="APInox" />
             <AppTitle>APInox {version}</AppTitle>
           </AppLogo>

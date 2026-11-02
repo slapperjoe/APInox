@@ -96,6 +96,21 @@ describe('SettingsView (full-area settings)', () => {
         expect(configArgs[configArgs.length - 1].network.defaultTimeout).toBe(45000);
     });
 
+    it('renders the Proxy tab as a scroll area, so the last section is reachable', async () => {
+        renderView({ initialTab: 'proxy' });
+        await screen.findByText('Developer Tools');
+
+        // The clipping bug: a `flex: 1` tab body without `min-height: 0` grows to its
+        // content, so the ancestor's `overflow: hidden` cut the section off — heading only,
+        // no content. ScrollArea is the shared primitive that fixes it.
+        const body = screen.getByTestId('scroll-area');
+        expect(body.style.minHeight).toBe('0');
+        expect(body.style.overflow).toBe('auto');
+
+        // And the section's content, not just its heading.
+        expect(screen.getByText('Send Test Requests')).toBeInTheDocument();
+    });
+
     it('resets network + ui via the General tab Danger Zone', async () => {
         const { onSave, unmount } = renderView();
         await screen.findByText('User Interface');

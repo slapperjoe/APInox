@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { Search, X } from 'lucide-react';
 import { useSearch } from '../contexts/SearchContext';
 import { useUI } from '../contexts/UIContext';
+import { useNavigation } from '../contexts/NavigationContext';
 import { SearchDropdown } from './SearchDropdown';
 import { Tooltip } from './common/Tooltip';
 import { SearchResult } from '../utils/workspaceSearch';
@@ -11,6 +12,7 @@ import apinoxIcon from '../assets/apinox-icon.png';
 import pkg from '../../package.json';
 import { MULTI_CLICK_RESET_MS } from '../constants';
 import { debugLog } from '../utils/logger';
+import { SidebarView } from '@shared/models';
 
 const SearchBarContainer = styled.div`
   position: fixed;
@@ -173,7 +175,7 @@ export const MacOSTitleBarSearch: React.FC = () => {
     setSelectedIndex, 
     selectResult
   } = useSearch();
-  const { openDebugModal } = useUI();
+  const { setActiveView } = useNavigation();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [clickCount, setClickCount] = useState(0);
   const [clickTimer, setClickTimer] = useState<NodeJS.Timeout | null>(null);
@@ -193,8 +195,8 @@ export const MacOSTitleBarSearch: React.FC = () => {
     const timer = setTimeout(() => {
       if (clickCount + 1 >= 2) {
         // Double-click detected
-        debugLog('[MacOSTitleBarSearch] Logo double-click — opening Debug Modal', { clickCount: clickCount + 1 });
-        openDebugModal();
+        debugLog('[MacOSTitleBarSearch] Logo double-click — opening the Debug view', { clickCount: clickCount + 1 });
+        setActiveView(SidebarView.DEBUG);
       }
       setClickCount(0);
       setClickTimer(null);

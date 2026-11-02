@@ -82,6 +82,24 @@ describe('SidebarRail (workspace tab removal)', () => {
         expect(onOpenSettings).toHaveBeenCalledTimes(1);
     });
 
+    it('routes the Debug rail item to the debug view', () => {
+        const onChangeView = vi.fn();
+        const { container } = render(
+            <SidebarRail activeView={SidebarView.DEBUG} onChangeView={onChangeView} />,
+        );
+
+        // Debug was a modal (Ctrl+Shift+D). As a view it needs a rail entry, otherwise the
+        // only way to reach it is the shortcut or the logo double-click.
+        // An attribute selector on the title is brittle here (`&`), so resolve the
+        // accessible name the way the user would.
+        const debug = screen.getByLabelText('Debug & Diagnostics');
+        expect(debug.querySelector('div')!.style.backgroundColor).toBe(
+            'var(--apinox-list-activeSelectionBackground)',
+        );
+        fireEvent.click(debug);
+        expect(onChangeView).toHaveBeenCalledWith(SidebarView.DEBUG);
+    });
+
     it('shows a live indicator dot on the traffic entry only while traffic is being captured', () => {
         const { container, rerender } = render(
             <SidebarRail {...baseProps} trafficCapturing={false} />

@@ -4,6 +4,7 @@ import {
   HelpCircle,
   Compass,
   FlaskConical,
+  Bug,
   Server,
   Activity,
   FileText,
@@ -165,6 +166,16 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
         active={activeView === SidebarView.NOTES}
         onClick={() => onChangeView(SidebarView.NOTES)}
         title="Notes"
+      />
+
+      {/* Debug is a utility view like Notes: bottom of the rail, not a primary entry.
+          It was a modal (Ctrl+Shift+D); as a view its panels can be tall, and a modal with
+          a max height clipped the last one. */}
+      <NavItem
+        icon={Bug}
+        active={activeView === SidebarView.DEBUG}
+        onClick={() => onChangeView(SidebarView.DEBUG)}
+        title="Debug & Diagnostics"
       />
 
       <RailSeparator />

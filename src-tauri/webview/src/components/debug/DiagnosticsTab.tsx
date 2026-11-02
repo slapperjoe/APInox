@@ -86,20 +86,21 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
                     });
                 }
                 
-                // Test HTTPS server creation
-                results.push({ status: 'info', message: 'Testing HTTPS server creation...' });
+                // The CA and key as a pair: a handshake where the CA file is the only
+                // trust anchor completes only if the key on disk signed that certificate.
+                results.push({ status: 'info', message: 'Handshake against the CA on disk...' });
                 const httpsTest = await bridge.sendMessageAsync({ command: 'testHttpsServer' });
-                
+
                 if (httpsTest.success) {
                     results.push({
                         status: 'success',
-                        message: 'HTTPS server test passed',
-                        details: 'Certificate and key are valid for Node.js'
+                        message: 'Certificate and key are a matching pair',
+                        details: httpsTest.details || 'The handshake against the CA completed'
                     });
                 } else {
                     results.push({
                         status: 'error',
-                        message: 'HTTPS server test failed',
+                        message: 'Certificate and key do not pair',
                         details: httpsTest.error || 'Certificate/key may be malformed'
                     });
                 }
@@ -113,14 +114,14 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
                     if (connTest.success) {
                         results.push({
                             status: 'success',
-                            message: 'Proxy connection successful',
-                            details: `Protocol: ${connTest.protocol}, Cipher: ${connTest.cipher}`
+                            message: 'Proxy handshake successful',
+                            details: `Protocol: ${connTest.protocol}, Cipher: ${connTest.cipher}\nVerified against: ${connTest.verifiedAgainst}`
                         });
                     } else {
                         results.push({
                             status: 'error',
-                            message: 'Proxy connection failed',
-                            details: `${connTest.code || 'Error'}: ${connTest.error}. This is the same error your .NET client sees.`
+                            message: `Proxy handshake failed: ${connTest.error}`,
+                            details: `${connTest.hint || 'This is the same error your .NET client sees.'}\nVerified against: ${connTest.verifiedAgainst}`
                         });
                     }
                 }
@@ -148,64 +149,48 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
         setIsRunning(true);
         setActiveTest('proxy');
         setProxyResults([]);
-        
+
         const results: DiagnosticResult[] = [];
 
         try {
-            // Get actual proxy status from backend
+            // `get_proxy_status` returns flat fields: running, port, mode, targetUrl.
             const proxyStatus = await bridge.sendMessageAsync({ command: 'getProxyStatus' });
-            
-            const targetUrl = proxyStatus?.config?.targetUrl || '';
-            const clientPort = proxyStatus?.config?.port || 9000;
+
+            const targetUrl = proxyStatus?.targetUrl || '';
+            const clientPort = proxyStatus?.port || 8888;
             const isRunning = proxyStatus?.running || false;
-            const actualProtocol = proxyStatus?.config?.actualProtocol || 'Unknown';
-            const expectedProtocol = proxyStatus?.config?.expectedProtocol || 'Unknown';
-            
-            const protocolMismatch = isRunning && actualProtocol !== expectedProtocol;
-            
+
             results.push({
-                status: protocolMismatch ? 'error' : 'info',
+                status: 'info',
                 message: 'Proxy Configuration',
-                details: `Target: ${targetUrl || '(Not configured)'}\nPort: ${clientPort}\nStatus: ${isRunning ? 'Running' : 'Stopped'}\nExpected Protocol: ${expectedProtocol}\nActual Protocol: ${actualProtocol}${protocolMismatch ? '\n\n❌ PROTOCOL MISMATCH! Certificate generation likely failed.' : ''}`
+                details: `Target: ${targetUrl || '(Not configured)'}\nPort: ${clientPort}\nMode: ${proxyStatus?.mode || 'forward'}\nStatus: ${isRunning ? 'Running' : 'Stopped'}`
             });
-            
-            // Check protocol consistency
-            if (protocolMismatch) {
-                results.push({
-                    status: 'error',
-                    message: '❌ CRITICAL: Protocol Mismatch Detected!',
-                    details: `Target requires ${expectedProtocol} but proxy is serving ${actualProtocol}.\n\nThis causes "wrong version number" or "EPROTO" errors.\n\nFIX:\n1. Check certificate diagnostics above\n2. Regenerate certificate if needed\n3. Install certificate to LocalMachine\\Root\n4. Restart proxy`
-                });
-            } else if (expectedProtocol === 'HTTPS') {
-                results.push({
-                    status: 'warning',
-                    message: '⚠️ HTTPS Target - Protocol Match Required!',
-                    details: `Your .NET client MUST use: https://localhost:${clientPort}\n\nCommon Error: Using http:// causes "wrong version number" or "EPROTO" errors.\n\nFix in your .NET code:\nvar endpoint = new EndpointAddress("https://localhost:${clientPort}/YourService");`
-                });
-            } else if (targetUrl) {
-                results.push({
-                    status: 'info',
-                    message: 'HTTP target detected',
-                    details: `Client should connect to: http://localhost:${clientPort}`
-                });
-            }
-            
-            // Check if proxy is running
-            const statusCheck = await bridge.sendMessageAsync({ command: 'getProxyStatus' });
-            
-            if (statusCheck.running) {
-                results.push({
-                    status: 'success',
-                    message: 'Proxy server is running'
-                });
-            } else {
+
+            if (!isRunning) {
                 results.push({
                     status: 'warning',
                     message: 'Proxy server is not running',
                     details: 'Start the proxy to test connections'
                 });
+            } else {
+                results.push({ status: 'info', message: 'Testing connection to running proxy...' });
+                const connTest = await bridge.sendMessageAsync({ command: 'testProxyConnection' });
+
+                if (connTest.success) {
+                    results.push({
+                        status: 'success',
+                        message: 'Proxy handshake successful',
+                        details: `Protocol: ${connTest.protocol}\nCipher: ${connTest.cipher}\nVerified against: ${connTest.verifiedAgainst}`
+                    });
+                } else {
+                    results.push({
+                        status: 'error',
+                        message: `Proxy handshake failed: ${connTest.error}`,
+                        details: `${connTest.hint || 'This is the same error your .NET client sees.'}\nVerified against: ${connTest.verifiedAgainst}`
+                    });
+                }
             }
-            
+
         } catch (error: any) {
             results.push({
                 status: 'error',
@@ -213,7 +198,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
                 details: commandErrorText(error)
             });
         }
-        
+
         setProxyResults(results);
         setIsRunning(false);
         setActiveTest(null);

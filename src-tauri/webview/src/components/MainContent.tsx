@@ -88,8 +88,8 @@ const SettingsView = React.lazy(() =>
 const AddToDevOpsModal = React.lazy(() =>
     import('./modals/AddToDevOpsModal').then(module => ({ default: module.AddToDevOpsModal }))
 );
-const DebugModal = React.lazy(() =>
-    import('./modals/DebugModal').then(module => ({ default: module.DebugModal }))
+const DebugView = React.lazy(() =>
+    import('./debug/DebugView').then(module => ({ default: module.DebugView }))
 );
 const PickRequestModal = React.lazy(() =>
     import('./modals/PickRequestModal').then(module => ({ default: module.PickRequestModal }))
@@ -358,9 +358,6 @@ const MainContent: React.FC = () => {
         setHelpSection,
         showDevOpsModal,
         setShowDevOpsModal,
-        showDebugModal,
-        setShowDebugModal,
-        openDebugModal,
         config,
         setConfig,
         rawConfig,
@@ -401,13 +398,13 @@ const MainContent: React.FC = () => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.ctrlKey && e.shiftKey && e.key === 'D') {
                 e.preventDefault();
-                openDebugModal();
+                setActiveView(SidebarView.DEBUG);
             }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [openDebugModal]);
+    }, [setActiveView]);
 
     // Keyboard shortcut: Ctrl+Shift+D to open debug modal
     useEffect(() => {
@@ -1756,7 +1753,7 @@ const MainContent: React.FC = () => {
                 </div>
             )}
             {/* WorkspaceLayout using WorkspaceContext - no props needed */}
-            {activeView !== SidebarView.PROXY && activeView !== SidebarView.MOCK && activeView !== SidebarView.NOTES && activeView !== SidebarView.UNIFIED_EXPLORER && activeView !== SidebarView.SETTINGS && (
+            {activeView !== SidebarView.PROXY && activeView !== SidebarView.MOCK && activeView !== SidebarView.NOTES && activeView !== SidebarView.UNIFIED_EXPLORER && activeView !== SidebarView.SETTINGS && activeView !== SidebarView.DEBUG && (
                 <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                     <WorkspaceContext.Provider value={workspaceContextValue}>
                         <Suspense fallback={<div style={{ flex: 1, background: 'var(--apinox-editor-background)' }} />}>
@@ -1790,6 +1787,13 @@ const MainContent: React.FC = () => {
                     </Suspense>
                 </div>
             )}
+            {activeView === SidebarView.DEBUG && (
+                <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                    <Suspense fallback={<div style={{ flex: 1, background: 'var(--apinox-editor-background)' }} />}>
+                        <DebugView />
+                    </Suspense>
+                </div>
+            )}
             <Suspense fallback={null}>
                 {
                     showDevOpsModal && config?.azureDevOps?.orgUrl && config?.azureDevOps?.project && selectedRequest && (
@@ -1812,14 +1816,6 @@ const MainContent: React.FC = () => {
                                 setShowHelp(false);
                                 setHelpSection(null);
                             }}
-                        />
-                    )
-                }
-                {
-                    showDebugModal && (
-                        <DebugModal
-                            isOpen={showDebugModal}
-                            onClose={() => setShowDebugModal(false)}
                         />
                     )
                 }

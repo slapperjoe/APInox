@@ -8,6 +8,7 @@ import { useTheme } from '../../request-editor/core'; // Use package ThemeContex
 import { TAG_COLORS } from '../../styles/colors';
 import { SPACING_SM, SPACING_MD } from '../../styles/spacing';
 import { ProxySettingsPanel } from '../proxy/ProxySettingsPanel';
+import { ScrollArea } from '../common/ScrollArea';
 import { useIgnoreList } from '../../utils/useIgnoreList';
 import { bridge } from '../../utils/bridge';
 import { FrontendCommand } from '@shared/messages';
@@ -544,13 +545,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ rawConfig, onSave, i
                 )}
 
                 {activeTab === SettingsTab.PROXY && (
-                    <div style={{ flex: 1, overflow: 'auto' }}>
+                    // The panel is taller than the tab body, so this has to be a real scroll
+                    // area — `flex: 1` alone grows to its content and the last section
+                    // (Developer Tools) is clipped by ContentContainer's overflow: hidden.
+                    <ScrollArea>
                         <ProxySettingsPanel
                             ignoreRules={ignoreRules}
                             onRemoveIgnoreRule={removeIgnoreRule}
                             onAddIgnoreRule={addIgnoreRule}
                         />
-                    </div>
+                    </ScrollArea>
                 )}
 
                 {activeTab === SettingsTab.UPDATES && (
