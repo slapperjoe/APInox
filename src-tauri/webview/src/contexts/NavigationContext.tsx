@@ -1,10 +1,13 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, startTransition, ReactNode } from 'react';
+import React, { createContext, useContext, useRef, useState, useEffect, useCallback, useMemo, startTransition, ReactNode } from 'react';
 import { SidebarView } from '@shared/models';
 import { BackendCommand } from '@shared/messages';
 
 interface NavigationContextType {
     activeView: SidebarView;
     setActiveView: React.Dispatch<React.SetStateAction<SidebarView>>;
+    /** The view the user was on before the current one. The Debug view has no rail entry —
+        the title-bar logo double-click is the only way in — so it needs a way back. */
+    previousView: SidebarView;
     sidebarExpanded: boolean;
     setSidebarExpanded: (expanded: boolean) => void;
     toggleSidebar: () => void;
@@ -23,15 +26,27 @@ export const useNavigation = () => {
 export const NavigationProvider = ({ children }: { children: ReactNode }) => {
     const [activeView, _setActiveView] = useState<SidebarView>(SidebarView.UNIFIED_EXPLORER);
     const [sidebarExpanded, setSidebarExpanded] = useState<boolean>(true);
+    const currentViewRef = useRef(activeView);
 
     const toggleSidebar = useCallback(() => setSidebarExpanded(prev => !prev), []);
 
     // Wrap setActiveView in startTransition to handle lazy-loaded views
     // This prevents "component suspended while responding to synchronous input" errors
     // when switching to views that contain React.lazy components (NotesEditor, ProxyPanel, etc.)
+    const [previousView, setPreviousView] = useState<SidebarView>(SidebarView.UNIFIED_EXPLORER);
+
     const setActiveView = useCallback((view: React.SetStateAction<SidebarView>) => {
+        // Resolve a functional update against the current view so the transition records
+        // where the user came from, rather than losing it.
+        const next = typeof view === 'function'
+            ? (view as (prev: SidebarView) => SidebarView)(currentViewRef.current)
+            : view;
+        if (next !== currentViewRef.current) {
+            setPreviousView(currentViewRef.current);
+            currentViewRef.current = next;
+        }
         startTransition(() => {
-            _setActiveView(view);
+            _setActiveView(next);
         });
     }, []);
 
@@ -81,10 +96,11 @@ export const NavigationProvider = ({ children }: { children: ReactNode }) => {
     const value = useMemo(() => ({
         activeView,
         setActiveView,
+        previousView,
         sidebarExpanded,
         setSidebarExpanded,
         toggleSidebar
-    }), [activeView, sidebarExpanded, setActiveView, toggleSidebar]);
+    }), [activeView, setActiveView, previousView, sidebarExpanded, setSidebarExpanded, toggleSidebar]);
 
     return (
         <NavigationContext.Provider value={value}>

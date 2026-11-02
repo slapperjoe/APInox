@@ -13,6 +13,10 @@ import React, { useState, useEffect } from 'react';
 import { bridge, commandErrorText } from '../../utils/bridge';
 import { DiagnosticsTab } from './DiagnosticsTab';
 import { frontendLogs, captureLog } from '../../utils/logger';
+import { useNavigation } from '../../contexts/NavigationContext';
+import { IconButton } from '../common/Button';
+import { Tooltip } from '../common/Tooltip';
+import { X } from 'lucide-react';
 
 import { ScrollArea } from '../common/ScrollArea';
 
@@ -41,6 +45,9 @@ export const DebugView: React.FC = () => {
 
     // Tab state
     const [activeTab, setActiveTab] = useState<'logs' | 'diagnostics'>('logs');
+
+    const { previousView, setActiveView } = useNavigation();
+
 
     // Debug screen state
     const [tauriLogs, setTauriLogs] = useState<string[]>([]);
@@ -241,6 +248,26 @@ export const DebugView: React.FC = () => {
             flexDirection: 'column',
             background: 'var(--apinox-editor-background)',
         }}>
+            {/* Header. Debug has no rail entry — the title-bar logo double-click is the only
+                way in — so the view carries its own way back to whatever the user was on. */}
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 20px',
+                borderBottom: '1px solid var(--apinox-panel-border)',
+                flexShrink: 0,
+                background: 'var(--apinox-sideBar-background)',
+                fontWeight: 'var(--fw-bold)',
+            }}>
+                <span style={{ flex: 1 }}>Debug &amp; Diagnostics</span>
+                <Tooltip content="Return to the previous view">
+                    <IconButton data-testid="debug-close" onClick={() => setActiveView(previousView)}>
+                        <X size={16} />
+                    </IconButton>
+                </Tooltip>
+            </div>
+
             {/* Tab Navigation */}
             <div style={{
                 display: 'flex',
