@@ -1,12 +1,23 @@
 /**
  * DiagnosticsTab.tsx
- * 
- * Certificate and proxy diagnostics tools integrated into the Debug modal
+ *
+ * Certificate and proxy diagnostics — the checks behind the Debug view's
+ * Certificate & Proxy tab.
+ *
+ * Danger buttons take the saturated danger surface (`tokens.surface.danger-dark`)
+ * with `tokens.text.white`, the same pairing the proxy rules pages use. Pairing
+ * `inputValidation-errorBackground` with `button-foreground` was illegible: the
+ * button foreground is white in every theme, but in the three light themes the
+ * error background is near-white (#fde7e9, #f5e3e2), so "Reset All Certificates"
+ * read as white text on white paper. The error *background* is only ever safe with
+ * its own paired foreground (`inputValidation-errorForeground`), which is what the
+ * status banner uses.
  */
 
 import React, { useState } from 'react';
 import { Shield, Network, CheckCircle, XCircle, AlertTriangle, RefreshCw } from 'lucide-react';
-import { bridge, commandErrorText, isTauri } from '../../utils/bridge';
+import { bridge, commandErrorText } from '../../utils/bridge';
+import { tokens } from '../proxy/tokens';
 
 interface DiagnosticsTabProps {
     serverConfig?: any;
@@ -380,10 +391,10 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
                             onClick={resetCertificates}
                             style={{
                                 padding: '8px 16px',
-                                background: 'var(--apinox-inputValidation-errorBackground)',
-                                color: 'var(--apinox-button-foreground)',
-                                border: '1px solid var(--apinox-inputValidation-errorBorder)',
-                                borderRadius: '2px',
+                                background: tokens.surface.dangerDark,
+                                color: tokens.text.white,
+                                border: 'none',
+                                borderRadius: tokens.radius.sm,
                                 cursor: 'pointer'
                             }}
                         >
@@ -535,12 +546,12 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
                         onClick={() => setShowResetConfirm(true)}
                         style={{
                             padding: '8px 14px',
-                            fontSize: '0.85em',
-                            background: 'var(--apinox-inputValidation-errorBackground)',
-                            color: 'var(--apinox-button-foreground)',
-                            border: '1px solid var(--apinox-inputValidation-errorBorder)',
+                            fontSize: tokens.fontSize.sm,
+                            background: tokens.surface.dangerDark,
+                            color: tokens.text.white,
+                            border: 'none',
                             cursor: 'pointer',
-                            borderRadius: '2px'
+                            borderRadius: tokens.radius.sm
                         }}
                     >
                         Reset All Certificates
