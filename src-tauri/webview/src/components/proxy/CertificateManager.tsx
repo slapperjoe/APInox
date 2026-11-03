@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { invokeTauriCommand } from '../../utils/bridge';
+import { legibleTextOn } from '../../utils/contrast';
 import { tokens } from './tokens';
 
 interface CertInfo {
@@ -391,13 +392,20 @@ function storeLabel(info: CertInfo): string {
 }
 
 
+/**
+ * Button style. The text colour is chosen from the background rather than assumed white:
+ * `btnStyle` was called with `--apinox-accent-purple` (2.31–3.21:1 against white in five
+ * themes) and with the theme's button background, which is below AA in four themes.
+ * `legibleTextOn` keeps the theme's intended pairing wherever it already clears AA, so the
+ * themes that were fine are unchanged. See src/utils/contrast.ts.
+ */
 function btnStyle(bg: string, disabled: boolean): React.CSSProperties {
   return {
     padding: '9px 18px',
     background: bg,
     border: 'none',
     borderRadius: '4px',
-    color: 'white',
+    color: legibleTextOn(bg, tokens.text.white),
     fontSize: '13px',
     fontWeight: 'var(--fw-medium)',
     cursor: disabled ? 'not-allowed' : 'pointer',

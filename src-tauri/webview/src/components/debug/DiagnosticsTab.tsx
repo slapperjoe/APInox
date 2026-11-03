@@ -11,12 +11,16 @@
  * error background is near-white (#fde7e9, #f5e3e2), so "Reset All Certificates"
  * read as white text on white paper. The error *background* is only ever safe with
  * its own paired foreground (`inputValidation-errorForeground`), which is what the
- * status banner uses.
+ * status banner uses. When the pairing a theme intends does not clear AA — the action
+ * banner, the accent-purple button — the text colour is chosen from the background at
+ * render time by `utils/contrast.ts`, because a fixed colour cannot be right in a
+ * variable that is dark in one theme and near-white in another.
  */
 
 import React, { useState } from 'react';
 import { Shield, Network, CheckCircle, XCircle, AlertTriangle, RefreshCw } from 'lucide-react';
 import { bridge, commandErrorText } from '../../utils/bridge';
+import { legibleTextOn } from '../../utils/contrast';
 import { tokens } from '../proxy/tokens';
 
 interface DiagnosticsTabProps {
@@ -291,35 +295,51 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {/* Action Message */}
-            {actionMessage && (
-                <div style={{
-                    padding: '12px 16px',
-                    background: actionMessage.type === 'success' 
-                        ? 'var(--apinox-testing-iconPassed)' 
-                        : 'var(--apinox-inputValidation-errorBackground)',
-                    border: `1px solid ${actionMessage.type === 'success' ? 'var(--apinox-testing-iconPassed)' : 'var(--apinox-inputValidation-errorBorder)'}`,
-                    borderRadius: '4px',
-                    color: 'var(--apinox-editor-foreground)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                }}>
-                    {actionMessage.type === 'success' ? <CheckCircle size={16} /> : <XCircle size={16} />}
-                    <span>{actionMessage.text}</span>
-                    <button
-                        onClick={() => setActionMessage(null)}
-                        style={{
-                            marginLeft: 'auto',
-                            background: 'transparent',
-                            border: 'none',
-                            color: 'var(--apinox-editor-foreground)',
-                            cursor: 'pointer',
-                            padding: '4px',
-                            fontSize: '16px'
-                        }}
-                    >×</button>
-                </div>
-            )}
+            {actionMessage && (() => {
+                // Both backgrounds are theme variables, so a fixed text colour cannot be right
+                // in all six themes: the success banner was an icon colour used as a
+                // background (1.01–1.39:1) and the error banner's own pair measured 3.60:1 in
+                // Solarized Light. `legibleTextOn` keeps the theme's pairing wherever it
+                // already clears AA. See utils/contrast.ts.
+                const isSuccess = actionMessage.type === 'success';
+                const background = isSuccess
+                    ? 'var(--apinox-inputValidation-successBackground)'
+                    : 'var(--apinox-inputValidation-errorBackground)';
+                const foreground = legibleTextOn(
+                    background,
+                    isSuccess
+                        ? 'var(--apinox-inputValidation-successForeground)'
+                        : 'var(--apinox-inputValidation-errorForeground)',
+                );
+
+                return (
+                    <div style={{
+                        padding: '12px 16px',
+                        background,
+                        border: `1px solid ${isSuccess ? 'var(--apinox-inputValidation-successBorder)' : 'var(--apinox-inputValidation-errorBorder)'}`,
+                        borderRadius: '4px',
+                        color: foreground,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                    }}>
+                        {isSuccess ? <CheckCircle size={16} /> : <XCircle size={16} />}
+                        <span>{actionMessage.text}</span>
+                        <button
+                            onClick={() => setActionMessage(null)}
+                            style={{
+                                marginLeft: 'auto',
+                                background: 'transparent',
+                                border: 'none',
+                                color: foreground,
+                                cursor: 'pointer',
+                                padding: '4px',
+                                fontSize: '16px'
+                            }}
+                        >×</button>
+                    </div>
+                );
+            })()}
 
             {/* Regenerate Confirmation Dialog */}
             {showRegenerateConfirm && (
