@@ -171,14 +171,14 @@ pub async fn install_certificate_to_local_machine(
         }
         let path_str = path.to_string_lossy().into_owned();
 
-        #[cfg(target_os = "windows")]
+        #[cfg(any(target_os = "windows", target_os = "macos"))]
         let tp = mgr.thumbprint().unwrap_or_default();
 
         #[cfg(target_os = "windows")]
-        let result = install_machine_windows(&path_str, &tp);
+        let result = apply_machine_store(&path_str, &tp, false, "Certificate added to LocalMachine\\Root.");
 
         #[cfg(target_os = "macos")]
-        let result = install_machine_macos(&path_str);
+        let result = apply_machine_store(&path_str, &tp, false, "Certificate added to the System keychain.");
 
         #[cfg(not(any(target_os = "macos", target_os = "windows")))]
         let result = action_err(
@@ -206,116 +206,256 @@ pub async fn move_certificate_to_local_machine(
         if !path.exists() {
             return Ok(action_err("CA certificate not found — generate it first".to_string(), vec![]));
         }
+        #[cfg(any(target_os = "windows", target_os = "macos"))]
         let tp = thumbprint.unwrap_or_else(|| mgr.thumbprint().unwrap_or_default());
+        let path_str = path.to_string_lossy().into_owned();
 
         #[cfg(target_os = "windows")]
-        let result = move_machine_windows(&path.to_string_lossy(), &tp);
+        let result = apply_machine_store(&path_str, &tp, true, "Certificate moved to LocalMachine\\Root.");
 
-        #[cfg(not(target_os = "windows"))]
-        let result = DiagAction {
-            success: false,
-            error: Some("The machine store is not writable without elevation on this platform.".to_string()),
-            details: Some(format!("Requested thumbprint: {tp}")),
-            #[cfg(target_os = "macos")]
-            manual_steps: macos_manual_steps(&path.to_string_lossy()),
-            #[cfg(target_os = "linux")]
-            manual_steps: linux_manual_steps(&path.to_string_lossy()),
-            #[cfg(not(any(target_os = "macos", target_os = "linux")))]
-            manual_steps: vec!["Manually add the certificate to the machine trust store.".to_string()],
-        };
+        #[cfg(target_os = "macos")]
+        let result = apply_machine_store(&path_str, &tp, true, "Certificate moved to the System keychain.");
+
+        #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+        let result = action_err(
+            format!(
+                "The machine trust store needs root on this platform. Requested thumbprint: {tp}",
+                tp = thumbprint.unwrap_or_else(|| mgr.thumbprint().unwrap_or_default())
+            ),
+            linux_manual_steps(&path_str),
+        );
 
         Ok(result)
     })
     .await
 }
 
-#[cfg(target_os = "windows")]
-fn install_machine_windows(cert_path: &str, thumbprint: &str) -> DiagAction {
-    // Add, then read the store back. An `Add` that throws — access denied without
-    // Administrator rights — does not change PowerShell's exit code, so the exit status alone
-    // used to report success for a store that never received the certificate.
-    let command = format!(
-        "$ErrorActionPreference = 'Stop'; try {{ \
-         $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2('{path}'); \
-         $s = New-Object System.Security.Cryptography.X509Certificates.X509Store('Root', 'LocalMachine'); \
-         $s.Open('ReadWrite'); $s.Add($cert); $s.Close(); \
-         $v = New-Object System.Security.Cryptography.X509Certificates.X509Store('Root', 'LocalMachine'); \
-         $v.Open('ReadOnly'); \
-         if (-not ($v.Certificates | Where-Object {{ $_.Thumbprint -eq '{tp}' }})) {{ throw 'the store did not keep the certificate' }}; \
-         $v.Close(); 'OK' }} catch {{ throw $_ }}",
-        path = cert_path.replace('\'', "''"),
-        tp = thumbprint
-    );
-    run_store_command(&command, cert_path, "Certificate added to LocalMachine\\Root.")
+// ── Machine trust store ─────────────────────────────────────────────────────
+//
+// The machine store is what a Windows service, an IIS app pool or any other user validates
+// against, and an ordinary process cannot write to it for itself. The old code had two faults:
+// it removed the user-store copy *before* the machine add, so a refused add left the CA in
+// neither store; and it judged success on PowerShell's exit code, which a failed .NET call does
+// not set. It also named `install_machine_macos` without defining it, so the macOS build could
+// not compile.
+//
+// Every path writes its outcome to a result file, because that is the only reliable channel: an
+// elevated child is detached — `Start-Process -Verb RunAs` on Windows, `osascript … with
+// administrator privileges` on macOS (the same mechanism `sniffer_server` uses for networksetup)
+// — and its output never comes back to the parent.
+
+#[derive(Debug, PartialEq)]
+pub enum StoreOutcome {
+    Ok,
+    Failed(String),
+}
+
+pub fn parse_store_outcome(raw: &str) -> StoreOutcome {
+    let t = raw.trim();
+    if t == "OK" {
+        return StoreOutcome::Ok;
+    }
+    if t.is_empty() {
+        return StoreOutcome::Failed("the elevation prompt was declined — no result was written".to_string());
+    }
+    StoreOutcome::Failed(t.trim().trim_start_matches("FAILED: ").to_string())
+}
+
+/// True when the failure is one an elevation prompt can answer.
+pub fn is_elevation_failure(detail: &str) -> bool {
+    let d = detail.to_lowercase();
+    d.contains("access denied") || d.contains("administrator") || d.contains("permission denied")
+}
+
+/// Windows operation. The order is the guard: confirm the machine store kept the certificate
+/// before removing the user-store copy, never the other way round.
+pub fn windows_store_script(cert_path: &str, thumbprint: &str, result_file: &str, move_from_user: bool) -> String {
+    let q = |s: &str| s.replace("'", "''");
+    let store = |scope: &str| format!("New-Object System.Security.Cryptography.X509Certificates.X509Store('Root', '{scope}')");
+    let mut parts = vec![
+        "$ErrorActionPreference='Stop'".to_string(),
+        "try {".to_string(),
+        format!("$cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2('{}')", q(cert_path)),
+        format!("$m = {}; $m.Open('ReadWrite'); $m.Add($cert); $m.Close();", store("LocalMachine")),
+        format!(
+            "$v = {}; $v.Open('ReadOnly'); if (-not ($v.Certificates | Where-Object {{ $_.Thumbprint -eq '{}' }})) {{ throw 'the machine store did not keep the certificate' }}; $v.Close();",
+            store("LocalMachine"),
+            q(thumbprint)
+        ),
+    ];
+    if move_from_user {
+        parts.push(format!(
+            "$u = {}; $u.Open('ReadWrite'); $found = $u.Certificates | Where-Object {{ $_.Thumbprint -eq '{}' }}; if ($found) {{ $u.Remove($found) }}; $u.Close();",
+            store("CurrentUser"),
+            q(thumbprint)
+        ));
+    }
+    parts.push(format!("Set-Content -Path '{}' -Value 'OK'", q(result_file)));
+    parts.push(format!("}} catch {{ Set-Content -Path '{}' -Value ('FAILED: ' + $_.Exception.Message) }}", q(result_file)));
+    parts.join(" ")
+}
+
+/// macOS operation: System keychain, then read it back.
+pub fn macos_store_script(cert_path: &str, result_file: &str) -> String {
+    let q = |s: &str| s.replace("'", "'\''");
+    format!(
+        "if security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain '{cert}'; then\n\
+         if security find-certificate -c APIprox /Library/Keychains/System.keychain >/dev/null; then\n\
+         echo OK > '{out}'\n\
+         else echo 'FAILED: the System keychain did not keep the certificate' > '{out}'; fi\n\
+         else echo 'FAILED: the System keychain needs administrator privileges' > '{out}'; fi",
+        cert = q(cert_path),
+        out = q(result_file)
+    )
+}
+
+#[allow(dead_code)] // only reached from the Windows and macOS branches
+fn read_outcome(path: &std::path::Path) -> StoreOutcome {
+    parse_store_outcome(&std::fs::read_to_string(path).unwrap_or_default())
+}
+
+#[allow(dead_code)] // only reached from the Windows and macOS branches
+fn outcome_detail(o: &StoreOutcome) -> String {
+    match o {
+        StoreOutcome::Ok => String::new(),
+        StoreOutcome::Failed(d) => d.clone(),
+    }
 }
 
 #[cfg(target_os = "windows")]
-fn move_machine_windows(cert_path: &str, thumbprint: &str) -> DiagAction {
-    // Add to the machine store and confirm it landed *before* removing it from the user
-    // store. The order used to be remove-then-add, so a machine store that refused the add
-    // left the CA in neither store — the panel said "moved successfully" while the next
-    // diagnostic reported "not installed in any trust store".
+fn apply_machine_store(cert_path: &str, thumbprint: &str, move_from_user: bool, success_text: &str) -> DiagAction {
+    let dir = std::env::temp_dir();
+    let stem = format!("apinox-cert-{}", std::process::id());
+    let result = dir.join(format!("{stem}.out"));
+    let script = windows_store_script(cert_path, thumbprint, &result.to_string_lossy(), move_from_user);
+
+    // Pass 1, in process — free for anyone already running elevated.
+    if let Err(e) = run_powershell(&script) {
+        return action_err(e, windows_manual_steps(cert_path));
+    }
+    let outcome = read_outcome(&result);
+    if outcome == StoreOutcome::Ok {
+        return action_ok(success_text.to_string());
+    }
+    let detail = outcome_detail(&outcome);
+    if !is_elevation_failure(&detail) {
+        return action_err(detail, windows_manual_steps(cert_path));
+    }
+
+    // Pass 2: ask. The result file is cleared first so a declined prompt reads as no result
+    // rather than as pass 1's failure.
+    let _ = std::fs::remove_file(&result);
+    let ps1 = dir.join(format!("{stem}.ps1"));
+    if let Err(e) = std::fs::write(&ps1, &script) {
+        return action_err(format!("could not stage the elevated script: {e}"), windows_manual_steps(cert_path));
+    }
     let command = format!(
-        "$ErrorActionPreference = 'Stop'; try {{ \
-         $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2('{path}'); \
-         $m = New-Object System.Security.Cryptography.X509Certificates.X509Store('Root', 'LocalMachine'); \
-         $m.Open('ReadWrite'); $m.Add($cert); $m.Close(); \
-         $v = New-Object System.Security.Cryptography.X509Certificates.X509Store('Root', 'LocalMachine'); \
-         $v.Open('ReadOnly'); \
-         if (-not ($v.Certificates | Where-Object {{ $_.Thumbprint -eq '{tp}' }})) {{ throw 'the machine store did not keep the certificate' }}; \
-         $v.Close(); \
-         $u = New-Object System.Security.Cryptography.X509Certificates.X509Store('Root', 'CurrentUser'); \
-         $u.Open('ReadWrite'); \
-         $found = $u.Certificates | Where-Object {{ $_.Thumbprint -eq '{tp}' }}; \
-         if ($found) {{ $u.Remove($found) }}; \
-         $u.Close(); 'OK' }} catch {{ throw $_ }}",
-        path = cert_path.replace('\'', "''"),
-        tp = thumbprint
+        "$ErrorActionPreference='Stop'; Start-Process powershell -Verb RunAs -Wait -ArgumentList '-NoProfile','-NonInteractive','-File','{}'",
+        ps1.to_string_lossy().replace("'", "''")
     );
-    run_store_command(&command, cert_path, "Certificate moved to LocalMachine\\Root.")
+    if let Err(e) = run_powershell(&command) {
+        if e.to_lowercase().contains("canceled by the user") {
+            return action_err("Elevation declined".to_string(), windows_manual_steps(cert_path));
+        }
+        return action_err(format!("the elevation prompt failed: {e}"), windows_manual_steps(cert_path));
+    }
+    finish(read_outcome(&result), success_text, cert_path)
+}
+
+#[cfg(target_os = "macos")]
+fn apply_machine_store(cert_path: &str, _thumbprint: &str, move_from_user: bool, success_text: &str) -> DiagAction {
+    let dir = std::env::temp_dir();
+    let result = dir.join(format!("apinox-cert-{}.out", std::process::id()));
+    let script = macos_store_script(cert_path, &result.to_string_lossy());
+
+    if let Err(e) = run_shell(&script) {
+        return action_err(e, macos_manual_steps(cert_path));
+    }
+    let outcome = read_outcome(&result);
+    if outcome == StoreOutcome::Ok {
+        return action_ok(success_text.to_string());
+    }
+    let detail = outcome_detail(&outcome);
+    if !is_elevation_failure(&detail) {
+        return action_err(detail, macos_manual_steps(cert_path));
+    }
+
+    // Pass 2: the native password / Touch ID prompt, the same mechanism `sniffer_server` uses
+    // for `networksetup`.
+    let _ = std::fs::remove_file(&result);
+    let escaped = script.replace('\\', "\\\\").replace('"', "\\\"");
+    let apple = format!(r#"do shell script "{}" with administrator privileges"#, escaped);
+    if let Err(e) = run_osascript(&apple) {
+        if e.contains("-128") || e.to_lowercase().contains("cancel") {
+            return action_err("Elevation cancelled".to_string(), macos_manual_steps(cert_path));
+        }
+        return action_err(format!("the elevation prompt failed: {e}"), macos_manual_steps(cert_path));
+    }
+    if move_from_user {
+        // The user store is writable without elevation, so the move's second half runs directly.
+        let _ = std::process::Command::new("security")
+            .args(["delete-certificate", "-c", "APIprox", &format!("{}/Library/Keychains/login.keychain-db", std::env::var("HOME").unwrap_or_default())])
+            .output();
+    }
+    finish(read_outcome(&result), success_text, cert_path)
 }
 
 #[cfg(target_os = "windows")]
-fn run_store_command(command: &str, cert_path: &str, success_text: &str) -> DiagAction {
+fn run_powershell(command: &str) -> Result<(), String> {
     use std::os::windows::process::CommandExt;
     const CREATE_NO_WINDOW: u32 = 0x0800_0000;
     let output = std::process::Command::new("powershell")
         .args(["-NoProfile", "-NonInteractive", "-Command", command])
         .creation_flags(CREATE_NO_WINDOW)
-        .output();
-    match output {
-        Ok(o) => {
-            let stdout = String::from_utf8_lossy(&o.stdout).into_owned();
-            let stderr = String::from_utf8_lossy(&o.stderr).into_owned();
-            match store_action_error(o.status.success(), &stdout, &stderr) {
-                None => action_ok(success_text.to_string()),
-                Some(detail) => action_err(
-                    format!("LocalMachine\\Root needs Administrator rights: {detail}"),
-                    windows_manual_steps(cert_path),
-                ),
-            }
-        }
-        Err(e) => action_err(format!("could not run PowerShell: {e}"), windows_manual_steps(cert_path)),
+        .output()
+        .map_err(|e| format!("could not run PowerShell: {e}"))?;
+    if output.status.success() {
+        Ok(())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).trim().to_string())
     }
 }
 
-/// The exit code alone is not evidence the store changed: a failed .NET call inside a
-/// PowerShell script is reported as an error record without setting the exit code, so the
-/// panel previously claimed success for a store that never received the certificate. The
-/// scripts print `OK` only after reading the store back, and this requires both.
-#[cfg(any(test, target_os = "windows"))]
-fn store_action_error(exit_ok: bool, stdout: &str, stderr: &str) -> Option<String> {
-    let detail = {
-        let s = stderr.trim();
-        if !s.is_empty() { s.to_string() } else { stdout.trim().to_string() }
-    };
-    if !exit_ok {
-        return Some(if detail.is_empty() { "the store operation failed".to_string() } else { detail });
+#[cfg(target_os = "macos")]
+fn run_shell(script: &str) -> Result<(), String> {
+    let output = std::process::Command::new("sh")
+        .args(["-c", script])
+        .output()
+        .map_err(|e| format!("could not run the store script: {e}"))?;
+    if output.status.success() {
+        Ok(())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).trim().to_string())
     }
-    if stdout.trim() != "OK" {
-        return Some(if detail.is_empty() { "the store did not confirm the certificate is present".to_string() } else { detail });
+}
+
+#[cfg(target_os = "macos")]
+fn run_osascript(script: &str) -> Result<(), String> {
+    let output = std::process::Command::new("osascript")
+        .args(["-e", script])
+        .output()
+        .map_err(|e| format!("could not run osascript: {e}"))?;
+    if output.status.success() {
+        Ok(())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).trim().to_string())
     }
-    None
+}
+
+#[allow(dead_code)] // only reached from the Windows and macOS branches
+fn finish(outcome: StoreOutcome, success_text: &str, cert_path: &str) -> DiagAction {
+    match outcome {
+        StoreOutcome::Ok => action_ok(format!("{success_text} (via the elevation prompt).")),
+        StoreOutcome::Failed(d) => {
+            #[cfg(target_os = "windows")]
+            let steps = windows_manual_steps(cert_path);
+            #[cfg(target_os = "macos")]
+            let steps = macos_manual_steps(cert_path);
+            #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+            let steps = vec![format!("Add {cert_path} to the machine trust store.")];
+            action_err(format!("still refused after the elevation prompt: {d}"), steps)
+        }
+    }
 }
 
 #[derive(Serialize)]
@@ -614,21 +754,51 @@ mod tests {
     /// The bug this guards: a machine-store `Add` that throws — access denied without
     /// Administrator rights — is a PowerShell error record, not a non-zero exit code, so the
     /// panel reported "moved successfully" for a store that never received the certificate.
-    /// Success now requires the read-back sentinel as well as a clean exit.
+    /// Success now needs the read-back sentinel, not just a clean exit.
     #[test]
-    fn a_clean_exit_is_not_evidence_the_store_changed() {
-        assert!(store_action_error(true, "", "Access denied is requested.").is_some());
-        assert!(store_action_error(true, "", "").is_some());
-        assert_eq!(store_action_error(true, "OK", ""), None);
-        assert!(store_action_error(false, "", "Access denied is requested.").is_some());
+    fn the_sentinel_is_what_proves_the_store_changed() {
+        assert_eq!(parse_store_outcome("OK"), StoreOutcome::Ok);
+        assert!(matches!(
+            parse_store_outcome("FAILED: Access denied is requested."),
+            StoreOutcome::Failed(d) if d.contains("Access denied")
+        ));
+        // Declining the UAC prompt writes nothing, which must not read as success.
+        assert!(matches!(parse_store_outcome(""), StoreOutcome::Failed(_)));
     }
 
     #[test]
     fn the_failure_keeps_the_detail_the_reader_can_act_on() {
-        let err = store_action_error(true, "", "Access denied is requested.").unwrap();
-        assert!(err.contains("Access denied is requested"), "{err}");
-        // When the sentinel is missing there is no stderr, so the stdout detail is used.
-        let fallback = store_action_error(true, "the machine store did not keep the certificate", "").unwrap();
-        assert!(fallback.contains("did not keep"), "{fallback}");
+        let d = parse_store_outcome("FAILED: the machine store did not keep the certificate");
+        assert!(matches!(&d, StoreOutcome::Failed(x) if x.contains("did not keep")), "{d:?}");
+    }
+
+    /// The order is the guard: the read-back has to come before the user-store `Remove`.
+    /// Reversing it is what left the CA in neither store when the machine store refused.
+    #[test]
+    fn the_machine_store_is_verified_before_the_user_store_is_emptied() {
+        let script = windows_store_script("/cfg/ca.cer", "AABB", "/tmp/out", true);
+        let verify = script.find("$v.Open('ReadOnly')").unwrap();
+        let remove = script.find("$u.Remove($found)").unwrap();
+        assert!(verify < remove, "verify must come first:\n{script}");
+    }
+
+    #[test]
+    fn an_add_does_not_empty_the_user_store() {
+        let script = windows_store_script("/cfg/ca.cer", "AABB", "/tmp/out", false);
+        assert!(!script.contains("CurrentUser"), "{script}");
+    }
+
+    #[test]
+    fn only_an_elevation_failure_is_worth_a_prompt() {
+        assert!(is_elevation_failure("Access denied is requested."));
+        assert!(is_elevation_failure("the System keychain needs administrator privileges"));
+        // A store that refused for another reason would just prompt again and fail again.
+        assert!(!is_elevation_failure("the machine store did not keep the certificate"));
+    }
+
+    #[test]
+    fn quotes_in_paths_are_escaped_for_powershell() {
+        let script = windows_store_script("C:\\it's here\\ca.cer", "AABB", "/tmp/out", false);
+        assert!(script.contains("'C:\\it''s here\\ca.cer'"), "{script}");
     }
 }

@@ -87,7 +87,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
                     results.push({
                         status: 'warning',
                         message: 'Certificate is in the user store only',
-                        details: `Thumbprint: ${certCheck.thumbprint}\nA WCF app running as a Windows service or an IIS app pool validates against the machine store and cannot see it. Click "Fix Certificate Location" — that needs Administrator rights, so it fails without elevation.`
+                        details: `Thumbprint: ${certCheck.thumbprint}\nA WCF app running as a Windows service or an IIS app pool validates against the machine store and cannot see it. Click "Fix Certificate Location" — it requests Administrator rights, and the move is only reported as done once the machine store is read back.`
                     });
                 } else {
                     results.push({

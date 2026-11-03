@@ -260,8 +260,9 @@ function storeLabel(info: CertInfo): string {
                         color: 'var(--apinox-inputValidation-warningForeground)',
                       }}>
                         ⚠ User store only. A WCF app running as a Windows service or an IIS app
-                        pool validates against LocalMachine\Root, which needs Administrator
-                        rights — this app cannot write there without elevation.
+                        pool validates against LocalMachine\Root, so it cannot see a CA installed
+                        for your user. "Fix Certificate Location" moves it and requests
+                        Administrator rights.
                       </div>
                     )}
                     <div style={{ display: 'flex', gap: '8px' }}>
