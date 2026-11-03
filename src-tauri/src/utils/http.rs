@@ -10,6 +10,9 @@ pub const CONTENT_TYPE_PLAIN: &str = "text/plain";
 /// Emit a `traffic-event` to the frontend.
 /// Both the proxy and mock servers call this after each transaction.
 pub fn emit_traffic_event(app: &AppHandle, event: &TrafficEvent, source: &str) {
+    // The window the capture check reads. This is the only recording path, so a capture is
+    // evidence of what the panel would have shown, not of what the caller received.
+    crate::utils::capture_probe::record(&event.url);
     if let Err(e) = app.emit("traffic-event", event) {
         log::warn!("[{}] Failed to emit traffic-event: {}", source, e);
     }

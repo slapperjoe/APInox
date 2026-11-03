@@ -29,6 +29,7 @@ pub mod wildcard_processor;
 pub mod xpath_evaluator;
 pub mod body_reader;
 pub mod atomic_write;
+pub mod capture_probe;
 pub mod config;
 pub mod error_detail;
 pub mod http;

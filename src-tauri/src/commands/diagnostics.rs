@@ -15,9 +15,14 @@
 //!   * `test_proxy_connection`   — a real handshake against the running proxy, trusting the
 //!     OS store exactly as a browser or a .NET client does. This is the check that fails when
 //!     Windows traffic is not being captured.
+//!   * `test_traffic_capture`    — a request to an internal service on an ephemeral port, routed
+//!     through the proxy, checked against the recording window. It separates "the proxy does not
+//!     record" from "the application is not routing to the proxy", which is the case when an app
+//!     is running under a different identity than the user who set the proxy.
 
 use serde::Serialize;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use rustls::pki_types::ServerName;
@@ -31,7 +36,7 @@ use tokio_rustls::{TlsAcceptor, TlsConnector};
 
 use crate::certificates::manager::{CertInfo, CertManager};
 use crate::certificates::sni_resolver::SniResolver;
-use crate::utils::blocking;
+use crate::utils::{blocking, capture_probe, proxy_guard};
 use crate::{ensure_proxy_state, LazyProxyAppState};
 
 /// The SNI the self-test presents. It is never resolved or forwarded: the CONNECT is
@@ -392,6 +397,189 @@ async fn connect_handshake(
 }
 
 
+/// What the capture check can and cannot prove.
+///
+/// The recording path is the only thing that makes traffic visible, so "the probe was recorded"
+/// means the proxy does capture traffic when a client uses it. When the probe is recorded but the
+/// application's traffic is not, the fault is not the proxy — it is that the application is not
+/// routing to it, which is a different diagnosis from a failed handshake.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CaptureReport {
+    pub success: bool,
+    pub proxy_port: u16,
+    pub probe_port: u16,
+    /// Whether the internal service answered, i.e. the proxy did not re-target the request.
+    pub served_by_probe: bool,
+    /// Whether the recording path emitted an event for the probe.
+    pub recorded: bool,
+    /// Where `resolve_url` would have forwarded it, when a target is configured.
+    pub forwarded_to: Option<String>,
+    /// The proxy the OS settings would give a .NET client for this scheme.
+    pub os_proxy: Option<String>,
+    /// The Windows bypass list, when one is set.
+    pub proxy_override: Option<String>,
+    pub error: Option<String>,
+    pub hint: Option<String>,
+}
+
+fn capture_base(port: u16) -> CaptureReport {
+    CaptureReport {
+        success: false,
+        proxy_port: port,
+        probe_port: 0,
+        served_by_probe: false,
+        recorded: false,
+        forwarded_to: None,
+        os_proxy: None,
+        proxy_override: None,
+        error: None,
+        hint: None,
+    }
+}
+
+/// A path no other traffic can match by accident, so the window entry can be attributed to this run.
+fn probe_marker() -> String {
+    let id = uuid::Uuid::new_v4().to_string();
+    format!("apinox-capture-probe-{}", &id[..8])
+}
+
+fn bypasses_local(override_list: &Option<String>) -> bool {
+    override_list
+        .as_ref()
+        .map(|o| o.contains("<local>"))
+        .unwrap_or(false)
+}
+
+#[tauri::command]
+pub async fn test_traffic_capture(
+    state: State<'_, LazyProxyAppState>,
+    app: AppHandle,
+) -> Result<CaptureReport, String> {
+    let state = ensure_proxy_state(state, &app).await?;
+    let (running, port, target) = {
+        let ps = state.proxy.lock().await;
+        (ps.running, ps.config.port, ps.config.target_url.clone())
+    };
+
+    let mut report = capture_base(port);
+    if !running {
+        report.error = Some("the proxy is not running".to_string());
+        return Ok(report);
+    }
+
+    let listener = match TcpListener::bind("127.0.0.1:0").await {
+        Ok(l) => l,
+        Err(e) => {
+            report.error = Some(format!("could not bind the internal service: {e}"));
+            return Ok(report);
+        }
+    };
+    report.probe_port = listener.local_addr().map(|a| a.port()).unwrap_or(0);
+
+    let marker = probe_marker();
+    let path = format!("/{marker}");
+    let served = Arc::new(AtomicBool::new(false));
+
+    // The internal service. Its address is deliberately not the configured target: the check is
+    // whether a request that enters the proxy comes back out as a recorded event.
+    let served_flag = served.clone();
+    let want = path.clone();
+    tokio::spawn(async move {
+        for _ in 0..3 {
+            let Ok((mut stream, _)) = listener.accept().await else { break };
+            if read_head(&mut stream)
+                .await
+                .map(|head| head.contains(&want))
+                .unwrap_or(false)
+            {
+                served_flag.store(true, Ordering::Relaxed);
+            }
+            let _ = stream
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok")
+                .await;
+        }
+    });
+
+    let route = reqwest::Proxy::all(format!("http://127.0.0.1:{port}"))
+        .map_err(|e| format!("could not route the probe through the proxy: {e}"))?;
+    let client = match reqwest::Client::builder().timeout(Duration::from_secs(10)).proxy(route).build() {
+        Ok(c) => c,
+        Err(e) => {
+            report.error = Some(format!("could not build the probe client: {e}"));
+            return Ok(report);
+        }
+    };
+
+    let url = format!("http://127.0.0.1:{}{}", report.probe_port, path);
+    match timeout(Duration::from_secs(10), client.get(&url).send()).await {
+        Err(_) => report.error = Some("the request through the proxy timed out".to_string()),
+        Ok(Err(e)) => report.error = Some(format!("request through the proxy failed: {e}")),
+        Ok(Ok(_)) => {}
+    }
+
+    // The event is emitted after the upstream answers, so give the recording path a moment.
+    for _ in 0..20 {
+        if capture_probe::saw(&marker) {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+
+    report.recorded = capture_probe::saw(&marker);
+    report.served_by_probe = served.load(Ordering::Relaxed);
+    report.forwarded_to = if target.is_empty() { None } else { Some(target) };
+    report.os_proxy = proxy_guard::effective_proxy("http");
+    report.proxy_override = proxy_guard::proxy_override();
+    report.success = report.recorded;
+    report.hint = capture_hint(&report);
+    Ok(report)
+}
+
+/// The diagnosis, from what the check measured. A pure function so the split it makes can be
+/// tested without a running proxy.
+pub fn capture_hint(report: &CaptureReport) -> Option<String> {
+    if report.success {
+        // The proxy demonstrably records, so the missing traffic is a client that is not using it.
+        let os = match &report.os_proxy {
+            Some(p) if p.contains(&format!(":{}", report.proxy_port)) =>
+                format!("the OS proxy for this user is the proxy itself ({p})"),
+            Some(p) => format!(
+                "the OS proxy for this user is {p}, not 127.0.0.1:{port}",
+                port = report.proxy_port
+            ),
+            None => "nothing is set for this user, so a .NET client using DefaultWebProxy goes direct".to_string(),
+        };
+        let bypass = if bypasses_local(&report.proxy_override) {
+            " The bypass list contains <local>, so a request to a local host is sent direct."
+        } else {
+            ""
+        };
+        let owner = "Internet Settings is read per user: an IIS app pool or a Windows service runs as a different identity with its own settings, and WCF and SoapHttpClientProtocol use WebRequest.DefaultWebProxy / UseDefaultWebProxy, which read that same place. Set the proxy for the identity that runs the app, or set it inside the application (system.proxy in web.config, or ServicePointManager.Proxy), then restart the worker process.";
+        return Some(format!("Capture works, so the SOAP call is not arriving through the proxy. {os}.{bypass} {owner}"));
+    }
+
+    if report.error.is_some() {
+        return Some(match &report.forwarded_to {
+            Some(target) => format!(
+                "The request was not recorded. With a target configured, every request is forwarded to {target}, so the internal service is only reached when the proxy answers it itself — check that the proxy is listening on {port} and that the app is not bypassing it for local addresses.",
+                port = report.proxy_port
+            ),
+            None => format!(
+                "The request was not recorded, so it never reached the recording path on 127.0.0.1:{port}.",
+                port = report.proxy_port
+            ),
+        });
+    }
+
+    // Reached the proxy but nothing was recorded: the pipeline answered without the event.
+    Some(concat!(
+        "The internal service saw the request, so the proxy handled it, but the recording path did ",
+        "not emit an event — check whether a breakpoint rule is pausing this traffic or a mock rule ",
+        "answered before the event was written.",
+    ).to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -436,6 +624,93 @@ mod tests {
         assert!(server.await.unwrap().is_ok(), "the server side must agree");
     }
 
+    #[test]
+    fn a_recorded_probe_points_at_the_client_not_the_proxy() {
+        let report = CaptureReport {
+            success: true,
+            proxy_port: 8888,
+            probe_port: 41871,
+            served_by_probe: true,
+            recorded: true,
+            forwarded_to: None,
+            os_proxy: Some("127.0.0.1:1080".to_string()),
+            proxy_override: Some("<local>".to_string()),
+            error: None,
+            hint: None,
+        };
+        let hint = capture_hint(&report).unwrap();
+        // The check proved the recording path works, so the hint must not restate that as the
+        // problem — it has to name where the client is reading its proxy from.
+        assert!(hint.contains("Capture works"), "{hint}");
+        assert!(hint.contains("127.0.0.1:1080, not 127.0.0.1:8888"), "{hint}");
+        assert!(hint.contains("<local>"), "{hint}");
+        assert!(hint.contains("per user"), "{hint}");
+    }
+
+    #[test]
+    fn when_nothing_is_set_for_the_user_the_hint_says_so() {
+        let mut report = CaptureReport {
+            success: true,
+            proxy_port: 8888,
+            probe_port: 41871,
+            served_by_probe: true,
+            recorded: true,
+            forwarded_to: None,
+            os_proxy: None,
+            proxy_override: None,
+            error: None,
+            hint: None,
+        };
+        let hint = capture_hint(&report).unwrap();
+        assert!(hint.contains("nothing is set for this user"), "{hint}");
+        assert!(!hint.contains("<local>"), "{hint}");
+    }
+
+    #[test]
+    fn a_probe_that_never_reached_the_recording_path_is_not_blamed_on_the_client() {
+        let report = CaptureReport {
+            success: false,
+            proxy_port: 8888,
+            probe_port: 41871,
+            served_by_probe: false,
+            recorded: false,
+            forwarded_to: Some("https://api.test/soap".to_string()),
+            os_proxy: Some("http://127.0.0.1:8888".to_string()),
+            proxy_override: None,
+            error: Some("the request through the proxy timed out".to_string()),
+            hint: None,
+        };
+        let hint = capture_hint(&report).unwrap();
+        assert!(hint.contains("not recorded"), "{hint}");
+        assert!(hint.contains("https://api.test/soap"), "{hint}");
+        assert!(!hint.contains("Capture works"), "{hint}");
+    }
+
+    #[test]
+    fn a_request_the_proxy_handled_without_an_event_names_the_pipeline() {
+        let report = CaptureReport {
+            success: false,
+            proxy_port: 8888,
+            probe_port: 41871,
+            served_by_probe: true,
+            recorded: false,
+            forwarded_to: None,
+            os_proxy: Some("http://127.0.0.1:8888".to_string()),
+            proxy_override: None,
+            error: None,
+            hint: None,
+        };
+        let hint = capture_hint(&report).unwrap();
+        assert!(hint.contains("did not emit an event"), "{hint}");
+        assert!(hint.contains("breakpoint"), "{hint}");
+    }
+
+    #[test]
+    fn the_probe_path_cannot_be_matched_by_other_traffic() {
+        let marker = probe_marker();
+        assert!(marker.starts_with("apinox-capture-probe-"), "{marker}");
+        assert_ne!(marker, probe_marker(), "each run needs its own marker");
+    }
     #[test]
     fn connect_accepted_reads_the_proxy_answer() {
         assert_eq!(connect_accepted("HTTP/1.1 200 Connection Established\r\n\r\n"), None);

@@ -70,6 +70,7 @@ export enum FrontendCommand {
     MoveCertificateToLocalMachine = 'moveCertificateToLocalMachine',
     RegenerateCertificate = 'regenerateCertificate',
     ResetCertificates = 'resetCertificates',
+    TestTrafficCapture = 'testTrafficCapture',
 
     // Certificate panel (Options -> Proxy). The same Rust commands the Debug view reaches;
     // the panel used to call `invokeTauriCommand` with the Rust names directly, which is a

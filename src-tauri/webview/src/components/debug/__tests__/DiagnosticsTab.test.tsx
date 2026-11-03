@@ -27,6 +27,18 @@ const responses: Record<string, any> = {
     testHttpsServer: { success: true, details: 'handshake completed against the CA on disk' },
     getProxyStatus: { running: true, port: 8888, mode: 'forward', targetUrl: 'https://example.com' },
     testProxyConnection: { success: true, protocol: 'TLS 1.2', cipher: 'ECDHE-RSA-AES256-GCM-SHA384', verifiedAgainst: 'CA on disk' },
+    testTrafficCapture: {
+        success: true,
+        proxyPort: 8888,
+        probePort: 41871,
+        servedByProbe: true,
+        recorded: true,
+        forwardedTo: null,
+        osProxy: 'http://127.0.0.1:1080',
+        proxyOverride: '<local>',
+        error: null,
+        hint: 'Capture works, so the SOAP call is not arriving through the proxy. The OS proxy for this user is http://127.0.0.1:1080, not 127.0.0.1:8888. The bypass list contains <local>, so a request to a local host is sent direct.',
+    },
 };
 
 vi.mock('../../../utils/bridge', () => ({
@@ -110,5 +122,22 @@ describe('DiagnosticsTab rows', () => {
         expect(text).toContain('Trust store location');
         expect(text).toContain('CA and key pair');
         expect(text).toContain('Handshake against the running proxy');
+    });
+    it('reports the capture check as one row carrying its own diagnosis', async () => {
+        render(<DiagnosticsTab />);
+        fireEvent.click(screen.getByText('Run Proxy Check'));
+
+        await screen.findByText('Capture check');
+        const rows = screen.getAllByTestId('diagnostic-row');
+        const capture = rows.find((row) => row.textContent?.includes('Capture check'));
+        const text = capture?.textContent ?? '';
+
+        expect(text).toContain('captured — probe recorded on port 41871');
+        // The row that proves capture works has to say what that means: the client is the problem,
+        // not the recording path — and name where the client reads its proxy from.
+        expect(text).toContain('not arriving through the proxy');
+        expect(text).toContain('OS proxy for this user: http://127.0.0.1:1080');
+        expect(text).toContain('Bypass list: <local>');
+        expect(rows).toHaveLength(3); // configuration, handshake, capture — one row each
     });
 });

@@ -185,6 +185,26 @@ pub fn effective_proxy(scheme: &str) -> Option<String> {
     }
 }
 
+/// The Windows bypass list (`Internet Settings\ProxyOverride`), which `ProxyUtil` and IE both
+/// honour. `<local>` in it sends a request to a local host direct — that is why a locally-run app
+/// can be invisible to the proxy even when the proxy is set for the user. Non-Windows has no
+/// equivalent the matcher consults, so this reports nothing there.
+#[cfg(target_os = "windows")]
+pub fn proxy_override() -> Option<String> {
+    use winreg::enums::HKEY_CURRENT_USER;
+    use winreg::RegKey;
+
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER)
+        .open_subkey(r"Software\Microsoft\Windows\CurrentVersion\Internet Settings")
+        .ok()?;
+    hkcu.get_value::<String, &str>("ProxyOverride").ok()
+}
+
+#[cfg(not(target_os = "windows"))]
+pub fn proxy_override() -> Option<String> {
+    None
+}
+
 /// Reads the OS-level proxy settings reqwest's system matcher would see,
 /// as `(http_proxy, https_proxy)` — `None` on each side when no proxy is
 /// configured for that protocol.

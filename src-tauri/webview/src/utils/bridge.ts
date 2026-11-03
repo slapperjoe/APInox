@@ -231,6 +231,9 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
     if (message.command === 'resetCertificates') {
         return await tauriInvoke('reset_certificates');
     }
+    if (message.command === FrontendCommand.TestTrafficCapture) {
+        return await tauriInvoke('test_traffic_capture');
+    }
     if (message.command === FrontendCommand.GetCertificateInfo) {
         return await tauriInvoke('get_ca_certificate_info');
     }

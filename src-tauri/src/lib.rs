@@ -624,6 +624,7 @@ pub fn run() {
             commands::diagnostics::check_certificate_store,
             commands::diagnostics::test_https_server,
             commands::diagnostics::test_proxy_connection,
+            commands::diagnostics::test_traffic_capture,
             commands::sniffer_server::get_system_proxy_status,
             commands::sniffer_server::set_system_proxy,
             commands::sniffer_server::clear_system_proxy,

@@ -20,6 +20,7 @@
 import React, { useState } from 'react';
 import { Shield, Network, CheckCircle, XCircle, AlertTriangle, RefreshCw } from 'lucide-react';
 import { bridge, commandErrorText } from '../../utils/bridge';
+import { FrontendCommand } from '@shared/messages';
 import { legibleTextOn } from '../../utils/contrast';
 import { tokens } from '../proxy/tokens';
 
@@ -262,6 +263,27 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
                             outcome: `handshake failed: ${connTest.error}`,
                             details: `${connTest.hint || 'This is the same error your .NET client sees.'}\nVerified against: ${connTest.verifiedAgainst}`,
                         };
+                });
+
+                // A request the app itself makes cannot be observed, so the check sends one of its
+                // own to an internal service on an ephemeral port through the proxy and asks the
+                // recording path whether it saw it. That is what separates "the proxy does not
+                // record" from "the application is not routing to the proxy".
+                await runTest(results, show, 'Capture check', async () => {
+                    const capture = await bridge.sendMessageAsync({ command: FrontendCommand.TestTrafficCapture });
+                    const measured = [
+                        capture.osProxy ? `OS proxy for this user: ${capture.osProxy}` : 'OS proxy for this user: not set',
+                        capture.proxyOverride ? `Bypass list: ${capture.proxyOverride}` : null,
+                        capture.forwardedTo ? `Forwarded to: ${capture.forwardedTo}` : 'No target configured — the proxy forwards the request as sent',
+                    ].filter(Boolean).join('\n');
+
+                    return {
+                        status: capture.success ? 'success' : 'error',
+                        outcome: capture.success
+                            ? `captured — probe recorded on port ${capture.probePort}`
+                            : `not captured — probe on port ${capture.probePort}${capture.error ? ` (${capture.error})` : ''}`,
+                        details: [capture.hint, measured].filter(Boolean).join('\n'),
+                    };
                 });
             }
         } catch (error: any) {
