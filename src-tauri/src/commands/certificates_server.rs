@@ -264,7 +264,13 @@ pub fn parse_store_outcome(raw: &str) -> StoreOutcome {
 /// True when the failure is one an elevation prompt can answer.
 pub fn is_elevation_failure(detail: &str) -> bool {
     let d = detail.to_lowercase();
-    d.contains("access denied") || d.contains("administrator") || d.contains("permission denied")
+    // "Access is denied." is what .NET actually reports for a machine-store `Open` without
+    // elevation — matching only "access denied" meant the prompt was never offered and the raw
+    // exception was shown instead.
+    d.contains("access denied")
+        || d.contains("access is denied")
+        || d.contains("administrator")
+        || d.contains("permission denied")
 }
 
 /// Windows operation. The order is the guard: confirm the machine store kept the certificate

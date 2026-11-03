@@ -19,6 +19,15 @@ interface CertInfo {
   inLocalMachine: boolean;
 }
 
+/** The shape `install_certificate_to_local_machine` and
+ * `move_certificate_to_local_machine` return. */
+interface StoreAction {
+  success: boolean;
+  error?: string;
+  details?: string;
+  manualSteps: string[];
+}
+
 interface TrustResult {
   success: boolean;
   message: string;
@@ -96,6 +105,38 @@ export function CertificateManager() {
         firefoxNote: '',
         manualSteps: [],
         certInfo: certInfo!,
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleMachineStore(moveFromUser: boolean) {
+    setLoading(true);
+    setTrustResult(null);
+    const command = moveFromUser ? 'move_certificate_to_local_machine' : 'install_certificate_to_local_machine';
+    try {
+      const result = await invokeTauriCommand<StoreAction>(command, {
+        thumbprint: certInfo?.thumbprint ?? '',
+      });
+      const info = await invokeTauriCommand<CertInfo>('get_ca_certificate_info');
+      setCertInfo(info);
+      setTrustResult({
+        success: result.success,
+        message: result.success
+          ? result.details ?? 'Certificate is in the machine store.'
+          : result.error ?? 'The machine store refused the certificate.',
+        firefoxNote: '',
+        manualSteps: result.manualSteps ?? [],
+        certInfo: info,
+      });
+    } catch (err: any) {
+      setTrustResult({
+        success: false,
+        message: String(err),
+        firefoxNote: '',
+        manualSteps: [],
+        certInfo: certInfo ?? { exists: false, certPath: '', keyPath: '', isTrusted: false, inCurrentUser: false, inLocalMachine: false },
       });
     } finally {
       setLoading(false);
@@ -262,13 +303,13 @@ function storeLabel(info: CertInfo): string {
                       }}>
                         ⚠ User store only. A WCF app running as a Windows service or an IIS app
                         pool validates against LocalMachine\Root, so it cannot see a CA installed
-                        for your user. "Fix Certificate Location" moves it and requests
-                        Administrator rights.
+                        for your user. The button below moves it — the machine store needs
+                        Administrator rights, so Windows shows an elevation prompt.
                       </div>
                     )}
                     <div style={{ display: 'flex', gap: '8px' }}>
-                      <button onClick={handleTrust} disabled={loading} style={{ ...btnStyle(tokens.status.accentDark, loading), flex: 1, padding: '8px', fontSize: '12px' }}>
-                        Re-install
+                      <button onClick={() => handleMachineStore(certInfo.inCurrentUser)} disabled={loading} style={{ ...btnStyle(tokens.status.accentDark, loading), flex: 1, padding: '8px', fontSize: '12px' }}>
+                        {certInfo.inCurrentUser ? 'Move to machine store' : 'Install in machine store'}
                       </button>
                       <button onClick={handleUntrust} disabled={loading} style={{ ...btnStyle('var(--apinox-surface-danger-dark)', loading), flex: 1, padding: '8px', fontSize: '12px' }}>
                         Remove
@@ -295,7 +336,10 @@ function storeLabel(info: CertInfo): string {
               border: `1px solid ${genMessage.type === 'success' ? 'var(--apinox-inputValidation-successBorder)' : 'var(--apinox-inputValidation-errorBorder)'}`,
               borderRadius: '4px',
               fontSize: '12px',
-              color: genMessage.type === 'success' ? 'var(--apinox-inputValidation-successForeground)' : 'var(--apinox-inputValidation-errorForeground)',
+              color: legibleTextOn(
+                genMessage.type === 'success' ? 'var(--apinox-inputValidation-successBackground)' : 'var(--apinox-inputValidation-errorBackground)',
+                genMessage.type === 'success' ? 'var(--apinox-inputValidation-successForeground)' : 'var(--apinox-inputValidation-errorForeground)',
+              ),
             }}>
               {genMessage.type === 'success' ? '✓ ' : '✗ '}{genMessage.text}
             </div>
@@ -316,7 +360,10 @@ function storeLabel(info: CertInfo): string {
             border: `1px solid ${trustResult.success ? 'var(--apinox-inputValidation-successBorder)' : 'var(--apinox-inputValidation-errorBorder)'}`,
             borderRadius: '4px',
             fontSize: '13px',
-            color: trustResult.success ? 'var(--apinox-inputValidation-successForeground)' : 'var(--apinox-inputValidation-errorForeground)',
+            color: legibleTextOn(
+              trustResult.success ? 'var(--apinox-inputValidation-successBackground)' : 'var(--apinox-inputValidation-errorBackground)',
+              trustResult.success ? 'var(--apinox-inputValidation-successForeground)' : 'var(--apinox-inputValidation-errorForeground)',
+            ),
             marginBottom: '12px',
           }}>
             {trustResult.success ? '✓ ' : '✗ '}{trustResult.message}
