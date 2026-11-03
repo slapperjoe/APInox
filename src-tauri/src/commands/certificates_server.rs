@@ -247,6 +247,10 @@ pub async fn move_certificate_to_local_machine(
 #[derive(Debug, PartialEq)]
 pub enum StoreOutcome {
     Ok,
+    /// The machine store kept the certificate; only the user-store cleanup failed. That is still
+    /// the fix a service or app pool needs, so it is reported as done with the note rather than as
+    /// a refusal.
+    Partial(String),
     Failed(String),
 }
 
@@ -257,6 +261,9 @@ pub fn parse_store_outcome(raw: &str) -> StoreOutcome {
     }
     if t.is_empty() {
         return StoreOutcome::Failed("the elevation prompt was declined — no result was written".to_string());
+    }
+    if let Some(note) = t.strip_prefix("PARTIAL: ") {
+        return StoreOutcome::Partial(note.to_string());
     }
     StoreOutcome::Failed(t.trim().trim_start_matches("FAILED: ").to_string())
 }
@@ -289,14 +296,25 @@ pub fn windows_store_script(cert_path: &str, thumbprint: &str, result_file: &str
             q(thumbprint)
         ),
     ];
+    parts.push("$note = ''".to_string());
     if move_from_user {
+        // `Where-Object` yields a collection, and `X509Store.Remove` takes a single
+        // X509Certificate2. Passing the collection produced
+        // `Cannot convert argument "certificate", with value: "System.Object[]"`, which made the
+        // whole move read as refused even though the machine store had already kept the
+        // certificate — so the removal is enumerated per certificate, and a failure there is a
+        // note, not the result of the operation.
         parts.push(format!(
-            "$u = {}; $u.Open('ReadWrite'); $found = $u.Certificates | Where-Object {{ $_.Thumbprint -eq '{}' }}; if ($found) {{ $u.Remove($found) }}; $u.Close();",
+            "try {{ $u = {}; $u.Open('ReadWrite'); @($u.Certificates | Where-Object {{ $_.Thumbprint -eq '{}' }}) | ForEach-Object {{ $u.Remove($_) }}; $u.Close(); }} catch {{ $note = 'PARTIAL: machine store kept the certificate; the user store copy could not be removed: ' + $_.Exception.Message }}",
             store("CurrentUser"),
             q(thumbprint)
         ));
     }
-    parts.push(format!("Set-Content -Path '{}' -Value 'OK'", q(result_file)));
+    parts.push(format!(
+        "if ($note) {{ Set-Content -Path '{}' -Value $note }} else {{ Set-Content -Path '{}' -Value 'OK' }}",
+        q(result_file),
+        q(result_file)
+    ));
     parts.push(format!("}} catch {{ Set-Content -Path '{}' -Value ('FAILED: ' + $_.Exception.Message) }}", q(result_file)));
     // Statements have to be separated. Joined with a space this is
     // `$ErrorActionPreference='Stop' try { …`, which PowerShell reports as
@@ -324,12 +342,15 @@ fn read_outcome(path: &std::path::Path) -> StoreOutcome {
     parse_store_outcome(&std::fs::read_to_string(path).unwrap_or_default())
 }
 
-#[allow(dead_code)] // only reached from the Windows and macOS branches
-fn outcome_detail(o: &StoreOutcome) -> String {
-    match o {
-        StoreOutcome::Ok => String::new(),
-        StoreOutcome::Failed(d) => d.clone(),
-    }
+// Only reached from the Windows and macOS branches; the last line is unreachable on those
+// targets because the cfg'd returns above it are the whole function there.
+#[allow(dead_code, unreachable_code)]
+fn steps_for(cert_path: &str) -> Vec<String> {
+    #[cfg(target_os = "windows")]
+    return windows_manual_steps(cert_path);
+    #[cfg(target_os = "macos")]
+    return macos_manual_steps(cert_path);
+    vec![format!("Add {cert_path} to the machine trust store.")]
 }
 
 #[cfg(target_os = "windows")]
@@ -344,10 +365,12 @@ fn apply_machine_store(cert_path: &str, thumbprint: &str, move_from_user: bool, 
         return action_err(e, windows_manual_steps(cert_path));
     }
     let outcome = read_outcome(&result);
-    if outcome == StoreOutcome::Ok {
-        return action_ok(success_text.to_string());
+    match &outcome {
+        StoreOutcome::Ok => return action_ok(success_text.to_string()),
+        StoreOutcome::Partial(note) => return action_ok(format!("{success_text} {note}")),
+        StoreOutcome::Failed(detail) if is_elevation_failure(detail) => {}
+        StoreOutcome::Failed(detail) => return action_err(detail.clone(), steps_for(cert_path)),
     }
-    let detail = outcome_detail(&outcome);
     if !is_elevation_failure(&detail) {
         return action_err(detail, windows_manual_steps(cert_path));
     }
@@ -382,12 +405,11 @@ fn apply_machine_store(cert_path: &str, _thumbprint: &str, move_from_user: bool,
         return action_err(e, macos_manual_steps(cert_path));
     }
     let outcome = read_outcome(&result);
-    if outcome == StoreOutcome::Ok {
-        return action_ok(success_text.to_string());
-    }
-    let detail = outcome_detail(&outcome);
-    if !is_elevation_failure(&detail) {
-        return action_err(detail, macos_manual_steps(cert_path));
+    match &outcome {
+        StoreOutcome::Ok => return action_ok(success_text.to_string()),
+        StoreOutcome::Partial(note) => return action_ok(format!("{success_text} {note}")),
+        StoreOutcome::Failed(detail) if is_elevation_failure(detail) => {}
+        StoreOutcome::Failed(detail) => return action_err(detail.clone(), steps_for(cert_path)),
     }
 
     // Pass 2: the native password / Touch ID prompt, the same mechanism `sniffer_server` uses
@@ -456,15 +478,8 @@ fn run_osascript(script: &str) -> Result<(), String> {
 fn finish(outcome: StoreOutcome, success_text: &str, cert_path: &str) -> DiagAction {
     match outcome {
         StoreOutcome::Ok => action_ok(format!("{success_text} (via the elevation prompt).")),
-        StoreOutcome::Failed(d) => {
-            #[cfg(target_os = "windows")]
-            let steps = windows_manual_steps(cert_path);
-            #[cfg(target_os = "macos")]
-            let steps = macos_manual_steps(cert_path);
-            #[cfg(not(any(target_os = "windows", target_os = "macos")))]
-            let steps = vec![format!("Add {cert_path} to the machine trust store.")];
-            action_err(format!("still refused after the elevation prompt: {d}"), steps)
-        }
+        StoreOutcome::Partial(note) => action_ok(format!("{success_text} (via the elevation prompt). {note}")),
+        StoreOutcome::Failed(d) => action_err(format!("still refused after the elevation prompt: {d}"), steps_for(cert_path)),
     }
 }
 
@@ -788,7 +803,7 @@ mod tests {
     fn the_machine_store_is_verified_before_the_user_store_is_emptied() {
         let script = windows_store_script("/cfg/ca.cer", "AABB", "/tmp/out", true);
         let verify = script.find("$v.Open('ReadOnly')").unwrap();
-        let remove = script.find("$u.Remove($found)").unwrap();
+        let remove = script.find("ForEach-Object { $u.Remove($_) }").unwrap();
         assert!(verify < remove, "verify must come first:\n{script}");
     }
 
@@ -796,6 +811,25 @@ mod tests {
     fn an_add_does_not_empty_the_user_store() {
         let script = windows_store_script("/cfg/ca.cer", "AABB", "/tmp/out", false);
         assert!(!script.contains("CurrentUser"), "{script}");
+    }
+
+    /// The message the user got: the machine store accepted the certificate, and the
+    /// user-store cleanup threw because `Where-Object` yields a collection while
+    /// `X509Store.Remove` takes a single certificate. A failure in the cleanup is a note about
+    /// the leftover copy, not a refusal — the fix the service needs had already landed.
+    #[test]
+    fn a_cleanup_failure_is_not_reported_as_a_refusal() {
+        let d = "PARTIAL: machine store kept the certificate; the user store copy could not be removed: Cannot convert argument \"certificate\"";
+        assert!(matches!(parse_store_outcome(d), StoreOutcome::Partial(n) if n.contains("kept the certificate")));
+    }
+
+    #[test]
+    fn the_user_store_cleanup_removes_certificates_one_at_a_time() {
+        let script = windows_store_script("/cfg/ca.cer", "AABB", "/tmp/out", true);
+        assert!(script.contains("| ForEach-Object { $u.Remove($_) }"), "{script}");
+        assert!(!script.contains("Remove($found)"), "{script}");
+        // The note path, not a bare OK.
+        assert!(script.contains("if ($note)"), "{script}");
     }
 
     #[test]
