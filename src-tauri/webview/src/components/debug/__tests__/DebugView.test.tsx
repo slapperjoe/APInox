@@ -9,7 +9,7 @@
  * the view carries its own Return control, which needs the navigation context.
  */
 import { describe, it, expect } from 'vitest';
-import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import React from 'react';
 import { DebugView } from '../DebugView';
 import { NavigationProvider, useNavigation } from '../../../contexts/NavigationContext';

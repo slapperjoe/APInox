@@ -10,7 +10,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { bridge, commandErrorText } from '../../utils/bridge';
+import { commandErrorText } from '../../utils/bridge';
 import { DiagnosticsTab } from './DiagnosticsTab';
 import { frontendLogs, captureLog } from '../../utils/logger';
 import { useNavigation } from '../../contexts/NavigationContext';
