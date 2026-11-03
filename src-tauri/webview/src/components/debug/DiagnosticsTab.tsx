@@ -80,14 +80,14 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
                 if (storeCheck.inLocalMachine) {
                     results.push({
                         status: 'success',
-                        message: 'Certificate installed in LocalMachine\\Root store',
-                        details: `Thumbprint: ${certCheck.thumbprint}`
+                        message: 'Certificate is in the machine store',
+                        details: `Thumbprint: ${certCheck.thumbprint}\nEvery identity that validates it — including a service or an IIS app pool — can see it.`
                     });
                 } else if (storeCheck.inCurrentUser) {
                     results.push({
                         status: 'warning',
-                        message: 'Certificate is in CurrentUser store (should be LocalMachine)',
-                        details: 'Click "Fix Certificate Location" to move it'
+                        message: 'Certificate is in the user store only',
+                        details: `Thumbprint: ${certCheck.thumbprint}\nA WCF app running as a Windows service or an IIS app pool validates against the machine store and cannot see it. Click "Fix Certificate Location" — that needs Administrator rights, so it fails without elevation.`
                     });
                 } else {
                     results.push({

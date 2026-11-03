@@ -14,6 +14,8 @@ interface CertInfo {
   /** SHA-1 — what Windows calls the thumbprint, and what the store lookup matches. */
   thumbprint?: string;
   isTrusted: boolean;
+  inCurrentUser: boolean;
+  inLocalMachine: boolean;
 }
 
 interface TrustResult {
@@ -40,7 +42,7 @@ export function CertificateManager() {
       setCertInfo(info);
     } catch (err: any) {
       console.error('Failed to load certificate info:', err);
-      setCertInfo({ exists: false, certPath: '', keyPath: '', isTrusted: false });
+      setCertInfo({ exists: false, certPath: '', keyPath: '', isTrusted: false, inCurrentUser: false, inLocalMachine: false });
     }
   }
 
@@ -103,6 +105,20 @@ export function CertificateManager() {
     const path = certInfo?.certPath ?? '';
     setGenMessage({ type: 'success', text: `Certificate file: ${path}` });
   }
+
+/**
+ * Which store the CA is in. `isTrusted` only says "somewhere", and the stores are not
+ * interchangeable: CryptoAPI validates services, IIS app pools and other users against the
+ * machine store, while the app's own install writes to the user store because that needs no
+ * elevation. The panel names the store so the two views cannot disagree.
+ */
+function storeLabel(info: CertInfo): string {
+  const parts = [
+    info.inLocalMachine && 'LocalMachine\\Root',
+    info.inCurrentUser && 'CurrentUser\\Root',
+  ].filter(Boolean);
+  return parts.length ? parts.join(' + ') : 'not in any store';
+}
 
   function formatDate(dateStr?: string): string {
     if (!dateStr) return 'N/A';
@@ -190,7 +206,7 @@ export function CertificateManager() {
                 {expired
                   ? '⚠ Certificate has expired. Regenerate it.'
                   : certInfo.isTrusted
-                    ? '✓ Certificate is valid and trusted by this OS'
+                    ? `✓ Certificate is valid and trusted — ${storeLabel(certInfo)}`
                     : '✓ Certificate is valid — not yet installed in OS trust store'}
               </div>
             </>
@@ -232,8 +248,22 @@ export function CertificateManager() {
                       fontSize: '12px',
                       color: 'var(--apinox-inputValidation-infoForeground)',
                     }}>
-                      ✓ Trusted in OS store
+                      ✓ Trusted in OS store — {storeLabel(certInfo)}
                     </div>
+                    {certInfo.isTrusted && !certInfo.inLocalMachine && (
+                      <div style={{
+                        padding: '9px 12px',
+                        background: 'var(--apinox-inputValidation-warningBackground)',
+                        border: '1px solid var(--apinox-inputValidation-warningBorder)',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        color: 'var(--apinox-inputValidation-warningForeground)',
+                      }}>
+                        ⚠ User store only. A WCF app running as a Windows service or an IIS app
+                        pool validates against LocalMachine\Root, which needs Administrator
+                        rights — this app cannot write there without elevation.
+                      </div>
+                    )}
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button onClick={handleTrust} disabled={loading} style={{ ...btnStyle(tokens.status.accentDark, loading), flex: 1, padding: '8px', fontSize: '12px' }}>
                         Re-install

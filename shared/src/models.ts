@@ -1204,6 +1204,9 @@ export interface CertInfo {
     /** SHA-1 — what Windows reports as the thumbprint; the store lookup matches this, not the SHA-256 fingerprint. */
     thumbprint: string;
     isTrusted: boolean;
+    /** Per store — `isTrusted` is the union, and the two are not interchangeable. */
+    inCurrentUser: boolean;
+    inLocalMachine: boolean;
 }
 
 export interface SystemProxyStatus {

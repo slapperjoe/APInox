@@ -44,6 +44,11 @@ pub struct CertInfo {
     pub thumbprint: Option<String>,
     /// Whether the CA cert is currently installed in the OS trust store.
     pub is_trusted: bool,
+    /// Per store. `is_trusted` alone is not enough: it is true when either store holds the
+    /// CA, and the two are not interchangeable — CryptoAPI validates services, IIS app pools
+    /// and other users against the machine store only. The panel needs to say which.
+    pub in_current_user: bool,
+    pub in_local_machine: bool,
 }
 
 /// Sidecar JSON stored alongside the PEM file so `info()` is fast and
@@ -121,6 +126,8 @@ impl CertManager {
             fingerprint: None,
             thumbprint: self.thumbprint(),
             is_trusted: in_user || in_machine,
+            in_current_user: in_user,
+            in_local_machine: in_machine,
         };
 
         if !exists {
