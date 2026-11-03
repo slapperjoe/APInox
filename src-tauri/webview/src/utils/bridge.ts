@@ -231,6 +231,18 @@ async function tryRustCommand(message: BridgeMessage): Promise<any | null> {
     if (message.command === 'resetCertificates') {
         return await tauriInvoke('reset_certificates');
     }
+    if (message.command === FrontendCommand.GetCertificateInfo) {
+        return await tauriInvoke('get_ca_certificate_info');
+    }
+    if (message.command === FrontendCommand.TrustCertificate) {
+        return await tauriInvoke('trust_ca_certificate');
+    }
+    if (message.command === FrontendCommand.UntrustCertificate) {
+        return await tauriInvoke('untrust_ca_certificate');
+    }
+    if (message.command === FrontendCommand.GenerateCertificate) {
+        return await tauriInvoke('generate_ca_certificate');
+    }
 
         // Route LoadWsdl to appropriate Rust parser based on URL type
         if (message.command === FrontendCommand.LoadWsdl) {

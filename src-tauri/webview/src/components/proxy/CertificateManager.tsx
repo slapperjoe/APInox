@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { invokeTauriCommand } from '../../utils/bridge';
+import { bridge } from '../../utils/bridge';
+import { FrontendCommand } from '@shared/messages';
 import { legibleTextOn } from '../../utils/contrast';
 import { tokens } from './tokens';
 
@@ -48,7 +49,7 @@ export function CertificateManager() {
 
   async function loadCertInfo() {
     try {
-      const info = await invokeTauriCommand<CertInfo>('get_ca_certificate_info');
+      const info = await bridge.sendMessageAsync<CertInfo>({ command: FrontendCommand.GetCertificateInfo });
       setCertInfo(info);
     } catch (err: any) {
       console.error('Failed to load certificate info:', err);
@@ -61,7 +62,7 @@ export function CertificateManager() {
     setGenMessage(null);
     setTrustResult(null);
     try {
-      await invokeTauriCommand('generate_ca_certificate');
+      await bridge.sendMessageAsync({ command: FrontendCommand.GenerateCertificate });
       setGenMessage({ type: 'success', text: 'Certificate generated successfully.' });
       await loadCertInfo();
     } catch (err: any) {
@@ -75,7 +76,7 @@ export function CertificateManager() {
     setLoading(true);
     setTrustResult(null);
     try {
-      const result = await invokeTauriCommand<TrustResult>('trust_ca_certificate');
+      const result = await bridge.sendMessageAsync<TrustResult>({ command: FrontendCommand.TrustCertificate });
       setTrustResult(result);
       setCertInfo(result.certInfo);
     } catch (err: any) {
@@ -95,7 +96,7 @@ export function CertificateManager() {
     setLoading(true);
     setTrustResult(null);
     try {
-      const result = await invokeTauriCommand<TrustResult>('untrust_ca_certificate');
+      const result = await bridge.sendMessageAsync<TrustResult>({ command: FrontendCommand.UntrustCertificate });
       setTrustResult(result);
       setCertInfo(result.certInfo);
     } catch (err: any) {
@@ -114,12 +115,15 @@ export function CertificateManager() {
   async function handleMachineStore(moveFromUser: boolean) {
     setLoading(true);
     setTrustResult(null);
-    const command = moveFromUser ? 'move_certificate_to_local_machine' : 'install_certificate_to_local_machine';
+    const command = moveFromUser
+      ? FrontendCommand.MoveCertificateToLocalMachine
+      : FrontendCommand.InstallCertificateToLocalMachine;
     try {
-      const result = await invokeTauriCommand<StoreAction>(command, {
+      const result = await bridge.sendMessageAsync<StoreAction>({
+        command,
         thumbprint: certInfo?.thumbprint ?? '',
       });
-      const info = await invokeTauriCommand<CertInfo>('get_ca_certificate_info');
+      const info = await bridge.sendMessageAsync<CertInfo>({ command: FrontendCommand.GetCertificateInfo });
       setCertInfo(info);
       setTrustResult({
         success: result.success,

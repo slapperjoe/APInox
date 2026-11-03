@@ -7,6 +7,8 @@
  *   B) Every FrontendCommand value dispatched from UI product code via
  *      bridge.sendMessage{Async} must have a routing branch in tryRustCommand
  *      (otherwise invokeRustCommand throws "Command '<x>' not implemented").
+ *   C) A command must be reached by one path, not by both the bridge route and a direct
+ *      `invokeTauriCommand` from product code.
  *
  * Run from the webview: `npm test` (vitest).
  */
@@ -136,11 +138,12 @@ describe('M20 bridge↔Rust parity', () => {
     expect(missing).toEqual([]);
   });
 
+  // routing branches inside tryRustCommand
+  const tryStart = bridgeSrc.indexOf('async function tryRustCommand');
+  const tryEnd = bridgeSrc.indexOf('async function invokeRustCommand');
+  const trySeg = bridgeSrc.slice(tryStart, tryEnd);
+
   it('B: every dispatched FrontendCommand has a tryRustCommand branch', () => {
-    // routing branches inside tryRustCommand
-    const tryStart = bridgeSrc.indexOf('async function tryRustCommand');
-    const tryEnd = bridgeSrc.indexOf('async function invokeRustCommand');
-    const trySeg = bridgeSrc.slice(tryStart, tryEnd);
     const routedEnum = new Set<string>();
     const routedLits = new Set<string>();
     for (const m of trySeg.matchAll(/FrontendCommand\.(\w+)/g)) routedEnum.add(m[1]);
@@ -196,5 +199,38 @@ describe('M20 bridge↔Rust parity', () => {
       missingEnum: [],
       missingLits: [],
     });
+  });
+
+  /**
+   * C) One path per command. `bridge.sendMessageAsync` resolves a FrontendCommand through
+   * `tryRustCommand`; `invokeTauriCommand` is the direct path. A command reachable both ways can
+   * drift: the route can be renamed or dropped while the direct call keeps working, and neither
+   * test A nor test B notices. The overlaps below are pre-existing debt, allowlisted so the guard
+   * fails on any new one — the certificate commands are not in it, so they have exactly one path.
+   */
+  const DEFERRED_SECOND_PATHS = new Set<string>([
+    'get_settings',
+    'execute_rest_request',
+    'execute_soap_request',
+    'get_proxy_status',
+    'load_project',
+    'save_project',
+  ]);
+
+  it('C: a command is reached by one path, not two', () => {
+    const routed = new Set<string>();
+    for (const m of trySeg.matchAll(/tauriInvoke\('([^']+)'/g)) routed.add(m[1]);
+
+    const secondPath: Array<{ file: string; command: string }> = [];
+    for (const file of walk(WEBVIEW)) {
+      if (file.endsWith('utils/bridge.ts')) continue;
+      const src = readFileSync(file, 'utf8');
+      for (const m of src.matchAll(/invokeTauriCommand(?:<[^>]*?>)?\(\s*'([^']+)'/g)) {
+        if (routed.has(m[1]) && !DEFERRED_SECOND_PATHS.has(m[1])) {
+          secondPath.push({ file: file.replace(ROOT + '/', ''), command: m[1] });
+        }
+      }
+    }
+    expect(secondPath).toEqual([]);
   });
 });

@@ -36,7 +36,7 @@ let infoCalls = 0;
 
 const commands: Record<string, any> = {
   // The shape the Rust command returns: `success`, `details`, `manualSteps`.
-  move_certificate_to_local_machine: {
+  moveCertificateToLocalMachine: {
     success: true,
     details: 'Certificate moved to LocalMachine\\Root (via the elevation prompt).',
     manualSteps: [],
@@ -44,12 +44,13 @@ const commands: Record<string, any> = {
 };
 
 vi.mock('../../../utils/bridge', () => ({
-  invokeTauriCommand: vi.fn(async (command: string) => {
-    if (commands[command]) return commands[command];
-    infoCalls += 1;
-    return infoCalls === 1 ? userStoreOnly : afterMove;
-  }),
-  bridge: { sendMessageAsync: vi.fn() },
+  bridge: {
+    sendMessageAsync: vi.fn(async (message: any) => {
+      if (commands[message.command]) return commands[message.command];
+      infoCalls += 1;
+      return infoCalls === 1 ? userStoreOnly : afterMove;
+    }),
+  },
   commandErrorText: (e: any) => String(e),
   isTauri: () => false,
 }));

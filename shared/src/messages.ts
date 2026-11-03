@@ -71,6 +71,14 @@ export enum FrontendCommand {
     RegenerateCertificate = 'regenerateCertificate',
     ResetCertificates = 'resetCertificates',
 
+    // Certificate panel (Options -> Proxy). The same Rust commands the Debug view reaches;
+    // the panel used to call `invokeTauriCommand` with the Rust names directly, which is a
+    // second path the parity test cannot guard.
+    GetCertificateInfo = 'getCertificateInfo',
+    TrustCertificate = 'trustCertificate',
+    UntrustCertificate = 'untrustCertificate',
+    GenerateCertificate = 'generateCertificate',
+
     // Workspace Export/Import
     ExportWorkspace = 'exportWorkspace',
     ImportWorkspace = 'importWorkspace',

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { SPACING_SM } from "../../styles/spacing";
-import { invokeTauriCommand } from '../../utils/bridge';
+import { bridge, invokeTauriCommand } from '../../utils/bridge';
+import { FrontendCommand } from '@shared/messages';
 import { tokens } from './tokens';
 import { SystemProxyPanel, SystemProxyStatus } from './SystemProxyPanel';
 import { ProxySetupGuide } from './ProxySetupGuide';
@@ -94,7 +95,7 @@ export function ServerControl({ onStatusChange }: ServerControlProps) {
 
   async function loadCertStatus() {
     try {
-      const info = await invokeTauriCommand<any>('get_ca_certificate_info');
+      const info = await bridge.sendMessageAsync<any>({ command: FrontendCommand.GetCertificateInfo });
       setCertTrusted(info?.isTrusted ?? false);
     } catch {
       setCertTrusted(false);
