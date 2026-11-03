@@ -292,7 +292,11 @@ pub fn windows_store_script(cert_path: &str, thumbprint: &str, result_file: &str
     }
     parts.push(format!("Set-Content -Path '{}' -Value 'OK'", q(result_file)));
     parts.push(format!("}} catch {{ Set-Content -Path '{}' -Value ('FAILED: ' + $_.Exception.Message) }}", q(result_file)));
-    parts.join(" ")
+    // Statements have to be separated. Joined with a space this is
+    // `$ErrorActionPreference='Stop' try { …`, which PowerShell reports as
+    // "Unexpected token 'try' in expression or statement" — the parser error the panel showed
+    // as "Failed to install certificate", before any store was touched.
+    parts.join("\n")
 }
 
 /// macOS operation: System keychain, then read it back.
@@ -794,6 +798,23 @@ mod tests {
         assert!(is_elevation_failure("the System keychain needs administrator privileges"));
         // A store that refused for another reason would just prompt again and fail again.
         assert!(!is_elevation_failure("the machine store did not keep the certificate"));
+    }
+
+    /// The parse error that showed up as "Failed to install certificate": joined with a
+    /// space, the assignment and `try` ran together, so PowerShell never got as far as the
+    /// store. Each part is one statement, so the join has to be a separator.
+    #[test]
+    fn statements_are_separated_so_powershell_can_parse_the_script() {
+        let script = windows_store_script("/cfg/ca.cer", "AABB", "/tmp/out", false);
+        let lines: Vec<String> = script.lines().map(|l| l.to_string()).collect();
+        assert_eq!(lines[0], "$ErrorActionPreference='Stop'");
+        assert_eq!(lines[1], "try {");
+        assert!(!script.contains("'Stop' try"), "{script}");
+        assert_eq!(
+            script.chars().filter(|c| *c == '{').count(),
+            script.chars().filter(|c| *c == '}').count(),
+            "{script}"
+        );
     }
 
     #[test]

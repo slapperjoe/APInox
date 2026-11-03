@@ -27,9 +27,17 @@ interface DiagnosticsTabProps {
     serverConfig?: any;
 }
 
+type DiagnosticStatus = 'success' | 'warning' | 'error' | 'info';
+
+/**
+ * One row per test/result combo. `test` is the check, `outcome` is what it found — the row is
+ * created when the test starts and filled in when it resolves, so a test is not shown as a
+ * "Checking…" row followed by a second row for its result.
+ */
 type DiagnosticResult = {
-    status: 'success' | 'warning' | 'error' | 'info';
-    message: string;
+    test: string;
+    status: DiagnosticStatus;
+    outcome: string;
     details?: string;
 };
 
@@ -52,110 +60,159 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
         }
     };
 
+    const renderResults = (results: DiagnosticResult[]) => (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {results.map((row) => (
+                <div
+                    key={row.test}
+                    data-testid="diagnostic-row"
+                    style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '12px',
+                        padding: '12px',
+                        background: 'var(--apinox-editor-inactiveSelectionBackground)',
+                        borderRadius: '4px',
+                        fontSize: '0.9em'
+                    }}
+                >
+                    {getStatusIcon(row.status)}
+                    <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 'var(--fw-medium)' }}>{row.test}</div>
+                        <div style={{ marginTop: '4px', whiteSpace: 'pre-wrap' }}>{row.outcome}</div>
+                        {row.details && (
+                            <div style={{
+                                fontSize: '0.85em',
+                                opacity: 0.7,
+                                marginTop: '4px',
+                                whiteSpace: 'pre-wrap'
+                            }}>
+                                {row.details}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+
+    /**
+     * Run one test as a single row: the row appears when the test starts and is filled in when
+     * it resolves. `show` is passed a copy each time, so React re-renders rather than seeing the
+     * same array reference.
+     */
+    async function runTest(
+        results: DiagnosticResult[],
+        show: (rows: DiagnosticResult[]) => void,
+        test: string,
+        check: () => Promise<{ status: DiagnosticStatus; outcome: string; details?: string }>,
+    ): Promise<void> {
+        const row: DiagnosticResult = { test, status: 'info', outcome: 'checking…' };
+        results.push(row);
+        show(results.slice());
+
+        const outcome = await check();
+        row.status = outcome.status;
+        row.outcome = outcome.outcome;
+        if (outcome.details) row.details = outcome.details;
+        show(results.slice());
+    }
+
     const runCertificateDiagnostics = async () => {
         setIsRunning(true);
         setActiveTest('certificate');
         setCertResults([]);
-        
+
         const results: DiagnosticResult[] = [];
+        const show = (rows: DiagnosticResult[]) => setCertResults(rows);
 
         try {
-            // Check if certificate files exist
-            results.push({ status: 'info', message: 'Checking certificate files...' });
-            const certCheck = await bridge.sendMessageAsync({ command: 'checkCertificate' });
-            
-            if (certCheck.exists) {
-                results.push({
-                    status: 'success',
-                    message: 'Certificate files found',
-                    details: `Path: ${certCheck.certPath}`
-                });
-                
-                // Store thumbprint for later use
-                setCertThumbprint(certCheck.thumbprint);
-                
-                // Check if cert is in LocalMachine store
-                results.push({ status: 'info', message: 'Checking certificate store location...' });
-                const storeCheck = await bridge.sendMessageAsync({ 
-                    command: 'checkCertificateStore',
-                    thumbprint: certCheck.thumbprint 
-                });
-                
-                if (storeCheck.inLocalMachine) {
-                    results.push({
-                        status: 'success',
-                        message: 'Certificate is in the machine store',
-                        details: `Thumbprint: ${certCheck.thumbprint}\nEvery identity that validates it — including a service or an IIS app pool — can see it.`
-                    });
-                } else if (storeCheck.inCurrentUser) {
-                    results.push({
+            let thumbprint = '';
+
+            await runTest(results, show, 'Certificate files', async () => {
+                const check = await bridge.sendMessageAsync({ command: 'checkCertificate' });
+                if (!check.exists) {
+                    return {
                         status: 'warning',
-                        message: 'Certificate is in the user store only',
-                        details: `Thumbprint: ${certCheck.thumbprint}\nA WCF app running as a Windows service or an IIS app pool validates against the machine store and cannot see it. Click "Fix Certificate Location" — it requests Administrator rights, and the move is only reported as done once the machine store is read back.`
-                    });
-                } else {
-                    results.push({
-                        status: 'error',
-                        message: 'Certificate not installed in any trust store',
-                        details: 'Click "Install Certificate" to fix'
-                    });
+                        outcome: 'not generated yet',
+                        details: 'Start proxy with an HTTPS target to generate',
+                    };
                 }
-                
-                // The CA and key as a pair: a handshake where the CA file is the only
-                // trust anchor completes only if the key on disk signed that certificate.
-                results.push({ status: 'info', message: 'Handshake against the CA on disk...' });
-                const httpsTest = await bridge.sendMessageAsync({ command: 'testHttpsServer' });
+                thumbprint = check.thumbprint;
+                // Kept for "Fix Certificate Location", which matches the store by thumbprint.
+                setCertThumbprint(check.thumbprint);
+                return { status: 'success', outcome: check.certPath };
+            });
 
-                if (httpsTest.success) {
-                    results.push({
-                        status: 'success',
-                        message: 'Certificate and key are a matching pair',
-                        details: httpsTest.details || 'The handshake against the CA completed'
+            if (thumbprint) {
+                // The two stores are not interchangeable: CryptoAPI validates a Windows service or
+                // an IIS app pool against the machine store only.
+                await runTest(results, show, 'Trust store location', async () => {
+                    const storeCheck = await bridge.sendMessageAsync({
+                        command: 'checkCertificateStore',
+                        thumbprint,
                     });
-                } else {
-                    results.push({
+
+                    if (storeCheck.inLocalMachine) {
+                        return {
+                            status: 'success',
+                            outcome: 'in the machine store — every identity that validates it, including a service or an IIS app pool, can see it',
+                        };
+                    }
+                    if (storeCheck.inCurrentUser) {
+                        return {
+                            status: 'warning',
+                            outcome: 'in the user store only — a service or an IIS app pool cannot see it',
+                            details: 'Click "Fix Certificate Location" — it requests Administrator rights, and the move is only reported as done once the machine store is read back.',
+                        };
+                    }
+                    return {
                         status: 'error',
-                        message: 'Certificate and key do not pair',
-                        details: httpsTest.error || 'Certificate/key may be malformed'
-                    });
-                }
+                        outcome: 'not installed in any trust store',
+                        details: 'Click "Install Certificate" to fix',
+                    };
+                });
 
-                // Test actual proxy connection (if running)
+                // The CA and key as a pair: a handshake where the CA file is the only trust anchor
+                // completes only if the key on disk signed that certificate.
+                await runTest(results, show, 'CA and key pair', async () => {
+                    const httpsTest = await bridge.sendMessageAsync({ command: 'testHttpsServer' });
+                    return httpsTest.success
+                        ? {
+                            status: 'success',
+                            outcome: 'matching pair — the handshake against the CA completed',
+                            details: httpsTest.details,
+                        }
+                        : {
+                            status: 'error',
+                            outcome: 'do not pair — certificate/key may be malformed',
+                            details: httpsTest.error,
+                        };
+                });
+
                 const proxyStatus = await bridge.sendMessageAsync({ command: 'getProxyStatus' });
                 if (proxyStatus.running) {
-                    results.push({ status: 'info', message: 'Testing connection to running proxy...' });
-                    const connTest = await bridge.sendMessageAsync({ command: 'testProxyConnection' });
-                    
-                    if (connTest.success) {
-                        results.push({
-                            status: 'success',
-                            message: 'Proxy handshake successful',
-                            details: `Protocol: ${connTest.protocol}, Cipher: ${connTest.cipher}\nVerified against: ${connTest.verifiedAgainst}`
-                        });
-                    } else {
-                        results.push({
-                            status: 'error',
-                            message: `Proxy handshake failed: ${connTest.error}`,
-                            details: `${connTest.hint || 'This is the same error your .NET client sees.'}\nVerified against: ${connTest.verifiedAgainst}`
-                        });
-                    }
+                    await runTest(results, show, 'Handshake against the running proxy', async () => {
+                        const connTest = await bridge.sendMessageAsync({ command: 'testProxyConnection' });
+                        return connTest.success
+                            ? {
+                                status: 'success',
+                                outcome: `handshake succeeded — ${connTest.protocol}, ${connTest.cipher}`,
+                                details: `Verified against: ${connTest.verifiedAgainst}`,
+                            }
+                            : {
+                                status: 'error',
+                                outcome: `handshake failed: ${connTest.error}`,
+                                details: `${connTest.hint || 'This is the same error your .NET client sees.'}\nVerified against: ${connTest.verifiedAgainst}`,
+                            };
+                    });
                 }
-            } else {
-                results.push({
-                    status: 'warning',
-                    message: 'Certificate not generated yet',
-                    details: 'Start proxy with an HTTPS target to generate'
-                });
             }
         } catch (error: any) {
-            results.push({
-                status: 'error',
-                message: 'Diagnostic check failed',
-                details: commandErrorText(error)
-            });
+            results.push({ test: 'Diagnostic check', status: 'error', outcome: commandErrorText(error) });
+            show(results.slice());
         }
-        
-        setCertResults(results);
+
         setIsRunning(false);
         setActiveTest(null);
     };
@@ -166,55 +223,52 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
         setProxyResults([]);
 
         const results: DiagnosticResult[] = [];
+        const show = (rows: DiagnosticResult[]) => setProxyResults(rows);
 
         try {
-            // `get_proxy_status` returns flat fields: running, port, mode, targetUrl.
             const proxyStatus = await bridge.sendMessageAsync({ command: 'getProxyStatus' });
 
+            // `get_proxy_status` returns flat fields: running, port, mode, targetUrl.
             const targetUrl = proxyStatus?.targetUrl || '';
             const clientPort = proxyStatus?.port || 8888;
-            const isRunning = proxyStatus?.running || false;
+            const running = proxyStatus?.running || false;
 
             results.push({
+                test: 'Proxy configuration',
                 status: 'info',
-                message: 'Proxy Configuration',
-                details: `Target: ${targetUrl || '(Not configured)'}\nPort: ${clientPort}\nMode: ${proxyStatus?.mode || 'forward'}\nStatus: ${isRunning ? 'Running' : 'Stopped'}`
+                outcome: running ? `running on port ${clientPort}` : 'stopped',
+                details: `Target: ${targetUrl || '(Not configured)'}\nMode: ${proxyStatus?.mode || 'forward'}`,
             });
+            show(results.slice());
 
-            if (!isRunning) {
+            if (!running) {
                 results.push({
+                    test: 'Proxy server',
                     status: 'warning',
-                    message: 'Proxy server is not running',
-                    details: 'Start the proxy to test connections'
+                    outcome: 'not running — start the proxy to test connections',
                 });
+                show(results.slice());
             } else {
-                results.push({ status: 'info', message: 'Testing connection to running proxy...' });
-                const connTest = await bridge.sendMessageAsync({ command: 'testProxyConnection' });
-
-                if (connTest.success) {
-                    results.push({
-                        status: 'success',
-                        message: 'Proxy handshake successful',
-                        details: `Protocol: ${connTest.protocol}\nCipher: ${connTest.cipher}\nVerified against: ${connTest.verifiedAgainst}`
-                    });
-                } else {
-                    results.push({
-                        status: 'error',
-                        message: `Proxy handshake failed: ${connTest.error}`,
-                        details: `${connTest.hint || 'This is the same error your .NET client sees.'}\nVerified against: ${connTest.verifiedAgainst}`
-                    });
-                }
+                await runTest(results, show, 'Handshake against the running proxy', async () => {
+                    const connTest = await bridge.sendMessageAsync({ command: 'testProxyConnection' });
+                    return connTest.success
+                        ? {
+                            status: 'success',
+                            outcome: `handshake succeeded — ${connTest.protocol}, ${connTest.cipher}`,
+                            details: `Verified against: ${connTest.verifiedAgainst}`,
+                        }
+                        : {
+                            status: 'error',
+                            outcome: `handshake failed: ${connTest.error}`,
+                            details: `${connTest.hint || 'This is the same error your .NET client sees.'}\nVerified against: ${connTest.verifiedAgainst}`,
+                        };
+                });
             }
-
         } catch (error: any) {
-            results.push({
-                status: 'error',
-                message: 'Proxy diagnostic check failed',
-                details: commandErrorText(error)
-            });
+            results.push({ test: 'Proxy diagnostic check', status: 'error', outcome: commandErrorText(error) });
+            show(results.slice());
         }
 
-        setProxyResults(results);
         setIsRunning(false);
         setActiveTest(null);
     };
@@ -479,45 +533,8 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
                     </button>
                 </div>
                 
-                {certResults.length > 0 && (
-                    <div style={{ 
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        gap: '8px',
-                        marginBottom: '12px'
-                    }}>
-                        {certResults.map((result, index) => (
-                            <div 
-                                key={index}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'flex-start',
-                                    gap: '12px',
-                                    padding: '12px',
-                                    background: 'var(--apinox-editor-inactiveSelectionBackground)',
-                                    borderRadius: '4px',
-                                    fontSize: '0.9em'
-                                }}
-                            >
-                                {getStatusIcon(result.status)}
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: 'var(--fw-medium)' }}>{result.message}</div>
-                                    {result.details && (
-                                        <div style={{ 
-                                            fontSize: '0.85em', 
-                                            opacity: 0.7, 
-                                            marginTop: '4px',
-                                            whiteSpace: 'pre-wrap'
-                                        }}>
-                                            {result.details}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-                
+                {renderResults(certResults)}
+
                 {/* Action buttons */}
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     <button
@@ -621,39 +638,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = () => {
                     </button>
                 </div>
                 
-                {proxyResults.length > 0 && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {proxyResults.map((result, index) => (
-                            <div 
-                                key={index}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'flex-start',
-                                    gap: '12px',
-                                    padding: '12px',
-                                    background: 'var(--apinox-editor-inactiveSelectionBackground)',
-                                    borderRadius: '4px',
-                                    fontSize: '0.9em'
-                                }}
-                            >
-                                {getStatusIcon(result.status)}
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: 'var(--fw-medium)' }}>{result.message}</div>
-                                    {result.details && (
-                                        <div style={{ 
-                                            fontSize: '0.85em', 
-                                            opacity: 0.7, 
-                                            marginTop: '4px',
-                                            whiteSpace: 'pre-wrap'
-                                        }}>
-                                            {result.details}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
+                {renderResults(proxyResults)}
             </div>
 
             {/* Help Text */}
